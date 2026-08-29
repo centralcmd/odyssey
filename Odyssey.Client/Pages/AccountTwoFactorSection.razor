@@ -1,0 +1,308 @@
+@inject AuthApiClient AuthApiClient
+@inject IClipboardService Clipboard
+@inject ISnackbar Snackbar
+@* /account · two-factor authentication, wired to Identity's built-in POST /manage/2fa. Owns the
+   whole wizard (scan → verify → save codes), the recovery-code regeneration and the danger zone.
+   Every state change is reported back to the page, whose header chips and Security overview card
+   read the same status. *@
+
+@if (!Status.Enabled && _phase == Phase.Idle)
+{
+    @* OFF landing *@
+    <div class="acc-status">
+        <span class="acc-status-ic"><MudIcon Icon="@Icons.Material.Filled.GppMaybe" /></span>
+        <div class="acc-status-txt">
+            <div class="acc-status-ttl">Two-factor is off</div>
+            <div class="acc-status-sub">Your account is protected by your password alone. Turn on 2FA for stronger protection.</div>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.AddModerator"
+                   OnClick="StartSetup">Set up two-factor</MudButton>
+    </div>
+}
+else if (_phase == Phase.Setup)
+{
+    @* Wizard · scan + verify *@
+    <MudCard Elevation="1" Class="ods-outline">
+        <MudCardContent Class="pa-5">
+            <div class="acc-cardhead bordered">
+                <span class="acc-ic"><MudIcon Icon="@Icons.Material.Filled.QrCode2" /></span>
+                <div class="acc-sec-titles">
+                    <div class="acc-sec-title">Set up authenticator app</div>
+                    <div class="acc-sec-sub">Use Google Authenticator, 1Password, Authy, or any TOTP app.</div>
+                </div>
+            </div>
+
+            @Stepper(0)
+
+            <div class="acc-divider acc-divider-lg"></div>
+
+            <div class="acc-setup">
+                <div class="acc-qr-wrap">
+                    <div class="acc-qr">
+                        @if (!string.IsNullOrEmpty(_qrDataUri))
+                        {
+                            <img src="@_qrDataUri" alt="Two-factor setup QR code" width="164" height="164" />
+                        }
+                        else
+                        {
+                            <OdsSpinner Size="OdsSize.Lg" AriaLabel="Generating QR code" />
+                        }
+                    </div>
+                    <div class="acc-qr-note">Scan with Google Authenticator, 1Password, Authy…</div>
+                </div>
+                <div class="acc-setup-side">
+                    <div class="acc-setup-step-ttl"><b>1.</b> Scan this QR code with your authenticator app.</div>
+                    <div>
+                        <div class="acc-mini-label">Can't scan? Enter this key manually:</div>
+                        <div class="acc-key-row">
+                            <code class="acc-key @(_showKey ? null : "masked")">@(_showKey ? FormattedKey : "•••• •••• •••• ••••")</code>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                       StartIcon="@(_showKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                       OnClick="@(() => _showKey = !_showKey)">@(_showKey ? "Hide" : "Show key")</MudButton>
+                            @if (_showKey)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.ContentCopy"
+                                           OnClick="CopySharedKey">Copy</MudButton>
+                            }
+                        </div>
+                    </div>
+                    <div class="acc-divider"></div>
+                    <div class="acc-setup-step-ttl"><b>2.</b> Enter the 6-digit code your app shows.</div>
+                    <MudTextField @bind-Value="_code"
+                                  Placeholder="000000"
+                                  Variant="Variant.Outlined"
+                                  Class="acc-code-field"
+                                  Immediate="true"
+                                  MaxLength="6"
+                                  InputMode="InputMode.numeric"
+                                  Error="@_codeError"
+                                  ErrorText="Enter all 6 digits from your authenticator app." />
+                </div>
+            </div>
+
+            <div class="acc-form-actions acc-form-actions-end">
+                <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CancelSetup">Cancel</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@(_busy ? null : Icons.Material.Filled.Check)"
+                           Disabled="@(_code.Length < 6 || _busy)"
+                           OnClick="VerifyCode">
+                    @if (_busy)
+                    {
+                        <OdsSpinner Class="me-2" Decorative="true" />
+                    }
+                    Verify &amp; enable
+                </MudButton>
+            </div>
+        </MudCardContent>
+    </MudCard>
+}
+else if (_phase == Phase.Codes)
+{
+    @* Wizard · save recovery codes *@
+    <MudCard Elevation="1" Class="ods-outline">
+        <MudCardContent Class="pa-5">
+            <div class="acc-cardhead bordered">
+                <span class="acc-ic ok"><MudIcon Icon="@Icons.Material.Filled.VerifiedUser" /></span>
+                <div class="acc-sec-titles">
+                    <div class="acc-sec-title">Save your recovery codes</div>
+                    <div class="acc-sec-sub">Two-factor is almost on — store these somewhere safe first.</div>
+                </div>
+            </div>
+
+            @Stepper(2)
+
+            <div class="acc-divider acc-divider-lg"></div>
+
+            <div class="alert warning acc-block-alert" role="status">
+                <span class="material-icons alert-icon">warning_amber</span>
+                <div class="alert-body">
+                    <strong>These codes are shown only once.</strong> Each one lets you sign in if you lose your authenticator device. Keep them somewhere only you can reach.
+                </div>
+            </div>
+
+            @RecoveryCodes
+
+            <div class="acc-form-actions acc-form-actions-top">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Lock"
+                           OnClick="FinishEnable">I've saved my codes — finish</MudButton>
+            </div>
+        </MudCardContent>
+    </MudCard>
+}
+else
+{
+    @* ENABLED *@
+    <div class="acc-status on">
+        <span class="acc-status-ic"><MudIcon Icon="@Icons.Material.Filled.GppGood" /></span>
+        <div class="acc-status-txt">
+            <div class="acc-status-ttl">Two-factor is on</div>
+            <div class="acc-status-sub">Authenticator app · @Status.RecoveryCodesRemaining recovery codes remaining</div>
+        </div>
+        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Success"
+                 Icon="@Icons.Material.Filled.CheckCircle">Protected</MudChip>
+    </div>
+
+    @* Recovery codes *@
+    <MudCard Elevation="1" Class="ods-outline">
+        <MudCardContent Class="pa-4">
+            <div class="acc-card-head">
+                <MudIcon Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small" />
+                <span class="acc-card-ttl">Recovery codes</span>
+            </div>
+            @if (_phase == Phase.CodesRegen)
+            {
+                <div class="acc-stack">
+                    <div class="alert warning acc-block-alert" role="status">
+                        <span class="material-icons alert-icon">warning_amber</span>
+                        <div class="alert-body"><strong>New recovery codes generated.</strong> Your previous codes no longer work. Save these now — they're shown only once.</div>
+                    </div>
+                    @RecoveryCodes
+                    <div>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Check"
+                                   OnClick="@(() => _phase = Phase.Enabled)">Done, I've saved them</MudButton>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="acc-stack">
+                    <div class="acc-sec-sub acc-sec-sub-flush">
+                        You have <b>@Status.RecoveryCodesRemaining</b> unused recovery codes. Generate a fresh set if you've run low or think they may be exposed.
+                    </div>
+                    @if (_confirm == "regen")
+                    {
+                        <div class="alert warning acc-block-alert">
+                            <span class="material-icons alert-icon">warning_amber</span>
+                            <div class="alert-body">
+                                <strong>Generate new recovery codes?</strong> Your current @Status.RecoveryCodesRemaining codes will stop working immediately.
+                                <div class="acc-inline-actions">
+                                    <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small" OnClick="@(() => _confirm = null)">Cancel</MudButton>
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.Autorenew" Disabled="@_busy" OnClick="RegenerateCodes">Yes, regenerate</MudButton>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                                       StartIcon="@Icons.Material.Filled.Autorenew"
+                                       OnClick="@(() => _confirm = "regen")">Generate new recovery codes</MudButton>
+                        </div>
+                    }
+                </div>
+            }
+        </MudCardContent>
+    </MudCard>
+
+    @* Danger zone *@
+    <div class="acc-danger">
+        <div class="acc-danger-head">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+            <span class="acc-danger-head-ttl">Danger zone</span>
+        </div>
+
+        <div class="acc-danger-row">
+            <div class="acc-danger-txt">
+                <div class="acc-danger-ttl">Reset authenticator key</div>
+                <div class="acc-danger-sub">Disconnects your current app and walks you through setup again. 2FA stays required.</div>
+            </div>
+            @if (_confirm == "reset")
+            {
+                <div class="acc-inline-actions">
+                    <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => _confirm = null)">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.RestartAlt" Disabled="@_busy" OnClick="ResetKey">Reset key</MudButton>
+                </div>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.RestartAlt"
+                           OnClick="@(() => _confirm = "reset")">Reset key</MudButton>
+            }
+        </div>
+
+        <div class="acc-danger-row acc-danger-row-top">
+            <div class="acc-danger-txt">
+                <div class="acc-danger-ttl">Turn off two-factor</div>
+                <div class="acc-danger-sub">Removes the second step at sign-in. Your account will be protected by its password only.</div>
+                @if (_confirm == "disable")
+                {
+                    <div class="acc-disable-field">
+                        <MudTextField @bind-Value="_disablePhrase"
+                                      Label="Type DISABLE to confirm"
+                                      Placeholder="DISABLE"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Immediate="true" />
+                    </div>
+                }
+            </div>
+            @if (_confirm == "disable")
+            {
+                <div class="acc-inline-actions">
+                    <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="@(() => { _confirm = null; _disablePhrase = string.Empty; })">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.GppBad"
+                               Disabled="@(_disablePhrase.Trim().ToUpperInvariant() != "DISABLE" || _busy)"
+                               OnClick="DisableTwoFactor">Turn off 2FA</MudButton>
+                </div>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.GppBad"
+                           OnClick="@(() => _confirm = "disable")">Turn off</MudButton>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    @* Templated fragments shared by the wizard's scan + codes cards. *@
+    private RenderFragment Stepper(int activeIdx) =>
+        @<div class="acc-steps">
+            @for (var i = 0; i < StepLabels.Length; i++)
+            {
+                var stepIndex = i;
+                if (stepIndex > 0)
+                {
+                    <span class="acc-step-line"></span>
+                }
+                <span class="acc-step @(stepIndex == activeIdx ? "active" : null) @(stepIndex < activeIdx ? "done" : null)">
+                    <span class="acc-step-dot">
+                        @if (stepIndex < activeIdx)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                        }
+                        else
+                        {
+                            @(stepIndex + 1)
+                        }
+                    </span>
+                    <span class="acc-step-label">@StepLabels[stepIndex]</span>
+                </span>
+            }
+        </div>;
+
+    private RenderFragment RecoveryCodes =>
+        @<div class="acc-stack">
+            <div class="acc-codes-grid">
+                @foreach (var rc in _recoveryCodes)
+                {
+                    <div class="acc-rc">@rc</div>
+                }
+            </div>
+            <div class="acc-codes-actions">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                           StartIcon="@(_codesCopied ? Icons.Material.Filled.Check : Icons.Material.Filled.ContentCopy)"
+                           OnClick="CopyCodes">@(_codesCopied ? "Copied" : "Copy codes")</MudButton>
+            </div>
+        </div>;
+}

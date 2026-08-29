@@ -1,0 +1,131 @@
+@*
+    OdsTagMultiSelect — the multi-tag picker for the transaction forms
+    (Odyssey Design System · components/TagMultiSelect).
+
+    A transaction now carries a list of TransactionTags, so the single "Tag"
+    OdsSelect is replaced by this: a field whose control box shows each selected
+    tag as a removable chip, with an "Add tag" affordance that opens a searchable,
+    checkable list — consistent with the ledger-header OdsMultiSelect filter, but
+    labelled and chip-displaying for data entry. Provide OnCreate to offer an
+    inline "Create …" row for a name that matches nothing.
+
+    Controlled: Value is the selected tag ids; ValueChanged fires the full next
+    set on every add / remove (bind via @bind-Value). Built on MudMenu so the
+    popover is portaled out of any overflow:hidden ancestor (modal body / card /
+    collapsible) and flips above when there isn't room below.
+*@
+
+<div class="@FieldClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="odc-field-label">
+            @Label
+            @if (Required)
+            {
+                <span class="odc-field-req" aria-hidden="true">*</span>
+            }
+            @if (Optional)
+            {
+                <span class="odc-field-opt">Optional</span>
+            }
+        </label>
+    }
+
+    <div class="odc-tagms">
+        <MudMenu @ref="_menu"
+                 AnchorOrigin="Origin.BottomLeft"
+                 TransformOrigin="Origin.TopLeft"
+                 FullWidth="true"
+                 PopoverClass="odc-ms-pop-paper"
+                 ListClass="pa-0"
+                 Disabled="@Disabled"
+                 OpenChanged="@(open => _open = open)">
+            <ActivatorContent>
+                <button type="button"
+                        class="@ControlClass"
+                        disabled="@Disabled"
+                        id="@Id"
+                        aria-haspopup="listbox"
+                        aria-expanded="@(_open ? "true" : "false")"
+                        aria-label="@(string.IsNullOrEmpty(Label) ? AriaLabel : null)"
+                        @onclick="@context.ToggleAsync">
+                    <span class="odc-tagms-chips">
+                        @if (Selected.Count == 0)
+                        {
+                            <span class="odc-tagms-ph">@Placeholder</span>
+                        }
+                        else
+                        {
+                            @foreach (var option in Selected)
+                            {
+                                <span class="odc-chip tag odc-tagms-chip">
+                                    @option.Label
+                                    <span class="odc-tagms-x"
+                                          role="button"
+                                          aria-label="@RemoveLabel(option)"
+                                          @onclick="@(() => Remove(option.Value))"
+                                          @onclick:stopPropagation="true">
+                                        <span class="material-icons" aria-hidden="true">close</span>
+                                    </span>
+                                </span>
+                            }
+                        }
+                    </span>
+                    <span class="odc-tagms-add">
+                        <span class="material-icons" aria-hidden="true">@(_open ? "expand_less" : "add")</span>
+                        @if (Selected.Count == 0)
+                        {
+                            <span>@AddLabel</span>
+                        }
+                    </span>
+                </button>
+            </ActivatorContent>
+            <ChildContent>
+                <div class="odc-tagms-pop" role="listbox" aria-multiselectable="true">
+                    <div class="odc-tagms-search">
+                        <span class="material-icons" aria-hidden="true">search</span>
+                        <input value="@_query"
+                               @oninput="@(e => _query = e.Value?.ToString() ?? string.Empty)"
+                               @onkeydown="OnSearchKeyDown"
+                               placeholder="@SearchPlaceholder"
+                               aria-label="Search tags" />
+                    </div>
+                    <div class="odc-tagms-list">
+                        @foreach (var option in Filtered)
+                        {
+                            <label class="odc-tagms-opt odc-check">
+                                <input type="checkbox"
+                                       checked="@_selected.Contains(option.Value)"
+                                       @onchange="@(() => Toggle(option.Value))" />
+                                <span class="odc-check-box" aria-hidden="true">
+                                    <span class="material-icons">check</span>
+                                </span>
+                                <span class="odc-check-label">@option.Label</span>
+                            </label>
+                        }
+                        @if (ShowCreate)
+                        {
+                            <button type="button" class="odc-tagms-create" @onclick="Create">
+                                <span class="material-icons" aria-hidden="true">add</span>
+                                <span>@CreateRowLabel</span>
+                            </button>
+                        }
+                        @if (!Filtered.Any() && !ShowCreate)
+                        {
+                            <div class="odc-tagms-empty">@EmptyText</div>
+                        }
+                    </div>
+                    <div class="odc-tagms-foot">
+                        <button type="button" class="odc-btn text" @onclick="Clear" disabled="@(_selected.Count == 0)">Clear</button>
+                        <button type="button" class="odc-btn text" @onclick="Done">Done</button>
+                    </div>
+                </div>
+            </ChildContent>
+        </MudMenu>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="odc-field-help @(string.IsNullOrEmpty(Error) ? null : "error")" role="@(string.IsNullOrEmpty(Error) ? null : "alert")">@Message</div>
+    }
+</div>

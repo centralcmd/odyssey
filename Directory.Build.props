@@ -1,0 +1,44 @@
+<Project>
+
+  <!--
+    Solution-wide version. This is the single source of truth for the assembly
+    version of every project (mirrors how Directory.Packages.props centralizes
+    NuGet versions). release-please rewrites the <Version> line on each release
+    via the "x-release-please-version" marker below, so do not edit the number
+    by hand and do not remove the marker comment. The API surfaces this value at
+    /healthz through the assembly's informational version.
+  -->
+  <PropertyGroup>
+    <Version>0.16.0</Version> <!-- x-release-please-version -->
+  </PropertyGroup>
+
+  <!--
+    The build is kept at zero warnings, so a warning is a build break rather than scrollback noise.
+    Two things this does NOT cover, worth knowing before trusting it:
+      * MSB3277 and friends are MSBuild *task* warnings, which this compiler property does not
+        promote. Only `dotnet build -warnaserror` catches a future reference-version conflict.
+      * NuGet warnings ARE promoted, so a newly published advisory (NU1903) against an existing
+        dependency can turn the build red with no change on our side. That is the intent; the
+        escape hatch while the fix lands is <NoWarn> for that specific NU code.
+  -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Solution-wide package/assembly identity. Nothing here is published to NuGet today, but these
+    values are stamped into every built assembly, so a binary distributed on its own still
+    carries its origin and license. PackageLicenseExpression mirrors the repository LICENSE.
+  -->
+  <PropertyGroup>
+    <Authors>centralcmd</Authors>
+    <Company>centralcmd</Company>
+    <Product>Odyssey</Product>
+    <Copyright>Copyright (c) 2026 centralcmd</Copyright>
+    <PackageLicenseExpression>BSD-2-Clause</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/centralcmd/odyssey</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/centralcmd/odyssey</PackageProjectUrl>
+  </PropertyGroup>
+
+</Project>

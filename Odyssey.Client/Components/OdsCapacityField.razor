@@ -1,0 +1,122 @@
+@*
+    OdsCapacityField — a capacity-limit control: a right-aligned numeric input paired with
+    a "No limit" switch (Odyssey Design System · components/CapacityField, issue #343 §3).
+
+    The control behind the count caps on the System Settings import/export groups, where a
+    limit is either a finite number or explicitly unbounded. Composes OdsNumberField and
+    OdsSwitch — never hand-rolled — so the "role=switch"/"aria-checked" pair MudBlazor
+    already emits for OdsSwitch, and OdsNumberField's help/error/aria-describedby wiring,
+    both come along for free.
+
+    Tri-state, PAGE-OWNED draft: the caller keeps BOTH Unlimited and Value — this component
+    never clears Value when Unlimited flips on. Toggling "No limit" on disables (and visually
+    replaces) the numeric input with literal "No limit" text, but the last entered number is
+    retained by the caller so toggling back off is not a data-losing action; the number is
+    simply never sent to the server while Unlimited is true.
+
+    Labelling: the number input is labelled by the row title (AriaLabelledBy) and described by
+    the row description (AriaDescribedBy) — the hint text lives in the row, never here. The
+    switch's accessible name is composed from Label (e.g. "Maximum contacts per import — no
+    limit"), since it carries no visible text label of its own.
+*@
+
+<div class="@WrapperClass">
+    @if (Unlimited)
+    {
+        @if (Inline)
+        {
+            <span class="odc-capacity-value">No limit</span>
+        }
+        else
+        {
+            <div class="odc-capacity-nolimit">No limit</div>
+        }
+    }
+    else
+    {
+        <OdsNumberField Class="odc-capacity-num"
+                         Value="@Value"
+                         ValueChanged="@OnValueChanged"
+                         Min="@Min" Max="@Max" Step="1" Align="right"
+                         Disabled="@Disabled"
+                         Error="@Error"
+                         AriaLabelledBy="@AriaLabelledBy"
+                         AriaDescribedBy="@AriaDescribedBy" />
+    }
+    @if (Inline)
+    {
+        @* The pill carries the INVERSE action, so it never repeats the words already showing as the
+           value and its pressed state reads as a state rather than a stutter. aria-pressed carries
+           the current state; the label carries what pressing it does — the two are deliberately
+           opposite, which is why the accessible name is composed rather than left as the text. *@
+        <button type="button" class="odc-capacity-pill"
+                disabled="@Disabled"
+                aria-pressed="@(Unlimited ? "true" : "false")"
+                aria-label="@($"{Label} — no limit")"
+                @onclick="@(() => OnUnlimitedChanged(!Unlimited))">
+            @(Unlimited ? "Set a limit" : "No limit")
+        </button>
+    }
+    else
+    {
+        <label class="@($"odc-capacity-toggle {(Disabled ? "disabled" : "")}".TrimEnd())">
+            <span class="odc-capacity-toggle-lbl">No limit</span>
+            <OdsSwitch Checked="@Unlimited" CheckedChanged="@OnUnlimitedChanged"
+                       Disabled="@Disabled" AriaLabel="@($"{Label} — no limit")" />
+        </label>
+    }
+</div>
+
+@code {
+    /// <summary>The finite limit, or null while empty. Retained (never cleared here) while
+    /// <see cref="Unlimited"/> is true — the caller owns this draft value.</summary>
+    [Parameter] public decimal? Value { get; set; }
+
+    [Parameter] public EventCallback<decimal?> ValueChanged { get; set; }
+
+    /// <summary>True = no limit. The number input is hidden (replaced by "No limit" text) but
+    /// <see cref="Value"/> is never cleared by this component.</summary>
+    [Parameter] public bool Unlimited { get; set; }
+
+    [Parameter] public EventCallback<bool> UnlimitedChanged { get; set; }
+
+    /// <summary>The setting's title — composes the switch's accessible name (e.g. "… — no limit").</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Id of the row title — labels the number input (<c>aria-labelledby</c>).</summary>
+    [Parameter] public string? AriaLabelledBy { get; set; }
+
+    /// <summary>Id of the row description/hint — describes the number input (<c>aria-describedby</c>).</summary>
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    /// <summary>Error message — shown on the number input, alongside (never instead of) the row hint.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public int Min { get; set; } = 1;
+
+    [Parameter] public int Max { get; set; } = 1_000_000;
+
+    /// <summary>Disables both the number input and the switch (e.g. the caller lacks the write claim).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// <see cref="OdsCapacityFieldVariant.Stacked"/> (default) is the <c>OdsSettingRow</c> form — the
+    /// input over a "No limit" switch, right-aligned in the row's control column.
+    /// <see cref="OdsCapacityFieldVariant.Inline"/> is the <c>OdsSettingField</c> form: one line
+    /// inside the notched frame, the value then a pill at the trailing edge. There is no room inside
+    /// the frame for a switch plus its own label, and no second line to put them on.
+    /// </summary>
+    [Parameter] public OdsCapacityFieldVariant Variant { get; set; } = OdsCapacityFieldVariant.Stacked;
+
+    [Parameter] public string? Class { get; set; }
+
+    private bool Inline => Variant == OdsCapacityFieldVariant.Inline;
+
+    private string WrapperClass =>
+        string.Join(' ', new[] { "odc-capacity", Inline ? "inline" : null, Class }
+            .Where(value => !string.IsNullOrEmpty(value)));
+
+    private Task OnValueChanged(decimal? value) => ValueChanged.InvokeAsync(value);
+
+    private Task OnUnlimitedChanged(bool value) => UnlimitedChanged.InvokeAsync(value);
+}

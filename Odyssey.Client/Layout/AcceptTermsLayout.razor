@@ -1,0 +1,17 @@
+@inherits LayoutComponentBase
+
+@*
+    AcceptTermsLayout — the legal-acceptance gate surface (issue #354 §5). Deliberately omits the module
+    rail / nav shell so a non-compliant user cannot navigate into the app around the interstitial, and
+    so the page can't re-enter MainLayout's gate check and bounce.
+
+    Structurally the same as OnboardingLayout, and kept separate on purpose rather than shared: these are
+    two independent gates that run in a fixed order (legal, then onboarding), and collapsing them into
+    one layout would make either one's chrome changing a silent change to the other.
+*@
+
+<OdysseyThemeProvider></OdysseyThemeProvider>
+
+<main id="main-content" role="main">
+    @Body
+</main>

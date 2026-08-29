@@ -1,0 +1,89 @@
+@*
+    OdsSelect — a styled single-select dropdown with helper / error states
+    (Odyssey Design System · components/Select). A MudSelect sharing the input
+    look + focus ring with OdsField. Pass Options as OdsOption records.
+    Two-way bindable via @bind-Value.
+*@
+
+<MudSelect T="string"
+           Value="@Value"
+           ValueChanged="OnValueChanged"
+           Label="@EffectiveLabel"
+           Placeholder="@Placeholder"
+           Variant="Variant.Outlined"
+           Margin="Margin.Dense"
+           AdornmentIcon="@(SelectedOption?.Icon)"
+           Adornment="@(string.IsNullOrEmpty(SelectedOption?.Icon) ? Adornment.None : Adornment.Start)"
+           HelperText="@(string.IsNullOrEmpty(Error) ? Help : null)"
+           Error="@(!string.IsNullOrEmpty(Error))"
+           ErrorText="@Error"
+           Required="@Required"
+           Disabled="@Disabled"
+           MaxHeight="360"
+           Class="@Class"
+           @attributes="UserAttributes">
+    @foreach (var option in Options)
+    {
+        <MudSelectItem T="string" Value="@option.Value">
+            @if (!string.IsNullOrEmpty(option.Icon))
+            {
+                <span class="odc-select-opt">
+                    <span class="material-icons odc-opt-icon" style="@IconStyle(option)" aria-hidden="true">@option.Icon</span>
+                    <span>@option.Label</span>
+                </span>
+            }
+            else
+            {
+                @option.Label
+            }
+        </MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Selected value. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>The options.</summary>
+    [Parameter, EditorRequired] public IEnumerable<OdsOption> Options { get; set; } = [];
+
+    /// <summary>Placeholder shown when nothing is selected.</summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    /// <summary>Mark the field as optional — appends a muted "(optional)" to the label.
+    /// (The DS renders a separate <c>.odc-field-opt</c> marker; MudBlazor owns this control's label
+    /// element, so the marker is folded into the label text.)</summary>
+    [Parameter] public bool Optional { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string? EffectiveLabel =>
+        Optional && !string.IsNullOrEmpty(Label) ? $"{Label} (optional)" : Label;
+
+    /// <summary>The currently selected option (drives the trigger's leading glyph).</summary>
+    private OdsOption? SelectedOption => Options.FirstOrDefault(o => o.Value == Value);
+
+    private static string? IconStyle(OdsOption option) =>
+        string.IsNullOrEmpty(option.IconColor) ? null : $"color:{option.IconColor};";
+
+    private Task OnValueChanged(string value)
+    {
+        Value = value;
+        return ValueChanged.InvokeAsync(value);
+    }
+}

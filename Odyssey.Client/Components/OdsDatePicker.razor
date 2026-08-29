@@ -1,0 +1,66 @@
+@*
+    OdsDatePicker — a single-date calendar popover (Odyssey Design System · components/DatePicker).
+
+    A MudDatePicker exchanging a DateTime?, matching MudBlazor's native type and
+    the app's date DTOs. The picker shows the ISO yyyy-MM-dd format with no
+    toolbar (the DS look). Min / Max disable out-of-range days. Bind via
+    @bind-Value.
+*@
+
+<MudDatePicker Date="@Value"
+               DateChanged="OnDateChanged"
+               Placeholder="@Placeholder"
+               MinDate="@Min"
+               MaxDate="@Max"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Editable="true"
+               DateFormat="yyyy-MM-dd"
+               ShowToolbar="false"
+               AnchorOrigin="@(Align == OdsAlign.End ? Origin.BottomRight : Origin.BottomLeft)"
+               TransformOrigin="@(Align == OdsAlign.End ? Origin.TopRight : Origin.TopLeft)"
+               Disabled="@Disabled"
+               Clearable="@Clearable"
+               HelperText="@HelperText"
+               Style="@(Full ? null : "width:fit-content")"
+               Class="@Class"
+               @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Selected date, or null when empty. Bindable via @bind-Value.</summary>
+    [Parameter] public DateTime? Value { get; set; }
+
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Shows a clear (×) button once a date is picked. Default false.</summary>
+    [Parameter] public bool Clearable { get; set; }
+
+    [Parameter] public string? HelperText { get; set; }
+
+    /// <summary>Earliest selectable date. Earlier days are disabled.</summary>
+    [Parameter] public DateTime? Min { get; set; }
+
+    /// <summary>Latest selectable date. Later days are disabled.</summary>
+    [Parameter] public DateTime? Max { get; set; }
+
+    /// <summary>Popover alignment relative to the trigger. Start (default) opens left-aligned; End right-aligned.</summary>
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    /// <summary>Stretch the control to the container width. Default true (the DS default).</summary>
+    [Parameter] public bool Full { get; set; } = true;
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private Task OnDateChanged(DateTime? date)
+    {
+        Value = date;
+        return ValueChanged.InvokeAsync(date);
+    }
+}

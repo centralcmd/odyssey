@@ -1,0 +1,21 @@
+/* =============================================================
+   Odyssey Design System — styles.css
+   Single entry point for consumers. Link this one file and you
+   get the full token layer plus every shared component style.
+
+   Order matters: tokens (colors_and_type) load first so the
+   var(--mud-palette-*) / var(--space-*) references in the kit
+   files below resolve.
+
+   Note: the embedded Material-icon font in colors_and_type.css
+   renders most reliably when that file is ALSO linked directly
+   in the host <head>. This @import wires the cascade for tooling
+   and consumers who only pull in styles.css.
+   ============================================================= */
+
+@import url('./colors_and_type.css');
+
+@import url('./ui_kits/web/kit.css');
+@import url('./ui_kits/web/account.css');
+@import url('./ui_kits/web/account-signals.css');
+@import url('./ui_kits/web/admin.css');

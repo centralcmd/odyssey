@@ -1,0 +1,256 @@
+@page "/legal-documents"
+@attribute [Authorize(Policy = PermissionClaims.UsersManage)]
+@inject ILegalApiClient Legal
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+
+<PageTitle>Terms of Service</PageTitle>
+
+@*
+    Legal documents — the admin surface for authoring and publishing versioned Terms of Service
+    (issue #354 §3 state 5, §7.5–§7.7; Odyssey Design System · LegalDocuments). Gated by users.manage.
+
+    Its own page rather than a row in System settings' one-control-per-row grid, which has nowhere to put
+    a 50,000-character editor or a version table — see the note in the code-behind about where the design
+    system places it.
+
+    Publishing is deliberately distinct from any page-wide "save": it creates a new immutable version and
+    forces every user, including the publishing admin, to re-accept within the bounded window. Entering
+    the page first checks the admin's own compliance and routes them through /accept-terms if they owe a
+    response, because publishing while non-compliant would gate them out mid-edit.
+*@
+
+<MudStack Spacing="6">
+
+    <PageHeader Title="Terms of Service" Icon="@Icons.Material.Filled.Gavel">
+        <SubLine>Author and publish the Terms of Service, and review version history</SubLine>
+        <PrimaryAction>
+            @if (_phase == Phase.Ready && !_blockedOnOwnCompliance)
+            {
+                <OdsButton Icon="@(_justPublished ? "check" : "publish")" Loading="_publishing"
+                           Disabled="!CanPublish" OnClick="@(() => _confirmOpen = true)">
+                    @(_justPublished ? "Published" : "Publish new version")
+                </OdsButton>
+            }
+        </PrimaryAction>
+    </PageHeader>
+
+    @if (_blockedOnOwnCompliance)
+    {
+        <div class="lg-admin-blocker" role="alert">
+            <span class="material-icons" aria-hidden="true">assignment_late</span>
+            <div>
+                <div class="lg-admin-blocker-ttl">Accept the current terms before managing them</div>
+                <div class="lg-admin-blocker-desc">
+                    You have an outstanding License or Terms of Service acceptance. Publishing forces
+                    everyone to re-accept, so you must be compliant yourself first. We’ll bring you right
+                    back here afterward.
+                </div>
+                <div class="lg-admin-blocker-act">
+                    <OdsButton Icon="arrow_forward" OnClick="GoToAcceptTerms">Review terms</OdsButton>
+                </div>
+            </div>
+        </div>
+    }
+    else if (_phase == Phase.Error)
+    {
+        <div class="ss-retry" role="alert">
+            <MudIcon Icon="@Icons.Material.Filled.CloudOff" />
+            <div class="ss-retry-ttl">Couldn’t load legal documents</div>
+            <div class="ss-retry-desc">Something went wrong reading the Terms of Service and its history.</div>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="LoadAsync">Retry</OdsButton>
+        </div>
+    }
+    else
+    {
+        <section class="set-section" aria-labelledby="lg-ed-h">
+            <div class="set-section-head">
+                <span class="set-section-ic"><OdsMIcon Name="edit_document" Size="17" /></span>
+                <MudText Typo="Typo.h3" Class="set-section-title" id="lg-ed-h">Terms of Service</MudText>
+                <span class="set-section-rule"></span>
+            </div>
+
+            @* Flush is load-bearing, not a style preference: the design nests a card body inside the
+               card and lets THAT own the inset — .lg-admin-card's 20/22/22. OdsCard's default pa-4
+               would stack 16px on top of it, insetting the editor by 38px instead of 22px. *@
+            <OdsCard Outlined Flush>
+                <div class="lg-admin-card">
+                    @if (_phase == Phase.Ready && _current is null)
+                    {
+                        <div class="lg-notpub" role="note" style="margin-bottom: 16px">
+                            <span class="material-icons" aria-hidden="true">description</span>
+                            <div class="lg-notpub-txt">
+                                <b>No version published yet.</b> Write the first Terms of Service below and
+                                publish it. Until then, users are asked to accept only the software license.
+                            </div>
+                        </div>
+                        <p class="lg-editor-note">
+                            Publishing the first version asks every user to accept it at their next sign-in,
+                            or within the standard bounded window for active sessions.
+                        </p>
+                    }
+                    else if (_current is { } current)
+                    {
+                        <div class="lg-editor-head">
+                            <span class="lg-current-tag">
+                                <span class="material-icons" aria-hidden="true">bookmark</span>
+                                Editing on top of version @current.Id
+                            </span>
+                            <span class="lg-editor-published">
+                                Published @current.PublishedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")
+                            </span>
+                        </div>
+                    }
+
+                    @if (_phase == Phase.Loading)
+                    {
+                        <div class="lg-sk" style="padding: 20px 0" aria-hidden="true">
+                            @foreach (var width in EditorSkeletonWidths)
+                            {
+                                <div class="lg-sk-bar" style="width: @(width)%"></div>
+                            }
+                        </div>
+                        <span class="sr-only" role="status">Loading the Terms of Service…</span>
+                    }
+                    else
+                    {
+                        <OdsNoteField Label="Terms of Service content"
+                                      Value="@_draft" ValueChanged="OnDraftChanged"
+                                      Rows="26" MaxLength="LegalLimits.MaxTermsOfServiceContentLength" ShowCount="true"
+                                      Placeholder="Write the Terms of Service in plain text. Plain-text only — no Markdown or rich formatting in this version."
+                                      Error="@EditorError"
+                                      Help="@(EditorError is null ? "Plain text. Published exactly as written; every prior version is retained." : null)" />
+                    }
+
+                    <div class="lg-editor-note" style="margin-top: 14px; margin-bottom: 0">
+                        <b>Publishing is not the same as saving a draft.</b> It creates a new immutable
+                        version and requires every user — including you — to re-accept within the standard
+                        bounded window.
+                    </div>
+                </div>
+            </OdsCard>
+        </section>
+
+        <section class="set-section" aria-labelledby="lg-hist-h">
+            <div class="set-section-head">
+                <span class="set-section-ic"><OdsMIcon Name="history" Size="17" /></span>
+                <MudText Typo="Typo.h3" Class="set-section-title" id="lg-hist-h">Version history</MudText>
+                <span class="set-section-rule"></span>
+            </div>
+
+            @if (_phase == Phase.Ready && _versions.Count == 0)
+            {
+                <OdsEmptyState Icon="history_toggle_off" MutedIcon="true">
+                    <Title>No versions yet</Title>
+                    <Description>
+                        Once you publish a Terms of Service, every version stays here permanently —
+                        publishing never deletes or edits a prior one.
+                    </Description>
+                </OdsEmptyState>
+            }
+            else if (_phase == Phase.Ready)
+            {
+                <div class="lg-tbl-wrap">
+                    <table class="lg-vtbl">
+                        <thead>
+                            <tr>
+                                <th style="width: 120px">Version</th>
+                                <th>Published</th>
+                                <th>Published by</th>
+                                <th class="numeric" style="width: 96px">Full text</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var (version, index) in _versions.Select((value, i) => (value, i)))
+                            {
+                                <tr tabindex="0" role="button"
+                                    aria-label="@($"View the full text of version {version.Id}")"
+                                    @onclick="@(() => ViewVersionAsync(version.Id))"
+                                    @onkeydown="@(e => OnRowKeyAsync(e, version.Id))">
+                                    <td>
+                                        <span class="lg-ver-id">v@version.Id</span>
+                                        @if (index == 0)
+                                        {
+                                            <span class="lg-ver-cur">Current</span>
+                                        }
+                                    </td>
+                                    <td class="lg-ver-when">@version.PublishedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")</td>
+                                    <td>
+                                        @if (version.PublishedByDisplayName is { Length: > 0 } name)
+                                        {
+                                            <span class="lg-ver-by">@name</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="lg-ver-by deleted">deleted user</span>
+                                        }
+                                    </td>
+                                    <td class="lg-ver-act">
+                                        @* The row is itself the control, so this click must not bubble
+                                           into it — otherwise View fires ViewVersionAsync twice. The
+                                           guard sits on a wrapping element, not the component: the
+                                           directive compiles to an `onclick` parameter, which would
+                                           collide with OdsButton's own OnClick (same shape as
+                                           Users.razor's .usr-row-actions cell). *@
+                                        <div @onclick:stopPropagation="true">
+                                            <OdsButton Variant="OdsButtonVariant.Text" Icon="visibility"
+                                                       OnClick="@(() => ViewVersionAsync(version.Id))">View</OdsButton>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+
+    <OdsLiveAnnouncer Message="@_announce" />
+</MudStack>
+
+<OdsModal Open="_confirmOpen" Icon="publish" IconTone="OdsModalTone.Warning"
+          OnClose="@(() => _confirmOpen = false)">
+    <Title>Publish a new Terms of Service?</Title>
+    <Subtitle>
+        @(_current is { } version
+            ? $"This becomes version {version.Id + 1} and the new current version."
+            : "This becomes version 1 — the first published Terms of Service.")
+    </Subtitle>
+    <ChildContent>
+        <p class="lg-modal-copy">
+            Every user — new, existing, and currently active, <b>including you</b> — will be asked to
+            re-accept. Active sessions are interrupted within the standard bounded window (at most 30
+            minutes); everyone else is gated at their next sign-in.
+        </p>
+        <p class="lg-modal-copy">
+            Prior versions and every recorded acceptance are kept unchanged.
+        </p>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => _confirmOpen = false)">Cancel</OdsButton>
+        <OdsButton Icon="publish" Loading="_publishing" OnClick="PublishAsync">Publish version</OdsButton>
+    </Footer>
+</OdsModal>
+
+<OdsModal Open="_viewId is not null" Icon="description" OnClose="@(() => _viewId = null)">
+    <Title>@($"Terms of Service — version {_viewId}")</Title>
+    <Subtitle>@_viewSubtitle</Subtitle>
+    <ChildContent>
+        @if (_viewLoading)
+        {
+            <div class="lg-ver-loading"><span class="lg-spin" aria-hidden="true"></span>Loading full text…</div>
+        }
+        else
+        {
+            <div class="lg-ver-view" tabindex="0">@_viewContent</div>
+        }
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" Icon="@(_copied ? "check" : "content_copy")"
+                   Disabled="@(_viewLoading || _viewContent is null)"
+                   OnClick="CopyViewedVersionAsync">@(_copied ? "Copied" : "Copy text")</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" OnClick="@(() => _viewId = null)">Close</OdsButton>
+    </Footer>
+</OdsModal>

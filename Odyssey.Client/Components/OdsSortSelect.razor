@@ -1,0 +1,193 @@
+@*
+    OdsSortSelect — the filter-bar "Sort by" control (Odyssey Design System · components/SortSelect).
+
+    A compact curated-field selector + a typed direction toggle, always emitting a complete
+    OdsTableSort ({Key, Dir}). It sits at the END of a list page's Search filter bar
+    (search → filters → sort) and is the single source of truth for the page's active sort — on
+    OdsRecordTable/OdsTxnTable/OdsFilesTable pages bind the same @bind-Sort to the table so header
+    clicks and this control stay in sync.
+
+    Fields is the page's curated allowlist (never every DTO property). The field's Type drives its
+    natural default direction and the typed direction label (OdsSortHelpers): Text → "A → Z" /
+    "Z → A"; Number → "Low → High" / "High → Low"; Date → "Oldest first" / "Newest first";
+    Status → "Defined order" / "Reversed". Changing the field applies its natural default direction;
+    the toggle flips it. With ONE field the dropdown is omitted — a static "Sort by <field>" label +
+    the direction toggle render instead (never a one-option dropdown).
+
+    Direction is always conveyed as TEXT (the typed label + the aria word), never by the arrow alone.
+*@
+
+@typeparam TRow
+
+@if (_field is not null)
+{
+    @if (_single)
+    {
+        <div class="odc-sortsel single @Class">
+            <span class="odc-sortsel-static">@Label <b>@_field.Label</b></span>
+            @DirectionToggle
+        </div>
+    }
+    else
+    {
+        <div class="odc-sortsel split @Class">
+            <div class="odc-sortsel-field">
+                <MudMenu ActivationEvent="@MouseEvent.LeftClick"
+                         AnchorOrigin="Origin.BottomCenter"
+                         TransformOrigin="Origin.TopCenter"
+                         Disabled="@Disabled"
+                         OpenChanged="@(open => _open = open)">
+                    <ActivatorContent>
+                        <button type="button" id="@FieldId"
+                                class="odc-sortsel-trigger @(_open ? "open" : null)"
+                                disabled="@Disabled"
+                                aria-haspopup="menu" aria-expanded="@(_open ? "true" : "false")"
+                                @onclick="@context.ToggleAsync">
+                            <span class="odc-sortsel-prefix">@Label</span>
+                            @Stable(_field.Label, Fields.Select(f => f.Label), "odc-sortsel-val")
+                            <span class="material-icons odc-select-chev" aria-hidden="true">expand_more</span>
+                        </button>
+                    </ActivatorContent>
+                    <ChildContent>
+                        @foreach (var option in Fields)
+                        {
+                            @FieldOption(option)
+                        }
+                    </ChildContent>
+                </MudMenu>
+            </div>
+            @DirectionToggle
+        </div>
+    }
+}
+
+@code {
+    /// <summary>The page's curated field list (§6). Never every DTO property.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsSortField<TRow>> Fields { get; set; } = [];
+
+    /// <summary>The active sort (controlled). Always a complete {Key, Dir}. Bindable via @bind-Sort.</summary>
+    [Parameter] public OdsTableSort? Sort { get; set; }
+
+    /// <summary>Emits a complete {Key, Dir} on a field change (natural default dir) or a direction toggle.</summary>
+    [Parameter] public EventCallback<OdsTableSort> SortChanged { get; set; }
+
+    /// <summary>Visible control label. Default "Sort by".</summary>
+    [Parameter] public string Label { get; set; } = "Sort by";
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    private string FieldId = default!;
+    private bool _open;
+
+    // Backing copy of the bound Sort so an optimistic emit doesn't write to the [Parameter]
+    // directly (Blazor overwrites parameters each render); refreshed from Sort on every set.
+    private OdsTableSort? _current;
+
+    protected override void OnInitialized() => FieldId = Id ?? $"odc-sortsel-{Guid.NewGuid():N}";
+
+    protected override void OnParametersSet() => _current = Sort;
+
+    private bool _single => Fields.Count <= 1;
+
+    // The effective current sort: the bound value when its key is known, else the first field's
+    // natural default. A header click can activate a sortable column outside the curated list — we
+    // reflect it honestly (the raw key as a text field) rather than showing the wrong field.
+    private OdsSortField<TRow>? _field
+    {
+        get
+        {
+            var first = Fields.Count > 0 ? Fields[0] : null;
+            if (_current?.Key is not { } key)
+                return first;
+            return Fields.FirstOrDefault(f => f.Key == key)
+                ?? new OdsSortField<TRow> { Key = key, Label = Capitalize(key), Type = OdsSortType.Text };
+        }
+    }
+
+    private OdsSortDirection _dir =>
+        _current?.Dir ?? (_field is not null ? OdsSortHelpers.DefaultDir(_field) : OdsSortDirection.Asc);
+
+    private string _typed => _field is null ? string.Empty : OdsSortHelpers.DirLabel(_field.Type, _dir);
+
+    private string _dirWord => _dir == OdsSortDirection.Asc ? "ascending" : "descending";
+
+    private RenderFragment DirectionToggle => __builder =>
+    {
+        <button type="button" class="odc-sortsel-dir"
+                disabled="@Disabled"
+                aria-label="@($"Sort {_dirWord} — {_typed}. Toggle direction")"
+                title="@($"Sorted {_dirWord}")"
+                @onclick="Flip">
+            <span class="material-icons" aria-hidden="true">@(_dir == OdsSortDirection.Asc ? "arrow_upward" : "arrow_downward")</span>
+            @Stable(_typed, DirLabelSet, "odc-sortsel-dirlabel")
+        </button>;
+    };
+
+    // Every direction label this control could show, so the ghost technique can hold the width.
+    private IEnumerable<string> DirLabelSet => Fields
+        .SelectMany(f => new[]
+        {
+            OdsSortHelpers.DirLabel(f.Type, OdsSortDirection.Asc),
+            OdsSortHelpers.DirLabel(f.Type, OdsSortDirection.Desc),
+        })
+        .Distinct();
+
+    // Width stability: the current label plus invisible "ghosts" of every other label this control
+    // could show stack in one inline-grid cell, so the control is always as wide as its widest state
+    // and the filter bar never reflows when the field or direction changes.
+    private RenderFragment Stable(string current, IEnumerable<string> ghosts, string extraClass) => __builder =>
+    {
+        <span class="odc-sortsel-stable @extraClass">
+            <span class="odc-sortsel-cur">@current</span>
+            @foreach (var ghost in ghosts)
+            {
+                <span class="odc-sortsel-ghost" aria-hidden="true">@ghost</span>
+            }
+        </span>;
+    };
+
+    // The popup is a MudMenu (role=menu / menuitem), so the rows carry no listbox `option`
+    // role — that would be invalid nested inside a menuitem. Selection is conveyed by the
+    // visible check and the trigger's current value (mirrors the sibling OdsTypeSelect).
+    private RenderFragment FieldOption(OdsSortField<TRow> option) => __builder =>
+    {
+        var on = _field is not null && option.Key == _field.Key;
+        <MudMenuItem OnClick="@(() => PickField(option))">
+            <div class="odc-typesel-item @(on ? "selected" : null)">
+                <span class="odc-typesel-lab">@option.Label</span>
+                @if (on)
+                {
+                    <span class="odc-typesel-check" aria-hidden="true"><span class="material-icons">check</span></span>
+                }
+            </div>
+        </MudMenuItem>;
+    };
+
+    private Task PickField(OdsSortField<TRow> option)
+    {
+        if (_field is not null && option.Key == _field.Key)
+            return Task.CompletedTask;
+        return Emit(new OdsTableSort(option.Key, OdsSortHelpers.DefaultDir(option)));
+    }
+
+    private Task Flip()
+    {
+        if (_field is null)
+            return Task.CompletedTask;
+        var next = _dir == OdsSortDirection.Asc ? OdsSortDirection.Desc : OdsSortDirection.Asc;
+        return Emit(new OdsTableSort(_field.Key, next));
+    }
+
+    private Task Emit(OdsTableSort next)
+    {
+        _current = next;   // optimistic; the parent re-supplies Sort on the next render
+        return SortChanged.InvokeAsync(next);
+    }
+
+    private static string Capitalize(string s) =>
+        string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s[1..];
+}

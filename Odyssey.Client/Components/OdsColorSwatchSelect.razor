@@ -1,0 +1,117 @@
+@*
+    OdsColorSwatchSelect — the calendar-colour chooser (Odyssey Design System · ColorSwatchSelect).
+
+    A single-select grid of curated, contrast-vetted swatches — NOT a free hex/HSV picker: only
+    palette membership is selectable, which is what lets every calendar chip guarantee an AA-legible
+    foreground. Renders as an ARIA radiogroup with a roving tabindex (arrow keys move + select,
+    Home/End jump, Space/Enter select). The stored value is the swatch hex. Bind via @bind-Value.
+*@
+
+<div class="odc-swatchsel" role="radiogroup" aria-label="@AriaLabel" id="@GroupId">
+    @for (var i = 0; i < Swatches.Count; i++)
+    {
+        var index = i;
+        var swatch = Swatches[index];
+        var active = string.Equals(swatch.Hex, SelectedHex, StringComparison.OrdinalIgnoreCase);
+        <button type="button" role="radio" data-idx="@index"
+                @ref="buttons[index]"
+                aria-checked="@(active ? "true" : "false")"
+                aria-label="@swatch.Name" title="@swatch.Name"
+                disabled="@Disabled"
+                tabindex="@(index == SelectedIndex ? 0 : -1)"
+                class="@(active ? "odc-swatch selected" : "odc-swatch")"
+                style="@($"--sw:{swatch.Hex};--sw-fg:{swatch.Fg}")"
+                @onclick="() => Pick(index)"
+                @onkeydown="e => OnKeyDown(e, index)">
+            @if (active)
+            {
+                <span class="material-icons odc-swatch-check" aria-hidden="true">check</span>
+            }
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>Selected swatch hex. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Override the palette (defaults to the curated calendar swatches).</summary>
+    [Parameter] public IReadOnlyList<OdsCalendarSwatch> Swatches { get; set; } = OdsCalendarSwatches.All;
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string AriaLabel { get; set; } = "Calendar colour";
+
+    [Parameter] public string? Id { get; set; }
+
+    private string GroupId = default!;
+    private ElementReference[] buttons = [];
+
+    private string SelectedHex =>
+        string.IsNullOrEmpty(Value) ? OdsCalendarSwatches.DefaultColor : Value;
+
+    private int SelectedIndex
+    {
+        get
+        {
+            var i = -1;
+            for (var n = 0; n < Swatches.Count; n++)
+            {
+                if (string.Equals(Swatches[n].Hex, SelectedHex, StringComparison.OrdinalIgnoreCase))
+                {
+                    i = n;
+                    break;
+                }
+            }
+
+            return i < 0 ? 0 : i;
+        }
+    }
+
+    protected override void OnInitialized() => GroupId = Id ?? $"odc-swatchsel-{Guid.NewGuid():N}";
+
+    protected override void OnParametersSet()
+    {
+        if (buttons.Length != Swatches.Count)
+        {
+            buttons = new ElementReference[Swatches.Count];
+        }
+    }
+
+    private Task Pick(int index)
+    {
+        if (Disabled)
+        {
+            return Task.CompletedTask;
+        }
+
+        Value = Swatches[index].Hex;
+        return ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e, int index)
+    {
+        var next = e.Key switch
+        {
+            "ArrowRight" or "ArrowDown" => (index + 1) % Swatches.Count,
+            "ArrowLeft" or "ArrowUp" => (index - 1 + Swatches.Count) % Swatches.Count,
+            "Home" => 0,
+            "End" => Swatches.Count - 1,
+            " " or "Enter" => index,
+            _ => -1,
+        };
+
+        if (next < 0)
+        {
+            return;
+        }
+
+        await Pick(next);
+        if (next != index)
+        {
+            await buttons[next].FocusAsync();
+        }
+    }
+}

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Odyssey.Api\Odyssey.Api.csproj" />
+    <!-- Test-only: DataExportStreamingTests checks the real streamed bytes against the client's
+         completeness-sentinel reader, so the two halves of that contract cannot drift apart. -->
+    <ProjectReference Include="..\Odyssey.ApiClient\Odyssey.ApiClient.csproj" />
+    <!-- For the base-URL parity test only (issue #439): the shape rule is deliberately hand-duplicated
+         in SystemSettingsConfigAdoption rather than pulling Odyssey.Api into the migrations job, so
+         something has to hold the two copies together. Odyssey.IntegrationTests already references both
+         projects, so the combination is precedented.
+         Aliased because both projects expose a top-level `Program`, and an unaliased reference makes
+         every `WebApplicationFactory<Program>` in this assembly ambiguous (CS0433). The alias keeps the
+         migrations assembly out of the global namespace; only the one file that says
+         `extern alias migrations;` can see it. -->
+    <ProjectReference Include="..\Odyssey.MigrationService\Odyssey.MigrationService.csproj"
+                      Aliases="migrations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="FirstUserRoleAssignmentTests.cs" />
+  </ItemGroup>
+
+</Project>

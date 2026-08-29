@@ -1,0 +1,165 @@
+@*
+    OdsListStatus — the one loading / refetching / error / empty state machine every list
+    surface renders (Odyssey Design System · list states).
+
+    A list has four states before it has rows, and every page used to assemble them by hand
+    in one of two competing dialects (a MudOverlay spinner over the table, or a full-page
+    spinner plus a MudProgressLinear refetch bar) — which is how a failed load came to render
+    as "nothing here yet" on eight pages (issue #364 defect 2). This component owns all four,
+    in precedence order:
+
+      1. Loading   — the FIRST fetch, nothing to show yet: a centered spinner.
+      2. Error     — the fetch failed: an assertive OdsEmptyState + Retry. Never the
+                     onboarding copy; a failure is not an absence.
+      3. IsEmpty   — no rows. With HasFilters that is "no matches, clear a filter" (an
+                     over-filtered list); without it, the first-run onboarding state.
+      4. otherwise — ChildContent (the list itself).
+
+    Refetching is orthogonal: a background refetch keeps the current rows on screen and adds
+    the indeterminate bar above them, so the ARIA on that bar is written once here rather than
+    forked across eight pages.
+
+    Callers normally reach this through OdsRecordTable / OdsInfiniteList, which forward the
+    same parameters; use it directly for a list surface built on neither (a photo grid, a
+    calendar, a hand-rolled table).
+*@
+
+@if (!Loading && !Error && Refetching)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true"
+                       role="status" aria-live="polite" aria-busy="true"
+                       aria-label="@($"Loading {Noun}")" Class="@BarClass" />
+}
+
+@if (StatusContent is { } status)
+{
+    @if (Card)
+    {
+        @* Files, Users and the analysis log show their states inside the same outlined card the
+           table sits in; the card-less pages drop them straight into the list container. *@
+        <OdsCard Class="ods-outline">@status</OdsCard>
+    }
+    else
+    {
+        @status
+    }
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>The first fetch is in flight and there is nothing to show yet — renders a spinner.</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>A background refetch is in flight over rows already on screen — renders the bar above them.</summary>
+    [Parameter] public bool Refetching { get; set; }
+
+    /// <summary>The fetch failed. Takes precedence over <see cref="IsEmpty"/> — a failure is not an absence.</summary>
+    [Parameter] public bool Error { get; set; }
+
+    /// <summary>Retry the failed fetch. Omit and no Retry button is offered.</summary>
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    /// <summary>Optional detail line under the error title (e.g. a server message).</summary>
+    [Parameter] public string? ErrorDescription { get; set; }
+
+    /// <summary>There are no rows to render.</summary>
+    [Parameter] public bool IsEmpty { get; set; }
+
+    /// <summary>
+    /// A search or filter is narrowing the list, so an empty result means "no matches" rather than
+    /// "first run". Pages whose list is filtered MUST pass this — without it an over-filtered list
+    /// shows the onboarding empty state (issue #364 defect 3).
+    /// </summary>
+    [Parameter] public bool HasFilters { get; set; }
+
+    /// <summary>Clear every filter and search. Omit and the filtered-empty state offers no way out.</summary>
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+
+    /// <summary>Lower-case plural noun for the state copy — "contracts", "photos", "journal tags".</summary>
+    [Parameter] public string Noun { get; set; } = "items";
+
+    /// <summary>Material Icons ligature for the first-run empty state.</summary>
+    [Parameter] public string EmptyIcon { get; set; } = "inbox";
+
+    /// <summary>First-run empty title. Defaults to "No {Noun} yet".</summary>
+    [Parameter] public string? EmptyTitle { get; set; }
+
+    /// <summary>First-run empty supporting line — what the list is for and what to do first.</summary>
+    [Parameter] public string? EmptyDescription { get; set; }
+
+    /// <summary>The first-run CTA — pass an OdsButton. Omit it (or gate it on the create claim) and none is shown.</summary>
+    [Parameter] public RenderFragment? CreateAction { get; set; }
+
+    /// <summary>
+    /// Replaces the whole first-run empty state, for the rare page whose onboarding copy needs
+    /// markup. The error and filtered-empty states stay shared — they are the two this component
+    /// exists to keep identical.
+    /// </summary>
+    [Parameter] public RenderFragment? Empty { get; set; }
+
+    /// <summary>
+    /// Replaces the centered spinner, for a surface whose loading placeholder should have the shape
+    /// of the thing loading — the photo grid's skeleton tiles. Shape only: a page must not use this
+    /// to reintroduce a second loading dialect.
+    /// </summary>
+    [Parameter] public RenderFragment? LoadingContent { get; set; }
+
+    /// <summary>Wrap the state block (never <see cref="ChildContent"/>) in an outlined card.</summary>
+    [Parameter] public bool Card { get; set; }
+
+    /// <summary>Utility classes for the refetch bar — usually a margin nudge ("mt-n2").</summary>
+    [Parameter] public string? BarClass { get; set; }
+
+    /// <summary>The list itself. Rendered only once loaded, without error, and non-empty.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The state to render instead of the list, or <c>null</c> when the list should render.</summary>
+    private RenderFragment? StatusContent =>
+        Loading ? LoadingContent ?? LoadingBlock
+        : Error ? ErrorBlock
+        : !IsEmpty ? null
+        : HasFilters ? FilteredEmptyBlock
+        : Empty ?? FirstRunEmptyBlock;
+
+    private RenderFragment LoadingBlock =>
+        @<MudStack AlignItems="AlignItems.Center" Spacing="2" Class="pa-8"
+                   role="status" aria-live="polite" aria-busy="true">
+            @* The wrapper carries the status role and the visible text names it, so the spinner
+               itself stays decorative rather than contributing a second accessible name. *@
+            <OdsSpinner Size="OdsSize.Lg" Decorative="true" />
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Loading @Noun…</MudText>
+        </MudStack>;
+
+    private RenderFragment ErrorBlock =>
+        @<OdsEmptyState Icon="error_outline" Alert="true"
+                        Title="@Text($"Couldn't load {Noun}.")"
+                        Description="@Text(ErrorDescription)"
+                        Action="@RetryAction" />;
+
+    private RenderFragment FilteredEmptyBlock =>
+        @<OdsEmptyState Icon="search_off" MutedIcon="true"
+                        Title="@Text($"No {Noun} match")"
+                        Description="@Text("Try a different search, or clear the filters to see everything.")"
+                        Action="@ClearFiltersAction" />;
+
+    private RenderFragment FirstRunEmptyBlock =>
+        @<OdsEmptyState Icon="@EmptyIcon"
+                        Title="@Text(EmptyTitle ?? $"No {Noun} yet")"
+                        Description="@Text(EmptyDescription)"
+                        Action="@CreateAction" />;
+
+    private RenderFragment? RetryAction => OnRetry.HasDelegate
+        ? @<OdsButton Variant="OdsButtonVariant.Outlined" OnClick="OnRetry">Retry</OdsButton>
+        : null;
+
+    private RenderFragment? ClearFiltersAction => OnClearFilters.HasDelegate
+        ? @<OdsButton Variant="OdsButtonVariant.Outlined" Icon="close" OnClick="OnClearFilters">Clear filters</OdsButton>
+        : null;
+
+    /// <summary>A text fragment, or <c>null</c> so OdsEmptyState omits the slot entirely.</summary>
+    private static RenderFragment? Text(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : builder => builder.AddContent(0, value);
+}

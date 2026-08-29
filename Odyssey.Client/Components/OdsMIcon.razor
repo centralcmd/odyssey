@@ -1,0 +1,35 @@
+@*
+    OdsMIcon — a single Material Icons glyph from the Odyssey icon font
+    (Odyssey Design System · components/MIcon).
+
+    Pass the ligature name (e.g. "account_balance_wallet"). Inherits
+    currentColor and the ambient font-size unless Size (px) is given. For
+    MudBlazor components that take an Icon="" string, keep using the
+    @Icons.Material.Filled.* constants — this is for free-standing glyphs
+    (inside custom markup, chips, legends) where a MudIcon is overkill.
+*@
+
+<span class="material-icons @Class"
+      style="@StyleString"
+      aria-hidden="true">@Name</span>
+
+@code {
+    /// <summary>Material Icons ligature name, e.g. "home", "receipt_long".</summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+
+    /// <summary>Pixel font-size. Defaults to the inherited size (24 in normal rows, 20 dense, 18 in chips).</summary>
+    [Parameter] public int? Size { get; set; }
+
+    /// <summary>Extra CSS classes.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Extra inline styles.</summary>
+    [Parameter] public string? Style { get; set; }
+
+    private string? StyleString =>
+        string.Join(' ', new[]
+        {
+            Size is { } s ? $"font-size:{s}px;" : null,
+            Style,
+        }.Where(x => !string.IsNullOrEmpty(x))) is { Length: > 0 } str ? str : null;
+}

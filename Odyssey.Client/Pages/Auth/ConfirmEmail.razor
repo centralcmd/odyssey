@@ -1,0 +1,141 @@
+@page "/confirm-email"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@inject AuthApiClient AuthApiClient
+@inject NavigationManager NavigationManager
+
+<PageTitle>Confirm email</PageTitle>
+
+<MudCard Outlined="true" Class="pa-8" Style="width: 100%; max-width: 420px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 28px;">
+        <OdsBrandMark Size="70" />
+        <span style="font-weight: 500; font-size: 14px; letter-spacing: 0.32em; color: var(--mud-palette-primary);">ODYSSEY</span>
+    </div>
+
+    @switch (phase)
+    {
+        case Phase.Verifying:
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                <OdsSpinner Size="OdsSize.Lg" AriaLabel="Confirming your email" />
+                <MudText Typo="Typo.body1">Confirming your email…</MudText>
+            </div>
+            break;
+
+        case Phase.Confirmed:
+            <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Email confirmed</MudText>
+            <MudAlert Severity="Severity.Success" Dense="true" Class="mt-2">
+                @(IsEmailChange
+                    ? "Your new email address has been confirmed and is now your sign-in identity. You can sign in with it."
+                    : "Your email address has been confirmed. You can now sign in.")
+            </MudAlert>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       FullWidth="true"
+                       Class="mt-6"
+                       OnClick="@(() => NavigationManager.NavigateTo("/login"))">
+                Go to sign in
+            </MudButton>
+            break;
+
+        default:
+            <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Confirmation failed</MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-2" Style="color: var(--mud-palette-text-secondary);">
+                This confirmation link is invalid or has expired. Enter your email to receive a new one.
+            </MudText>
+
+            <MudTextField @bind-Value="resendEmail"
+                          Label="Email"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Immediate="true"
+                          Class="mt-2" />
+
+            @if (!string.IsNullOrWhiteSpace(resendMessage))
+            {
+                <MudAlert Severity="@ResendSeverity" Dense="true" Class="mt-4">
+                    @resendMessage
+                </MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       FullWidth="true"
+                       Class="mt-6"
+                       Disabled="@(isResending || string.IsNullOrWhiteSpace(resendEmail))"
+                       OnClick="ResendAsync">
+                Resend confirmation email
+            </MudButton>
+
+            <MudText Typo="Typo.body2" Class="mt-4">
+                <MudLink Href="/login">Back to sign in</MudLink>
+            </MudText>
+            break;
+    }
+</MudCard>
+
+@code {
+    private enum Phase { Verifying, Confirmed, Failed }
+
+    private Phase phase = Phase.Verifying;
+    private string resendEmail = string.Empty;
+    private string? resendMessage;
+    private bool resendSucceeded;
+
+    // A failure the server explained (today: the rate limit) is expected behaviour the user can act
+    // on, not a fault — it reads as alarming in red, so it gets Warning rather than Error.
+    private bool resendExplained;
+    private bool isResending;
+
+    [SupplyParameterFromQuery(Name = "userId")]
+    public string? UserId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "code")]
+    public string? Code { get; set; }
+
+    // Present only when the link came from the email-change flow; forwarded so Identity applies
+    // the change rather than confirming the current address.
+    [SupplyParameterFromQuery(Name = "changedEmail")]
+    public string? ChangedEmail { get; set; }
+
+    // A non-empty changedEmail means the link came from the email-change flow, not first-time
+    // confirmation; the confirmed copy reflects the new sign-in address (design-system ConfirmEmail).
+    private bool IsEmailChange => !string.IsNullOrWhiteSpace(ChangedEmail);
+
+    private Severity ResendSeverity => (resendSucceeded, resendExplained) switch
+    {
+        (true, _) => Severity.Success,
+        (false, true) => Severity.Warning,
+        _ => Severity.Error,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(UserId) || string.IsNullOrWhiteSpace(Code))
+        {
+            phase = Phase.Failed;
+            return;
+        }
+
+        var confirmed = await AuthApiClient.ConfirmEmailAsync(UserId, Code, ChangedEmail);
+        phase = confirmed ? Phase.Confirmed : Phase.Failed;
+    }
+
+    private async Task ResendAsync()
+    {
+        resendMessage = null;
+        isResending = true;
+
+        var (succeeded, error) = await AuthApiClient.ResendConfirmationAsync(resendEmail.Trim());
+
+        isResending = false;
+        resendSucceeded = succeeded;
+        // The endpoint is rate limited, and its 429 detail ("wait a few minutes…") is the actionable
+        // message — show it rather than the generic fallback, which reads as a server fault.
+        resendExplained = error is not null;
+        resendMessage = succeeded
+            ? "If that email matches an unconfirmed account, a new confirmation link is on its way."
+            : error ?? "Something went wrong sending the email. Please try again later.";
+    }
+}

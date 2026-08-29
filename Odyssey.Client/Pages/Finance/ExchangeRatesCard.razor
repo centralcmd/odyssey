@@ -1,0 +1,148 @@
+@page "/exchange-rates"
+@using System.Globalization
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Authorization
+@attribute [Authorize(Policy = PermissionClaims.ExchangeRatesRead)]
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IExchangeRatesApiClient ExchangeRates
+
+<PageTitle>Exchange Rates</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<MudStack Spacing="4">
+
+    <PageHeader Title="Exchange rates"
+                Icon="@Icons.Material.Filled.CurrencyExchange"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New rate"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@_allRates.Count rates · @_pairCount pairs@(_latestAsOf is null ? "" : $" · latest {_latestAsOf.Value.ToLocalTime():MMM dd, yyyy, HH:mm}")</SubLine>
+        <OverviewContent>
+            <div class="odc-summary-grid">
+                <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No rates." />
+            </div>
+        </OverviewContent>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="ReloadAsync"
+                                Placeholder="Search pair, e.g. USD/EUR…" Class="ph-search" />
+                <OdsMultiSelect Label="Target" Values="_toFilter" ValuesChanged="OnToFilterChanged" Options="_toOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="ExistingExchangeRate" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @{
+        var columns = new List<OdsRecordColumn<ExistingExchangeRate>>
+        {
+            new()
+            {
+                Key = "pair", HeaderText = "Pair", Sortable = true,
+                SortValue = r => $"{r.FromCurrencyCode}>{r.ToCurrencyCode}",
+                Cell = (r, ctx) => @<span class="d-inline-flex align-center" style="gap:6px;font-family:var(--font-mono);">@r.FromCurrencyCode<span class="material-icons" aria-hidden="true" style="font-size:15px;opacity:.5;">arrow_forward</span>@r.ToCurrencyCode</span>
+            },
+            new()
+            {
+                Key = "rate", HeaderText = "Rate", Sortable = true, Align = OdsAlign.End, SortType = OdsSortType.Number,
+                SortValue = r => r.Rate,
+                Cell = (r, ctx) => @<text>@Fmt(r.Rate)</text>
+            },
+            new()
+            {
+                Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
+                SortValue = r => _currentIds.Contains(r.ExchangeRateId) ? 0 : 1,
+                Cell = (r, ctx) => @<text>
+                    @if (_currentIds.Contains(r.ExchangeRateId))
+                    {
+                        <OdsChip Tone="OdsChipTone.Info" Dot="true">Current</OdsChip>
+                    }
+                    else
+                    {
+                        <OdsChip Dot="true">Historical</OdsChip>
+                    }
+                </text>
+            },
+            new()
+            {
+                Key = "asOf", HeaderText = "Effective", Sortable = true, Align = OdsAlign.End, CellClass = "odc-rec-muted", SortType = OdsSortType.Date,
+                SortValue = r => r.AsOf,
+                Cell = (r, ctx) => @<text>@r.AsOf.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</text>
+            },
+            new()
+            {
+                Key = "createdAt", HeaderText = "Recorded", Sortable = true, Align = OdsAlign.End, CellClass = "odc-rec-muted", SortType = OdsSortType.Date,
+                SortValue = r => r.CreatedAt,
+                Cell = (r, ctx) => @<text>@r.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</text>
+            },
+        };
+    }
+
+    <MudCard Outlined="true">
+        <OdsRecordTable TRow="ExistingExchangeRate"
+                        AriaLabel="Exchange rates"
+                        Rows="@_rates"
+                        Loading="_isLoading"
+                        Refetching="_refetching"
+                        Error="_loadError"
+                        OnRetry="GetRates"
+                        HasFilters="_hasFilters"
+                        OnClearFilters="ClearFilters"
+                        Noun="exchange rates"
+                        EmptyIcon="currency_exchange"
+                        EmptyDescription="Record the rates Odyssey uses to convert foreign-currency balances into your base currency."
+                        ServerSort="true"
+                        RowKey="@(r => (object)r.ExchangeRateId)"
+                        Columns="@columns"
+                        DefaultSort="@DefaultSort"
+                        Sort="_sort"
+                        SortChanged="OnSortChanged"
+                        MultiOpen="true"
+                        KeepDirOnColumnChange="true"
+                        Tiebreak="@((a, b) => b.AsOf.CompareTo(a.AsOf))"
+                        Actions="BuildActions"
+                        OnDelete="HandleDelete">
+            <Leading Context="r">
+                <OdsAvatar Icon="currency_exchange" />
+            </Leading>
+            <RenderDetail Context="r">
+                <ExchangeRateDetailPanel Rate="r" IsCurrent="@_currentIds.Contains(r.ExchangeRateId)" OnRecordNewer="AddClicked" />
+            </RenderDetail>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New rate</OdsButton>
+                }
+            </CreateAction>
+        </OdsRecordTable>
+        @if (_totalCount > 0)
+        {
+            <OdsPager Page="_page" PageChanged="OnPageChanged"
+                      PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+                      TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
+        }
+    </MudCard>
+</MudStack>
+
+@if (_createKey != Guid.Empty)
+{
+    <CreateExchangeRateDialog @key="_createKey"
+                              @bind-Open="_createOpen"
+                              OnSaved="RefreshAsync" />
+}
+
+@if (_editRateKey != Guid.Empty)
+{
+    <CreateExchangeRateDialog @key="_editRateKey"
+                              @bind-Open="_editRateOpen"
+                              Rate="_editRate"
+                              OnSaved="OnRateEdited" />
+}

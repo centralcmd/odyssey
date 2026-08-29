@@ -1,0 +1,20 @@
+@page "/task-tags"
+@using Odyssey.Client.Authorization
+@attribute [Authorize(Policy = PermissionClaims.TaskTagsRead)]
+
+<PageTitle>Task Tags</PageTitle>
+
+<OdsTagAdmin TRow="ExistingJournalTaskTag"
+             Title="Task tags"
+             Noun="task tags"
+             PageStateKey="task-tags-page"
+             CreateClaim="@PermissionClaims.TaskTagsCreate"
+             UpdateClaim="@PermissionClaims.TaskTagsUpdate"
+             DeleteClaim="@PermissionClaims.TaskTagsDelete"
+             NamePlaceholder="e.g. Milestone"
+             ModalSubtitle="Tags group tasks by category."
+             EmptyDesc="Create your first tag to start categorizing tasks."
+             Id="@(t => t.JournalTaskTagId)"
+             Name="@(t => t.Name)"
+             Description="@(t => t.Description)"
+             Archived="@(t => t.Archived)" />

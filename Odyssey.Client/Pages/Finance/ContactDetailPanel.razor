@@ -1,0 +1,123 @@
+@*
+    Detail panel for an expanded contact row (DS RecordTable renderDetail · Contacts
+    CpDetail, issue #325). Shows the resolved display name, type-specific fields, notes and audit
+    timestamps, then the interactive contact collections (addresses / emails / phones) rendered as a
+    tile grid. Address/Email/Phone CRUD + "set as primary" use their own sub-resource endpoints (§3)
+    and are independent of the row's inline base-field edit.
+*@
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Finance
+@inject IClipboardService Clipboard
+@inject IContactsApiClient Contacts
+@inject ISnackbar Snackbar
+
+<div class="odc-meta-grid">
+    <OdsMetaTile>
+        <Label>Display name</Label>
+        <ChildContent>@Contact.ResolvedDisplayName</ChildContent>
+    </OdsMetaTile>
+    <OdsMetaTile>
+        <Label>Type</Label>
+        <ChildContent><OdsChip Tone="OdsChipTone.Outline" Icon="@_typeMeta.Icon">@_typeMeta.Label</OdsChip></ChildContent>
+    </OdsMetaTile>
+
+    @if (Contact.Type == ContactType.Person && Contact.PersonDetails is { } person)
+    {
+        <OdsMetaTile><Label>First name</Label><ChildContent>@Dash(person.FirstName)</ChildContent></OdsMetaTile>
+        <OdsMetaTile><Label>Last name</Label><ChildContent>@Dash(person.LastName)</ChildContent></OdsMetaTile>
+        <OdsMetaTile Mono="true"><Label>Date of birth</Label><ChildContent>@(person.DateOfBirth is { } d ? d.ToString("MMM dd, yyyy") : "—")</ChildContent></OdsMetaTile>
+        <OdsMetaTile><Label>Sex</Label><ChildContent>@(person.Sex?.ToString() ?? "—")</ChildContent></OdsMetaTile>
+        <OdsMetaTile><Label>Job title</Label><ChildContent>@Dash(person.Title)</ChildContent></OdsMetaTile>
+        <OdsMetaTile><Label>Company</Label><ChildContent>@Dash(person.Company)</ChildContent></OdsMetaTile>
+    }
+    else if (Contact.Type == ContactType.Organization && Contact.OrganizationDetails is { } org)
+    {
+        <OdsMetaTile><Label>Legal name</Label><ChildContent>@Dash(org.LegalName)</ChildContent></OdsMetaTile>
+        <OdsMetaTile Mono="true"><Label>Organization number</Label><ChildContent>@Dash(org.OrganizationNumber)</ChildContent></OdsMetaTile>
+        <OdsMetaTile>
+            <Label>Website</Label>
+            <ChildContent>
+                @if (WebsiteHref(org.Website) is { } href)
+                {
+                    <a href="@href" target="_blank" rel="noopener noreferrer">@org.Website</a>
+                }
+                else
+                {
+                    @Dash(org.Website)
+                }
+            </ChildContent>
+        </OdsMetaTile>
+    }
+
+    <OdsMetaTile>
+        <Label>Status</Label>
+        <ChildContent>
+            @if (Contact.Archived is not null)
+            {
+                <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
+            }
+            else
+            {
+                <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
+            }
+        </ChildContent>
+    </OdsMetaTile>
+    <OdsMetaTile><Label>Notes</Label><ChildContent>@Dash(Contact.Notes)</ChildContent></OdsMetaTile>
+    <OdsMetaTile Mono="true"><Label>Created</Label><ChildContent>@Contact.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</ChildContent></OdsMetaTile>
+    <OdsMetaTile Mono="true"><Label>Updated</Label><ChildContent>@Contact.UpdatedAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</ChildContent></OdsMetaTile>
+</div>
+
+<div class="cp-contact-wrap">
+    <div class="cp-sub">
+        <span class="cp-sub-label">Contact information</span>
+        <span class="cp-sub-rule"></span>
+        <span class="cp-sub-meta">@_total @(_total == 1 ? "entry" : "entries")</span>
+    </div>
+
+    @if (_total == 0)
+    {
+        <div class="cp-empty-row">
+            @(CanEdit && !IsArchived
+                ? "No contact details yet — use the ⋯ menu to add an address, email, or phone number."
+                : "No contact details.")
+        </div>
+    }
+    else
+    {
+        <div class="cp-tile-grid">
+            @foreach (var t in Tiles)
+            {
+                <div class="cp-tile" style="grid-column:@t.GridColumn;" title="@t.Value">
+                    <span class="cp-tile-menu">
+                        <OdsMenu Items="TileMenu(t)" AriaLabel="@($"Actions for {t.KindTitle}: {t.Value}")" />
+                    </span>
+                    <div class="cp-tile-top">
+                        <span class="cp-tile-ic" style="background:@t.Soft;color:@t.Fg;">
+                            <span class="material-icons" aria-hidden="true" style="font-size:16px;">@t.Icon</span>
+                        </span>
+                        <span class="cp-tile-kind">@t.KindTitle</span>
+                    </div>
+                    <div class="cp-tile-value" style="color:@t.Fg;">@t.Value</div>
+                    <div class="cp-tile-foot">
+                        <span>@t.Label</span>
+                        @if (t.IsPrimary)
+                        {
+                            <span class="cp-tile-sep">·</span>
+                            <span class="cp-tile-primary">Primary</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (_dialogOpen)
+{
+    <ContactMethodDialog @bind-Open="_dialogOpen"
+                               Kind="@_dialogKind"
+                               Draft="_dialogDraft"
+                               IsEdit="_dialogIsEdit"
+                               IsFirst="_dialogIsFirst"
+                               OnCommit="CommitContact" />
+}

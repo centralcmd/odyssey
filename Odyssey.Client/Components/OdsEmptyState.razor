@@ -1,0 +1,46 @@
+@*
+    OdsEmptyState — the centered "nothing here yet" surface
+    (Odyssey Design System · components/EmptyState).
+
+    Icon, a one-sentence Title stating the absence, an optional Description, and
+    an optional single CTA (pass an OdsButton via Action). Voice: state the
+    absence, offer one action.
+*@
+
+<div class="odc-empty @(MutedIcon ? "muted-ic" : null)" role="@(Alert ? "alert" : null)">
+    <div class="odc-empty-ic">
+        <span class="material-icons" aria-hidden="true">@Icon</span>
+    </div>
+    @if (Title is not null)
+    {
+        <div class="odc-empty-ttl">@Title</div>
+    }
+    @if (Description is not null)
+    {
+        <div class="odc-empty-desc">@Description</div>
+    }
+    @if (Action is not null)
+    {
+        <div class="odc-empty-actions">@Action</div>
+    }
+</div>
+
+@code {
+    /// <summary>Material Icons ligature for the centered glyph.</summary>
+    [Parameter] public string Icon { get; set; } = "inbox";
+
+    /// <summary>One sentence stating the absence.</summary>
+    [Parameter] public RenderFragment? Title { get; set; }
+
+    /// <summary>Optional supporting line.</summary>
+    [Parameter] public RenderFragment? Description { get; set; }
+
+    /// <summary>A single CTA — pass an OdsButton.</summary>
+    [Parameter] public RenderFragment? Action { get; set; }
+
+    /// <summary>Render as an assertive <c>role="alert"</c> region — for error/failure variants (WCAG 4.1.3).</summary>
+    [Parameter] public bool Alert { get; set; }
+
+    /// <summary>Dim the icon tile — for a "no results match your search" state.</summary>
+    [Parameter] public bool MutedIcon { get; set; }
+}

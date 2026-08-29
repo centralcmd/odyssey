@@ -1,0 +1,61 @@
+@*
+    OdsDonutLegend — the "ledger" under / beside an OdsDonut
+    (Odyssey Design System · components/Donut · DonutLegend).
+
+    One row per slice (swatch · name · percent · amount), closed by the total
+    row where the sum lives. Pass the same Data + Colors as the Donut so swatch
+    colors line up by order. Used standalone when the ring and ledger are laid
+    out separately.
+*@
+
+<div class="odc-donut-legend">
+    @{
+        var items = OdsDonutPalette.Filter(Data);
+        var total = items.Sum(d => d.Value);
+    }
+    @for (var i = 0; i < items.Count; i++)
+    {
+        var it = items[i];
+        var pct = total > 0 ? (double)(it.Value / total) : 0;
+        <div class="odc-legend-row">
+            <div class="odc-legend-main">
+                <span class="odc-legend-swatch" style="background:@OdsDonutPalette.ColorFor(it, i, Colors);"></span>
+                <span class="odc-legend-name">@it.Label</span>
+            </div>
+            <div class="odc-legend-figs">
+                <span class="odc-legend-pct">@($"{Math.Round(pct * 100)}%")</span>
+                <span class="odc-legend-amt">@Format(it.Value, it)</span>
+            </div>
+        </div>
+    }
+    @if (ShowTotal)
+    {
+        <div class="odc-donut-total">
+            <span class="odc-donut-total-lab">@TotalLabel</span>
+            <div class="odc-legend-figs">
+                <span class="odc-donut-total-pct">100%</span>
+                <span class="odc-donut-total-amt">@Format(total, null)</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Same data passed to the Donut — colors line up by order.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsDonutSlice> Data { get; set; } = [];
+
+    /// <summary>Slice palette. Defaults to the categorical --chart-1…6 tokens.</summary>
+    [Parameter] public IReadOnlyList<string>? Colors { get; set; }
+
+    /// <summary>Label on the total row.</summary>
+    [Parameter] public string TotalLabel { get; set; } = "Total";
+
+    /// <summary>
+    /// Value formatter. Receives the value and, for slice rows, the slice (null on the total
+    /// row) so it can format in the slice's own currency. Default = current-culture string.
+    /// </summary>
+    [Parameter] public Func<decimal, OdsDonutSlice?, string> Format { get; set; } = (v, _) => v.ToString(System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>Show the total row.</summary>
+    [Parameter] public bool ShowTotal { get; set; } = true;
+}

@@ -1,0 +1,90 @@
+@*
+    OdsAvatar — a circular identity token (Odyssey Design System · components/Avatar).
+
+    Image (Src), text monogram (Initials or child content), or a Material glyph
+    (Icon), in that precedence. A MudAvatar with the Odyssey size steps
+    (sm = 28 · md = 40 · lg = 56) and tone (neutral default / tide brand-tinted).
+*@
+
+@* A non-image avatar is a meaningful `img` only when it carries an accessible
+   name (Alt). Unlabeled icon/monogram avatars are decorative reinforcement —
+   the entity name already sits in the adjacent cell — so they're aria-hidden
+   rather than an unlabeled `role="img"` (Odyssey Design System · a11y pass:
+   decorative avatars carry no img role). *@
+<MudAvatar Style="@AvatarStyle"
+           Color="@(Tone == OdsAvatarTone.Tide ? Color.Primary : Color.Default)"
+           Variant="Variant.Filled"
+           role="@AvatarRole"
+           aria-label="@(string.IsNullOrEmpty(Alt) ? null : Alt)"
+           aria-hidden="@(IsDecorative ? "true" : null)"
+           Class="@Class"
+           @attributes="UserAttributes">
+    @if (!string.IsNullOrEmpty(Src))
+    {
+        <MudImage Src="@Src" Alt="@Alt" />
+    }
+    else if (!string.IsNullOrEmpty(Icon))
+    {
+        <MudIcon Icon="@Icon" />
+    }
+    else if (!string.IsNullOrEmpty(Initials))
+    {
+        @Initials
+    }
+    else
+    {
+        @ChildContent
+    }
+</MudAvatar>
+
+@code {
+    /// <summary>Image source. Takes precedence over initials / icon.</summary>
+    [Parameter] public string? Src { get; set; }
+
+    /// <summary>Alt text for the image, or accessible label for a monogram / icon avatar.</summary>
+    [Parameter] public string? Alt { get; set; }
+
+    /// <summary>Text monogram (e.g. "JS") when there is no image.</summary>
+    [Parameter] public string? Initials { get; set; }
+
+    /// <summary>Material Icons ligature name, as a fallback identity glyph.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>sm = 28 · md = 40 (default) · lg = 56.</summary>
+    [Parameter] public OdsSize Size { get; set; } = OdsSize.Md;
+
+    /// <summary>neutral (default) or tide (brand-tinted).</summary>
+    [Parameter] public OdsAvatarTone Tone { get; set; } = OdsAvatarTone.Neutral;
+
+    /// <summary>Custom background tint (any CSS color) — the DS Avatar's <c>{ bg, fg }</c> tone, used for
+    /// per-category record avatars (e.g. contact type). Overrides <see cref="Tone"/> when set.</summary>
+    [Parameter] public string? Bg { get; set; }
+
+    /// <summary>Custom foreground/icon color paired with <see cref="Bg"/>.</summary>
+    [Parameter] public string? Fg { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    /// <summary>Icon/monogram avatar with no accessible name — decorative, hidden from AT.</summary>
+    private bool IsDecorative => string.IsNullOrEmpty(Src) && string.IsNullOrEmpty(Alt);
+
+    /// <summary>Meaningful `img` only for a labelled, non-image avatar.</summary>
+    private string? AvatarRole => string.IsNullOrEmpty(Src) && !string.IsNullOrEmpty(Alt) ? "img" : null;
+
+    private string SizeStyle => Size switch
+    {
+        OdsSize.Sm => "width:28px;height:28px;font-size:0.75rem;",
+        OdsSize.Lg => "width:56px;height:56px;font-size:1.25rem;",
+        _ => "width:40px;height:40px;font-size:0.9375rem;",
+    };
+
+    // A custom { bg, fg } tone (DS Avatar) overrides the named MudAvatar color via inline style.
+    private string AvatarStyle => string.IsNullOrEmpty(Bg) && string.IsNullOrEmpty(Fg)
+        ? SizeStyle
+        : $"{SizeStyle}{(string.IsNullOrEmpty(Bg) ? "" : $"background:{Bg};")}{(string.IsNullOrEmpty(Fg) ? "" : $"color:{Fg};")}";
+}

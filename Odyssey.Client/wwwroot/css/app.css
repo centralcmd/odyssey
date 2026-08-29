@@ -1,0 +1,764 @@
+/* ── Odyssey design system supplement ──────────────────────────────────────
+   Tokens and overrides that cannot be expressed through MudTheme:
+   finance semantics, chart colours, card radius, and light-mode shadows.
+   Source of truth for all hex values: ../colors_and_type.css
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* Browser autofill override — Chromium replaces input backgrounds with a
+   yellow/blue autofill colour that ignores our theme. The box-shadow inset
+   trick paints over it while keeping the field text readable. Values mirror
+   the surface token for each mode. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--mud-palette-surface) inset !important;
+  -webkit-text-fill-color: var(--mud-palette-text-primary) !important;
+  caret-color: var(--mud-palette-text-primary);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Finance semantic tokens — used directly in transaction tables, chips, etc.
+   MudBlazor 9.4 sets data-theme="dark" in dark mode and removes the attribute
+   in light mode — it never writes data-theme="light". Convention here:
+   :root holds light-mode defaults; [data-theme='dark'] overrides for dark mode. */
+:root {
+  --finance-income:        #15803D;          /* --mint-700 — WCAG contrast on white */
+  --finance-income-soft:   rgba(21,128,61,0.12);
+  --finance-expense:       #B23B3B;          /* --coral-700 */
+  --finance-expense-soft:  rgba(178,59,59,0.10);
+  --finance-pending:       #F59E0B;          /* --amber-500 — acceptable on white */
+  --finance-pending-soft:  rgba(245,158,11,0.12);
+  --finance-tag:           #8B5CF6;          /* --violet-500 */
+
+  /* Account status — lifecycle of an account record. Borrows mint/amber from the
+     finance palette and slate from the ink ramp; no new brand colors. */
+  --status-active:         #15803D;          /* --mint-700 */
+  --status-active-soft:    rgba(21,128,61,0.12);
+  --status-closed:         #D97706;          /* --amber-600 — graphics-safe (≥3:1) on white */
+  --status-closed-soft:    rgba(245,158,11,0.12);
+  --status-archived:       #4A5670;          /* --ink-500 */
+  --status-archived-soft:  rgba(74,86,112,0.10);
+}
+
+[data-theme='dark'] {
+  --finance-income:        #4ADE80;          /* --mint-500 */
+  --finance-income-soft:   rgba(74,222,128,0.14);
+  --finance-expense:       #FF6B6B;          /* --coral-500 */
+  --finance-expense-soft:  rgba(255,107,107,0.14);
+  --finance-pending:       #F59E0B;          /* --amber-500 */
+  --finance-pending-soft:  rgba(245,158,11,0.14);
+  --finance-tag:           #8B5CF6;          /* --violet-500 */
+
+  --status-active:         #4ADE80;          /* --mint-500 */
+  --status-active-soft:    rgba(74,222,128,0.14);
+  --status-closed:         #F59E0B;          /* --amber-500 */
+  --status-closed-soft:    rgba(245,158,11,0.14);
+  --status-archived:       #98A4BC;          /* --ink-300 */
+  --status-archived-soft:  rgba(152,164,188,0.14);
+}
+
+/* Categorical chart palette — same light-default / dark-override convention. */
+:root {
+  --chart-1: #14B8A6;   /* tide-600 */
+  --chart-2: #0284C7;   /* sea-600  */
+  --chart-3: #15803D;   /* mint-700 */
+  --chart-4: #8B5CF6;   /* violet-500 */
+  --chart-5: #B23B3B;   /* coral-700 */
+  --chart-6: #D97706;   /* amber-600 — fails 3:1 as amber-500 stroke on white */
+  --chart-axis: rgba(14,21,37,0.14);
+  --chart-grid:  rgba(14,21,37,0.06);
+}
+
+[data-theme='dark'] {
+  --chart-1: #4FD7CB;   /* tide-400 */
+  --chart-2: #38BDF8;   /* sea-400  */
+  --chart-3: #4ADE80;   /* mint-500 */
+  --chart-4: #8B5CF6;   /* violet-500 */
+  --chart-5: #FF6B6B;   /* coral-500 */
+  --chart-6: #F59E0B;   /* amber-500 */
+  --chart-axis: rgba(199,208,224,0.18);
+  --chart-grid:  rgba(199,208,224,0.08);
+}
+
+/* ── Design-system foundation tokens ───────────────────────────────────────
+   The Odyssey DS component CSS (the .odc-* rules used by the Ods* component
+   library) is token-driven: it references the raw brand ramps, the type /
+   spacing / density / radius / border scales, and a handful of semantic
+   text tokens. MudTheme can't express these, and the client previously only
+   defined --mud-palette-*, --finance-*, --chart-* and --status-*. This block
+   ports the rest from the design system's colors_and_type.css so the ported
+   component styles resolve. Source of truth: ../../"Odyssey Design System"/colors_and_type.css.
+
+   Raw ramps + type/spacing/density/radius/border tokens are mode-independent,
+   so they live in a single :root. The semantic text tokens differ per mode
+   and follow the file convention: :root = light defaults, [data-theme='dark']
+   = dark overrides. */
+:root {
+  /* Ink — cool navy neutral ramp */
+  --ink-50:  #F5F7FB;  --ink-100: #E6EBF4;  --ink-200: #C7D0E0;  --ink-300: #98A4BC;
+  --ink-400: #6B7896;  --ink-500: #4A5670;  --ink-600: #2F3852;  --ink-700: #1C2238;
+  --ink-800: #141A2C;  --ink-900: #0E1525;  --ink-950: #080C18;
+
+  /* Tide — phosphor teal (primary brand) */
+  --tide-glow: #00F5D4; --tide-300: #5EEAD4; --tide-400: #4FD7CB; --tide-500: #2DD4BF;
+  --tide-600: #14B8A6;  --tide-700: #0E8A7C; --tide-ink: #0A7A6B; --tide-deep: #006B5A;
+
+  /* Sea — sky-cyan secondary */
+  --sea-300: #7DD3FC; --sea-400: #38BDF8; --sea-500: #0EA5E9; --sea-600: #0284C7; --sea-700: #0369A1;
+
+  /* Semantic finance hues */
+  --mint-300: #86EFAC; --mint-500: #4ADE80; --mint-700: #15803D;
+  --coral-300: #FCA5A5; --coral-500: #FF6B6B; --coral-700: #B23B3B;
+  --amber-300: #FCD34D; --amber-500: #F59E0B; --amber-600: #D97706; --amber-700: #B45309; --amber-800: #92400E;
+  --violet-400: #A78BFA; --violet-500: #8B5CF6; --violet-700: #6D28D9;
+
+  /* Type families */
+  --font-sans: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-icons: 'Material Icons';
+
+  /* Type scale (matches MudBlazor Typo h1..body2 + display) */
+  --fs-display: 3.5rem; --fs-h1: 2.5rem; --fs-h2: 2rem; --fs-h3: 1.5rem; --fs-h4: 1.25rem;
+  --fs-h5: 1.125rem; --fs-h6: 1rem; --fs-body1: 1rem; --fs-body2: 0.875rem;
+  --fs-caption: 0.75rem; --fs-overline: 0.6875rem;
+
+  --fw-light: 300; --fw-regular: 400; --fw-medium: 500; --fw-bold: 700;
+  --lh-tight: 1.15; --lh-snug: 1.3; --lh-normal: 1.5; --lh-loose: 1.7;
+  --tracking-tight: -0.02em; --tracking-normal: 0; --tracking-wide: 0.04em; --tracking-caps: 0.08em;
+
+  /* Spacing scale — 4px base (matches MudBlazor pa-1..pa-16) */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
+
+  /* Density — row + control heights */
+  --row-h: 48px; --row-h-dense: 36px; --control-h: 40px; --control-h-dense: 32px;
+
+  /* Radii + border weights */
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
+  --border-thin: 1px; --border-strong: 2px;
+
+  /* Focus ring — color lives per-theme in --focus-ring; the geometry is
+     theme-independent, so it lives here. "2px solid at 2px offset" was
+     repeated as literals across every :focus-visible rule; route them all
+     through these so the whole focus treatment is one source of truth. */
+  --focus-ring-width:  2px;
+  --focus-ring-offset: 2px;
+
+  /* Motion — the product's animation is deliberately quiet: instant-feeling
+     state changes, one soft dialog rise, no entrance choreography. These four
+     cover every transition in odyssey-components.css. The reduced-motion block
+     below zeroes the DURATION tokens once, so honoring the preference no longer
+     means re-declaring `transition: none` on every class. */
+  --duration-fast:  120ms; /* hover/press tints, checkbox + radio marks, small toggles */
+  --duration-base:  150ms; /* the default — most color/border/opacity transitions */
+  --duration-slow:  250ms; /* larger moves: progress fill, collapsible content */
+  /* The jump-to-record attention ring. Not a transition but a one-shot animation, and
+     unlike the three above it is NOT zeroed for reduced motion — the C# side
+     (OdsTiming.RowFlashMs) waits this long before removing the .flash class, so the two
+     must agree. Reduced motion drops the animation itself instead (`animation: none`). */
+  --duration-flash: 2000ms;
+  --ease-standard:   ease;                          /* symmetric, the default */
+  /* fast-out-slow-in — the dialog rise. One consumer, by design: the command
+     palette's .odn-cmd entrance, the app's only hand-rolled dialog entrance (every
+     other dialog uses MudBlazor's own transition). */
+  --ease-decelerate: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Z-index scale — layering was literals scattered across the component CSS
+     (scrim 1200, in-modal popovers 1300, toast, menus 50, tooltip 20…). This
+     encodes the stacking order once so a popover opened INSIDE a modal always
+     clears the scrim, etc. Each step leaves headroom for a consumer's layers. */
+  --z-base:      0;
+  --z-raised:    20;   /* tooltips on in-flow content, sort-hint glyphs */
+  --z-dropdown:  50;   /* menus, select / multiselect popovers in normal flow */
+  --z-sticky:    100;  /* sticky table headers, pinned toolbars */
+  --z-drawer:    150;  /* the left nav rail, its module popover and that popover's catcher */
+  --z-overlay:   1000; /* skip link + other above-chrome affordances */
+  --z-scrim:     1200; /* modal / dialog backdrop, incl. the command palette's */
+  --z-modal:     1201; /* the dialog box itself, above its scrim */
+  --z-popover:   1300; /* popovers opened from WITHIN a modal (combobox, date, tags);
+                          a popover's own click-catcher rides one step below it */
+  --z-toast:     1400; /* snackbars — above everything, always visible */
+  --z-tooltip:   1500; /* the last word, never occluded */
+
+  /* Semantic text/tint tokens — light defaults */
+  --brand-text: var(--tide-ink);
+  /* Darker brand text for hover on brand-soft fills — the hover tint darkens toward --brand-text, so
+     light-theme resting text (4.69:1) would dip under AA on hover; step down to clear 4.5:1. */
+  --brand-text-hover: var(--tide-deep);
+  /* Focus indicator — must clear 3:1 against its surface (WCAG 1.4.11). tide-600
+     (the light primary fill) is only ~2.5:1 on white, so focus rings step to
+     tide-700 (~4.3:1). Fills keep the primary. */
+  --focus-ring: var(--tide-700);
+  /* Placeholder hint text — AA-contrast (text-secondary level), NOT the 0.38
+     disabled alpha, which fails 4.5:1 when a placeholder carries a format hint. */
+  --mud-palette-placeholder: var(--mud-palette-text-secondary);
+  --info-soft: rgba(14, 165, 233, 0.12); --info-border: rgba(14, 165, 233, 0.30); --info-text: var(--sea-700);
+  --tag-soft: rgba(139, 92, 246, 0.12);  --tag-border: rgba(139, 92, 246, 0.32);  --tag-text: var(--violet-text);  --violet-text: var(--violet-700);
+  --pending-text: var(--amber-700);
+  /* Text-weight warning colour — the raw --mud-palette-warning (#B57820) is only ~3:1 as small text
+     on a warning tint. Warning *text* uses amber-800 on light (amber-700 dips to ~4.2:1 once it sits
+     on its own 16% tint; amber-800 clears 4.5:1) and amber-500 on dark (~6:1 on the dark tint). */
+  --warning-text: var(--amber-800);
+  --brand-soft: rgba(20, 184, 166, 0.12); --brand-border: rgba(20, 184, 166, 0.30); /* tide-600 tint for brand-toned chips/actions */
+  /* Navigation active-state graphic (rail/switcher/palette active icons + left bar). Must clear 3:1
+     as a non-text graphic (WCAG 1.4.11); tide-400 (#4FD7CB) is only ~1.5:1 on the light rail, so
+     light steps to tide-700. Active *text* uses --brand-text (tide-ink light / tide-400 dark). */
+  --nav-active: var(--tide-700);
+  --nav-active-tint: rgba(20, 184, 166, 0.10); /* subtle tide-600 wash behind the active row */
+}
+
+[data-theme='dark'] {
+  --brand-text: var(--tide-400);
+  --brand-text-hover: var(--tide-400); /* dark hover already clears AA (≈5.97:1) — keep the resting text */
+  /* On dark the bright primary already clears 3:1, so the focus ring is the primary. */
+  --focus-ring: var(--mud-palette-primary);
+  --nav-active: var(--tide-400);
+  --nav-active-tint: rgba(79, 215, 203, 0.12);
+  --mud-palette-placeholder: var(--mud-palette-text-secondary);
+  --info-soft: rgba(56, 189, 248, 0.14); --info-border: rgba(56, 189, 248, 0.28); --info-text: var(--sea-400);
+  --tag-soft: rgba(139, 92, 246, 0.14);  --tag-border: rgba(139, 92, 246, 0.30);  --tag-text: var(--violet-text);  --violet-text: var(--violet-400);
+  --pending-text: var(--amber-500);
+  --warning-text: var(--amber-500);
+  --brand-soft: rgba(79, 215, 203, 0.14); --brand-border: rgba(79, 215, 203, 0.30); /* tide tint for brand-toned chips/actions */
+}
+
+/* ---------- Accessibility utilities ---------- */
+/* Visually hidden but available to screen readers + keyboard focus.
+   Use for off-screen labels and the skip link. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip-to-content link — first focusable on the page. Hidden until focused,
+   then pinned top-left over all chrome so keyboard users can bypass the nav
+   (WCAG 2.4.1 Bypass Blocks). */
+.ods-skip-link {
+  position: fixed;
+  top: 8px; left: 8px;
+  z-index: var(--z-overlay);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--mud-palette-primary);
+  color: var(--mud-palette-primary-text);
+  font: var(--fw-medium) var(--fs-body2) / 1 var(--font-sans);
+  text-decoration: none;
+  box-shadow: var(--mud-elevation-8, 0 4px 16px rgba(0,0,0,0.4));
+  transform: translateY(-150%);
+  opacity: 0;
+}
+.ods-skip-link:focus,
+.ods-skip-link:focus-visible {
+  transform: translateY(0);
+  opacity: 1;
+  outline: var(--focus-ring-width) solid var(--mud-palette-primary-text);
+  outline-offset: var(--focus-ring-offset);
+}
+/* Reduced motion — the single source of truth. Every transition routed through
+   --duration-* is neutralized by zeroing those three tokens here, so honoring
+   the preference no longer means re-declaring `transition: none` per class.
+   Continuous keyframe ANIMATIONS (skeleton shimmer, spinners) are not reachable
+   this way — a 0ms animation still loops — so each one keeps its own
+   `animation: none` override alongside its @keyframes (see .fan-spinner in
+   Pages/Finance/FileAnalysisDialog.razor.css, and .odc-skeleton / .pl-skel in
+   odyssey-components.css). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* Tabular numbers — MudTheme.Typography has no FontVariantNumeric setting, so amounts
+   in <MudTableCell> and <MudText> won't column-align unless forced here.
+   If you'd rather be surgical, skip this rule and add class="ods-money" to individual
+   amount cells instead (the .ods-money class in colors_and_type.css does the same thing). */
+.mud-table-cell,
+[class*="mud-typography"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Card border-radius — MudTheme.LayoutProperties.DefaultBorderRadius = "4px" sets
+   buttons and inputs correctly, but MudCard inherits the same value and renders at
+   4px rather than the specified 8px. Override here so cards match the design spec. */
+.mud-card,
+.mud-paper.mud-card {
+  border-radius: 8px; /* --radius-md */
+}
+
+/* Light-mode shadow corrections ─────────────────────────────────────────────
+   OdysseyTheme.Shadows is a single array shared by both modes, tuned for dark
+   surfaces (deep opacity + 1px inset white highlight). In light mode those
+   shadows are too heavy and the inset highlight reads as a faint bright stroke.
+   MudBlazor 9.4 sets data-theme="dark" in dark mode and removes the attribute
+   in light mode — it never writes data-theme="light" — so the selector must be
+   anchored to html to correctly match the absence of the dark attribute.
+   A bare :not() descendant would always match because body/div ancestors never
+   carry data-theme='dark'. */
+html:not([data-theme='dark']) .mud-elevation-1 { box-shadow: 0 1px 2px  rgba(14,21,37,0.08) !important; }
+html:not([data-theme='dark']) .mud-elevation-2 { box-shadow: 0 2px 6px  rgba(14,21,37,0.10) !important; }
+html:not([data-theme='dark']) .mud-elevation-4 { box-shadow: 0 6px 18px rgba(14,21,37,0.10) !important; }
+html:not([data-theme='dark']) .mud-elevation-8 { box-shadow: 0 14px 36px rgba(14,21,37,0.14) !important; }
+html:not([data-theme='dark']) .mud-elevation-16{ box-shadow: 0 24px 60px rgba(14,21,37,0.18) !important; }
+
+/* Tabular monospace utility (design-system .mono) — ledger figures, IDs, sizes. */
+.mono {
+  font-family: 'Roboto Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chevron — used in collapsibles and account card headers across multiple components */
+.chev { transition: transform var(--duration-base) var(--ease-standard); }
+.chev.open { transform: rotate(180deg); }
+
+/* Empty-state text line — used inside collapsibles and lists */
+.empty-line {
+  padding: 16px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--mud-palette-text-secondary);
+}
+
+/* The .collapsible* section chrome is now the <OdsCollapsible> component. */
+
+/* ════════════════════════════════════════════════════════════════════
+   Alert block — the design system's severity surface (info / warning /
+   error). A shared primitive: the PageHeader problem rollup renders these
+   rows, and pages reuse the same block for in-record problem panels. Kept
+   global so every renderer (component-scoped or page-scoped) picks it up.
+   Convention: information = sea/cyan, warning = amber, error = coral.
+   ════════════════════════════════════════════════════════════════════ */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.alert.info {
+  background: color-mix(in srgb, var(--mud-palette-info) 14%, transparent);
+  color: var(--mud-palette-info);
+  border-color: color-mix(in srgb, var(--mud-palette-info) 32%, transparent);
+}
+
+.alert.warning {
+  background: var(--finance-pending-soft);
+  color: var(--finance-pending);
+  border-color: color-mix(in srgb, var(--finance-pending) 32%, transparent);
+}
+
+.alert.error {
+  background: var(--finance-expense-soft);
+  color: var(--finance-expense);
+  border-color: color-mix(in srgb, var(--finance-expense) 32%, transparent);
+}
+
+.alert .alert-icon {
+  font-size: 20px;
+  flex: none;
+  margin-top: 1px;
+}
+
+.alert .alert-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--mud-palette-text-primary);
+}
+
+.alert .alert-body strong {
+  font-weight: 600;
+  color: var(--mud-palette-text-primary);
+}
+
+/* Quiet text link on the right of a rollup / in-record alert row. */
+.alert .alert-fix {
+  flex: none;
+  align-self: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.alert .alert-fix:hover { background: var(--mud-palette-action-default-hover); }
+
+/* ════════════════════════════════════════════════════════════════════
+   Modal shell remnants (.aam-*) and Add-file extensions (.afm-*, .efm-*)
+   Mirrors the design system's ui_kits/web/kit.css. These MUST be global
+   (not component-scoped) because MudDialog renders its content in a portal
+   at the document root, beyond the reach of CSS-isolation selectors.
+
+   The hand-rolled head/body/foot shell (.aam-shell/-head/-lead/-titles/
+   -title/-sub/-body/-foot) was retired when OdsModal took over the box, and
+   has been removed. What remains is what still has a consumer: the dialog
+   paper + close button, which FilePreviewDialog still uses for its
+   document-viewer chrome, the non-Mud field wrapper, and the account-type
+   picker inside the create-account dialog.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Dialog paper: 12px modal radius, let MudMenu popovers escape, drop the
+   default title bar + content padding so the dialog's own chrome owns the box. */
+.aam-modal.mud-dialog {
+  border-radius: 12px;
+  overflow: visible;
+}
+.aam-modal .mud-dialog-title { display: none; }
+.aam-modal .mud-dialog-content { padding: 0; overflow: visible; }
+
+/* ---- Close button ---- */
+.aam-x {
+  flex: none; display: grid; place-items: center;
+  width: 32px; height: 32px; border: none; border-radius: 999px;
+  background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.aam-x:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+
+/* Body stack for the OdsModal shell. OdsModal renders into MudDialog's native
+   TitleContent/DialogContent/DialogActions, which already own the box padding —
+   so this stack only contributes the field rhythm (no outer padding). */
+.ods-modal-body { display: flex; flex-direction: column; gap: 16px; }
+.ods-modal-body .mud-input.mud-input-outlined { background-color: var(--mud-palette-background); border-radius: 4px; }
+
+/* Field wrapper for non-Mud controls (the type picker) */
+.aam-field { display: flex; flex-direction: column; gap: 6px; }
+.aam-field-label {
+  font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+}
+.aam-err-text { font-size: 0.6875rem; line-height: 1.2; color: var(--mud-palette-error); margin-left: 2px; }
+
+/* ---- Account-type picker (trigger + menu items) ---- */
+.aam-type-trigger {
+  appearance: none; font: inherit; text-align: left;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; cursor: pointer;
+  background: var(--mud-palette-background); color: var(--mud-palette-text-primary);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: 4px; padding: 9px 12px;
+}
+.aam-type-trigger:hover { border-color: var(--mud-palette-text-secondary); }
+.aam-type-trigger.has-error { border-color: var(--mud-palette-error); }
+.aam-type-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.aam-type-ic { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; }
+.aam-type-ic.sm { width: 26px; height: 26px; border-radius: 6px; }
+
+.aam-type-item {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  font-size: 0.875rem; line-height: 1.2; color: var(--mud-palette-text-primary);
+}
+.aam-type-check { color: var(--mud-palette-primary); }
+
+/* Asset/liability note shown below the picker once a type is selected. */
+.aam-group-note {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.75rem; line-height: 1.3; color: var(--mud-palette-text-secondary);
+}
+.aam-group-pill {
+  flex: none; padding: 2px 8px; border-radius: 999px;
+  font-size: 0.6875rem; font-weight: 500; line-height: 1.4;
+}
+.aam-group-pill.asset { background: var(--finance-income-soft); color: var(--finance-income); }
+.aam-group-pill.liability { background: var(--finance-expense-soft); color: var(--finance-expense); }
+
+/* ---- Add-file: locked account context strip ---- */
+.efm-context {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 10px;
+  background: var(--mud-palette-background);
+  border: 1px solid var(--mud-palette-lines-default);
+}
+.efm-context-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 9px; }
+.efm-context-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.efm-context-acct { font-size: 0.84rem; font-weight: 600; line-height: 1.2; color: var(--mud-palette-text-primary); }
+.efm-context-facts { font-size: 0.75rem; color: var(--mud-palette-text-secondary); }
+
+/* ---- Add-file: per-file validity editor ----
+   Rendered beneath each row via OdsFileUpload's RenderFileExtra slot. The dropzone /
+   file-list / kind-picker chrome that used to live here is gone — those surfaces now
+   render from OdsFileUpload (.odc-upload-*). */
+.afm-meta-toggle {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--mud-palette-divider); border-radius: 999px;
+  background: transparent; cursor: pointer;
+  padding: 4px 10px 4px 8px;
+  font: var(--fw-medium) 0.72rem/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.afm-meta-toggle:hover { border-color: var(--mud-palette-primary); color: var(--mud-palette-text-primary); }
+.afm-meta-toggle.on { border-color: var(--mud-palette-primary); color: var(--mud-palette-primary); }
+.afm-meta { margin-top: 10px; width: 100%; }
+.afm-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.afm-meta-err { margin-top: 6px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-error); }
+@media (max-width: 600px) { .afm-meta-grid { grid-template-columns: 1fr; } }
+
+/* ════════════════════════════════════════════════════════════════════
+   Add-transaction modal (.atm-*) — built on the shared .aam-* shell.
+   Global for the same portal reason as the .aam-*/.afm-* rules above.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ---- "Optional" label tag — unified with the design system's .odc-field-opt so
+   every "Optional" hint reads identically (sentence case, caption, muted) whether
+   it comes from a DS Field/Select or a hand-rolled kit label. ---- */
+.atm-opt {
+  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary); margin-left: 6px;
+}
+
+/* On large screens the New-transaction form uses the DS two-column form layout
+   (.odc-form-grid) to take advantage of the width; the modal grows to 880px and
+   collapses to one column (and shrinks to fit) on smaller viewports. The dialog
+   opens at the OdsModal Wide max-width, capped here to 880px. */
+.atm-dialog.mud-dialog { max-width: 880px; }
+
+/* ---- Amount hero ---- */
+.atm-amount-block { display: flex; flex-direction: column; gap: 10px; }
+/* The direction toggle is now <OdsSegmentedControl>; its .atm-seg* styles were removed. */
+
+.atm-amount {
+  display: flex; align-items: center; gap: 6px;
+  height: 64px; padding: 0 18px; border-radius: var(--radius-sm);
+  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background);
+  transition: border-color var(--duration-base) var(--ease-standard);
+}
+.atm-amount:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); }
+.atm-amount.has-error { border-color: var(--mud-palette-error); }
+.atm-amount-sign { font-size: 1.875rem; font-weight: 600; line-height: 1; width: 18px; text-align: center; color: var(--mud-palette-text-secondary); }
+.atm-amount.expense .atm-amount-sign { color: var(--finance-expense); }
+.atm-amount.income  .atm-amount-sign { color: var(--finance-income); }
+.atm-amount-cur { font-size: 1.375rem; font-weight: 500; line-height: 1; color: var(--mud-palette-text-secondary); }
+.atm-amount input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  font-family: 'Roboto Mono', monospace; font-variant-numeric: tabular-nums;
+  font-size: 1.875rem; font-weight: 600; line-height: 1; letter-spacing: -0.01em;
+  color: var(--mud-palette-text-primary);
+}
+.atm-amount input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+
+/* ---- Account picker rows ---- */
+.atm-acct-current { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.atm-acct-name {
+  font-size: 0.84rem; font-weight: 500; line-height: 1.2; color: var(--mud-palette-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.atm-acct-num { font-size: 0.75rem; color: var(--mud-palette-text-secondary); flex: none; }
+.atm-acct-locked {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
+  border: 1px solid var(--mud-palette-divider-light); background: var(--mud-palette-background);
+}
+.atm-locked-pill {
+  margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.6875rem; font-weight: 500; line-height: 1; color: var(--mud-palette-text-secondary);
+  padding: 5px 9px; border-radius: 999px; background: var(--mud-palette-action-default-hover);
+}
+
+/* The bespoke contact combobox (.atm-cp-*) and the Advanced disclosure (.atm-adv*)
+   were replaced by OdsCombobox and OdsRevealPanel; their rules have been removed.
+   Note that "atm-cp" survives in CreateTransactionDialog as an element *id*
+   (OdsFieldShell HtmlFor / OdsCombobox InputId) — that is not a class usage. */
+
+.atm-status-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.atm-status-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 13px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface);
+  font-size: 0.78rem; font-weight: 500; line-height: 1; color: var(--mud-palette-text-secondary);
+  transition: background var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard), border-color var(--duration-base) var(--ease-standard);
+}
+.atm-status-chip:hover { color: var(--mud-palette-text-primary); }
+
+/* ════════════════════════════════════════════════════════════════════
+   File viewer modal (.fvm-*) — the .aam-* shell widened into a document
+   viewer: header · toolbar · stage · footer.
+
+   Only the dialog *paper* is left here (issue #371). `.fvm-modal` is handed to
+   OdsModal and lands on the element MudBlazor renders, which no component of
+   ours authors — so CSS isolation can't reach it and it has to be global. The
+   viewer's own chrome moved to Pages/Finance/FilePreviewDialog.razor.css.
+   ════════════════════════════════════════════════════════════════════ */
+.fvm-modal.mud-dialog { max-width: 940px; overflow: hidden; }
+.fvm-modal .mud-dialog-content { overflow: hidden; }
+
+/* ════════════════════════════════════════════════════════════════════
+   Analyze-file modal (.fan-*) — per-phase dialog width only.
+
+   The dialog's own chrome moved to Pages/Finance/FileAnalysisDialog.razor.css
+   (issue #371). What has to stay global is the width override for each phase:
+   the class is handed to OdsModal and lands on the element MudBlazor renders
+   for the dialog paper, which no component of ours authors, so CSS isolation
+   never stamps it.
+   ════════════════════════════════════════════════════════════════════ */
+/* Review: fill most of the viewport so big screens get a roomy batch-edit grid.
+   The cap is viewport-relative (not a fixed px) so width scales with the screen
+   the same way the table's max-height does — large monitors get a wide grid, and
+   the 2200px ceiling only kicks in on ultra-wide displays to keep rows readable. */
+.fan-modal.mud-dialog { width: 96vw; max-width: min(2200px, 96vw); }
+.fan-modal .mud-dialog-content { overflow: hidden; }
+/* Consent gate: the DS AnalyzeFileModal consent phase is 700px wide. */
+.fan-consent-modal.mud-dialog { max-width: 720px; }
+/* NoLongerAvailable keeps the resume flow's wide `@key` (so the dialog never re-teleports mid-resume)
+   but is just a short message — narrow it back down purely via CSS. */
+.fan-unavailable-modal.mud-dialog { max-width: 560px; }
+
+/* Account-type badge colors — icon foreground (glyph) + soft tinted background.
+   Sourced verbatim from the Odyssey Design System account-type registry. The
+   oklch values are theme-independent: each glyph sits on its own soft tint of
+   the same hue, so the pair reads correctly on both the dark and light surface.
+   Ordered assets-first, then liabilities, to match the registry. */
+:root {
+  /* Assets */
+  --acct-cash:                 oklch(0.80 0.15 150);
+  --acct-cash-soft:            oklch(0.80 0.15 150 / 0.16);
+  --acct-checking:             oklch(0.79 0.115 188);
+  --acct-checking-soft:        oklch(0.79 0.115 188 / 0.16);
+  --acct-savings:              oklch(0.76 0.13 225);
+  --acct-savings-soft:         oklch(0.76 0.13 225 / 0.16);
+  --acct-investment:           oklch(0.72 0.16 295);
+  --acct-investment-soft:      oklch(0.72 0.16 295 / 0.16);
+  --acct-pension:              oklch(0.75 0.16 330);
+  --acct-pension-soft:         oklch(0.75 0.16 330 / 0.16);
+  --acct-property:             oklch(0.72 0.14 255);
+  --acct-property-soft:        oklch(0.72 0.14 255 / 0.16);
+  --acct-vehicle:              oklch(0.78 0.14 170);
+  --acct-vehicle-soft:         oklch(0.78 0.14 170 / 0.16);
+  --acct-other-asset:          oklch(0.74 0.02 250);
+  --acct-other-asset-soft:     oklch(0.74 0.02 250 / 0.16);
+  /* Liabilities */
+  --acct-credit:               oklch(0.72 0.16 22);
+  --acct-credit-soft:          oklch(0.72 0.16 22 / 0.16);
+  --acct-mortgage:             oklch(0.77 0.14 55);
+  --acct-mortgage-soft:        oklch(0.77 0.14 55 / 0.16);
+  --acct-student-loan:         oklch(0.79 0.14 78);
+  --acct-student-loan-soft:    oklch(0.79 0.14 78 / 0.16);
+  --acct-personal-loan:        oklch(0.72 0.16 8);
+  --acct-personal-loan-soft:   oklch(0.72 0.16 8 / 0.16);
+  --acct-car-loan:             oklch(0.75 0.15 38);
+  --acct-car-loan-soft:        oklch(0.75 0.15 38 / 0.16);
+  --acct-tax-debt:             oklch(0.71 0.17 352);
+  --acct-tax-debt-soft:        oklch(0.71 0.17 352 / 0.16);
+  --acct-other-liability:      oklch(0.66 0.03 30);
+  --acct-other-liability-soft: oklch(0.66 0.03 30 / 0.16);
+}
+
+/* Auth page layout — centering kept global so it is immune to CSS-isolation
+   bundle renames. The .auth-page class is only used inside AuthLayout.razor. */
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* "Remember this device" opt-in on the two-step verification card — the OdsCheckbox
+   with a two-line label (title + guidance), aligned to the box top. Mirrors the design
+   system's .auth-remember. */
+.auth-remember { cursor: pointer; }
+.auth-remember .odc-checkbox { align-items: flex-start; }
+.auth-remember .odc-check-box { margin-top: 1px; }
+.auth-remember-text { display: flex; flex-direction: column; gap: 2px; }
+.auth-remember-ttl { font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.auth-remember-sub { font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* "Forgot your password?" — trailing the password field on the sign-in card (issue #405). */
+.auth-forgot-row { display: flex; justify-content: flex-end; margin-top: 6px; }
+
+/* The heading of an outcome panel on the two password-reset pages. A real <h2> rather than a
+   MudText so it can carry tabindex="-1" + an ElementReference: the phase swap replaces the whole
+   form, and moving focus here is what carries that change to a screen-reader user (the panel's
+   own live region announces the message, but focus is what tells them where they now are).
+   Matches the theme's H5 (--fw-medium / --fs-h5 / 1.5), which every other auth heading uses.
+   The focus ring is suppressed because this is a programmatic focus target, never in the tab
+   order — the ring would read as an interactive control the user could act on. */
+.auth-panel-heading {
+    margin: 0;
+    font: var(--fw-medium) var(--fs-h5)/1.5 var(--font-sans);
+    text-align: center;
+    color: var(--mud-palette-text-primary);
+}
+.auth-panel-heading:focus { outline: none; }
+
+/* ── Blazor framework affordances (do not remove) ───────────────────────── */
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: var(--z-overlay);
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: white;
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }
+
+.loading-progress {
+    position: absolute;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    inset: 20vh 0 auto 0;
+    margin: 0 auto 0 auto;
+}
+
+    .loading-progress circle {
+        fill: none;
+        stroke: #e0e0e0;
+        stroke-width: 0.6rem;
+        transform-origin: 50% 50%;
+        transform: rotate(-90deg);
+    }
+
+        .loading-progress circle:last-child {
+            stroke: #1b6ec2;
+            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+            transition: stroke-dasharray 0.05s ease-in-out;
+        }
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+    .loading-progress-text:after {
+        content: var(--blazor-load-percentage-text, "Loading");
+    }

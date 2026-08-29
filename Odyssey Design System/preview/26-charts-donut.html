@@ -1,0 +1,70 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Charts · Donut + legend" subtitle="Expense breakdown — the canonical .odc-donut component (ring + ledger + total)" viewport="700x360" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Charts · Donut + legend</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .wrap { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 8px; padding: 22px 24px; }
+    .odc-donut-center-ic { font-size: 64px; color: var(--mud-palette-text-secondary); }
+  </style>
+  <div class="wrap odc-donut-panel">
+    <div class="odc-chart-head">
+      <div>
+        <div class="odc-chart-ttl">November · expense by tag</div>
+        <div class="odc-chart-sub">USD · 6 tags</div>
+      </div>
+    </div>
+
+    <div class="odc-donut-body">
+      <div class="odc-donut-ring" style="width:200px;height:200px">
+        <svg viewBox="0 0 200 200" width="200" height="200" style="transform: rotate(-90deg); display:block;" role="img" aria-label="November expense by tag">
+          <circle cx="100" cy="100" r="87" stroke="var(--mud-palette-divider-light)" stroke-width="26" fill="none"/>
+          <!-- Rent 47% -->
+          <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-1)" stroke-width="26" stroke-dasharray="249.9 296.7" stroke-dashoffset="0"/>
+          <!-- Groceries 13% -->
+          <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-2)" stroke-width="26" stroke-dasharray="64.1 482.5" stroke-dashoffset="-256.9"/>
+          <!-- Dining 11% -->
+          <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-4)" stroke-width="26" stroke-dasharray="53.1 493.5" stroke-dashoffset="-328.0"/>
+          <!-- Utilities 7% -->
+          <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-6)" stroke-width="26" stroke-dasharray="31.3 515.3" stroke-dashoffset="-388.1"/>
+          <!-- Transit 5% -->
+          <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-3)" stroke-width="26" stroke-dasharray="20.3 526.3" stroke-dashoffset="-426.3"/>
+          <!-- Other 17% — neutral -->
+          <circle cx="100" cy="100" r="87" fill="none" stroke="var(--ink-400)" stroke-width="26" stroke-dasharray="85.9 460.7" stroke-dashoffset="-453.7"/>
+        </svg>
+        <div class="odc-donut-center" aria-hidden="true"><span class="material-icons odc-donut-center-ic">receipt_long</span></div>
+      </div>
+
+      <div class="odc-donut-legend">
+        <div class="odc-legend-row">
+          <div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-1)"></span><span class="odc-legend-name">Rent</span></div>
+          <div class="odc-legend-figs"><span class="odc-legend-pct">47%</span><span class="odc-legend-amt">$ 2,400</span></div>
+        </div>
+        <div class="odc-legend-row">
+          <div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-2)"></span><span class="odc-legend-name">Groceries</span></div>
+          <div class="odc-legend-figs"><span class="odc-legend-pct">13%</span><span class="odc-legend-amt">$ 678</span></div>
+        </div>
+        <div class="odc-legend-row">
+          <div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-4)"></span><span class="odc-legend-name">Dining</span></div>
+          <div class="odc-legend-figs"><span class="odc-legend-pct">11%</span><span class="odc-legend-amt">$ 562</span></div>
+        </div>
+        <div class="odc-legend-row">
+          <div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-6)"></span><span class="odc-legend-name">Utilities</span></div>
+          <div class="odc-legend-figs"><span class="odc-legend-pct">7%</span><span class="odc-legend-amt">$ 364</span></div>
+        </div>
+        <div class="odc-legend-row">
+          <div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-3)"></span><span class="odc-legend-name">Transit</span></div>
+          <div class="odc-legend-figs"><span class="odc-legend-pct">5%</span><span class="odc-legend-amt">$ 248</span></div>
+        </div>
+        <div class="odc-legend-row">
+          <div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--ink-400)"></span><span class="odc-legend-name">Other</span></div>
+          <div class="odc-legend-figs"><span class="odc-legend-pct">17%</span><span class="odc-legend-amt">$ 876</span></div>
+        </div>
+        <div class="odc-donut-total">
+          <span class="odc-donut-total-lab">Total spend</span>
+          <div class="odc-legend-figs"><span class="odc-donut-total-pct">100%</span><span class="odc-donut-total-amt">$ 5,128</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body></html>

@@ -1,0 +1,148 @@
+# Production overlay. Use together with the base file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod pull
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Differences from the base (dev) compose:
+#   - Pulls pinned images from GHCR instead of building from source.
+#   - Runs in the Production environment (Swagger off, HTTPS-aware).
+#   - Does NOT publish api/mariadb/client ports to the host — only Caddy is exposed.
+#   - Adds Caddy for automatic TLS (Let's Encrypt) in front of the client.
+#   - Persists DataProtection keys so redeploys don't log everyone out.
+#
+# IMAGE_TAG pins the release you are deploying (e.g. 1.4.0). Set it in .env.prod.
+# GHCR_OWNER, IMAGE_TAG and ODYSSEY_DOMAIN carry `:?` guards for the same reason the
+# credentials below do: an unset value here fails at deploy time with a message naming the
+# variable, rather than resolving to an empty string and failing later as a confusing pull
+# error or an empty Caddy site block.
+
+services:
+  mariadb:
+    # No host port mapping in production — the DB is reachable only on the internal network.
+    ports: !reset []
+    environment:
+      # Required in production (issue #451 §1.4). The base file falls back to `root_password` /
+      # `odyssey_password` so a laptop needs no env file at all; without these guards the prod overlay
+      # inherited those fallbacks silently. `:?` catches unset and empty — the CHANGE_ME case is caught
+      # at app startup by PlaceholderConfigurationGuard, since compose interpolation cannot inspect a
+      # value. MARIADB_ROOT_PASSWORD is guarded ONLY here: no host reads it, so there is no app-side
+      # check that could.
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?MARIADB_ROOT_PASSWORD must be set in .env.prod (openssl rand -base64 36)}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?MARIADB_PASSWORD must be set in .env.prod (openssl rand -base64 36)}
+    # Block privilege escalation via setuid binaries. Caps are left intact: the mariadb
+    # entrypoint needs them (CHOWN/SETUID/…) to initialise the data dir on first start.
+    security_opt:
+      - no-new-privileges:true
+
+  migrations:
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in .env.prod (the GitHub user or org that owns the published images)}/odyssey-migrations:${IMAGE_TAG:?IMAGE_TAG must be set in .env.prod (the release to deploy, e.g. 1.4.0)}
+    build: !reset null
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # The name this host actually reads (Host.CreateApplicationBuilder ignores the ASPNETCORE one).
+      # It MUST be pinned here rather than left to the base file: the base interpolates
+      # `${ASPNETCORE_ENVIRONMENT:-Development}` from the ENV FILE, and this map is the container's
+      # environment, so an overlay used without a matching .env.prod would otherwise run the
+      # migrations job as Development in production. Same trap as the Swagger key above.
+      DOTNET_ENVIRONMENT: Production
+      # Never seed demo data in production (explicit guard on top of the environment gate).
+      Seed__DemoData: "false"
+      # Same key ring as the api service (issue #444). The volume is inherited from the base file;
+      # read_only below applies to the container's root filesystem, not to this named volume, which
+      # must stay writable — a read-only key mount falls back to an in-memory ring with only a warning.
+      DataProtection__KeysPath: /var/odyssey/dataprotection-keys
+    # Runtime hardening: non-root .NET runner that needs no Linux capabilities and writes
+    # nothing outside /tmp, so drop all caps and mount the root filesystem read-only.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  api:
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in .env.prod (the GitHub user or org that owns the published images)}/odyssey-api:${IMAGE_TAG:?IMAGE_TAG must be set in .env.prod (the release to deploy, e.g. 1.4.0)}
+    build: !reset null
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # The key the app actually reads (issue #451 §1.3). This map is the container's environment,
+      # so `SWAGGER_ENABLED` here was inert: the base file's `Swagger__Enabled: ${SWAGGER_ENABLED:-true}`
+      # is COMPOSE-level interpolation from the env file, and it only ever resolved to false because
+      # .env.prod.example happens to set the variable. A hand-written .env.prod, a `docker run` or a
+      # Kubernetes manifest got `:-true` and served Swagger UI in Production through the client's
+      # nginx /api/ proxy. Program.cs now also refuses to enable Swagger in Production at all.
+      Swagger__Enabled: "false"
+      # Persisted DataProtection keys (see Program.cs) — survives redeploys.
+      DataProtection__KeysPath: /var/odyssey/dataprotection-keys
+      # Legal__PseudonymizationSecret is GONE (issue #445 Wave 4). It lives in the encrypted secret
+      # store and must be entered once at /settings → Credentials after this upgrade.
+      #
+      # Read this before upgrading an existing deployment: it is a DERIVATION key, so if consent rows
+      # were already pseudonymized under the old environment value, the SAME value must be entered —
+      # a different one leaves those rows permanently un-re-derivable, which is the property GDPR
+      # Art. 7(1) attribution depends on. Export it from your current environment first.
+      #
+      # Its durability now rests on the DataProtection keys volume above AS WELL AS the database
+      # backup. Back up both together; see docs/deployment.md.
+    # Internal only — reached via the client's nginx /api/ proxy, never published to the host.
+    ports: !reset []
+    # Runtime hardening: non-root .NET app (UID 1654) that needs no caps. Root filesystem is
+    # read-only; /tmp is a tmpfs and DataProtection keys live on the writable named volume above.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  client:
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in .env.prod (the GitHub user or org that owns the published images)}/odyssey-client:${IMAGE_TAG:?IMAGE_TAG must be set in .env.prod (the release to deploy, e.g. 1.4.0)}
+    build: !reset null
+    # Internal only — Caddy terminates TLS and proxies to this container.
+    ports: !reset []
+    expose:
+      - "8080"
+    # Runtime hardening: nginx-unprivileged (UID 101) on :8080 needs no caps. Root filesystem is
+    # read-only; nginx's pid/temp/cache dirs are backed by tmpfs.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: odyssey-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    # Runtime hardening: drop all caps except the one Caddy needs to bind the privileged
+    # TLS ports, and block privilege escalation. Root filesystem stays writable — Caddy
+    # persists ACME state/certs under the /data and /config volumes.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      # Guarded like every credential in this file: unset, Caddy gets an empty site block and
+      # serves nothing, with no error saying why.
+      ODYSSEY_DOMAIN: ${ODYSSEY_DOMAIN:?ODYSSEY_DOMAIN must be set in .env.prod (the public hostname Caddy issues a certificate for)}
+    depends_on:
+      - client
+
+volumes:
+  caddy_data:
+  caddy_config:

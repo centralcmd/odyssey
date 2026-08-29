@@ -1,0 +1,102 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · PageHeader (+ SeverityIcon)" subtitle="The shared page-header scaffold — title + sub + chips, the action cluster, and toggleable Signal / Overview / Search / Reference regions. Live render off the DS namespace." viewport="860x560" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · PageHeader</title>
+  <!-- Tokens + Material Icons, then the kit sheets that style the header
+       (.page-head / .ph-* live in kit.css, .btn.signal in account-signals.css). -->
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/account-signals.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 12px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .stack { display: flex; flex-direction: column; gap: 22px; }
+    .note { margin: 14px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 84ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+  </style>
+</head>
+<body>
+  <div class="cap">PageHeader <code>&lt;PageHeader title sub icon search overview signal actions primary menu /&gt;</code></div>
+  <div class="stack" id="root"></div>
+  <p class="note">Every screen mounts this first. The cluster order is fixed — <b>Signal → Overview → Search → Reference → secondary actions → primary verb → overflow menu</b> — and a toggle's filled / outlined state IS its open indicator. Open regions drop in below the title row behind a divider. The <b>SeverityIcon</b> atom draws the signal glyph (warning / error / info). Click the toggles — both headers are live.</p>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51 || {};
+    const { PageHeader, SearchField, Select, Chip } = NS;
+
+    const SearchRegion = () => {
+      const [q, setQ] = React.useState('');
+      const [status, setStatus] = React.useState('');
+      return (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <SearchField placeholder="Search description, contact, amount…" value={q} onChange={setQ} clearable />
+          </div>
+          <div style={{ width: 180 }}>
+            <Select placeholder="Any status" value={status} onChange={setStatus}
+              options={[{ value: '', label: 'Any status' }, { value: 'new', label: 'New' }, { value: 'approved', label: 'Approved' }, { value: 'flagged', label: 'Flagged' }]} />
+          </div>
+        </div>
+      );
+    };
+
+    const App = () => PageHeader ? (
+      <React.Fragment>
+        {/* Carded header with Search open + a signal rollup */}
+        <PageHeader
+          title="Accounts"
+          sub="12 active · combined $ 148,204.30"
+          icon="account_balance_wallet"
+          signal={{
+            severity: 'warning', count: 2, label: 'Attention',
+            region: <div style={{ font: '400 13px/1.5 var(--font-sans)', color: 'var(--mud-palette-text-secondary)' }}>2 accounts have no exchange rate for their currency — totals exclude them.</div>,
+          }}
+          search={<SearchRegion />}
+          searchDefaultOpen
+          overview={<div style={{ font: '400 13px/1.5 var(--font-sans)', color: 'var(--mud-palette-text-secondary)' }}>Allocation donuts render here on the live page.</div>}
+          primary={{ label: 'New account', icon: 'add' }}
+          menu={[
+            { icon: 'download', label: 'Export CSV' },
+            { icon: 'print', label: 'Print' },
+            { divider: true },
+            { icon: 'delete', label: 'Archive all', danger: true },
+          ]}
+        />
+
+        {/* Bare variant — plain pages with chips, no regions */}
+        <PageHeader
+          title="Transaction tags"
+          sub="14 tags · 9 in use"
+          icon="sell"
+          chips={[
+            { label: 'Synced', tone: 'income', dot: true },
+            { label: '3 unused', tone: 'outline' },
+          ]}
+          actions={[{ label: 'Merge', icon: 'call_merge' }]}
+          primary={{ label: 'New tag', icon: 'add' }}
+        />
+      </React.Fragment>
+    ) : (
+      <p style={{ font: '400 13px/1.5 var(--font-mono)', color: 'var(--mud-palette-text-secondary)' }}>
+        Bundle is rebuilding — reload this card to see the live PageHeader render.
+      </p>
+    );
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- @dsCard group="Colors" name="Colors · Brand ramps" subtitle="Tide · Sea brand teals + Mint · Coral · Amber finance semantics" viewport="700x340" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Colors · Brand ramps</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .ramp { display: grid; grid-template-columns: 60px 1fr 1fr 1fr 1fr 1fr; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .ramp-label { font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .chip { height: 44px; border-radius: 6px; display: flex; align-items: flex-end; padding: 6px 8px; font-family: var(--font-mono); font-size: 10px; }
+    .chip.dark-text { color: rgba(14,21,37,0.85); }
+    .chip.light-text { color: rgba(255,255,255,0.9); }
+    .stops { font: 400 10px/1 var(--font-sans); color: var(--mud-palette-text-secondary); text-align: center; }
+  </style>
+
+  <div class="ramp">
+    <div class="ramp-label">Tide</div>
+    <div class="chip dark-text" style="background:var(--tide-300)">7CEDDC</div>
+    <div class="chip dark-text" style="background:var(--tide-400)">4FD7CB ◆</div>
+    <div class="chip dark-text" style="background:var(--tide-500)">2DD4BF ★</div>
+    <div class="chip light-text" style="background:var(--tide-600)">14B8A6 ◇</div>
+    <div class="chip light-text" style="background:var(--tide-700)">0E8A7C</div>
+  </div>
+
+  <div class="ramp">
+    <div class="ramp-label">Sea</div>
+    <div class="chip dark-text" style="background:var(--sea-300)">7DD3FC</div>
+    <div class="chip dark-text" style="background:var(--sea-400)">38BDF8</div>
+    <div class="chip light-text" style="background:var(--sea-500)">0EA5E9</div>
+    <div class="chip light-text" style="background:var(--sea-600)">0284C7</div>
+    <div class="chip light-text" style="background:var(--sea-700)">0369A1</div>
+  </div>
+
+  <div class="ramp" style="grid-template-columns: 60px 1fr 1fr 1fr; gap: 8px;">
+    <div class="ramp-label">Mint</div>
+    <div class="chip dark-text" style="background:var(--mint-300)">86EFAC</div>
+    <div class="chip dark-text" style="background:var(--mint-500)">4ADE80 ★</div>
+    <div class="chip light-text" style="background:var(--mint-700)">15803D</div>
+  </div>
+
+  <div class="ramp" style="grid-template-columns: 60px 1fr 1fr 1fr; gap: 8px;">
+    <div class="ramp-label">Coral</div>
+    <div class="chip dark-text" style="background:var(--coral-300)">FCA5A5</div>
+    <div class="chip dark-text" style="background:var(--coral-500)">FF6B6B ★</div>
+    <div class="chip light-text" style="background:var(--coral-700)">B23B3B</div>
+  </div>
+
+  <div class="ramp" style="grid-template-columns: 60px 1fr 1fr 1fr; gap: 8px;">
+    <div class="ramp-label">Amber</div>
+    <div class="chip dark-text" style="background:var(--amber-300)">FCD34D</div>
+    <div class="chip dark-text" style="background:var(--amber-500)">F59E0B ★</div>
+    <div class="chip light-text" style="background:var(--amber-700)">B45309</div>
+  </div>
+
+  <div class="stops" style="margin-top: 4px;">★ anchor · ◆ dark-mode primary · ◇ light-mode primary · Mint·Coral·Amber = income·expense·pending</div>
+</body></html>

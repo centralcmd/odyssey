@@ -1,0 +1,112 @@
+name: Bug Report
+description: Report a reproducible bug in Odyssey
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I can reproduce this on the latest commit on `main`
+          required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected Area
+      description: Which part of the application does this bug affect?
+      options:
+        - API (Odyssey.Api — controllers, endpoints, middleware)
+        - Client / Frontend (Odyssey.Client — Blazor WebAssembly pages/components)
+        - Finance (Odyssey.Finance — transactions, accounts, budgets, categories)
+        - Auth (authentication, identity, cookie sessions)
+        - Files / Attachments (Odyssey.Finance — upload, storage, AI file analysis)
+        - User Preferences (persisted per-page UI state)
+        - Database / EF Core Migrations
+        - Docker / Infrastructure (docker-compose, NGINX, MariaDB)
+        - Other / Unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: How are you running Odyssey?
+      options:
+        - Docker Compose (`docker compose up --build`)
+        - Aspire dev host (`dotnet run --project Odyssey.AppHost`)
+        - Bare `dotnet run` (no container)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "When I navigate to the Budgets page after adding a new account, the page crashes with a NullReferenceException."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Steps
+      description: Step-by-step instructions to reliably reproduce the issue.
+      placeholder: |
+        1. Log in as a new user
+        2. Go to Accounts → Add Account
+        3. Save a new account with type "Checking"
+        4. Navigate to Budgets
+        5. Page throws an error / shows wrong data / …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen?
+      placeholder: "The Budgets page should load successfully and display an empty budget list."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens instead?
+      placeholder: "The page shows a blank screen and the browser console logs a 500 error."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Messages / Stack Traces / Logs
+      description: |
+        Paste any relevant error output here (API logs, browser console, Docker logs).
+        Tip: `docker compose logs api` captures the API output.
+      render: text
+      placeholder: |
+        System.NullReferenceException: Object reference not set to an instance of an object.
+           at Odyssey.Finance.Services.BudgetService.GetBudgetsAsync() ...
+
+  - type: input
+    id: commit
+    attributes:
+      label: Git Commit / Version
+      description: The commit SHA or branch where you observed the bug.
+      placeholder: "e.g. dfd54d2 or main"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Screenshots, related issues, PR links, or anything else that might help.

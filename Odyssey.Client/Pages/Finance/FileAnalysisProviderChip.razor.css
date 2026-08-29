@@ -1,0 +1,14 @@
+/* ── Analyze-file provider chip ──
+   Moved out of FileAnalysisDialog.razor.css with the markup it styles (issue #373).
+   `::deep` reaches into child components' markup (OdsMIcon's `.material-icons`, OdsCheckbox's
+   `.odc-check*`, OdsMatchIndicator's `.odc-match*`, the MudAutocomplete/tag-picker internals),
+   since CSS isolation only stamps this component's own elements. */
+
+.fan-provider {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 4px 10px 4px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--mud-palette-primary) 12%, transparent); color: var(--mud-palette-primary);
+  font-size: 0.75rem; font-weight: 500; line-height: 1;
+}
+.fan-provider ::deep .material-icons { color: var(--mud-palette-primary); }
+.fan-provider-model { color: var(--mud-palette-text-secondary); font-size: 0.6875rem; white-space: nowrap; }

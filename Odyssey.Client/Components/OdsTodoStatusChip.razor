@@ -1,0 +1,55 @@
+@using Odyssey.Dtos.Journal
+@*
+    OdsTodoStatusChip — the read display of a task's kanban lifecycle as a chip
+    (Odyssey Design System · components/TodoStatusChip): Backlog → Doing → Done,
+    plus a terminal Archived. One chip per call (a task has exactly one status).
+
+    Accessibility: the state meaning lives in the visible text label, never colour
+    or glyph alone — the leading dot/icon is aria-hidden (matches OdsCoverageStatusChip /
+    OdsSubscriptionStatusChip). Tone: Backlog = neutral outline (not started), Doing =
+    info/sea (in progress), Done = income/mint (the generic completion signal, not a
+    money meaning), Archived = neutral outline read quieter (dashed + dimmed).
+*@
+
+<span class="@ChipClass">
+    @if (ShowIcon)
+    {
+        <span class="material-icons" aria-hidden="true">@_meta.Icon</span>
+    }
+    else
+    {
+        <span class="odc-chip-dot" aria-hidden="true"></span>
+    }
+    @_meta.Label
+</span>
+
+@code {
+    /// <summary>The task's single kanban status.</summary>
+    [Parameter] public JournalTaskStatus Status { get; set; } = JournalTaskStatus.Backlog;
+
+    /// <summary>Lead with the status glyph instead of the status dot.</summary>
+    [Parameter] public bool ShowIcon { get; set; }
+
+    /// <summary>Compact (sm) sizing for a collapsed card / row.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private (string Tone, string Icon, string Label) _meta => Status switch
+    {
+        JournalTaskStatus.Doing => ("info", "timelapse", "Doing"),
+        JournalTaskStatus.Done => ("income", "check_circle", "Done"),
+        JournalTaskStatus.Archived => ("outline", "inventory_2", "Archived"),
+        _ => ("outline", "inbox", "Backlog"),
+    };
+
+    private string ChipClass =>
+        string.Join(' ', new[]
+        {
+            "odc-chip",
+            _meta.Tone,
+            Compact ? "sm" : null,
+            Status == JournalTaskStatus.Archived ? "odc-todo-archived" : null,
+            Class,
+        }.Where(c => !string.IsNullOrEmpty(c)));
+}

@@ -1,0 +1,82 @@
+/* ── /account · the permissions section ──
+   Ported from the design system's account.css and moved out of Account.razor.css with
+   the markup it styles (issue #373). The chrome shared by every section — .acc-cardhead,
+   .acc-ic, .acc-sec-*, .acc-form*, .acc-divider*, .acc-block-alert, .acc-saved — stays on
+   the page, which reaches it here through `.acc-section ::deep`. */
+
+/* ── Permissions: identity metadata tiles ──
+   Capped at two columns so long values (email, GUID) keep room; the User ID
+   spans the full width via .meta-tile-wide. Collapses to one column on narrow
+   viewports. */
+.meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.meta-tile-wide {
+    grid-column: 1 / -1;
+}
+.meta-tile {
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--mud-palette-background);
+}
+.meta-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.meta-value {
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-primary);
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* ── Permissions: catalog grouped by area ── */
+.ua-cat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+}
+.ua-cat-card {
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: var(--mud-palette-background);
+}
+.ua-cat-name {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--mud-palette-text-primary);
+    margin-bottom: 9px;
+}
+.ua-cat-name .mud-icon-root {
+    color: var(--mud-palette-text-secondary);
+}
+.ua-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.ua-action-chip {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--mud-palette-action-disabled-background);
+    color: var(--mud-palette-text-secondary);
+}
+
+@media (max-width: 600px) {
+    .meta-grid {
+        grid-template-columns: 1fr;
+    }
+}

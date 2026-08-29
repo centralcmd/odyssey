@@ -1,0 +1,76 @@
+@*
+    OdsTimeField — the labelled time-of-day field (Odyssey Design System · TimeField): the timed
+    sibling of OdsDateField. OdsDatePicker/OdsDateField only carry date granularity, so timed calendar
+    events need this. Wrapped in the shared OdsFieldShell so it reads and aligns like every other
+    labelled control.
+
+    Binds a 24-hour TimeSpan? (via @bind-Value) — the MudBlazor MudTimePicker contract, a deliberate
+    Blazor adaptation of the design's HH:mm string (mirrors OdsDatePicker's DateTime? adaptation).
+    Backed by MudTimePicker (editable, 24-hour, HH:mm) the way OdsDatePicker is backed by MudDatePicker.
+*@
+
+<OdsFieldShell Label="@Label" HtmlFor="@_id" Required="Required" Optional="Optional"
+               Help="@Help" Error="@Error" Class="@Class">
+    <MudTimePicker Time="Value"
+                   TimeChanged="OnTimeChanged"
+                   AmPm="false"
+                   TimeFormat="HH:mm"
+                   Editable="true"
+                   Placeholder="@Placeholder"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   ShowToolbar="false"
+                   Disabled="Disabled"
+                   Style="@(Full ? null : "width:fit-content")"
+                   AnchorOrigin="@(Align == OdsAlign.End ? Origin.BottomRight : Origin.BottomLeft)"
+                   TransformOrigin="@(Align == OdsAlign.End ? Origin.TopRight : Origin.TopLeft)"
+                   aria-label="@AriaLabel"
+                   id="@_id" />
+</OdsFieldShell>
+
+@code {
+    /// <summary>Field label rendered above the control.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Accessible name for the control itself — use when the field sits under a shared group
+    /// label (e.g. a "Starts" row holding both a date and a time) so a screen reader can still tell the
+    /// controls apart. Rendered as aria-label on the picker.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>Selected time (24-hour), or null when unset. Bindable via @bind-Value.</summary>
+    [Parameter] public TimeSpan? Value { get; set; }
+
+    [Parameter] public EventCallback<TimeSpan?> ValueChanged { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "HH:MM";
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Optional { get; set; }
+
+    /// <summary>Popover alignment relative to the field. Start (default) / End.</summary>
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    /// <summary>Stretch to the container width. Default true.</summary>
+    [Parameter] public bool Full { get; set; } = true;
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    private string _id = default!;
+
+    protected override void OnInitialized() => _id = Id ?? $"ods-timefield-{Guid.NewGuid():N}";
+
+    private Task OnTimeChanged(TimeSpan? value)
+    {
+        Value = value;
+        return ValueChanged.InvokeAsync(value);
+    }
+}

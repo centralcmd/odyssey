@@ -1,0 +1,9 @@
+{
+  "name": "run-odyssey-driver",
+  "private": true,
+  "type": "module",
+  "description": "Playwright driver for the /run-odyssey skill",
+  "dependencies": {
+    "playwright": "1.60.0"
+  }
+}

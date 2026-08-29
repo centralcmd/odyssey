@@ -1,0 +1,257 @@
+@page "/accept-terms"
+@layout AcceptTermsLayout
+@attribute [Authorize]
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Dtos.Application
+@using Odyssey.Client.Components
+@inject ILegalApiClient Legal
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Review and accept</PageTitle>
+
+@*
+    AcceptTerms — the /accept-terms interstitial (issue #354 §3 states 2–4, §5; Odyssey Design System ·
+    AcceptTerms). Full-screen and blocking, under its own layout (no nav shell), reached either from
+    MainLayout's gate check at login or mid-session from LegalComplianceHandler intercepting a 451.
+
+    Shows only the document(s) actually outstanding, one step at a time. Accepting the last one refreshes
+    the cached claims and forwards to returnUrl; declining any one signs the user out and returns to
+    /login?reason=legal-declined, with no account lockout.
+*@
+
+<div class="lg-shell">
+    <div class="lg-card">
+        @if (_outcome is Outcome.Accepted)
+        {
+            <div class="lg-result" role="status">
+                <div class="lg-result-ic ok"><span class="material-icons" aria-hidden="true">check_circle</span></div>
+                <div class="lg-result-ttl">You’re all set</div>
+                <div class="lg-result-desc">Your acceptance has been recorded. Taking you back to @ReturnLabel.</div>
+                <div class="lg-redirect"><span class="lg-spin" aria-hidden="true"></span>Redirecting…</div>
+            </div>
+        }
+        else if (_outcome is Outcome.Declined)
+        {
+            <div class="lg-result" role="status">
+                <div class="lg-result-ic stop"><span class="material-icons" aria-hidden="true">logout</span></div>
+                <div class="lg-result-ttl">You declined the terms</div>
+                <div class="lg-result-desc">
+                    You’ve been signed out. Your account isn’t locked — you can sign in again and respond
+                    differently whenever you’re ready.
+                </div>
+                <div class="lg-redirect"><span class="lg-spin" aria-hidden="true"></span>Returning to sign in…</div>
+            </div>
+        }
+        else
+        {
+            <div class="lg-brand"><OdsBrandMark Size="60" /></div>
+
+            <div class="lg-head">
+                <h1 class="lg-title" id="lg-title" tabindex="-1">Review and accept to continue</h1>
+                <p class="lg-sub">
+                    @(_documents.Count > 1
+                        ? "Two documents govern your account and need your acceptance before you continue."
+                        : "One document governing your account needs your acceptance before you continue.")
+                    You likely reviewed @(_documents.Count > 1 ? "these" : "this") at sign-up — this is the recorded step.
+                </p>
+            </div>
+
+            @if (_documents.Count > 0)
+            {
+                <ol class="lg-stepper" aria-label="@StepperLabel">
+                    @for (var index = 0; index < _documents.Count; index++)
+                    {
+                        var key = _documents[index];
+                        var position = index;
+                        var done = IsDone(key);
+                        var isCurrent = !done && _documents.Take(position).All(IsDone);
+
+                        <li class="lg-step @(done ? "done" : isCurrent ? "current" : "upcoming")"
+                            aria-current="@(isCurrent ? "step" : null)">
+                            <span class="lg-step-dot" aria-hidden="true">
+                                @if (done)
+                                {
+                                    <span class="material-icons">@(_acknowledged.Contains(key) ? "remove" : "check")</span>
+                                }
+                                else
+                                {
+                                    @(position + 1)
+                                }
+                            </span>
+                            <span class="lg-step-body">
+                                <span class="lg-step-label">@TitleOf(key)</span>
+                                <span class="lg-step-state">@StepState(key, isCurrent)</span>
+                            </span>
+                            @if (position < _documents.Count - 1)
+                            {
+                                <span class="lg-step-line @(done ? "filled" : null)" aria-hidden="true"></span>
+                            }
+                        </li>
+                    }
+                </ol>
+            }
+
+            @if (_staleVersion)
+            {
+                <div class="lg-alert">
+                    <OdsAlert Severity="Severity.Warning">
+                        <b>The Terms of Service changed while you were reading it.</b>
+                        The current version is shown below — please review and respond to that one.
+                    </OdsAlert>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_respondError))
+            {
+                <div class="lg-alert">
+                    <OdsAlert Severity="Severity.Error"><b>Couldn’t record your response.</b> @_respondError</OdsAlert>
+                </div>
+            }
+
+            @if (CurrentDocument is { } current)
+            {
+                @DocumentBlock(current)
+            }
+
+            <div class="lg-foot">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
+                <span>Your response is recorded with a timestamp against the exact text shown above.</span>
+            </div>
+        }
+    </div>
+
+    @* Advancing a step replaces the document in place, with no navigation to announce it. *@
+    <OdsLiveAnnouncer Message="@_announce" />
+</div>
+
+<OdsModal Open="_declineTarget is not null" Icon="logout" IconTone="OdsModalTone.Warning"
+          OnClose="CancelDecline">
+    <Title>Decline and sign out?</Title>
+    <ChildContent>
+        <p class="lg-modal-copy">
+            Declining the @(_declineTarget == LegalDocumentType.License ? "software license" : "Terms of Service")
+            signs you out of Odyssey. Your account won’t be locked — you can sign in again and accept
+            whenever you’re ready.
+        </p>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelDecline">Keep reviewing</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Danger" Icon="logout" Loading="_declining"
+                   OnClick="ConfirmDeclineAsync">Decline and sign out</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    // One outstanding document's block: header, the scrollable text (or its loading/error/empty state),
+    // then the actions row. Only the current step is rendered — the stepper above carries the rest.
+    private RenderFragment DocumentBlock(LegalDocumentType key) => @<div class="lg-doc">
+        <div class="lg-doc-head">
+            <span class="lg-doc-ic"><span class="material-icons" aria-hidden="true">@IconOf(key)</span></span>
+            <div class="lg-doc-titles">
+                <div class="lg-doc-ttl" id="@TitleId(key)">@TitleOf(key)</div>
+                <span class="lg-doc-meta">
+                    @if (key == LegalDocumentType.License)
+                    {
+                        <span>Repository <b>LICENSE</b></span>
+                        @if (ShortLicenseDigest is { } digest)
+                        {
+                            <span class="lg-meta-dot" aria-hidden="true"></span>
+                            <span class="mono" title="SHA-256 of the accepted content">sha256:@digest…</span>
+                        }
+                    }
+                    else if (_terms is { } terms)
+                    {
+                        <span>Version @terms.Id</span>
+                        <span class="lg-meta-dot" aria-hidden="true"></span>
+                        <span>Published @terms.PublishedAt.ToLocalTime().ToString("d MMM yyyy")</span>
+                    }
+                    else
+                    {
+                        <span>Not published yet</span>
+                    }
+                </span>
+            </div>
+        </div>
+
+        @if (_phase == Phase.Loading)
+        {
+            <div class="lg-sk" aria-hidden="true">
+                @foreach (var width in SkeletonWidths)
+                {
+                    <div class="lg-sk-bar" style="width: @(width)%"></div>
+                }
+            </div>
+            <span class="sr-only" role="status">Loading the document…</span>
+        }
+        else if (_phase == Phase.Error)
+        {
+            <div class="lg-doc-error" role="alert">
+                <span class="material-icons" aria-hidden="true">cloud_off</span>
+                <div class="lg-doc-error-txt">
+                    We couldn’t load this document. You can’t accept until it loads — please try again.
+                </div>
+                <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="LoadAsync">Retry</OdsButton>
+            </div>
+        }
+        else if (TextOf(key) is { Length: > 0 } text)
+        {
+            <div class="lg-scroll-wrap">
+                <div class="lg-scroll @(key == LegalDocumentType.TermsOfService ? "prose" : null)"
+                     tabindex="0" role="region" aria-labelledby="@TitleId(key)">
+                    @text
+                    @* Watched by legal-doc.js: coming into view is what marks the document read. *@
+                    <div class="lg-scroll-end" @ref="_scrollEnd" aria-hidden="true"></div>
+                </div>
+                <div class="lg-fade @(_reachedEnd.Contains(key) ? "hidden" : null)" aria-hidden="true"></div>
+            </div>
+        }
+        else
+        {
+            @* Loaded successfully but there is nothing to accept — acknowledge and move on rather than
+               stranding the user on a step they cannot complete. *@
+            <div style="padding: 18px">
+                <div class="lg-notpub" role="note">
+                    <span class="material-icons" aria-hidden="true">@IconOf(key)</span>
+                    <div class="lg-notpub-txt">
+                        @if (key == LegalDocumentType.TermsOfService)
+                        {
+                            <b>No Terms of Service has been published yet.</b>
+                            <text> There’s nothing to accept for this step. Continue for now — you’ll be asked to accept the Terms once an administrator publishes them.</text>
+                        }
+                        else
+                        {
+                            <b>The software license couldn’t be loaded.</b>
+                            <text> There’s nothing to accept for this step right now. You can continue, and you’ll be asked again once it’s available.</text>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="lg-doc-actions">
+            @if (_phase == Phase.Ready && TextOf(key) is not { Length: > 0 })
+            {
+                <OdsButton Variant="OdsButtonVariant.Filled" IconRight="arrow_forward"
+                           OnClick="@(() => AcknowledgeAsync(key))">Continue</OdsButton>
+            }
+            else
+            {
+                <span class="lg-hint" id="@HintId(key)">
+                    <span class="material-icons" aria-hidden="true">@(_reachedEnd.Contains(key) ? "check_circle" : "south")</span>
+                    @(_reachedEnd.Contains(key) ? "You’ve reached the end" : "Scroll to the end to accept")
+                </span>
+                <OdsButton Variant="OdsButtonVariant.Text" Disabled="@(_phase != Phase.Ready || _busy is not null)"
+                           OnClick="@(() => RequestDecline(key))">Decline</OdsButton>
+                @* aria-describedby, so a screen reader hears WHY Accept is unavailable rather than
+                   just that it is disabled. *@
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="@(_busy == key)"
+                           aria-describedby="@HintId(key)"
+                           Disabled="@(_phase != Phase.Ready || !_reachedEnd.Contains(key) || _busy is not null)"
+                           OnClick="@(() => AcceptAsync(key))">Accept</OdsButton>
+            }
+        </div>
+    </div>;
+}

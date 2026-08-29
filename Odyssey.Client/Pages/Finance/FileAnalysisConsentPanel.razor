@@ -1,0 +1,128 @@
+@using Odyssey.Dtos.Application
+@* The informed-consent gate the analyze-file dialog opens on: what leaves Odyssey, where it goes,
+   and the checkbox that records the affirmation. Split out of FileAnalysisDialog (issue #373) with
+   the .fan-consent* / .fan-xfer* / .fan-docprev* / .fan-facts rules it owns. *@
+
+<div class="fan-consent">
+    <!-- Transfer route — from Odyssey out to the processor -->
+    <div class="fan-xfer">
+        <div class="fan-xfer-node">
+            <span class="fan-xfer-ic in"><OdsMIcon Name="lock" Size="17" /></span>
+            <div class="fan-xfer-meta">
+                <div class="fan-xfer-t">Odyssey</div>
+                <div class="fan-xfer-s">Your workspace</div>
+            </div>
+        </div>
+        <span class="fan-xfer-arrow"><OdsMIcon Name="arrow_forward" Size="18" /></span>
+        <div class="fan-xfer-node">
+            <div class="fan-xfer-meta">
+                <div class="fan-xfer-t">@Disclosure.Processor</div>
+                @* The model the server will ACTUALLY call. This line hardcoded "claude-opus-4-7"
+                   while appsettings configured claude-sonnet-5 — the GDPR Art. 13 defect issue #421
+                   Wave 1 exists to fix. Empty only when the fetch failed and the fallback is showing. *@
+                <div class="fan-xfer-s mono">
+                    @(string.IsNullOrEmpty(Disclosure.Model) ? Disclosure.ProcessorRegion
+                                                             : $"{Disclosure.Model} · {Disclosure.ProcessorRegion}")
+                </div>
+            </div>
+            <span class="fan-xfer-ic out"><OdsMIcon Name="auto_awesome" Size="17" /></span>
+        </div>
+    </div>
+
+    <div class="fan-consent-grid">
+        <div class="fan-consent-doc">
+            <!-- Decorative rendering of the document's first page (aria-hidden) -->
+            <div class="fan-docprev" aria-hidden="true">
+                <div class="fan-docprev-page">
+                    <div class="fan-docprev-head">
+                        <span class="fan-docprev-logo"></span>
+                        <div class="fan-docprev-headmeta"><span></span><span></span></div>
+                    </div>
+                    <div class="fan-docprev-acctline">
+                        <span class="fan-docprev-acctlabel">Account</span>
+                        <span class="fan-docprev-redact"><OdsMIcon Name="lock" Size="9" />redacted in this preview only</span>
+                    </div>
+                    <div class="fan-docprev-rows">
+                        @for (var i = 0; i < 6; i++)
+                        {
+                            <div class="fan-docprev-row">
+                                <span class="d"></span><span class="desc" style="width:@(52 + (i * 13) % 34)%"></span><span class="amt"></span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="fan-doc-cap">
+                <OdsMIcon Name="description" Size="13" />
+                <span><b>@FileName</b> · full document@(FileSizeBytes > 0 ? $" · {ByteSize.Format(FileSizeBytes)}" : "")</span>
+            </div>
+        </div>
+
+        <ul class="fan-facts">
+            <li>
+                <OdsMIcon Name="cloud_upload" Size="18" />
+                <div><b>The whole file is uploaded.</b> Every page is sent to @Disclosure.Processor — the model needs the complete statement to read it.</div>
+            </li>
+            <li>
+                <OdsMIcon Name="account_balance" Size="18" />
+                <div><b>Whatever the file contains is sent.</b> Odyssey doesn’t inspect it first — the whole document is uploaded as-is, including any personal or financial data inside.</div>
+            </li>
+            <li>
+                <OdsMIcon Name="sync_alt" Size="18" />
+                <div><b>Your contact and tag names are sent too.</b> After reading the statement, the model matches each transaction to your existing records — <b>names only, for matching</b>. No notes, organization numbers, or other fields.@(VocabularyCount > 0 ? $" {VocabularyCount} names this time." : "")</div>
+            </li>
+            <li>
+                <OdsMIcon Name="verified_user" Size="18" />
+                <div><b>Not used to train models.</b> @Disclosure.Processor retains the data for a limited period under their <a href="@Disclosure.PrivacyNoticeUrl" class="fan-link" target="_blank" rel="noopener noreferrer">privacy policy</a>.</div>
+            </li>
+            <li>
+                <OdsMIcon Name="history" Size="18" />
+                <div><b>This transfer is logged.</b> Your name, the file and the time are written to the analysis log.</div>
+            </li>
+        </ul>
+    </div>
+
+    <div class="fan-consent-check">
+        @* Disabled until the disclosure resolves: ticking against fallback text that then changes
+           underneath is a consent given to wording the user never saw. *@
+        <OdsCheckbox Checked="Checked" CheckedChanged="CheckedChanged" Disabled="@(!DisclosureResolved)">
+            <span class="fan-consent-text">@FileAnalysisConsent.Compose(Disclosure.Processor)</span>
+        </OdsCheckbox>
+        @if (!DisclosureResolved)
+        {
+            <div class="fan-consent-pending" role="status">Loading the current disclosure…</div>
+        }
+    </div>
+
+    <div class="fan-consent-basis">
+        <OdsMIcon Name="gavel" Size="14" />
+        <span>Lawful basis recorded: <b>@Disclosure.LawfulBasis</b></span>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The processor disclosure to render. Supplied by the DIALOG, not fetched here: this panel is
+    /// deliberately presentational — parameters only, no injection, no lifecycle — since it was split
+    /// out of FileAnalysisDialog in #373 for exactly that reason.
+    /// </summary>
+    [Parameter, EditorRequired] public FileAnalysisDisclosureDto Disclosure { get; set; } = default!;
+
+    /// <summary>False while the fetch is in flight or has failed, i.e. the fallback is on screen.</summary>
+    [Parameter] public bool DisclosureResolved { get; set; }
+
+    /// <summary>The document about to be transferred.</summary>
+    [Parameter] public string FileName { get; set; } = "";
+
+    /// <summary>Its size, shown alongside the name when known.</summary>
+    [Parameter] public long FileSizeBytes { get; set; }
+
+    /// <summary>How many contact + tag names would be sent for matching.</summary>
+    [Parameter] public int VocabularyCount { get; set; }
+
+    /// <summary>Whether the reviewer has affirmed the consent sentence.</summary>
+    [Parameter] public bool Checked { get; set; }
+
+    /// <summary>Raised when the affirmation is ticked or cleared.</summary>
+    [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+}

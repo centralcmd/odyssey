@@ -1,0 +1,136 @@
+@*
+    OdsSettingRow — one setting as an outlined card row (Odyssey Design System ·
+    components/SettingRow).
+
+    A tide-tinted icon tile + label + one-line description on the left, and exactly one
+    control on the right (Switch, Select, Field, Button…) supplied as ChildContent. The
+    scaffold behind every row on the Preferences (per-user) and System settings
+    (workspace) pages — formerly duplicated there as PrefCard / SettingCard. `Danger`
+    coral-tints the icon tile for destructive settings.
+*@
+
+<OdsCard Outlined Flush Class="@Class">
+    <div class="odc-setting-row">
+        <div class="odc-setting-main">
+            <span class="@($"odc-setting-ic {(Danger ? "danger" : "")}".TrimEnd())">
+                <span class="material-icons" aria-hidden="true">@Icon</span>
+            </span>
+            <div class="odc-setting-text">
+                @* tabindex="-1" only when something can actually point at this element. TitleId exists
+                   precisely so a page can move focus here, and window.odsFocusById is a bare .focus()
+                   — a silent no-op on a non-focusable node, which is why the Settings page's
+                   jump-to-row branch moved no focus at all before this. Preferences supplies no
+                   TitleId, so the attribute is simply absent there. *@
+                <div class="odc-setting-ttl" id="@TitleId" tabindex="@(TitleId is null ? null : "-1")">
+                    @Title
+                    @* The dot sits with the TITLE, not in the control column, so it stays attached to
+                       the setting when the control renders in the Footer well instead. *@
+                    @if (Dirty)
+                    {
+                        <span class="odc-setting-dot" title="Unsaved change" aria-hidden="true"></span>
+                        <span class="sr-only"> (unsaved change)</span>
+                    }
+                </div>
+                @if (!string.IsNullOrEmpty(Desc))
+                {
+                    <div class="odc-setting-desc" id="@DescId">@Desc</div>
+                }
+            </div>
+        </div>
+        @* No empty control column for a footer-control row: it would leave a gap the row's
+           `justify-content: space-between` still reserves. *@
+        @if (ChildContent is not null)
+        {
+            <div class="odc-setting-control">@ChildContent</div>
+        }
+    </div>
+    @if (Footer is not null)
+    {
+        <div class="odc-setting-footer">@Footer</div>
+    }
+    @* A THIRD, independent slot — not a variant of Footer. ChildContent and Footer are strictly
+       either/or (a Text control is too wide for the fixed control column, so it renders in the footer
+       instead), and the one row the correspondence advisory targets is a Text row: it already occupies
+       Footer. An advisory has to be able to render alongside either. *@
+    @if (Advisory is not null)
+    {
+        <div class="odc-setting-advisory" id="@AdvisoryId">
+            <span class="material-icons" aria-hidden="true">info_outline</span>
+            <div class="odc-setting-advisory-body">
+                <strong>Advisory</strong> — @Advisory
+            </div>
+        </div>
+    }
+</OdsCard>
+
+@code {
+    /// <summary>Leading Material Icons ligature shown in the tinted tile.</summary>
+    [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
+
+    /// <summary>The setting's name.</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional id on the title element, so a label-less control in <see cref="ChildContent"/> (e.g. an
+    /// <c>OdsNumberField</c> with no visible label of its own) can name itself via <c>aria-labelledby</c>.
+    /// </summary>
+    [Parameter] public string? TitleId { get; set; }
+
+    /// <summary>Optional one-line description under the title.</summary>
+    [Parameter] public string? Desc { get; set; }
+
+    /// <summary>
+    /// Optional id on the description element, so a control in <see cref="ChildContent"/> can point
+    /// its <c>aria-describedby</c> at the row's own hint (e.g. an <c>OdsCapacityField</c>/
+    /// <c>OdsNumberField</c> with no hint text of its own).
+    /// </summary>
+    [Parameter] public string? DescId { get; set; }
+
+    /// <summary>Coral-tint the icon tile for destructive settings.</summary>
+    [Parameter] public bool Danger { get; set; }
+
+    /// <summary>
+    /// Show the unsaved-change dot beside the title. Beside the TITLE rather than in the control
+    /// column, deliberately: <see cref="ChildContent"/> and <see cref="Footer"/> are strictly
+    /// either/or, so a dot in the column would be orphaned on every footer-control row.
+    /// </summary>
+    [Parameter] public bool Dirty { get; set; }
+
+    /// <summary>
+    /// Optional full-width slot rendered below the row — e.g. a cross-field error message too wide
+    /// for the (120px) control column. Not used for the System Settings round-trip alert, which is a
+    /// group-level element rendered by the page itself, not per-row.
+    /// </summary>
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    /// <summary>
+    /// Optional non-blocking advisory text, rendered below the row and below <see cref="Footer"/>
+    /// (issue #434 §3). The slot carries the MESSAGE only — this component supplies the wrapper, the
+    /// <c>aria-hidden</c> icon and the visible word "Advisory", so the three things that make an
+    /// advisory accessible cannot be forgotten at a call site:
+    ///
+    /// <list type="bullet">
+    /// <item>its meaning is available as TEXT, not by colour or icon alone (WCAG 1.4.1);</item>
+    /// <item>it is visually distinguishable from a field error by more than hue — different icon,
+    /// different prefix word;</item>
+    /// <item>it is static described-by text, so <see cref="AdvisoryId"/> can be appended to the
+    /// control's <c>aria-describedby</c> and heard as part of the field's description.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// It is NOT a validation error: it never sets <c>aria-invalid</c>, never marks the row invalid and
+    /// never blocks a save. It is also not a live region — announcement is routed through the page's
+    /// existing <c>OdsLiveAnnouncer</c>, because a live region inserted into the DOM at the same time as
+    /// its content is frequently not announced at all.
+    /// </para>
+    /// </summary>
+    [Parameter] public RenderFragment? Advisory { get; set; }
+
+    /// <summary>Id on the advisory element, for the control's <c>aria-describedby</c>.</summary>
+    [Parameter] public string? AdvisoryId { get; set; }
+
+    /// <summary>The single control on the right (and any trailing affordance, e.g. an unsaved flag).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+}

@@ -1,0 +1,143 @@
+@*
+    OdsPager — the shared list pager (Odyssey Design System · components/Pager).
+
+    Sits flush below every server-paged FLAT-TABLE list page. Left cluster: the canonical
+    rows-per-page selector (an OdsPageSizeSelect) + the one summary ("Showing X–Y of N", or
+    "0 results" when empty). Right cluster: first / previous / next / last.
+
+    Controlled + bindable: pass Page (1-based), PageSize (int; OdsPageSizes.All = every row),
+    TotalCount, and handle PageChanged / PageSizeChanged. TotalPages is derived, never passed.
+    Changing the size resets the page to 1 — the OWNER page does that (it also resets on
+    search / filter / sort), the same way it re-fetches.
+
+    Accessibility (spec §3.4): a <nav aria-label> landmark; first/prev/next/last are real buttons
+    with plain-text names; AT A BOUND a nav button stays FOCUSABLE + ENABLED but aria-disabled and
+    its activation is a no-op (never the native `disabled` attribute, which would drop it from the
+    tab order — WCAG 2.4.3); activating Prev/Next keeps focus on the pressed button, and if that
+    press reaches a bound, focus moves to the opposite still-active button so focus is never lost.
+*@
+
+<nav class="@($"odc-pager {Class}".TrimEnd())"
+     aria-label="@Label"
+     aria-busy="@(Loading ? "true" : null)"
+     id="@Id">
+    <div class="odc-pager-left">
+        @if (ShowPageSize)
+        {
+            <div class="odc-pager-size">
+                <span class="odc-pager-size-label">@PageSizeLabel</span>
+                <OdsPageSizeSelect Value="PageSize" ValueChanged="OnSizePicked"
+                                   Options="PageSizeOptions" Mirror="false"
+                                   Prefix="" Label="@PageSizeLabel" Disabled="Loading" />
+            </div>
+        }
+        <span class="odc-pager-summary" aria-live="@(Announce ? "polite" : null)">
+            @if (Loading)
+            {
+                <span class="odc-pager-spin" aria-hidden="true"></span>
+            }
+            @Summary
+        </span>
+    </div>
+    <div class="odc-pager-nav">
+        <button type="button" class="odc-pager-btn" aria-label="First page"
+                aria-disabled="@(AtFirst || Loading ? "true" : null)"
+                @onclick="@(() => Goto(1, dir: "prev", bound: AtFirst))">
+            <span class="material-icons" aria-hidden="true">first_page</span>
+        </button>
+        <button type="button" class="odc-pager-btn" aria-label="Previous page" @ref="_prev"
+                aria-disabled="@(AtFirst || Loading ? "true" : null)"
+                @onclick="@(() => Goto(Page - 1, dir: "prev", bound: AtFirst))">
+            <span class="material-icons" aria-hidden="true">chevron_left</span>
+        </button>
+        <button type="button" class="odc-pager-btn" aria-label="Next page" @ref="_next"
+                aria-disabled="@(AtLast || Loading ? "true" : null)"
+                @onclick="@(() => Goto(Page + 1, dir: "next", bound: AtLast))">
+            <span class="material-icons" aria-hidden="true">chevron_right</span>
+        </button>
+        <button type="button" class="odc-pager-btn" aria-label="Last page"
+                aria-disabled="@(AtLast || Loading ? "true" : null)"
+                @onclick="@(() => Goto(TotalPages, dir: "next", bound: AtLast))">
+            <span class="material-icons" aria-hidden="true">last_page</span>
+        </button>
+    </div>
+</nav>
+
+@code {
+    /// <summary>Current page, 1-based. Bindable via @bind-Page.</summary>
+    [Parameter] public int Page { get; set; } = 1;
+
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+
+    /// <summary>Rows per page (<see cref="OdsPageSizes.All"/> = every matching row). Bindable via @bind-PageSize.</summary>
+    [Parameter] public int PageSize { get; set; } = 25;
+
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
+
+    /// <summary>Total matching rows (from the server's PagedResult.TotalCount).</summary>
+    [Parameter] public int TotalCount { get; set; }
+
+    [Parameter] public IReadOnlyList<int> PageSizeOptions { get; set; } = OdsPageSizes.Default;
+
+    [Parameter] public bool ShowPageSize { get; set; } = true;
+
+    [Parameter] public string PageSizeLabel { get; set; } = "Rows per page";
+
+    /// <summary>A page fetch is in flight — dims the nav, shows the summary spinner.</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>The pagination landmark's accessible name.</summary>
+    [Parameter] public string Label { get; set; } = "Pagination";
+
+    /// <summary>Announce the summary in a polite live region (only for pages with no announcer of their own).</summary>
+    [Parameter] public bool Announce { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    private ElementReference _prev;
+    private ElementReference _next;
+    private string? _pressed; // "prev" | "next" — which button initiated the last nav
+
+    // Derivation lives in OdsPagerMath (pure + unit-tested); the component only renders it.
+    private int TotalPages => OdsPagerMath.TotalPages(TotalCount, PageSize);
+    private bool AtFirst => OdsPagerMath.AtFirst(Page, TotalCount);
+    private bool AtLast => OdsPagerMath.AtLast(Page, PageSize, TotalCount);
+    private string Summary => OdsPagerMath.Summary(Page, PageSize, TotalCount);
+
+    private async Task Goto(int target, string dir, bool bound)
+    {
+        if (Loading || bound)
+            return; // in-flight or aria-disabled: activation is a no-op
+
+        var next = Math.Max(1, Math.Min(TotalPages, target));
+        if (next == Page)
+            return;
+
+        _pressed = dir;
+        await PageChanged.InvokeAsync(next);
+    }
+
+    private Task OnSizePicked(int size) => PageSizeChanged.InvokeAsync(size);
+
+    // After a nav settles: if the button the user pressed reached a bound (now aria-disabled),
+    // move focus to the opposite still-active button so focus is never stranded on an inert control.
+    // While a server fetch is in flight (Loading), the settle render hasn't happened yet — keep
+    // _pressed so it survives to the render where Loading clears (else server pagers lose the hand-off).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Loading)
+            return;
+
+        var who = _pressed;
+        _pressed = null;
+        if (who is null)
+            return;
+
+        if (who == "prev" && AtFirst && !AtLast)
+            await _next.FocusAsync();
+        else if (who == "next" && AtLast && !AtFirst)
+            await _prev.FocusAsync();
+    }
+}

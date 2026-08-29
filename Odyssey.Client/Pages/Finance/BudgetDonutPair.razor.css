@@ -1,0 +1,35 @@
+/* ── Overview panel (donut charts) ──────────────────────────────── */
+/* The two-column grid + hairline divider live in <OdsDonutPair>; only the
+   per-panel content (empty-state title/head/line) is styled locally. */
+.donut-panel { min-width: 0; }
+
+.chart-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.chart-ttl {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--mud-palette-text-primary);
+}
+
+.chart-sub {
+    font-size: 0.6875rem;
+    line-height: 1;
+    color: var(--mud-palette-text-secondary);
+    margin-top: 5px;
+}
+
+/* The ring + legend are rendered by <OdsDonut>; only the empty-state line and the
+   panel/head wrappers are local. */
+.donut-legend-empty {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--mud-palette-text-secondary);
+    padding: 8px 0;
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="NumberField" subtitle="Labelled numeric input (native type=number) that emits a number or null — for counts, years and declared figures. For money use AmountField. Mounted from the DS namespace." viewport="900x420" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · NumberField</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 760px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px 22px; align-items: start; }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 22px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>NumberField — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;NumberField label value onChange /&gt;</code></h1>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var NumberField = NS.NumberField;
+      var useState = React.useState;
+
+      function Num(props) {
+        var s = useState(props.init == null ? null : props.init);
+        return e(NumberField, Object.assign({}, props, { value: s[0], onChange: function (v) { s[1](v); } }));
+      }
+
+      var root = [
+        e('div', { key: 'a' }, e('div', { className: 'cap' }, 'Tax-statement figures (was ATS_NumField / TS_NumField)'),
+          e('div', { className: 'row' },
+            e(Num, { key: 1, label: 'Fiscal year', init: 2025, help: 'The income year.' }),
+            e(Num, { key: 2, label: 'Total income', init: 842000, align: 'right' }),
+            e(Num, { key: 3, label: 'Assessed tax', placeholder: '—', align: 'right' }))),
+        e('div', { key: 'b' }, e('div', { className: 'cap' }, 'States'),
+          e('div', { className: 'row' },
+            e(Num, { key: 1, label: 'Net worth', init: 1250000, help: 'May differ from assets − liabilities.', align: 'right' }),
+            e(Num, { key: 2, label: 'Required', required: true, error: 'Enter a figure.' }),
+            e(NumberField, { key: 3, label: 'Disabled', value: 0, disabled: true })))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>

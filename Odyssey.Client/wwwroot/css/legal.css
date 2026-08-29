@@ -1,0 +1,232 @@
+/* =============================================================
+   legal.css — License / Terms-of-Service acceptance (issue #354).
+
+   Ported from "Odyssey Design System/ui_kits/web/legal.css". GLOBAL rather than
+   Blazor-scoped, for two reasons that both rule scoping out: these classes are
+   shared by three components (the /accept-terms interstitial, the /legal-documents
+   admin page, and the registration review), and several of them style content
+   inside OdsModal — which MudBlazor teleports out of the component's DOM subtree,
+   where scoped CSS never reaches.
+
+   All tokens come from app.css / the theme; nothing here hardcodes a colour that
+   isn't valid in both light and dark mode.
+   ============================================================= */
+
+/* ---- Interstitial shell (own layout) ---- */
+.lg-shell {
+  min-height: 100vh;
+  display: grid; place-items: start center;
+  padding: 48px 16px 72px;
+  background: var(--mud-palette-background);
+  overflow-y: auto;
+}
+.lg-card {
+  width: 100%; max-width: 760px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--mud-elevation-8, 0 12px 40px rgba(0,0,0,0.35));
+  padding: 32px 36px 28px;
+  box-sizing: border-box;
+}
+.lg-brand { display: flex; justify-content: center; margin-bottom: 16px; }
+.lg-head { text-align: center; margin-bottom: 8px; }
+.lg-title { margin: 0; font: 400 26px/1.15 var(--font-sans); letter-spacing: -0.01em; color: var(--mud-palette-text-primary); }
+.lg-title:focus { outline: none; }
+.lg-sub { margin: 10px auto 0; max-width: 520px; font: 400 14px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+
+/* Two-step stepper above the documents (License → Terms of Service). */
+.lg-stepper { list-style: none; display: flex; justify-content: center; gap: 0; margin: 24px auto 22px; padding: 0; }
+.lg-step { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.lg-step:not(:last-child) { width: 260px; }
+.lg-step-dot {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; box-sizing: border-box;
+  font: 600 13px/1 var(--font-mono); z-index: 1;
+  border: 1.5px solid var(--mud-palette-divider); background: var(--mud-palette-surface);
+  color: var(--mud-palette-text-secondary); transition: all 200ms ease;
+}
+.lg-step-dot .material-icons { font-size: 18px; }
+.lg-step.current .lg-step-dot { border-color: var(--tide-400); color: var(--tide-400); box-shadow: 0 0 0 4px rgba(79,215,203,0.14); }
+.lg-step.done .lg-step-dot { border-color: var(--finance-income); background: var(--finance-income); color: var(--mud-palette-surface); }
+.lg-step-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lg-step-label { font: 500 13.5px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lg-step-state { font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.05em; text-transform: uppercase; color: var(--mud-palette-text-disabled, var(--mud-palette-text-secondary)); }
+.lg-step.current .lg-step-label { color: var(--mud-palette-text-primary); }
+.lg-step.current .lg-step-state { color: var(--tide-400); }
+.lg-step.done .lg-step-label { color: var(--mud-palette-text-primary); }
+.lg-step.done .lg-step-state { color: var(--finance-income); }
+/* connector line to the next step */
+.lg-step-line { position: absolute; left: 42px; right: 0; top: 15px; height: 1.5px; background: var(--mud-palette-divider); }
+.lg-step-line.filled { background: var(--finance-income); }
+@media (max-width: 480px) {
+  .lg-step-state { display: none; }
+  .lg-step-line { top: 15px; }
+}
+
+/* ---- One document block ---- */
+.lg-doc { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
+.lg-doc + .lg-doc { margin-top: 16px; }
+.lg-doc.done { border-color: var(--finance-income-border, rgba(52,199,140,0.4)); }
+
+.lg-doc-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--mud-palette-divider); }
+.lg-doc-ic { flex: none; width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; background: rgba(79,215,203,0.14); color: var(--tide-400); }
+.lg-doc-ic .material-icons { font-size: 20px; }
+.lg-doc-titles { min-width: 0; flex: 1; }
+.lg-doc-ttl { font: 500 15px/1.25 var(--font-sans); color: var(--mud-palette-text-primary); }
+.lg-doc-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 3px; font: 400 12px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.lg-doc-meta .mono { font-family: var(--font-mono); font-size: 11px; }
+.lg-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--mud-palette-divider); }
+
+/* Scrollable read-only text (tabindex=0, keyboard-reachable). */
+.lg-scroll-wrap { position: relative; }
+.lg-scroll {
+  max-height: 360px; overflow-y: auto; padding: 18px 20px;
+  font: 400 13.5px/1.7 var(--font-mono); color: var(--mud-palette-text-primary);
+  white-space: pre-wrap; word-break: break-word; -webkit-overflow-scrolling: touch;
+}
+.lg-scroll.prose { font-family: var(--font-sans); font-size: 14.5px; line-height: 1.75; }
+/* Themed scrollbar (matches the shared .acct-menu-pop treatment). */
+.lg-scroll, .lg-reg-scroll, .lg-ver-view, .lg-admin-card .odc-input-multiline { scrollbar-width: thin; scrollbar-color: var(--mud-palette-lines-inputs) transparent; }
+.lg-scroll::-webkit-scrollbar, .lg-reg-scroll::-webkit-scrollbar, .lg-ver-view::-webkit-scrollbar, .lg-admin-card .odc-input-multiline::-webkit-scrollbar { width: 12px; }
+.lg-scroll::-webkit-scrollbar-track, .lg-reg-scroll::-webkit-scrollbar-track, .lg-ver-view::-webkit-scrollbar-track, .lg-admin-card .odc-input-multiline::-webkit-scrollbar-track { background: transparent; }
+.lg-scroll::-webkit-scrollbar-thumb, .lg-reg-scroll::-webkit-scrollbar-thumb, .lg-ver-view::-webkit-scrollbar-thumb, .lg-admin-card .odc-input-multiline::-webkit-scrollbar-thumb {
+  background: var(--mud-palette-lines-inputs); border-radius: 999px;
+  border: 3px solid var(--mud-palette-background); background-clip: padding-box;
+}
+.lg-scroll::-webkit-scrollbar-thumb:hover, .lg-reg-scroll::-webkit-scrollbar-thumb:hover, .lg-ver-view::-webkit-scrollbar-thumb:hover, .lg-admin-card .odc-input-multiline::-webkit-scrollbar-thumb:hover {
+  background: var(--mud-palette-text-secondary); background-clip: padding-box;
+}
+.lg-scroll:focus-visible { outline: 2px solid var(--tide-400); outline-offset: -2px; }
+/* fade hint at the bottom while more text remains below the fold */
+.lg-fade { pointer-events: none; position: absolute; left: 0; right: 12px; bottom: 0; height: 40px;
+  background: linear-gradient(to bottom, transparent, var(--mud-palette-background)); opacity: 1; transition: opacity 180ms ease; }
+.lg-fade.hidden { opacity: 0; }
+
+/* Load-failure state inside a doc block (interstitial: load-bearing). */
+.lg-doc-error { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 34px 20px; }
+.lg-doc-error .material-icons { font-size: 26px; color: var(--amber-500); }
+.lg-doc-error-txt { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 320px; }
+
+/* Skeleton while loading. */
+.lg-sk { padding: 16px 18px; }
+.lg-sk-bar { height: 11px; border-radius: 5px; background: var(--mud-palette-action-disabled-background); animation: ssPulse 1.4s ease-in-out infinite; }
+.lg-sk-bar + .lg-sk-bar { margin-top: 11px; }
+
+/* Actions row under a doc: Decline (text) + Accept (filled), or accepted state. */
+.lg-doc-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 13px 16px; border-top: 1px solid var(--mud-palette-divider); flex-wrap: wrap; }
+.lg-doc-actions .lg-hint { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; font: 400 12px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.lg-doc-actions .lg-hint .material-icons { font-size: 15px; opacity: 0.8; }
+.lg-accepted { margin-right: auto; display: inline-flex; align-items: center; gap: 7px; font: 500 13px/1.3 var(--font-sans); color: var(--finance-income); }
+.lg-accepted .material-icons { font-size: 18px; }
+
+/* Not-yet-published ToS note (interstitial + registration + admin). */
+.lg-notpub { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border: 1px dashed var(--mud-palette-lines-default, var(--mud-palette-divider)); border-radius: var(--radius-md); background: transparent; }
+.lg-notpub .material-icons { color: var(--mud-palette-text-secondary); font-size: 19px; flex: none; }
+.lg-notpub-txt { font: 400 13px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.lg-notpub-txt b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+.lg-foot { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 18px; font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.lg-foot .material-icons { font-size: 14px; }
+
+/* ---- Result panels (accepted / declined) ---- */
+.lg-result { text-align: center; padding: 20px 8px 6px; }
+.lg-result-ic { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 18px; display: grid; place-items: center; }
+.lg-result-ic .material-icons { font-size: 34px; }
+.lg-result-ic.ok { background: var(--finance-income-soft); color: var(--finance-income); }
+.lg-result-ic.stop { background: var(--finance-expense-soft); color: var(--finance-expense); }
+.lg-result-ttl { font: 400 22px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.lg-result-desc { margin: 10px auto 0; max-width: 440px; font: 400 14px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.lg-result-actions { display: flex; justify-content: center; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+.lg-redirect { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; font: 400 12.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.lg-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--mud-palette-divider); border-top-color: var(--tide-400); animation: lgSpin 0.7s linear infinite; }
+@keyframes lgSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .lg-spin { animation: none; } }
+
+/* ---- Admin: Legal Documents bespoke panel ---- */
+.lg-admin-card { padding: 20px 22px 22px; }
+.lg-admin-blocker { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border: 1px solid var(--finance-pending-border); border-radius: var(--radius-lg); background: var(--finance-pending-soft); }
+.lg-admin-blocker .material-icons { color: var(--amber-500); font-size: 22px; flex: none; margin-top: 1px; }
+.lg-admin-blocker-ttl { font: 500 15px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
+.lg-admin-blocker-desc { font: 400 13px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; max-width: 560px; }
+.lg-admin-blocker-act { margin-top: 12px; }
+
+.lg-editor-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.lg-editor-note { font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; margin: 2px 0 12px; }
+.lg-editor-note b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.lg-current-tag { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1 var(--font-sans); color: var(--tide-400); }
+.lg-current-tag .material-icons { font-size: 15px; }
+
+/* Version history table sits in its own section. The DS composed this as `class="tbl lg-vtbl"` over a
+   shared global .tbl; in the Blazor client .tbl is page-scoped (Users), so the base rules are folded in
+   here under .lg-vtbl rather than duplicated into a scoped file where the attribute selector's higher
+   specificity would then override the tighter padding below. */
+.lg-vtbl { width: 100%; border-collapse: separate; border-spacing: 0; }
+.lg-vtbl thead th {
+  font: 500 0.6875rem/1.4 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase;
+  text-align: left; color: var(--mud-palette-text-secondary);
+  border-bottom: 1px solid var(--mud-palette-divider); background: transparent; white-space: nowrap;
+}
+.lg-vtbl tbody tr { border-bottom: 1px solid var(--mud-palette-table-lines); }
+/* The whole row opens the version viewer (kit.css .tbl tbody tr:hover), so it reads as the control it is. */
+.lg-vtbl tbody tr:hover { background: var(--mud-palette-action-default-hover); cursor: pointer; }
+.lg-vtbl tbody tr:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.lg-vtbl td { text-align: left; vertical-align: middle; }
+.lg-vtbl td.numeric, .lg-vtbl th.numeric { text-align: right; white-space: nowrap; }
+.lg-vtbl td, .lg-vtbl th { padding: 11px 14px; }
+.lg-vtbl .lg-ver-id { font: 500 13px/1.2 var(--font-mono); color: var(--mud-palette-text-primary); }
+.lg-vtbl .lg-ver-cur { margin-left: 8px; font: 600 9.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 7px; border-radius: 999px; background: rgba(79,215,203,0.14); color: var(--tide-400); vertical-align: middle; }
+.lg-vtbl .lg-ver-when { color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.lg-vtbl .lg-ver-by { color: var(--mud-palette-text-primary); }
+.lg-vtbl .lg-ver-by.deleted { color: var(--mud-palette-text-secondary); font-style: italic; }
+.lg-vtbl td.lg-ver-act { text-align: right; white-space: nowrap; }
+.lg-tbl-wrap { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; }
+
+/* On-demand historical-version viewer (modal body). */
+.lg-ver-view { max-height: 52vh; overflow-y: auto; padding: 16px 18px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); font: 400 13.5px/1.7 var(--font-sans); color: var(--mud-palette-text-primary); white-space: pre-wrap; }
+.lg-ver-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--mud-palette-text-secondary); font: 400 13px/1 var(--font-sans); }
+
+/* ---- Registration informational review (auth card) ---- */
+.lg-reg-checks { display: flex; flex-direction: column; gap: 10px; }
+.lg-reg-nopub { display: inline-flex; align-items: center; gap: 6px; font: 400 12px/1.4 var(--font-sans); font-style: italic; color: var(--mud-palette-text-secondary); }
+.lg-reg-nopub .material-icons { font-size: 15px; opacity: 0.8; }
+.lg-reg { display: flex; flex-direction: column; gap: 10px; }
+.lg-reg-doc { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; }
+.lg-reg-doc-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font: 500 12.5px/1 var(--font-sans); color: var(--mud-palette-text-primary); border-bottom: 1px solid var(--mud-palette-divider); }
+.lg-reg-doc-head .material-icons { font-size: 16px; color: var(--tide-400); }
+.lg-reg-scroll { max-height: 108px; overflow-y: auto; padding: 10px 12px; font: 400 11.5px/1.55 var(--font-mono); white-space: pre-wrap; word-break: break-word; color: var(--mud-palette-text-secondary); }
+.lg-reg-scroll.prose { font-family: var(--font-sans); font-size: 12px; }
+.lg-reg-check { padding: 9px 12px; border-top: 1px solid var(--mud-palette-divider); }
+
+@media (max-width: 620px) {
+  .lg-card { padding: 26px 20px 22px; }
+  .lg-title { font-size: 22px; }
+  .lg-doc-actions { justify-content: stretch; }
+}
+
+/* ---- Blazor port additions ---- */
+/* Inline alerts inside the interstitial card (stale-version 409, failed respond). The DS kit had no
+   equivalent because its mock never round-trips to a server. */
+.lg-alert { margin: 0 0 16px; }
+
+/* Modal body copy — the DS applied these inline; as a class they stay token-driven and are reachable
+   from the teleported dialog subtree. */
+.lg-modal-copy { margin: 0; font: 400 14px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.lg-modal-copy + .lg-modal-copy { margin-top: 12px; }
+.lg-modal-copy b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+/* The end-of-text sentinel the IntersectionObserver in legal-doc.js watches (see AcceptTerms). */
+.lg-scroll-end { height: 1px; }
+
+/* The document openers beside the registration checkboxes — the DS applied these inline, and styled an
+   anchor; this is a real <button> (see OdsRegisterLegalReview), so the button chrome is reset away. */
+.lg-reg-check { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.lg-reg-link {
+  appearance: none; background: none; border: 0; padding: 0;
+  font: inherit; color: var(--sea-400); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.lg-reg-link:focus-visible { outline: 2px solid var(--tide-400); outline-offset: 2px; border-radius: 2px; }
+
+/* The license is text of record, so it is read in the mono face it is written in; the ToS is prose. */
+.lg-ver-view.mono { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; }

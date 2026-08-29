@@ -1,0 +1,320 @@
+@page "/tax-statements"
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.TaxesRead)]
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IScrollManager ScrollManager
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IReferenceDataCache ReferenceData
+@inject ITaxStatementsApiClient TaxStatements
+
+<PageTitle>Tax Statements</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+@{
+    var cur = OverviewCurrency;
+    var firstYear = FirstYear;
+}
+
+<div class="tax-shell">
+<MudStack Spacing="4">
+
+    <PageHeader Title="Tax Statements"
+                Icon="@Icons.Material.Filled.RequestQuote"
+                Problems="HeaderProblems"
+                ProblemsLabel="Attention"
+                ProblemsOpen="_problemsOpen" ProblemsOpenChanged="OnProblemsToggled"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New tax statement"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>
+            @ActiveCount year@(ActiveCount == 1 ? "" : "s") on file@(LatestFiscalYear is { } latest ? $" · latest assessment {latest}" : "")
+        </SubLine>
+
+        @* Year-over-year declared figures, reusing the design-system line chart. *@
+        <OverviewContent>
+            <div class="tx-overview">
+                <OdsLineChart Title="Net worth" Sub="@($"By fiscal year · {cur}")"
+                              Series="DeclaredSeries(y => y.DeclaredNetWorth)"
+                              Color="var(--chart-1)"
+                              Format="@(n => TaxMoney(n, cur))" AxisFormat="@(n => TaxAxis(n, cur))"
+                              ShowDelta DeltaSuffix="@($"vs {firstYear}")"
+                              EmptyLabel="No declared figures yet."
+                              AriaLabel="Net worth by fiscal year" />
+                <OdsLineChart Title="Assessed tax" Sub="@($"By fiscal year · {cur}")"
+                              Series="DeclaredSeries(y => y.AssessedTax)"
+                              Color="var(--chart-2)"
+                              Format="@(n => TaxMoney(n, cur))" AxisFormat="@(n => TaxAxis(n, cur))"
+                              ShowDelta DeltaSuffix="@($"vs {firstYear}")"
+                              EmptyLabel="No declared figures yet."
+                              AriaLabel="Assessed tax by fiscal year" />
+                <OdsLineChart Title="Accumulated" Sub="@($"Assessed tax · all years · {cur}")"
+                              Series="DeclaredSeries(y => y.AssessedTax)"
+                              Color="var(--chart-4)" Cumulative
+                              Format="@(n => TaxMoney(n, cur))" AxisFormat="@(n => TaxAxis(n, cur))"
+                              EmptyLabel="No declared figures yet."
+                              AriaLabel="Accumulated assessed tax by fiscal year" />
+            </div>
+        </OverviewContent>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="GetStatements"
+                                Placeholder="Search year, name, currency, notes…"
+                                Class="ph-search" />
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="ExistingTaxStatement" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Statements per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="ExistingTaxStatement" Items="_statements" BatchSize="_batch"
+                         ItemKey="@(s => (object)s.TaxStatementId)" Noun="tax statements" RevealKey="_flashId"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="GetStatements"
+                         HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                         EmptyIcon="request_quote"
+                         EmptyDescription="Add a fiscal year to record its declared figures and reconcile them against your Odyssey accounts and tagged transactions.">
+            <RenderItem Context="s">
+                @{
+                    var isExpanded = IsExpanded(s.TaxStatementId);
+                    var archived = s.Archived is not null;
+                    var report = _reports.GetValueOrDefault(s.TaxStatementId);
+                    var problems = _problems.GetValueOrDefault(s.TaxStatementId) ?? [];
+                    var settle = SettlementFigure(s);
+                }
+                <OdsExpandableCard Id="@($"tax-{s.TaxStatementId}")"
+                                   Open="isExpanded"
+                                   Dimmed="archived"
+                                   Flash="@(_flashId == s.TaxStatementId)"
+                                   Label="@s.Name"
+                                   OnToggle="@(() => ToggleExpand(s.TaxStatementId))">
+
+                    <Lead>
+                        <div class="acct-badge" style="background:var(--tax-soft);color:var(--tax);">
+                            <span class="material-icons" aria-hidden="true">request_quote</span>
+                        </div>
+                    </Lead>
+
+                    <Head>
+                        <div class="acct-name-row">
+                            <span class="acct-name">@s.Name</span>
+                            <OdsChip Tone="@StatusTone(s)" Dot="@StatusDot(s)">@StatusLabel(s)</OdsChip>
+                            @if (problems.Count > 0)
+                            {
+                                var top = problems.MaxBy(p => (int)p.Severity)!;
+                                <span class="acct-flag @FlagClass(top.Severity)">
+                                    <span class="material-icons" aria-hidden="true">@FlagGlyph(top.Severity)</span>@(problems.Count == 1 ? problems[0].Chip : "Attention")
+                                </span>
+                            }
+                        </div>
+                        <div class="acct-tags">
+                            <span>@s.StartDate.ToString("MMM dd, yyyy") → @s.EndDate.ToString("MMM dd, yyyy")</span>
+                            <span class="acct-dot">·</span>
+                            <span class="mono">@s.BaseCurrencyCode</span>
+                            <span class="acct-dot">·</span>
+                            <span class="acct-counts">
+                                <span><span class="material-icons" aria-hidden="true">local_offer</span>@(s.TaxTagIds.Count + s.IncomeTagIds.Count)</span>
+                                <span><span class="material-icons" aria-hidden="true">description</span>@s.Files.Count</span>
+                            </span>
+                        </div>
+                    </Head>
+
+                    <Figures>
+                        <div class="acct-balance" style="color:@SettlementColor(settle);">
+                            @(settle is null ? "—" : TaxMoney(Math.Abs(settle.Value), s.BaseCurrencyCode))
+                        </div>
+                        <div class="tx-balance-word">@SettlementWord(s, settle)</div>
+                    </Figures>
+
+                    <Actions>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                 Size="Size.Small"
+                                 Color="Color.Default"
+                                 AnchorOrigin="Origin.TopRight"
+                                 TransformOrigin="Origin.TopRight">
+                            @if (_canUpdate)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(s))">Edit statement</MudMenuItem>
+                            }
+                            @if (_canUploadFiles)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="@(() => AddFile(s))">Upload file</MudMenuItem>
+                            }
+                            @if (_canUpdate)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="@(() => SetStatus(s, TaxStatementStatus.Approved, null))">Mark approved</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Flag" OnClick="@(() => SetStatus(s, TaxStatementStatus.Flagged, s.StatusComment ?? "Flagged for review."))">Flag for review</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.FiberNew" OnClick="@(() => SetStatus(s, TaxStatementStatus.New, null))">Mark as new</MudMenuItem>
+                            }
+                            <MudMenuItem OnClick="@(() => CopyId(s.TaxStatementId))">
+                                <span class="odc-menu-item">
+                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
+                                    <span>Copy ID</span>
+                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
+                                </span>
+                            </MudMenuItem>
+                            @if (_canUpdate)
+                            {
+                                <MudDivider />
+                                <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Archive)" OnClick="@(() => ToggleArchive(s))">
+                                    @(archived ? "Unarchive" : "Archive")
+                                </MudMenuItem>
+                            }
+                            @if (_canDelete)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                             Style="color:var(--mud-palette-error);"
+                                             OnClick="@(() => ConfirmDelete(s))">Delete</MudMenuItem>
+                            }
+                        </MudMenu>
+                    </Actions>
+
+                    <!-- Expanded body -->
+                    <Detail>
+                            @* Problems — the design-system fix-it alert. *@
+                            @foreach (var p in problems)
+                            {
+                                <OdsProblemAlert Severity="p.Severity" Title="@p.Title" Detail="@p.Detail"
+                                                 ActionLabel="@p.FixLabel" OnAction="@(() => GoTo(p.FixTarget))" />
+                            }
+
+                            <div class="odc-meta-grid">
+                                <OdsMetaTile Mono><Label>Fiscal year</Label><ChildContent>@s.FiscalYear</ChildContent></OdsMetaTile>
+                                <OdsMetaTile Mono><Label>Base currency</Label><ChildContent>@s.BaseCurrencyCode</ChildContent></OdsMetaTile>
+                                <OdsMetaTile><Label>Period</Label><ChildContent>@s.StartDate.ToString("MMM dd, yyyy") → @s.EndDate.ToString("MMM dd, yyyy")</ChildContent></OdsMetaTile>
+                                <OdsMetaTile><Label>Review status</Label><ChildContent>@StatusLabel(s)</ChildContent></OdsMetaTile>
+                                <OdsMetaTile><Label>Filed to authority</Label><ChildContent>@(s.FiledAtUtc?.ToString("MMM dd, yyyy") ?? "—")</ChildContent></OdsMetaTile>
+                                <OdsMetaTile><Label>Authority approved</Label><ChildContent>@(s.TaxOfficeApprovedAtUtc?.ToString("MMM dd, yyyy") ?? "—")</ChildContent></OdsMetaTile>
+                                <OdsMetaTile><Label>Settlement paid</Label><ChildContent>@(s.SettledAtUtc?.ToString("MMM dd, yyyy") ?? "Not yet")</ChildContent></OdsMetaTile>
+                                <OdsMetaTile><Label>Notes</Label><ChildContent>@(string.IsNullOrWhiteSpace(s.Notes) ? "—" : s.Notes)</ChildContent></OdsMetaTile>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(s.StatusComment))
+                            {
+                                <OdsAlert Severity="@(s.Status == TaxStatementStatus.Flagged ? Severity.Warning : Severity.Info)">
+                                    <b>@StatusLabel(s).</b> @s.StatusComment
+                                </OdsAlert>
+                            }
+
+                            @* Derivation tags — the two role wells (read-only view). *@
+                            <div class="tx-roles">
+                                <div class="tx-role">
+                                    <div class="tx-role-head">
+                                        <div class="tx-role-name"><span class="material-icons">request_quote</span><span>Tax-payment tags</span></div>
+                                        <div class="tx-role-figure">
+                                            <div class="tx-role-sum">@TaxMoney(report?.Derived.PaidTax ?? 0, s.BaseCurrencyCode)</div>
+                                            <div class="tx-role-cap">Advance tax paid</div>
+                                        </div>
+                                    </div>
+                                    @if (s.TaxTagIds.Count > 0)
+                                    {
+                                        <div class="tx-chips">
+                                            @foreach (var name in TagNames(s.TaxTagIds))
+                                            {
+                                                <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="tx-role-empty">No tax-payment tags selected — derived advance tax is @TaxMoney(0, s.BaseCurrencyCode).</div>
+                                    }
+                                </div>
+                                <div class="tx-role">
+                                    <div class="tx-role-head">
+                                        <div class="tx-role-name"><span class="material-icons">payments</span><span>Income tags</span></div>
+                                        <div class="tx-role-figure">
+                                            <div class="tx-role-sum">@TaxMoney(report?.Derived.ActualIncome ?? 0, s.BaseCurrencyCode)</div>
+                                            <div class="tx-role-cap">Actual income</div>
+                                        </div>
+                                    </div>
+                                    @if (s.IncomeTagIds.Count > 0)
+                                    {
+                                        <div class="tx-chips">
+                                            @foreach (var name in TagNames(s.IncomeTagIds))
+                                            {
+                                                <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="tx-role-empty">No income tags selected — derived income is @TaxMoney(0, s.BaseCurrencyCode).</div>
+                                    }
+                                </div>
+                            </div>
+
+                            @* Reconciliation report — declared vs. derived vs. variance. *@
+                            @if (report is not null)
+                            {
+                                <TaxReconciliation Statement="s" Report="report" Money="@(n => TaxMoney(n, s.BaseCurrencyCode))" />
+                            }
+
+                            @* Statement documents. *@
+                            @* Upload is via the row's "Upload file" action (TaxUploadFileDialog),
+                               so the section itself is display-only — matching the design system. *@
+                            <TaxStatementFilesSection @key="@($"files:{s.TaxStatementId}:{_filesRefreshToken}")"
+                                                      StatementId="s.TaxStatementId"
+                                                      StatementName="@s.Name"
+                                                      Files="s.Files"
+                                                      CanUpload="false"
+                                                      CanDownload="_canDownloadFiles"
+                                                      CanDelete="_canUpdate"
+                                                      OnChanged="OnFilesChanged" />
+                    </Detail>
+                </OdsExpandableCard>
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New tax statement</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New tax statement"
+                               Sub="Record a fiscal year's declared figures, then reconcile against your accounts and tags."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+</div>
+
+@if (_createKey != Guid.Empty)
+{
+    <CreateTaxStatementDialog @key="_createKey"
+                              @bind-Open="_createOpen"
+                              OnSaved="OnStatementCreated" />
+}
+
+@if (_editStatement is not null)
+{
+    <CreateTaxStatementDialog @key="_editStatementKey"
+                              @bind-Open="_editStatementOpen"
+                              Statement="_editStatement"
+                              OnSaved="OnStatementEdited" />
+}
+
+@if (_uploadStatement is not null)
+{
+    <TaxUploadFileDialog @key="_uploadKey"
+                         @bind-Open="_uploadOpen"
+                         StatementId="_uploadStatement.TaxStatementId"
+                         StatementName="@_uploadStatement.Name"
+                         OnSaved="OnFilesChanged" />
+}

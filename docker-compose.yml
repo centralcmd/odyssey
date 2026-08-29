@@ -1,0 +1,181 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  DEVELOPMENT STACK — NOT SAFE TO EXPOSE TO A NETWORK
+#
+#  This file is tuned for a laptop, and its defaults say so: weak fallback database
+#  passwords, ASPNETCORE_ENVIRONMENT=Development, Swagger on, demo data seeded, and
+#  MariaDB published on port 3307. Every published port binds 127.0.0.1 only, so none of
+#  that is reachable from the network — do not remove those prefixes to "test from another
+#  machine". The demo accounts share a password published in this repository's README.
+#
+#  To deploy for real, layer the production overlay on top — it resets the published
+#  ports, pins Production, turns Swagger off and disables demo seeding:
+#
+#    docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#      --env-file .env.prod up -d
+#
+#  See docs/deployment.md, and copy .env.prod.example rather than .env.example.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: odyssey-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root_password}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-odyssey}
+      MARIADB_USER: ${MARIADB_USER:-odyssey}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-odyssey_password}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./docker/mariadb/init:/docker-entrypoint-initdb.d:ro,z
+    ports:
+      # Loopback-only (issue #451 §1.2). Compose short syntax binds 0.0.0.0, which put this stack's
+      # weak fallback password, Development environment and seeded demo accounts on every interface
+      # the host has. Prefixing 127.0.0.1 keeps `localhost:3307` working for host tools while making
+      # SECURITY.md's "weak dev defaults are out of scope" structurally true rather than declared.
+      # The prod overlay resets this list entirely, so it is unaffected.
+      - "127.0.0.1:3307:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Odyssey.MigrationService/Dockerfile
+    container_name: odyssey-migrations
+    restart: "no"
+    # Long enough for an in-flight migration to finish (issue #468). MariaDB commits DDL implicitly,
+    # so a migration killed part-way leaves its tables behind with no __EFMigrationsHistory row and
+    # every later deploy then fails on it. The job raises HostOptions.ShutdownTimeout to 5 minutes for
+    # exactly that reason, but Compose's own 10-second default would SIGKILL the container long before
+    # the .NET host got to honour it — the two have to agree or the mitigation is inert.
+    stop_grace_period: 5m
+    command: sh -c "sleep 10 && dotnet Odyssey.MigrationService.dll"
+    environment:
+      # This host is Host.CreateApplicationBuilder, which reads DOTNET_ENVIRONMENT and IGNORES
+      # ASPNETCORE_ENVIRONMENT entirely, defaulting to Production. Setting only the ASPNETCORE name
+      # left the migrations job running as Production in the dev stack, which silently disabled demo
+      # seeding (DemoDataSeeder seeds only in Development/Testing, whatever Seed__DemoData says). Both names
+      # are set so the job agrees with the API either way; ASPNETCORE_ENVIRONMENT is kept because the
+      # image is documented by it and operators set it.
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      DOTNET_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      UseInMemoryDatabase: ${USE_IN_MEMORY_DATABASE:-false}
+      # Seed the deterministic demo dataset (Development/Testing only). Default on for the dev stack.
+      Seed__DemoData: ${SEED_DEMO_DATA:-true}
+      # Read ONLY by SystemSettingsConfigAdoption (issue #421 Wave 2): the sender identity is
+      # database-backed now, and this is what carries a value you already had into the store on
+      # upgrade instead of silently replacing it with the shipped default. Once an administrator
+      # edits it in System Settings, that wins and these stop applying.
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS:-}
+      Email__FromName: ${EMAIL_FROM_NAME:-}
+      # Also read only by SystemSettingsConfigAdoption, and it must be here rather than only on the
+      # api service: adoption runs in THIS job, so a value plumbed solely to the API would leave it
+      # reading nothing while looking correct.
+      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-67108864}
+      # Read ONLY by SystemSettingsConfigAdoption (issue #434): these three are database-backed now,
+      # and this is what carries a value you already had into the store on upgrade. They must be on
+      # THIS job rather than only on the api service — adoption runs here, so a value plumbed solely
+      # to the API would leave it reading nothing while looking correct.
+      # FileAnalysis__TimeoutSeconds is deliberately absent: it stays a startup value, consumed once
+      # by the resilience handler, so a runtime value could never reach a live pipeline.
+      FileAnalysis__MaxTokens: ${FILE_ANALYSIS_MAX_TOKENS:-}
+      FileAnalysis__Match__MaxVocabulary: ${FILE_ANALYSIS_MATCH_MAX_VOCABULARY:-}
+      FileAnalysis__Match__TimeoutSeconds: ${FILE_ANALYSIS_MATCH_TIMEOUT_SECONDS:-}
+      # The kill switch, model and destination followed them into the store (issue #439), and these
+      # three are read ONLY by SystemSettingsConfigAdoption too. The EMPTY default is deliberate: an
+      # empty value is skipped by adoption, so an operator who never set the variable never asserts
+      # ownership over the row on every restart. The API KEY is not here and not on the api service
+      # either — it moved to the encrypted secret store in issue #445 Wave 1, and a secret is
+      # deliberately never adopted from configuration.
+      FileAnalysis__Enabled: ${FILE_ANALYSIS_ENABLED:-}
+      FileAnalysis__Model: ${FILE_ANALYSIS_MODEL:-}
+      FileAnalysis__BaseUrl: ${FILE_ANALYSIS_BASE_URL:-}
+      # The initial administrator (issue #290). Applied ONLY when the user table is completely empty;
+      # ignored on every later deploy. Required on a fresh database unless demo seeding provides an
+      # admin — the job exits non-zero if neither does, and the API does not start behind it.
+      Bootstrap__Admin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      Bootstrap__Admin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
+      # The SAME Data Protection key ring the api service uses (issue #444). It is here so a future
+      # adoption of a SECRET from configuration protects it under the ring the API can actually read —
+      # protecting under an ephemeral ring here would produce a row the API can never decrypt. The
+      # mount below must stay read-write: a read-only one does not fail loudly, it falls back to an
+      # in-memory ring with a log line.
+      DataProtection__KeysPath: /var/odyssey/dataprotection-keys
+    volumes:
+      - dataprotection_keys:/var/odyssey/dataprotection-keys
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: Odyssey.Api/Dockerfile
+    container_name: odyssey-api
+    restart: unless-stopped
+    environment:
+      # Default to Development so CORS is enabled and HTTPS redirection is not enforced in local/dev environments.
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:8080
+      UseInMemoryDatabase: ${USE_IN_MEMORY_DATABASE:-false}
+      Swagger__Enabled: ${SWAGGER_ENABLED:-true}
+      ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
+      Email__SmtpHost: ${EMAIL_SMTP_HOST:-}
+      Email__SmtpPort: ${EMAIL_SMTP_PORT:-587}
+      Email__UseStartTls: ${EMAIL_USE_STARTTLS:-true}
+      # Email__Username / Email__Password are GONE (issue #445 Wave 2): the relay credential lives in
+      # the encrypted secret store and is entered once at /settings → Credentials. The transport around
+      # it deliberately stays here — the sender connects and THEN authenticates, so an admin-editable
+      # host would harvest the credential and every reset token.
+      Email__ClientBaseUrl: ${EMAIL_CLIENT_BASE_URL:-http://localhost:5199}
+      # Legal__PseudonymizationSecret and FileAnalysis__ApiKey are GONE (issue #445 Waves 1 and 4).
+      # Both live in the encrypted secret store now and are entered at /settings → Credentials. Neither
+      # is adopted from configuration: adoption would require the plaintext to still be present in the
+      # environment at upgrade time, which is most of what the move exists to escape.
+      #
+      # The pseudonymization secret is a DERIVATION key — outside Production an unset one still falls
+      # back to the fixed development value, so this dev stack's delete flow works out of the box.
+      # The upload TRANSPORT ceiling (issue #421 Wave 4). The cap a user is validated against is
+      # admin-editable in System Settings; this is the startup limit for Kestrel and the multipart
+      # reader, and the bound the setting cannot be raised above. Keep the reverse proxy's body-size
+      # limit at or above it — see docs/deployment.md.
+      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-67108864}
+      # The Data Protection key ring (issue #444). The DEV stack had none at all before this, so every
+      # developer machine ran an ephemeral ring — which is why the ephemeral write refusal is on the
+      # write path rather than being a startup warning nobody would see. The volume is SECRET-BEARING
+      # once a credential is stored: back it up, back it up separately from the database dump, and note
+      # that `docker compose down -v` destroys it (for a derivation key, un-recoverably).
+      DataProtection__KeysPath: /var/odyssey/dataprotection-keys
+    volumes:
+      - dataprotection_keys:/var/odyssey/dataprotection-keys
+    ports:
+      # Loopback-only — see the mariadb service above (issue #451 §1.2).
+      - "127.0.0.1:5188:8080"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+
+  client:
+    build:
+      context: .
+      dockerfile: Odyssey.Client/Dockerfile
+    container_name: odyssey-client
+    restart: unless-stopped
+    ports:
+      # Loopback-only — see the mariadb service above (issue #451 §1.2).
+      - "127.0.0.1:5199:8080"
+    depends_on:
+      - api
+
+volumes:
+  mariadb_data:
+  # Shared by api and migrations so both derive the same keys (issue #444 §14, AC 25). That widens
+  # key custody to two containers, deliberately: the alternative is a migrations job writing rows the
+  # API can never read.
+  dataprotection_keys:

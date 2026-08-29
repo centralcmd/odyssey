@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Card (.odc-card)" subtitle="Elevated / outlined / flush surface · CardHeader + CardBody composition slots" viewport="820x460" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · Card (.odc-card)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 32px; align-items: start; }
+    .block { display: flex; flex-direction: column; gap: 12px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    p.body { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+  </style>
+</head>
+<body>
+  <div class="grid">
+
+    <!-- Elevated -->
+    <div class="block">
+      <div class="cap">Elevated <code>&lt;Card /&gt;</code></div>
+      <div class="odc-card">
+        <p class="body">The default surface — drop-shadow elevation. Use for stat tiles and floating panels.</p>
+      </div>
+    </div>
+
+    <!-- Outlined -->
+    <div class="block">
+      <div class="cap">Outlined <code>outlined</code></div>
+      <div class="odc-card outlined">
+        <p class="body">No shadow, border only — the forms surface, per the system.</p>
+      </div>
+    </div>
+
+    <!-- Header + Body composition -->
+    <div class="block" style="grid-column:1 / -1">
+      <div class="cap">Composition <code>flush</code> + <code>&lt;CardHeader /&gt;</code> + <code>&lt;CardBody /&gt;</code></div>
+      <div class="odc-card flush">
+        <div class="odc-card-header">
+          <div class="odc-card-header-ttl">Recovery codes</div>
+          <button class="odc-btn text"><span>Regenerate</span></button>
+        </div>
+        <div class="odc-card-body">
+          <p class="body">CardHeader is the titled row over a divider; CardBody supplies the 20px inset. Pass <code>style="padding:0"</code> on CardBody for edge-to-edge tables.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

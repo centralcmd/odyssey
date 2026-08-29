@@ -1,0 +1,17 @@
+/* Edit-metadata dialog — the banner preview and the placeholder location map.
+   Moved out of the globally-linked wwwroot/css/photos.css by issue #371.
+
+   The bespoke tag editor (.pl-chipedit* / .pl-chip-token / .pl-chip-sugg) and the
+   .pl-edit-bannernote overlay were replaced by OdsTagMultiSelect and OdsModal chrome. */
+
+.pl-editbody { display: flex; flex-direction: column; gap: 16px; }
+
+.pl-edit-banner { position: relative; flex: none; margin: -4px -4px 4px; border-radius: var(--radius-md, 8px); overflow: hidden; background: #0c0e13; display: flex; justify-content: center; }
+
+.pl-edit-bannerimg { width: 100%; height: auto; max-height: 360px; min-height: 240px; flex: none; background-size: cover; background-position: center; }
+
+.pl-rail-map { height: 96px; border-radius: 8px; margin: 4px 0 8px; display: flex; align-items: center; justify-content: center;
+      background: repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 10px, rgba(255,255,255,0.02) 10px 20px), rgba(56,189,248,0.06);
+      border: 1px dashed rgba(255,255,255,0.14); }
+
+.pl-rail-map .mono { color: rgba(255,255,255,0.4); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }

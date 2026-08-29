@@ -1,0 +1,66 @@
+@* Module switcher popover (design-system module-nav redesign). A click-away scrim + a labelled
+   disclosure listing all six modules with their viewable-page counts; the active module shows a check.
+   Rendered outside the rail so rail overflow can't clip it. Non-modal disclosure (not a menu widget):
+   focus moves in on open, Escape closes, and the host returns focus to the chip. *@
+
+<div class="odn-catch" @onclick="OnClose"></div>
+<div @ref="_popover" tabindex="-1" class="odn-modpop" role="group" aria-labelledby="odn-switch-title"
+     @onclick:stopPropagation="true" @onkeydown="OnKey">
+    <div class="odn-modpop-lg" id="odn-switch-title">Switch module</div>
+    @foreach (var module in NavModel.VisibleModules(CanView))
+    {
+        var active = module.Key == _activeKey;
+        var count = NavModel.VisibleItems(module, CanView).Count;
+        <button type="button" class="odn-modrow @(active ? "active" : "")"
+                aria-current="@(active ? "true" : null)"
+                @onclick="@(() => OnGoModule.InvokeAsync(module))">
+            <span class="odn-modrow-ic"><span class="material-icons" aria-hidden="true">@module.Icon</span></span>
+            <span class="odn-modrow-t">@module.Label</span>
+            <span class="odn-modrow-c">
+                @if (active)
+                {
+                    <span class="material-icons" aria-hidden="true">check</span>
+                }
+                else
+                {
+                    <span aria-label="@($"{count} pages")">@count</span>
+                }
+            </span>
+        </button>
+    }
+    <div class="odn-modsoon">More modules coming as the product grows.</div>
+</div>
+
+@code {
+    /// <summary>The current base-relative route (used to mark the active module).</summary>
+    [Parameter, EditorRequired] public string Current { get; set; } = "";
+
+    [Parameter, EditorRequired] public Func<NavPage, bool> CanView { get; set; } = _ => true;
+
+    /// <summary>Raised with the chosen module — the host navigates to its first viewable page.</summary>
+    [Parameter] public EventCallback<NavModule> OnGoModule { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string _activeKey = NavModel.All[0].Key;
+    private ElementReference _popover;
+
+    protected override void OnParametersSet() => _activeKey = NavModel.ModuleOf(Current).Key;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Move focus into the disclosure on open so keyboard users reach the module list.
+            try { await _popover.FocusAsync(); } catch (Exception) { /* best-effort */ }
+        }
+    }
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

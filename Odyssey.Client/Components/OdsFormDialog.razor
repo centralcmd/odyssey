@@ -1,0 +1,101 @@
+@*
+    OdsFormDialog — the create/edit form shell (composes OdsModal).
+
+    Owns the structure every record dialog repeated: the tinted-icon header, the
+    standard `.ods-modal-body` field container, the Cancel / Submit footer, the
+    `_isSaving` busy state on the submit button, and the submit→close flow. Hosts
+    supply only the fields (ChildContent), the header text, and an OnSubmit that
+    validates + saves and returns whether it succeeded.
+
+    OnSubmit contract: return true when the record was saved — the dialog then
+    raises OnSaved and closes; return false to keep it open (validation failed, or
+    the API reported an error and already surfaced it).
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync"
+          Icon="@Icon" IconTone="@IconTone" Wide="@Wide"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment">
+    <ChildContent>
+        <div class="ods-modal-body">
+            @ChildContent
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelAsync">@CancelLabel</OdsButton>
+        <OdsButton Variant="@SubmitVariant" Icon="@SubmitIcon" Loading="_isSaving" OnClick="SubmitAsync">
+            @SubmitLabel
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    /// <summary>Controls visibility. Bindable via @bind-Open.</summary>
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Header lead-tile glyph (Material Icons ligature).</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    [Parameter] public OdsModalTone IconTone { get; set; } = OdsModalTone.Brand;
+
+    /// <summary>Wide variant — forwarded to OdsModal.</summary>
+    [Parameter] public bool Wide { get; set; }
+
+    /// <summary>Header title text.</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Optional header subtitle text.</summary>
+    [Parameter] public string? Subtitle { get; set; }
+
+    /// <summary>Optional rich subtitle markup; takes precedence over <see cref="Subtitle"/>.</summary>
+    [Parameter] public RenderFragment? SubtitleContent { get; set; }
+
+    /// <summary>The form fields — rendered inside the standard <c>.ods-modal-body</c> container.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string CancelLabel { get; set; } = "Cancel";
+
+    [Parameter] public string SubmitLabel { get; set; } = "Save";
+
+    [Parameter] public string? SubmitIcon { get; set; } = "add";
+
+    [Parameter] public OdsButtonVariant SubmitVariant { get; set; } = OdsButtonVariant.Filled;
+
+    /// <summary>
+    /// Validates + saves; returns true on success (dialog raises OnSaved then closes)
+    /// or false to stay open. Re-entrancy and the submit button's busy state are handled here.
+    /// </summary>
+    [Parameter] public Func<Task<bool>>? OnSubmit { get; set; }
+
+    /// <summary>Raised after a successful submit, just before the dialog closes.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private bool _isSaving;
+
+    private RenderFragment? TitleFragment => Title is null ? null : @<text>@Title</text>;
+
+    private RenderFragment? SubtitleFragment => SubtitleContent ?? (Subtitle is null ? null : @<text>@Subtitle</text>);
+
+    private Task CancelAsync() => OpenChanged.InvokeAsync(false);
+
+    private async Task SubmitAsync()
+    {
+        if (_isSaving || OnSubmit is null)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            if (await OnSubmit())
+            {
+                await OnSaved.InvokeAsync();
+                await OpenChanged.InvokeAsync(false);
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

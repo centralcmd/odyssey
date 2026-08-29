@@ -1,0 +1,13 @@
+/* ── Analyze-file context line ──
+   Moved out of FileAnalysisDialog.razor.css with the markup it styles (issue #373).
+   `::deep` reaches into child components' markup (OdsMIcon's `.material-icons`, OdsCheckbox's
+   `.odc-check*`, OdsMatchIndicator's `.odc-match*`, the MudAutocomplete/tag-picker internals),
+   since CSS isolation only stamps this component's own elements. */
+
+.fan-filemeta { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fan-file-ic {
+  width: 30px; height: 30px; border-radius: 7px; flex: none; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--mud-palette-info) 16%, transparent); color: var(--mud-palette-info);
+}
+.fan-file-name { font-size: 0.875rem; font-weight: 500; line-height: 1.2; color: var(--mud-palette-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fan-file-acct { font-size: 0.75rem; line-height: 1.2; color: var(--mud-palette-text-secondary); white-space: nowrap; }

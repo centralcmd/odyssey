@@ -1,0 +1,322 @@
+/* ── System settings page (Odyssey Design System · admin.css) ────────────────
+   The card is the GROUP, not the setting: a tinted section header naming the group, then a
+   two-column grid of <OdsSettingField> blocks (the shared .odc-sfield-* sheet lives in
+   wwwroot/css/odyssey-components.css). At 40+ settings the previous one-card-per-setting
+   stack was a run of near-identical shells whose visual weight said nothing about the
+   content; the grouping now does the work the 40 card borders were doing.
+
+   What remains page-specific: the section card and its bands, the save bar, the
+   runtime-settings feature states (last-changed line, read-only note, load-failure retry,
+   loading skeleton, projection-fault record), and the no-match surface. All tints use
+   semantic palette tokens so the page reads correctly in light and dark mode. */
+
+/* ── Section cards — one card per GROUP, holding a grid of setting fields ── */
+.ss-sect-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.ss-sect {
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: var(--radius-lg);
+    background: var(--mud-palette-surface);
+    overflow: hidden;
+    box-shadow: var(--mud-elevation-1);
+}
+
+/* The modal-header treatment — a tint plus a bottom rule, so the section name reads as a
+   band rather than as another line of body text. */
+.ss-sect-h {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 20px;
+    background: var(--mud-palette-action-default-hover);
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+
+.ss-sect-ic {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-md);
+    display: grid;
+    place-items: center;
+    background: var(--brand-soft);
+    color: var(--brand-text);
+}
+
+.ss-sect-ic ::deep .mud-icon-root {
+    font-size: 17px;
+}
+
+.ss-sect-t {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    color: var(--mud-palette-text-primary);
+}
+
+.ss-sect-count {
+    margin-left: auto;
+    font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono);
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Per-group unsaved count. Amber like every other pending affordance on the page, and it
+   REPLACES the settings count rather than joining it: at seventeen sections the header row
+   has one slot, and "how much is unsaved here" outranks "how many rows are here" whenever
+   the first is non-zero. */
+.ss-sect-badge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    font: var(--fw-medium) var(--fs-caption)/1.3 var(--font-sans);
+    background: var(--finance-pending-soft);
+    color: var(--pending-text);
+}
+
+/* Full-width bands inside the card, above the grid: the partial-permissions note and the
+   group-level round-trip alert. */
+.ss-sect-band {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--mud-palette-divider);
+    font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+    text-wrap: pretty;
+}
+
+.ss-sect-band .material-icons {
+    font-size: 16px;
+    opacity: 0.85;
+    flex: none;
+    margin-top: 1px;
+}
+
+.ss-sect-band.error {
+    background: var(--finance-expense-soft);
+    color: var(--mud-palette-text-primary);
+}
+
+.ss-sect-band.error .material-icons {
+    color: var(--mud-palette-error);
+    font-size: 18px;
+    opacity: 1;
+}
+
+/* Focusable: a failed save moves focus here when the conflict is group-level, so it owes a
+   visible indicator — this project declares focus rings per selector and MudBlazor ships no
+   global reset. */
+.ss-sect-band:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: -2px;
+}
+
+.ss-sect-body {
+    padding: 18px 20px;
+}
+
+/* A claim-locked setting: the frame and its value grey out, the helper line stays fully
+   legible — the reason it is locked is the part still worth reading, and it is the only
+   place that says so.
+
+   The two shapes need DIFFERENT targets to mean the same thing. On the Frame shape the helper
+   line is a SIBLING of .odc-sfield-frame, so dimming the frame leaves it alone. On the Tile
+   shape it is a DESCENDANT — .odc-sfield-tile-main holds the label and the helper line, and
+   .odc-sfield-tile-ctrl holds the control — so dimming .odc-sfield-tile would compound opacity
+   onto secondary-colour text and drop it to roughly 2.5:1, failing WCAG 1.4.3. That is the same
+   defect PR #448 fixed once already on OdsSettingRow; the tile is reached through its control
+   instead. */
+.ss-sect-body ::deep .odc-sfield.locked .odc-sfield-frame,
+.ss-sect-body ::deep .odc-sfield.locked .odc-sfield-tile-ctrl {
+    opacity: 0.55;
+}
+
+/* One-shot attention ring when the problems rollup jumps to a field — the same gesture as
+   the record cards on Accounts / Contracts / Insurance. Duration is --duration-flash, which
+   OdsTiming.RowFlashMs must stay in step with: that delay is what removes the class. */
+@keyframes ssFlash {
+    0% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--finance-pending) 70%, transparent); }
+    100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+.ss-sect-body ::deep .odc-sfield.ss-flash {
+    border-radius: var(--radius-md);
+    animation: ssFlash var(--duration-flash) ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ss-sect-body ::deep .odc-sfield.ss-flash {
+        animation: none;
+    }
+}
+
+/* ── Save bar — the primary action plus, when Save is blocked, the ErrorSummary that names
+   the count and moves focus to the first offending control. ── */
+.ss-savebar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: nowrap;
+}
+
+/* ── Last-changed-by summary line under the header (admin.css .ss-lastchanged).
+   The store is genuinely key-value server-side, but the DTO surfaces only the
+   single most recent change across all five rows — a deliberate v1
+   simplification, so this renders once for the page, not per row. ── */
+.ss-lastchanged {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: -8px 2px 0;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--mud-palette-text-secondary);
+}
+
+.ss-lastchanged ::deep .mud-icon-root {
+    font-size: 15px;
+    opacity: 0.8;
+}
+
+.ss-lastchanged b {
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}
+
+/* Read-only note when the caller holds neither write claim (Save hidden). */
+.ss-note {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 16px 18px;
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--mud-palette-surface);
+}
+
+.ss-note ::deep .mud-icon-root {
+    color: var(--mud-palette-text-secondary);
+    font-size: 20px;
+}
+
+.ss-note-ttl {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--mud-palette-text-primary);
+}
+
+.ss-note-desc {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--mud-palette-text-secondary);
+    margin-top: 2px;
+}
+
+/* Inline load-failure + retry. */
+.ss-retry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 13px;
+    text-align: center;
+    padding: 56px 24px;
+    border: 1px dashed var(--mud-palette-divider);
+    border-radius: var(--radius-lg, 12px);
+}
+
+.ss-retry ::deep .mud-icon-root {
+    font-size: 30px;
+    color: var(--mud-palette-warning);
+}
+
+.ss-retry-ttl {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--mud-palette-text-primary);
+}
+
+.ss-retry-desc {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--mud-palette-text-secondary);
+    max-width: 360px;
+}
+
+/* Loading skeleton — a field-shaped block matching the OdsSettingField grid, so nothing
+   reflows once the real rows arrive. */
+.ss-sk .odc-sfield-frame {
+    padding: 11px 12px;
+}
+
+.ss-sk-val,
+.ss-sk-line {
+    display: block;
+    border-radius: 5px;
+    background: var(--mud-palette-action-disabled-background);
+    animation: ssPulse 1.4s ease-in-out infinite;
+}
+
+.ss-sk-val {
+    height: 16px;
+    width: 60%;
+}
+
+.ss-sk-line {
+    height: 9px;
+    width: 85%;
+}
+
+@keyframes ssPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ss-sk-val, .ss-sk-line {
+        animation: none;
+    }
+}
+
+/* ── The projection-fault record (issue #437 Goal 12) ─────────────────────────────────────────
+   A page-level, persistent, NON-live block: the announcement is the live channel, this is the
+   browse-mode record that exists so a screen-reader administrator can find the faults without it.
+   role="note", never role="alert" — nothing here interrupts. Styled as the amber advisory family
+   rather than the error family, for the same reason: a fault is reported, not blocking.
+
+   Page-declared, so this scoped rule actually matches — unlike a class forwarded into a child. */
+.ss-faults {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--finance-pending) 32%, transparent);
+    border-radius: var(--radius-md, 10px);
+    background: var(--finance-pending-soft);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.ss-faults .material-icons {
+    flex: none;
+    font-size: 20px;
+    color: var(--pending-text);
+}
+
+.ss-faults-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--warning-text);
+}

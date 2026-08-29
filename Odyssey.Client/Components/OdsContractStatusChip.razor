@@ -1,0 +1,40 @@
+@using Odyssey.Dtos.Finance
+@*
+    OdsContractStatusChip — the read display of a contract's DERIVED status (issue #174 §6).
+    Sibling of OdsCoverageStatusChip. Status is computed server-side, never
+    stored: Active · Upcoming · Expired · Archived.
+
+    Accessibility: the status meaning lives in the visible text label, never in colour or the glyph
+    alone — the leading dot/icon is aria-hidden. ShowIcon leads with the status glyph instead of the dot.
+*@
+
+<span class="@ChipClass">
+    @if (ShowIcon)
+    {
+        <span class="material-icons" aria-hidden="true">@_meta.Icon</span>
+    }
+    else if (_meta.Dot)
+    {
+        <span class="odc-chip-dot" aria-hidden="true"></span>
+    }
+    @_meta.Label
+</span>
+
+@code {
+    /// <summary>The derived contract status to display.</summary>
+    [Parameter] public ContractStatus Status { get; set; } = ContractStatus.Active;
+
+    /// <summary>Lead with the status glyph instead of the status dot.</summary>
+    [Parameter] public bool ShowIcon { get; set; }
+
+    /// <summary>Compact (sm) sizing for the collapsed contract row.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private OdsContractStatusMeta _meta => OdsContractStatus.Meta(Status);
+
+    private string ChipClass =>
+        string.Join(' ', new[] { "odc-chip", _meta.Tone, Compact ? "sm" : null, Class }
+            .Where(c => !string.IsNullOrEmpty(c)));
+}

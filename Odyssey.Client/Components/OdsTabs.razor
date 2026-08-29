@@ -1,0 +1,71 @@
+@* DS parity — no consumer yet: no screen uses a tab strip. The app's in-page disclosure
+   is OdsCollapsible (record sections) and OdsRevealPanel; nothing in the client renders
+   MudTabs either, so this is an unbuilt surface rather than a superseded component. *@
+@*
+    OdsTabs — a horizontal tab strip with an underline active marker
+    (Odyssey Design System · components/Tabs).
+
+    This is the tablist only — it renders the tab buttons and ARIA wiring; you
+    render the panel yourself and swap it on @bind-Value. Controlled: pass Tabs
+    as OdsTabItem records, the active Value, and handle ValueChanged. Keyboard
+    (WAI-ARIA tabs pattern): arrow keys move and select, Home/End jump.
+*@
+
+<div class="odc-tabs" role="tablist">
+    @foreach (var tab in Tabs)
+    {
+        var active = tab.Value == Value;
+        <button type="button"
+                role="tab"
+                aria-selected="@(active ? "true" : "false")"
+                tabindex="@(active ? 0 : -1)"
+                class="odc-tab @(active ? "active" : null)"
+                @onclick="@(() => Select(tab))"
+                @onkeydown="OnKeyDown">
+            @tab.Label
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>Tab definitions.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsTabItem> Tabs { get; set; } = [];
+
+    /// <summary>The active tab's value. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private Task Select(OdsTabItem tab)
+    {
+        if (tab.Value == Value)
+            return Task.CompletedTask;
+        Value = tab.Value;
+        return ValueChanged.InvokeAsync(tab.Value);
+    }
+
+    private Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (Tabs.Count == 0)
+            return Task.CompletedTask;
+
+        var index = -1;
+        for (var i = 0; i < Tabs.Count; i++)
+        {
+            if (Tabs[i].Value == Value) { index = i; break; }
+        }
+        if (index < 0)
+            return Task.CompletedTask;
+
+        var next = e.Key switch
+        {
+            "ArrowRight" or "ArrowDown" => Tabs[(index + 1) % Tabs.Count],
+            "ArrowLeft" or "ArrowUp" => Tabs[(index - 1 + Tabs.Count) % Tabs.Count],
+            "Home" => Tabs[0],
+            "End" => Tabs[^1],
+            _ => null,
+        };
+
+        return next is null ? Task.CompletedTask : Select(next);
+    }
+}

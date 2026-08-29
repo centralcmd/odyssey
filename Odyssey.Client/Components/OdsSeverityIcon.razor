@@ -1,0 +1,37 @@
+@*
+    OdsSeverityIcon — the signal glyph (Odyssey Design System · components/SeverityIcon).
+
+    Shared by Alert blocks and the PageHeader problem-rollup toggle. Renders in
+    `currentColor` so the parent supplies the tint (amber / coral / sea). The embedded
+    Material Icons subset ships no warning triangle, so Warning is drawn as an inline
+    SVG; Error / Info reuse the font's outline glyphs so a signal reads identically to
+    an Alert. Self-contained — no other DS atoms involved.
+*@
+
+@if (Severity == OdsSeverity.Warning)
+{
+    <svg class="@Class" width="@Size" height="@Size" viewBox="0 0 24 24"
+         fill="currentColor" aria-hidden="true" style="@($"flex:none;{Style}")">
+        <path d="M11.13 3.66 1.73 19.5a1 1 0 0 0 .87 1.5h18.8a1 1 0 0 0 .87-1.5L12.87 3.66a1 1 0 0 0-1.74 0Zm.87 4.59a1.05 1.05 0 0 1 1.05 1.13l-.33 4.7a.72.72 0 0 1-1.44 0l-.33-4.7A1.05 1.05 0 0 1 12 8.25Zm0 8.0a1.12 1.12 0 1 1 0 2.25 1.12 1.12 0 0 1 0-2.25Z" />
+    </svg>
+}
+else
+{
+    <span class="@($"material-icons {Class}".Trim())" aria-hidden="true"
+          style="@($"font-size:{Size}px;flex:none;{Style}")">@Glyph</span>
+}
+
+@code {
+    /// <summary>Signal level. Warning (triangle) · Error (error_outline) · Info (info_outline).</summary>
+    [Parameter] public OdsSeverity Severity { get; set; } = OdsSeverity.Warning;
+
+    /// <summary>Glyph size in pixels (drives both the SVG box and the font size).</summary>
+    [Parameter] public int Size { get; set; } = 18;
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Extra inline style appended after the layout defaults.</summary>
+    [Parameter] public string? Style { get; set; }
+
+    private string Glyph => Severity == OdsSeverity.Error ? "error_outline" : "info_outline";
+}

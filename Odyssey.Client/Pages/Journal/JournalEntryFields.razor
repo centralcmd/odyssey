@@ -1,0 +1,63 @@
+@using Odyssey.Client.Components
+@*
+    JournalEntryFields — the shared field grid for a journal entry, bound to a JournalEntryDraft.
+    Used by both CreateJournalEntryDialog and the inline edit form so create + edit stay identical.
+    Links are chosen as scalar ids (OdsTagMultiSelect for both tags and contacts, per FE #4/#5);
+    photos + files go through OdsFileUpload (image-only for photos). Content is plain text.
+*@
+
+<OdsField Label="Title" Value="@Draft.Title" MaxLength="200" AutoFocus="@AutoFocus"
+          ValueChanged="@(v => { Draft.Title = v; Draft.TitleError = null; })" Error="@Draft.TitleError" />
+
+<OdsFormRow>
+    <OdsDateField Label="Entry date" Required="true" Value="Draft.EntryDate"
+                  ValueChanged="@(v => { Draft.EntryDate = v; Draft.EntryDateError = null; })" Error="@Draft.EntryDateError" />
+    <OdsField Label="Location" Optional="true" Value="@Draft.Location" MaxLength="300"
+              ValueChanged="@(v => Draft.Location = v)" Placeholder="Optional — where it happened" />
+</OdsFormRow>
+
+<OdsFormRow>
+    <OdsTagMultiSelect Label="Tags" Optional="true" Value="Draft.TagIds"
+                       ValueChanged="@(v => Draft.TagIds = v)" Options="TagOptions"
+                       Placeholder="No tags" AddLabel="Add tag" />
+    <OdsTagMultiSelect Label="Contacts" Optional="true" Value="Draft.ContactIds"
+                       ValueChanged="@(v => Draft.ContactIds = v)" Options="ContactOptions"
+                       Placeholder="No linked contacts" AddLabel="Link contact" />
+</OdsFormRow>
+
+<OdsNoteField Label="Content" Value="@Draft.Content" MaxLength="4096" Rows="6"
+              ValueChanged="@(v => { Draft.Content = v; Draft.ContentError = null; })"
+              Error="@Draft.ContentError" Placeholder="What happened?" />
+
+<OdsFormRow>
+    <OdsFieldShell Label="Photos" Optional="true" Help="JPEG, PNG, GIF, or WebP.">
+        <OdsFileUpload Accept="image/jpeg,image/png,image/gif,image/webp" ShowKinds="false" Compact="true"
+                       MaxMegabytes="@MaxMegabytes"
+                       Files="Draft.Photos" FilesChanged="@(f => Draft.Photos = f)" />
+    </OdsFieldShell>
+    <OdsFieldShell Label="Attachments" Optional="true" Help="PDFs and documents.">
+        <OdsFileUpload ShowKinds="false" Compact="true"
+                       MaxMegabytes="@MaxMegabytes"
+                       Files="Draft.Attachments" FilesChanged="@(f => Draft.Attachments = f)" />
+    </OdsFieldShell>
+</OdsFormRow>
+
+@code {
+    [Parameter, EditorRequired] public JournalEntryDraft Draft { get; set; } = default!;
+
+    /// <summary>
+    /// The effective per-file upload cap, in megabytes, supplied by the hosting dialog. Forwarded to
+    /// both dropzones so their hint states this deployment's number rather than omitting the size
+    /// clause — the cap is admin-editable, so it can never be a literal here.
+    /// </summary>
+    [Parameter] public int? MaxMegabytes { get; set; }
+
+    /// <summary>Active journal-tag options (id → name).</summary>
+    [Parameter] public IReadOnlyList<OdsOption> TagOptions { get; set; } = [];
+
+    /// <summary>Active contact options (id → name).</summary>
+    [Parameter] public IReadOnlyList<OdsOption> ContactOptions { get; set; } = [];
+
+    /// <summary>Focus the Title field on first render (create dialog / entering edit).</summary>
+    [Parameter] public bool AutoFocus { get; set; }
+}

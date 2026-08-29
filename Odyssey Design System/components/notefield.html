@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="NoteField" subtitle="The canonical note / description field — multi-line input with a live character counter. Replaces the hand-rolled .atm-textarea + .*-charcount pattern in every create/edit dialog. Mounted from the DS namespace." viewport="900x560" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · NoteField</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 760px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; align-items: start; }
+    .sep { height: 1px; background: var(--mud-palette-divider); }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 22px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>NoteField — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;NoteField label maxLength value onChange /&gt;</code></h1>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var NoteField = NS.NoteField;
+      var useState = React.useState;
+
+      function Note(props) {
+        var s = useState(props.init || '');
+        return e(NoteField, Object.assign({}, props, { value: s[0], onChange: function (v) { s[1](v); } }));
+      }
+
+      var root = [
+        e('div', { key: 'a' }, e('div', { className: 'cap' }, ['Default \u00b7 ', e('code', { key: 'c' }, 'optional + maxLength')]),
+          e('div', { className: 'row' },
+            e(Note, { key: 1, label: 'Note', optional: true, maxLength: 512, init: 'Fed cut pass-through — rate dropped 25bps.', placeholder: 'What changed, and why…' }),
+            e(Note, { key: 2, label: 'Description', optional: true, maxLength: 1024, placeholder: 'What this agreement covers, term, notice period…' }))),
+        e('div', { className: 'sep', key: 's1' }),
+        e('div', { key: 'b' }, e('div', { className: 'cap' }, 'States'),
+          e('div', { className: 'row' },
+            e(Note, { key: 1, label: 'Near the limit', maxLength: 60, init: 'Coverage raised to the new insured sum for this renewal.', placeholder: 'Notes…' }),
+            e(Note, { key: 2, label: 'With error', required: true, maxLength: 512, init: '', error: 'A note is required for this change.', placeholder: 'Explain the change…' })))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>

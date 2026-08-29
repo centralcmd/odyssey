@@ -1,0 +1,26 @@
+/* ── /account · the email section ──
+   Ported from the design system's account.css and moved out of Account.razor.css with
+   the markup it styles (issue #373). The chrome shared by every section — .acc-cardhead,
+   .acc-ic, .acc-sec-*, .acc-form*, .acc-divider*, .acc-block-alert, .acc-saved — stays on
+   the page, which reaches it here through `.acc-section ::deep`. */
+
+/* Current-email row + confirmed chip */
+.acc-current-email {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.acc-current-email-val {
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-primary);
+}
+/* Resend confirmation row */
+.acc-resend {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}

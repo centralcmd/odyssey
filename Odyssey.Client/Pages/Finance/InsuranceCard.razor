@@ -1,0 +1,229 @@
+@page "/insurance-policies"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.InsuranceRead)]
+@inject IInsuranceApiClient Insurance
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IScrollManager ScrollManager
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
+@inject IReferenceDataCache ReferenceData
+@inject IAccountsApiClient Accounts
+
+<PageTitle>Insurance</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+
+<div class="ins-shell">
+<MudStack Spacing="4">
+
+    <PageHeader Title="Insurance"
+                Icon="@Icons.Material.Filled.Shield"
+                Problems="HeaderProblems"
+                ProblemsLabel="Renewals"
+                ProblemsOpen="_problemsOpen" ProblemsOpenChanged="OnProblemsToggled"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New policy"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>
+            @ActiveCount polic@(ActiveCount == 1 ? "y" : "ies") on file
+        </SubLine>
+
+        <OverviewContent>
+            @if (_summary is not null)
+            {
+                <InsurancePortfolioSummaryView Summary="_summary" Money="@MoneyFunc" MoneyCompact="@MoneyCompactFunc" />
+            }
+        </OverviewContent>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadPolicies"
+                                Placeholder="Search name, insurer…"
+                                Class="ph-search" />
+                <OdsMultiSelect Label="Any type" Icon="shield" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged"
+                                Options="OdsTypeRegistries.InsurancePolicyOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Any status" Icon="verified_user" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="InsurancePolicyListItem" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Policies per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="InsurancePolicyListItem" Items="_policies" BatchSize="_batch"
+                         ItemKey="@(p => (object)p.InsurancePolicyId)" Noun="insurance policies" RevealKey="_flashId"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadPolicies"
+                         HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                         EmptyIcon="shield"
+                         EmptyDescription="Add a policy to track its insurer, renewal periods, premium and coverage, and keep every supporting document in one place.">
+            <RenderItem Context="p">
+                @{
+                    var isExpanded = IsExpanded(p.InsurancePolicyId);
+                    var archived = p.Archived is not null;
+                    var typeInfo = OdsTypeRegistries.InsurancePolicyTypeOf(p.Type);
+                    var headline = Headline(p);
+                    var detail = _details.GetValueOrDefault(p.InsurancePolicyId);
+                }
+                <OdsExpandableCard Id="@($"ins-{p.InsurancePolicyId}")"
+                                   Open="isExpanded"
+                                   Dimmed="archived"
+                                   Flash="@(_flashId == p.InsurancePolicyId)"
+                                   Label="@p.Name"
+                                   OnToggle="@(() => ToggleExpand(p.InsurancePolicyId))">
+
+                    <Lead>
+                        <div class="acct-badge" style="background:@typeInfo.Soft;color:@typeInfo.Color;">
+                            <span class="material-icons" aria-hidden="true">@typeInfo.Icon</span>
+                        </div>
+                    </Lead>
+
+                    <Head>
+                        <div class="acct-name-row">
+                            <span class="acct-name">@p.Name</span>
+                            <OdsCoverageStatusChip Status="p.CoverageStatus" Compact="true" />
+                        </div>
+                        <div class="acct-tags">
+                            <span>@typeInfo.Label</span>
+                            <span class="acct-dot">·</span>
+                            <span class="ins-sub-insurer"><span class="material-icons" aria-hidden="true">apartment</span>@p.Insurer.Name</span>
+                            <span class="acct-dot">·</span>
+                            <span class="acct-counts">
+                                <span><span class="material-icons" aria-hidden="true">event_repeat</span>@p.RenewalCount</span>
+                                <span><span class="material-icons" aria-hidden="true">description</span>@p.FileCount</span>
+                            </span>
+                        </div>
+                    </Head>
+
+                    <Figures>
+                        <div class="ins-headline @(headline.HasValue ? "" : "none")">@headline.Value</div>
+                        <div class="ins-headline-word @headline.Cls">@headline.Word</div>
+                    </Figures>
+
+                    <Actions>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                 Size="Size.Small" Color="Color.Default"
+                                 AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                            @if (_canUpdate)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(p))">Edit policy</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.EventRepeat" OnClick="@(() => AddRenewal(p.InsurancePolicyId))">New renewal period</MudMenuItem>
+                            }
+                            @if (_canUploadFiles)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="@(() => AttachDocument(p.InsurancePolicyId))">Attach document</MudMenuItem>
+                            }
+                            <MudMenuItem OnClick="@(() => CopyId(p.InsurancePolicyId))">
+                                <span class="odc-menu-item">
+                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
+                                    <span>Copy ID</span>
+                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
+                                </span>
+                            </MudMenuItem>
+                            @if (_canUpdate)
+                            {
+                                <MudDivider />
+                                <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Archive)" OnClick="@(() => ToggleArchive(p))">
+                                    @(archived ? "Unarchive" : "Archive")
+                                </MudMenuItem>
+                            }
+                            @if (_canDelete)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                             Style="color:var(--mud-palette-error);"
+                                             OnClick="@(() => ConfirmDelete(p))">Delete</MudMenuItem>
+                            }
+                        </MudMenu>
+                    </Actions>
+
+                    <Detail>
+                        @if (detail is null)
+                        {
+                            <div role="status" aria-live="polite" aria-busy="true">
+                                <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                                <span class="sr-only">Loading policy details…</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <InsurancePolicyDetailView Policy="detail"
+                                                       Money="@MoneyFunc"
+                                                       CanWrite="_canUpdate"
+                                                       CanDownload="_canDownloadFiles"
+                                                       CanUpload="_canUploadFiles"
+                                                       AccountLabel="@AccountTypeLabel"
+                                                       OnAddRenewal="@(() => AddRenewal(p.InsurancePolicyId))"
+                                                       OnEditRenewal="@(r => EditRenewal(p.InsurancePolicyId, r))"
+                                                       OnDeleteRenewal="@(r => DeleteRenewal(p.InsurancePolicyId, r))"
+                                                       OnAttachPolicy="@(() => AttachDocument(p.InsurancePolicyId))"
+                                                       OnAttachRenewal="@(rid => AttachDocument(p.InsurancePolicyId, rid))"
+                                                       OnChanged="@(() => ReloadPolicy(p.InsurancePolicyId))" />
+                        }
+                    </Detail>
+                </OdsExpandableCard>
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New policy</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New policy"
+                               Sub="Record an insurer, renewal periods, premium and coverage, and attach the documents."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+</div>
+
+@if (_createKey != Guid.Empty)
+{
+    <CreateInsurancePolicyDialog @key="_createKey"
+                                 @bind-Open="_createOpen"
+                                 Insurers="_insurerOptions"
+                                 Accounts="_accountOptions"
+                                 OnSaved="OnPolicyCreated" />
+}
+
+@if (_editPolicy is not null)
+{
+    <CreateInsurancePolicyDialog @key="_editPolicyKey"
+                                 @bind-Open="_editPolicyOpen"
+                                 InsurancePolicy="_editPolicy"
+                                 Insurers="_insurerOptions"
+                                 Accounts="_accountOptions"
+                                 OnSaved="OnPolicyEdited" />
+}
+
+@if (_renewalPolicy is not null)
+{
+    <AddRenewalDialog @key="_renewalKey"
+                      @bind-Open="_renewalOpen"
+                      Policy="_renewalPolicy"
+                      Renewal="_editingRenewal"
+                      OnSaved="@(() => ReloadPolicy(_renewalPolicy.InsurancePolicyId))" />
+}
+
+@if (_uploadPolicy is not null)
+{
+    <InsuranceUploadDialog @key="_uploadKey"
+                           @bind-Open="_uploadOpen"
+                           Policy="_uploadPolicy"
+                           InitialRenewalId="_uploadRenewalId"
+                           OnSaved="@(() => ReloadPolicy(_uploadPolicy.InsurancePolicyId))" />
+}

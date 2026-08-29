@@ -1,0 +1,106 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="CapacityField" subtitle="The capacity-limit control behind the count caps on the System settings import/export groups — a finite number OR explicitly unbounded. `stacked` pairs the input with a No-limit switch for a SettingRow column; `inline` is one line for a SettingField frame, the value plus a pill carrying the inverse action. Toggling No-limit retains the entered number. Mounted from the DS namespace." viewport="900x760" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · CapacityField</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 760px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 14px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 28px; align-items: start; }
+    .demo { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+      border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 16px 18px; background: var(--mud-palette-surface); }
+    .demo-lbl { font: var(--fw-medium) var(--fs-body2)/1.35 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .demo-sub { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; max-width: 220px; }
+    .sep { height: 1px; background: var(--mud-palette-divider); }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 22px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>CapacityField — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;CapacityField value unlimited onValueChange onUnlimitedChange&gt;</code></h1>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var useState = React.useState;
+      // Prefer the compiled atom; fall back to a local compose so the card renders
+      // even in the turn its source was added, before the bundle recompiles.
+      var CapacityField = NS.CapacityField || function (p) {
+        return e('div', { className: 'odc-capacity' },
+          p.unlimited
+            ? e('div', { className: 'odc-capacity-nolimit' }, 'No limit')
+            : e(NS.NumberField, { className: 'odc-capacity-num', value: p.value, min: p.min, max: p.max, step: 1, align: 'right', disabled: p.disabled, error: p.error, ariaLabelledBy: p.ariaLabelledBy, onChange: p.onValueChange }),
+          e('label', { className: 'odc-capacity-toggle' + (p.disabled ? ' disabled' : '') },
+            e('span', { className: 'odc-capacity-toggle-lbl' }, 'No limit'),
+            e(NS.Switch, { checked: p.unlimited, disabled: p.disabled, 'aria-label': (p.label || 'Limit') + ' — no limit', onChange: p.onUnlimitedChange })));
+      };
+
+      function Demo(props) {
+        var s = React.useState({ unlimited: props.unlimited, value: props.value });
+        var st = s[0], set = s[1];
+        return e('div', { className: 'demo' },
+          e('div', null,
+            e('div', { className: 'demo-lbl', id: props.id }, props.label),
+            props.sub ? e('div', { className: 'demo-sub' }, props.sub) : null),
+          e(CapacityField, {
+            value: st.value, unlimited: st.unlimited, label: props.label,
+            min: 1, max: 1000000, disabled: props.disabled, error: props.error,
+            ariaLabelledBy: props.id,
+            onValueChange: function (v) { set({ unlimited: st.unlimited, value: v }); },
+            onUnlimitedChange: function (u) { set({ unlimited: u, value: st.value }); },
+          }));
+      }
+
+      // The inline form as the settings page mounts it: inside a SettingField
+      // frame, so the pill and the value sit on the field's one line.
+      function InlineDemo(props) {
+        var v = useState(props.value), u = useState(props.unlimited);
+        var lid = 'il-' + props.label.replace(/\W+/g, '');
+        var inner = NS.CapacityField
+          ? e(NS.CapacityField, { variant: 'inline', value: v[0], unlimited: u[0], label: props.label,
+              ariaLabelledBy: lid, min: 1, max: 100000,
+              onValueChange: function (n) { v[1](n); }, onUnlimitedChange: function (b) { u[1](b); } })
+          : e('div', { className: 'odc-capacity inline' },
+              u[0] ? e('span', { className: 'odc-capacity-value' }, 'No limit')
+                   : e(NS.NumberField, { className: 'odc-capacity-num', value: v[0], min: 1, max: 100000, step: 1, align: 'right', ariaLabelledBy: lid, onChange: function (n) { v[1](n); } }),
+              e('button', { type: 'button', className: 'odc-capacity-pill', 'aria-pressed': u[0], onClick: function () { u[1](!u[0]); } }, u[0] ? 'Set a limit' : 'No limit'));
+        return NS.SettingField
+          ? e(NS.SettingField, { label: props.label, labelId: lid, help: 'Rows above the cap are skipped.', meta: 'Never changed \u2014 default value.' }, inner)
+          : e('div', { className: 'odc-sfield' },
+              e('fieldset', { className: 'odc-sfield-frame' },
+                e('legend', { className: 'odc-sfield-legend' }, e('span', { className: 'odc-sfield-label', id: lid }, props.label)),
+                e('div', { className: 'odc-sfield-ctrl' }, inner)));
+      }
+
+      var root = [
+        e('div', { key: 'a' }, e('div', { className: 'cap' }, ['Finite \u00b7 ', e('code', { key: 'c' }, 'unlimited=false'), ' and No-limit \u00b7 ', e('code', { key: 'c2' }, 'unlimited=true')]),
+          e('div', { className: 'row' },
+            e(Demo, { key: 1, id: 'd1', label: 'Maximum events per import', sub: 'Finite value — the switch is off, the number is required.', unlimited: false, value: 2000 }),
+            e(Demo, { key: 2, id: 'd2', label: 'Maximum contacts per import', sub: 'No limit — the input is replaced by "No limit"; the number is retained.', unlimited: true, value: 50000 }))),
+        e('div', { className: 'sep', key: 's1' }),
+        e('div', { key: 'i' }, e('div', { className: 'cap' }, ['Inline \u00b7 ', e('code', { key: 'c' }, 'variant="inline"'), ' \u2014 inside a SettingField frame']),
+          e('div', { className: 'row' },
+            e(InlineDemo, { key: 1, label: 'Maximum contacts per export', unlimited: false, value: 5000 }),
+            e(InlineDemo, { key: 2, label: 'Maximum contacts per import', unlimited: true, value: 5000 }))),
+        e('div', { className: 'sep', key: 's2' }),
+        e('div', { key: 'b' }, e('div', { className: 'cap' }, ['Error \u00b7 ', e('code', { key: 'c' }, 'error'), ' and Disabled (no write claim) \u00b7 ', e('code', { key: 'c2' }, 'disabled')]),
+          e('div', { className: 'row' },
+            e(Demo, { key: 1, id: 'd3', label: 'Maximum tasks per import', sub: 'Out of range — the error shows on the input, alongside the row hint.', unlimited: false, value: 0, error: 'Must be between 1 and 1,000,000' }),
+            e(Demo, { key: 2, id: 'd4', label: 'Maximum entries per export', sub: 'Caller lacks system-settings.update — both controls disabled.', unlimited: false, value: 2000, disabled: true })))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+@*
+    OdsSwitch — a binary on/off toggle (Odyssey Design System · components/Switch).
+
+    The Preferences "Dark mode" control and any instant setting. A MudSwitch.
+    Two-way bindable via @bind-Checked.
+*@
+
+<MudSwitch T="bool"
+           Value="@Checked"
+           ValueChanged="OnValueChanged"
+           Label="@Label"
+           AriaLabel="@AriaLabel"
+           Disabled="@Disabled"
+           Color="Color.Primary"
+           Class="@Class"
+           @attributes="UserAttributes"
+           aria-describedby="@AriaDescribedBy" />
+
+@code {
+    /// <summary>On/off state. Bindable via @bind-Checked.</summary>
+    [Parameter] public bool Checked { get; set; }
+
+    [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+
+    /// <summary>Optional trailing label (also the click target).</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>
+    /// Accessible name for a label-less switch (e.g. a system-settings row whose title lives in the
+    /// surrounding row, not this control). MudSwitch renders it via <c>aria-labelledby</c> on the
+    /// underlying input and hides the (absent) visible label from assistive tech — reliable, unlike
+    /// splatting a bare <c>aria-label</c> onto a MudBlazor component and hoping it lands on the input.
+    /// </summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>
+    /// Ids of the elements describing this switch — the row's helper line and any advisory.
+    ///
+    /// <para>
+    /// Written AFTER the <c>UserAttributes</c> splat so this parameter wins over a stray
+    /// <c>aria-describedby</c> from a call site. MudSwitch has no <c>AriaDescribedBy</c> of its own, but
+    /// it merges its <c>AriaLabel</c> into <c>UserAttributes</c> and splats those onto the underlying
+    /// input — so an unmatched attribute reaches the input, which is the element that has to carry it.
+    /// Without this a label-less switch has an accessible NAME and no accessible DESCRIPTION, and its
+    /// helper line is invisible to assistive tech (WCAG 1.3.1).
+    /// </para>
+    /// </summary>
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private Task OnValueChanged(bool value)
+    {
+        Checked = value;
+        return CheckedChanged.InvokeAsync(value);
+    }
+}

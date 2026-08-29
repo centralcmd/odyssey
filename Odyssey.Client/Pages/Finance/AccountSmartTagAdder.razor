@@ -1,0 +1,122 @@
+@using Odyssey.Client.Components
+@*
+    AccountSmartTagAdder — the "Add tag" control inside AccountSmartTagsSection
+    (Odyssey Design System · components/AccountSmartTagsSection → SmartTagAdder).
+
+    A quiet dashed pill that opens a searchable, checkable list of every selectable
+    tag. Checking a row adds the tag (OnAdd), unchecking removes it (OnRemove) —
+    one call per toggle, mirroring the per-tag POST/DELETE endpoints. Rows past the
+    per-account cap can't be newly checked. Built on MudMenu so the popover is
+    portaled out of the collapsible's overflow and flips above when cramped.
+*@
+
+<span class="odc-smarttags-adder">
+    <MudMenu @ref="_menu"
+             AnchorOrigin="Origin.BottomLeft"
+             TransformOrigin="Origin.TopLeft"
+             PopoverClass="odc-ms-pop-paper"
+             ListClass="pa-0"
+             OpenChanged="@(open => _open = open)">
+        <ActivatorContent>
+            <button type="button"
+                    class="odc-smarttags-add@(_open ? " open" : "")"
+                    aria-haspopup="listbox"
+                    aria-expanded="@(_open ? "true" : "false")"
+                    @onclick="@context.ToggleAsync">
+                <span class="material-icons" aria-hidden="true">@(_open ? "expand_less" : "add")</span>
+                <span>@Label</span>
+            </button>
+        </ActivatorContent>
+        <ChildContent>
+            <div class="odc-smarttags-pop" role="listbox" aria-multiselectable="true">
+                <div class="odc-smarttags-search">
+                    <span class="material-icons" aria-hidden="true">search</span>
+                    <input value="@_query"
+                           @oninput="@(e => _query = e.Value?.ToString() ?? string.Empty)"
+                           placeholder="Search tags…"
+                           aria-label="Search tags" />
+                </div>
+                <div class="odc-smarttags-list">
+                    @foreach (var option in Filtered)
+                    {
+                        var checked_ = _selected.Contains(option.Value);
+                        var blocked = !checked_ && AtCap;
+                        <label class="odc-smarttags-opt odc-check@(blocked ? " blocked" : "")">
+                            <input type="checkbox"
+                                   checked="@checked_"
+                                   disabled="@blocked"
+                                   @onchange="@(() => Toggle(option, checked_))" />
+                            <span class="odc-check-box" aria-hidden="true">
+                                <span class="material-icons">check</span>
+                            </span>
+                            <span class="odc-check-label">@option.Label</span>
+                        </label>
+                    }
+                    @if (!Filtered.Any())
+                    {
+                        <div class="odc-smarttags-empty-opt">@EmptyText</div>
+                    }
+                </div>
+                @if (AtCap)
+                {
+                    <div class="odc-smarttags-cap">Tag limit of @Cap reached — remove one to add another.</div>
+                }
+            </div>
+        </ChildContent>
+    </MudMenu>
+</span>
+
+@code {
+    /// <summary>Every selectable tag (the option pool).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsOption> Options { get; set; } = [];
+
+    /// <summary>The tag ids currently configured on the account.</summary>
+    [Parameter] public IReadOnlyCollection<string> SelectedIds { get; set; } = [];
+
+    /// <summary>Fires when a previously-unchecked tag is checked (→ POST add).</summary>
+    [Parameter] public EventCallback<string> OnAdd { get; set; }
+
+    /// <summary>Fires when a checked tag is unchecked (→ DELETE remove).</summary>
+    [Parameter] public EventCallback<string> OnRemove { get; set; }
+
+    /// <summary>At the per-account smart-tag cap — unchecked rows can no longer be added.</summary>
+    [Parameter] public bool AtCap { get; set; }
+
+    /// <summary>
+    /// The effective cap, interpolated into the at-cap message (issue #434 key 15).
+    ///
+    /// <para>
+    /// A parameter rather than a constant, and the message is a new string rather than an edited one:
+    /// the cap is admin-editable now, and the old text named no number at all — so "remove one to add
+    /// another" left the user guessing what the limit was, and any literal put there would go stale the
+    /// moment an administrator changed it. The number arrives from
+    /// <c>/api/account-limits</c> via the parent's session cache.
+    /// </para>
+    /// </summary>
+    [Parameter] public int Cap { get; set; }
+
+    [Parameter] public string Label { get; set; } = "Add tag";
+
+    [Parameter] public string EmptyText { get; set; } = "No tags match";
+
+    private MudMenu _menu = default!;
+    private bool _open;
+    private string _query = string.Empty;
+
+    private HashSet<string> _selected = [];
+
+    protected override void OnParametersSet() => _selected = [.. SelectedIds];
+
+    private IEnumerable<OdsOption> Filtered => string.IsNullOrWhiteSpace(_query)
+        ? Options
+        : Options.Where(o => o.Label.Contains(_query.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private Task Toggle(OdsOption option, bool wasChecked)
+    {
+        if (wasChecked)
+            return OnRemove.InvokeAsync(option.Value);
+        if (AtCap)
+            return Task.CompletedTask;
+        return OnAdd.InvokeAsync(option.Value);
+    }
+}

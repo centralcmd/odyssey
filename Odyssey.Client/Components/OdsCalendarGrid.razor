@@ -1,0 +1,158 @@
+@*
+    OdsCalendarGrid — the month grid (Odyssey Design System · CalendarGrid).
+
+    A role="grid" 6×7 view of a month: colour-coded event chips (title always shown, colour is
+    never the only signal), all-day/multi-day events as flush continuation strips above timed
+    chips, a per-cell "+N more" popover for dense days, a roving-tabindex keyboard grid, and
+    optional drag-to-reschedule (enabled when OnEventDrop has a delegate).
+
+    Accessibility: arrow keys move day focus, Home/End jump to week start/end, Enter/Space opens a
+    busy day's popover or starts a new event on an empty day; today carries aria-current="date".
+    Each chip is an independently focusable button whose accessible name is the full sentence
+    ("Team sync, 09:00, Work calendar"), not the truncated visual title.
+*@
+
+<div class="odc-cal" role="grid" aria-label="@GridLabel">
+    <div class="odc-cal-wdhead" role="row">
+        @foreach (var weekday in CalendarGridMath.WeekdayHeaders(WeekStartsOn))
+        {
+            <div class="odc-cal-wd" role="columnheader">@weekday</div>
+        }
+    </div>
+
+    @for (var weekIndex = 0; weekIndex < 6; weekIndex++)
+    {
+        <div class="odc-cal-week" role="row">
+            @for (var columnIndex = 0; columnIndex < 7; columnIndex++)
+            {
+                var cellIndex = (weekIndex * 7) + columnIndex;
+                var day = _days[cellIndex];
+                var col = columnIndex;
+                var inMonth = day.Month == Month.Month && day.Year == Month.Year;
+                var isToday = day == TodayDate;
+                var items = ItemsForDay(day, col);
+                var visible = items.Take(MaxPerDay).ToList();
+                var overflow = items.Count - visible.Count;
+
+                <div role="gridcell"
+                     @ref="_dayCellRefs[cellIndex]"
+                     tabindex="@(day == _focusDay ? 0 : -1)"
+                     aria-current="@(isToday ? "date" : null)"
+                     aria-label="@DayAriaLabel(day, items.Count)"
+                     class="@DayCellClass(inMonth, isToday, day)"
+                     style="position:relative"
+                     @onclick="() => OnDayCellClick(day)"
+                     @onkeydown="e => OnCellKeyDown(e, day)"
+                     @ondragover="OnEventDrop.HasDelegate ? EventCallback.Factory.Create<DragEventArgs>(this, e => OnDayDragOver(e, day)) : default"
+                     @ondragover:preventDefault="OnEventDrop.HasDelegate"
+                     @ondrop="OnEventDrop.HasDelegate ? EventCallback.Factory.Create<DragEventArgs>(this, () => OnDayDrop(day)) : default">
+                    <div class="odc-cal-daynum-row">
+                        @if (col == 0 || day.Day == 1)
+                        {
+                            <span class="odc-cal-daymo">@day.ToString("MMM")</span>
+                        }
+                        <span class="@("odc-cal-daynum" + (isToday ? " today" : ""))">@day.Day</span>
+                    </div>
+                    <div class="odc-cal-items">
+                        @foreach (var item in visible)
+                        {
+                            // Recurring occurrences aren't draggable: a drop reschedules via the single-event
+                            // PUT, which would silently detach one occurrence from its series' schedule.
+                            var chipDraggable = OnEventDrop.HasDelegate && !item.Event.Recurring;
+                            <button type="button"
+                                    class="@ChipClass(item, col)"
+                                    draggable="@(chipDraggable ? "true" : null)"
+                                    style="@ChipStyle(item)"
+                                    aria-label="@AccessibleName(item.Event)"
+                                    title="@item.Event.Title"
+                                    @onclick="() => OnChipClick(item.Event.Id)"
+                                    @onclick:stopPropagation="true"
+                                    @ondragstart="chipDraggable ? EventCallback.Factory.Create<DragEventArgs>(this, () => OnChipDragStart(item.Event.Id, day)) : default"
+                                    @ondragend="chipDraggable ? EventCallback.Factory.Create<DragEventArgs>(this, OnChipDragEnd) : default">
+                                @if (item.AllDay)
+                                {
+                                    @if (item.ShowLabel)
+                                    {
+                                        <span class="odc-cal-chip-t">
+                                            @if (item.Event.Recurring)
+                                            {
+                                                <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
+                                            }
+                                            @item.Event.Title
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="odc-cal-chip-t" aria-hidden="true">&nbsp;</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="odc-cal-chip-dot" aria-hidden="true"></span>
+                                    <span class="odc-cal-chip-time">@item.Event.Start.ToString("HH:mm")</span>
+                                    <span class="odc-cal-chip-t">
+                                        @if (item.Event.Recurring)
+                                        {
+                                            <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
+                                        }
+                                        @item.Event.Title
+                                    </span>
+                                }
+                            </button>
+                        }
+                        @if (overflow > 0)
+                        {
+                            <button type="button" class="odc-cal-more"
+                                    aria-label="@($"{overflow} more {(overflow == 1 ? "event" : "events")} on {LongDay(day)}")"
+                                    @onclick="() => OpenPopover(day)"
+                                    @onclick:stopPropagation="true">
+                                +@overflow more
+                            </button>
+                        }
+                    </div>
+
+                    @if (_popoverDay == day)
+                    {
+                        <div class="odc-cal-daypop" role="dialog" aria-label="@LongDay(day)"
+                             @ref="_popoverRef" tabindex="-1"
+                             @onkeydown="e => OnPopoverKeyDown(e, day)"
+                             style="position:absolute; top:100%; left:0; margin-top:4px;"
+                             @onclick:stopPropagation="true">
+                            <div class="odc-cal-daypop-head">
+                                <div class="odc-cal-daypop-wd">@day.ToString("ddd")</div>
+                                <div class="odc-cal-daypop-n">@day.Day</div>
+                            </div>
+                            <div class="odc-cal-daypop-list">
+                                @foreach (var item in items)
+                                {
+                                    <button type="button" class="odc-cal-daypop-row"
+                                            @onclick="() => OnPopoverRowClick(item.Event.Id)">
+                                        <span class="odc-cal-daypop-swatch" style="@($"background:{item.Event.Color}")" aria-hidden="true"></span>
+                                        <span class="odc-cal-daypop-time">@(item.AllDay ? "All day" : item.Event.Start.ToString("HH:mm"))</span>
+                                        <span class="odc-cal-daypop-t">
+                                            @if (item.Event.Recurring)
+                                            {
+                                                <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
+                                            }
+                                            @item.Event.Title
+                                        </span>
+                                    </button>
+                                }
+                            </div>
+                            <div class="odc-cal-daypop-foot">
+                                <button type="button" class="odc-btn text" @onclick="() => OnPopoverNewEvent(day)">
+                                    <span class="material-icons" aria-hidden="true" style="font-size:18px">add</span> New event
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (_popoverDay is not null)
+{
+    <div class="odc-cal-popcatch" @onclick="ClosePopover"></div>
+}

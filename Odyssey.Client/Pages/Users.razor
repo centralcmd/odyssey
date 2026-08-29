@@ -1,0 +1,271 @@
+@page "/users"
+@using System.Globalization
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Models
+@attribute [Authorize(Policy = PermissionClaims.UsersRead)]
+@inject ISnackbar Snackbar
+@inject Odyssey.Client.Services.IClipboardService Clipboard
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IUsersApiClient UsersApi
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Users</PageTitle>
+
+@*
+    Users — the admin-only user administration page at /users (Odyssey Design
+    System · Components · Users page specimen). A searchable, filterable,
+    sortable table where an operator with users.update manages other people's
+    role and account flags. Each row expands in place (the Budgets pattern) into
+    a read-only detail, then swaps to an Edit panel.
+
+    Backed by the api/users contract (UserAdministrationController):
+      • GET  api/users?offset&limit&search&role&enabled&sortBy&sortDir → PagedResult<ExistingUser>
+      • GET  api/users/roles                             → role → permissions
+      • PATCH api/users/{id}      { emailConfirmed, enabled }
+      • PUT   api/users/{id}/role { role }
+
+    The specimen also shows a 2FA badge/filter and an email-status filter; the
+    current ExistingUser contract exposes neither (no two-factor field, and the
+    GET endpoint filters by role + enabled only), so those are intentionally
+    omitted. Created shows "—" until the service populates CreatedAtUtc.
+*@
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<MudStack Spacing="6">
+
+    <PageHeader Title="Users" Icon="@Icons.Material.Filled.ManageAccounts"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled">
+        <SubLine>@HeaderSubLine</SubLine>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadUsersAsync"
+                                Placeholder="Search username or email…"
+                                Class="ph-search" />
+                <OdsMultiSelect Label="Role" Values="_roleFilter" ValuesChanged="OnRoleFilterChanged"
+                                Options="RoleOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="ExistingUser" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <OdsListStatus Card="true" Loading="_isLoading" Error="_loadError" OnRetry="LoadUsersAsync"
+                   IsEmpty="@(FilteredUsers.Count == 0)" HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                   Noun="users" EmptyIcon="person_search">
+        <MudCard Elevation="1" Class="ods-outline">
+            <MudCardContent Class="pa-0">
+                <table class="tbl usr-tbl" aria-label="Users">
+                    <thead>
+                        <tr>
+                            @* OdsSortHeader is the shared sortable <th> (the same atom OdsRecordTable
+                               renders from its Columns) — it owns aria-sort, the arrow indicator and a
+                               real <button>, so this page no longer hand-rolls any of the three. *@
+                            <OdsSortHeader SortKey="name" Sort="_sort" OnSort="ToggleSort">User</OdsSortHeader>
+                            <OdsSortHeader SortKey="fullname" Sort="_sort" OnSort="ToggleSort">Full name</OdsSortHeader>
+                            <OdsSortHeader SortKey="birthdate" Sort="_sort" OnSort="ToggleSort">Date of birth</OdsSortHeader>
+                            <OdsSortHeader SortKey="email" Sort="_sort" OnSort="ToggleSort">Email</OdsSortHeader>
+                            <OdsSortHeader SortKey="role" Sort="_sort" OnSort="ToggleSort">Role</OdsSortHeader>
+                            <OdsSortHeader SortKey="emailstatus" Sort="_sort" OnSort="ToggleSort">Email status</OdsSortHeader>
+                            <OdsSortHeader SortKey="account" Sort="_sort" OnSort="ToggleSort">Account</OdsSortHeader>
+                            <th scope="col">Created</th>
+                            <th scope="col" class="usr-actions-col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in PageItems)
+                        {
+                            var isEditing = _editingId == user.Id;
+                            var isExpanded = _expandedId == user.Id;
+                            var isOpen = isEditing || isExpanded;
+                            @* The whole row is the disclosure control (design-system Users
+                               specimen): clicking anywhere toggles the detail panel; the
+                               actions cell stops propagation so its controls act on their own. *@
+                            <tr class="@(isOpen ? "expanded" : null)"
+                                role="button" tabindex="0"
+                                aria-expanded="@isOpen.ToString().ToLowerInvariant()"
+                                @onclick="@(() => ToggleExpand(user.Id))"
+                                @onkeydown="@(e => OnRowKeyDown(e, user.Id))">
+                                <td>
+                                    <div class="usr-user-cell">
+                                        <span class="avatar @UserDisplay.AvatarClass(user.Role)">@UserDisplay.Initials(user)</span>
+                                        <div>
+                                            <div class="usr-user-name">@UserDisplay.DisplayName(user)</div>
+                                            <div class="usr-user-id">@@@(user.UserName ?? "—")</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>@(UserDisplay.FullName(user) ?? "—")</td>
+                                <td class="muted mono">@(UserDisplay.BirthDateText(user) ?? "—")</td>
+                                <td class="usr-email">@(user.Email ?? "—")</td>
+                                <td><UserRolePill Role="@user.Role" /></td>
+                                <td><UserStatusBadge Kind="UserStatusKind.Email" On="user.EmailConfirmed" /></td>
+                                @* The pending-reset chip rides inside the existing Account-status cell
+                                   rather than adding a ninth column to an already-dense row (issue #406
+                                   §3). Text + icon, never colour alone. *@
+                                <td>
+                                    <span class="usr-status-stack">
+                                        <UserStatusBadge Kind="UserStatusKind.Account" On="user.Enabled" />
+                                        @if (user.MustChangePassword)
+                                        {
+                                            <OdsChip Tone="OdsChipTone.Warning" Icon="lock_reset">Reset pending</OdsChip>
+                                        }
+                                    </span>
+                                </td>
+                                <td class="muted mono">@UserDisplay.CreatedText(user)</td>
+                                <td>
+                                    <div class="usr-row-actions" @onclick:stopPropagation="true">
+                                        @* Edit (users.update) and Delete (users.delete) share the row's
+                                           action menu, each gated on its own permission. Permanent delete
+                                           is admin-only. *@
+                                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                                 Size="Size.Small"
+                                                 Color="Color.Default"
+                                                 AnchorOrigin="Origin.BottomRight"
+                                                 TransformOrigin="Origin.TopRight"
+                                                 AriaLabel="More actions">
+                                            <AuthorizeView Policy="@PermissionClaims.UsersUpdate" Context="editAuth">
+                                                <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                             OnClick="@(() => BeginEdit(user))">Edit</MudMenuItem>
+                                                @* Directly after Edit, inside the same users.update gate
+                                                   (issue #406 §3): triggering a reset is an edit of the
+                                                   account, not a destructive act, so it stays above the
+                                                   divider that separates Delete. *@
+                                                <MudMenuItem Icon="@Icons.Material.Filled.LockReset"
+                                                             OnClick="@(() => RequestPasswordReset(user))">Send password reset</MudMenuItem>
+                                            </AuthorizeView>
+                                            <MudMenuItem OnClick="@(() => CopyUserId(user))">
+                                                <span class="odc-menu-item">
+                                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
+                                                    <span>Copy ID</span>
+                                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
+                                                </span>
+                                            </MudMenuItem>
+                                            <AuthorizeView Policy="@PermissionClaims.UsersDelete" Context="deleteAuth">
+                                                @* Delete is divided off and coral (design-system Users specimen). *@
+                                                <MudDivider />
+                                                <MudMenuItem Icon="@Icons.Material.Filled.DeleteForever"
+                                                             IconColor="Color.Error"
+                                                             OnClick="@(() => RequestDelete(user))">Delete</MudMenuItem>
+                                            </AuthorizeView>
+                                        </MudMenu>
+                                        <button class="usr-expand-btn" type="button"
+                                                aria-label="@(isOpen ? "Collapse row" : "Expand row")"
+                                                @onclick="@(() => ToggleExpand(user.Id))">
+                                            <MudIcon Icon="@Icons.Material.Filled.ExpandMore"
+                                                     Class="@($"usr-chev {(isOpen ? "open" : null)}")" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            @if (isEditing)
+                            {
+                                <tr class="usr-detail-row">
+                                    <td class="usr-detail-cell" colspan="9">
+                                        <UserEditPanel User="user" Roles="_roles"
+                                                       Saving="_editSaving" Error="@_editError"
+                                                       OnCancel="CancelEdit"
+                                                       OnSave="@(draft => ApplyEdit(user, draft))" />
+                                    </td>
+                                </tr>
+                            }
+                            else if (isExpanded)
+                            {
+                                <tr class="usr-detail-row">
+                                    <td class="usr-detail-cell" colspan="9">
+                                        <UserDetailPanel User="user" Permissions="RolePermissionsFor(user.Role)"
+                                                         ClaimsOpen="@(_claimsOpenId == user.Id)"
+                                                         OnToggleClaims="@(() => ToggleClaims(user.Id))" />
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+
+                @if (FilteredUsers.Count > 0)
+                {
+                    <OdsPager Page="_page" PageChanged="GoToPage"
+                              PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+                              TotalCount="FilteredUsers.Count" />
+                }
+            </MudCardContent>
+        </MudCard>
+    </OdsListStatus>
+
+    @* Permanent-delete confirmation (design-system Users specimen): error-tone
+       dialog that blocks the last enabled Admin inline — the same self-protection
+       the Edit panel applies — before the API's 409 ever has to. *@
+    <OdsModal Open="@(_pendingDelete is not null)" OpenChanged="OnDeleteOpenChanged"
+              Icon="delete_forever" IconTone="OdsModalTone.Error"
+              OnClose="@(() => { if (!_deleting) _pendingDelete = null; })">
+        <Title>Delete user</Title>
+        <ChildContent>
+            @if (_pendingDelete is { } target)
+            {
+                <div style="font: 400 0.875rem/1.65 var(--font-sans); color: var(--mud-palette-text-primary);">
+                    Permanently delete <b>@UserDisplay.DisplayName(target)</b>
+                    (<span class="mono">@(target.Email ?? target.UserName ?? target.Id)</span>)?
+                    This removes the account and cannot be undone.
+                </div>
+                @if (TargetIsLastEnabledAdmin)
+                {
+                    <div class="alert error" role="status" style="margin-top: 12px;">
+                        <span class="material-icons alert-icon">error_outline</span>
+                        <div class="alert-body">
+                            <strong>Action blocked.</strong> This is the only enabled Admin. The system must
+                            keep at least one enabled Admin, so this account can't be deleted.
+                        </div>
+                    </div>
+                }
+            }
+        </ChildContent>
+        <Footer>
+            <OdsButton Variant="OdsButtonVariant.Text" Disabled="_deleting"
+                       OnClick="@(() => _pendingDelete = null)">Cancel</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete_forever"
+                       Loading="_deleting" Disabled="@(_deleting || TargetIsLastEnabledAdmin)"
+                       OnClick="DeleteConfirmedAsync">Delete</OdsButton>
+        </Footer>
+    </OdsModal>
+
+    @* Send-password-reset confirmation (issue #406 §3). Warning tone, deliberately NOT the Error tone
+       the permanent-delete dialog uses: this is security-sensitive, not destructive — nothing is lost,
+       and the target's current password keeps working until they use the link. *@
+    <OdsModal Open="@(_pendingReset is not null)" OpenChanged="OnResetOpenChanged"
+              Icon="lock_reset" IconTone="OdsModalTone.Warning"
+              OnClose="@(() => { if (!_sendingReset) _pendingReset = null; })">
+        <Title>Send password reset</Title>
+        <ChildContent>
+            @if (_pendingReset is { } target)
+            {
+                <div style="font: 400 0.875rem/1.65 var(--font-sans); color: var(--mud-palette-text-primary);">
+                    We'll email <b>@(target.Email ?? target.UserName ?? target.Id)</b> a link to choose a
+                    new password. They'll be signed out of all devices immediately, and if they sign in
+                    with their current password they'll have to change it before continuing. Their current
+                    password keeps working until they use the link.
+                </div>
+                @if (TargetIsSelf)
+                {
+                    <div style="margin-top: 12px;">
+                        <OdsAlert Severity="Severity.Warning">
+                            <b>This is your own account.</b> You'll be signed out everywhere else and asked
+                            to change your password before continuing.
+                        </OdsAlert>
+                    </div>
+                }
+            }
+        </ChildContent>
+        <Footer>
+            <OdsButton Variant="OdsButtonVariant.Text" Disabled="_sendingReset"
+                       OnClick="@(() => _pendingReset = null)">Cancel</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Filled" Icon="send"
+                       Loading="_sendingReset" Disabled="_sendingReset"
+                       OnClick="SendPasswordResetAsync">Send reset link</OdsButton>
+        </Footer>
+    </OdsModal>
+</MudStack>

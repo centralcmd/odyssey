@@ -1,0 +1,171 @@
+@using Odyssey.Dtos.Journal
+@typeparam TItem
+@*
+    OdsTaskBoard — the three-column kanban for the to-do list (Odyssey Design System ·
+    components/TaskBoard): Backlog · Doing · Done (Archived is off-board, reached via a
+    status filter). Each column is a labelled landmark region whose heading states its
+    name + count as text. Card status is exposed in text by the consumer's RenderCard
+    (which includes an OdsTodoStatusChip) — never by column position alone.
+
+    Interaction is dual-path (accessibility): pointer users drag cards within/across
+    columns (HTML5 DnD); keyboard users get an always-present move-button cluster on every
+    card (previous column / up / down / next column), each a ≥24px control with an
+    accessible name, disabled at the ends. Every move (drag or button) is announced through
+    a single polite live region.
+
+    Controlled: Tasks is the full list; ordering within a column is by ascending Position.
+    Every move raises OnMove(id, toStatus, toIndex) — the consumer re-sequences and updates
+    state. Styled by .odc-board (odyssey-components.css).
+*@
+
+<div class="odc-board @Class" style="@Style">
+    <div class="odc-board-live" aria-live="polite" role="status">@_announce</div>
+    @foreach (var col in Columns)
+    {
+        var list = _byCol.TryGetValue(col, out var items) ? items : [];
+        var ci = _colIndex[col];
+        <section class="odc-board-col @(_overCol == col ? "dragover" : "")"
+                 aria-label="@($"{Label(col)} ({list.Count})")"
+                 @ondragover:preventDefault="true"
+                 @ondragover="@(() => { if (_dragId is not null) _overCol = col; })"
+                 @ondragleave="@(() => { if (_overCol == col) _overCol = null; })"
+                 @ondrop="@(() => DropAt(col, list.Count))">
+            <header class="odc-board-colhead">
+                <span class="odc-board-coltitle">@Label(col)</span>
+                <span class="odc-board-colcount">@list.Count</span>
+            </header>
+            <div class="odc-board-cards">
+                @if (list.Count == 0)
+                {
+                    <div class="odc-board-empty">@EmptyColumnText</div>
+                }
+                else
+                {
+                    @for (var i = 0; i < list.Count; i++)
+                    {
+                        var index = i;
+                        var t = list[index];
+                        var id = Id(t);
+                        <article id="@($"odc-board-card-{id}")"
+                                 class="odc-board-card @(_dragId == id ? "dragging" : "")"
+                                 draggable="true"
+                                 @ondragstart="@(() => _dragId = id)"
+                                 @ondragend="@(() => { _dragId = null; _overCol = null; })"
+                                 @ondragover:preventDefault="true"
+                                 @ondrop:stopPropagation="true"
+                                 @ondrop="@(() => DropAt(col, index))">
+                            <div class="odc-board-cardbody">
+                                @RenderCard(t)
+                            </div>
+                            <div class="odc-board-moves" role="group" aria-label="@($"Move {Title(t)}")">
+                                <button type="button" class="odc-board-move" aria-label="Move to previous column"
+                                        disabled="@(ci == 0)" @onclick="@(() => MoveColumn(t, -1))">
+                                    <span class="material-icons" aria-hidden="true">chevron_left</span>
+                                </button>
+                                <button type="button" class="odc-board-move" aria-label="Move up"
+                                        disabled="@(index == 0)" @onclick="@(() => MoveWithin(t, -1))">
+                                    <span class="material-icons" aria-hidden="true">keyboard_arrow_up</span>
+                                </button>
+                                <button type="button" class="odc-board-move" aria-label="Move down"
+                                        disabled="@(index == list.Count - 1)" @onclick="@(() => MoveWithin(t, 1))">
+                                    <span class="material-icons" aria-hidden="true">keyboard_arrow_down</span>
+                                </button>
+                                <button type="button" class="odc-board-move" aria-label="Move to next column"
+                                        disabled="@(ci == Columns.Count - 1)" @onclick="@(() => MoveColumn(t, 1))">
+                                    <span class="material-icons" aria-hidden="true">chevron_right</span>
+                                </button>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    /// <summary>A board move request: the moved item, its target column, and its 0-based slot in that column.</summary>
+    public sealed record Move(Guid Id, JournalTaskStatus ToStatus, int ToIndex);
+
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Tasks { get; set; } = [];
+
+    /// <summary>The board columns, in display order (Archived is never a column).</summary>
+    [Parameter] public IReadOnlyList<JournalTaskStatus> Columns { get; set; } =
+        [JournalTaskStatus.Backlog, JournalTaskStatus.Doing, JournalTaskStatus.Done];
+
+    [Parameter, EditorRequired] public Func<TItem, Guid> Id { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, JournalTaskStatus> Status { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, int> Position { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TItem, string> Title { get; set; } = default!;
+
+    [Parameter, EditorRequired] public RenderFragment<TItem> RenderCard { get; set; } = default!;
+
+    /// <summary>Raised for every move (drag or keyboard). The consumer re-sequences + persists.</summary>
+    [Parameter] public EventCallback<Move> OnMove { get; set; }
+
+    [Parameter] public string EmptyColumnText { get; set; } = "Nothing here yet.";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+
+    private Guid? _dragId;
+    private JournalTaskStatus? _overCol;
+    private string _announce = "";
+
+    private Dictionary<JournalTaskStatus, List<TItem>> _byCol = [];
+    private Dictionary<JournalTaskStatus, int> _colIndex = [];
+
+    protected override void OnParametersSet()
+    {
+        _colIndex = Columns.Select((c, i) => (c, i)).ToDictionary(x => x.c, x => x.i);
+        _byCol = Columns.ToDictionary(c => c, _ => new List<TItem>());
+        foreach (var t in Tasks)
+        {
+            var s = Status(t);
+            if (_byCol.TryGetValue(s, out var bucket))
+                bucket.Add(t);
+        }
+        foreach (var bucket in _byCol.Values)
+            bucket.Sort((a, b) => Position(a).CompareTo(Position(b)));
+    }
+
+    private static string Label(JournalTaskStatus s) => s.ToString();
+
+    private async Task Emit(TItem t, JournalTaskStatus toStatus, int toIndex, string verb)
+    {
+        await OnMove.InvokeAsync(new Move(Id(t), toStatus, toIndex));
+        _announce = $"{Title(t)} {verb} {Label(toStatus)}, position {toIndex + 1}.";
+    }
+
+    private async Task MoveWithin(TItem t, int dir)
+    {
+        var s = Status(t);
+        var list = _byCol[s];
+        var i = list.FindIndex(x => Id(x) == Id(t));
+        var j = i + dir;
+        if (j < 0 || j >= list.Count)
+            return;
+        await Emit(t, s, j, "reordered in");
+    }
+
+    private async Task MoveColumn(TItem t, int dir)
+    {
+        var ci = _colIndex[Status(t)];
+        var cj = ci + dir;
+        if (cj < 0 || cj >= Columns.Count)
+            return;
+        var target = Columns[cj];
+        await Emit(t, target, _byCol[target].Count, "moved to");
+    }
+
+    private async Task DropAt(JournalTaskStatus toStatus, int toIndex)
+    {
+        _overCol = null;
+        if (_dragId is not { } dragId)
+            return;
+        var moved = Tasks.FirstOrDefault(x => Id(x) == dragId);
+        _dragId = null;
+        if (moved is null)
+            return;
+        await Emit(moved, toStatus, toIndex, "moved to");
+    }
+}

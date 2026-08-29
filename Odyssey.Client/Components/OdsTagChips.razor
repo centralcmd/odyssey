@@ -1,0 +1,71 @@
+@*
+    OdsTagChips — read-only display of a transaction's tag set
+    (Odyssey Design System · components/TagChips).
+
+    The multi-tag counterpart to a single <OdsChip Tone="Tag">: renders zero,
+    one, or many tag chips inline, collapsing to an em-dash placeholder when
+    empty. The canonical way to show a transaction's TransactionTags on a table
+    cell, a detail tile, or anywhere a single tag was shown before.
+
+    Pass Max to cap the visible chips and roll the rest into a "+N" overflow chip
+    (titled with the hidden names) so a dense table column never blows its height;
+    omit Max (detail panel) to show them all.
+*@
+@using Odyssey.Dtos.Finance
+
+@if (_tags.Count == 0)
+{
+    <span class="odc-tagchips-empty">@Empty</span>
+}
+else
+{
+    <span class="odc-tagchips">
+        @foreach (var tag in _shown)
+        {
+            <span class="odc-chip tag">@tag.Name</span>
+        }
+        @if (_hidden.Count > 0)
+        {
+            <span class="odc-chip tag odc-tagchips-more" title="@HiddenTitle">
+                +@_hidden.Count
+                @* title= is mouse-only — give AT the hidden names as text. *@
+                <span class="sr-only"> more tags: @HiddenTitle</span>
+            </span>
+        }
+    </span>
+}
+
+@code {
+    /// <summary>The tags to display. Null/empty renders the <see cref="Empty"/> placeholder.</summary>
+    [Parameter] public IEnumerable<ExistingTransactionTag>? Tags { get; set; }
+
+    /// <summary>Cap the visible chips; the remainder collapse into a "+N" overflow chip. Null shows all.</summary>
+    [Parameter] public int? Max { get; set; }
+
+    /// <summary>Placeholder shown when there are no tags.</summary>
+    [Parameter] public string Empty { get; set; } = "—";
+
+    private List<ExistingTransactionTag> _tags = [];
+    private List<ExistingTransactionTag> _shown = [];
+    private List<ExistingTransactionTag> _hidden = [];
+
+    protected override void OnParametersSet()
+    {
+        _tags = (Tags ?? [])
+            .Where(t => !string.IsNullOrWhiteSpace(t.Name))
+            .ToList();
+
+        if (Max is { } max && _tags.Count > max)
+        {
+            _shown = _tags.Take(max).ToList();
+            _hidden = _tags.Skip(max).ToList();
+        }
+        else
+        {
+            _shown = _tags;
+            _hidden = [];
+        }
+    }
+
+    private string HiddenTitle => string.Join(", ", _hidden.Select(t => t.Name));
+}

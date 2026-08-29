@@ -1,0 +1,67 @@
+@*
+    OdsBrandMark — static inline-SVG render of the official Odyssey compass-rose
+    logomark (bold weight), a faithful port of the design system's BrandMark.jsx.
+    Pure rendering. WithWordmark adds the spaced-caps ODYSSEY wordmark beneath the
+    compass (the lockup used by the login/auth cards). The colours are the brand's
+    exact hex values — brand identity, not themeable tokens, so they stay literal
+    (same rationale as the picker oklch literals). Self-contained.
+*@
+
+<svg width="@Size" height="@Height" viewBox="@ViewBox" fill="none" role="img" aria-label="Odyssey">
+    @* Rings *@
+    <circle cx="100" cy="105" r="90" fill="none" stroke="@Frame" stroke-width="13" />
+    <circle cx="100" cy="105" r="66" fill="none" stroke="@Frame" stroke-width="2.5" stroke-dasharray="6 4" />
+    @* Cardinal ticks *@
+    <line x1="100" y1="9" x2="100" y2="29" stroke="@Frame" stroke-width="7" />
+    <line x1="100" y1="181" x2="100" y2="201" stroke="@Frame" stroke-width="7" />
+    <line x1="4" y1="105" x2="24" y2="105" stroke="@Frame" stroke-width="7" />
+    <line x1="176" y1="105" x2="196" y2="105" stroke="@Frame" stroke-width="7" />
+    @* Ordinal ticks *@
+    <line x1="36" y1="41" x2="50" y2="55" stroke="@Frame" stroke-width="5" />
+    <line x1="164" y1="41" x2="150" y2="55" stroke="@Frame" stroke-width="5" />
+    <line x1="36" y1="169" x2="50" y2="155" stroke="@Frame" stroke-width="5" />
+    <line x1="164" y1="169" x2="150" y2="155" stroke="@Frame" stroke-width="5" />
+    @* Compass rose *@
+    <polygon points="100,25 91,105 100,82 109,105" fill="@Glow" />
+    <polygon points="100,105 91,105 100,82 109,105" fill="@Frame" />
+    <polygon points="100,185 91,105 100,128 109,105" fill="@Gray" />
+    <polygon points="100,105 91,105 100,128 109,105" fill="@Dark" />
+    <polygon points="185,105 100,96 123,105 100,114" fill="@Gray" />
+    <polygon points="100,105 100,96 123,105 100,114" fill="@Dark" />
+    <polygon points="15,105 100,96 77,105 100,114" fill="@Gray" />
+    <polygon points="100,105 100,96 77,105 100,114" fill="@Dark" />
+    @* Center pivot *@
+    <circle cx="100" cy="105" r="11" fill="none" stroke="@Frame" stroke-width="3" />
+    <circle cx="100" cy="105" r="5" fill="@Glow" />
+    @* Rendered as MarkupString: Razor reserves the bare <text> tag inside code blocks. *@
+    @if (WithWordmark)
+    {
+        @Wordmark
+    }
+</svg>
+
+@code {
+    /// <summary>Compass width in px; height scales from it (×1.05, or ×1.2 with the wordmark).</summary>
+    [Parameter] public int Size { get; set; } = 28;
+
+    /// <summary>Add the spaced-caps ODYSSEY wordmark beneath the compass (the login/drawer lockup).</summary>
+    [Parameter] public bool WithWordmark { get; set; }
+
+    // Brand-exact hex — the official logomark colours (see the Brand cards in the design system).
+    private const string Frame = "#006B5A";
+    private const string Glow = "#00F5D4";
+    private const string Gray = "#707070";
+    private const string Dark = "#404040";
+
+    private string ViewBox => WithWordmark ? "0 0 200 240" : "0 0 200 210";
+
+    private string Height =>
+        (Size * (WithWordmark ? 1.2 : 1.05)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    // The SVG <text> wordmark. Emitted as raw markup because Razor treats a bare
+    // <text> tag inside a code block (@if) as its literal-content control keyword.
+    private MarkupString Wordmark => (MarkupString)(
+        "<text x=\"100\" y=\"226\" text-anchor=\"middle\" " +
+        "font-family=\"Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif\" " +
+        "font-weight=\"500\" font-size=\"18\" letter-spacing=\"5\" fill=\"" + Glow + "\">ODYSSEY</text>");
+}

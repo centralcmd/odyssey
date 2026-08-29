@@ -1,0 +1,22 @@
+/* Album editor — the form column, the member order/cover list and the destructive
+   delete link. Moved out of the globally-linked wwwroot/css/photos.css by issue #371. */
+
+.pl-albform { display: flex; flex-direction: column; gap: 16px; }
+
+/* ---- Member order + cover ---- */
+.pl-memlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.pl-memrow { display: flex; align-items: center; gap: 10px; padding: 5px 6px; border-radius: var(--radius-sm, 4px); background: var(--mud-palette-background); }
+.pl-memthumb { width: 40px; height: 40px; border-radius: 6px; flex: none; }
+.pl-memname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.pl-mempos { color: var(--mud-palette-text-secondary); font-size: 11px; flex: none; }
+.pl-memcover, .pl-membtn { flex: none; width: 30px; height: 30px; border-radius: var(--radius-sm, 4px); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--mud-palette-divider); background: transparent; color: var(--mud-palette-text-secondary); }
+.pl-memcover:hover, .pl-membtn:hover { color: var(--mud-palette-text-primary); border-color: var(--mud-palette-lines-inputs, rgba(199,208,224,0.28)); }
+.pl-memcover.on { color: var(--gold-400, #E5B463); border-color: var(--gold-400, #E5B463); }
+.pl-membtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ---- Delete album ---- */
+.pl-danger-link { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; color: var(--rose-500, #F2557A); font: 500 13px/1 var(--font-sans); padding: 8px 6px; }
+
+.pl-danger-link:hover { text-decoration: underline; }
+
+.pl-danger-link .material-icons { font-size: 16px; }

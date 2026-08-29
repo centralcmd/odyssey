@@ -1,0 +1,81 @@
+@*
+    OdsAccountTypeSelect — the typed Account-type picker (Odyssey Design System ·
+    components/AccountTypeSelect).
+
+    Delegates to the shared OdsTypeSelect — passing the Assets / Liabilities groups
+    projected from AccountTypeVisuals — so it shares one look with every other type
+    picker (colored glyph · label · far-right check). Value is the AccountType enum;
+    AccountType.Unknown is the empty state. Optionally shows an asset/liability pill +
+    one-line note below once a type is picked. Bind via @bind-Value.
+*@
+
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Pages.Finance
+
+<div class="aam-field @Class">
+    <OdsTypeSelect Value="@SelectedKey"
+                   ValueChanged="OnPicked"
+                   Groups="Groups"
+                   Label="@Label"
+                   Placeholder="@Placeholder"
+                   Error="@Error"
+                   Disabled="@Disabled" />
+    @if (ShowGroupHint && Value != AccountType.Unknown)
+    {
+        var isAsset = AccountTypeVisuals.Group(Value) == AccountGroup.Asset;
+        <div class="aam-group-note">
+            <span class="aam-group-pill @(isAsset ? "asset" : "liability")">@(isAsset ? "Asset" : "Liability")</span>
+            <span>@(isAsset ? "Counts toward your total assets." : "Counts toward what you owe.")</span>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Selected account type. AccountType.Unknown is the empty state. Bindable via @bind-Value.</summary>
+    [Parameter] public AccountType Value { get; set; } = AccountType.Unknown;
+
+    [Parameter] public EventCallback<AccountType> ValueChanged { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Account type";
+
+    [Parameter] public string? Placeholder { get; set; } = "Choose a type…";
+
+    /// <summary>Error message shown below the field; also flags the trigger red.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>Show the asset/liability pill + one-line note under the field once a type is picked.</summary>
+    [Parameter] public bool ShowGroupHint { get; set; } = true;
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private string? SelectedKey => Value == AccountType.Unknown ? null : Value.ToString();
+
+    // Assets / Liabilities sections projected from the AccountTypeVisuals registry,
+    // built once (the registry is static). Plain colored glyph per the DS TypeSelect.
+    private static readonly IReadOnlyList<OdsTypeSelectGroup> Groups =
+    [
+        new("Assets", [.. AccountTypeVisuals.Assets.Select(ToOption)]),
+        new("Liabilities", [.. AccountTypeVisuals.Liabilities.Select(ToOption)]),
+    ];
+
+    private static OdsTypeOption ToOption(AccountType type) => new()
+    {
+        Key = type.ToString(),
+        Label = AccountTypeVisuals.Label(type),
+        Icon = AccountTypeVisuals.MaterialIcon(type),
+        Color = AccountTypeVisuals.FgColor(type),
+        Soft = AccountTypeVisuals.BgColor(type),
+    };
+
+    private async Task OnPicked(string key)
+    {
+        if (!Enum.TryParse<AccountType>(key, out var type) || type == Value)
+        {
+            return;
+        }
+        Value = type;
+        await ValueChanged.InvokeAsync(type);
+    }
+}

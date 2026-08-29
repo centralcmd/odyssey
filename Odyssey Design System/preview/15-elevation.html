@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- @dsCard group="Spacing" name="Spacing · Elevation" subtitle="MudBlazor elevation 0 · 1 · 2 · 4 · 8 · 16 (dark-tuned)" viewport="700x270" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Spacing · Elevation</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .tile {
+      background: var(--ink-700);
+      padding: 18px 16px 14px;
+      border-radius: 8px;
+      min-height: 96px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .e1  { box-shadow: var(--mud-elevation-1); }
+    .e2  { box-shadow: var(--mud-elevation-2); }
+    .e4  { box-shadow: var(--mud-elevation-4); }
+    .e8  { box-shadow: var(--mud-elevation-8); }
+    .e16 { box-shadow: var(--mud-elevation-16); }
+    .lab { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .name { font: 500 14px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .use { font: 400 11px/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); }
+  </style>
+  <div class="grid">
+    <div class="tile e1"><div class="lab">elevation-1</div><div><div class="name">Cards · rows</div><div class="use">resting surfaces</div></div></div>
+    <div class="tile e2"><div class="lab">elevation-2</div><div><div class="name">Drawer</div><div class="use">chrome lift</div></div></div>
+    <div class="tile e4"><div class="lab">elevation-4</div><div><div class="name">Menus · popovers</div><div class="use">overlapping content</div></div></div>
+    <div class="tile e8"><div class="lab">elevation-8</div><div><div class="name">Dialogs</div><div class="use">modal lift</div></div></div>
+    <div class="tile e16"><div class="lab">elevation-16</div><div><div class="name">Top sheets</div><div class="use">peak focus</div></div></div>
+    <div class="tile" style="box-shadow: none; border: 1px solid var(--mud-palette-divider);"><div class="lab">elevation-0</div><div><div class="name">Outlined</div><div class="use">border-only · forms</div></div></div>
+  </div>
+</body></html>

@@ -1,0 +1,141 @@
+/* ── Analyze-file candidate review grid ──
+   Moved out of FileAnalysisDialog.razor.css with the markup it styles (issue #373).
+   `::deep` reaches into child components' markup (OdsMIcon's `.material-icons`, OdsCheckbox's
+   `.odc-check*`, OdsMatchIndicator's `.odc-match*`, the MudAutocomplete/tag-picker internals),
+   since CSS isolation only stamps this component's own elements. */
+
+.fan-review { display: flex; flex-direction: column; gap: 12px; }
+.fan-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.fan-toolbar-right { display: flex; align-items: center; gap: 10px; flex: none; }
+.fan-foundpill {
+  font-size: 0.6875rem; font-weight: 500; line-height: 1; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); padding: 5px 10px; border-radius: 999px; border: 1px solid var(--mud-palette-divider);
+}
+.fan-table-wrap {
+  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+  /* Own the vertical scroll so all candidates stay reachable: the dialog content is
+     overflow:hidden, so without this a long candidate list clips past the modal height.
+     The sticky row-head (top:0) pins to this container as it scrolls. */
+  overflow: auto; max-height: 74vh; background: var(--mud-palette-background);
+}
+.fan-table { min-width: 1220px; display: flex; flex-direction: column; }
+.fan-row-head, .fan-row {
+  display: grid;
+  grid-template-columns: 34px 112px minmax(146px,1.1fr) minmax(202px,1.6fr) minmax(190px,1.45fr) 120px 80px 92px 104px 38px;
+  gap: 10px; align-items: start;
+}
+.fan-row-head {
+  /* Local sibling ordering inside .fan-table-wrap, not an app-level layer — no --z-* token applies. */
+  padding: 11px 14px; position: sticky; top: 0; z-index: 2; background: var(--mud-palette-surface);
+  border-bottom: 1px solid var(--mud-palette-divider);
+  font-size: 0.65rem; font-weight: 500; line-height: 1; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.fan-row-head .ta-r { text-align: right; }
+.fan-row { padding: 7px 14px; border-top: 1px dashed var(--mud-palette-divider-light); transition: opacity var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard); }
+.fan-row:first-of-type { border-top: none; }
+.fan-row.low { box-shadow: inset 3px 0 0 var(--finance-pending); }
+.fan-row.off { opacity: 0.42; }
+.fan-row.off.low { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--finance-pending) 40%, transparent); }
+.fan-row:hover { background: var(--mud-palette-action-default-hover); }
+.fan-cell { min-width: 0; }
+.fan-cell.ro { font-size: 0.8125rem; line-height: 1.3; color: var(--mud-palette-text-secondary); }
+
+/* editable inputs */
+.fan-input {
+  width: 100%; box-sizing: border-box; height: 34px; background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px;
+  padding: 7px 9px; font-size: 0.8125rem; line-height: 1.2; color: var(--mud-palette-text-primary); outline: none;
+}
+.fan-input:focus { border: 2px solid var(--focus-ring, var(--mud-palette-primary)); padding: 6px 8px; }
+.fan-input.ta-r { text-align: right; }
+.fan-amount.expense .fan-input { color: var(--finance-expense); }
+.fan-amount.income  .fan-input { color: var(--finance-income); }
+
+/* native select styled like the inputs (category + currency) */
+.fan-select {
+  width: 100%; box-sizing: border-box; height: 34px; background: var(--mud-palette-surface); color: var(--mud-palette-text-primary);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px;
+  padding: 7px 28px 7px 9px; font-size: 0.78rem; line-height: 1.2; outline: none; cursor: pointer;
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%2398A4BC'%3E%3Cpath d='M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 6px center;
+}
+.fan-select:focus { border: 2px solid var(--focus-ring, var(--mud-palette-primary)); padding: 6px 27px 6px 8px; }
+
+/* The merchant cell is an OdsCombobox, so the bespoke .fan-merch chrome was retired.
+   "fan-merch" survives in FileAnalysisDialog only as an element *id* prefix
+   (MerchantInputId → "fan-merch-{id}") — an id hit is not a class usage.
+   The consent gate + review-grid select-all / per-row checkboxes are the shared OdsCheckbox
+   (.odc-check / .odc-checkbox), so the bespoke .fan-check chrome was retired too. */
+
+/* confidence meter (read-only) */
+/* Row cells top-align (align-items:start) so multi-line match cells stack cleanly;
+   the checkbox and confidence meter re-center on the 34px first-line control height
+   so they line up with the input text, not the cell top. The row / header select
+   checkboxes are the shared OdsCheckbox (.odc-checkbox). */
+.fan-row ::deep .odc-checkbox { height: 34px; align-self: start; justify-content: center; }
+.fan-row-head ::deep .odc-checkbox { justify-content: center; }
+.fan-row .fan-conf-cell { min-height: 34px; align-items: center; }
+.fan-conf-cell { display: flex; }
+.fan-conf { display: inline-flex; align-items: center; gap: 7px; }
+.fan-conf.empty { color: var(--mud-palette-text-disabled); }
+.fan-conf-meter { width: 34px; height: 4px; border-radius: 999px; background: var(--mud-palette-divider); overflow: hidden; }
+.fan-conf-fill { display: block; height: 100%; border-radius: 999px; }
+.fan-conf-pct { font-size: 0.6875rem; color: var(--mud-palette-text-secondary); }
+.fan-conf.info    .fan-conf-fill { background: var(--mud-palette-info); }
+.fan-conf.pending .fan-conf-fill { background: var(--finance-pending); }
+.fan-conf.expense .fan-conf-fill { background: var(--finance-expense); }
+.fan-conf.expense .fan-conf-pct { color: var(--finance-expense); }
+
+.fan-rm { display: flex; justify-content: center; }
+/* Round quiet row button on the candidate grid. Named .bgt-* because it was lifted
+   verbatim from the budget-items row chrome; this dialog is its only consumer. */
+.bgt-rowbtn {
+  width: 28px; height: 28px; border-radius: 999px; border: none; background: transparent;
+  display: grid; place-items: center; cursor: pointer; color: var(--mud-palette-text-secondary);
+  transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.bgt-rowbtn:hover { background: var(--mud-palette-action-default-hover); }
+.bgt-rowbtn.del:hover { color: var(--mud-palette-error); }
+
+.fan-editnote { display: flex; align-items: center; gap: 7px; font-size: 0.75rem; line-height: 1.4; color: var(--mud-palette-text-secondary); }
+.fan-editnote ::deep .material-icons { color: var(--mud-palette-text-secondary); flex: none; }
+/* ---- AI merchant/category matching (issue #266) ----
+   The indicator atom itself (.odc-match*) is a design-system component and lives in
+   odyssey-components.css; what is left here is how the review grid's match cell hosts it. */
+.fan-matchcell { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.fan-matchcell ::deep .odc-match { display: flex; max-width: 100%; }
+.fan-matchcell ::deep .odc-match.suggestion { display: inline-flex; align-self: flex-start; max-width: 100%; }
+/* Compact the MudAutocomplete + tag picker to the grid's 34px cell controls. */
+.fan-matchcell ::deep .mud-input-control { margin-top: 0; }
+.fan-matchcell ::deep .mud-input.mud-input-outlined .mud-input-slot { min-height: 34px; height: 34px; font-size: 0.78rem; background-color: var(--mud-palette-surface); }
+.fan-matchcell ::deep .odc-tagms-control { min-height: 34px; padding: 4px 8px; font-size: 0.78rem; background-color: var(--mud-palette-surface); }
+.fan-matchcell ::deep .odc-tagms-chip { font-size: 11.5px; }
+
+/* Toolbar re-match (quiet) — re-run the MATCH step only, no re-extract. */
+.fan-rematch {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  border: 1px solid var(--mud-palette-divider); background: transparent;
+  border-radius: var(--radius-pill); padding: 4px 11px;
+  font: var(--fw-medium) 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+.fan-rematch:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); border-color: var(--mud-palette-lines-default); }
+.fan-rematch:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.fan-rematch ::deep .material-icons { font-size: 14px !important; }
+
+/* Match-degraded notice (role=alert) — non-blocking; Review opens with raw candidates. */
+.fan-degraded {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 10px; margin-bottom: 12px;
+  background: var(--finance-pending-soft);
+  border: 1px solid color-mix(in srgb, var(--finance-pending) 32%, transparent);
+}
+.fan-degraded ::deep .material-icons { color: var(--pending-text); flex: none; }
+.fan-degraded-text { flex: 1; min-width: 0; font: var(--fw-regular) 12.5px/1.5 var(--font-sans); color: var(--pending-text); text-wrap: pretty; }
+.fan-degraded-text b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+.fan-allgone {
+  display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 44px 20px; text-align: center;
+  color: var(--mud-palette-text-secondary); border: 1px dashed var(--mud-palette-divider); border-radius: 10px;
+}

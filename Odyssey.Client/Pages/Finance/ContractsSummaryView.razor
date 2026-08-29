@@ -1,0 +1,43 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    ContractsSummaryView — the header Overview rollup (issue #174 §7): the "By type" and
+    "By status" distribution tiles. Mirrors the design system's ContractsSummary.
+*@
+
+<div class="con-summary">
+    <div class="con-stats">
+        <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No active contracts." />
+        <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No contracts." />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ContractSummary Summary { get; set; } = default!;
+
+    private IReadOnlyList<OdsBreakdownRow> TypeRows => Summary.CountsByType
+        .Where(r => r.Count > 0)
+        .Select(r =>
+        {
+            var info = OdsTypeRegistries.ContractTypeOf(r.Type);
+            return new OdsBreakdownRow { Key = r.Type, Icon = info.Icon, IconColor = info.Color, Label = info.Label, Count = r.Count };
+        })
+        .ToList();
+
+    private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsContractStatus.Order
+        .Select(status =>
+        {
+            var meta = OdsContractStatus.Meta(status);
+            return new OdsBreakdownRow { Key = status, Icon = meta.Icon, IconColor = meta.DotColor, Label = meta.Label, Count = CountFor(status) };
+        })
+        .ToList();
+
+    private int CountFor(ContractStatus status) => status switch
+    {
+        ContractStatus.Active => Summary.CountsByStatus.Active,
+        ContractStatus.Upcoming => Summary.CountsByStatus.Upcoming,
+        ContractStatus.Expired => Summary.CountsByStatus.Expired,
+        _ => Summary.CountsByStatus.Archived,
+    };
+}

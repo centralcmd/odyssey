@@ -1,0 +1,38 @@
+@using Odyssey.Dtos
+@*
+    OdsContactTypeMultiSelect — the Contacts-page type filter pre-wired
+    to the ContactType vocabulary (Odyssey Design System ·
+    components/ContactTypeMultiSelect).
+
+    A checkbox-list popover whose rows each carry the type's Material icon in its
+    category color, with a count badge on the trigger. A thin wrapper over
+    OdsMultiSelect — Values + Align pass straight through. Defaults: trigger label
+    "Any type", trigger glyph `store`. Bind the chosen keys via @bind-Values.
+*@
+
+<OdsMultiSelect Values="@Values"
+                ValuesChanged="ValuesChanged"
+                Options="OdsTypeRegistries.ContactOptions"
+                Label="@Label"
+                Icon="@Icon"
+                Align="@Align"
+                Class="@Class"
+                @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Selected enum keys. Bindable via @bind-Values.</summary>
+    [Parameter] public IReadOnlyCollection<string> Values { get; set; } = [];
+
+    [Parameter] public EventCallback<IReadOnlyCollection<string>> ValuesChanged { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Any type";
+
+    [Parameter] public string? Icon { get; set; } = "store";
+
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

@@ -1,0 +1,83 @@
+@*
+    Read-only detail panel for an expanded exchange-rate row (DS RecordTable
+    renderDetail · ui_kits/web/ExchangeRates XrDetail). Editing (correcting Rate/AsOf
+    in place) is reached from the row's kebab menu, not from here — this detail view
+    only offers "Record a newer rate" (a fresh entry that becomes current for the pair).
+*@
+@using System.Globalization
+@using Odyssey.Dtos.Finance
+
+<div class="odc-meta-grid">
+    <OdsMetaTile Mono="true">
+        <Label>From</Label>
+        <ChildContent>@Rate.FromCurrencyCode</ChildContent>
+    </OdsMetaTile>
+    <OdsMetaTile Mono="true">
+        <Label>To</Label>
+        <ChildContent>@Rate.ToCurrencyCode</ChildContent>
+    </OdsMetaTile>
+    <OdsMetaTile Mono="true">
+        <Label>Rate</Label>
+        <ChildContent>1 @Rate.FromCurrencyCode = @Fmt(Rate.Rate) @Rate.ToCurrencyCode</ChildContent>
+    </OdsMetaTile>
+    <OdsMetaTile Mono="true">
+        <Label>Inverse</Label>
+        <ChildContent>1 @Rate.ToCurrencyCode = @Fmt(Rate.Rate == 0 ? 0 : 1 / Rate.Rate) @Rate.FromCurrencyCode</ChildContent>
+    </OdsMetaTile>
+    <OdsMetaTile>
+        <Label>Status</Label>
+        <ChildContent>
+            @if (IsCurrent)
+            {
+                <OdsChip Tone="OdsChipTone.Info" Dot="true">Current</OdsChip>
+            }
+            else
+            {
+                <OdsChip Dot="true">Historical</OdsChip>
+            }
+        </ChildContent>
+    </OdsMetaTile>
+    <OdsMetaTile Mono="true">
+        <Label>Effective (AsOf)</Label>
+        <ChildContent>@Rate.AsOf.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</ChildContent>
+    </OdsMetaTile>
+    <OdsMetaTile Mono="true">
+        <Label>Recorded (CreatedAt)</Label>
+        <ChildContent>@Rate.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</ChildContent>
+    </OdsMetaTile>
+    @if (Rate.UpdatedAt is { } updatedAt)
+    {
+        <OdsMetaTile Mono="true">
+            <Label>Last corrected</Label>
+            <ChildContent>@updatedAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</ChildContent>
+        </OdsMetaTile>
+    }
+</div>
+
+@if (!IsCurrent)
+{
+    <div style="color:var(--mud-palette-text-secondary);font:var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);">
+        A newer rate for @Rate.FromCurrencyCode → @Rate.ToCurrencyCode has superseded this one. It's kept for audit history.
+    </div>
+}
+
+@if (OnRecordNewer.HasDelegate)
+{
+    <div class="odc-rec-edit-actions" style="justify-content:flex-start;">
+        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add" OnClick="@(() => OnRecordNewer.InvokeAsync())">
+            Record a newer @Rate.FromCurrencyCode → @Rate.ToCurrencyCode rate
+        </OdsButton>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ExistingExchangeRate Rate { get; set; } = default!;
+
+    /// <summary>True when this is the latest (current) rate for its From→To pair.</summary>
+    [Parameter] public bool IsCurrent { get; set; }
+
+    /// <summary>Open the record-rate dialog to add a newer rate for this pair.</summary>
+    [Parameter] public EventCallback OnRecordNewer { get; set; }
+
+    private static string Fmt(decimal n) => n.ToString("#,##0.00##", CultureInfo.InvariantCulture);
+}

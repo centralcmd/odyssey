@@ -1,0 +1,132 @@
+@page "/roles"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Models
+@attribute [Authorize(Policy = PermissionClaims.UsersRead)]
+@inject IUsersApiClient Users
+
+<PageTitle>Roles</PageTitle>
+
+@*
+    Roles — the admin-only reference page for the workspace's roles and the
+    underlying permission claims (Odyssey Design System · Components · Roles
+    page specimen). Split out of the Users page so the two read-only reference
+    views live on their own destination, gated by users.read like Users.
+
+    Backed by the api/users/roles contract (UserAdministrationController):
+      • GET api/users/roles → [{ name, permissions[] }]
+
+    The page is pure reference: roles and their claim sets are read-only here
+    — a person's access is changed by assigning them a role on the Users page.
+    The permission-claims catalog (grouped by category) is derived from the
+    union of every role's permissions, so it always reflects what the API
+    actually defines rather than a hardcoded list. It rides in the header's
+    Info region ("All claims"), and the roles themselves render as the
+    expandable list rows used on the Accounts page.
+*@
+
+<MudStack Spacing="6">
+
+    <PageHeader Title="Roles"
+                Icon="@Icons.Material.Filled.Badge"
+                InfoLabel="All claims"
+                InfoIcon="@Icons.Material.Filled.Key"
+                InfoContent="@(_isLoading || _loadError ? null : ClaimsCatalog)">
+        <SubLine>@HeaderSubLine</SubLine>
+    </PageHeader>
+
+    <OdsListStatus Card="true" Loading="_isLoading" Error="_loadError" OnRetry="ReloadRolesAsync"
+                   ErrorDescription="@_loadErrorDetail"
+                   IsEmpty="@(_roles.Count == 0)" Noun="roles" EmptyIcon="badge"
+                   EmptyTitle="No roles defined"
+                   EmptyDescription="The system hasn't seeded any roles yet.">
+        @* Roles reference — listed directly under the header (no surrounding
+           frame), like the account list on the Accounts page. *@
+        <div class="acct-list rol-list">
+            @foreach (var role in OrderedRoles)
+            {
+                var isOpen = _openRole == role.Name;
+                <div class="acct-item @(isOpen ? "open" : null)">
+                    <div class="acct-head rol-head" role="button" tabindex="0"
+                         @onclick="@(() => ToggleRole(role.Name))">
+                        <span class="rol-av @RoleClass(role.Name)">
+                            <MudIcon Icon="@RoleIcon(role.Name)" />
+                        </span>
+
+                        <div class="acct-id">
+                            <div class="acct-name-row">
+                                <span class="acct-name rol-name">@role.Name</span>
+                            </div>
+                            @if (RoleDescription(role.Name) is { Length: > 0 } desc)
+                            {
+                                <div class="rol-desc">@desc</div>
+                            }
+                        </div>
+
+                        <div class="rol-figures">
+                            <div class="rol-claim-figure">@role.Permissions.Count</div>
+                            <div class="rol-claim-label">claims</div>
+                        </div>
+
+                        <div class="acct-controls">
+                            <button class="acct-expand" type="button"
+                                    aria-label="@(isOpen ? "Collapse" : "Expand")"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="@(() => ToggleRole(role.Name))">
+                                <MudIcon Icon="@Icons.Material.Filled.ExpandMore"
+                                         Class="@($"rol-chev {(isOpen ? "open" : null)}")" />
+                            </button>
+                        </div>
+                    </div>
+
+                    @if (isOpen)
+                    {
+                        <div class="acct-detail">
+                            <div class="rol-detail-note">
+                                Permission claims granted by the <b>@role.Name</b> role. Read-only reference —
+                                change a person's access by assigning them this role on the Users page.
+                            </div>
+                            @if (role.Permissions.Count == 0)
+                            {
+                                <div class="empty-line">This role grants no permissions.</div>
+                            }
+                            else
+                            {
+                                <div class="rol-claims">
+                                    @foreach (var claim in role.Permissions)
+                                    {
+                                        <span class="rol-claim @(claim.StartsWith("users.", StringComparison.Ordinal) ? "granted" : null)">@claim</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </OdsListStatus>
+</MudStack>
+
+@code {
+    private RenderFragment ClaimsCatalog => @<div class="rol-cat">
+        <div class="rol-cat-note">
+            Every permission claim defined in the system, grouped by category. These are reference data only —
+            individual claims can't be assigned from this page; they're granted through roles.
+        </div>
+        <div class="rol-cat-grid">
+            @foreach (var category in Categories)
+            {
+                <div class="rol-cat-card">
+                    <div class="rol-cat-name">
+                        <MudIcon Icon="@CategoryIcon(category.Name)" Size="Size.Small" />@category.Name
+                    </div>
+                    <div class="rol-actions-row">
+                        @foreach (var action in category.Actions)
+                        {
+                            <span class="rol-action-chip">@action</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>;
+}

@@ -1,0 +1,130 @@
+@using Odyssey.Dtos.Finance
+
+@* Asset + liability allocation donuts for the Accounts page header. Read-only over the server's
+   account summary (issue #372): the API applies the balance rule (archived excluded, closed still
+   counted) and the net-worth replace policy, and returns one lean allocation row per account rather
+   than the whole table. Money is formatted by the host via the FormatMoney delegate — per-account
+   amounts use the account's own currency; the centered total is a naive cross-currency sum (a null
+   code) with a generic symbol. *@
+
+@{
+    var assetSlices     = BuildSlices(AssetAccounts);
+    var liabilitySlices = BuildSlices(LiabilityAccounts);
+}
+
+<MudStack Spacing="4">
+<OdsDonutPair>
+    <First>
+        @* Asset allocation donut — empty case keeps the panel title with a short line. *@
+        @if (assetSlices.Count == 0)
+        {
+            <div class="donut-panel">
+                <div class="chart-head">
+                    <div>
+                        <div class="chart-ttl">Asset allocation</div>
+                        <div class="chart-sub">Where your money sits</div>
+                    </div>
+                </div>
+                <div class="donut-legend-empty">No positive balances yet</div>
+            </div>
+        }
+        else
+        {
+            <OdsDonut Layout="OdsDonutLayout.Stack"
+                      CenterIcon="account_balance_wallet"
+                      Data="assetSlices"
+                      TotalLabel="Total assets"
+                      Format="AssetLegendFormat"
+                      AriaLabel="Asset allocation by account">
+                <Title>Asset allocation</Title>
+                <Sub>Where your money sits · @assetSlices.Count account@(assetSlices.Count == 1 ? "" : "s")</Sub>
+            </OdsDonut>
+        }
+    </First>
+    <Second>
+        @* Liabilities donut *@
+        @if (liabilitySlices.Count == 0)
+        {
+            <div class="donut-panel">
+                <div class="chart-head">
+                    <div>
+                        <div class="chart-ttl">Liabilities</div>
+                        <div class="chart-sub">What you owe</div>
+                    </div>
+                </div>
+                <div class="donut-legend-empty">No negative balances yet</div>
+            </div>
+        }
+        else
+        {
+            <OdsDonut Layout="OdsDonutLayout.Stack"
+                      CenterIcon="credit_card"
+                      Data="liabilitySlices"
+                      TotalLabel="Total owed"
+                      Format="LiabilityLegendFormat"
+                      AriaLabel="Liabilities by account">
+                <Title>Liabilities</Title>
+                <Sub>What you owe · @liabilitySlices.Count account@(liabilitySlices.Count == 1 ? "" : "s")</Sub>
+            </OdsDonut>
+        }
+    </Second>
+</OdsDonutPair>
+
+<div class="odc-summary-grid">
+    <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No accounts." />
+    <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No accounts." />
+</div>
+</MudStack>
+
+@code {
+    /// <summary>The server-computed account rollup; null until it loads (or if it failed).</summary>
+    [Parameter, EditorRequired] public AccountSummary? Summary { get; set; }
+
+    /// <summary>Formats (amount, currencyCode); a null code means the cross-currency total.</summary>
+    [Parameter, EditorRequired] public Func<decimal, string?, string> FormatMoney { get; set; } = (v, _) => v.ToString();
+
+    // ── Overview breakdown tiles (By type / By status) ──────────────────────────
+    // Both read counts the API already computed: "By type" covers the live (non-archived) set, "By
+    // status" spans every account so an archived one still shows up in its own bucket.
+    private IReadOnlyList<OdsBreakdownRow> TypeRows => OdsBreakdown.CountedTypeRows(
+        (Summary?.CountsByType ?? []).ToDictionary(c => c.Type, c => c.Count),
+        AccountTypeVisuals.Selectable,
+        t => (AccountTypeVisuals.MaterialIcon(t), AccountTypeVisuals.FgColor(t), AccountTypeVisuals.Label(t)));
+
+    private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.CountedStatusRows<string>(
+        key => Summary?.CountsByStatus is not { } c ? 0 : key switch
+        {
+            "Closed" => c.Closed,
+            "Archived" => c.Archived,
+            _ => c.Open,
+        },
+        new OdsBreakdownDef<string>("Open", "Open", "income", "lock_open"),
+        new OdsBreakdownDef<string>("Closed", "Closed", "expense", "lock"),
+        new OdsBreakdownDef<string>("Archived", "Archived", "outline", "inventory_2"));
+
+    // The API sends only non-archived accounts with a non-zero effective value, largest asset first,
+    // so the split is a sign partition — the liabilities ring wants the most negative first.
+    private IReadOnlyList<AccountAllocation> Allocations => Summary?.Allocations ?? [];
+    private decimal TotalAssets      => Summary?.TotalAssets ?? 0m;
+    private decimal TotalLiabilities => Summary?.TotalLiabilities ?? 0m;
+    private List<AccountAllocation> AssetAccounts     => [.. Allocations.Where(a => a.Value > 0)];
+    private List<AccountAllocation> LiabilityAccounts => [.. Allocations.Where(a => a.Value < 0).OrderBy(a => a.Value)];
+
+    // One slice per account, sized by |effective value| — OdsDonut owns the ring geometry and
+    // coloring. The allocation rides along in Tag so the legend can show a signed amount.
+    private static List<OdsDonutSlice> BuildSlices(IReadOnlyList<AccountAllocation> accounts) =>
+        accounts.Select(a => new OdsDonutSlice
+        {
+            Label = a.Name,
+            Value = Math.Abs(a.Value),
+            Tag = a,
+        }).ToList();
+
+    // Slice rows use each account's own currency + sign; the total row (slice == null)
+    // uses the panel's signed aggregate.
+    private string AssetLegendFormat(decimal value, OdsDonutSlice? slice) =>
+        slice?.Tag is AccountAllocation a ? FormatMoney(a.Value, a.CurrencyCode) : FormatMoney(TotalAssets, null);
+
+    private string LiabilityLegendFormat(decimal value, OdsDonutSlice? slice) =>
+        slice?.Tag is AccountAllocation a ? FormatMoney(a.Value, a.CurrencyCode) : FormatMoney(TotalLiabilities, null);
+}

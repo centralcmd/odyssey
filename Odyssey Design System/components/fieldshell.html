@@ -1,0 +1,63 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="FieldShell" subtitle="The labelled-field wrapper (label + required/optional marker + helper/error line) shared by every form control — and what you wrap a Combobox, MultiSelect, segmented control or locked display in. Mounted from the DS namespace." viewport="900x600" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · FieldShell</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 760px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; align-items: start; }
+    .sep { height: 1px; background: var(--mud-palette-divider); }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 22px; }
+    /* A stand-in control to demonstrate "wrap anything" — a fake select trigger. */
+    .demo-control { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 12px;
+      border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-surface);
+      color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body1)/1 var(--font-sans); }
+    .demo-control .material-icons { font-size: 20px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>FieldShell — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;FieldShell label htmlFor help error&gt;{control}&lt;/FieldShell&gt;</code></h1>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var FieldShell = NS.FieldShell;
+
+      function ctrl(text, icon) {
+        return e('div', { className: 'demo-control' }, e('span', null, text), e('span', { className: 'material-icons' }, icon || 'expand_more'));
+      }
+
+      var root = [
+        e('div', { key: 'a' }, e('div', { className: 'cap' }, 'Wrapping a non-field control (e.g. a Combobox)'),
+          e('div', { className: 'row' },
+            e(FieldShell, { key: 1, label: 'Insurer', htmlFor: 'x1', help: 'The contact that issues this policy.' }, ctrl('Search insurers…', 'search')),
+            e(FieldShell, { key: 2, label: 'Insured account', htmlFor: 'x2', optional: true }, ctrl('Search accounts…', 'search')))),
+        e('div', { className: 'sep', key: 's1' }),
+        e('div', { key: 'b' }, e('div', { className: 'cap' }, ['Markers & states \u00b7 ', e('code', { key: 'c' }, 'required / optional / error')]),
+          e('div', { className: 'row' },
+            e(FieldShell, { key: 1, label: 'Party kind', htmlFor: 'x3', required: true, help: 'Pick exactly one target.' }, ctrl('Contact')),
+            e(FieldShell, { key: 2, label: 'Insurer', htmlFor: 'x4', error: 'Select the issuing contact.' }, ctrl('Search insurers…', 'search')))),
+        e('div', { className: 'sep', key: 's2' }),
+        e('div', { key: 'c2' }, e('div', { className: 'cap' }, ['Right-aligned ', e('code', { key: 'c' }, 'aside'), ' slot (e.g. a counter)']),
+          e('div', { style: { maxWidth: 360 } },
+            e(FieldShell, { label: 'Note', htmlFor: 'x5', optional: true,
+              aside: e('span', { className: 'odc-field-count' }, '24/512') }, ctrl('Type a note…', 'edit'))))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>

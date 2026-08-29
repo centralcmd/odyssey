@@ -1,0 +1,45 @@
+/* ── Dashboard (home) page (Odyssey Design System · Screens · Dashboard) ──────
+   The greeting header, the Net worth line chart (the shared OdsLineChart), and
+   the recent-transactions excerpt of the shared table. All colors use semantic
+   tokens so the page reads in both light and dark themes. */
+
+/* ── Recent transactions card ──
+   The card's titled header and body come from OdsCardHeader / OdsCardBody
+   (.odc-card-header / .odc-card-body), not from bespoke selectors here. */
+
+/* Direction avatar in the first cell — income mint / expense coral tints. */
+.dsh-txn-avatar {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+}
+
+.dsh-txn-avatar .material-icons {
+    font-size: 18px;
+}
+
+.dsh-txn-avatar.income {
+    background: var(--finance-income-soft);
+    color: var(--finance-income);
+}
+
+.dsh-txn-avatar.expense {
+    background: var(--finance-expense-soft);
+    color: var(--finance-expense);
+}
+
+/* Signed amount — colored by direction, monospace tabular (the table's End
+   alignment already sets the font; the color is the only extra here). */
+.dsh-amt.income {
+    color: var(--finance-income);
+}
+
+.dsh-amt.expense {
+    color: var(--finance-expense);
+}
+
+.dsh-muted {
+    color: var(--mud-palette-text-secondary);
+}

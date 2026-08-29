@@ -1,0 +1,31 @@
+@using Odyssey.Client.Components
+@*
+    JournalTagChips — a compact row of tag-tone chips from plain tag names (the shared OdsTagChips is
+    typed to the Finance ExistingTransactionTag, so the journal/task tag families render through this).
+    Meaning is the visible label; the chip has no icon (a11y). Max caps the visible chips + shows a +N.
+*@
+
+@if (_names.Count > 0)
+{
+    <span class="je-tagchips">
+        @foreach (var name in _names.Take(Max ?? _names.Count))
+        {
+            <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
+        }
+        @if (Max is { } m && _names.Count > m)
+        {
+            <OdsChip Tone="OdsChipTone.Tag">+@(_names.Count - m)</OdsChip>
+        }
+    </span>
+}
+
+@code {
+    [Parameter] public IEnumerable<string> Names { get; set; } = [];
+
+    /// <summary>Cap the visible chips; the overflow collapses into a "+N" chip. Null = show all.</summary>
+    [Parameter] public int? Max { get; set; }
+
+    private List<string> _names = [];
+
+    protected override void OnParametersSet() => _names = [.. Names];
+}

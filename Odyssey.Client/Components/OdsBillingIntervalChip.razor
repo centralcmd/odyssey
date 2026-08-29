@@ -1,0 +1,112 @@
+@using System.Globalization
+@using Odyssey.Dtos.Finance
+
+@*
+    OdsBillingIntervalChip — the read display of a subscription's billing cadence
+    (Odyssey Design System · components/BillingIntervalChip). Sibling of
+    OdsAccountTypeChip: the cadence as a colored-glyph type chip plus the DERIVED
+    billing anchor as a muted trailing segment — e.g. "Monthly · day 15",
+    "Yearly · 15 Jan", "Every 2 months · day 15", "Daily" (no anchor).
+
+    The cadence label honours the "every N" multiplier (Count): Count 1 shows the
+    plain interval label ("Monthly"); Count > 1 shows "Every N months". The
+    per-cycle anchor is derived here from FirstBillingDate + Interval and is never
+    stored (issue #293). The cadence + anchor are conveyed entirely in visible
+    text; the leading glyph is aria-hidden.
+*@
+
+<span class="@ChipClass">
+    <span class="material-icons odc-typechip-ic" aria-hidden="true" style="@IconStyle">@_meta.Icon</span>
+    <span class="odc-typechip-name">@_label</span>
+    @if (_anchor is not null)
+    {
+        <span class="odc-typechip-group">@_anchor</span>
+    }
+</span>
+
+@code {
+    /// <summary>The billing interval to display.</summary>
+    [Parameter, EditorRequired] public BillingInterval Interval { get; set; }
+
+    /// <summary>The "every N" multiplier (≥ 1). Count 1 renders the plain interval label; Count &gt; 1
+    /// renders "Every N months".</summary>
+    [Parameter] public int Count { get; set; } = 1;
+
+    /// <summary>The anchor date the per-cycle billing position is derived from (optional — without it
+    /// only the cadence shows).</summary>
+    [Parameter] public DateOnly? FirstBillingDate { get; set; }
+
+    /// <summary>Compact (sm) sizing for a collapsed row.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private OdsTypeOption _meta = default!;
+    private string _label = string.Empty;
+    private string? _anchor;
+
+    protected override void OnParametersSet()
+    {
+        _meta = OdsTypeRegistries.BillingIntervalOf(Interval);
+        _label = CadenceLabel(Interval, Count);
+        _anchor = AnchorLabel(Interval, FirstBillingDate);
+    }
+
+    /// <summary>Singular unit noun per interval — for the "Every N …" multiplier label.</summary>
+    private static string UnitNoun(BillingInterval interval) => interval switch
+    {
+        BillingInterval.Daily => "day",
+        BillingInterval.Weekly => "week",
+        BillingInterval.Monthly => "month",
+        BillingInterval.Yearly => "year",
+        _ => "cycle",
+    };
+
+    /// <summary>Normalize a stored/entered multiplier to a whole number ≥ 1.</summary>
+    public static int NormalizeCount(int count) => count > 0 ? count : 1;
+
+    /// <summary>The cadence label honouring the multiplier: Count ≤ 1 → the plain interval label
+    /// ("Monthly"); Count &gt; 1 → "Every N months".</summary>
+    public static string CadenceLabel(BillingInterval interval, int count)
+    {
+        var n = NormalizeCount(count);
+        return n <= 1 ? OdsTypeRegistries.BillingIntervalOf(interval).Label : $"Every {n} {UnitNoun(interval)}s";
+    }
+
+    /// <summary>The price caption under the collapsed-row figure: "per month" (Count 1) or
+    /// "every 2 months" (Count &gt; 1).</summary>
+    public static string FigureCaption(BillingInterval interval, int count)
+    {
+        var n = NormalizeCount(count);
+        return n > 1 ? $"every {n} {UnitNoun(interval)}s" : interval switch
+        {
+            BillingInterval.Daily => "per day",
+            BillingInterval.Weekly => "per week",
+            BillingInterval.Monthly => "per month",
+            BillingInterval.Yearly => "per year",
+            _ => "recurring",
+        };
+    }
+
+    /// <summary>The live helper under an "Every" field: "= every month" or "= every 2 months".</summary>
+    public static string EveryHelp(BillingInterval interval, int count)
+    {
+        var n = NormalizeCount(count);
+        return n > 1 ? $"= every {n} {UnitNoun(interval)}s" : $"= every {UnitNoun(interval)}";
+    }
+
+    /// <summary>The derived per-cycle billing position, or null when there is none (Daily, or no date).</summary>
+    public static string? AnchorLabel(BillingInterval interval, DateOnly? firstBillingDate) =>
+        firstBillingDate is not { } d ? null : interval switch
+        {
+            BillingInterval.Monthly => $"day {d.Day}",
+            BillingInterval.Yearly => d.ToString("d MMM", CultureInfo.InvariantCulture),
+            BillingInterval.Weekly => CultureInfo.InvariantCulture.DateTimeFormat.AbbreviatedDayNames[(int)d.DayOfWeek],
+            _ => null, // Daily needs no anchor
+        };
+
+    private string SizeSuffix => Compact ? " sm" : string.Empty;
+    private string ClassSuffix => string.IsNullOrWhiteSpace(Class) ? string.Empty : $" {Class}";
+    private string ChipClass => $"odc-typechip{SizeSuffix}{ClassSuffix}";
+    private string IconStyle => $"color:{_meta.Color};";
+}

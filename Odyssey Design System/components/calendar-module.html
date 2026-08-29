@@ -1,0 +1,120 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Calendar module" subtitle="The three net-new atoms the Calendar page adds: CalendarGrid (month view — colour-coded chips, multi-day all-day strips, +N more overflow, roving-tabindex keyboard grid), TimeField (24-hour HH:mm entry, the timed sibling of DateField), and ColorSwatchSelect (curated, contrast-vetted palette — not a free hex picker). Live off the DS namespace." viewport="1280x1180" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Calendar module components</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 0 0 16px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 22px; align-items: start; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 20px 22px; }
+    .panel.wide { grid-column: 1 / -1; }
+    .panel h3 { margin: 0 0 4px; font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+    .panel p.sub { margin: 0 0 18px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .stack { display: flex; flex-direction: column; gap: 16px; max-width: 320px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    .note { margin: 20px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 108ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .swatchcap { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-mono); color: var(--mud-palette-text-secondary); margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="cap">Calendar module <code>&lt;CalendarGrid /&gt;</code> · <code>&lt;TimeField /&gt;</code> · <code>&lt;ColorSwatchSelect /&gt;</code></div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51 || {};
+
+    function Demo() {
+      const { CalendarGrid, TimeField, ColorSwatchSelect, CALENDAR_SWATCHES, swatchFor, RevealPanel } = NS;
+      const [t1, setT1] = React.useState('09:00');
+      const [t2, setT2] = React.useState('14:30');
+      const [color, setColor] = React.useState('#0369A1');
+      const [repeat, setRepeat] = React.useState('repeats');
+      const sw = (hex) => swatchFor(hex);
+      const cal = { work: '#0369A1', family: '#15803D', bills: '#B23B3B', trips: '#F59E0B' };
+      const ev = (id, calId, title, start, end, isAllDay, recurring) => {
+        const s = sw(cal[calId]); return { id, calendarId: calId, calendarName: calId[0].toUpperCase() + calId.slice(1), title, start, end, isAllDay, recurring, color: s.hex, fg: s.fg };
+      };
+      const events = [
+        ev('1', 'work', 'Standup', '2026-07-06T09:00', '2026-07-06T09:15', false, true),
+        ev('2', 'work', 'Design review', '2026-07-06T13:00', '2026-07-06T14:00'),
+        ev('3', 'family', 'Dentist', '2026-07-06T16:30', '2026-07-06T17:15'),
+        ev('4', 'work', 'Sprint plan', '2026-07-06T15:00', '2026-07-06T15:45'),
+        ev('5', 'trips', 'Lisbon trip', '2026-07-09T00:00', '2026-07-13T00:00', true),
+        ev('6', 'bills', 'Rent due', '2026-07-01T00:00', '2026-07-02T00:00', true, true),
+        ev('7', 'family', 'Swim class', '2026-07-15T17:00', '2026-07-15T18:00', false, true),
+        ev('8', 'work', 'Public holiday', '2026-07-20T00:00', '2026-07-21T00:00', true),
+        ev('9', 'work', '1:1 with Sam', '2026-07-20T11:00', '2026-07-20T11:30'),
+      ];
+
+      return (
+        <React.Fragment>
+          <div className="grid">
+            <div className="panel wide">
+              <h3>CalendarGrid — month view</h3>
+              <p className="sub">Colour-coded chips (title always visible), multi-day all-day events as flush spanning strips, timed chips with a tabular time, per-cell “+N more”. Arrow keys move day focus; Enter opens a busy day or starts a new event.</p>
+              <CalendarGrid month="2026-07-01" today="2026-07-06" events={events}
+                onDayClick={() => {}} onEventClick={() => {}} maxPerDay={3} />
+            </div>
+
+            <div className="panel">
+              <h3>TimeField</h3>
+              <p className="sub">24-hour <code style={{fontFamily:'var(--font-mono)'}}>HH:mm</code> entry — type “930”, “9:30”, or pick from the list. The timed sibling of DateField.</p>
+              <div className="stack">
+                <TimeField label="Starts" value={t1} onChange={setT1} step={15} />
+                <TimeField label="Ends" value={t2} onChange={setT2} step={15} />
+              </div>
+            </div>
+
+            <div className="panel">
+              <h3>ColorSwatchSelect</h3>
+              <p className="sub">A curated, contrast-vetted palette — every swatch ships a baked foreground so chip labels always clear AA. Not a free hex picker.</p>
+              <ColorSwatchSelect value={color} onChange={setColor} />
+              <div className="swatchcap">value = {color} · {sw(color).name}</div>
+              <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 'var(--radius-sm)', background: sw(color).hex, color: sw(color).fg, font: 'var(--fw-medium) var(--fs-caption)/1 var(--font-sans)' }}>
+                09:00 — Sample event
+              </div>
+            </div>
+          </div>
+
+          <p className="note" style={{ marginTop: 22 }}><b>RevealPanel</b> — a segmented toggle that reveals a connected panel: closed it is just the bare toggle; open, the toggle is the header of one bordered surface and the body attaches beneath a divider, so the choice and the fields it controls read as one control.</p>
+          <div style={{ maxWidth: 520 }}>
+            <RevealPanel ariaLabel="Repeat" value={repeat} onChange={setRepeat} openValue="repeats"
+              options={[{ value: 'once', label: 'Does not repeat', icon: 'event_available' }, { value: 'repeats', label: 'Repeats', icon: 'event_repeat' }]}>
+              <div style={{ color: 'var(--mud-palette-text-secondary)', font: 'var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans)' }}>The revealed body shares the toggle's surface — here it stands in for the recurrence rule fields (frequency, interval, days, ends).</div>
+            </RevealPanel>
+          </div>
+
+          <p className="note"><b>CalendarGrid</b> is the month grid: a roving-tabindex ARIA grid where each day is a gridcell and each event chip is an independently focusable button whose accessible name is the full sentence (“Design review, 13:00, Work calendar”). All-day events render above timed events and, when multi-day, repeat a square-edged strip across the days they cover so they read as one continuous bar (exclusive-end: the end-midnight day is not painted). <b>TimeField</b> binds a 24-hour <code>HH:mm</code> string in tabular monospace, with loose typed parsing and a step-interval suggestion list. <b>ColorSwatchSelect</b> constrains <code>Calendar.Color</code> to a curated palette mapped onto the Odyssey ramps (sea · tide · mint · coral · violet · amber · ink) — deliberately not a full colour picker, which both removes a heavy net-new component and lets every chip guarantee a contrast-safe label.</p>
+        </React.Fragment>
+      );
+    }
+
+    function Root() {
+      const ok = () => { const ns = window.OdysseyDesignSystem_d5aa51 || {}; return ns.CalendarGrid && ns.TimeField && ns.ColorSwatchSelect && ns.RevealPanel; };
+      const [ready, setReady] = React.useState(!!ok());
+      React.useEffect(() => {
+        if (ready) return;
+        let n = 0;
+        const t = setInterval(() => { if (ok() || ++n > 20) { clearInterval(t); setReady(true); } }, 100);
+        return () => clearInterval(t);
+      }, [ready]);
+      if (!ok()) return <div className="note">Building components…</div>;
+      return <Demo />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    InsuranceRenewalHistory — the Terms-shaped renewal history inside an expanded
+    policy (issue #175): a premium-over-time chart (the section hero, shown with ≥ 2
+    same-currency periods), then a status'd history table. Each row carries a
+    documents chip that expands an inline per-renewal files table. Mirrors the design
+    system's RenewalHistory / RenewalTable.
+*@
+
+@if (Renewals.Count == 0)
+{
+    <div class="ins-empty-cover">
+        <span class="material-icons" aria-hidden="true">event_busy</span>
+        <div style="flex:1;">No renewal periods yet — add the first period to record premium, coverage and validity dates.</div>
+    </div>
+}
+else
+{
+    <div class="ins-terms">
+        @if (_premiumSeries.Count >= 2)
+        {
+            <OdsLineChart Title="Premium" Sub="@($"By renewal period · {_premiumCurrency}")"
+                          Series="_premiumSeries" Color="var(--chart-4)"
+                          Format="@(n => Money(n, _premiumCurrency))" AxisFormat="@(n => Money(n, _premiumCurrency))"
+                          ShowDelta DeltaSuffix="@($"vs {_premiumSeries[0].Label}")"
+                          AriaLabel="Premium by renewal period" />
+        }
+
+        <div>
+            <div class="ins-sub">
+                <span class="ins-sub-label">History</span>
+                <span class="ins-sub-rule"></span>
+                <span class="ins-sub-meta">@Renewals.Count @(Renewals.Count == 1 ? "period" : "periods")</span>
+            </div>
+
+            <OdsInlinePager Items="_sorted" Context="pageRows">
+            <table class="ins-tbl">
+                <thead>
+                    <tr>
+                        <th scope="col">Period</th>
+                        <th scope="col" class="num">Premium</th>
+                        <th scope="col" class="num">Coverage</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="num">Docs</th>
+                        <th scope="col" class="act" aria-label="Actions"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in pageRows)
+                    {
+                        var kind = RenewalKind(r);
+                        var docs = r.Files.Count;
+                        var isOpen = _openDocsId == r.PolicyRenewalId;
+
+                        <tr class="@(kind == "current" ? "current" : "") @(isOpen ? "docs-open" : "")">
+                            <td>
+                                <div class="ins-row-period">
+                                    <span class="material-icons @(kind == "current" ? "cur" : "")" aria-hidden="true">@(kind == "current" ? "bolt" : "event")</span>
+                                    <div>
+                                        <div class="ins-row-range">@r.FromDate.ToString("MMM dd, yyyy") → @r.ToDate.ToString("MMM dd, yyyy")</div>
+                                        @if (!string.IsNullOrWhiteSpace(r.Notes))
+                                        {
+                                            <div class="ins-row-note">@r.Notes</div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="ins-cell-num">@Money(r.Premium, r.PremiumCurrencyCode)</td>
+                            <td class="ins-cell-num">@Money(r.CoverageAmount, r.CoverageCurrencyCode)</td>
+                            <td>
+                                @switch (kind)
+                                {
+                                    case "current":
+                                        <span class="ins-status current"><span class="material-icons" aria-hidden="true">check_circle</span>In force</span>
+                                        break;
+                                    case "upcoming":
+                                        <span class="ins-status upcoming">Upcoming</span>
+                                        break;
+                                    default:
+                                        <span class="ins-status past">Past</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="ins-cell-num">
+                                <button type="button"
+                                        class="ins-docchip @(isOpen ? "on" : "") @(docs == 0 ? "empty" : "")"
+                                        aria-expanded="@(isOpen ? "true" : "false")"
+                                        aria-label="@($"{docs} document{(docs == 1 ? "" : "s")} on this period")"
+                                        @onclick="@(() => ToggleDocs(r.PolicyRenewalId))">
+                                    <span class="material-icons" aria-hidden="true">description</span>@docs
+                                    <span class="material-icons ins-docchip-chev @(isOpen ? "open" : "")" aria-hidden="true">expand_more</span>
+                                </button>
+                            </td>
+                            <td class="ins-cell-act">
+                                @if (CanWrite)
+                                {
+                                    <span class="ins-rowbtns">
+                                        <OdsIconButton Icon="@Icons.Material.Filled.Edit" Size="OdsSize.Sm"
+                                                       AriaLabel="Edit renewal period" OnClick="@(() => OnEditRenewal.InvokeAsync(r))" />
+                                        <OdsIconButton Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" Danger="true"
+                                                       AriaLabel="Delete renewal period" OnClick="@(() => OnDeleteRenewal.InvokeAsync(r))" />
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                        @if (isOpen)
+                        {
+                            <tr class="ins-docs-row">
+                                <td colspan="6">
+                                    <div class="ins-docs-panel">
+                                        <div class="ins-docs-head">
+                                            <span class="ins-docs-title">Documents for @r.FromDate.ToString("MMM dd, yyyy") → @r.ToDate.ToString("MMM dd, yyyy")</span>
+                                            @if (CanUpload)
+                                            {
+                                                <span class="ins-docs-attach">
+                                                    <OdsButton Variant="OdsButtonVariant.Text" Icon="upload_file"
+                                                               OnClick="@(() => OnAttachRenewal.InvokeAsync(r.PolicyRenewalId))">Attach</OdsButton>
+                                                </span>
+                                            }
+                                        </div>
+                                        <div class="ins-docs-body">
+                                            <InsuranceFilesTable PolicyId="Policy.InsurancePolicyId" RenewalId="r.PolicyRenewalId"
+                                                                 Files="@RenewalFiles(r)"
+                                                                 CanDownload="CanDownload" CanDelete="CanWrite"
+                                                                 OnChanged="OnChanged"
+                                                                 Empty="_emptyRenewalDocs" />
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+            </OdsInlinePager>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ExistingInsurancePolicy Policy { get; set; } = default!;
+
+    [Parameter] public bool CanWrite { get; set; }
+    [Parameter] public bool CanDownload { get; set; }
+    [Parameter] public bool CanUpload { get; set; }
+
+    /// <summary>Formats an amount in its currency — supplied by the host.</summary>
+    [Parameter, EditorRequired] public Func<decimal?, string?, string> Money { get; set; } = (v, _) => v?.ToString() ?? "—";
+
+    [Parameter] public EventCallback<ExistingPolicyRenewal> OnEditRenewal { get; set; }
+    [Parameter] public EventCallback<ExistingPolicyRenewal> OnDeleteRenewal { get; set; }
+    [Parameter] public EventCallback<Guid> OnAttachRenewal { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private List<ExistingPolicyRenewal> Renewals => Policy.Renewals;
+    private List<ExistingPolicyRenewal> _sorted = [];
+    private List<OdsLinePoint> _premiumSeries = [];
+    private string _premiumCurrency = "USD";
+    private Guid? _openDocsId;
+
+    private readonly RenderFragment _emptyRenewalDocs =
+        @<div class="empty-line" style="padding:16px;">No documents on this period yet — attach the invoice, schedule of cover, or a claim document.</div>;
+
+    protected override void OnParametersSet()
+    {
+        // Newest first for the history table.
+        _sorted = Renewals.OrderByDescending(r => r.FromDate).ThenByDescending(r => r.CreatedAtUtc).ToList();
+
+        // Premium trend — oldest → newest, only when every period shares a premium currency
+        // (the client does no rate conversion, so mixing currencies would mislead).
+        var ascending = Renewals.OrderBy(r => r.FromDate).ThenBy(r => r.CreatedAtUtc).ToList();
+        if (ascending.Count >= 2 && ascending.Select(r => r.PremiumCurrencyCode).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1)
+        {
+            _premiumCurrency = ascending[^1].PremiumCurrencyCode;
+            _premiumSeries = [.. ascending.Select(r => new OdsLinePoint(r.FromDate.Year.ToString(), r.Premium))];
+        }
+        else
+        {
+            _premiumSeries = [];
+        }
+    }
+
+    private string RenewalKind(ExistingPolicyRenewal r)
+    {
+        if (Policy.CurrentRenewal?.PolicyRenewalId == r.PolicyRenewalId) return "current";
+        return r.FromDate.Date > DateTime.UtcNow.Date ? "upcoming" : "past";
+    }
+
+    private void ToggleDocs(Guid renewalId) =>
+        _openDocsId = _openDocsId == renewalId ? null : renewalId;
+
+    private IReadOnlyList<InsuranceFileItem> RenewalFiles(ExistingPolicyRenewal r) =>
+        [.. r.Files.Select(InsuranceFileItem.From)];
+}

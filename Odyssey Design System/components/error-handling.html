@@ -1,0 +1,472 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Error display — ProblemDetails (RFC 7807)" subtitle="How application/problem+json error bodies map to the UI: parse the body, show problem.detail (never raw JSON), fall back to the status reason phrase, branch feature-disabled 503s on the code extension. Toast · inline field error · feature-disabled block. Follow-up to #246." viewport="1200x2160" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Error display — ProblemDetails (RFC 7807)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body {
+      font-family: var(--font-sans);
+      color: var(--mud-palette-text-primary);
+      padding: 34px 40px 60px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 1080px; margin: 0 auto; }
+
+    /* ---- page header ---- */
+    .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 8px; }
+    .head h1 { font: var(--fw-light) var(--fs-h2)/1.15 var(--font-sans); letter-spacing: var(--tracking-tight); margin: 0; }
+    .head p { font: var(--fw-regular) var(--fs-body1)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 10px 0 0; max-width: 64ch; }
+    .head-tools { display: flex; align-items: center; gap: 10px; flex: none; }
+    .ghost-btn {
+      display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+      background: var(--mud-palette-surface); color: var(--mud-palette-text-primary);
+      border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm);
+      padding: 8px 13px; font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
+      text-decoration: none; white-space: nowrap;
+    }
+    .ghost-btn:hover { background: var(--mud-palette-action-default-hover); }
+    .ghost-btn .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+
+    /* ---- section ---- */
+    section { margin-top: 46px; }
+    .sec-num { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--brand-text); }
+    .sec-ttl { font: var(--fw-regular) var(--fs-h4)/1.2 var(--font-sans); margin: 7px 0 4px; }
+    .sec-sub { font: var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 22px; max-width: 70ch; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); display: flex; align-items: center; gap: 8px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); font-size: 12px; }
+
+    /* ---- before / after ---- */
+    .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .ba-col { display: flex; flex-direction: column; gap: 12px; }
+    .ba-tag { display: inline-flex; align-items: center; gap: 7px; font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; }
+    .ba-tag .material-icons { font-size: 15px; }
+    .ba-tag.bad { color: var(--coral-500); }
+    .ba-tag.good { color: var(--mint-500); }
+    [data-theme='light'] .ba-tag.bad { color: var(--coral-700); }
+    [data-theme='light'] .ba-tag.good { color: var(--mint-700); }
+    .stage {
+      position: relative; min-height: 132px; padding: 22px;
+      border-radius: var(--radius-md); border: 1px solid var(--mud-palette-divider);
+      background:
+        var(--mud-palette-background-gray)
+        repeating-linear-gradient(135deg, transparent 0 11px, rgba(199,208,224,0.018) 11px 22px);
+      display: flex; align-items: flex-end; justify-content: flex-end;
+    }
+    .stage.bad { border-color: var(--finance-expense-border); }
+    .stage.good { border-color: var(--finance-income-border); }
+    .stage .odc-toast { animation: none; position: static; width: 100%; max-width: 360px; }
+    .ba-note { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0; }
+    .ba-note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+
+    /* ---- mapping ---- */
+    .map { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 26px; align-items: start; }
+    pre.json {
+      margin: 0; padding: 20px 22px; border-radius: var(--radius-md);
+      background: var(--ink-950); border: 1px solid var(--mud-palette-divider);
+      font: var(--fw-regular) 13px/1.7 var(--font-mono); color: var(--ink-100);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    pre.json .s.hot { white-space: normal; }
+    [data-theme='light'] pre.json { background: #0E1525; color: var(--ink-100); }
+    .json .k { color: var(--sea-300); }
+    .json .s { color: var(--mint-300); }
+    .json .n { color: var(--amber-300); }
+    .json .pi { color: var(--ink-400); }
+    .json .hot { background: color-mix(in srgb, var(--tide-400) 22%, transparent); border-radius: 3px; padding: 0 3px; }
+    .routes { display: flex; flex-direction: column; gap: 2px; }
+    .route { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: baseline; padding: 13px 0; border-bottom: 1px solid var(--mud-palette-divider-light); }
+    .route:last-child { border-bottom: none; }
+    .route-f { font: var(--fw-medium) 13px/1.4 var(--font-mono); color: var(--mud-palette-text-primary); }
+    .route-f .ext { display: block; font: var(--fw-regular) 10px/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); margin-top: 3px; }
+    .route-d { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .route-d b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .pill { display: inline-block; font: var(--fw-medium) 10px/1.5 var(--font-sans); letter-spacing: var(--tracking-wide); text-transform: uppercase; padding: 1px 7px; border-radius: var(--radius-pill); vertical-align: middle; margin-left: 2px; }
+    .pill.show { background: var(--finance-income-soft); color: var(--finance-income); }
+    .pill.hide { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary); }
+    .pill.dev { background: var(--info-soft); color: var(--info-text); }
+
+    /* ---- surfaces grid ---- */
+    .surfaces { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 36px; }
+    .surface { display: flex; flex-direction: column; gap: 13px; }
+    .surface.span2 { grid-column: 1 / -1; }
+    .demo {
+      padding: 22px; border-radius: var(--radius-md);
+      border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface);
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .demo.sunken { background: var(--mud-palette-background-gray); }
+    .demo .odc-toast { animation: none; position: static; }
+
+    /* mini dialog frame for the inline-error + file-analysis specimens */
+    .dlg { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; background: var(--mud-palette-surface); }
+    .dlg-head { display: flex; align-items: center; gap: 11px; padding: 14px 18px; border-bottom: 1px solid var(--mud-palette-divider-light); background: rgba(255,255,255,0.02); }
+    [data-theme='light'] .dlg-head { background: rgba(20,30,50,0.02); }
+    .dlg-lead { flex: none; width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: rgba(79,215,203,0.14); color: var(--tide-400); }
+    [data-theme='light'] .dlg-lead { color: var(--tide-deep); }
+    .dlg-lead .material-icons { font-size: 19px; }
+    .dlg-ttl { font: var(--fw-medium) var(--fs-h6)/1.3 var(--font-sans); }
+    .dlg-body { padding: 18px; display: flex; flex-direction: column; gap: 16px; background: var(--mud-palette-surface); }
+    .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--mud-palette-divider-light); background: rgba(255,255,255,0.02); }
+    [data-theme='light'] .dlg-foot { background: rgba(20,30,50,0.02); }
+    .dlg-body .odc-input, .dlg-body .odc-select-trigger { background-color: var(--mud-palette-background); }
+
+    .opt-tag { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .opt-tag b { color: var(--brand-text); font-weight: var(--fw-medium); }
+
+    /* totals card */
+    .totals-card { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 18px; }
+    .totals-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .totals-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .totals-head .t { font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+
+    /* do / don't */
+    .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .rule { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 18px 20px; background: var(--mud-palette-surface); }
+    .rule h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans); }
+    .rule.do h4 { color: var(--mint-500); }
+    .rule.dont h4 { color: var(--coral-500); }
+    [data-theme='light'] .rule.do h4 { color: var(--mint-700); }
+    [data-theme='light'] .rule.dont h4 { color: var(--coral-700); }
+    .rule h4 .material-icons { font-size: 19px; }
+    .rule ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 11px; }
+    .rule li { display: grid; grid-template-columns: 16px 1fr; gap: 9px; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .rule li .material-icons { font-size: 16px; margin-top: 2px; }
+    .rule.do li .material-icons { color: var(--mint-500); }
+    .rule.dont li .material-icons { color: var(--coral-500); }
+    [data-theme='light'] .rule.do li .material-icons { color: var(--mint-700); }
+    [data-theme='light'] .rule.dont li .material-icons { color: var(--coral-700); }
+    .rule li b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    code.inl { font-family: var(--font-mono); font-size: 0.86em; color: var(--brand-text); }
+
+    .hr { height: 1px; background: var(--mud-palette-divider); border: none; margin: 0; }
+
+    /* ---- routing policy strip ---- */
+    .subhead { font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); margin: 34px 0 4px; }
+    .subhead + .sec-sub { margin-bottom: 16px; }
+    .policy { display: grid; gap: 9px; }
+    .policy-step { display: grid; grid-template-columns: 132px 18px 1fr; align-items: center; gap: 16px; padding: 13px 16px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); }
+    .ps-class { justify-self: start; font: var(--fw-medium) 11px/1 var(--font-mono); padding: 5px 9px; border-radius: var(--radius-pill); white-space: nowrap; }
+    .ps-class.ok { background: var(--finance-income-soft); color: var(--finance-income); }
+    .ps-class.inline { background: var(--info-soft); color: var(--info-text); }
+    .ps-class.toast { background: var(--finance-expense-soft); color: var(--finance-expense); }
+    .ps-class.block { background: var(--finance-pending-soft); color: var(--pending-text); }
+    .ps-arrow { color: var(--mud-palette-text-disabled); text-align: center; font-size: 15px; }
+    .ps-out { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .ps-out b { font: var(--fw-medium) var(--fs-body2)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .ps-out span { font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .ps-out code { font-family: var(--font-mono); color: var(--brand-text); font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <div class="head">
+      <div>
+        <h1>Error display — <span style="font-family:var(--font-mono);font-size:0.62em;color:var(--brand-text);vertical-align:middle">application/problem+json</span></h1>
+        <p>Every API error is now an <b style="color:var(--mud-palette-text-primary);font-weight:var(--fw-medium)">RFC&nbsp;7807 ProblemDetails</b> body. The client must <b style="color:var(--mud-palette-text-primary);font-weight:var(--fw-medium)">parse it and show <code class="inl">problem.detail</code></b> — never the raw JSON. This page is the contract for where each field lands. Follow-up to&nbsp;#246.</p>
+      </div>
+      <div class="head-tools">
+        <button class="ghost-btn" id="themeToggle"><span class="material-icons">light_mode</span><span id="themeLabel">Light</span></button>
+        <a class="ghost-btn" href="error-handling-demo.html"><span class="material-icons">play_arrow</span>Interactive demo</a>
+      </div>
+    </div>
+
+    <!-- ============ 1. BEFORE / AFTER ============ -->
+    <section>
+      <div class="sec-num">01</div>
+      <h2 class="sec-ttl">The fix, in one frame</h2>
+      <p class="sec-sub">The client reads error bodies as raw strings and shows them verbatim. With standardized JSON bodies, users now see the wire format in toasts and inline errors. Parse it; show the human-readable <code class="inl">detail</code>.</p>
+
+      <div class="ba">
+        <div class="ba-col">
+          <span class="ba-tag bad"><span class="material-icons">close</span>Today — raw string</span>
+          <div class="stage bad">
+            <div class="odc-toast error" role="alert">
+              <span class="material-icons odc-toast-ic">error</span>
+              <div class="odc-toast-body" style="font-family:var(--font-mono);font-size:12px;line-height:1.5;word-break:break-word">Not Found: 404 {"type":"https://odyssey.app/errors/not-found","title":"Not Found","status":404,"detail":"Account ID 42 not found."}</div>
+              <button class="odc-toast-close" aria-label="Dismiss"><span class="material-icons">close</span></button>
+            </div>
+          </div>
+          <p class="ba-note"><b>ReadAsStringAsync</b> → the whole JSON envelope is interpolated into the snackbar. Unreadable, leaks <code class="inl">type</code> URIs and status noise.</p>
+        </div>
+
+        <div class="ba-col">
+          <span class="ba-tag good"><span class="material-icons">check</span>Target — parsed detail</span>
+          <div class="stage good">
+            <div class="odc-toast error" role="alert">
+              <span class="material-icons odc-toast-ic">error</span>
+              <div class="odc-toast-body">Account ID 42 not found.</div>
+              <button class="odc-toast-close" aria-label="Dismiss"><span class="material-icons">close</span></button>
+            </div>
+          </div>
+          <p class="ba-note"><b>ReadFromJsonAsync&lt;ProblemDetails&gt;</b> → show <code class="inl">detail</code> only. One clean sentence; the envelope stays on the wire.</p>
+        </div>
+      </div>
+    </section>
+
+    <hr class="hr" style="margin-top:46px" />
+
+    <!-- ============ 2. FIELD MAPPING ============ -->
+    <section>
+      <div class="sec-num">02</div>
+      <h2 class="sec-ttl">What the helper reads — and how it routes</h2>
+      <p class="sec-sub">One shared helper reads the response, returns a friendly message + the optional <code class="inl">code</code> extension + any field <code class="inl">errors</code>, and every call site routes through it. First, what it reads from the body:</p>
+
+      <div class="map">
+<pre class="json"><span class="pi">{</span>
+  <span class="k">"type"</span><span class="pi">:</span> <span class="s">"https://odyssey.app/errors/feature-disabled"</span><span class="pi">,</span>
+  <span class="k">"title"</span><span class="pi">:</span> <span class="s">"Service Unavailable"</span><span class="pi">,</span>
+  <span class="k">"status"</span><span class="pi">:</span> <span class="n">503</span><span class="pi">,</span>
+  <span class="k">"detail"</span><span class="pi">:</span> <span class="s hot">"Account totals are turned off for this workspace."</span><span class="pi">,</span>
+  <span class="k">"code"</span><span class="pi">:</span> <span class="s hot">"feature_disabled"</span>
+<span class="pi">}</span></pre>
+
+        <div class="routes">
+          <div class="route">
+            <div class="route-f">detail <span class="pill show">show</span></div>
+            <div class="route-d">The message the user reads — toast body, inline field error, feature-disabled block. <b>The one field rendered verbatim.</b></div>
+          </div>
+          <div class="route">
+            <div class="route-f">title <span class="pill show">show*</span></div>
+            <div class="route-d">Heading on rich surfaces only (the <b>ProblemAlert</b> / feature-disabled block). Skipped in toasts — too terse to add signal.</div>
+          </div>
+          <div class="route">
+            <div class="route-f">code <span class="ext">extension</span> <span class="pill hide">branch</span></div>
+            <div class="route-d">Machine string for <b>branching</b> — <code class="inl">feature_disabled</code>, <code class="inl">tax_statements_disabled</code>. Picks the surface; never shown to the user.</div>
+          </div>
+          <div class="route">
+            <div class="route-f">errors <span class="ext">extension</span> <span class="pill show">inline</span></div>
+            <div class="route-d">The <b>field → messages</b> map on a validation problem (<code class="inl">{ "Custodian": […] }</code>). Present on a 4xx → route each message to <b>that field's</b> error line instead of a toast.</div>
+          </div>
+          <div class="route">
+            <div class="route-f">status <span class="pill hide">route</span></div>
+            <div class="route-d">Picks the <b>surface</b> (see below) and the fallback reason phrase. <b>Never interpolated into copy.</b></div>
+          </div>
+          <div class="route">
+            <div class="route-f">type <span class="pill dev">dev</span></div>
+            <div class="route-d">Diagnostics / an optional docs link. Not surfaced inline.</div>
+          </div>
+          <div class="route">
+            <div class="route-f">— absent —</div>
+            <div class="route-d">No <code class="inl">detail</code>, or a body that isn't JSON → fall back to the <b>HTTP status reason phrase</b> ("Not Found", "Service Unavailable"). Guard the parse; never show a parser exception.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="subhead">Then: route by status class</div>
+      <p class="sec-sub">The surface follows the status, not the endpoint. The principle: <b style="color:var(--mud-palette-text-primary);font-weight:var(--fw-medium)">things the user can fix go inline; things they can't go to a toast.</b></p>
+      <div class="policy">
+        <div class="policy-step">
+          <span class="ps-class ok">2xx</span><span class="ps-arrow">→</span>
+          <div class="ps-out"><b>Success toast</b><span>“Account created.” The dialog closes.</span></div>
+        </div>
+        <div class="policy-step">
+          <span class="ps-class inline">4xx&nbsp;+&nbsp;field</span><span class="ps-arrow">→</span>
+          <div class="ps-out"><b>Inline field error</b><span>A validation problem with an <code>errors</code> map — anchor each message to its field. Dialog stays open so the user can fix it.</span></div>
+        </div>
+        <div class="policy-step">
+          <span class="ps-class toast">4xx&nbsp;·&nbsp;no&nbsp;field</span><span class="ps-arrow">→</span>
+          <div class="ps-out"><b>Error toast</b><span>Nothing to anchor to (e.g. 403 / 404) — show <code>detail</code>.</span></div>
+        </div>
+        <div class="policy-step">
+          <span class="ps-class toast">5xx&nbsp;/&nbsp;network</span><span class="ps-arrow">→</span>
+          <div class="ps-out"><b>Error toast</b><span>Server-side; the user can only retry. Show <code>detail</code>, or the reason phrase when the body isn't JSON.</span></div>
+        </div>
+        <div class="policy-step">
+          <span class="ps-class block">503&nbsp;+&nbsp;code</span><span class="ps-arrow">→</span>
+          <div class="ps-out"><b>Feature-disabled block</b><span>An in-place ProblemAlert keyed on the <code>code</code> extension — overrides the toast/inline split above.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="hr" style="margin-top:46px" />
+
+    <!-- ============ 3. SURFACES ============ -->
+    <section>
+      <div class="sec-num">03</div>
+      <h2 class="sec-ttl">The five surfaces</h2>
+      <p class="sec-sub">Each call site below names the source location from the issue, and the policy row it follows. Severity follows status: a 4xx/5xx failure is coral; a turned-off feature is informational, not an error.</p>
+
+      <div class="surfaces">
+
+        <!-- 3.1 generic error toast -->
+        <div class="surface">
+          <div class="cap">A · Generic API failure <code>Toast severity="error"</code></div>
+          <div class="demo sunken">
+            <div class="odc-toast error" role="alert">
+              <span class="material-icons odc-toast-ic">error</span>
+              <div class="odc-toast-body">Couldn't save the account — the name is already in use.</div>
+              <button class="odc-toast-close" aria-label="Dismiss"><span class="material-icons">close</span></button>
+            </div>
+          </div>
+          <p class="ba-note"><code class="inl">ApiClient.SendAsync</code> — a <b>5xx</b> (or a 4xx with no field to anchor to) shows <code class="inl">problem.detail</code>, reason phrase if absent. Auto-dismiss; manual close stays.</p>
+        </div>
+
+        <!-- 3.5 non-json fallback -->
+        <div class="surface">
+          <div class="cap">B · Body isn't JSON — fallback</div>
+          <div class="demo sunken">
+            <div class="odc-toast error" role="alert">
+              <span class="material-icons odc-toast-ic">error</span>
+              <div class="odc-toast-body">Service Unavailable. Please try again.</div>
+              <button class="odc-toast-close" aria-label="Dismiss"><span class="material-icons">close</span></button>
+            </div>
+          </div>
+          <p class="ba-note">A gateway returns HTML / empty body → <code class="inl">ReadFromJsonAsync</code> would throw. Catch it; use the status reason phrase. <b>Robustness, not a happy path.</b></p>
+        </div>
+
+        <!-- 3.2 inline field error -->
+        <div class="surface span2">
+          <div class="cap">C · Inline field error — custodian validation <code>CreateAccountDialog</code></div>
+          <div class="demo">
+            <div class="dlg" style="max-width:520px">
+              <div class="dlg-head">
+                <div class="dlg-lead"><span class="material-icons">add_card</span></div>
+                <div class="dlg-ttl">New account</div>
+              </div>
+              <div class="dlg-body">
+                <div class="odc-field">
+                  <label class="odc-field-label">Account name</label>
+                  <div class="odc-input-wrap"><input class="odc-input" value="Acme Treasury" readonly /></div>
+                </div>
+                <div class="odc-field error">
+                  <div class="odc-field-label">Custodian <span class="odc-field-opt">Optional</span></div>
+                  <button type="button" class="odc-select-trigger" aria-invalid="true" style="border-color:var(--mud-palette-error)">
+                    <span class="odc-select-trigger-main"><span class="odc-select-val">Northwind Capital</span></span>
+                    <span class="material-icons odc-select-chev">expand_more</span>
+                  </button>
+                  <div class="odc-field-help">The selected contact is archived and can't be used as a custodian. Pick an active one or clear the field.</div>
+                </div>
+              </div>
+              <div class="dlg-foot">
+                <button class="odc-btn text">Cancel</button>
+                <button class="odc-btn filled">Create account</button>
+              </div>
+            </div>
+          </div>
+          <p class="ba-note"><b>4xx with a field target.</b> The validation problem's <code class="inl">errors</code> map names <code class="inl">Custodian</code>, so the message routes to that field's error line — not a toast — and the dialog stays open. Extract from <code class="inl">errors</code>; never assign the full JSON to <code class="inl">_custodianError</code>.</p>
+        </div>
+
+        <!-- 3.3 feature disabled — accounts totals — TWO OPTIONS -->
+        <div class="surface span2">
+          <div class="cap">D · Feature-disabled 503 — Accounts totals <code>code = "feature_disabled"</code></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+
+            <div class="surface" style="gap:10px">
+              <div class="opt-tag">Option 1 · <b>ProblemAlert</b>, info severity</div>
+              <div class="demo">
+                <div class="totals-card" style="border:none;padding:0;background:none">
+                  <div class="totals-head"><span class="t">Totals</span></div>
+                  <div class="odc-problem info" role="status">
+                    <div class="odc-problem-head">
+                      <span class="material-icons" aria-hidden="true" style="font-size:20px;flex:none">info_outline</span>
+                      <div class="odc-problem-title">Account totals are turned off</div>
+                    </div>
+                    <p class="odc-problem-detail">Totals across accounts aren't being computed for this workspace right now. Individual account balances are unaffected.</p>
+                  </div>
+                </div>
+              </div>
+              <p class="ba-note">Calm, in-place, keeps the panel's frame. Best when the surrounding screen still works.</p>
+            </div>
+
+            <div class="surface" style="gap:10px">
+              <div class="opt-tag">Option 2 · muted <b>EmptyState</b></div>
+              <div class="demo">
+                <div class="totals-card" style="border:none;padding:0;background:none">
+                  <div class="totals-head"><span class="t">Totals</span></div>
+                  <div class="odc-empty muted-ic" style="padding:28px 24px">
+                    <div class="odc-empty-ic"><span class="material-icons">toggle_off</span></div>
+                    <div class="odc-empty-ttl">Totals unavailable</div>
+                    <div class="odc-empty-desc">Account totals are turned off for this workspace.</div>
+                  </div>
+                </div>
+              </div>
+              <p class="ba-note">Reads as "nothing here" — better when totals are the panel's <i>only</i> content.</p>
+            </div>
+
+          </div>
+          <p class="ba-note" style="margin-top:4px"><b>Recommendation:</b> <b style="color:var(--mud-palette-text-primary);font-weight:var(--fw-medium)">ProblemAlert (Option 1)</b>. A disabled feature is a state to explain, not an absence to apologize for — and it holds the panel's shape so the layout doesn't jump. Branch on the <code class="inl">code</code> extension (or status 503) — the deleted <code class="inl">ErrorResponse</code> DTO is gone.</p>
+        </div>
+
+        <!-- 3.4 feature disabled — file analysis dialog -->
+        <div class="surface span2">
+          <div class="cap">E · Feature-disabled 503 — File Analysis dialog <code>FileAnalysisDialog</code></div>
+          <div class="demo">
+            <div class="dlg" style="max-width:560px">
+              <div class="dlg-head">
+                <div class="dlg-lead"><span class="material-icons">document_scanner</span></div>
+                <div class="dlg-ttl">Analyze statement</div>
+              </div>
+              <div class="dlg-body">
+                <div class="odc-problem info" role="status">
+                  <div class="odc-problem-head">
+                    <span class="material-icons" aria-hidden="true" style="font-size:20px;flex:none">info_outline</span>
+                    <div class="odc-problem-title">Statement analysis is turned off</div>
+                  </div>
+                  <p class="odc-problem-detail">Automatic transaction extraction isn't available right now. You can still upload the file and add transactions manually.</p>
+                </div>
+              </div>
+              <div class="dlg-foot">
+                <button class="odc-btn text">Close</button>
+                <button class="odc-btn outlined">Upload anyway</button>
+              </div>
+            </div>
+          </div>
+          <p class="ba-note">Same pattern, inside the dialog body — replaces the analysis UI, leaves a sensible fallback action. The 503 branch is unchanged by #246; optionally tighten it to the <code class="inl">code</code> extension for specificity.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <hr class="hr" style="margin-top:46px" />
+
+    <!-- ============ 4. DO / DON'T ============ -->
+    <section>
+      <div class="sec-num">04</div>
+      <h2 class="sec-ttl">Rules</h2>
+      <div class="rules" style="margin-top:8px">
+        <div class="rule do">
+          <h4><span class="material-icons">check_circle</span>Do</h4>
+          <ul>
+            <li><span class="material-icons">check</span><span>Route <b>4xx field errors inline</b> via the <code class="inl">errors</code> map; send <b>5xx and fieldless 4xx</b> to a toast.</span></li>
+            <li><span class="material-icons">check</span><span>Fall back to the <b>HTTP status reason phrase</b> when <code class="inl">detail</code> is missing or the body isn't JSON.</span></li>
+            <li><span class="material-icons">check</span><span>Keep the dialog <b>open</b> on an inline error so the user can fix and resubmit.</span></li>
+            <li><span class="material-icons">check</span><span>Branch feature-disabled flows on the <b>code extension</b> (or status 503) via the shared helper.</span></li>
+          </ul>
+        </div>
+        <div class="rule dont">
+          <h4><span class="material-icons">cancel</span>Don't</h4>
+          <ul>
+            <li><span class="material-icons">close</span><span>Show the <b>raw JSON envelope</b> in a toast or inline error.</span></li>
+            <li><span class="material-icons">close</span><span>Fire a <b>global toast</b> for a 4xx that names a field — anchor it inline instead.</span></li>
+            <li><span class="material-icons">close</span><span>Interpolate <b>status codes</b> or <code class="inl">type</code> URIs into user copy, or let a <b>parser exception</b> surface.</span></li>
+            <li><span class="material-icons">close</span><span>Reference the deleted <b><code class="inl">ErrorResponse</code></b> DTO — it's gone.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('themeToggle');
+      var label = document.getElementById('themeLabel');
+      var icon = btn.querySelector('.material-icons');
+      btn.addEventListener('click', function () {
+        var dark = document.documentElement.getAttribute('data-theme') !== 'light';
+        document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+        label.textContent = dark ? 'Dark' : 'Light';
+        icon.textContent = dark ? 'dark_mode' : 'light_mode';
+      });
+    })();
+  </script>
+</body>
+</html>

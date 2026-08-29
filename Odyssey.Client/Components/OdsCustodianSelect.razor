@@ -1,0 +1,172 @@
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Finance
+@inject IJSRuntime JS
+
+@*
+    OdsCustodianSelect — the optional custodian picker shared by both account-
+    editing surfaces (the Create-account dialog and the inline edit grid on the
+    account card). Odyssey Design System · components/CustodianSelect.
+
+    Per spec FE-1 this is NOT a new widget — it reuses OdsCombobox (a searchable
+    single-select over MudAutocomplete), wrapped in the standard label-above /
+    help / error field chrome. No inline contact create (Non-Goal 1) and no
+    ContactType restriction (Non-Goal 4). Options are the active
+    (non-archived) contacts only (FE-6 / §9); a currently-linked value that
+    has since been archived is still surfaced so its name stays visible.
+
+    Accessibility (the picker half of the WCAG 2.2 AA contract):
+      • A11Y-1 — a persistent "Custodian" label, associated to the inner input by a
+                 real <label for> + InputId (not just aria-labelledby); optional in text.
+      • A11Y-2/3 — combobox/listbox/option semantics + keyboard come from
+                   MudAutocomplete; the clear (×) is its keyboard-operable button.
+      • A11Y-4 — loading/empty/error states sit in two ALWAYS-mounted live regions
+                 (polite status + assertive alert) so changes announce; both are wired
+                 to the input via aria-describedby.
+      • A11Y-9 — on a rejected save pass Error: MudBlazor flips aria-invalid (Error
+                 param), the alert region carries the actionable message, and the
+                 surface keeps focus on the field.
+*@
+
+<div class="@FieldClass">
+    <label class="odc-field-label" for="@_inputId">
+        @Label
+        @if (Optional)
+        {
+            <span class="odc-field-opt">Optional</span>
+        }
+    </label>
+
+    @* InputId + the <label for> above give a real label association on the inner input; Error lets
+       MudBlazor own aria-invalid + the error outline; aria-describedby points at the two persistent
+       live regions below (which announce loading/empty/error without moving focus). *@
+    <OdsCombobox Value="@Value"
+                 ValueChanged="OnValueChanged"
+                 Options="_options"
+                 Placeholder="@Placeholder"
+                 Disabled="@PickerDisabled"
+                 InputId="@_inputId"
+                 Error="@HasError"
+                 aria-describedby="@_describedBy" />
+
+    @* Both regions are ALWAYS mounted (empty when idle) so a later text change is announced — a
+       region created together with its text usually isn't (A11Y-4). At most one carries text at a
+       time; the wrapper keeps them out of the field's flex gap so an empty region adds no space. *@
+    <div class="odc-field-msgs">
+        <div class="odc-field-help" id="@_statusId" role="status" aria-live="polite">@StatusMessage</div>
+        <div class="odc-field-help error" id="@_alertId" role="alert">@AlertMessage</div>
+    </div>
+</div>
+
+@code {
+    /// <summary>Selected contact id (string), or empty/null when there is no custodian.
+    /// Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>The contacts to populate the picker from. Archived ones are filtered out of the
+    /// selectable options client-side (FE-6); a linked-but-archived value is still kept resolvable.</summary>
+    [Parameter] public IReadOnlyList<ExistingContact> Contacts { get; set; } = [];
+
+    [Parameter] public string Label { get; set; } = "Custodian";
+
+    [Parameter] public bool Optional { get; set; } = true;
+
+    [Parameter] public string Placeholder { get; set; } = "Search contacts…";
+
+    /// <summary>Optional helper text shown under the field when there is no error.</summary>
+    [Parameter] public string? Help { get; set; }
+
+    /// <summary>Inline validation error (e.g. a rejected save). Announced via role="alert" and linked
+    /// to the input (aria-describedby + aria-invalid).</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>The contact list is still loading — announces a live loading message and
+    /// disables the control.</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private readonly string _inputId = $"custodian-input-{Guid.NewGuid():N}";
+    private readonly string _statusId = $"custodian-status-{Guid.NewGuid():N}";
+    private readonly string _alertId = $"custodian-alert-{Guid.NewGuid():N}";
+
+    private const string EmptyHint = "No contacts yet — create one first to link a custodian.";
+
+    private IReadOnlyList<OdsOption> _options = [];
+    private bool _isEmpty;
+
+    private bool HasError => !string.IsNullOrWhiteSpace(Error);
+    private string ClassSuffix => string.IsNullOrWhiteSpace(Class) ? string.Empty : $" {Class}";
+
+    private string FieldClass => $"odc-field{(HasError ? " error" : string.Empty)}{ClassSuffix}";
+
+    // Both regions are always referenced so the association is stable as their text comes and goes.
+    private string _describedBy => $"{_statusId} {_alertId}";
+
+    private bool PickerDisabled => Disabled || Loading || (_isEmpty && string.IsNullOrEmpty(Value));
+
+    // Non-error status (loading / empty-list hint / helper text) → the polite live region.
+    private string StatusMessage =>
+        HasError ? string.Empty
+        : Loading ? "Loading contacts…"
+        : !string.IsNullOrWhiteSpace(Help) ? Help!
+        : _isEmpty ? EmptyHint
+        : string.Empty;
+
+    // The validation error → the assertive (role="alert") live region.
+    private string AlertMessage => HasError ? Error! : string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        var active = Contacts.Where(c => c.Archived is null).ToList();
+        _isEmpty = active.Count == 0;
+
+        var options = active
+            .OrderBy(c => c.ResolvedDisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .Select(ToOption)
+            .ToList();
+
+        // Keep a linked-but-now-archived value resolvable so the trigger still shows its name.
+        if (!string.IsNullOrEmpty(Value) && options.All(o => o.Value != Value))
+        {
+            var linked = Contacts.FirstOrDefault(c => c.ContactId.ToString() == Value);
+            if (linked is not null)
+                options.Insert(0, ToOption(linked));
+        }
+
+        _options = options;
+    }
+
+    private static OdsOption ToOption(ExistingContact contact)
+    {
+        var meta = OdsTypeRegistries.ContactTypeOf(contact.Type.ToString());
+        return new OdsOption(contact.ContactId.ToString(), contact.ResolvedDisplayName)
+        {
+            Icon = meta.Icon,
+            IconColor = meta.Color,
+        };
+    }
+
+    private Task OnValueChanged(string? value) => ValueChanged.InvokeAsync(value);
+
+    // Wire aria-describedby onto the inner combobox input. MudBlazor renders its own
+    // aria-describedby after the splatted attributes, so a passed-through value is clobbered; set it
+    // directly on the input by id instead. The id pair is constant, so this is idempotent.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!OperatingSystem.IsBrowser())
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("odsSetAttr", _inputId, "aria-describedby", _describedBy);
+        }
+        catch (Exception)
+        {
+            // Best-effort a11y wiring; never break the field if interop is unavailable.
+        }
+    }
+}

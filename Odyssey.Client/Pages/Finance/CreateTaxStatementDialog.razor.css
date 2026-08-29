@@ -1,0 +1,13 @@
+/* Section headings inside the edit-mode form (declared figures / derivation tags),
+   mirroring TaxStatementsCard's .tx-section-h — CSS isolation means that page's
+   scoped rule can't reach markup rendered by this dialog, so it's duplicated here. */
+.tx-section-h {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.8125rem; font-weight: 500; line-height: 1.2;
+    color: var(--mud-palette-text-primary); margin: 4px 0 0;
+}
+.tx-section-h .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.tx-section-cap {
+    margin-left: auto; font-size: 0.71875rem; line-height: 1.3;
+    color: var(--mud-palette-text-secondary);
+}

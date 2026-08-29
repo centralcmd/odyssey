@@ -1,0 +1,157 @@
+@*
+    OdsTextInputField — a labelled single-line text input built on the native input
+    (Odyssey Design System · components/Field, the native-input variant).
+
+    Sibling of OdsNumberField: OdsFieldShell for the label / helper / error chrome,
+    plus a bare `<input class="odc-input">`. That is exactly what the DS specimen
+    components/Field.jsx renders, so this converges the Blazor kit toward the spec
+    rather than adding a second interpretation of it.
+
+    Use OdsField for ordinary form text: it wraps MudTextField and brings the
+    MudBlazor affordances with it (password reveal, multiline, clearable).
+    Use THIS one when the row supplies its own label element and the control must
+    point aria-labelledby / aria-describedby at ids it does not own — a settings
+    row, most notably, where the label is the row title. OdsField cannot honour
+    that contract reliably, because its aria attributes reach the inner <input>
+    only through MudBlazor's attribute splat.
+
+    For search / filter boxes use OdsSearchField; for long values OdsNoteField.
+*@
+
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+               Help="@Help" Error="@Error" Class="@Class" Aside="@Counter">
+    <input id="@FieldId"
+           class="odc-input"
+           type="@Type"
+           value="@Value"
+           placeholder="@Placeholder"
+           maxlength="@MaxLength"
+           inputmode="@InputMode"
+           autocomplete="@AutoComplete"
+           spellcheck="@(Spellcheck ? null : "false")"
+           disabled="@Disabled"
+           autofocus="@AutoFocus"
+           aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
+           aria-describedby="@DescribedBy"
+           aria-labelledby="@AriaLabelledBy"
+           @oninput="OnInput"
+           @attributes="UserAttributes" />
+</OdsFieldShell>
+
+@code {
+    /// <summary>Visible label, rendered above the control. Omit when the consumer labels the field itself.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>The text value. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "—";
+
+    /// <summary>Native maxlength. Set it to the same bound the server enforces, so the field cannot outrun it.</summary>
+    [Parameter] public int? MaxLength { get; set; }
+
+    /// <summary>
+    /// Render a live <c>used/limit</c> counter in the shell's Aside slot, so the ceiling is visible
+    /// before it is hit. Requires <see cref="MaxLength"/> — a counter with no limit counts toward
+    /// nothing.
+    /// </summary>
+    [Parameter] public bool ShowCount { get; set; }
+
+    /// <summary>Native inputmode hint — e.g. "url" or "email" for the right mobile keyboard.</summary>
+    [Parameter] public string? InputMode { get; set; }
+
+    [Parameter] public string? AutoComplete { get; set; }
+
+    /// <summary>
+    /// The native input type (issue #444). Defaults to <c>"text"</c>, so every existing consumer is
+    /// unchanged; <c>"password"</c> is the masked mode the secret-settings row composes.
+    ///
+    /// <para>
+    /// The design system sanctions it — <c>components/Field.d.ts</c> declares <c>type?: string</c> with
+    /// <c>"password"</c> named explicitly — and it is the additive fix to a real gap: the masking
+    /// sibling <c>OdsField</c> wraps MudTextField, whose ARIA attributes reach the inner
+    /// <c>&lt;input&gt;</c> only through an attribute splat, so it cannot point <c>aria-labelledby</c>
+    /// at an id it does not own. That is exactly the contract a settings row needs, and it is why the
+    /// masking component and the row-labelling component were disjoint until this parameter existed.
+    /// </para>
+    /// </summary>
+    [Parameter] public string Type { get; set; } = "text";
+
+    /// <summary>Spellcheck stays off by default: these are identifiers and URLs, not prose.</summary>
+    [Parameter] public bool Spellcheck { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Optional { get; set; }
+
+    [Parameter] public string? Help { get; set; }
+
+    /// <summary>Non-empty flips the field to its error state; the message renders with role="alert".</summary>
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public bool AutoFocus { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Explicit id. Generated when omitted, so the label association always holds.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>An element id to name the field from — for a settings row, its title element.</summary>
+    [Parameter] public string? AriaLabelledBy { get; set; }
+
+    /// <summary>An EXTERNAL description id. Appended to the shell's own help/error ids, never replacing them.</summary>
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object?>? UserAttributes { get; set; }
+
+    private string FieldId = default!;
+
+    protected override void OnInitialized() => FieldId = Id ?? $"odc-text-{Guid.NewGuid():N}";
+
+    // The counter is aria-hidden: the limit is already carried by the input's own `maxlength`, and a
+    // node that changes on every keystroke inside the label row is noise, not information.
+    private RenderFragment? Counter =>
+        ShowCount && MaxLength is { } limit
+            ? @<span class="@($"odc-field-count {((Value?.Length ?? 0) > limit ? "over" : "")}".TrimEnd())"
+                     aria-hidden="true">@(Value?.Length ?? 0)/@limit</span>
+            : null;
+
+    // Copied deliberately from OdsNumberField rather than reimplemented: the append-never-replace
+    // rule for an external AriaDescribedBy, and the help/error id split, are both non-obvious and
+    // already solved there. Restating them differently is how the two drift.
+    private string? DescribedBy
+    {
+        get
+        {
+            var hasHelp = !string.IsNullOrEmpty(Help);
+            var parts = new List<string>(3);
+            if (!string.IsNullOrEmpty(AriaDescribedBy))
+            {
+                parts.Add(AriaDescribedBy);
+            }
+
+            if (hasHelp)
+            {
+                parts.Add($"{FieldId}-help");
+            }
+
+            if (!string.IsNullOrEmpty(Error))
+            {
+                parts.Add(hasHelp ? $"{FieldId}-help-error" : $"{FieldId}-help");
+            }
+
+            return parts.Count == 0 ? null : string.Join(' ', parts);
+        }
+    }
+
+    private Task OnInput(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        return ValueChanged.InvokeAsync(Value);
+    }
+}

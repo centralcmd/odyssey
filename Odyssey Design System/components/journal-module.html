@@ -1,0 +1,129 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Journal module" subtitle="The three composites the Journal + Tasks pages add: TodoStatusChip (Backlog/Doing/Done/Archived, meaning in text), JournalPhotoGallery (lazy thumbnail grid, striped placeholder when no src), and TaskBoard (3-column kanban with drag-and-drop AND a keyboard move-button path, moves announced via a live region). Live off the DS namespace." viewport="1240x960" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Journal module components</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 0 0 16px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 20px 22px; }
+    .panel.wide { grid-column: 1 / -1; }
+    .panel h3 { margin: 0 0 4px; font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+    .panel p.sub { margin: 0 0 18px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .chiprow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .chiprow + .chiprow { margin-top: 12px; }
+    .note { margin: 18px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 100ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+  </style>
+</head>
+<body>
+  <div class="cap">Journal module <code>&lt;TodoStatusChip /&gt;</code> · <code>&lt;JournalPhotoGallery /&gt;</code> · <code>&lt;TaskBoard /&gt;</code></div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51 || {};
+
+    function Demo() {
+      const { TodoStatusChip, JournalPhotoGallery, TaskBoard } = NS;
+      const [tasks, setTasks] = React.useState([
+        { id: 't1', title: 'Reconcile March statement', status: 'Backlog', position: 0 },
+        { id: 't2', title: 'Email broker re: dividend', status: 'Backlog', position: 1 },
+        { id: 't3', title: 'File Q1 estimated tax', status: 'Doing', position: 0 },
+        { id: 't4', title: 'Renew home insurance', status: 'Done', position: 0 },
+      ]);
+      const onMove = (id, toStatus, toIndex) => {
+        setTasks((prev) => {
+          const moved = prev.find((t) => t.id === id);
+          if (!moved) return prev;
+          const rest = prev.filter((t) => t.id !== id);
+          const col = rest.filter((t) => t.status === toStatus).sort((a, b) => a.position - b.position);
+          col.splice(toIndex, 0, { ...moved, status: toStatus });
+          const others = rest.filter((t) => t.status !== toStatus);
+          const reseq = col.map((t, i) => ({ ...t, position: i }));
+          return [...others, ...reseq];
+        });
+      };
+      const photos = [
+        { id: 'p1', name: 'receipt-0417.jpg' },
+        { id: 'p2', name: 'whiteboard.png' },
+        { id: 'p3', name: 'contract-p2.jpg' },
+      ];
+
+      return (
+        <React.Fragment>
+          <div className="grid">
+            <div className="panel">
+              <h3>TodoStatusChip</h3>
+              <p className="sub">One chip per task — the status word carries the meaning; the dot/glyph is decorative.</p>
+              <div className="chiprow">
+                <TodoStatusChip status="Backlog" />
+                <TodoStatusChip status="Doing" />
+                <TodoStatusChip status="Done" />
+                <TodoStatusChip status="Archived" />
+              </div>
+              <div className="chiprow">
+                <TodoStatusChip status="Backlog" showIcon />
+                <TodoStatusChip status="Doing" showIcon />
+                <TodoStatusChip status="Done" showIcon />
+                <TodoStatusChip status="Archived" showIcon />
+              </div>
+              <div className="chiprow">
+                <TodoStatusChip status="Doing" size="sm" />
+                <TodoStatusChip status="Done" size="sm" />
+              </div>
+            </div>
+
+            <div className="panel">
+              <h3>JournalPhotoGallery</h3>
+              <p className="sub">Lazy thumbnail grid; striped placeholder + filename when no image is loaded.</p>
+              <JournalPhotoGallery photos={photos} onOpen={() => {}} minTile={100} />
+            </div>
+          </div>
+
+          <div className="panel wide" style={{ marginTop: 22 }}>
+            <h3>TaskBoard</h3>
+            <p className="sub">Drag a card between columns, or use the move buttons (◀ ▲ ▼ ▶) — every move is announced to screen readers. Archived tasks live off-board.</p>
+            <TaskBoard
+              tasks={tasks}
+              onMove={onMove}
+              renderCard={(t) => (
+                <React.Fragment>
+                  <div className="odc-board-cardtitle">{t.title}</div>
+                  <div><TodoStatusChip status={t.status} size="sm" /></div>
+                </React.Fragment>
+              )} />
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    function Root() {
+      const ok = () => { const ns = window.OdysseyDesignSystem_d5aa51 || {}; return ns.TodoStatusChip && ns.JournalPhotoGallery && ns.TaskBoard; };
+      const [ready, setReady] = React.useState(!!ok());
+      React.useEffect(() => {
+        if (ready) return;
+        let n = 0;
+        const t = setInterval(() => { if (ok() || ++n > 20) { clearInterval(t); setReady(true); } }, 100);
+        return () => clearInterval(t);
+      }, [ready]);
+      if (!ok()) return <div className="note">Building components…</div>;
+      return <Demo />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+  </script>
+
+  <p class="note"><b>TodoStatusChip</b> renders a task's single kanban status (Backlog · Doing · Done · Archived); the state meaning is always the visible label, never colour or glyph alone. <b>JournalPhotoGallery</b> is the responsive, keyboard-focusable thumbnail grid on a journal entry — <code>&lt;img loading="lazy"&gt;</code> at native fidelity in production, a striped placeholder with a monospace <code>photo</code> label + filename in mocks. <b>TaskBoard</b> is the three-column kanban with dual-path moves: HTML5 drag-and-drop for pointer users and an always-present move-button cluster (up / down / previous column / next column) for keyboard users, with every move announced through a polite live region. Columns are labelled landmark regions with text counts.</p>
+</body>
+</html>

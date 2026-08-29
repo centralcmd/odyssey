@@ -1,0 +1,10 @@
+@* The role pill shown in the /users table and again inside the expanded row detail — one
+   component so the two can never drift apart. *@
+<span class="usr-role @UserDisplay.RoleClass(Role)">
+    <MudIcon Icon="@UserDisplay.RoleIcon(Role)" Size="Size.Small" />@(string.IsNullOrEmpty(Role) ? "—" : Role)
+</span>
+
+@code {
+    /// <summary>The role name as stored by Identity ("Admin", "Owner", …). Empty renders an em dash.</summary>
+    [Parameter] public string Role { get; set; } = string.Empty;
+}

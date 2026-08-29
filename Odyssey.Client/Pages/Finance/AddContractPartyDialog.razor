@@ -1,0 +1,169 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.ContractsUpdate)]
+@inject IContractsApiClient Contracts
+@inject ISnackbar Snackbar
+
+@*
+    AddContractPartyDialog — add a party to a contract (issue #174 §3 step 3, §7 POST …/parties).
+    The accessible two-step picker the spec mandates (frontend B2):
+      1. choose the party KIND — Account / Institution / Insurance policy
+      2. pick the specific record from a type-to-filter OdsCombobox whose options are PRE-LOADED for
+         the chosen kind (no in-widget async fetch). The inaccessible CreateTransactionDialog popover
+         is deliberately NOT used.
+    On save the party is created from a SCALAR ID only (accountId xor contactId xor
+    insurancePolicyId — the XOR + anti-over-posting invariant, §6/§10). Already-linked targets are
+    filtered out so the same record can't be attached twice (the §9 duplicate guard, pre-empted).
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="group_add" Title="Add party"
+               Subtitle="Link the account, institution, or insurance policy this contract relates to."
+               SubmitLabel="Add party" OnSubmit="SaveAsync">
+
+    <div class="odc-field">
+        <label class="odc-field-label" id="con-party-kind-label">Party kind</label>
+        <div class="con-kind-seg" role="radiogroup" aria-labelledby="con-party-kind-label">
+            @for (var i = 0; i < Kinds.Count; i++)
+            {
+                var index = i;
+                var k = Kinds[index];
+                <button type="button" role="radio" aria-checked="@(_kind == k.Kind ? "true" : "false")"
+                        tabindex="@(_kind == k.Kind ? 0 : -1)"
+                        @ref="_kindRefs[index]"
+                        class="con-kind-opt @(_kind == k.Kind ? "on" : "")"
+                        @onclick="@(() => PickKind(k.Kind))"
+                        @onkeydown="@(e => OnKindKeyAsync(e, index))">
+                    <span class="material-icons" aria-hidden="true">@k.Icon</span>
+                    <span class="con-kind-lab">@k.Label</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="odc-field @(_error is not null ? "error" : "")">
+        <label class="odc-field-label" for="con-party-pick">@Current.Label</label>
+        <OdsCombobox InputId="con-party-pick" Value="@_value" ValueChanged="OnValueChanged"
+                     Options="Available" Placeholder="@($"Search {Current.Label.ToLowerInvariant()}s…")" Error="_error is not null" />
+        <div class="odc-field-help @(_error is not null ? "error" : "")">
+            @if (_error is not null)
+            {
+                @_error
+            }
+            else if (Available.Count > 0)
+            {
+                @($"{Available.Count} {Current.Label.ToLowerInvariant()}{(Available.Count == 1 ? "" : "s")} available to link.")
+            }
+            else
+            {
+                @($"Every {Current.Label.ToLowerInvariant()} is already linked to this contract.")
+            }
+        </div>
+    </div>
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter, EditorRequired] public ExistingContract Contract { get; set; } = default!;
+
+    /// <summary>Pre-loaded, active account options.</summary>
+    [Parameter] public IReadOnlyList<OdsOption> Accounts { get; set; } = [];
+
+    /// <summary>Pre-loaded, active institution (contact) options.</summary>
+    [Parameter] public IReadOnlyList<OdsOption> Institutions { get; set; } = [];
+
+    /// <summary>Pre-loaded, active insurance-policy options.</summary>
+    [Parameter] public IReadOnlyList<OdsOption> Policies { get; set; } = [];
+
+    /// <summary>Raised after a successful add so the host re-fetches the contract.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private ContractPartyKind _kind = ContractPartyKind.Account;
+    private string? _value;
+    private string? _error;
+
+    private sealed record KindDef(ContractPartyKind Kind, string Label, string Icon);
+
+    private static readonly IReadOnlyList<KindDef> Kinds =
+    [
+        new(ContractPartyKind.Account, "Account", "account_balance_wallet"),
+        new(ContractPartyKind.Institution, "Institution", "account_balance"),
+        new(ContractPartyKind.InsurancePolicy, "Insurance policy", "shield"),
+    ];
+
+    private KindDef Current => Kinds.First(k => k.Kind == _kind);
+
+    private IReadOnlyList<OdsOption> AllForKind => _kind switch
+    {
+        ContractPartyKind.Account => Accounts,
+        ContractPartyKind.Institution => Institutions,
+        _ => Policies,
+    };
+
+    // Ids already linked to this contract for the chosen kind, so the picker offers only not-yet-linked.
+    private HashSet<string> LinkedForKind => _kind switch
+    {
+        ContractPartyKind.Account => [.. Contract.Parties.Where(p => p.Account is not null).Select(p => p.Account!.AccountId.ToString())],
+        ContractPartyKind.Institution => [.. Contract.Parties.Where(p => p.Institution is not null).Select(p => p.Institution!.ContactId.ToString())],
+        _ => [.. Contract.Parties.Where(p => p.InsurancePolicy is not null).Select(p => p.InsurancePolicy!.InsurancePolicyId.ToString())],
+    };
+
+    private IReadOnlyList<OdsOption> Available => [.. AllForKind.Where(o => !LinkedForKind.Contains(o.Value))];
+
+    // One element reference per radio so arrow-key navigation can move focus (roving tabindex).
+    private readonly ElementReference[] _kindRefs = new ElementReference[3];
+
+    private void PickKind(ContractPartyKind kind)
+    {
+        _kind = kind;
+        _value = null;
+        _error = null;
+    }
+
+    // Radiogroup keyboard model (WCAG 2.1.1 / 4.1.2, APG radio pattern): arrows + Home/End move the
+    // selection and the focus across the three party-kind options. Only the selected radio is in the
+    // tab order (roving tabindex), so the group is a single tab stop.
+    private async Task OnKindKeyAsync(KeyboardEventArgs e, int index)
+    {
+        int? next = e.Key switch
+        {
+            "ArrowRight" or "ArrowDown" => (index + 1) % Kinds.Count,
+            "ArrowLeft" or "ArrowUp" => (index - 1 + Kinds.Count) % Kinds.Count,
+            "Home" => 0,
+            "End" => Kinds.Count - 1,
+            _ => null,
+        };
+        if (next is not { } ni)
+            return;
+
+        PickKind(Kinds[ni].Kind);
+        await _kindRefs[ni].FocusAsync();
+    }
+
+    private void OnValueChanged(string? value)
+    {
+        _value = value;
+        _error = null;
+    }
+
+    private async Task<bool> SaveAsync()
+    {
+        if (!Guid.TryParse(_value, out var id))
+        {
+            _error = $"Select {(Current.Label[0] is 'I' or 'A' or 'E' or 'O' or 'U' ? "an" : "a")} {Current.Label.ToLowerInvariant()} to link.";
+            return false;
+        }
+
+        var request = new AddContractPartyRequest
+        {
+            AccountId = _kind == ContractPartyKind.Account ? id : null,
+            ContactId = _kind == ContractPartyKind.Institution ? id : null,
+            InsurancePolicyId = _kind == ContractPartyKind.InsurancePolicy ? id : null,
+        };
+
+        return (await Contracts.AddPartyAsync(Contract.ContractId, request)).Toast(Snackbar, "Unable to add party", "Party added.");
+    }
+}

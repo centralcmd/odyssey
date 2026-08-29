@@ -1,0 +1,285 @@
+@page "/subscriptions"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.SubscriptionsRead)]
+@inject ISubscriptionApiClient Subscriptions
+@inject IDialogService DialogService
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IScrollManager ScrollManager
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
+@inject ISnackbar Snackbar
+@inject IReferenceDataCache ReferenceData
+
+<PageTitle>Subscriptions</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+
+<div class="sub-shell">
+<MudStack Spacing="4">
+
+    <PageHeader Title="Subscriptions"
+                Icon="@Icons.Material.Filled.Subscriptions"
+                Problems="RenewalProblems"
+                ProblemsLabel="Upcoming renewals"
+                ProblemsOpen="_problemsOpen" ProblemsOpenChanged="OnProblemsToggled"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New subscription"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>
+            @_activeCount active · @_pausedCount paused · @_endedCount ended · @_archivedCount archived
+        </SubLine>
+
+        <OverviewContent>
+            <div class="sub-overview">
+                <div class="sub-stat-tiles">
+                    <OdsInfoTile Icon="@OdsTypeRegistries.BillingIntervalOf(BillingInterval.Monthly).Icon"
+                                 IconColor="@OdsTypeRegistries.BillingIntervalOf(BillingInterval.Monthly).Color"
+                                 IconSoft="@OdsTypeRegistries.BillingIntervalOf(BillingInterval.Monthly).Soft"
+                                 Label="Monthly run rate" ValueVariant="OdsInfoTileVariant.Mono" Class="sub-runrate-tile">
+                        <Value>@RunRateMonthly</Value>
+                        <Foot>@RunRateMonthlyFoot</Foot>
+                    </OdsInfoTile>
+                    <OdsInfoTile Icon="@OdsTypeRegistries.BillingIntervalOf(BillingInterval.Yearly).Icon"
+                                 IconColor="@OdsTypeRegistries.BillingIntervalOf(BillingInterval.Yearly).Color"
+                                 IconSoft="@OdsTypeRegistries.BillingIntervalOf(BillingInterval.Yearly).Soft"
+                                 Label="Yearly run rate" ValueVariant="OdsInfoTileVariant.Mono" Class="sub-runrate-tile">
+                        <Value>@RunRateYearly</Value>
+                        <Foot>@RunRateYearlyFoot</Foot>
+                    </OdsInfoTile>
+                </div>
+                <div class="odc-summary-grid">
+                    <OdsBreakdownTile Label="By interval" Rows="IntervalRows" Empty="No subscriptions." />
+                    <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No subscriptions." />
+                </div>
+            </div>
+        </OverviewContent>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadSubscriptions"
+                                Placeholder="Search name, external id, company…"
+                                Class="ph-search" />
+                <OdsMultiSelect Label="Any interval" Icon="autorenew" Values="_intervalFilter" ValuesChanged="OnIntervalFilterChanged"
+                                Options="OdsTypeRegistries.BillingIntervalOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Any status" Icon="flag" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="SubscriptionListItem" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Subscriptions per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="SubscriptionListItem" Items="_subscriptions" BatchSize="_batch"
+                         ItemKey="@(s => (object)s.SubscriptionId)" Noun="subscriptions" RevealKey="_flashId"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadSubscriptions"
+                         HasFilters="@(_hasFilters || _hasAnySubscriptions)" OnClearFilters="ClearFilters"
+                         EmptyIcon="subscriptions"
+                         EmptyDescription="Keep a manual list of the recurring subscriptions you want to track — what each one is, who bills it, how much, and how often.">
+            <RenderItem Context="s">
+                @{
+                    var isExpanded = IsExpanded(s.SubscriptionId);
+                    var archived = s.Archived is not null;
+                    var ended = IsEnded(s.EndDate);
+                    var paused = s.Paused is not null;
+                    var info = OdsTypeRegistries.BillingIntervalOf(s.Interval);
+                    var anchor = OdsBillingIntervalChip.AnchorLabel(s.Interval, s.FirstBillingDate);
+                    var detail = _details.GetValueOrDefault(s.SubscriptionId);
+                }
+                <OdsExpandableCard Id="@($"sub-{s.SubscriptionId}")"
+                                   Open="isExpanded"
+                                   Dimmed="archived"
+                                   Flash="@(_flashId == s.SubscriptionId)"
+                                   Label="@s.Name"
+                                   OnToggle="@(() => ToggleExpand(s.SubscriptionId))">
+
+                    <Lead>
+                        <div class="acct-badge" style="background:@info.Soft;color:@info.Color;">
+                            <span class="material-icons" aria-hidden="true">@info.Icon</span>
+                        </div>
+                    </Lead>
+
+                    <Head>
+                        <div class="acct-name-row">
+                            <span class="acct-name">@s.Name</span>
+                            <OdsSubscriptionStatusChip Paused="paused" Ended="ended" Archived="archived" ShowActive="true" />
+                        </div>
+                        <div class="acct-tags">
+                            @if (!string.IsNullOrWhiteSpace(s.ExternalId))
+                            {
+                                <span class="mono sub-extid-inline">@s.ExternalId</span>
+                                <span class="acct-dot">·</span>
+                            }
+                            <span class="sub-inst">
+                                <span class="material-icons" aria-hidden="true">@(s.Contact is null ? "store" : OdsTypeRegistries.ContactTypeOf(s.Contact.Type.ToString()).Icon)</span>
+                                @(s.Contact?.Name ?? "No company")
+                            </span>
+                            <span class="acct-dot">·</span>
+                            <span class="sub-cadence">
+                                <span class="material-icons" aria-hidden="true">@info.Icon</span>@OdsBillingIntervalChip.CadenceLabel(s.Interval, s.IntervalCount)@(anchor is not null ? $" · {anchor}" : "")
+                            </span>
+                        </div>
+                    </Head>
+
+                    <Figures>
+                        <div class="acct-balance mono sub-price">@Money(s.Amount, s.CurrencyCode)</div>
+                        <div class="sub-figure-word">@OdsBillingIntervalChip.FigureCaption(s.Interval, s.IntervalCount)</div>
+                    </Figures>
+
+                    <Actions>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                 Size="Size.Small" Color="Color.Default"
+                                 AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                            @if (_canUpdate)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(s))">Edit subscription</MudMenuItem>
+                                @if (!ended)
+                                {
+                                    <MudMenuItem Icon="@(paused ? Icons.Material.Filled.PlayCircle : Icons.Material.Filled.PauseCircle)" OnClick="@(() => TogglePause(s))">
+                                        @(paused ? "Resume" : "Pause")
+                                    </MudMenuItem>
+                                    <MudMenuItem Icon="@Icons.Material.Filled.EventBusy" OnClick="@(() => EndSubscription(s))">End subscription</MudMenuItem>
+                                }
+                            }
+                            <MudMenuItem OnClick="@(() => CopyId(s.SubscriptionId))">
+                                <span class="odc-menu-item">
+                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
+                                    <span>Copy ID</span>
+                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
+                                </span>
+                            </MudMenuItem>
+                            @if (_canUpdate)
+                            {
+                                <MudDivider />
+                                <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Inventory2)" OnClick="@(() => ToggleArchive(s))">
+                                    @(archived ? "Restore" : "Archive")
+                                </MudMenuItem>
+                            }
+                            @if (_canDelete)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                             Style="color:var(--mud-palette-error);"
+                                             OnClick="@(() => ConfirmDelete(s))">Delete</MudMenuItem>
+                            }
+                        </MudMenu>
+                    </Actions>
+
+                    <Detail>
+                        @if (detail is null)
+                        {
+                            <div role="status" aria-live="polite" aria-busy="true">
+                                <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                                <span class="sr-only">Loading subscription details…</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="sub-tiles">
+                                <OdsInfoTile Icon="badge" Label="Name" ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value>@detail.Name</Value>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="tag" Label="External id" ValueVariant="OdsInfoTileVariant.Mono">
+                                    <Value>@(string.IsNullOrWhiteSpace(detail.ExternalId) ? "—" : detail.ExternalId)</Value>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="store" Label="Company" ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value>
+                                        @if (detail.Contact is { } cp)
+                                        {
+                                            <OdsChip Icon="@OdsTypeRegistries.ContactTypeOf(cp.Type.ToString()).Icon">@cp.Name</OdsChip>
+                                        }
+                                        else
+                                        {
+                                            <text>—</text>
+                                        }
+                                    </Value>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="payments" Label="Price" ValueVariant="OdsInfoTileVariant.Mono" Class="sub-price-tile">
+                                    <Value>@Money(detail.Amount, detail.CurrencyCode)</Value>
+                                    <Foot>@OdsBillingIntervalChip.FigureCaption(detail.Interval, detail.IntervalCount)</Foot>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="@OdsTypeRegistries.BillingIntervalOf(detail.Interval).Icon"
+                                             IconColor="@OdsTypeRegistries.BillingIntervalOf(detail.Interval).Color"
+                                             IconSoft="@OdsTypeRegistries.BillingIntervalOf(detail.Interval).Soft"
+                                             Label="Billing interval" ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value><OdsBillingIntervalChip Interval="detail.Interval" Count="detail.IntervalCount" FirstBillingDate="detail.FirstBillingDate" /></Value>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="event" Label="First billing date" ValueVariant="OdsInfoTileVariant.Sm">
+                                    <Value>@detail.FirstBillingDate.ToString("MMM dd, yyyy")</Value>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="play_circle" Label="Start date" ValueVariant="OdsInfoTileVariant.Sm">
+                                    <Value>@detail.StartDate.ToString("MMM dd, yyyy")</Value>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="event_busy" Label="@(IsEnded(detail.EndDate) ? "Ended on" : "End date")" ValueVariant="OdsInfoTileVariant.Sm">
+                                    <Value>@(detail.EndDate is { } end ? end.ToString("MMM dd, yyyy") : "—")</Value>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="flag" Label="Status" ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value><OdsSubscriptionStatusChip Paused="detail.Paused is not null" Ended="IsEnded(detail.EndDate)" Archived="detail.Archived is not null" ShowActive="true" /></Value>
+                                </OdsInfoTile>
+                                @if (detail.Paused is { } pausedAt)
+                                {
+                                    <OdsInfoTile Icon="pause_circle" Label="Paused since" ValueVariant="OdsInfoTileVariant.Sm">
+                                        <Value>@pausedAt.ToLocalTime().ToString("MMM dd, yyyy")</Value>
+                                    </OdsInfoTile>
+                                }
+                                @if (detail.Archived is { } archivedAt)
+                                {
+                                    <OdsInfoTile Icon="inventory_2" Label="Archived" ValueVariant="OdsInfoTileVariant.Sm">
+                                        <Value>@archivedAt.ToLocalTime().ToString("MMM dd, yyyy")</Value>
+                                    </OdsInfoTile>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(detail.Notes))
+                                {
+                                    <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true" ValueVariant="OdsInfoTileVariant.Text">
+                                        <Value>@detail.Notes</Value>
+                                    </OdsInfoTile>
+                                }
+                            </div>
+                        }
+                    </Detail>
+                </OdsExpandableCard>
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New subscription</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New subscription"
+                               Sub="Record what it is, who bills it, the price, and how often it recurs."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+</div>
+
+@if (_createKey != Guid.Empty)
+{
+    <CreateSubscriptionDialog @key="_createKey"
+                              @bind-Open="_createOpen"
+                              Companies="_companyOptions"
+                              Currencies="_currencies"
+                              OnSaved="OnSubscriptionCreated" />
+}
+
+@if (_editSubscription is not null)
+{
+    <CreateSubscriptionDialog @key="_editSubscriptionKey"
+                              @bind-Open="_editSubscriptionOpen"
+                              Subscription="_editSubscription"
+                              Companies="_companyOptions"
+                              Currencies="_currencies"
+                              OnSaved="OnSubscriptionEdited" />
+}

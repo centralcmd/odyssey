@@ -1,0 +1,192 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Consent gate — disclosure states" subtitle="The analyze-file consent gate once its four processor-disclosure values come from the server rather than client constants. Three states: skeleton while the disclosure resolves, resolved, and degraded (the endpoint 503s and compiled fallbacks render). The affirmation stays disabled until the disclosure resolves, and every sentence is composed from the same values the panel shows, so the panel and the affirmed text cannot name two different processors." viewport="1080x1560" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Consent gate disclosure states</title>
+  <meta charset="utf-8" />
+  <!-- Tokens + the kit sheet that owns the .fan-* consent-gate rules. -->
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px 44px; }
+    .stack { display: flex; flex-direction: column; gap: 30px; max-width: 980px; }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 6px; }
+    .lede { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 26px; max-width: 760px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 8px; }
+    .cap code, .note code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .note { font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 780px; }
+    .panel { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-lg, 12px); padding: 20px; background: var(--mud-palette-surface); max-width: 700px; }
+    .sep { height: 1px; background: var(--mud-palette-divider); }
+    /* Skeleton shapes — matched to the resolved panel so nothing jumps. */
+    .sk { background: var(--mud-palette-action-disabled-background); border-radius: 6px; animation: skPulse 1.4s ease-in-out infinite; }
+    @keyframes skPulse { 0%,100% { opacity: .5 } 50% { opacity: .9 } }
+    @media (prefers-reduced-motion: reduce) { .sk { animation: none } }
+    .sk-xfer { height: 62px; border-radius: 10px; }
+    .sk-grid { display: grid; grid-template-columns: 196px 1fr; gap: 20px; }
+    .sk-doc { height: 168px; border-radius: 8px; }
+    .sk-facts { display: flex; flex-direction: column; gap: 14px; }
+    .sk-fact { display: flex; gap: 11px; align-items: flex-start; }
+    .sk-fact-ic { width: 18px; height: 18px; border-radius: 4px; flex: none; }
+    .sk-fact-txt { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .sk-check { height: 62px; border-radius: 10px; }
+    .sk-basis { height: 12px; width: 210px; }
+    /* The degraded banner — the panel says the disclosure is unconfirmed rather
+       than presenting a fallback as authoritative. */
+    .fan-degraded { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px;
+      background: rgba(245,158,11,.10); border: 1px solid rgba(245,158,11,.30);
+      font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .fan-degraded .material-icons { font-size: 18px; flex: none; color: var(--amber-500); }
+    .fan-degraded b { font-weight: var(--fw-medium); }
+    .is-blocked { opacity: .55; }
+    .fan-consent-check.is-blocked { cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h1>Consent gate — the four disclosure values, served not compiled</h1>
+  <p class="lede">Today the panel hardcodes a model name at one site, composes an English possessive at another, and states a processor as a literal at a third — so a changed processor yields a panel naming two different companies. Every sentence below is composed from the same four served values, and the affirmed text is one of them.</p>
+  <div class="stack">
+
+    <div>
+      <div class="cap">1 · Resolved — the panel the user should normally see</div>
+      <p class="note">The processor, region, lawful basis and privacy-notice URL come from <code>GET /api/file-analysis/disclosure</code>, along with the model the server will actually use. The affirmation sentence is a format string over the same values, so the text recorded on the job and the text on screen agree by construction rather than by two copies happening to match.</p>
+      <div class="panel">
+        <div class="fan-consent">
+          <div class="fan-xfer">
+            <div class="fan-xfer-node">
+              <span class="fan-xfer-ic in"><span class="material-icons" style="font-size:17px">lock</span></span>
+              <div class="fan-xfer-meta">
+                <div class="fan-xfer-t">Odyssey</div>
+                <div class="fan-xfer-s">Your workspace</div>
+              </div>
+            </div>
+            <span class="fan-xfer-arrow"><span class="material-icons" style="font-size:18px">arrow_forward</span></span>
+            <div class="fan-xfer-node">
+              <div class="fan-xfer-meta">
+                <div class="fan-xfer-t">Anthropic</div>
+                <div class="fan-xfer-s mono">claude-sonnet-5 · United States</div>
+              </div>
+              <span class="fan-xfer-ic out"><span class="material-icons" style="font-size:17px">auto_awesome</span></span>
+            </div>
+          </div>
+          <div class="fan-consent-grid">
+            <div class="fan-consent-doc">
+              <div class="fan-docprev" aria-hidden="true">
+                <div class="fan-docprev-page">
+                  <div class="fan-docprev-head">
+                    <span class="fan-docprev-logo"></span>
+                    <div class="fan-docprev-headmeta"><span></span><span></span></div>
+                  </div>
+                  <div class="fan-docprev-acctline">
+                    <span class="fan-docprev-acctlabel">Account</span>
+                    <span class="fan-docprev-redact"><span class="material-icons" style="font-size:9px">lock</span>redacted in this preview only</span>
+                  </div>
+                  <div class="fan-docprev-rows">
+                    <div class="fan-docprev-row"><span class="d"></span><span class="desc" style="width:52%"></span><span class="amt"></span></div>
+                    <div class="fan-docprev-row"><span class="d"></span><span class="desc" style="width:65%"></span><span class="amt"></span></div>
+                    <div class="fan-docprev-row"><span class="d"></span><span class="desc" style="width:78%"></span><span class="amt"></span></div>
+                    <div class="fan-docprev-row"><span class="d"></span><span class="desc" style="width:57%"></span><span class="amt"></span></div>
+                    <div class="fan-docprev-row"><span class="d"></span><span class="desc" style="width:70%"></span><span class="amt"></span></div>
+                    <div class="fan-docprev-row"><span class="d"></span><span class="desc" style="width:60%"></span><span class="amt"></span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="fan-doc-cap">
+                <span class="material-icons" style="font-size:13px">description</span>
+                <span><b>amex_statement_october.pdf</b> · full document · 512 KB</span>
+              </div>
+            </div>
+            <ul class="fan-facts">
+              <li><span class="material-icons" style="font-size:18px">cloud_upload</span>
+                <div><b>The whole file is uploaded.</b> Every page is sent to <b>Anthropic</b> — the model needs the complete statement to read it.</div></li>
+              <li><span class="material-icons" style="font-size:18px">account_balance</span>
+                <div><b>Whatever the file contains is sent.</b> Odyssey doesn’t inspect it first — the whole document is uploaded as-is, including any personal or financial data inside.</div></li>
+              <li><span class="material-icons" style="font-size:18px">sync_alt</span>
+                <div><b>Your contact and tag names are sent too.</b> After reading the statement, the model matches each transaction to your existing records — <b>names only, for matching</b>. No notes, organization numbers, or other fields. 214 names this time.</div></li>
+              <li><span class="material-icons" style="font-size:18px">verified_user</span>
+                <div><b>Not used to train models.</b> <b>Anthropic</b> retains the data for a limited period under the <a href="https://www.anthropic.com/legal/privacy" class="fan-link" target="_blank" rel="noopener noreferrer">privacy notice for this service</a>.</div></li>
+              <li><span class="material-icons" style="font-size:18px">history</span>
+                <div><b>This transfer is logged.</b> Your name, the file and the time are written to the analysis log.</div></li>
+            </ul>
+          </div>
+          <div class="fan-consent-check">
+            <span class="odc-checkbox"><span class="odc-check-box"></span></span>
+            <span class="fan-consent-text">I’m authorized to share this document and consent to sending the complete file to <b>Anthropic</b> for analysis.</span>
+          </div>
+          <div class="fan-consent-basis">
+            <span class="material-icons" style="font-size:14px">gavel</span>
+            <span>Lawful basis recorded: <b>Consent · GDPR Art. 6(1)(a)</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div>
+      <div class="cap">2 · Pending — the whole panel skeletons</div>
+      <p class="note">A part-rendered disclosure is the one outcome to avoid: it would show real prose around values that are about to change. The panel skeletons whole and shape-matched, so nothing shifts when the values land — and there is no moment where a user can read a sentence that is not yet the sentence. Refetched on every open, not once per session: a WASM session lasts days, and a disclosure another admin changed must not stay invisible for that long.</p>
+      <div class="panel">
+        <div class="fan-consent" aria-busy="true" aria-label="Loading the processor disclosure">
+          <div class="sk sk-xfer"></div>
+          <div class="sk-grid">
+            <div class="sk sk-doc"></div>
+            <div class="sk-facts">
+              <div class="sk-fact"><span class="sk sk-fact-ic"></span><span class="sk-fact-txt"><span class="sk" style="height:9px;width:88%"></span><span class="sk" style="height:9px;width:64%"></span></span></div>
+              <div class="sk-fact"><span class="sk sk-fact-ic"></span><span class="sk-fact-txt"><span class="sk" style="height:9px;width:92%"></span><span class="sk" style="height:9px;width:71%"></span></span></div>
+              <div class="sk-fact"><span class="sk sk-fact-ic"></span><span class="sk-fact-txt"><span class="sk" style="height:9px;width:84%"></span><span class="sk" style="height:9px;width:90%"></span><span class="sk" style="height:9px;width:46%"></span></span></div>
+              <div class="sk-fact"><span class="sk sk-fact-ic"></span><span class="sk-fact-txt"><span class="sk" style="height:9px;width:79%"></span><span class="sk" style="height:9px;width:58%"></span></span></div>
+              <div class="sk-fact"><span class="sk sk-fact-ic"></span><span class="sk-fact-txt"><span class="sk" style="height:9px;width:86%"></span></span></div>
+            </div>
+          </div>
+          <div class="sk sk-check"></div>
+          <div class="sk sk-basis"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div>
+      <div class="cap">3 · Degraded — the endpoint <code>503</code>s and compiled fallbacks render</div>
+      <p class="note">The four values still have compiled fallbacks, so the panel is never empty — but a legal disclosure must not be presented as authoritative when the server could not confirm it. The values render marked as unconfirmed and the affirmation stays disabled: a tick against wording that then changes underneath is consent given to text the user never saw. The way forward is retry, not proceed.</p>
+      <div class="panel">
+        <div class="fan-consent">
+          <div class="fan-degraded" role="status">
+            <span class="material-icons">warning_amber</span>
+            <div><b>Couldn’t confirm who processes this file.</b> The values below are Odyssey’s built-in defaults, not the ones this deployment is configured with — they may be out of date. Analysis is unavailable until the disclosure loads.
+              <div style="margin-top:10px"><button type="button" class="odc-btn outlined" style="font:var(--fw-medium) var(--fs-body2)/1 var(--font-sans)"><span class="material-icons">refresh</span><span>Retry</span></button></div>
+            </div>
+          </div>
+          <div class="fan-xfer is-blocked">
+            <div class="fan-xfer-node">
+              <span class="fan-xfer-ic in"><span class="material-icons" style="font-size:17px">lock</span></span>
+              <div class="fan-xfer-meta">
+                <div class="fan-xfer-t">Odyssey</div>
+                <div class="fan-xfer-s">Your workspace</div>
+              </div>
+            </div>
+            <span class="fan-xfer-arrow"><span class="material-icons" style="font-size:18px">arrow_forward</span></span>
+            <div class="fan-xfer-node">
+              <div class="fan-xfer-meta">
+                <div class="fan-xfer-t">Anthropic</div>
+                <div class="fan-xfer-s mono">unconfirmed · United States</div>
+              </div>
+              <span class="fan-xfer-ic out"><span class="material-icons" style="font-size:17px">auto_awesome</span></span>
+            </div>
+          </div>
+          <div class="fan-consent-check is-blocked">
+            <span class="odc-checkbox"><span class="odc-check-box"></span></span>
+            <span class="fan-consent-text">I’m authorized to share this document and consent to sending the complete file to <b>Anthropic</b> for analysis.</span>
+          </div>
+          <div class="fan-consent-basis is-blocked">
+            <span class="material-icons" style="font-size:14px">gavel</span>
+            <span>Lawful basis recorded: <b>Consent · GDPR Art. 6(1)(a)</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

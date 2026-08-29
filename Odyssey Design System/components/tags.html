@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Transaction tags (multi)" subtitle="Many-to-many tags on a transaction: TagChips renders the read display (none / one / many / +N overflow); TagMultiSelect is the form picker that replaces the single tag Select in the create dialog and inline edit. Live off the DS namespace." viewport="1120x720" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Transaction tags (multi)</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 12px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 20px 22px; }
+    .panel h3 { margin: 0 0 16px; font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+    .state { display: grid; grid-template-columns: 132px 1fr; align-items: center; gap: 10px 16px; }
+    .state .lbl { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .state .row { padding: 9px 0; border-top: 1px solid var(--mud-palette-divider); }
+    .state .lbl.row { border-top: 1px solid var(--mud-palette-divider); }
+    .note { margin: 18px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 92ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .json { font-family: var(--font-mono); font-size: 12px; color: var(--brand-text); background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 14px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="cap">Transaction tags <code>&lt;TagChips tags /&gt;</code> · <code>&lt;TagMultiSelect value onChange options onCreate /&gt;</code></div>
+  <div id="root"></div>
+  <p class="note">A transaction now carries a <b>set</b> of TransactionTags (many-to-many), not one. <b>TagChips</b> is the read display on the ledger Tag column and the detail tile — zero collapses to an em-dash, the column caps visible chips and rolls the rest into a <b>+N</b>. <b>TagMultiSelect</b> replaces the single tag <code>Select</code> in the New-transaction dialog and the inline edit panel: removable chips + a searchable, creatable list, consistent with the ledger-header filter. The header Tag filter stays a MultiSelect, now matching <b>any</b> of the selected tags.</p>
+
+  <script type="text/babel" data-presets="env,react">
+    const { TagChips, TagMultiSelect } = window.OdysseyDesignSystem_d5aa51;
+
+    const TAG_OPTIONS = [
+      { value: 't1', label: 'Groceries' },
+      { value: 't9', label: 'Reimbursable' },
+      { value: 't10', label: 'Business' },
+      { value: 't3', label: 'Transit' },
+      { value: 't7', label: 'Utilities' },
+      { value: 't6', label: 'Dining' },
+      { value: 't2', label: 'Subscriptions' },
+      { value: 't4', label: 'Rent' },
+    ];
+
+    function Demo() {
+      const [tags, setTags] = React.useState(['t1', 't9']);
+      const [extra, setExtra] = React.useState([]);
+      const options = [...TAG_OPTIONS, ...extra];
+      const createTag = (name) => {
+        const opt = { value: `tag-new-${Date.now()}`, label: name };
+        setExtra((e) => [...e, opt]);
+        return opt.value;
+      };
+      const labelOf = (id) => (options.find((o) => o.value === id) || { label: id }).label;
+      return (
+        <div className="grid">
+          <div className="panel">
+            <h3>TagChips — read display</h3>
+            <div className="state">
+              <span className="lbl">None</span>
+              <span><TagChips tags={[]} /></span>
+              <span className="lbl row">One</span>
+              <span className="row"><TagChips tags={['Groceries']} /></span>
+              <span className="lbl row">Many</span>
+              <span className="row"><TagChips tags={['Groceries', 'Reimbursable', 'Business']} /></span>
+              <span className="lbl row">Capped (column)</span>
+              <span className="row"><TagChips max={2} tags={['Utilities', 'Home', 'Recurring', 'Q3']} /></span>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>TagMultiSelect — form picker</h3>
+            <TagMultiSelect
+              label="Tags"
+              optional
+              value={tags}
+              onChange={setTags}
+              options={options}
+              placeholder="No tags"
+              onCreate={createTag}
+              help="Search, check several, or type a new name to create one."
+            />
+            <div className="json">TransactionTagIds: [{tags.map((t) => `"${labelOf(t)}"`).join(', ')}]</div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+</body>
+</html>

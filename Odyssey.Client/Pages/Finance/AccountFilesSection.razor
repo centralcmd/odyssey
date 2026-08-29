@@ -1,0 +1,102 @@
+@using Odyssey.Dtos.Finance
+@inherits FilesSectionBase<ExistingAccountFile>
+@inject NavigationManager Navigation
+@inject IReferenceDataCache ReferenceData
+@inject IAccountsApiClient Accounts
+@inject IFileAnalysisDisclosureCache Disclosures
+
+<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="attach_file">
+    <Title>Files</Title>
+    <Count>@items.Count</Count>
+    <Actions>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="ViewAllFiles">View all</MudButton>
+    </Actions>
+    <ChildContent>
+            @if (CanUpload)
+            {
+                <div class="file-upload-zone">
+                    <OdsAccountFileTypeSelect Label="File type" @bind-Value="_selectedFileType" Class="mb-2" />
+                    <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                                   FilesChanged="UploadFilesAsync"
+                                   MaximumFileCount="@MaxFileCount"
+                                   Accept=".pdf,.jpg,.jpeg,.png"
+                                   Disabled="@isUploading"
+                                   Class="mb-2">
+                        <CustomContent Context="fileUpload">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload"
+                                       Disabled="@isUploading"
+                                       OnClick="@fileUpload.OpenFilePickerAsync">
+                                @if (isUploading)
+                                {
+                                    <OdsSpinner Class="me-2" Decorative="true" />
+                                    <span>Uploading&#x2026;</span>
+                                }
+                                else
+                                {
+                                    <span>Upload files</span>
+                                }
+                            </MudButton>
+                        </CustomContent>
+                    </MudFileUpload>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Accepted: .pdf, .jpg, .jpeg, .png — Max @uploadLimits.MaxUploadMegabytes MB per file, @MaxFileCount files total
+                    </MudText>
+                </div>
+            }
+
+            @if (isLoading)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+            else if (items.Count == 0)
+            {
+                <div class="empty-line">No files attached to this account yet.</div>
+            }
+            else
+            {
+                <OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
+                    <OdsFilesTable Files="pageRows"
+                                   TypeFor="@(row => KindMeta(FileById(row.Id).FileType))"
+                                   Actions="@(row => BuildMenu(FileById(row.Id)))"
+                                   Issuers="_issuerOptions"
+                                   IssuerFor="@(row => IssuerName(FileById(row.Id).IssuedBy))"
+                                   OnSave="@SaveAction"
+                                   OnDelete="@DeleteAction" />
+                </OdsInlinePager>
+            }
+    </ChildContent>
+</OdsCollapsible>
+
+@if (_preview is not null)
+{
+    <FilePreviewDialog @key="_previewKey"
+                       @bind-Open="_previewOpen"
+                       BlobUrl="@_preview.BlobUrl"
+                       ContentType="@_preview.ContentType"
+                       FileName="@_preview.FileName"
+                       SizeBytes="_preview.SizeBytes"
+                       UploadedAtUtc="_preview.UploadedAtUtc"
+                       FileType="_preview.FileType"
+                       AccountName="@_preview.AccountName" />
+}
+
+@if (_analysisFile is not null)
+{
+    <FileAnalysisDialog @key="_analysisKey"
+                        Open="_analysisOpen"
+                        OpenChanged="OnAnalysisOpenChanged"
+                        AccountId="AccountId"
+                        FileId="_analysisFile.FileMetadata.Id"
+                        FileName="@_analysisFile.FileMetadata.FileName"
+                        FileSizeBytes="_analysisFile.FileMetadata.SizeBytes"
+                        AccountName="@AccountName"
+                        Start="_analysisStart"
+                        ResumeSummary="_resumeSummary"
+                        OnResolved="HandleAnalysisResolvedAsync" />
+}

@@ -1,0 +1,111 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Match indicator" subtitle="Per-cell AI-match annotation for the Analyze dialog — states the source (Suggested by AI / Created here / You chose / No match) and confidence AS TEXT, never colour alone. Sub-threshold is a status row over an inline Use / dismiss action; a No match with an extracted name offers Create ‹name›. Mounted from the DS namespace." viewport="940x560" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Match indicator</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    h1 { font: var(--fw-medium) var(--fs-h6)/1 var(--font-sans); margin: 0 0 4px; }
+    .lead { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 24px; max-width: 64ch; }
+    .grid { display: grid; grid-template-columns: max-content 1fr; gap: 13px 28px; align-items: center; max-width: 640px; }
+    .k { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .k code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .sep { grid-column: 1 / -1; height: 1px; background: var(--mud-palette-divider); margin: 4px 0; }
+    h2 { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); margin: 30px 0 14px; color: var(--mud-palette-text-secondary); }
+    /* faux review cells — a control box with the indicator stacked beneath */
+    .cells { display: flex; gap: 18px; flex-wrap: wrap; }
+    .cell { width: 240px; display: flex; flex-direction: column; gap: 5px; }
+    .cell-ctl {
+      height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+      border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm);
+      background: var(--mud-palette-surface); font-size: 13px; color: var(--mud-palette-text-primary);
+    }
+    .cell-ctl .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+    .cell-ctl.ph { color: var(--mud-palette-placeholder); }
+    .cell-ctl .x { margin-left: auto; font-size: 16px; }
+    .cap { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>Match indicator — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;MatchIndicator state confidence /&gt;</code></h1>
+  <p class="lead">Sits under the merchant and category cells in the Analyze dialog. The words carry the meaning; the leading glyph only tints — so the match level is never conveyed by colour or a meter alone. Muted text stays at AA.</p>
+  <div id="root" class="grid"></div>
+  <h2>In the review grid</h2>
+  <div id="cells" class="cells"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      // Fallback impl so the card renders before the bundle recompiles this atom.
+      function FallbackMatch(props) {
+        var state = props.state || 'none';
+        var conf = props.confidence;
+        var pct = conf == null ? null : Math.round(conf * 100);
+        var band = pct == null ? null : pct >= 85 ? 'High match' : pct >= 60 ? 'Good match' : 'Low match';
+        var cls = ['odc-match', state, props.size === 'sm' ? 'sm' : '', props.className || ''].filter(Boolean).join(' ');
+        if (state === 'suggestion') {
+          var lab = props.applyLabel || 'Use';
+          return e('span', { className: cls },
+            e('span', { className: 'odc-match-sugg-head' },
+              e('span', { className: 'material-icons odc-match-ic', 'aria-hidden': 'true' }, 'auto_awesome'),
+              e('span', { className: 'odc-match-txt' }, 'Suggested by AI'),
+              pct != null ? e('span', { className: 'odc-match-pct' }, '\u00b7 ' + pct + '%') : null
+            ),
+            (props.onApply || props.onDismiss) ? e('span', { className: 'odc-match-sugg-actions' },
+              props.onApply ? e('button', { type: 'button', className: 'odc-match-act', onClick: props.onApply, 'aria-label': lab + ' ' + props.name }, e('span', { className: 'material-icons', 'aria-hidden': 'true' }, 'add'), e('span', { className: 'odc-match-act-txt' }, lab + ' ' + props.name)) : null,
+              props.onDismiss ? e('button', { type: 'button', className: 'odc-match-x', 'aria-label': 'Dismiss suggestion', onClick: props.onDismiss }, e('span', { className: 'material-icons', 'aria-hidden': 'true' }, 'close')) : null
+            ) : null
+          );
+        }
+        var META = { ai: { icon: 'auto_awesome', label: 'Suggested by AI' }, created: { icon: 'add_circle', label: 'Created here' }, manual: { icon: 'edit', label: 'You chose' }, none: { icon: 'remove', label: 'No match' } };
+        var m = META[state] || META.none;
+        var offerCreate = state === 'none' && props.onCreate && props.createName;
+        var clab = props.createLabel || 'Create';
+        return e('span', { className: cls },
+          e('span', { className: 'material-icons odc-match-ic', 'aria-hidden': 'true' }, m.icon),
+          e('span', { className: 'odc-match-txt' }, m.label),
+          (state === 'ai' && pct != null) ? e('span', { className: 'odc-match-pct' }, '\u00b7 ' + pct + '%') : null,
+          offerCreate ? e('span', { className: 'odc-match-actline' }, e('button', { type: 'button', className: 'odc-match-act', onClick: props.onCreate, 'aria-label': clab + ' ' + props.createName }, e('span', { className: 'material-icons', 'aria-hidden': 'true' }, 'add'), e('span', { className: 'odc-match-act-txt' }, clab + ' "' + props.createName + '"'))) : null
+        );
+      }
+      var MatchIndicator = (window.OdysseyDesignSystem_d5aa51 || {}).MatchIndicator || FallbackMatch;
+      var noop = function () {};
+
+      var rows = [
+        ['ai', 'state="ai"', e(MatchIndicator, { state: 'ai', confidence: 0.91 })],
+        ['created', 'state="created"', e(MatchIndicator, { state: 'created' })],
+        ['manual', 'state="manual"', e(MatchIndicator, { state: 'manual' })],
+        ['none', 'state="none"', e(MatchIndicator, { state: 'none', createName: 'Nopa', onCreate: noop })],
+        ['suggestion', 'state="suggestion"', e(MatchIndicator, { state: 'suggestion', name: 'Amazon', confidence: 0.42, onApply: noop, onDismiss: noop })],
+      ];
+      var children = [];
+      rows.forEach(function (r, i) {
+        children.push(e('div', { className: 'k', key: 'k' + i }, e('code', null, r[1])));
+        children.push(e('div', { key: 'v' + i }, r[2]));
+        if (i < rows.length - 1) children.push(e('div', { className: 'sep', key: 's' + i }));
+      });
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, children));
+
+      // In-context: a linked merchant cell + a sub-threshold suggestion cell.
+      var cells = [
+        e('div', { className: 'cell', key: 'c1' },
+          e('div', { className: 'cell-ctl' }, e('span', { className: 'material-icons' }, 'storefront'), 'Whole Foods Market', e('span', { className: 'material-icons x' }, 'close')),
+          e(MatchIndicator, { state: 'ai', confidence: 0.98 })),
+        e('div', { className: 'cell', key: 'c2' },
+          e('div', { className: 'cell-ctl ph' }, e('span', { className: 'material-icons' }, 'search'), 'Delta Air Lines'),
+          e(MatchIndicator, { state: 'suggestion', name: 'Transit', confidence: 0.46, onApply: noop, onDismiss: noop })),
+        e('div', { className: 'cell', key: 'c3' },
+          e('div', { className: 'cell-ctl ph' }, e('span', { className: 'material-icons' }, 'search'), 'Nopa'),
+          e(MatchIndicator, { state: 'none', createName: 'Nopa', onCreate: noop })),
+      ];
+      ReactDOM.createRoot(document.getElementById('cells')).render(e(React.Fragment, null, cells));
+    })();
+  </script>
+</body>
+</html>

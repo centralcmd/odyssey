@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · InfoTile" subtitle="A labeled fact/stat tile — icon chip + overline, a headline value, and an optional foot caption, on an elevated card. The richer sibling of MetaTile / StatTile; per-tile or per-grid accent. Live render off the DS namespace." viewport="900x600" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · InfoTile</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 12px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    /* A second grid demonstrating a per-grid accent override. */
+    .grid.indigo { --odc-infotile-accent: oklch(0.72 0.16 282); --odc-infotile-accent-soft: oklch(0.72 0.16 282 / 0.16); margin-top: 18px; }
+    #root { min-height: 0; }
+    .note { margin: 16px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 92ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .note code { font-family: var(--font-mono); color: var(--brand-text); }
+  </style>
+</head>
+<body>
+  <div class="cap">InfoTile <code>&lt;InfoTile icon label value foot valueVariant wide /&gt;</code></div>
+  <div id="root"></div>
+  <p class="note"><b>The richer sibling of MetaTile and StatTile.</b> Each fact reads as its own elevated tile — an icon chip + overline label, a headline <b>value</b> (<code>valueVariant</code>: mono · text · sm), and an optional muted <b>foot</b>. The icon chip defaults to the brand accent; pass <code>iconColor</code> for a per-tile category tint (the Type tile below), or set <code>--odc-infotile-accent</code> on the grid to re-tint a whole set at once (the indigo row). <b>wide</b> spans all columns and lets the value wrap — for a notes tile.</p>
+
+  <script type="text/babel" data-presets="env,react">
+    const { InfoTile } = window.OdysseyDesignSystem_d5aa51;
+
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <React.Fragment>
+        <div className="grid">
+          <InfoTile icon="payments" label="Premium" value="$ 1,840.00" foot="for this period" />
+          <InfoTile icon="shield" label="Coverage" value="$ 1,500,000.00" foot="insured sum" />
+          <InfoTile icon="event" label="Renews" value="Dec 31, 2026" valueVariant="sm" foot="since Jan 01, 2026" />
+          <InfoTile icon="chair" iconColor="oklch(0.72 0.16 295)" iconSoft="oklch(0.72 0.16 295 / 0.16)" label="Type" value="Contents" valueVariant="text" />
+        </div>
+        <div className="grid indigo">
+          <InfoTile icon="tag" label="Policy number" value="HC-2026-99182" valueVariant="mono" foot="Insurer reference" />
+          <InfoTile icon="apartment" label="Insurer" value="Pacific Home Insurance" valueVariant="text" foot="Company" />
+          <InfoTile icon="savings" label="Total premium" value="$ 3,608.00" valueVariant="mono" foot="2 periods to date" />
+          <InfoTile icon="sticky_note_2" label="Notes" wide
+            value="Buildings + contents on the Maple St residence. Accidental-damage rider included." />
+        </div>
+      </React.Fragment>
+    );
+  </script>
+</body>
+</html>

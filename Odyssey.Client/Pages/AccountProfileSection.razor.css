@@ -1,0 +1,32 @@
+/* ── /account · the profile section ──
+   Ported from the design system's account.css and moved out of Account.razor.css with
+   the markup it styles (issue #373). The chrome shared by every section — .acc-cardhead,
+   .acc-ic, .acc-sec-*, .acc-form*, .acc-divider*, .acc-block-alert, .acc-saved — stays on
+   the page, which reaches it here through `.acc-section ::deep`. */
+
+/* ── Profile (identity) card — issue #316 ── */
+.acc-avatar-xl {
+    flex: 0 0 64px;
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-pill);
+    display: grid;
+    place-items: center;
+    font: 400 24px/1 var(--font-sans);
+    background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
+    color: var(--mud-palette-primary);
+    letter-spacing: 0.02em;
+}
+/* Live preview strip: the resolved label + avatar the rest of the app shows. */
+.acc-profile-preview {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+.acc-profile-preview-id { min-width: 0; }
+.acc-profile-preview-name { font: 400 20px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.acc-profile-preview-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.acc-profile-preview-hint { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }

@@ -1,0 +1,29 @@
+@page "/photo-tags"
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Journal
+@attribute [Authorize(Policy = PermissionClaims.PhotoTagsRead)]
+
+<PageTitle>Photo Tags</PageTitle>
+
+@*
+    Photo Tags — the tag-admin sister of Transaction/Journal/Task tags (Odyssey Design System ·
+    TransactionTags · createTagsPage). Reuses the shared OdsTagAdmin over the api/photo-tags contract:
+    search + archival filter + sort, create / rename / archive / delete (an in-use tag returns 409 →
+    toast). Names are file/attacker-influenced, so the admin renders them as auto-encoded text (never
+    MarkupString).
+*@
+
+<OdsTagAdmin TRow="ExistingPhotoTag"
+             Title="Photo tags"
+             Noun="photo tags"
+             PageStateKey="photo-tags-page"
+             CreateClaim="@PermissionClaims.PhotoTagsCreate"
+             UpdateClaim="@PermissionClaims.PhotoTagsUpdate"
+             DeleteClaim="@PermissionClaims.PhotoTagsDelete"
+             NamePlaceholder="e.g. Holiday"
+             ModalSubtitle="Tags group photos by subject or theme."
+             EmptyDesc="Create your first tag to start organising photos."
+             Id="@(t => t.PhotoTagId)"
+             Name="@(t => t.Name)"
+             Description="@(t => t.Description)"
+             Archived="@(t => t.Archived)" />

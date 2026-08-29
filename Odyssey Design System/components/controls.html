@@ -1,0 +1,126 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Switch, Check, Radio, Combobox & MultiSelect (.odc-)" subtitle="The form & filter controls — toggle, checkbox (incl. indeterminate), radio group, searchable combobox, multi-select filter. Exported on the DS namespace." viewport="840x600" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · Switch, Check, Radio, Combobox & MultiSelect (.odc-)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 36px; align-items: start; }
+    .block { display: flex; flex-direction: column; gap: 14px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    /* Render the popovers in-flow (static) so the specimen shows them open without overlap. */
+    .static-combo, .static-ms { position: relative; }
+    .static-combo .odc-combo-pop, .static-ms .odc-ms-pop { position: static; box-shadow: var(--mud-elevation-8); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="grid">
+
+    <!-- Row 1 -->
+    <div class="block">
+      <div class="cap">Switch <code>&lt;Switch checked /&gt;</code></div>
+      <div class="row">
+        <label class="odc-switch">
+          <input type="checkbox" role="switch" />
+          <span class="odc-switch-track"><span class="odc-switch-thumb"></span></span>
+          <span class="odc-switch-label">Off</span>
+        </label>
+        <label class="odc-switch">
+          <input type="checkbox" role="switch" checked />
+          <span class="odc-switch-track"><span class="odc-switch-thumb"></span></span>
+          <span class="odc-switch-label">Dark mode</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Checkbox <code>&lt;Checkbox checked indeterminate /&gt;</code></div>
+      <div class="row">
+        <label class="odc-check">
+          <input type="checkbox" />
+          <span class="odc-check-box"><span class="material-icons">check</span></span>
+          <span class="odc-check-label">Unchecked</span>
+        </label>
+        <label class="odc-check">
+          <input type="checkbox" checked />
+          <span class="odc-check-box"><span class="material-icons">check</span></span>
+          <span class="odc-check-label">Selected</span>
+        </label>
+        <label class="odc-check">
+          <input type="checkbox" class="ind" />
+          <span class="odc-check-box"><span class="material-icons">remove</span></span>
+          <span class="odc-check-label">All (mixed)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="block">
+      <div class="cap">RadioGroup <code>&lt;RadioGroup options /&gt;</code></div>
+      <div class="odc-radiogroup row" role="radiogroup">
+        <label class="odc-radio">
+          <input type="radio" name="dir" checked />
+          <span class="odc-radio-dot"></span>
+          <span class="odc-radio-label">Money in</span>
+        </label>
+        <label class="odc-radio">
+          <input type="radio" name="dir" />
+          <span class="odc-radio-dot"></span>
+          <span class="odc-radio-label">Money out</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="block"></div>
+
+    <!-- Row 3 — open dropdowns, each in its own column with room to render fully -->
+    <div class="block">
+      <div class="cap">Combobox <code>&lt;Combobox value options onCreate /&gt;</code> — searchable, inline create</div>
+      <div class="static-combo">
+        <div class="odc-input-wrap">
+          <input class="odc-input" value="Whole" aria-label="Contact" />
+          <span class="material-icons odc-select-chev">expand_more</span>
+        </div>
+        <ul class="odc-combo-pop" role="listbox">
+          <li class="odc-combo-opt selected" role="option" aria-selected="true"><span>Whole Foods Market</span><span class="material-icons odc-combo-opt-check">check</span></li>
+          <li class="odc-combo-opt active" role="option"><span>Wholesale Club</span></li>
+          <li class="odc-combo-opt" role="option"><span>Wholesome Pantry Co.</span></li>
+          <li class="odc-combo-opt odc-combo-create" role="option"><span class="material-icons">add</span><span>Create "Whole"</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">MultiSelect <code>&lt;MultiSelect value options /&gt;</code> — filter w/ count</div>
+      <div class="static-ms">
+        <button class="odc-ms-trigger" aria-expanded="true">
+          <span class="material-icons">filter_list</span>
+          <span>Status</span>
+          <span class="odc-ms-count">2</span>
+          <span class="material-icons">expand_more</span>
+        </button>
+        <div class="odc-ms-pop start" role="listbox" aria-multiselectable="true">
+          <label class="odc-ms-opt odc-check"><input type="checkbox" checked /><span class="odc-check-box"><span class="material-icons">check</span></span><span class="odc-check-label">New</span></label>
+          <label class="odc-ms-opt odc-check"><input type="checkbox" checked /><span class="odc-check-box"><span class="material-icons">check</span></span><span class="odc-check-label">Approved</span></label>
+          <label class="odc-ms-opt odc-check"><input type="checkbox" /><span class="odc-check-box"><span class="material-icons">check</span></span><span class="odc-check-label">Flagged</span></label>
+          <div class="odc-ms-foot">
+            <button class="odc-btn text">Clear</button>
+            <button class="odc-btn text">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script>document.querySelector('.ind').indeterminate = true;</script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+name: CI
+
+# Runs post-merge on main, and on every pull request so outside contributions get
+# validated before review. Nothing auto-deploys (images publish on release tags,
+# deploys are on-demand), so a transiently-red main never reaches prod — it's fixed
+# forward before a release.
+#
+# `pull_request` (never `pull_request_target`) is deliberate: fork code must run in a
+# context with no access to repository secrets. The coverage-badge step needs
+# GIST_TOKEN and is therefore gated to push events below.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# One run per pull request, one per push to main. A pull_request run is cancelled when a
+# newer push supersedes it: this workflow does a full Release build plus the whole
+# solution, including the Testcontainers-MariaDB tier that genuinely executes on the
+# runner, so on a public repo superseded runs are the cheapest way for a drive-by to
+# exhaust the runner budget. Pushes to main are NOT cancelled — every commit that lands
+# gets validated on its own.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Odyssey.sln
+
+      # -warnaserror on top of the solution-wide <TreatWarningsAsErrors> in
+      # Directory.Build.props: that property covers compiler and NuGet warnings, but not
+      # MSBuild *task* warnings such as MSB3277 (unresolvable reference-version conflicts),
+      # which only this switch promotes. The build is kept at zero warnings, so both apply.
+      - name: Build
+        run: dotnet build Odyssey.sln -c Release --no-restore -warnaserror
+
+      - name: Test
+        run: >-
+          dotnet test Odyssey.sln --no-build -c Release
+          --logger "trx;LogFilePrefix=test-results"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
+
+      - name: Upload test results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: test-results
+          path: "**/*.trx"
+          retention-days: 7
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: coverage
+          path: "**/coverage.cobertura.xml"
+          retention-days: 7
+
+  coverage-badge:
+    name: Coverage badge
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    # Only publish the badge on a merge/push to main, never on pull requests
+    # (forks/PRs don't have access to the gist secret). The COVERAGE_GIST_ID
+    # guard skips this job until the gist is configured, so it never reds main.
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && vars.COVERAGE_GIST_ID != ''
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download coverage reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: coverage
+          path: coverage
+
+      - name: Generate coverage summary
+        # SHA-pinned: this job holds GIST_TOKEN, so a moved tag on a community
+        # action would run unreviewed code with a write-scoped credential.
+        # Dependabot's github-actions ecosystem keeps the pin current.
+        uses: danielpalme/ReportGenerator-GitHub-Action@d3ebf1f760f7d8ab92cc44d9bcfee7ad73722a31 # v5.5.11
+        with:
+          reports: coverage/**/coverage.cobertura.xml
+          targetdir: coverage-report
+          reporttypes: JsonSummary
+          # Exclude generated code (EF migrations, source generators) so the
+          # badge reflects coverage of hand-written code.
+          filefilters: -*Migrations*;-*.g.cs;-*.Designer.cs;-*GlobalUsings*
+
+      - name: Extract line coverage
+        id: cov
+        run: |
+          pct=$(jq -r '.summary.linecoverage' coverage-report/Summary.json)
+          echo "percent=${pct}" >> "$GITHUB_OUTPUT"
+          echo "Line coverage: ${pct}%"
+
+      # Push-only: fork pull requests have no access to GIST_TOKEN, and a PR must not
+      # move the badge that reports main's coverage.
+      - name: Publish coverage badge to gist
+        if: github.event_name == 'push'
+        # SHA-pinned for the same reason — this step is the one that receives GIST_TOKEN.
+        uses: schneegans/dynamic-badges-action@28b0fa8bdeb46170ac397105ece0c1fe58f68910 # v1.9.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.COVERAGE_GIST_ID }}
+          filename: odyssey-coverage.json
+          label: coverage
+          message: ${{ steps.cov.outputs.percent }}%
+          valColorRange: ${{ steps.cov.outputs.percent }}
+          minColorRange: 50
+          maxColorRange: 90

@@ -1,0 +1,38 @@
+@*
+    OdsAddRow — the closing create affordance for a record list (Odyssey Design
+    System · components/AddRow).
+
+    A full-width dashed "add" row that sits after the last item (Accounts, Budgets, …).
+    Pass a Title (the verb) and an optional one-line Sub; Icon defaults to `add`. The
+    whole row is the button — OnClick fires the create flow.
+*@
+
+<button type="button" class="@($"odc-add-row {Class}".TrimEnd())" @onclick="OnClick" disabled="@Disabled">
+    <span class="odc-add-row-ic">
+        <span class="material-icons" aria-hidden="true">@Icon</span>
+    </span>
+    <span class="odc-add-row-text">
+        <span class="odc-add-row-title">@Title</span>
+        @if (!string.IsNullOrEmpty(Sub))
+        {
+            <span class="odc-add-row-sub">@Sub</span>
+        }
+    </span>
+</button>
+
+@code {
+    /// <summary>The verb / primary label (e.g. "Add account").</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    /// <summary>Optional one-line supporting text under the title.</summary>
+    [Parameter] public string? Sub { get; set; }
+
+    /// <summary>Leading Material Icons ligature. Defaults to `add`.</summary>
+    [Parameter] public string Icon { get; set; } = "add";
+
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+}

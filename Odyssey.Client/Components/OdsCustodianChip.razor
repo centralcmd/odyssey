@@ -1,0 +1,87 @@
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Finance
+
+@*
+    OdsCustodianChip — the read-only display of an account's custodian (the
+    contact that holds it) on the account card. Odyssey Design System ·
+    components/CustodianChip.
+
+    Composed from the chip visual language plus the canonical ContactType
+    registry (OdsTypeRegistries) — the type icon/color is never re-hardcoded. The
+    icon is decorative (aria-hidden); all meaning rides in text:
+      • A11Y-5  — the contact type is in text (visible label + an sr-only
+                  "Custodian: <name> (<type>)" accessible name).
+      • A11Y-6  — the archived state carries a visible "(archived)" cue in
+                  addition to the muted tone, never color alone.
+      • A11Y-11 — the no-custodian state says "No custodian" in text.
+
+    Informational, not a link in v1 — a plain <span>, not focusable/interactive.
+*@
+
+@if (Custodian is null)
+{
+    <span class="@EmptyClass">
+        <span class="material-icons odc-custodian-ic" aria-hidden="true">account_balance</span>
+        <span class="odc-custodian-name">No custodian</span>
+    </span>
+}
+else
+{
+    <span class="@FilledClass">
+        <span class="odc-custodian-sr">@AccessibleName</span>
+        <span class="material-icons odc-custodian-ic" aria-hidden="true" style="@IconStyle">@_meta.Icon</span>
+        <span class="odc-custodian-name" aria-hidden="true">@Custodian.Name</span>
+        @if (ShowType && !string.IsNullOrEmpty(_meta.Label))
+        {
+            <span class="odc-custodian-type" aria-hidden="true">@_meta.Label</span>
+        }
+        @if (_archived)
+        {
+            <span class="odc-custodian-archived" aria-hidden="true">(archived)</span>
+        }
+    </span>
+}
+
+@code {
+    /// <summary>The slim custodian projection to display, or <c>null</c> for an account with no
+    /// custodian (renders the "No custodian" state).</summary>
+    [Parameter] public Custodian? Custodian { get; set; }
+
+    /// <summary>Show the visible type label beside the name. The sr-only accessible name always
+    /// carries the type regardless; set false to drop only the visible label on a tight row.</summary>
+    [Parameter] public bool ShowType { get; set; } = true;
+
+    /// <summary>Compact (sm) sizing for the collapsed account row.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private OdsTypeOption _meta = OdsTypeRegistries.ContactTypeOf(null);
+    private bool _archived;
+
+    protected override void OnParametersSet()
+    {
+        if (Custodian is not null)
+        {
+            _meta = OdsTypeRegistries.ContactTypeOf(Custodian.Type.ToString());
+            _archived = Custodian.Archived is not null;
+        }
+    }
+
+    private string SizeSuffix => Compact ? " sm" : string.Empty;
+    private string ClassSuffix => string.IsNullOrWhiteSpace(Class) ? string.Empty : $" {Class}";
+
+    private string EmptyClass => $"odc-custodian empty{SizeSuffix}{ClassSuffix}";
+    private string FilledClass => $"odc-custodian{(_archived ? " archived" : string.Empty)}{SizeSuffix}{ClassSuffix}";
+    private string? IconStyle => _archived ? null : $"color:{_meta.Color};";
+
+    private string AccessibleName
+    {
+        get
+        {
+            var typePart = string.IsNullOrEmpty(_meta.Label) ? string.Empty : $" ({_meta.Label})";
+            var archivedPart = _archived ? ", archived" : string.Empty;
+            return $"Custodian: {Custodian!.Name}{typePart}{archivedPart}";
+        }
+    }
+}

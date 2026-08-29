@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Modal (component)" subtitle="The consumable Modal primitive — live, with focus-trap, scroll-lock & focus-restore a11y. The shell new dialogs should build on." viewport="760x520" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Modal component</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { height: 100%; }
+    body { margin: 0; background: var(--mud-palette-background); font-family: var(--font-sans); color: var(--mud-palette-text-primary); }
+    .specimen-bg { position: fixed; inset: 0; padding: 36px 48px; opacity: 0.5; pointer-events: none; overflow: hidden; }
+    .specimen-bg h1 { font: 300 30px/1 var(--font-sans); letter-spacing: -0.02em; color: var(--ink-50); margin: 0 0 6px; }
+    .specimen-bg p  { font: 400 13px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 22px; }
+    .specimen-bg .bar { height: 44px; border-radius: 8px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="specimen-bg">
+    <h1>Accounts</h1>
+    <p>3 accounts · combined $ 21,956</p>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  </div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51;
+    const { Modal, Button, Field, Select } = NS;
+    const { useState } = React;
+
+    function Demo() {
+      const [name, setName] = useState('Chase Sapphire');
+      const [cur, setCur] = useState('USD');
+      return (
+        <Modal
+          open
+          title="New account"
+          subtitle="Add an account to track its balance, files, and transactions."
+          onClose={() => {}}
+          footer={(
+            <React.Fragment>
+              <Button variant="text" onClick={() => {}}>Cancel</Button>
+              <Button variant="filled" color="primary" icon="add" onClick={() => {}}>Create account</Button>
+            </React.Fragment>
+          )}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 4 }}>
+            <Field label="Account name" value={name} onChange={setName} />
+            <Select label="Currency" value={cur} onChange={setCur}
+              options={[{ value: 'USD', label: 'USD' }, { value: 'EUR', label: 'EUR' }, { value: 'GBP', label: 'GBP' }]} />
+          </div>
+        </Modal>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+</body>
+</html>

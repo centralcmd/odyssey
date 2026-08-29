@@ -1,0 +1,69 @@
+@using Odyssey.Dtos.Application
+@* The read-only row detail on /users: the identity meta grid plus the role's permission
+   catalogue. Extracted from Users.razor (issue #373) along with the .usr-claim* rules it owns. *@
+
+<div class="acct-detail">
+    <div class="meta-grid usr-meta-grid">
+        <div class="meta-tile wide"><div class="meta-tile-label">User ID</div><div class="meta-tile-value mono">@User.Id</div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Username</div><div class="meta-tile-value mono">@(User.UserName ?? "—")</div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Email</div><div class="meta-tile-value">@(User.Email ?? "—")</div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Full name</div><div class="meta-tile-value">@(UserDisplay.FullName(User) ?? "—")</div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Display name</div><div class="meta-tile-value">@(User.DisplayName ?? "—")</div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Date of birth</div><div class="meta-tile-value mono">@(UserDisplay.BirthDateText(User) ?? "—")</div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Sex</div><div class="meta-tile-value">@(User.Sex?.ToString() ?? "—")</div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Role</div><div class="meta-tile-value"><UserRolePill Role="@User.Role" /></div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Account status</div><div class="meta-tile-value"><UserStatusBadge Kind="UserStatusKind.Account" On="User.Enabled" /></div></div>
+        @if (User.MustChangePassword)
+        {
+            @* Only when set — an absent tile reads as "nothing pending", which is the common case
+               (issue #406 §3). Text + icon, never colour alone. *@
+            <div class="meta-tile">
+                <div class="meta-tile-label">Password</div>
+                <div class="meta-tile-value"><OdsChip Tone="OdsChipTone.Warning" Icon="lock_reset">Reset pending</OdsChip></div>
+            </div>
+        }
+        <div class="meta-tile"><div class="meta-tile-label">Email status</div><div class="meta-tile-value"><UserStatusBadge Kind="UserStatusKind.Email" On="User.EmailConfirmed" /></div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Lockout ends</div><div class="meta-tile-value mono">@UserDisplay.LockoutText(User)</div></div>
+        <div class="meta-tile"><div class="meta-tile-label">Created</div><div class="meta-tile-value mono">@UserDisplay.CreatedText(User)</div></div>
+    </div>
+
+    <OdsCollapsible Open="ClaimsOpen" OnToggle="@(_ => OnToggleClaims.InvokeAsync())" Lead="key">
+        <Title>Role permissions</Title>
+        <Count>@Permissions.Count</Count>
+        <ChildContent>
+            <div class="usr-claims-pad">
+                <div class="ua-cat-note">
+                    Permissions are granted by the <b>@(string.IsNullOrEmpty(User.Role) ? "assigned" : User.Role)</b> role and are
+                    read-only here. Change access by assigning a different role.
+                </div>
+                @if (Permissions.Count == 0)
+                {
+                    <div class="empty-line">No permissions are granted by this role.</div>
+                }
+                else
+                {
+                    <div class="usr-claims">
+                        @foreach (var claim in Permissions)
+                        {
+                            <span class="usr-claim">@claim</span>
+                        }
+                    </div>
+                }
+            </div>
+        </ChildContent>
+    </OdsCollapsible>
+</div>
+
+@code {
+    /// <summary>The row this detail belongs to.</summary>
+    [Parameter, EditorRequired] public ExistingUser User { get; set; } = default!;
+
+    /// <summary>The claims the user's role grants — read-only here; access changes by role.</summary>
+    [Parameter] public IReadOnlyList<string> Permissions { get; set; } = [];
+
+    /// <summary>Whether the permission catalogue is expanded.</summary>
+    [Parameter] public bool ClaimsOpen { get; set; }
+
+    /// <summary>Raised when the permission catalogue's disclosure is toggled.</summary>
+    [Parameter] public EventCallback OnToggleClaims { get; set; }
+}

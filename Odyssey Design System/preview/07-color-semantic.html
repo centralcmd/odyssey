@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- @dsCard group="Colors" name="Colors · Semantic tokens" subtitle="Income, expense, pending, tags, status chips" viewport="700x280" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Colors · Semantic tokens</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .tile {
+      border-radius: 8px; padding: 14px;
+      background: var(--mud-palette-surface);
+      border: 1px solid var(--mud-palette-divider);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .pill {
+      align-self: flex-start;
+      padding: 4px 10px; border-radius: 999px;
+      font: 500 11px/1.2 var(--font-sans);
+      letter-spacing: 0.02em;
+    }
+    .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 500; }
+    .desc { font: 400 11px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+  </style>
+  <div class="grid-3">
+    <div class="tile">
+      <div class="pill" style="background:var(--finance-income-soft); color:var(--finance-income);">Income</div>
+      <div class="num" style="color:var(--finance-income)">+ 4,250.00</div>
+      <div class="desc">--finance-income (mint)</div>
+    </div>
+    <div class="tile">
+      <div class="pill" style="background:var(--finance-expense-soft); color:var(--finance-expense);">Expense</div>
+      <div class="num" style="color:var(--finance-expense)">− 1,128.40</div>
+      <div class="desc">--finance-expense (coral)</div>
+    </div>
+    <div class="tile">
+      <div class="pill" style="background:var(--finance-pending-soft); color:var(--finance-pending);">Pending</div>
+      <div class="num" style="color:var(--finance-pending)">$  82.10</div>
+      <div class="desc">--finance-pending (amber)</div>
+    </div>
+  </div>
+  <div class="grid-3" style="margin-top: 12px;">
+    <div class="tile">
+      <div class="pill" style="background:var(--tag-soft); color:var(--tag-text);">Groceries</div>
+      <div class="pill" style="background:var(--tag-soft); color:var(--tag-text);">Rent</div>
+      <div class="desc">--tag-soft / --tag-text (violet) — transaction tags</div>
+    </div>
+    <div class="tile">
+      <div class="pill" style="background:rgba(74,222,128,0.16); color:var(--mint-500);">Approved</div>
+      <div class="pill" style="background:rgba(255,107,107,0.16); color:var(--coral-500);">Flagged</div>
+      <div class="desc">Transaction status chips</div>
+    </div>
+    <div class="tile">
+      <div class="pill" style="background:rgba(79, 215, 203, 0.18); color:var(--tide-300);">Primary</div>
+      <div class="pill" style="background:rgba(14,21,37,0); color:var(--ink-100); border:1px solid var(--mud-palette-divider);">Outline</div>
+      <div class="desc">Brand chips — chrome only</div>
+    </div>
+  </div>
+</body></html>

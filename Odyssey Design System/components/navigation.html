@@ -1,0 +1,76 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Drawer & NavItem (.odc-)" subtitle="The app's only chrome surface — 240px rail, brand lockup, full primary nav, fenced admin group, footer group" viewport="820x760" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · Drawer & NavItem (.odc-)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); }
+    .frame { display: grid; grid-template-columns: 240px 1fr; height: 760px; }
+    .stage { padding: 26px 30px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .brand-word { font: var(--fw-medium) var(--fs-h6)/1 var(--font-sans); letter-spacing: 3px; color: var(--brand-text); }
+    .block { display: flex; flex-direction: column; gap: 12px; }
+    .note { font: var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 46ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .demo-rail { display: flex; flex-direction: column; gap: 2px; max-width: 280px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 8px; background: var(--mud-palette-drawer-background); }
+    /* Bare divider that fences the admin group — mirrors .nav-divider in the web kit. */
+    .odc-nav-divider { height: 1px; background: var(--mud-palette-divider); margin: var(--space-2) 10px; }
+    .odc-navitem .nav-icon-svg { flex: none; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <nav class="odc-drawer" aria-label="Primary">
+      <div class="odc-drawer-brand">
+        <img src="../assets/odyssey-logomark-small.svg" width="26" height="26" alt="" />
+        <span class="brand-word">ODYSSEY</span>
+      </div>
+      <div class="odc-drawer-nav">
+        <a class="odc-navitem active" aria-current="page"><span class="material-icons">space_dashboard</span><span class="odc-navitem-label">Dashboard</span></a>
+        <a class="odc-navitem"><span class="material-icons">account_balance_wallet</span><span class="odc-navitem-label">Accounts</span></a>
+        <a class="odc-navitem"><span class="material-icons">pie_chart</span><span class="odc-navitem-label">Budgets</span></a>
+        <a class="odc-navitem"><span class="material-icons">receipt_long</span><span class="odc-navitem-label">Transactions</span></a>
+        <a class="odc-navitem"><span class="material-icons">folder</span><span class="odc-navitem-label">Files</span></a>
+        <a class="odc-navitem"><span class="material-icons">local_offer</span><span class="odc-navitem-label">Transaction Tags</span></a>
+        <a class="odc-navitem"><span class="material-icons">store</span><span class="odc-navitem-label">Contacts</span></a>
+        <a class="odc-navitem"><span class="material-icons">attach_money</span><span class="odc-navitem-label">Currencies</span></a>
+        <a class="odc-navitem"><span class="material-icons">currency_exchange</span><span class="odc-navitem-label">Exchange rates</span></a>
+        <div class="odc-nav-divider" role="separator"></div>
+        <a class="odc-navitem"><span class="material-icons">manage_accounts</span><span class="odc-navitem-label">Users</span></a>
+        <a class="odc-navitem"><span class="material-icons">badge</span><span class="odc-navitem-label">Roles</span></a>
+        <a class="odc-navitem"><span class="material-icons">settings</span><span class="odc-navitem-label">Settings</span></a>
+      </div>
+      <div class="odc-drawer-foot">
+        <a class="odc-navitem"><span class="material-icons">tune</span><span class="odc-navitem-label">Preferences</span></a>
+        <a class="odc-navitem"><span class="material-icons">account_circle</span><span class="odc-navitem-label">User Account</span></a>
+        <a class="odc-navitem"><svg class="nav-icon-svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.57.1.78-.25.78-.55v-2.05c-3.19.7-3.86-1.36-3.86-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.35.96.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.27-5.23-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.94 10.94 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.69 5.37-5.25 5.65.41.35.78 1.05.78 2.13v3.16c0 .31.21.66.79.55C20.21 21.4 23.5 17.09 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg><span class="odc-navitem-label">About</span></a>
+      </div>
+    </nav>
+
+    <div class="stage">
+      <div class="block">
+        <div class="cap">Drawer <code>&lt;Drawer brand footer&gt;…&lt;/Drawer&gt;</code></div>
+        <p class="note">The authenticated layout's <b>only chrome surface</b> — no top app bar. A 240px rail with the brand lockup pinned at the top, the full primary nav, an <b>admin group</b> fenced by a divider (Users · Roles · Settings, shown only with the <code>users.read</code> claim), and a bordered footer group. Labels are the verbatim <b>NavMenu.razor</b> set.</p>
+      </div>
+
+      <div class="block">
+        <div class="cap">Footer group <code>&lt;Drawer footer&gt;</code></div>
+        <p class="note">Order is deliberate: <b>Preferences → User Account → About</b>. About uses an inlined GitHub mark — Material Icons (Filled) ships no GitHub glyph. Signing out is not a nav destination; it's the primary action in the User Account header.</p>
+      </div>
+
+      <div class="block">
+        <div class="cap">NavItem states <code>&lt;NavItem icon label active badge /&gt;</code></div>
+        <div class="demo-rail">
+          <a class="odc-navitem active" aria-current="page"><span class="material-icons">pie_chart</span><span class="odc-navitem-label">Active route</span></a>
+          <a class="odc-navitem"><span class="material-icons">store</span><span class="odc-navitem-label">Default</span></a>
+          <a class="odc-navitem"><span class="material-icons">local_offer</span><span class="odc-navitem-label">With count</span><span class="odc-badge neutral">12</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

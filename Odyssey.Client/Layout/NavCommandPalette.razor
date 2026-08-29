@@ -1,0 +1,160 @@
+@* Command palette (⌘K) — search-to-jump across every module (design-system module-nav redesign).
+   Empty query shows the first 6 pages; typing filters pages by label, then offers matching modules
+   under "Switch module". Keyboard: ↑/↓ move, ↵ open, esc close. Implements the combobox/listbox
+   pattern — focus stays on the input, aria-activedescendant tracks the highlighted option. *@
+
+<div class="odn-scrim" @onclick="OnClose" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="odn-cmd" @onclick:stopPropagation="true" @onkeydown="OnKey">
+        <div class="odn-cmd-input">
+            <span class="material-icons" aria-hidden="true">search</span>
+            <input @ref="_input" value="@_query" @oninput="OnInput"
+                   placeholder="Jump to any page or module…" aria-label="Search pages and modules"
+                   role="combobox" aria-autocomplete="list" aria-controls="odn-cmd-list"
+                   aria-expanded="@(_rows.Count > 0 ? "true" : "false")"
+                   aria-activedescendant="@ActiveDescendant" />
+            <span class="odn-cmd-esc">esc</span>
+        </div>
+        <div class="odn-cmd-list" id="odn-cmd-list" role="listbox" aria-label="Pages and modules">
+            @if (_rows.Count == 0)
+            {
+                <div class="odn-cmd-empty">No matches for “@_query”.</div>
+            }
+            @{
+                var pageCount = _rows.Count(r => r.IsPage);
+                var renderedFirstModule = false;
+            }
+            @for (var i = 0; i < _rows.Count; i++)
+            {
+                var index = i;
+                var row = _rows[index];
+                if (index == 0 && pageCount > 0)
+                {
+                    <div class="odn-cmd-sec">@(_query.Trim().Length > 0 ? "Go to · any module" : "Jump to")</div>
+                }
+                if (!row.IsPage && !renderedFirstModule)
+                {
+                    renderedFirstModule = true;
+                    <div class="odn-cmd-sec">Switch module</div>
+                }
+                <div class="odn-cmd-row @(index == _selected ? "sel" : "")" id="@OptionId(index)"
+                     role="option" aria-selected="@(index == _selected ? "true" : "false")"
+                     @onmouseenter="@(() => _selected = index)" @onclick="@(() => Run(row))">
+                    @NavIcons.Icon(row.IsPage ? row.Page!.Icon : row.Module!.Icon)
+                    @(row.IsPage ? row.Page!.Label : row.Module!.Label)
+                    <span class="odn-cmd-grp">@row.RightLabel</span>
+                    @if (index == _selected)
+                    {
+                        <span class="odn-cmd-kbd" aria-hidden="true">↵</span>
+                    }
+                </div>
+            }
+        </div>
+        <div class="odn-cmd-foot">
+            <span><span class="odn-kbd">↑</span><span class="odn-kbd">↓</span>navigate</span>
+            <span><span class="odn-kbd">↵</span>open</span>
+            <span><span class="odn-kbd">esc</span>close</span>
+        </div>
+    </div>
+    @* Polite result-count announcement for screen-reader users (WCAG 4.1.3). *@
+    <div class="sr-only" role="status" aria-live="polite">@_announce</div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Func<NavPage, bool> CanView { get; set; } = _ => true;
+
+    /// <summary>The current module's key — excluded from the "Switch module" results.</summary>
+    [Parameter, EditorRequired] public string CurrentModuleKey { get; set; } = "";
+
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<NavPage> OnNavigate { get; set; }
+    [Parameter] public EventCallback<NavModule> OnGoModule { get; set; }
+
+    private ElementReference _input;
+    private string _query = "";
+    private int _selected;
+    private List<PaletteRow> _rows = [];
+    private string _announce = "";
+
+    private sealed record PaletteRow(bool IsPage, NavPage? Page, NavModule? Module, string RightLabel);
+
+    private static string OptionId(int index) => $"odn-cmd-opt-{index}";
+    private string? ActiveDescendant => _rows.Count > 0 ? OptionId(_selected) : null;
+
+    protected override void OnInitialized() => Rebuild();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try { await _input.FocusAsync(); } catch (Exception) { /* best-effort autofocus */ }
+        }
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? "";
+        _selected = 0;
+        Rebuild();
+    }
+
+    private void Rebuild()
+    {
+        var ql = _query.Trim().ToLowerInvariant();
+        var pages = NavModel.AllVisiblePages(CanView);
+        var pageHits = ql.Length > 0
+            ? pages.Where(p => p.Page.Label.ToLowerInvariant().Contains(ql))
+            : pages.Take(6);
+        var modHits = ql.Length > 0
+            ? NavModel.VisibleModules(CanView).Where(m => m.Label.ToLowerInvariant().Contains(ql) && m.Key != CurrentModuleKey)
+            : [];
+
+        _rows =
+        [
+            .. pageHits.Select(p => new PaletteRow(true, p.Page, null, p.ModuleLabel)),
+            .. modHits.Select(m => new PaletteRow(false, null, m, "Module")),
+        ];
+        if (_selected > _rows.Count - 1)
+        {
+            _selected = Math.Max(0, _rows.Count - 1);
+        }
+
+        _announce = _rows.Count == 0
+            ? $"No matches for {_query}"
+            : $"{_rows.Count} result{(_rows.Count == 1 ? "" : "s")}";
+    }
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _selected = Math.Min(_selected + 1, _rows.Count - 1);
+                break;
+            case "ArrowUp":
+                _selected = Math.Max(_selected - 1, 0);
+                break;
+            case "Enter":
+                if (_selected >= 0 && _selected < _rows.Count)
+                {
+                    await Run(_rows[_selected]);
+                }
+                break;
+            case "Escape":
+                await OnClose.InvokeAsync();
+                break;
+        }
+    }
+
+    private async Task Run(PaletteRow row)
+    {
+        if (row.IsPage)
+        {
+            await OnNavigate.InvokeAsync(row.Page);
+        }
+        else
+        {
+            await OnGoModule.InvokeAsync(row.Module);
+        }
+        await OnClose.InvokeAsync();
+    }
+}

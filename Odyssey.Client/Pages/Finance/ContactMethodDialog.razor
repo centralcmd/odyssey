@@ -1,0 +1,98 @@
+@*
+    Add / edit dialog for a single contact-method record — address, email, or phone
+    (Odyssey Design System · Contacts ContactForm, issue #325). Collects the fields for the
+    given Kind and hands a ContactMethodDraft back to the host, which performs the sub-resource API call.
+*@
+@using Odyssey.Dtos.Finance
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
+               Icon="@KindIcon" Title="@DialogTitle"
+               SubmitLabel="@SubmitLabel" SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SubmitAsync">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+        <OdsTypeSelect Label="Label" Value="@Draft.Label" ValueChanged="@(v => Draft.Label = v)"
+                       Types="LabelTypes" Placeholder="Select label…" />
+
+        @if (Kind == "address")
+        {
+            <OdsField Label="Line 1" @bind-Value="Draft.Line1" Required="true" Error="@Err("line1")"
+                      Placeholder="Street name and number" MaxLength="256" />
+            <OdsField Label="Line 2" @bind-Value="Draft.Line2" Placeholder="Apartment, floor, etc. (optional)" MaxLength="256" />
+            <OdsFormRow Cols="2" Style="grid-template-columns:140px 1fr;">
+                <OdsField Label="Postal code" @bind-Value="Draft.PostalCode" Placeholder="0554" MaxLength="32" />
+                <OdsField Label="City" @bind-Value="Draft.City" Required="true" Error="@Err("city")" Placeholder="Oslo" MaxLength="128" />
+            </OdsFormRow>
+            <OdsFormRow Cols="2" Style="grid-template-columns:140px 1fr;">
+                <OdsField Label="Country code" @bind-Value="Draft.CountryCode" Required="true" Error="@Err("countryCode")"
+                          Placeholder="NO" Help="Two letters" MaxLength="2" />
+                <div></div>
+            </OdsFormRow>
+        }
+        else if (Kind == "email")
+        {
+            <OdsField Label="Email address" @bind-Value="Draft.Value" Required="true" Error="@Err("value")"
+                      Placeholder="name@example.com" MaxLength="256" />
+        }
+        else
+        {
+            <OdsField Label="Phone number" @bind-Value="Draft.Value" Required="true" Error="@Err("value")"
+                      Placeholder="+47 22 00 00 00" Help="International format recommended" MaxLength="32" />
+        }
+
+        @* The switch carries its own label so it has an accessible name (4.1.2); no wrapping
+           <label> around MudSwitch's own <label>+<input>. *@
+        <div style="font:500 12.5px/1 var(--font-sans);color:var(--mud-palette-text-secondary);">
+            <OdsSwitch Checked="Draft.IsPrimary" CheckedChanged="@(v => Draft.IsPrimary = v)"
+                       Disabled="IsFirst" Label="@(IsFirst ? "Primary (first record)" : "Set as primary")" />
+        </div>
+    </div>
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>"address" | "email" | "phone".</summary>
+    [Parameter, EditorRequired] public string Kind { get; set; } = "address";
+    [Parameter, EditorRequired] public ContactMethodDraft Draft { get; set; } = new();
+    [Parameter] public bool IsEdit { get; set; }
+    /// <summary>First record in its collection — primary is forced on and the toggle disabled.</summary>
+    [Parameter] public bool IsFirst { get; set; }
+
+    /// <summary>Host callback performing the sub-resource API call; returns success.</summary>
+    [Parameter] public Func<ContactMethodDraft, Task<bool>>? OnCommit { get; set; }
+
+    private Dictionary<string, string> _errors = new();
+
+    private string? Err(string key) => _errors.GetValueOrDefault(key);
+
+    private IReadOnlyList<OdsTypeOption> LabelTypes => Kind switch
+    {
+        "email" => OdsTypeRegistries.EmailLabels,
+        "phone" => OdsTypeRegistries.PhoneLabels,
+        _ => OdsTypeRegistries.AddressLabels,
+    };
+
+    private string KindNoun => Kind switch { "email" => "email", "phone" => "phone number", _ => "address" };
+    private string KindIcon => Kind switch { "email" => "alternate_email", "phone" => "call", _ => "location_on" };
+    private string DialogTitle => (IsEdit ? "Edit " : "New ") + KindNoun;
+    private string SubmitLabel => IsEdit ? "Save changes" : $"Create {KindNoun}";
+
+    protected override void OnParametersSet()
+    {
+        if (IsFirst)
+            Draft.IsPrimary = true;
+    }
+
+    private async Task<bool> SubmitAsync()
+    {
+        _errors = Draft.Validate(Kind);
+        if (_errors.Count > 0)
+            return false;
+
+        if (OnCommit is null)
+            return false;
+
+        return await OnCommit(Draft);
+    }
+}

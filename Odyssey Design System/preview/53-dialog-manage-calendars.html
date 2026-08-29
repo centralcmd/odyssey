@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- @dsCard group="Dialogs" name="Manage calendars" subtitle="ManageCalendarsModal — CRUD over the household's calendars: name, description, and the curated ColorSwatchSelect. Deleting a non-empty calendar is blocked (409). Live." viewport="720x760" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Manage calendars dialog</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/calendar.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="../_ds_bundle.js"></script>
+  <script src="../ui_kits/web/data.js"></script>
+  <script src="../ui_kits/web/calendar-data.js"></script>
+
+  <style>
+    html, body { height: 100%; }
+    body { margin: 0; background: var(--mud-palette-background); font-family: var(--font-sans); color: var(--mud-palette-text-primary); }
+    .aam-scrim, .odc-scrim { animation: none !important; }
+    .aam-dialog, .odc-modal { animation: none !important; opacity: 1 !important; transform: none !important; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/ManageCalendarsModal.jsx"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const CD = window.OdysseyCalendarData;
+    const counts = CD.events.reduce((m, e) => { m[e.calendarId] = (m[e.calendarId] || 0) + 1; return m; }, {});
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <window.ManageCalendarsModal calendars={CD.calendars} eventCounts={counts}
+        onClose={() => {}} onCreate={() => {}} onUpdate={() => {}} onDelete={() => {}} />
+    );
+  </script>
+</body>
+</html>

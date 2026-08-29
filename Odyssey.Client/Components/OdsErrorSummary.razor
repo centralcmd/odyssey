@@ -1,0 +1,129 @@
+@*
+    OdsErrorSummary — the compact "n problems · Review" control that sits immediately
+    before a DISABLED primary action (Odyssey Design System · components/ErrorSummary).
+
+    It answers the one question a greyed-out Save can't: what is blocking it, and where.
+    Required on any page long enough that the offending field can be off-screen when the
+    action is in view — the System settings catalogue is the reference case. On a
+    single-screen dialog the field-level error is enough; don't add this.
+
+    It is a BUTTON, not a banner: pressing it moves focus to the first blocking field,
+    which is what makes a disabled action recoverable by keyboard. With Problems supplied
+    it becomes a disclosure — the count opens a list, and each entry focuses that field.
+
+    Two rules the announcement depends on. The count is folded into the accessible name,
+    so it reads "2 problems, review" rather than "2 · Review". And this component
+    announces NOTHING itself — validation that recomputes per keystroke must not sit in a
+    live region, so the page announces politely on a save ATTEMPT instead.
+
+    Only list problems for rows that are actually rendered: a search-filtered or
+    permission-disabled row has no focus target, so an entry pointing at one is a dead end.
+*@
+
+@if (EffectiveCount > 0)
+{
+    <div class="@($"odc-errsum-wrap {Class}".TrimEnd())">
+        <button type="button" class="odc-errsum"
+                aria-label="@($"{CountLabel}, {Action.ToLowerInvariant()}")"
+                aria-expanded="@(Expandable ? (_open ? "true" : "false") : null)"
+                @onclick="Press">
+            <span class="material-icons" aria-hidden="true">error_outline</span>
+            <span class="odc-errsum-count" aria-hidden="true">@CountLabel</span>
+            <span class="odc-errsum-sep" aria-hidden="true">·</span>
+            <span class="odc-errsum-act" aria-hidden="true">@Action</span>
+            @if (Expandable)
+            {
+                <span class="material-icons odc-errsum-chev" aria-hidden="true">@(_open ? "expand_less" : "expand_more")</span>
+            }
+        </button>
+        @if (Expandable && _open)
+        {
+            <div class="odc-errsum-panel">
+                <div class="odc-errsum-panel-head">@PanelTitle</div>
+                <ul class="odc-errsum-list">
+                    @foreach (var problem in Problems!)
+                    {
+                        <li>
+                            <button type="button" class="odc-errsum-item" @onclick="() => Jump(problem)">
+                                <span class="odc-errsum-item-txt">
+                                    <span class="odc-errsum-item-lbl">@problem.Label</span>
+                                    @if (!string.IsNullOrEmpty(problem.Section))
+                                    {
+                                        <span class="odc-errsum-item-sec">@problem.Section</span>
+                                    }
+                                </span>
+                                <span class="material-icons odc-errsum-item-go" aria-hidden="true">arrow_forward</span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// How many blocking problems there are. Defaults to <see cref="Problems"/>'s length; state it
+    /// explicitly when a group-level failure has no row of its own to list. Renders nothing at 0.
+    /// </summary>
+    [Parameter] public int? Count { get; set; }
+
+    /// <summary>One entry per blocking field — turns the control into a disclosure listing every
+    /// problem. Each <c>TargetId</c> must belong to a RENDERED row.</summary>
+    [Parameter] public IReadOnlyList<OdsErrorSummaryProblem>? Problems { get; set; }
+
+    /// <summary>Called when pressed with no <see cref="Problems"/> list — move focus to the first
+    /// blocking field.</summary>
+    [Parameter] public EventCallback OnReview { get; set; }
+
+    /// <summary>Called with the picked problem. The caller moves focus; this component only closes
+    /// the panel.</summary>
+    [Parameter] public EventCallback<OdsErrorSummaryProblem> OnJump { get; set; }
+
+    /// <summary>Singular noun, pluralised automatically.</summary>
+    [Parameter] public string Noun { get; set; } = "problem";
+
+    /// <summary>The action word.</summary>
+    [Parameter] public string Action { get; set; } = "Review";
+
+    /// <summary>Heading above the problem list.</summary>
+    [Parameter] public string PanelTitle { get; set; } = "Fix these to save";
+
+    [Parameter] public string? Class { get; set; }
+
+    private bool _open;
+
+    private int EffectiveCount => Count ?? Problems?.Count ?? 0;
+
+    private bool Expandable => Problems is { Count: > 0 };
+
+    private string CountLabel => $"{EffectiveCount} {Noun}{(EffectiveCount == 1 ? "" : "s")}";
+
+    // A panel left open over a count that has dropped to zero would be a stale list of problems the
+    // administrator has already fixed — and the button it hangs from is no longer rendered.
+    protected override void OnParametersSet()
+    {
+        if (EffectiveCount == 0)
+        {
+            _open = false;
+        }
+    }
+
+    private Task Press()
+    {
+        if (Expandable)
+        {
+            _open = !_open;
+            return Task.CompletedTask;
+        }
+
+        return OnReview.InvokeAsync();
+    }
+
+    private Task Jump(OdsErrorSummaryProblem problem)
+    {
+        _open = false;
+        return OnJump.InvokeAsync(problem);
+    }
+}

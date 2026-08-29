@@ -1,0 +1,234 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Theme
+@using Odyssey.Dtos.Finance
+
+
+@inject ISnackbar Snackbar
+@inject IUserPreferenceService UserPreferences
+@inject IReferenceDataCache ReferenceData
+@inject IAccountsApiClient Accounts
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="account_balance_wallet" Title="@(IsEdit ? "Edit account" : "New account")"
+               Subtitle="@(IsEdit
+                   ? "Update this account's name, type, custodian, or lifecycle dates."
+                   : "Add an account to track its balance, files, and transactions.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create account")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    <!-- Account name -->
+    <MudTextField @bind-Value="_name"
+                  Label="Account name"
+                  Placeholder="e.g. Chase Sapphire"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Error="@_nameError"
+                  ErrorText="Give the account a name."
+                  Immediate="true" />
+
+    <!-- Account type picker (colored glyphs, grouped popover) -->
+    <OdsAccountTypeSelect Value="_accountType" ValueChanged="OnAccountTypeChanged"
+                          Error="@(_typeError ? "Pick an account type." : null)" />
+
+    <!-- Currency + Opened -->
+    <OdsFormRow>
+        <MudAutocomplete T="string"
+                         Label="Currency"
+                         Variant="Variant.Outlined"
+                         Margin="Margin.Dense"
+                         Value="@_currencyCode"
+                         ValueChanged="OnCurrencyChanged"
+                         SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
+                         MinCharacters="0"
+                         MaxItems="10"
+                         Dense="true"
+                         CoerceValue="true"
+                         CoerceText="false"
+                         ResetValueOnEmptyText="false"
+                         ToStringFunc="@(code => code ?? string.Empty)" />
+        <OdsDatePicker @bind-Value="_opened"
+                       Label="Opened"
+                       HelperText="Defaults to today" />
+    </OdsFormRow>
+
+    @if (IsEdit)
+    {
+        <OdsDatePicker @bind-Value="_closed"
+                       Label="Closed"
+                       HelperText="Leave empty while the account is active"
+                       Clearable="true" />
+    }
+
+    <!-- Account number -->
+    <MudTextField @bind-Value="_accountNumber"
+                  Label="Account number"
+                  Placeholder="Optional"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  MaxLength="64" />
+
+    <!-- Custodian — the contact that holds this account (optional) -->
+    <OdsCustodianSelect Value="@_custodianId" ValueChanged="OnCustodianChanged"
+                        Contacts="_contacts"
+                        Loading="_contactsLoading"
+                        Error="@_custodianError"
+                        Help="The bank, broker, or provider that holds this account." />
+
+    <!-- Description -->
+    <MudTextField @bind-Value="_description"
+                  Label="Description"
+                  Placeholder="Optional — what's this account for?"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense" />
+</OdsFormDialog>
+
+@code {
+    /// <summary>Controls visibility. Bindable via @bind-Open.</summary>
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>When set, the dialog edits this account. Null = create mode.</summary>
+    [Parameter] public ExistingAccount? Account { get; set; }
+
+    private bool IsEdit => Account is not null;
+
+    private string? _description;
+    private string? _name;
+    private string? _accountNumber;
+    private AccountType _accountType = AccountType.Unknown;
+    private DateTime? _opened = DateTime.UtcNow;
+    private DateTime? _closed;
+    private string _currencyCode = string.Empty;
+    private List<ExistingCurrency> _currencies = [];
+
+    private string? _custodianId;
+    private List<ExistingContact> _contacts = [];
+    private bool _contactsLoading;
+    private string? _custodianError;
+
+    private bool _nameError;
+    private bool _typeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!OperatingSystem.IsBrowser())
+            return;
+
+        if (Account is { } account)
+        {
+            _name          = account.Name;
+            _description   = account.Description;
+            _accountNumber = account.AccountNumber;
+            _accountType   = account.AccountType;
+            _opened        = account.Opened;
+            _closed        = account.Closed;
+            _currencyCode  = account.CurrencyCode;
+            _custodianId   = account.CustodianId?.ToString();
+        }
+        else
+        {
+            _currencyCode = UserPreferences.DefaultCurrency ?? string.Empty;
+        }
+
+        await Task.WhenAll(LoadCurrencies(), LoadContacts());
+    }
+
+    private async Task LoadContacts()
+    {
+        _contactsLoading = true;
+        try
+        {
+            _contacts = [.. await ReferenceData.ContactsAsync()];
+        }
+        finally
+        {
+            _contactsLoading = false;
+        }
+    }
+
+    private void OnCustodianChanged(string? value)
+    {
+        _custodianId = string.IsNullOrWhiteSpace(value) ? null : value;
+        _custodianError = null;
+    }
+
+    private void OnAccountTypeChanged(AccountType type)
+    {
+        _accountType = type;
+        _typeError = false;
+    }
+
+    private async Task LoadCurrencies()
+    {
+        _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
+
+        if (!string.IsNullOrEmpty(_currencyCode) && _currencies.Count > 0
+            && _currencies.All(currency => !string.Equals(currency.CurrencyCode, _currencyCode, StringComparison.OrdinalIgnoreCase)))
+        {
+            _currencyCode = _currencies[0].CurrencyCode;
+        }
+    }
+
+    private Task OnCurrencyChanged(string value)
+    {
+        _currencyCode = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task<bool> SaveAsync()
+    {
+        _nameError = string.IsNullOrWhiteSpace(_name);
+        _typeError = _accountType == AccountType.Unknown;
+        _custodianError = null;
+        if (_nameError || _typeError)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(_currencyCode))
+        {
+            Snackbar.Add("Currency is required.", Severity.Error);
+            return false;
+        }
+
+        var newAccount = new NewAccount
+        {
+            Description   = (_description ?? string.Empty).Trim(),
+            Name          = _name!.Trim(),
+            AccountNumber = string.IsNullOrWhiteSpace(_accountNumber) ? null : _accountNumber.Trim(),
+            AccountType   = _accountType,
+            Opened        = _opened,
+            Closed        = IsEdit ? _closed : null,
+            CurrencyCode  = _currencyCode.Trim().ToUpperInvariant(),
+            // Archive/restore is a separate row action — preserve whatever the record already has.
+            Archived      = IsEdit && Account!.Archived is not null,
+            CustodianId   = string.IsNullOrWhiteSpace(_custodianId) ? null : Guid.Parse(_custodianId),
+        };
+
+        var result = IsEdit
+            ? await Accounts.UpdateAsync(Account!.AccountId, newAccount)
+            : await Accounts.CreateAsync(newAccount);
+        if (result.IsSuccess)
+        {
+            Snackbar.Add(IsEdit ? "Account updated." : "Account created.", Severity.Success);
+            return true;
+        }
+
+        // A custodian-validation 400 (contact not found / archived) is shown inline on the
+        // picker and keeps the dialog open (A11Y-9); anything else falls back to a toast.
+        if (result.Status == System.Net.HttpStatusCode.BadRequest && _custodianId is not null
+            && (result.Problem?.Detail?.Contains("contact", StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            _custodianError = string.IsNullOrWhiteSpace(result.Problem?.Detail)
+                ? "That contact can't be used as a custodian — pick an active one."
+                : result.Problem!.Detail;
+            return false;
+        }
+
+        Snackbar.Add($"Unable to {(IsEdit ? "update" : "create")} account: {result.Error}", Severity.Error);
+        return false;
+    }
+}

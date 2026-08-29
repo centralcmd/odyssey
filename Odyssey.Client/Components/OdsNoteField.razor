@@ -1,0 +1,90 @@
+@*
+    OdsNoteField — a labelled multi-line input with a live character counter
+    (Odyssey Design System · components/NoteField).
+
+    The canonical "note / description / comment" field. Consolidates the textarea +
+    counter that was hand-rolled across the create/edit dialogs (.trm-textarea +
+    .trm-charcount / .est-charcount). Built on OdsFieldShell: the label row carries the
+    optional/required marker on the left and the "0/512" counter on the right; the
+    counter turns red once the length reaches MaxLength. For a single-line value use
+    OdsField; for a money / numeric value use OdsAmountField.
+
+    Controlled: bind via @bind-Value.
+*@
+
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+               Help="@Help" Error="@Error" Class="@Class" Aside="@Counter">
+    <textarea id="@FieldId"
+              class="odc-input odc-input-multiline"
+              rows="@Rows"
+              value="@Value"
+              placeholder="@Placeholder"
+              maxlength="@MaxLength"
+              disabled="@Disabled"
+              autofocus="@AutoFocus"
+              aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
+              aria-describedby="@DescribedBy"
+              @oninput="OnInput"
+              @attributes="UserAttributes"></textarea>
+</OdsFieldShell>
+
+@code {
+    /// <summary>Visible label, rendered above the control.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Field value. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>Maximum length — also drives the character counter.</summary>
+    [Parameter] public int? MaxLength { get; set; }
+
+    /// <summary>Visible rows (the textarea stays resizable). Default 3.</summary>
+    [Parameter] public int Rows { get; set; } = 3;
+
+    /// <summary>Show the "len/max" counter (requires MaxLength). Default true.</summary>
+    [Parameter] public bool ShowCount { get; set; } = true;
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Optional { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public bool AutoFocus { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string FieldId = default!;
+
+    protected override void OnInitialized() => FieldId = Id ?? $"odc-note-{Guid.NewGuid():N}";
+
+    private bool Counted => ShowCount && MaxLength.HasValue;
+
+    private int Length => Value?.Length ?? 0;
+
+    private string? DescribedBy =>
+        (string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help)) ? null : $"{FieldId}-help";
+
+    private RenderFragment? Counter => Counted
+        ? @<span class="odc-field-count @(Length >= MaxLength ? "over" : null)" aria-hidden="true">@Length/@MaxLength</span>
+        : null;
+
+    private Task OnInput(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString() ?? "";
+        return ValueChanged.InvokeAsync(Value);
+    }
+}

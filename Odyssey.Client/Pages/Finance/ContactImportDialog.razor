@@ -1,0 +1,298 @@
+@*
+    ContactImportDialog — the .vcf import dialog (issue #338, Odyssey Design System ·
+    ContactImportModal). Opened from the Contacts page header's "Import from vCard…" action,
+    visible only when the caller holds BOTH contacts.create AND contacts.update.
+
+    One shell, four states:
+      • compose  — a single-file .vcf picker (OdsFileUpload, Multiple=false / ShowKinds=false), Import
+                  disabled until a file is chosen.
+      • in-flight— submit disabled, a spinner + progress copy.
+      • rejected — an envelope-level failure (bad extension/content-type, over the size cap, unparseable
+                  file) shown inline as an alert in compose, before any row is applied.
+      • result   — the VCardImportResult summary: created/updated as plain counts, the SKIPPED list
+                  grouped by reason and expandable to a capped list of sample display names (mirrors
+                  IcsImportSkipGroup.SampleTitles / VCardImportSkipGroup.SampleNames). "Done" refreshes
+                  the list.
+*@
+
+@using Odyssey.Dtos.Finance
+@inject IContactVCardApiClient VCardApi
+@inject Odyssey.Client.Services.IImportLimitsCache ImportLimits
+@inject IJSRuntime Js
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="upload_file"
+          Title="@TitleContent" Subtitle="@(_result is null ? SubtitleContent : null)" Class="cp-imp-dialog">
+    <ChildContent>
+        <OdsLiveAnnouncer Message="@_announce" />
+
+        @if (_result is not null)
+        {
+            <div class="cp-imp-result">
+                <h3 id="cp-imp-result-heading" class="cp-imp-result-h" tabindex="-1">
+                    Imported from <b>@(_fileName ?? "file")</b>
+                </h3>
+
+                <div class="cp-imp-stats">
+                    <div class="cp-imp-stat ok">
+                        <span class="material-icons" aria-hidden="true">person_add</span>
+                        <div class="cp-imp-stat-body">
+                            <span class="cp-imp-stat-n">@_result.CreatedCount</span>
+                            <span class="cp-imp-stat-l">created</span>
+                        </div>
+                    </div>
+                    <div class="cp-imp-stat upd">
+                        <span class="material-icons" aria-hidden="true">sync</span>
+                        <div class="cp-imp-stat-body">
+                            <span class="cp-imp-stat-n">@_result.UpdatedCount</span>
+                            <span class="cp-imp-stat-l">updated</span>
+                        </div>
+                    </div>
+                    <div class="@($"cp-imp-stat{(SkippedTotal > 0 ? " skip" : "")}")">
+                        <span class="material-icons" aria-hidden="true">@(SkippedTotal > 0 ? "rule" : "check_circle")</span>
+                        <div class="cp-imp-stat-body">
+                            <span class="cp-imp-stat-n">@SkippedTotal</span>
+                            <span class="cp-imp-stat-l">skipped</span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (SkippedTotal > 0)
+                {
+                    <div class="cp-imp-skips">
+                        <div class="cp-imp-skips-head">Skipped entries, by reason</div>
+                        @foreach (var group in _result.Skipped)
+                        {
+                            var open = _openReasons.Contains(group.Reason);
+                            <div class="@($"cp-imp-skip{(open ? " open" : "")}")">
+                                <button type="button" class="cp-imp-skip-head" aria-expanded="@(open ? "true" : "false")" @onclick="@(() => ToggleReason(group.Reason))">
+                                    <span class="material-icons cp-imp-skip-chev" aria-hidden="true">chevron_right</span>
+                                    <span class="cp-imp-skip-reason">@group.Reason</span>
+                                    <span class="cp-imp-skip-count">@group.Count</span>
+                                </button>
+                                @if (open)
+                                {
+                                    <ul class="cp-imp-skip-list">
+                                        @foreach (var name in group.SampleNames)
+                                        {
+                                            <li class="cp-imp-skip-item">
+                                                <span class="material-icons" aria-hidden="true">person_off</span>
+                                                <span>@(string.IsNullOrWhiteSpace(name) ? "(unnamed)" : name)</span>
+                                            </li>
+                                        }
+                                        @if (group.Count > group.SampleNames.Count)
+                                        {
+                                            <li class="cp-imp-skip-more">+@(group.Count - group.SampleNames.Count) more</li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="cp-imp-clean">
+                        <span class="material-icons" aria-hidden="true">task_alt</span>Every contact in the file imported cleanly.
+                    </div>
+                }
+            </div>
+        }
+        else if (_isImporting)
+        {
+            <div class="cp-imp-busy" role="status" aria-live="polite">
+                <OdsSpinner Size="OdsSize.Lg" AriaLabel="Importing contacts" />
+                <div>
+                    <div class="cp-imp-busy-l">Importing contacts…</div>
+                    <div class="cp-imp-busy-s">Matching entries by UID and validating each field.</div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="cp-imp-form">
+                @if (_rejected is not null)
+                {
+                    <OdsAlert Severity="Severity.Error">@_rejected</OdsAlert>
+                }
+                <OdsFieldShell Label="vCard file" Error="@_fileError">
+                    <OdsFileUpload Files="_files" FilesChanged="OnFilesChanged"
+                                   Multiple="false" ShowKinds="false" Compact="true"
+                                   Accept=".vcf,text/vcard"
+                                   Hint="@($"vCard (.vcf) · one file · up to {_maxImportMb} MB")" />
+                </OdsFieldShell>
+                <div class="cp-imp-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>Re-importing a file you exported from Odyssey updates the same contacts in place instead of duplicating them, matched on each entry's vCard UID.</span>
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <div class="cp-imp-footer">
+            @if (_result is not null)
+            {
+                <OdsButton Variant="OdsButtonVariant.Text" Icon="restart_alt" OnClick="Reset">Import another file</OdsButton>
+                <span class="cp-imp-footer-spacer"></span>
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" OnClick="CloseAsync">Done</OdsButton>
+            }
+            else
+            {
+                <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+                <span class="cp-imp-footer-spacer"></span>
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="upload_file"
+                           Loading="_isImporting" Disabled="@(_files.Count == 0)" OnClick="SubmitAsync">Import</OdsButton>
+            }
+        </div>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Fires after an import that created or updated any rows, so the page reloads its list.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private RenderFragment TitleContent => @<text>Import contacts</text>;
+
+    private RenderFragment SubtitleContent => @<text>Add people and organizations from a vCard (.vcf) file. Entries whose UID matches an existing contact are updated in place; the rest are created. Anything invalid is skipped with a reason — the rest of the file still imports.</text>;
+
+    private IReadOnlyList<OdsUploadFile> _files = [];
+    private string? _fileError;
+    private string? _rejected;
+    private bool _isImporting;
+
+    private VCardImportResult? _result;
+    private string? _fileName;
+    private string? _announce;
+    private bool _focusResultPending;
+
+    private readonly HashSet<string> _openReasons = new(StringComparer.Ordinal);
+
+    // Effective limit (issue #343 §3/§11) — read from the live IImportLimitsCache, which itself
+    // falls back to the shipped default when the load fails, so the dialog still opens and accepts
+    // a file at that limit rather than erroring out (fe C4 — the fallback lives in the cache, not
+    // here; see Odyssey.Client.Services.ImportLimitsCache.Fallback).
+    private int _maxImportMb = Odyssey.Client.Services.ImportLimitsCache.Fallback.ContactVCardMaxImportMegabytes;
+    private long _maxImportBytes = Odyssey.Client.Services.ImportLimitsCache.Fallback.ContactVCardMaxImportMegabytes * 1024L * 1024;
+
+    private int SkippedTotal => _result?.Skipped.Sum(g => g.Count) ?? 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Open)
+        {
+            return;
+        }
+
+        var limits = await ImportLimits.GetAsync();
+        _maxImportMb = limits.ContactVCardMaxImportMegabytes;
+        _maxImportBytes = _maxImportMb * 1024L * 1024;
+    }
+
+    private void OnFilesChanged(IReadOnlyList<OdsUploadFile> files)
+    {
+        _files = files;
+        _fileError = null;
+        _rejected = null;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_isImporting)
+        {
+            return;
+        }
+
+        _fileError = null;
+        _rejected = null;
+
+        var file = _files.FirstOrDefault()?.Source;
+        if (file is null)
+        {
+            _fileError = "Choose a .vcf file to import.";
+            return;
+        }
+
+        if (!file.Name.EndsWith(".vcf", StringComparison.OrdinalIgnoreCase))
+        {
+            _fileError = "That isn't a .vcf file. vCard files use the .vcf extension.";
+            return;
+        }
+
+        if (file.Size > _maxImportBytes)
+        {
+            _fileError = $"That file is larger than the {_maxImportMb} MB limit.";
+            return;
+        }
+
+        _isImporting = true;
+        try
+        {
+            // Same effective value used for the pre-check above and for OpenReadStream — otherwise
+            // a dialog opened against a raised limit but still handed the old constant here would
+            // throw IOException mid-submit on a large-but-now-valid file (issue #343 fe C2).
+            var outcome = await VCardApi.ImportAsync(file.ToApiUpload(_maxImportBytes));
+            if (!outcome.IsSuccess)
+            {
+                _rejected = outcome.Error ?? "The file could not be imported.";
+                return;
+            }
+
+            _fileName = file.Name;
+            _result = outcome.Value;
+
+            if (_result!.CreatedCount > 0 || _result.UpdatedCount > 0)
+            {
+                await OnChanged.InvokeAsync();
+            }
+
+            _announce = $"{_result.CreatedCount} created, {_result.UpdatedCount} updated, {SkippedTotal} skipped.";
+            _focusResultPending = true;
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Move focus to the result heading once the summary renders. Goes through JS by
+        // element id rather than an ElementReference: the heading lives inside OdsModal's
+        // MudDialog content, which MudBlazor teleports into MudDialogProvider on its own
+        // render pass, so a captured ElementReference can still be unconfigured here.
+        if (_focusResultPending)
+        {
+            _focusResultPending = false;
+            try { await Js.InvokeVoidAsync("odsFocusById", "cp-imp-result-heading"); }
+            catch { /* element not present (e.g. dialog closing) — non-fatal */ }
+        }
+    }
+
+    private void ToggleReason(string reason)
+    {
+        if (!_openReasons.Remove(reason))
+        {
+            _openReasons.Add(reason);
+        }
+    }
+
+    private void Reset()
+    {
+        _result = null;
+        _files = [];
+        _fileError = null;
+        _rejected = null;
+        _announce = null;
+        _fileName = null;
+        _openReasons.Clear();
+    }
+
+    private Task CloseAsync()
+    {
+        // Reset so a subsequent open starts clean; the page owns Open.
+        Reset();
+        return OpenChanged.InvokeAsync(false);
+    }
+}

@@ -1,0 +1,65 @@
+@*
+    OdsModal — the dialog shell (Odyssey Design System · components/Modal).
+
+    Scrim, header (title + optional subtitle + close), scrollable body, and a
+    right-aligned footer for actions. An inline MudDialog bound to Open
+    (@bind-Open). Wide is the 1240px / 96vw variant for batch grids / file
+    analysis. OnClose fires on Esc, scrim click, and the close button; omit it
+    (leave Open one-way) to hide the close affordance.
+*@
+
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+<MudDialog @ref="_dialog" @key="Wide" Visible="@Open" VisibleChanged="OnVisibleChanged" Options="_options"
+           Class="@($"ods-modal {Class}".TrimEnd())"
+           ContentClass="@(HideHeader ? null : "ods-modal-content")"
+           TitleClass="ods-modal-head"
+           ActionsClass="ods-modal-foot"
+           TitleContent="@(HideHeader ? null : HeaderFragment)">
+    <DialogContent>
+        @ChildContent
+    </DialogContent>
+    <DialogActions>
+        @Footer
+    </DialogActions>
+</MudDialog>
+
+@code {
+    // The fragment is the inner content of MudDialog's title slot, which carries
+    // ods-modal-head (the tinted band + flex layout). Children: an optional lead
+    // tile, the title/subtitle stack, then the close button pushed to the edge.
+    private RenderFragment HeaderFragment => @<text>
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <div class="@($"ods-modal-lead {ToneClass}".TrimEnd())">
+                @if (IsLigature(Icon))
+                {
+                    <span class="material-icons" aria-hidden="true">@Icon</span>
+                }
+                else
+                {
+                    @* A non-ligature glyph (e.g. "§") — rendered as type, not an icon-font
+                       ligature, mirroring the design-system Modal lead-tile glyph path. *@
+                    <span class="ods-modal-lead-glyph" aria-hidden="true">@Icon</span>
+                }
+            </div>
+        }
+        <div class="ods-modal-titles">
+            @if (Title is not null)
+            {
+                <MudText Typo="Typo.h6" Class="ods-modal-title">@Title</MudText>
+            }
+            @if (Subtitle is not null)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default" Class="ods-modal-sub mud-text-secondary">@Subtitle</MudText>
+            }
+        </div>
+        @HeaderActions
+        @if (OnClose.HasDelegate)
+        {
+            <OdsIconButton Icon="@Icons.Material.Filled.Close" Size="OdsSize.Sm"
+                           AriaLabel="Close" OnClick="CloseAsync" Class="ods-modal-x" />
+        }
+    </text>;
+}

@@ -1,0 +1,200 @@
+@using Odyssey.Dtos.Finance
+@* The candidate-review grid of the analyze-file dialog: the toolbar, the degraded-match notice and
+   the editable candidate table. Split out of FileAnalysisDialog (issue #373) with the .fan-table* /
+   .fan-row* / .fan-matchcell / .fan-conf* rules it owns.
+
+   Everything it edits lives on the shared FileAnalysisSession; the grid never calls the API. The
+   two things it can't decide alone — running the match step again and creating a contact
+   server-side — go back to the dialog as events. *@
+
+<div class="fan-review">
+    <div class="fan-toolbar">
+        <FileAnalysisFileMeta FileName="@FileName" AccountName="@AccountName" />
+        <div class="fan-toolbar-right">
+            <FileAnalysisProviderChip Job="Session.Job" />
+            @if (Session.MatchStatus is FileAnalysisMatchStatus.Completed or FileAnalysisMatchStatus.NotRun && Session.Rows.Count > 0)
+            {
+                <button type="button" class="fan-rematch" @onclick="OnReMatch">
+                    <OdsMIcon Name="sync" Size="14" />@(Session.MatchStatus == FileAnalysisMatchStatus.NotRun ? "Match" : "Re-match")
+                </button>
+            }
+            <span class="fan-foundpill">@Session.Rows.Count found</span>
+        </div>
+    </div>
+
+    @if (Session.MatchStatus is FileAnalysisMatchStatus.Failed or FileAnalysisMatchStatus.Skipped && Session.Rows.Count > 0)
+    {
+        <div class="fan-degraded" role="alert">
+            <OdsMIcon Name="@(Session.MatchStatus == FileAnalysisMatchStatus.Skipped ? "filter_alt_off" : "sync_problem")" Size="18" />
+            <div class="fan-degraded-text">
+                @if (Session.MatchStatus == FileAnalysisMatchStatus.Skipped)
+                {
+                    <text><b>Matching was skipped.</b> You have more than @Session.MaxVocabulary contacts or tags to compare, so nothing was sent for matching. Link merchants and categories yourself, or re-match.</text>
+                }
+                else
+                {
+                    <text><b>Couldn’t match this statement.</b> @(Session.Job?.MatchFailureMessage ?? "The matching provider returned an error.") The candidates are intact — link merchants and categories yourself, or re-match.</text>
+                }
+            </div>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Sync" OnClick="OnReMatch">Re-match</MudButton>
+        </div>
+    }
+
+    @if (Session.Rows.Count == 0)
+    {
+        <div class="fan-allgone">
+            <OdsMIcon Name="inbox" Size="26" />
+            <div>Every candidate was removed.</div>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="OnReanalyze">Re-analyze</MudButton>
+        </div>
+    }
+    else
+    {
+        <div class="fan-table-wrap">
+            <div class="fan-table">
+                <div class="fan-row-head">
+                    <OdsCheckbox Checked="Session.AllSelected" Indeterminate="Session.SomeSelected"
+                                 CheckedChanged="@(_ => Session.ToggleAll())" AriaLabel="Select all" />
+                    <span>Date</span>
+                    <span>Description</span>
+                    <span>Merchant</span>
+                    <span>Category</span>
+                    <span class="ta-r">Amount</span>
+                    <span>Currency</span>
+                    <span>Confidence</span>
+                    <span>Reference</span>
+                    <span></span>
+                </div>
+
+                @foreach (var row in Session.Rows)
+                {
+                    var isLow = row.LlmConfidence is < 0.6m;
+                    <div class="fan-row @(row.Selected ? "" : "off") @(isLow ? "low" : "")">
+                        @* Stable accessible name — the checked state (announced by
+                           the checkbox role) carries whether the row is included, so
+                           the name must not flip with it. *@
+                        <OdsCheckbox Checked="row.Selected" CheckedChanged="@(_ => Session.ToggleRow(row))"
+                                     AriaLabel="Include this transaction in the import" />
+
+                        <div class="fan-cell">
+                            <input type="date" class="fan-input" value="@row.TransactionDate.ToString("yyyy-MM-dd")"
+                                   @onchange="@(e => FileAnalysisSession.SetDate(row, e.Value?.ToString()))" aria-label="Date" />
+                        </div>
+
+                        <div class="fan-cell">
+                            <input class="fan-input" value="@row.Description"
+                                   @onchange="@(e => row.Description = e.Value?.ToString() ?? string.Empty)" aria-label="Description" />
+                        </div>
+
+                        <!-- Merchant → ContactId (OdsCombobox + match indicator) -->
+                        <div class="fan-cell">
+                            <div class="fan-matchcell">
+                                <OdsCombobox Value="@(row.ContactId?.ToString())"
+                                             ValueChanged="@(v => Session.SelectContact(row, v))"
+                                             Options="Session.ContactOptions"
+                                             Placeholder="@(string.IsNullOrEmpty(row.Merchant) ? "Search contacts…" : row.Merchant)"
+                                             OnCreate="@(Session.CanCreateContact ? (text => BeginCreateContact(row, text)) : null)"
+                                             CreateLabel="Create"
+                                             InputId="@MerchantInputId(row)" AriaLabel="Merchant"
+                                             Class="odc-combo" />
+                                @if (FileAnalysisSession.MerchantState(row) == OdsMatchState.Suggestion && row.MerchantSuggestion is not null)
+                                {
+                                    <OdsMatchIndicator State="OdsMatchState.Suggestion"
+                                                       Name="@row.MerchantSuggestion.Name"
+                                                       Confidence="@row.MerchantSuggestion.Confidence"
+                                                       OnApply="@(() => ApplyMerchantSuggestionAsync(row))"
+                                                       OnDismiss="@(() => DismissMerchantSuggestionAsync(row))" />
+                                }
+                                else
+                                {
+                                    @* A no-match cell with an extracted merchant string offers an inline "Create ‹name›"
+                                       (the indicator owns the affordance now) so the reviewer never has to retype it. *@
+                                    <OdsMatchIndicator State="FileAnalysisSession.MerchantState(row)" Confidence="@row.MerchantConf"
+                                                       CreateName="@(Session.CanQuickCreateMerchant(row) ? row.Merchant : null)"
+                                                       OnCreate="@(() => CreateMerchantFromExtractedAsync(row))" />
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Category → TransactionTagIds (a candidate may carry several) + match indicator -->
+                        <div class="fan-cell">
+                            <div class="fan-matchcell">
+                                <OdsTagMultiSelect Value="@row.TagIds"
+                                                   ValueChanged="@(ids => FileAnalysisSession.SetCategory(row, ids))"
+                                                   Options="Session.TagOptions"
+                                                   AddLabel="Tag"
+                                                   AriaLabel="Category tags"
+                                                   Id="@CategoryControlId(row)"
+                                                   Placeholder="@(string.IsNullOrWhiteSpace(row.CategoryHint) ? "Set tags" : $"{row.CategoryHint} · set tags")" />
+                                @if (FileAnalysisSession.CategoryState(row) == OdsMatchState.Suggestion && row.CatSuggestion is not null)
+                                {
+                                    <OdsMatchIndicator State="OdsMatchState.Suggestion"
+                                                       Name="@row.CatSuggestion.Name"
+                                                       Confidence="@row.CatSuggestion.Confidence"
+                                                       OnApply="@(() => ApplyCategorySuggestionAsync(row))"
+                                                       OnDismiss="@(() => DismissCategorySuggestionAsync(row))" />
+                                }
+                                else
+                                {
+                                    <OdsMatchIndicator State="FileAnalysisSession.CategoryState(row)" Confidence="@row.CatConf" />
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Amount (signed) -->
+                        <div class="fan-cell">
+                            <div class="fan-amount @(row.Amount < 0 ? "expense" : "income")">
+                                <input class="fan-input ta-r mono" inputmode="decimal" value="@FileAnalysisSession.FormatAmount(row.Amount)"
+                                       @onchange="@(e => FileAnalysisSession.SetAmount(row, e.Value?.ToString()))" aria-label="Amount" />
+                            </div>
+                        </div>
+
+                        <!-- Currency -->
+                        <div class="fan-cell fan-cur">
+                            <select class="fan-select" value="@row.Currency"
+                                    @onchange="@(e => row.Currency = e.Value?.ToString() ?? row.Currency)" aria-label="Currency">
+                                @foreach (var c in Session.CurrencyOptions(row.Currency))
+                                {
+                                    <option value="@c">@c</option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Confidence (read-only meter) -->
+                        <div class="fan-cell ro fan-conf-cell">
+                            @{ var band = FileAnalysisSession.ConfidenceBand(row.LlmConfidence); }
+                            @if (band.Pct is null)
+                            {
+                                <span class="fan-conf empty">—</span>
+                            }
+                            else
+                            {
+                                <span class="fan-conf @band.Tone">
+                                    <span class="fan-conf-meter" aria-hidden="true"><span class="fan-conf-fill" style="width:@(band.Pct)%"></span></span>
+                                    <span class="fan-conf-pct mono"><span class="sr-only">Extraction confidence </span>@(band.Pct)%</span>
+                                </span>
+                            }
+                        </div>
+
+                        <!-- Reference → ExternalId -->
+                        <div class="fan-cell">
+                            <input class="fan-input mono" value="@row.Reference" placeholder="—"
+                                   @onchange="@(e => row.Reference = e.Value?.ToString() ?? string.Empty)" aria-label="Reference" />
+                        </div>
+
+                        <div class="fan-cell fan-rm">
+                            <button type="button" class="bgt-rowbtn del" aria-label="Remove candidate" @onclick="@(() => Session.RemoveRow(row))">
+                                <OdsMIcon Name="delete_outline" Size="18" />
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="fan-editnote">
+            <OdsMIcon Name="auto_awesome" Size="14" />
+            <span>Merchants and categories are matched to your existing records — each cell shows where its value came from. <b>Confidence</b> is the extraction score (is this a real transaction), separate from the per-cell match score. Edit any field; untick a row to leave it out.</span>
+        </div>
+    }
+</div>

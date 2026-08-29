@@ -1,0 +1,123 @@
+@using System.Net
+@inject IFilesApiClient FilesApi
+@inject ISnackbar Snackbar
+@inject IPhotosApiClient Photos
+@inject IUploadLimitsCache UploadLimits
+
+@*
+    UploadPhotosDialog — upload image files into the library (Odyssey Design System · Photos · upload).
+    Each picked file is uploaded (multipart via the files API, honouring an in-dialog rename) and a
+    library Photo is created over it. Photos carry no file-kind, so the shared upload field runs with
+    the kind picker off (ShowKinds=false). A GPS/location privacy notice is shown (extraction may
+    store capture location + tagged people). Guest-safe: reachable only behind photos.create.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="Close"
+          Icon="add_photo_alternate" Title="@TitleFragment" Subtitle="@SubtitleFragment">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <OdsFileUpload Files="_files" FilesChanged="v => _files = [.. v]"
+                           ShowKinds="false"
+                           Accept=".jpg,.jpeg,.png,.gif,.webp"
+                           Hint="@($"JPEG, PNG, GIF or WebP · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")"
+                           Error="@_error" />
+
+            <div class="pl-drop-hint">
+                <span class="material-icons" aria-hidden="true" style="font-size:14px; vertical-align:middle;">info</span>
+                Any capture location (GPS) and people you tag are stored with the photo and visible to anyone with photo access.
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="Close">@(AddedCount > 0 ? "Done" : "Cancel")</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_busy"
+                   Disabled="_busy || _files.Count == 0" OnClick="AddAsync">@AddLabel</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    /// <summary>
+    /// This surface's own, tighter product limit. A named constant rather than a bare literal, and
+    /// deliberately kept: it is a product decision for this surface, not drift to be flattened. The
+    /// effective cap is the smaller of it and the instance-wide cap — a surface may tighten, never
+    /// loosen, or an administrator lowering the global cap would not reach this dialog.
+    /// </summary>
+    private const int SurfaceMaxMegabytes = 25;
+
+    // Admin-editable instance cap (issue #421 Wave 4), narrowed to this surface. Seeded with the
+    // shipped fallback so a render that beats the fetch still validates against a sane number.
+    private UploadLimitsDto _uploadLimits = UploadLimitsCache.Fallback.TightenTo(SurfaceMaxMegabytes);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _uploadLimits = (await UploadLimits.GetAsync()).TightenTo(SurfaceMaxMegabytes);
+    }
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after at least one photo was added, so the host reloads the grid.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+
+    private List<OdsUploadFile> _files = [];
+    private string? _error;
+    private bool _busy;
+    private int AddedCount;
+
+    private RenderFragment TitleFragment => builder => builder.AddContent(0, "Add photos");
+    private RenderFragment SubtitleFragment => builder =>
+        builder.AddContent(0, AddedCount > 0 ? $"{AddedCount} added to your library" : "Upload photos to your library");
+
+    private string AddLabel => _files.Count > 1 ? $"Add {_files.Count} photos" : "Add photo";
+
+    private async Task AddAsync()
+    {
+        _busy = true;
+        _error = null;
+        var added = 0;
+
+        try
+        {
+            foreach (var file in _files.Where(f => f.Source is not null))
+            {
+                var uploaded = await FilesApi.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes), file.Name);
+                if (await CreatePhotoAsync(uploaded.Id))
+                {
+                    added++;
+                }
+            }
+
+            _files = [];
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add($"Upload failed: {ex.Message}", Severity.Error);
+        }
+
+        if (added > 0)
+        {
+            AddedCount += added;
+            Snackbar.Add(added == 1 ? "Photo added." : $"{added} photos added.", Severity.Success);
+            await OnSaved.InvokeAsync();
+        }
+
+        _busy = false;
+    }
+
+    // Tolerate a 409 (the file is already a library photo) as a benign no-op rather than an error toast.
+    private async Task<bool> CreatePhotoAsync(Guid fileId)
+    {
+        var result = await Photos.CreateAsync(new NewPhoto { FileId = fileId });
+        if (result.IsSuccess || result.Status == HttpStatusCode.Conflict)
+        {
+            return result.IsSuccess;
+        }
+
+        Snackbar.Add($"Couldn't add a photo: {result.Error}", Severity.Error);
+        return false;
+    }
+
+    private Task Close() => OpenChanged.InvokeAsync(false);
+}

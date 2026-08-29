@@ -1,0 +1,23 @@
+@*
+    JournalCounts — small text-labelled photo/file count indicators for a journal entry card
+    (never colour/icon alone: the number + noun are the signal, per a11y). Renders nothing when both
+    counts are zero.
+*@
+@if (Photos > 0 || Files > 0)
+{
+    <span class="je-counts">
+        @if (Photos > 0)
+        {
+            <span class="je-count"><span class="material-icons" aria-hidden="true">photo_library</span><span class="mono">@Photos</span> @(Photos == 1 ? "photo" : "photos")</span>
+        }
+        @if (Files > 0)
+        {
+            <span class="je-count"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">@Files</span> @(Files == 1 ? "file" : "files")</span>
+        }
+    </span>
+}
+
+@code {
+    [Parameter] public int Photos { get; set; }
+    [Parameter] public int Files { get; set; }
+}

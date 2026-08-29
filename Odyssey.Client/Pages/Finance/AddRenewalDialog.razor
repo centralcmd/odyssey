@@ -1,0 +1,191 @@
+@using System.Globalization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IReferenceDataCache ReferenceData
+@inject ISnackbar Snackbar
+@inject IInsuranceApiClient Insurance
+
+@*
+    AddRenewalDialog — New / Edit dialog for a PolicyRenewal (a time-versioned term of a
+    policy), built on the OdsModal shell. Fields mirror the NewPolicyRenewal DTO and the
+    spec's validation (issue #175 §9): from/to dates (ToDate ≥ FromDate), premium +
+    currency (≥ 0), coverage + currency (≥ 0), notes ≤ 512. Overlaps with other periods are
+    permitted — current-renewal selection stays deterministic server-side (§5).
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="@(IsEdit ? "edit" : "event_repeat")"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="ins-dialog">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <OdsFormRow>
+                <OdsDatePicker Value="_fromDate" ValueChanged="@(d => { _fromDate = d; _errors.Remove("fromDate"); })"
+                               Label="Cover from" Error="@_errors.ContainsKey("fromDate")"
+                               ErrorText="@_errors.GetValueOrDefault("fromDate")" />
+                <OdsDatePicker Value="_toDate" ValueChanged="@(d => { _toDate = d; _errors.Remove("toDate"); })"
+                               Label="Cover to" Error="@_errors.ContainsKey("toDate")"
+                               ErrorText="@_errors.GetValueOrDefault("toDate")"
+                               HelperText="End of this period's cover." />
+            </OdsFormRow>
+
+            <OdsFormRow>
+                <div>
+                    <OdsAmountField Label="Premium" Size="lg" Prefix="@Symbol(_premiumCurrency)"
+                                    Value="@_premiumStr" ValueChanged="OnPremiumChanged"
+                                    Error="@_errors.GetValueOrDefault("premium")"
+                                    Help="Premium for this term, as stored (not annualized)." />
+                    <div style="margin-top:8px;">
+                        <OdsSelect Value="@_premiumCurrency" ValueChanged="@(v => _premiumCurrency = v)" Options="_currencyOptions" />
+                    </div>
+                </div>
+
+                <div>
+                    <OdsAmountField Label="Coverage amount" Size="lg" Prefix="@Symbol(_coverageCurrency)"
+                                    Value="@_coverageStr" ValueChanged="OnCoverageChanged"
+                                    Error="@_errors.GetValueOrDefault("coverage")"
+                                    Help="Insured sum for this term." />
+                    <div style="margin-top:8px;">
+                        <OdsSelect Value="@_coverageCurrency" ValueChanged="@(v => _coverageCurrency = v)" Options="_currencyOptions" />
+                    </div>
+                </div>
+            </OdsFormRow>
+
+            <OdsNoteField Label="Notes" Optional="true" MaxLength="512"
+                          Value="@_notes" ValueChanged="OnNotesChanged"
+                          Placeholder="What changed this period — discount applied, coverage raised…"
+                          Error="@_errors.GetValueOrDefault("notes")" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")"
+                   Loading="_isSaving" OnClick="SubmitAsync">
+            @(IsEdit ? "Save changes" : "Create period")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit renewal period" : "New renewal period")</text>;
+    private RenderFragment SubtitleFragment => IsEdit
+        ? @<text>Correct this period's dates, premium or coverage.</text>
+        : @<text>Record a period of cover for @Policy.Name.</text>;
+
+    protected override void OnInitialized()
+    {
+        var latest = Policy.Renewals.OrderByDescending(r => r.ToDate).FirstOrDefault();
+        var defaultCurrency = latest?.PremiumCurrencyCode ?? "USD";
+
+        if (Renewal is not null)
+        {
+            _fromDate = Renewal.FromDate.Date;
+            _toDate = Renewal.ToDate.Date;
+            _premiumStr = Renewal.Premium.ToString(CultureInfo.InvariantCulture);
+            _premiumCurrency = Renewal.PremiumCurrencyCode;
+            _coverageStr = Renewal.CoverageAmount.ToString(CultureInfo.InvariantCulture);
+            _coverageCurrency = Renewal.CoverageCurrencyCode;
+            _notes = Renewal.Notes;
+        }
+        else
+        {
+            var year = DateTime.UtcNow.Year;
+            _fromDate = latest is null ? new DateTime(year, 1, 1) : null;
+            _toDate = latest is null ? new DateTime(year, 12, 31) : null;
+            _premiumCurrency = defaultCurrency;
+            _coverageCurrency = defaultCurrency;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!OperatingSystem.IsBrowser()) return;
+
+        var active = await ReferenceData.ActiveCurrenciesAsync();
+        _currencyOptions = [.. active.Select(c => new OdsOption(c.CurrencyCode, $"{c.CurrencyCode} · {c.Name}"))];
+        _symbols = active.GroupBy(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Symbol, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var code in new[] { _premiumCurrency, _coverageCurrency })
+        {
+            if (!_currencyOptions.Any(o => o.Value == code))
+                _currencyOptions.Insert(0, new OdsOption(code, code));
+        }
+
+        StateHasChanged();
+    }
+
+    private string Symbol(string code) =>
+        _symbols.TryGetValue(code, out var s) && !string.IsNullOrWhiteSpace(s) ? s : code;
+
+    private void OnPremiumChanged(string value) { _premiumStr = value; _errors.Remove("premium"); }
+    private void OnCoverageChanged(string value) { _coverageStr = value; _errors.Remove("coverage"); }
+    private void OnNotesChanged(string value) => _notes = value;
+
+    private static decimal? Parse(string s) =>
+        decimal.TryParse(s.Replace(",", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+
+    private async Task CloseAsync() => await OpenChanged.InvokeAsync(false);
+
+    private async Task SubmitAsync()
+    {
+        if (_isSaving) return;
+        _errors.Clear();
+
+        if (_fromDate is null) _errors["fromDate"] = "Pick the start of cover.";
+        if (_toDate is null) _errors["toDate"] = "Pick the end of cover.";
+        if (_fromDate is { } f && _toDate is { } t && t.Date < f.Date)
+            _errors["toDate"] = "End date can't be before the start date.";
+
+        var premium = Parse(_premiumStr);
+        var coverage = Parse(_coverageStr);
+        if (premium is null || premium < 0) _errors["premium"] = "Enter a premium of 0 or more.";
+        if (coverage is null || coverage < 0) _errors["coverage"] = "Enter a coverage amount of 0 or more.";
+        if ((_notes?.Length ?? 0) > 512) _errors["notes"] = "Keep the note under 512 characters.";
+
+        if (_errors.Count > 0)
+            return;
+
+        var body = new NewPolicyRenewal
+        {
+            FromDate = DateTime.SpecifyKind(_fromDate!.Value.Date, DateTimeKind.Utc),
+            ToDate = DateTime.SpecifyKind(_toDate!.Value.Date, DateTimeKind.Utc),
+            Premium = Math.Round(premium!.Value, 2),
+            PremiumCurrencyCode = _premiumCurrency,
+            CoverageAmount = Math.Round(coverage!.Value, 2),
+            CoverageCurrencyCode = _coverageCurrency,
+            Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes!.Trim(),
+        };
+
+        _isSaving = true;
+        try
+        {
+            var ok = IsEdit
+                ? (await Insurance.UpdateRenewalAsync(Policy.InsurancePolicyId, Renewal!.PolicyRenewalId, ToUpdate(body)))
+                    .Toast(Snackbar, "Unable to update renewal", "Renewal period updated.")
+                : (await Insurance.AddRenewalAsync(Policy.InsurancePolicyId, body))
+                    .Toast(Snackbar, "Unable to add renewal", "Renewal period added.");
+
+            if (!ok) return;
+
+            await OnSaved.InvokeAsync();
+            await OpenChanged.InvokeAsync(false);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    // The create and edit endpoints take structurally identical DTOs; the dialog builds the New shape
+    // and maps it for the edit call rather than keeping two parallel field-copy blocks.
+    private static UpdatePolicyRenewal ToUpdate(NewPolicyRenewal r) => new()
+    {
+        FromDate = r.FromDate,
+        ToDate = r.ToDate,
+        Premium = r.Premium,
+        PremiumCurrencyCode = r.PremiumCurrencyCode,
+        CoverageAmount = r.CoverageAmount,
+        CoverageCurrencyCode = r.CoverageCurrencyCode,
+        Notes = r.Notes,
+    };
+}

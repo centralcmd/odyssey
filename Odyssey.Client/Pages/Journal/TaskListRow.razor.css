@@ -1,0 +1,63 @@
+/* TaskListRow — a task rendered on the record-row vocabulary (flat List view + Archived
+   section). Deliberately a *variant*, not an OdsExpandableCard: the row does not expand,
+   so it carries no hover/press affordance, a tighter head, and a whole-row dim. These
+   overrides sit on top of the shared `.acct-*` block in odyssey-components.css. */
+.acct-item {
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 8px;
+    box-shadow: var(--mud-elevation-1);
+    overflow: hidden;
+}
+.acct-item.dimmed { opacity: 0.72; }
+
+.acct-head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 18px;
+}
+/* The row is not a disclosure trigger — no click, so no hover highlight either. */
+.acct-head:hover { background: none; }
+.acct-id { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.acct-name-row { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.acct-name {
+    font-size: 1rem; font-weight: 500; line-height: 1.25;
+    color: var(--mud-palette-text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.acct-dot { opacity: 0.4; color: var(--mud-palette-text-secondary); }
+.acct-controls { display: flex; align-items: center; gap: 8px; }
+
+.tk-subline { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.75rem; color: var(--mud-palette-text-secondary); }
+.tk-subline .mono { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.je-author { display: inline-flex; align-items: center; gap: 4px; color: var(--mud-palette-text-secondary); }
+.je-author .material-icons { font-size: 14px; }
+.je-cardfoot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+/* Per-status title colour (Backlog default · Doing accent · Done green · Archived greyed). */
+/* --info-text is theme-scoped (sea-700 in light for ≥4.5:1, sea-400 in dark) — WCAG 1.4.3. */
+.acct-head[data-status="Doing"] .acct-name { color: var(--info-text); }
+.acct-head[data-status="Done"] .acct-name { color: var(--finance-income); }
+.acct-head[data-status="Archived"] .acct-name { color: var(--mud-palette-text-secondary); }
+
+/* Cycling status control. */
+.tk-status-btn {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    appearance: none; background: none; border: none; padding: 4px; cursor: pointer; border-radius: 50%;
+    color: var(--mud-palette-text-primary); transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.tk-status-btn:hover:not(:disabled) { background: var(--mud-palette-action-default-hover); }
+.tk-status-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
+.tk-status-btn:disabled { cursor: default; opacity: 0.75; }
+.tk-status-btn .material-icons { font-size: 22px; }
+.tk-status-btn[data-s="Doing"] .material-icons { color: var(--info-text); }
+.tk-status-btn[data-s="Done"] .material-icons { color: var(--finance-income); }
+.tk-status-btn[data-s="Archived"] .material-icons { color: var(--mud-palette-text-secondary); }
+
+.tk-att-count { display: inline-flex; align-items: center; gap: 3px; color: var(--mud-palette-text-secondary); font-size: 0.75rem; }
+.tk-att-count .mono { color: var(--mud-palette-text-primary); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.tk-att-count .material-icons { font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) { .tk-status-btn { transition: none; } }

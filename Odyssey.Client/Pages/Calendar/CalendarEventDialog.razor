@@ -1,0 +1,174 @@
+@*
+    CalendarEventDialog — the create / edit-occurrence / edit-series dialog (Odyssey Design System ·
+    AddCalendarEventModal). One shell, three modes:
+      • Create — new event; the "Does not repeat / Repeats" toggle is editable.
+      • Edit   — a single event/occurrence. The repeat toggle is READ-ONLY (fixed at creation).
+                 An occurrence of a series shows a hint + "Edit series…" link.
+      • Series — the pattern's template/rule. Saving affects future occurrences only.
+    Submitting a create routes to POST /api/calendar-events ("Does not repeat") or
+    POST /api/recurrence-patterns ("Repeats"). Uses OdsModal directly (not OdsFormDialog) because
+    edit/series modes need a Delete/Delete-series button alongside Cancel/Submit.
+*@
+
+@inject ICalendarApiClient CalendarApi
+@inject ISnackbar Snackbar
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent">
+    <ChildContent>
+        <div class="ods-modal-body">
+            @if (OccurrenceOfSeries)
+            {
+                <div class="cal-series-hint">
+                    <span class="material-icons" aria-hidden="true">event_repeat</span>
+                    <div>
+                        This is one occurrence of "@_sourceEvent?.Title". Changes here affect this occurrence only.
+                        <button type="button" class="link-btn" @onclick="EditSeriesClicked">Edit series…</button>
+                    </div>
+                </div>
+            }
+
+            <OdsField Label="Title" Value="@_draft.Title" MaxLength="200"
+                      ValueChanged="@(v => { _draft.Title = v; _draft.TitleError = null; })" Error="@_draft.TitleError" />
+
+            <OdsFormRow>
+                <OdsSelect Label="Calendar" Value="@(_draft.CalendarId?.ToString())"
+                           ValueChanged="@(v => _draft.CalendarId = Guid.TryParse(v, out var id) ? id : null)"
+                           Options="_calendarOptions" />
+                <OdsFieldShell Label="All day">
+                    <OdsSwitch Checked="_draft.IsAllDay" CheckedChanged="@(v => _draft.IsAllDay = v)" Label="@(_draft.IsAllDay ? "Spans whole days" : "Has a start and end time")" />
+                </OdsFieldShell>
+            </OdsFormRow>
+
+            <OdsFieldShell Label="Starts" Error="@_draft.StartDateError">
+                <div class="cal-when-row">
+                    <OdsDateField AriaLabel="Start date" Value="_draft.StartDate" ValueChanged="@(v => _draft.StartDate = v)" />
+                    @if (!_draft.IsAllDay)
+                    {
+                        <OdsTimeField AriaLabel="Start time" Value="_draft.StartTime" ValueChanged="@(v => _draft.StartTime = v)" />
+                    }
+                </div>
+            </OdsFieldShell>
+            <OdsFieldShell Label="Ends" Error="@_draft.EndError" Help="@(_draft.IsAllDay ? "Inclusive — the last whole day." : null)">
+                <div class="cal-when-row">
+                    <OdsDateField AriaLabel="End date" Value="_draft.EndDate" ValueChanged="@(v => _draft.EndDate = v)" Min="_draft.StartDate" />
+                    @if (!_draft.IsAllDay)
+                    {
+                        <OdsTimeField AriaLabel="End time" Value="_draft.EndTime" ValueChanged="@(v => _draft.EndTime = v)" />
+                    }
+                </div>
+            </OdsFieldShell>
+
+            <OdsField Label="Location" Optional="true" Value="@_draft.Location" MaxLength="300"
+                      ValueChanged="@(v => _draft.Location = v)" Placeholder="Optional" />
+            <OdsNoteField Label="Description" Optional="true" MaxLength="2000" Rows="3"
+                          Value="@_draft.Description" ValueChanged="@(v => _draft.Description = v)" Placeholder="Notes, agenda, links…" />
+
+            @if (Mode == CalendarEventDialogMode.Series)
+            {
+                <div class="cal-rule">@RuleFields</div>
+            }
+            else
+            {
+                <OdsRevealPanel AriaLabel="Repeat"
+                                Value="@(_draft.Repeats ? "repeats" : "once")"
+                                ValueChanged="@(v => _draft.Repeats = v == "repeats")"
+                                Options="_repeatOptions"
+                                Open="@(_draft.Repeats && RepeatEditable)"
+                                Locked="@(!RepeatEditable)">
+                    <LockedContent>
+                        <div class="cal-repeat-locked">
+                            <span class="material-icons" aria-hidden="true">@(_draft.Repeats ? "event_repeat" : "event_available")</span>
+                            <span>@(_draft.Repeats ? "Repeats — the schedule is fixed at creation." : "Does not repeat.")</span>
+                        </div>
+                    </LockedContent>
+                    <ChildContent>@RuleFields</ChildContent>
+                </OdsRevealPanel>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        @if (Mode == CalendarEventDialogMode.Edit && CanDelete)
+        {
+            <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete" OnClick="DeleteEventAsync">Delete</OdsButton>
+        }
+        else if (Mode == CalendarEventDialogMode.Series && CanDelete)
+        {
+            <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete" OnClick="DeleteSeriesAsync">Delete series</OdsButton>
+        }
+        <div style="flex:1"></div>
+        @if (Mode is CalendarEventDialogMode.Edit or CalendarEventDialogMode.Series)
+        {
+            <OdsButton id="cal-export-btn" Variant="OdsButtonVariant.Text" Icon="download" OnClick="@(() => OnExport.InvokeAsync())">Export</OdsButton>
+        }
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelAsync">@(CanSubmit ? "Cancel" : "Close")</OdsButton>
+        @if (CanSubmit)
+        {
+            <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_isSaving" OnClick="SubmitAsync">@SubmitLabel</OdsButton>
+        }
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleContent => @<text>@DialogTitleText</text>;
+
+    private RenderFragment RuleFields => __builder =>
+    {
+        <OdsFormRow>
+            <OdsSelect Label="Frequency" Value="@_draft.Frequency.ToString()"
+                       ValueChanged="@(v => { if (Enum.TryParse<RecurrenceFrequency>(v, out var f)) _draft.Frequency = f; })"
+                       Options="_frequencyOptions" />
+            <OdsStepperField Label="Repeat every" Value="_draft.Interval" ValueChanged="@(v => _draft.Interval = v)"
+                              Min="1" Max="365" Unit="@UnitFor(_draft.Frequency)" />
+        </OdsFormRow>
+
+        @if (_draft.Frequency == RecurrenceFrequency.Weekly)
+        {
+            <OdsFieldShell Label="Repeat on" Error="@_draft.DaysError">
+                <div class="cal-daytoggle" role="group" aria-label="Repeat on">
+                    @foreach (var (flag, label) in _dayToggles)
+                    {
+                        var on = _draft.DaysOfWeek.HasFlag(flag);
+                        <button type="button" class="@("cal-daytoggle-btn" + (on ? " on" : ""))"
+                                aria-pressed="@(on ? "true" : "false")" aria-label="@flag" title="@flag"
+                                @onclick="() => ToggleDay(flag)">@label</button>
+                    }
+                </div>
+            </OdsFieldShell>
+        }
+
+        @if (_draft.Frequency is RecurrenceFrequency.Monthly or RecurrenceFrequency.Yearly)
+        {
+            <OdsFormRow>
+                @if (_draft.Frequency == RecurrenceFrequency.Yearly)
+                {
+                    <OdsSelect Label="Month" Value="@_draft.MonthOfYear?.ToString()"
+                               ValueChanged="@(v => _draft.MonthOfYear = int.TryParse(v, out var m) ? m : null)"
+                               Options="_monthOptions" />
+                }
+                <OdsStepperField Label="Day of month" Value="_draft.DayOfMonth" ValueChanged="@(v => _draft.DayOfMonth = v)"
+                                  Min="1" Max="31" Error="@_draft.DayOfMonthError" />
+            </OdsFormRow>
+        }
+
+        <OdsFieldShell Label="Ends" Error="@(_draft.EndDateError ?? _draft.CountError)">
+            <div class="cal-ends">
+                <label class="@("cal-ends-opt" + (_draft.EndMode == "date" ? " on" : ""))">
+                    <input type="radio" name="cal-ends" checked="@(_draft.EndMode == "date")" @onchange="@(() => _draft.EndMode = "date")" />
+                    <span class="cal-ends-lbl">On date</span>
+                    <div class="cal-ends-ctl">
+                        <OdsDateField Value="_draft.RecurrenceEndDate" ValueChanged="@(v => _draft.RecurrenceEndDate = v)"
+                                      Min="_draft.StartDate" Disabled="@(_draft.EndMode != "date")" />
+                    </div>
+                </label>
+                <label class="@("cal-ends-opt" + (_draft.EndMode == "count" ? " on" : ""))">
+                    <input type="radio" name="cal-ends" checked="@(_draft.EndMode == "count")" @onchange="@(() => _draft.EndMode = "count")" />
+                    <span class="cal-ends-lbl">After</span>
+                    <div class="cal-ends-ctl">
+                        <OdsStepperField Value="_draft.OccurrenceCount" ValueChanged="@(v => _draft.OccurrenceCount = v)"
+                                          Min="1" Max="730" Unit="occurrence" Disabled="@(_draft.EndMode != "count")" />
+                    </div>
+                </label>
+            </div>
+        </OdsFieldShell>
+    };
+}

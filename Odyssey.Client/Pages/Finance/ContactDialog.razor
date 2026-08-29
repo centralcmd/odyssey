@@ -1,0 +1,100 @@
+@*
+    Create / edit dialog for a contact (Odyssey Design System · Contacts AddContactModal).
+    Create mode shows the Type selector; edit mode locks Type behind a chip ("can't be changed after
+    creation") and prefills the fields. Both edit the DisplayName override + the Person/Organization
+    sub-fields — contacts are managed separately in the detail panel.
+*@
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Finance
+@inject IContactsApiClient Contacts
+@inject IReferenceDataCache ReferenceData
+@inject ISnackbar Snackbar
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="@(IsEdit ? "edit" : "store")"
+               Title="@(IsEdit ? "Edit contact" : "New contact")"
+               Subtitle="A person or organization that money moves to or from."
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create contact")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    @if (IsEdit)
+    {
+        <OdsFieldShell Label="Type" Help="Type can't be changed after creation.">
+            <OdsChip Tone="OdsChipTone.Outline" Icon="@_typeMeta.Icon">@_typeMeta.Label</OdsChip>
+        </OdsFieldShell>
+    }
+    else
+    {
+        <OdsContactTypeSelect Value="@_draft.Type.ToString()" ValueChanged="OnTypeChanged"
+                                   Label="Type"
+                                   Help="Choose Person or Organization — the matching fields appear below." />
+    }
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+        <ContactFields Draft="_draft" FieldErrors="_errors" />
+    </div>
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>When set, the dialog edits this contact (Type locked). Null = create mode.</summary>
+    [Parameter] public ExistingContact? Contact { get; set; }
+
+    private ContactDraft _draft = new();
+    private Dictionary<string, string> _errors = new();
+    private OdsTypeOption _typeMeta = OdsTypeRegistries.ContactTypeOf(null);
+
+    private bool IsEdit => Contact is not null;
+
+    protected override void OnInitialized()
+    {
+        if (Contact is not null)
+        {
+            _draft = ContactDraft.From(Contact);
+            _typeMeta = OdsTypeRegistries.ContactTypeOf(Contact.Type.ToString());
+        }
+    }
+
+    private void OnTypeChanged(string value)
+    {
+        if (!Enum.TryParse<ContactType>(value, out var type) || type == _draft.Type)
+            return;
+
+        // Switching Type discards the previously-visible field set (§3).
+        _draft = new ContactDraft { Type = type, DisplayName = _draft.DisplayName };
+        _errors = new();
+    }
+
+    private async Task<bool> SaveAsync()
+    {
+        _errors = _draft.Validate();
+        if (_errors.Count > 0)
+            return false;
+
+        if (IsEdit)
+        {
+            // Preserve the current archival state — archive/restore is a separate row action.
+            var body = _draft.ToNew(Contact!.Archived is not null);
+            return Invalidated((await Contacts.UpdateAsync(Contact.ContactId, body)).Toast(Snackbar,
+                "Update failed", "Contact updated."));
+        }
+
+        return Invalidated((await Contacts.CreateAsync(_draft.ToNew(archived: false))).Toast(Snackbar,
+            "Unable to create contact", "Contact created."));
+    }
+
+    // Contacts are cached for the whole session (issue #372) — a successful write here has to drop
+    // that cache or every picker keeps offering the old list until the app reloads.
+    private bool Invalidated(bool saved)
+    {
+        if (saved)
+            ReferenceData.InvalidateContacts();
+        return saved;
+    }
+}

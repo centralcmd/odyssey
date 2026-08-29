@@ -1,0 +1,137 @@
+<!doctype html>
+<!-- @dsCard group="Reference data" name="Term kinds" subtitle="The TermKind enum behind account rate & fee history — name, group (Rate / Fee), Material icon, fixed oklch color, default unit, and account-type eligibility per member. Plus the BillingPeriod enum. Driven by the OdysseyData registries." viewport="1100x1500" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Term kinds</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="../ui_kits/web/data.js"></script>
+  <style>
+    html, body { min-height: 0; background: var(--mud-palette-background); }
+    body { width: 1100px; padding: 24px; box-sizing: border-box; font-family: var(--font-sans); color: var(--mud-palette-text-primary); }
+
+    .spec-doc { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 20px 22px; margin-bottom: 20px; }
+    .spec-doc h2 { font: 600 16px/1.3 var(--font-sans); margin: 0 0 7px; }
+    .spec-lead { font: 400 13px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 96ch; }
+    .spec-lead b { color: var(--tide-400); font-weight: 500; }
+    .spec-lead code { font: 500 12px/1 var(--font-mono); color: var(--tide-400); }
+    .spec-src { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+    .spec-src .pill { font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 6px 11px; }
+    .spec-src .pill b { color: var(--tide-400); font-weight: 600; }
+
+    .stage-label { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 4px 0 12px 2px; display: flex; align-items: center; gap: 8px; }
+    .stage-label .material-icons { font-size: 15px; color: var(--tide-400); }
+    .stage-label .ctx { font-family: var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--mud-palette-text-disabled); }
+
+    .cpt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .cpt-card { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .cpt-top { display: flex; align-items: center; gap: 12px; }
+    .cpt-avatar { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+    .cpt-avatar .material-icons { font-size: 24px; }
+    .cpt-titles { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .cpt-label { font: 500 15px/1.1 var(--font-sans); }
+    .cpt-badges { display: flex; gap: 5px; }
+    .cpt-tag { font: 600 9px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; border-radius: 999px; padding: 3px 6px; }
+    .cpt-tag.grp { color: var(--tide-400); border: 1px solid color-mix(in oklch, var(--tide-400) 45%, transparent); }
+    .cpt-tag.enumv { color: var(--mud-palette-text-secondary); border: 1px solid var(--mud-palette-divider); font-family: var(--font-mono); letter-spacing: 0; }
+    .cpt-chip { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font: 500 12px/1 var(--font-sans); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 6px 11px 6px 9px; color: var(--mud-palette-text-primary); }
+    .cpt-chip .material-icons { font-size: 16px; }
+    .cpt-desc { font: 400 12.5px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0; }
+    .cpt-meta { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--mud-palette-divider-light); }
+    .cpt-meta dt { font: 600 9.5px/1.5 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .cpt-meta dd { margin: 0; font: 500 11.5px/1.5 var(--font-mono); color: var(--mud-palette-text-primary); }
+    .cpt-meta dd .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; transform: translateY(1px); }
+    .cpt-elig { font: 400 11px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .cpt-elig b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+    /* Billing period chips */
+    .bill-row { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 24px; }
+    .bill-chip { display: inline-flex; align-items: center; gap: 9px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 9px; padding: 9px 14px 9px 11px; }
+    .bill-en { font: 600 10px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); border-radius: 6px; padding: 3px 6px; }
+    .bill-lab { font: 500 13px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .bill-suf { font: 500 11.5px/1 var(--font-mono); color: var(--tide-400); }
+
+    .spec-notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .spec-notes li { position: relative; padding-left: 22px; font: 400 12.5px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .spec-notes li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .spec-notes li code { font: 500 11.5px/1 var(--font-mono); color: var(--tide-400); }
+    .spec-notes li .material-icons { position: absolute; left: 0; top: 0; font-size: 16px; color: var(--tide-400); }
+  </style>
+</head>
+<body>
+  <div class="spec-doc">
+    <h2>Term kinds</h2>
+    <p class="spec-lead">The <b>TermKind</b> enum classifies each entry in an account's rate &amp; fee history (the <b>AccountTerm</b> feature). Two <b>rates</b> — <code>InterestRate</code> and the optional <code>ExpectedReturn</code> — lead; four <b>fees</b> follow. Like every Odyssey registry, the enum carries only a name; the <b>group</b>, <b>icon</b>, <b>color</b> and <b>default unit</b> are a design-system decision, defined once in <code>OdysseyData.termKinds</code> so a kind reads identically in the step chart, the current-terms summary, the history, the picker and the row subtitle. Hues sit in the shared categorical band (L ~0.74–0.80, C ~0.13–0.16) — <b>brand tide stays out of it</b>, and the kinds never encode income / expense / status. Each kind is gated to the account types it can apply to.</p>
+    <div class="spec-src">
+      <span class="pill">Enum <b>TermKind</b> · <b>TermValueUnit</b> · <b>BillingPeriod</b></span>
+      <span class="pill">Registry <b>OdysseyData.termKinds</b> · <b>billingPeriods</b></span>
+      <span class="pill">Matrix <b>termKindEligibility</b></span>
+      <span class="pill">Source <b>data.js</b></span>
+    </div>
+  </div>
+
+  <div class="stage-label"><span class="material-icons">trending_up</span>Rates<span class="ctx">— group: rate · stored as a percentage</span></div>
+  <div class="cpt-grid" id="rate-grid"></div>
+
+  <div class="stage-label"><span class="material-icons">sell</span>Fees<span class="ctx">— group: fee · percentage or a money amount</span></div>
+  <div class="cpt-grid" id="fee-grid"></div>
+
+  <div class="stage-label"><span class="material-icons">event_repeat</span>Billing period<span class="ctx">— BillingPeriod · optional context for fees, null for rates</span></div>
+  <div class="bill-row" id="bill-row"></div>
+
+  <div class="spec-doc">
+    <ul class="spec-notes">
+      <li><span class="material-icons">straighten</span><b>Value unit.</b> <code>TermValueUnit</code> is <b>Percentage</b> (a fraction in [-1, 1] — 3.40% stored as 0.0340, negatives allowed) or <b>Amount</b> (a money value, currency required). Rates are always Percentage; <code>TransactionFee</code> can be either, the other fees default as shown.</li>
+      <li><span class="material-icons">rule</span><b>Eligibility is a matrix, in code.</b> <code>InterestRate</code> only on interest-bearing accounts; <code>ExpectedReturn</code> only on Investment / Pension; the four fees on every account type. It lives in <code>termKindEligibility</code> (not the DB) so it can change without a migration; the New term dialog hides ineligible kinds.</li>
+      <li><span class="material-icons">badge</span><b>The avatar</b> uses the kind's <code>soft</code> tint as background and <code>color</code> as the glyph; the current-terms chip and the history row read the same pairing. A recolor is a one-line edit to the registry.</li>
+      <li><span class="material-icons">hub</span><b>One source.</b> Add or recolor a kind here and the chart, summary, history, picker and row subtitle all update. Keep the registry keys in lockstep with the C# <code>TermKind</code> enum values.</li>
+    </ul>
+  </div>
+
+  <script>
+    (function () {
+      const D = window.OdysseyData || {};
+      const UNIT_LABEL = { Percentage: 'Percentage', Amount: 'Amount' };
+      const elig = (key) => {
+        const a = (D.termKindEligibility || {})[key];
+        if (a === 'ALL') return 'All account types';
+        const byId = D.accountTypeById || {};
+        return (a || []).map(k => (byId[k] || { label: k }).label).join(' · ');
+      };
+      const cardFor = (t) => `
+        <div class="cpt-card">
+          <div class="cpt-top">
+            <span class="cpt-avatar" style="background:${t.soft};color:${t.color};">
+              <span class="material-icons">${t.icon}</span>
+            </span>
+            <div class="cpt-titles">
+              <span class="cpt-label">${t.label}</span>
+              <div class="cpt-badges">
+                <span class="cpt-tag enumv">enum ${t.enumValue}</span>
+                <span class="cpt-tag grp">${t.group === 'rate' ? 'Rate' : 'Fee'}</span>
+              </div>
+            </div>
+          </div>
+          <span class="cpt-chip"><span class="material-icons" style="color:${t.color};">${t.icon}</span>${t.label}</span>
+          <p class="cpt-desc">${t.desc || ''}</p>
+          <dl class="cpt-meta">
+            <dt>Key</dt><dd>${t.key}</dd>
+            <dt>Default unit</dt><dd>${UNIT_LABEL[t.defaultUnit] || t.defaultUnit}</dd>
+            <dt>Icon</dt><dd>${t.icon}</dd>
+            <dt>Color</dt><dd><span class="sw" style="background:${t.color};"></span>${t.color}</dd>
+          </dl>
+          <div class="cpt-elig"><b>Eligible on:</b> ${elig(t.key)}</div>
+        </div>`;
+      const kinds = D.termKinds || [];
+      document.getElementById('rate-grid').innerHTML = kinds.filter(k => k.group === 'rate').map(cardFor).join('');
+      document.getElementById('fee-grid').innerHTML = kinds.filter(k => k.group === 'fee').map(cardFor).join('');
+      document.getElementById('bill-row').innerHTML = (D.billingPeriods || []).map(b => `
+        <span class="bill-chip">
+          <span class="bill-en">${b.enumValue}</span>
+          <span class="bill-lab">${b.label}</span>
+          ${b.suffix ? `<span class="bill-suf">${b.suffix}</span>` : ''}
+        </span>`).join('');
+    })();
+  </script>
+</body>
+</html>

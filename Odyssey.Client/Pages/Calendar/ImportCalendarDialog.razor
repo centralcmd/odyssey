@@ -1,0 +1,147 @@
+@*
+    ImportCalendarDialog — the .ics import dialog (issue #330, Odyssey Design System · ImportCalendarModal).
+    Opened from Manage Calendars, which closes itself first (mirrors CalendarEventDialog's
+    "Edit series…" close-then-open sequencing).
+
+    One shell, two phases:
+      • compose — a required target-calendar OdsSelect + a single-file .ics picker (OdsFileUpload with
+                  Multiple=false / ShowKinds=false).
+      • result  — the IcsImportResult summary. Imported / updated show as plain counts; the SKIPPED list
+                  is grouped by reason, each group expandable to its event titles (server caps samples at
+                  100). A regenerate-future warning shows when AnySeriesRegenerated is true. An
+                  OdsLiveAnnouncer announces the summary; focus moves to the result heading.
+*@
+
+@inject ICalendarApiClient CalendarApi
+@inject Odyssey.Client.Services.IImportLimitsCache ImportLimits
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="upload_file"
+          Title="@TitleContent" Subtitle="@(_result is null ? SubtitleContent : null)" Class="cal-imp-dialog">
+    <ChildContent>
+        <OdsLiveAnnouncer Message="@_announce" />
+
+        @if (_result is null)
+        {
+            <div class="cal-imp-form">
+                <OdsSelect Label="Import into" Value="@_calendarValue" ValueChanged="OnCalendarSelected"
+                           Options="_calendarOptions" Placeholder="Choose a calendar…" Error="@_calendarError" />
+
+                <OdsFieldShell Label="Calendar file" Error="@_fileError">
+                    <OdsFileUpload Files="_files" FilesChanged="OnFilesChanged"
+                                   Multiple="false" ShowKinds="false" Compact="true"
+                                   Accept=".ics,text/calendar"
+                                   Hint="@($"iCalendar (.ics) · one file · up to {_maxImportMb} MB")" />
+                </OdsFieldShell>
+
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>Re-importing a file already imported here updates matching events in place instead of duplicating them, matched by their calendar UID.</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="cal-imp-result">
+                <h3 class="cal-imp-result-h" tabindex="-1" @ref="_resultHeading">
+                    Imported into
+                    <span class="cal-imp-result-cal">
+                        <span class="cal-imp-dot" style="@($"background:{_targetColor}")" aria-hidden="true"></span>@_targetName
+                    </span>
+                </h3>
+
+                <div class="cal-imp-stats">
+                    <div class="cal-imp-stat ok">
+                        <span class="material-icons" aria-hidden="true">event_available</span>
+                        <div class="cal-imp-stat-body">
+                            <span class="cal-imp-stat-n">@_result.ImportedCount</span>
+                            <span class="cal-imp-stat-l">imported</span>
+                        </div>
+                    </div>
+                    <div class="cal-imp-stat upd">
+                        <span class="material-icons" aria-hidden="true">sync</span>
+                        <div class="cal-imp-stat-body">
+                            <span class="cal-imp-stat-n">@_result.UpdatedCount</span>
+                            <span class="cal-imp-stat-l">updated</span>
+                        </div>
+                    </div>
+                    <div class="@($"cal-imp-stat{(SkippedTotal > 0 ? " skip" : "")}")">
+                        <span class="material-icons" aria-hidden="true">@(SkippedTotal > 0 ? "event_busy" : "check_circle")</span>
+                        <div class="cal-imp-stat-body">
+                            <span class="cal-imp-stat-n">@SkippedTotal</span>
+                            <span class="cal-imp-stat-l">skipped</span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (_result.AnySeriesRegenerated)
+                {
+                    <OdsAlert Severity="Severity.Warning">
+                        Updating a recurring series replaced its future occurrences; any individual edits to those were discarded. This matches editing a series through the calendar page.
+                    </OdsAlert>
+                }
+
+                @if (SkippedTotal > 0)
+                {
+                    <div class="cal-imp-skips">
+                        <div class="cal-imp-skips-head">Skipped events, by reason</div>
+                        @foreach (var group in _result.Skipped)
+                        {
+                            var open = _openReasons.Contains(group.Reason);
+                            <div class="@($"cal-imp-skip{(open ? " open" : "")}")">
+                                <button type="button" class="cal-imp-skip-head" aria-expanded="@(open ? "true" : "false")" @onclick="@(() => ToggleReason(group.Reason))">
+                                    <span class="material-icons cal-imp-skip-chev" aria-hidden="true">chevron_right</span>
+                                    <span class="cal-imp-skip-reason">@group.Reason</span>
+                                    <span class="cal-imp-skip-count">@group.Count</span>
+                                </button>
+                                @if (open)
+                                {
+                                    <ul class="cal-imp-skip-list">
+                                        @foreach (var title in group.SampleTitles)
+                                        {
+                                            <li class="cal-imp-skip-item">
+                                                <span class="material-icons" aria-hidden="true">event_busy</span>
+                                                <span>@(string.IsNullOrWhiteSpace(title) ? "Untitled event" : title)</span>
+                                            </li>
+                                        }
+                                        @if (group.Count > group.SampleTitles.Count)
+                                        {
+                                            <li class="cal-imp-skip-more">+@(group.Count - group.SampleTitles.Count) more</li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="cal-imp-clean">
+                        <span class="material-icons" aria-hidden="true">task_alt</span>Every event in the file imported cleanly.
+                    </div>
+                }
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <div class="cal-imp-footer">
+            @if (_result is null)
+            {
+                <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+                <span class="cal-imp-footer-spacer"></span>
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="upload_file" Loading="_isImporting" OnClick="SubmitAsync">Import</OdsButton>
+            }
+            else
+            {
+                <OdsButton Variant="OdsButtonVariant.Text" Icon="restart_alt" OnClick="Reset">Import another file</OdsButton>
+                <span class="cal-imp-footer-spacer"></span>
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" OnClick="CloseAsync">Done</OdsButton>
+            }
+        </div>
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleContent => @<text>Import calendar</text>;
+
+    private RenderFragment SubtitleContent => @<text>Add events from an .ics (iCalendar) file into one of your calendars. Recurring series import as a repeating event where the rule maps cleanly; anything else is skipped with a reason.</text>;
+}

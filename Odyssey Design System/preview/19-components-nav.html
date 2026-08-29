@@ -1,0 +1,125 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Drawer / NavMenu" subtitle="Full nav incl. admin section (Users · Roles · Settings); active + hover states" viewport="700x560" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Components · Drawer / NavMenu</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="_card.css">
+</head>
+<body>
+  <style>
+    body { padding: 0; }
+    .nav {
+      width: 260px;
+      background: var(--mud-palette-drawer-background);
+      border-right: 1px solid var(--mud-palette-divider);
+      padding: 12px 8px;
+      min-height: 520px;
+      display: flex; flex-direction: column;
+    }
+    .nav-brand {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 10px; padding: 18px 8px 22px;
+    }
+    .nav-wordmark {
+      font: 500 13px/1 var(--font-sans);
+      letter-spacing: 0.32em;
+      color: #00F5D4;
+    }
+    .label-mode {
+      font: 500 11px/1 var(--font-sans); letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--mud-palette-text-secondary);
+      padding: 0 12px 10px;
+    }
+    .link {
+      display: flex; align-items: center; gap: 14px;
+      padding: 10px 12px;
+      border-radius: 4px;
+      font: 400 14px/1 var(--font-sans);
+      color: var(--mud-palette-text-primary);
+      margin-bottom: 2px;
+    }
+    .link .material-icons,
+    .link svg { font-size: 20px; color: var(--mud-palette-text-secondary); flex: 0 0 20px; }
+    .link.hover { background: var(--mud-palette-action-default-hover); }
+    .link.active {
+      background: rgba(79, 215, 203, 0.12);
+      color: var(--tide-400);
+    }
+    .link.active .material-icons,
+    .link.active svg { color: var(--tide-400); }
+    .divider { height: 1px; background: var(--mud-palette-divider); margin: 10px 12px; }
+    .nav-foot { margin-top: auto; padding: 12px 8px 4px; display: flex; justify-content: flex-end; }
+    .nav-foot .icon-btn {
+      width: 36px; height: 36px; border-radius: 999px;
+      background: transparent; border: none;
+      display: inline-grid; place-items: center;
+      color: var(--mud-palette-text-secondary);
+      cursor: pointer;
+    }
+
+    .wrap { display: grid; grid-template-columns: 260px 1fr; min-height: 520px; }
+    .right { padding: 18px; color: var(--mud-palette-text-secondary); font: 400 12px/1.5 var(--font-sans); }
+    .right h6 { margin: 0 0 6px; color: var(--mud-palette-text-primary); font: 500 14px/1 var(--font-sans); letter-spacing: 0.02em; }
+    .right p { margin: 0 0 8px; }
+  </style>
+  <div class="wrap">
+    <nav class="nav">
+      <div class="nav-brand">
+        <svg viewBox="0 0 200 210" width="56" height="59" aria-hidden="true">
+          <circle cx="100" cy="105" r="90" fill="none" stroke="#006B5A" stroke-width="4.5"/>
+          <circle cx="100" cy="105" r="66" fill="none" stroke="#006B5A" stroke-width="1" stroke-dasharray="4 3"/>
+          <line x1="100" y1="19"  x2="100" y2="30"  stroke="#006B5A" stroke-width="2.5"/>
+          <line x1="100" y1="180" x2="100" y2="191" stroke="#006B5A" stroke-width="2.5"/>
+          <line x1="14"  y1="105" x2="25"  y2="105" stroke="#006B5A" stroke-width="2.5"/>
+          <line x1="175" y1="105" x2="186" y2="105" stroke="#006B5A" stroke-width="2.5"/>
+          <line x1="37"  y1="42"  x2="44"  y2="49"  stroke="#006B5A" stroke-width="1.5"/>
+          <line x1="163" y1="42"  x2="156" y2="49"  stroke="#006B5A" stroke-width="1.5"/>
+          <line x1="37"  y1="168" x2="44"  y2="161" stroke="#006B5A" stroke-width="1.5"/>
+          <line x1="163" y1="168" x2="156" y2="161" stroke="#006B5A" stroke-width="1.5"/>
+          <polygon points="100,28  94,105 100,86  106,105" fill="#00F5D4"/>
+          <polygon points="100,105 94,105 100,86  106,105" fill="#006B5A"/>
+          <polygon points="100,182 94,105 100,124 106,105" fill="#707070"/>
+          <polygon points="100,105 94,105 100,124 106,105" fill="#404040"/>
+          <polygon points="182,105 100,99 119,105 100,111" fill="#707070"/>
+          <polygon points="100,105 100,99 119,105 100,111" fill="#404040"/>
+          <polygon points="18,105  100,99 81,105  100,111" fill="#707070"/>
+          <polygon points="100,105 100,99 81,105  100,111" fill="#404040"/>
+          <circle cx="100" cy="105" r="8" fill="none" stroke="#006B5A" stroke-width="2"/>
+          <circle cx="100" cy="105" r="3.5" fill="#00F5D4"/>
+        </svg>
+        <div class="nav-wordmark">ODYSSEY</div>
+      </div>
+      <div class="link"><span class="material-icons">space_dashboard</span>Dashboard</div>
+      <div class="link active"><span class="material-icons">account_balance_wallet</span>Accounts</div>
+      <div class="link"><span class="material-icons">pie_chart</span>Budgets</div>
+      <div class="link hover"><span class="material-icons">receipt_long</span>Transactions</div>
+      <div class="link"><span class="material-icons">folder</span>Files</div>
+      <div class="link"><span class="material-icons">local_offer</span>Transaction Tags</div>
+      <div class="link"><span class="material-icons">store</span>Contacts</div>
+      <div class="link"><span class="material-icons">attach_money</span>Currencies</div>
+      <div class="link"><span class="material-icons">currency_exchange</span>Exchange rates</div>
+      <div class="divider"></div>
+      <div class="link"><span class="material-icons">manage_accounts</span>Users</div>
+      <div class="link"><span class="material-icons">badge</span>Roles</div>
+      <div class="link"><span class="material-icons">settings</span>Settings</div>
+      <div class="divider"></div>
+      <div class="link"><span class="material-icons">tune</span>Preferences</div>
+      <div class="link"><span class="material-icons">account_circle</span>User Account</div>
+      <div class="link">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.57.1.78-.25.78-.55v-2.05c-3.19.7-3.86-1.36-3.86-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.35.96.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.27-5.23-5.66 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17a10.94 10.94 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.4-2.69 5.37-5.25 5.65.41.35.78 1.05.78 2.13v3.16c0 .31.21.66.79.55C20.21 21.4 23.5 17.09 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+        About
+      </div>
+      <div class="nav-foot">
+        <button class="icon-btn" aria-label="Toggle theme"><span class="material-icons">light_mode</span></button>
+      </div>
+    </nav>
+    <div class="right">
+      <h6>Drawer · MudDrawer · ClipMode.Always · Elevation 1</h6>
+      <p>Drawer is the only chrome — the AppBar was removed. The brand lockup (compass + ODYSSEY in tide-glow) sits at the top, sized like the login card; account actions live in the footer below Preferences. Signing out isn't a nav row — it's the primary action in the User Account page header.</p>
+      <p>Labels lifted verbatim from <span class="mono">NavMenu.razor</span>; User Account + About were promoted from the appbar / external link.</p>
+      <p>The <b style="color:var(--mud-palette-text-primary)">admin section</b> (Users · Roles · Settings) is fenced by dividers and only renders for users with the <span class="mono">users.read</span> claim. Active row uses <span class="mono">--tide-400</span> on a 12% tint. Hover row uses a 6% white wash.</p>
+      <p>Icons are Material Filled at 20 px; the About row uses the GitHub brand SVG to match <span class="mono">Icons.Custom.Brands.GitHub</span>.</p>
+      <p>The bottom-right icon button is the kit-level theme toggle — not a product nav item.</p>
+    </div>
+  </div>
+</body></html>

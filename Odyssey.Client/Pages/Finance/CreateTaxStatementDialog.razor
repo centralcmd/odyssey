@@ -1,0 +1,122 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Theme
+@using Odyssey.Dtos.Finance
+
+
+@inject ISnackbar Snackbar
+@inject IUserPreferenceService UserPreferences
+@inject IReferenceDataCache ReferenceData
+@inject ITaxStatementsApiClient TaxStatements
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="request_quote" Title="@(IsEdit ? "Edit tax statement" : "New tax statement")"
+               Subtitle="@(IsEdit
+                   ? "Update the fiscal year, declared figures, derivation tags and lifecycle dates."
+                   : "Record a fiscal year's official assessment, then reconcile it against your accounts and tagged transactions.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create statement")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    <MudTextField @bind-Value="_name"
+                  Label="Statement name"
+                  Placeholder="e.g. Tax year 2025"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Error="@_nameError"
+                  ErrorText="Give the statement a name."
+                  Immediate="true" />
+
+    <OdsFormRow>
+        <OdsNumberField Value="@((decimal?)_fiscalYear)" ValueChanged="OnYearChanged"
+                        Label="Fiscal year"
+                        Min="1900" Max="2200"
+                        Help="The income year." />
+        <MudAutocomplete T="string"
+                         Label="Base currency"
+                         Variant="Variant.Outlined"
+                         Margin="Margin.Dense"
+                         Value="@_baseCurrencyCode"
+                         ValueChanged="@(v => _baseCurrencyCode = v)"
+                         SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
+                         MinCharacters="0" MaxItems="10" Dense="true"
+                         CoerceValue="true" CoerceText="false" ResetValueOnEmptyText="false"
+                         HelperText="Derived sums include only this currency."
+                         ToStringFunc="@(c => c ?? string.Empty)" />
+    </OdsFormRow>
+
+    <OdsFormRow>
+        <OdsDatePicker @bind-Value="_startDate" Label="Period start" />
+        <OdsDatePicker @bind-Value="_endDate" Label="Period end"
+                       Error="@_dateError" ErrorText="End date can't be before the start date."
+                       HelperText="Defaults to the calendar year." />
+    </OdsFormRow>
+
+    @if (IsEdit)
+    {
+        <div class="tx-section-h" style="margin-top:6px;">
+            <span class="material-icons">receipt_long</span>Declared figures
+            <span class="tx-section-cap">From the official statement — all optional</span>
+        </div>
+        <OdsFormRow>
+            <OdsNumberField @bind-Value="_totalAssets" Label="Total assets" />
+            <OdsNumberField @bind-Value="_totalLiabilities" Label="Total liabilities" />
+        </OdsFormRow>
+        <OdsFormRow>
+            <OdsNumberField @bind-Value="_netWorth" Label="Net worth"
+                            Help="Stated directly — may differ from assets − liabilities." />
+            <OdsNumberField @bind-Value="_totalIncome" Label="Total income" />
+        </OdsFormRow>
+        <OdsFormRow>
+            <OdsNumberField @bind-Value="_assessedTax" Label="Assessed tax" />
+            <OdsNumberField @bind-Value="_settlementAmount" Label="Settlement amount"
+                            Help="Positive = additional tax owed · negative = refund." />
+        </OdsFormRow>
+        <OdsFormRow>
+            <OdsDatePicker @bind-Value="_settledAtUtc" Label="Settlement paid" Clearable="true" />
+            <OdsDatePicker @bind-Value="_filedAtUtc" Label="Filed to authority" Clearable="true" />
+        </OdsFormRow>
+        <OdsDatePicker @bind-Value="_taxOfficeApprovedAtUtc" Label="Authority approved" Clearable="true" />
+
+        <MudTextField @bind-Value="_notes"
+                      Label="Notes"
+                      Placeholder="Anything worth remembering about this statement…"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Lines="3"
+                      Class="odc-field-multiline"
+                      FullWidth="true" />
+
+        <div class="tx-section-h" style="margin-top:6px;">
+            <span class="material-icons">local_offer</span>Derivation tags
+            <span class="tx-section-cap">Which transaction tags feed the derived figures</span>
+        </div>
+        <OdsFormRow>
+            <OdsFieldShell Label="Tax-payment tags" HtmlFor="tax-statement-tax-tags"
+                           Help="Sum into derived advance tax paid (within the year).">
+                <OdsMultiSelect Id="tax-statement-tax-tags" DescribedBy="tax-statement-tax-tags-help"
+                                Label="Select tags…" Values="_taxTags" ValuesChanged="@(v => _taxTags = v)" Options="_tagOptions" />
+            </OdsFieldShell>
+            <OdsFieldShell Label="Income tags" HtmlFor="tax-statement-income-tags"
+                           Help="Sum into derived actual income.">
+                <OdsMultiSelect Id="tax-statement-income-tags" DescribedBy="tax-statement-income-tags-help"
+                                Label="Select tags…" Values="_incomeTags" ValuesChanged="@(v => _incomeTags = v)" Options="_tagOptions" />
+            </OdsFieldShell>
+        </OdsFormRow>
+    }
+    else
+    {
+        @* Optional declared figures — collapsed to keep the create path light. *@
+        <OdsCollapsible Icon="receipt_long" Flush="true">
+            <Title>Declared figures</Title>
+            <Count>Optional</Count>
+            <ChildContent>
+                <OdsFormRow>
+                    <OdsNumberField @bind-Value="_totalIncome" Label="Total income" />
+                    <OdsNumberField @bind-Value="_assessedTax" Label="Assessed tax" />
+                </OdsFormRow>
+                <OdsNumberField @bind-Value="_netWorth" Label="Net worth"
+                                Help="Stated on the assessment — may differ from assets − liabilities." />
+            </ChildContent>
+        </OdsCollapsible>
+    }
+</OdsFormDialog>

@@ -1,0 +1,48 @@
+@*
+    Shared Person / Organization field set for the contact create + edit surfaces
+    (Odyssey Design System · Contacts PersonFields / OrgFields, issue #325 v5).
+    Two-way binds a ContactDraft; the host owns the Type discriminator.
+*@
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Finance
+
+@if (Draft.Type == ContactType.Person)
+{
+    <OdsFormRow>
+        <OdsField Label="First name" @bind-Value="Draft.FirstName" Required="true"
+                  Error="@(FieldErrors.GetValueOrDefault("firstName"))" MaxLength="128" />
+        <OdsField Label="Last name" @bind-Value="Draft.LastName" Required="true"
+                  Error="@(FieldErrors.GetValueOrDefault("lastName"))" MaxLength="128" />
+    </OdsFormRow>
+    <OdsFormRow>
+        <OdsDatePicker Label="Date of birth" @bind-Value="Draft.DateOfBirth" Max="DateTime.Today"
+                       HelperText="Optional · cannot be in the future" />
+        <OdsSelect Label="Sex" Value="@Draft.Sex" ValueChanged="@(v => Draft.Sex = v)"
+                   Options="OdsTypeRegistries.SexOptions" Placeholder="Unspecified" Optional="true" Help="Optional" />
+    </OdsFormRow>
+    <OdsField Label="Job title" @bind-Value="Draft.Title" Placeholder="e.g. Senior Engineer" Help="Optional" MaxLength="128" />
+    <OdsField Label="Company" @bind-Value="Draft.Company" Placeholder="Employer name (optional)"
+              Help="A free-text note — not linked to another contact" MaxLength="256" />
+}
+else
+{
+    <OdsField Label="Legal name" @bind-Value="Draft.LegalName" Required="true"
+              Error="@(FieldErrors.GetValueOrDefault("legalName"))"
+              Placeholder="e.g. Lakeside Property Management LLC" MaxLength="256" />
+    <OdsFormRow>
+        <OdsField Label="Organization number" @bind-Value="Draft.OrganizationNumber" Placeholder="Optional" MaxLength="64" />
+        <OdsField Label="Website" @bind-Value="Draft.Website" Error="@(FieldErrors.GetValueOrDefault("website"))"
+                  Placeholder="https://example.com" Help="http/https only" MaxLength="2048" />
+    </OdsFormRow>
+}
+<OdsField Label="Display name" @bind-Value="Draft.DisplayName" Placeholder="Optional override"
+          Help="@DisplayNameHint" MaxLength="128" />
+
+@code {
+    [Parameter, EditorRequired] public ContactDraft Draft { get; set; } = default!;
+    [Parameter] public IReadOnlyDictionary<string, string> FieldErrors { get; set; } = new Dictionary<string, string>();
+
+    private string DisplayNameHint => Draft.Type == ContactType.Person
+        ? "Defaults to \"First Last\" if left blank"
+        : "Defaults to the legal name if left blank";
+}

@@ -1,0 +1,253 @@
+@*
+    OdsFilesTable — the attachments surface (Odyssey Design System · components/FilesTable).
+
+    THE files table shared by the flat Files page, the Accounts detail and the
+    Transactions detail/edit panels. A PRESET of OdsRecordTable: it inherits the
+    full record-row lifecycle (sortable headers, click-to-expand detail, inline
+    Edit panel, Saved flash, overflow menu) and only fixes the file-specific
+    parts — the columns, the read-only detail grid and the edit panel.
+
+    Columns: kind avatar · Name · Type · Size · Uploaded (default sort, newest
+    first) · actions. `TypeFor` resolves each row's kind visuals (icon + color +
+    soft tint) so a kind reads the same here as in the upload picker; unknown
+    kinds fall back to the neutral document glyph.
+
+    Row lifecycle (see the RecordTable anatomy card):
+      • click a row (or "View details") → the read-only MetaTile detail
+        (File name · Document type · Size · Uploaded). Override with RenderDetail.
+      • "Edit" (menu) → the inline edit panel for a file's mutable fields. The
+        default panel edits name + document type (Kinds feeds the picker) and
+        commits an OdsFileEdit patch through OnSave; supply RenderEdit for a
+        different field set (e.g. the flat Files page's name + description). Edit
+        only appears when OnSave has a handler.
+      • Actions(file) supplies the file-specific menu items — Preview (the
+        document viewer) / Download / Analyze / Copy ID — slotted between Edit and
+        Delete per the menu convention. "Preview" opens the document; "View
+        details" expands the record. Host any modals those open OUTSIDE the table.
+      • OnDelete appends the danger Delete item after a divider.
+*@
+
+<OdsRecordTable TRow="OdsFilesRow"
+                Rows="@Files"
+                RowKey="@(f => (object)f.Id)"
+                Columns="@_columns"
+                DefaultSort="@(DefaultSort ?? DefaultUploadedSort)"
+                Sort="@Sort"
+                SortChanged="@SortChanged"
+                ServerSort="@ServerSort"
+                Class="@Class"
+                AriaLabel="@(AriaLabel ?? "Files")"
+                Actions="BuildActions"
+                RenderEdit="@EditRenderer"
+                OnSave="OnSave"
+                OnDelete="HandleDelete"
+                Loading="@Loading"
+                Refetching="@Refetching"
+                Error="@Error"
+                OnRetry="@OnRetry"
+                ErrorDescription="@ErrorDescription"
+                HasFilters="@HasFilters"
+                OnClearFilters="@OnClearFilters"
+                Noun="@Noun"
+                EmptyIcon="@EmptyIcon"
+                EmptyTitle="@EmptyTitle"
+                EmptyDescription="@EmptyDescription"
+                CreateAction="@CreateAction"
+                BarClass="@BarClass"
+                Empty="@Empty">
+    <Leading Context="file">
+        @{ var kind = ResolveKind(file); }
+        <span class="odc-ft-kind" style="background:@kind.Soft;color:@kind.Color;">
+            <span class="material-icons" aria-hidden="true">@kind.Icon</span>
+        </span>
+    </Leading>
+    <RenderDetail Context="file">
+        @if (RenderDetail is not null)
+        {
+            @RenderDetail(file)
+        }
+        else
+        {
+            <div class="odc-meta-grid">
+                <OdsMetaTile>
+                    <Label>File name</Label>
+                    <ChildContent>@file.Name</ChildContent>
+                </OdsMetaTile>
+                <OdsMetaTile>
+                    <Label>Document type</Label>
+                    <ChildContent>@TypeChip(file)</ChildContent>
+                </OdsMetaTile>
+                <OdsMetaTile Mono="true">
+                    <Label>Size</Label>
+                    <ChildContent>@SizeText(file)</ChildContent>
+                </OdsMetaTile>
+                <OdsMetaTile>
+                    <Label>Uploaded</Label>
+                    <ChildContent>@DateText(file.UploadedAtUtc)</ChildContent>
+                </OdsMetaTile>
+            </div>
+            @if (HasValidity(file))
+            {
+                <div class="odc-meta-grid mt-3">
+                    <OdsMetaTile>
+                        <Label>Valid from</Label>
+                        <ChildContent>@OptionalDate(file.ValidFrom)</ChildContent>
+                    </OdsMetaTile>
+                    <OdsMetaTile>
+                        <Label>Valid to</Label>
+                        <ChildContent>@OptionalDate(file.ValidTo)</ChildContent>
+                    </OdsMetaTile>
+                    <OdsMetaTile>
+                        <Label>Issued</Label>
+                        <ChildContent>@OptionalDate(file.IssuedAt)</ChildContent>
+                    </OdsMetaTile>
+                    <OdsMetaTile>
+                        <Label>Issued by</Label>
+                        <ChildContent>@(IssuerName(file) ?? "—")</ChildContent>
+                    </OdsMetaTile>
+                </div>
+            }
+        }
+    </RenderDetail>
+</OdsRecordTable>
+
+@code {
+    private RenderFragment TypeChip(OdsFilesRow file)
+    {
+        var kind = ResolveKind(file);
+        return @<span class="odc-ft-type" style="background:@kind.Soft;color:@kind.Color;">@file.Kind</span>;
+    }
+
+    private List<OdsRecordColumn<OdsFilesRow>> BuildColumns() =>
+    [
+        new()
+        {
+            Key = "name", HeaderText = "Name", Sortable = true,
+            SortValue = f => f.Name.ToLowerInvariant(),
+            Cell = (file, ctx) =>
+                @<span class="odc-ft-name-cell">
+                    <span class="odc-ft-name-text">
+                        <span class="odc-ft-name" title="@file.Name">@file.Name</span>
+                        @if (!string.IsNullOrWhiteSpace(file.Description))
+                        {
+                            <span class="odc-ft-desc" title="@file.Description">@file.Description</span>
+                        }
+                    </span>
+                    @if (ctx.JustSaved)
+                    {
+                        <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip>
+                    }
+                    @if (file.StatusBadge is { } badge)
+                    {
+                        <OdsChip Tone="badge.Tone" Icon="@badge.Icon" Dot="@(string.IsNullOrEmpty(badge.Icon))">
+                            @* The accessible name (file + count) is carried in a visually-hidden text node, not an
+                               aria-label on the visible span: a span's implicit role is `generic`, which prohibits
+                               aria-label, so screen readers would otherwise hear only the short visible text. *@
+                            @if (!string.IsNullOrEmpty(badge.AriaLabel))
+                            {
+                                <span class="sr-only">@badge.AriaLabel</span>
+                                <span aria-hidden="true">@badge.Text</span>
+                            }
+                            else
+                            {
+                                @badge.Text
+                            }
+                        </OdsChip>
+                    }
+                </span>,
+        },
+        new()
+        {
+            Key = "kind", HeaderText = "Type", Sortable = true, SortType = OdsSortType.Status,
+            SortValue = f => f.Kind.ToLowerInvariant(),
+            Cell = (file, _) => TypeChip(file),
+        },
+        new()
+        {
+            Key = "size", HeaderText = "Size", Sortable = true, Align = OdsAlign.End, SortType = OdsSortType.Number,
+            CellClass = "odc-rec-muted", SortValue = f => f.SizeBytes,
+            Cell = (file, _) => b => b.AddContent(0, SizeText(file)),
+        },
+        new()
+        {
+            Key = "uploaded", HeaderText = "Uploaded", Sortable = true, Align = OdsAlign.End, SortType = OdsSortType.Date,
+            CellClass = "odc-rec-muted", SortValue = f => f.UploadedAtUtc,
+            Cell = (file, _) => b => b.AddContent(0, DateText(file.UploadedAtUtc)),
+        },
+    ];
+
+    // The DS menu convention: View details / Collapse (hidden while editing), Edit
+    // (when editable), the host's file-specific items, then a divider + Delete.
+    private IReadOnlyList<OdsMenuItem> BuildActions(OdsFilesRow file, OdsRecordActionContext ctx)
+    {
+        var items = new List<OdsMenuItem>();
+
+        if (!ctx.Editing)
+            items.Add(new OdsMenuItem
+            {
+                Icon = ctx.Expanded ? "close" : "expand_more",
+                Label = ctx.Expanded ? "Collapse" : "View details",
+                OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
+            });
+
+        if (EditRenderer is not null)
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit",
+                OnClick = EventCallback.Factory.Create(this, ctx.StartEdit),
+            });
+
+        if (Actions is not null)
+            items.AddRange(Actions(file));
+
+        if (OnDelete.HasDelegate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, ctx.Remove),
+            });
+        }
+
+        return items;
+    }
+
+    // OdsRecordTable raises OnDelete with the row key (the Id string); map it back
+    // to the row so the host works with the same denormalized shape it passed in.
+    private Task HandleDelete(object key)
+    {
+        if (!OnDelete.HasDelegate) return Task.CompletedTask;
+        var row = Files.FirstOrDefault(f => f.Id.Equals(key));
+        return row is null ? Task.CompletedTask : OnDelete.InvokeAsync(row);
+    }
+
+    // Default inline edit: name + document type — a file's only mutable fields
+    // (bytes are immutable; you replace a file by re-uploading). Commits an
+    // OdsFileEdit patch through the table's edit ctx.Save.
+    private RenderFragment DefaultEdit(OdsFilesRow file, OdsRecordEditContext ctx) =>
+        @<OdsFilesEditPanel File="file"
+                            Kinds="@(Kinds ?? OdsTypeRegistries.AccountFileOptions)"
+                            Issuers="Issuers"
+                            OnSave="@(patch => ctx.Save(patch))"
+                            OnCancel="@(() => ctx.Cancel())" />;
+
+    private bool HasValidity(OdsFilesRow file) =>
+        file.ValidFrom is not null || file.ValidTo is not null || file.IssuedAt is not null || file.IssuedBy is not null;
+
+    private string OptionalDate(DateTime? value) =>
+        value is null ? "—" : DateText(value.Value);
+
+    private string? IssuerName(OdsFilesRow file) =>
+        file.IssuedBy is null ? null : (IssuerFor?.Invoke(file) ?? file.IssuedBy.ToString());
+
+    private static string DefaultFormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+}

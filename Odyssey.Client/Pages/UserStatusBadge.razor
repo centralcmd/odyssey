@@ -1,0 +1,32 @@
+@* The two pill badges the /users table and row detail share: email verification state and
+   account state. One component, because they differ only in glyph and wording. *@
+@if (Kind == UserStatusKind.Email)
+{
+    @if (On)
+    {
+        <span class="usr-badge confirmed"><MudIcon Icon="@Icons.Material.Filled.MarkEmailRead" Size="Size.Small" />Confirmed</span>
+    }
+    else
+    {
+        <span class="usr-badge unconfirmed"><MudIcon Icon="@Icons.Material.Filled.MarkEmailUnread" Size="Size.Small" />Unconfirmed</span>
+    }
+}
+else
+{
+    @if (On)
+    {
+        <span class="usr-badge on"><span class="usr-dot"></span>Enabled</span>
+    }
+    else
+    {
+        <span class="usr-badge off"><MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />Disabled</span>
+    }
+}
+
+@code {
+    /// <summary>Which of the two account states this badge reports.</summary>
+    [Parameter] public UserStatusKind Kind { get; set; } = UserStatusKind.Account;
+
+    /// <summary>The state: confirmed (email) / enabled (account).</summary>
+    [Parameter] public bool On { get; set; }
+}

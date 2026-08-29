@@ -1,0 +1,163 @@
+@using System.Globalization
+@*
+    OdsNumberField — a labelled numeric input for plain quantities
+    (Odyssey Design System · components/NumberField).
+
+    For counts, years and declared figures where there's no currency symbol to show
+    (for money use OdsAmountField). Native type="number", so it gets the platform
+    stepper and numeric keyboard. Emits a parsed decimal, or null when cleared.
+    Built on OdsFieldShell for the label / helper / error chrome.
+
+    Controlled: bind via @bind-Value.
+*@
+
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+               Help="@Help" Error="@Error" Class="@Class">
+    @* The unit needs a positioned wrapper to sit inside the input's trailing edge, so it is only
+       introduced when there IS a unit — the ~40 unit-less consumers keep their bare input. *@
+    @if (!string.IsNullOrEmpty(Unit))
+    {
+        <div class="odc-input-wrap">
+            @Input
+            <span class="odc-input-unit" id="@UnitId">@Unit</span>
+        </div>
+    }
+    else
+    {
+        @Input
+    }
+</OdsFieldShell>
+
+@code {
+    private RenderFragment Input => @<input id="@FieldId"
+           class="@($"odc-input {(string.IsNullOrEmpty(Unit) ? "" : "has-unit")}".TrimEnd())"
+           type="number"
+           value="@(Value?.ToString(CultureInfo.InvariantCulture))"
+           placeholder="@Placeholder"
+           min="@Min"
+           max="@Max"
+           step="@Step"
+           disabled="@Disabled"
+           autofocus="@AutoFocus"
+           style="@(Align == "right" ? "text-align:right" : null)"
+           aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
+           aria-describedby="@DescribedBy"
+           aria-labelledby="@AriaLabelledBy"
+           @oninput="OnInput"
+           @attributes="UserAttributes" />;
+    /// <summary>Visible label, rendered above the control.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Numeric value, or null when empty. Bindable via @bind-Value.</summary>
+    [Parameter] public decimal? Value { get; set; }
+
+    [Parameter] public EventCallback<decimal?> ValueChanged { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "—";
+
+    [Parameter] public double? Min { get; set; }
+
+    [Parameter] public double? Max { get; set; }
+
+    [Parameter] public double? Step { get; set; }
+
+    [Parameter] public string? Help { get; set; }
+
+    /// <summary>
+    /// Id of an external element to use as this field's accessible name (e.g. a system-settings row's
+    /// title) instead of <see cref="Label"/>, when the field has no label of its own.
+    /// </summary>
+    [Parameter] public string? AriaLabelledBy { get; set; }
+
+    /// <summary>
+    /// Id of an external description (e.g. a system-settings row's own hint text) — APPENDED to the
+    /// internal help/error id(s) in <c>aria-describedby</c>, never replacing them.
+    /// </summary>
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Optional { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public bool AutoFocus { get; set; }
+
+    /// <summary>"left" (default) or "right" text alignment.</summary>
+    [Parameter] public string Align { get; set; } = "left";
+
+    /// <summary>
+    /// A static unit rendered inside the input's trailing edge (<c>%</c>, <c>MB</c>, <c>days</c>) and
+    /// appended to <c>aria-describedby</c>. Prefer it to <see cref="Help"/> whenever the number is
+    /// meaningless without its unit: the unit stays visible while the helper slot is taken over by an
+    /// error message, which is the whole reason it is not helper text. Not interactive, so it never
+    /// steals the click that should focus the input.
+    ///
+    /// <para>
+    /// A stored 0.0–1.0 fraction is entered as a WHOLE PERCENT: <c>Min="0" Max="100" Step="1"
+    /// Unit="%"</c>, scaled at the page boundary. Never expose the raw fraction with
+    /// <c>Step="0.01"</c> — "0.62" gives the reader no clue it is a proportion, and the two-decimal
+    /// stepper is a fiddly target.
+    /// </para>
+    /// </summary>
+    [Parameter] public string? Unit { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string FieldId = default!;
+
+    protected override void OnInitialized() => FieldId = Id ?? $"odc-num-{Guid.NewGuid():N}";
+
+    private string UnitId => $"{FieldId}-unit";
+
+    // Mirrors OdsFieldShell's Help/Error id split: the plain help node (when present) keeps
+    // "{FieldId}-help"; the error node gets its own id only when a help node also renders,
+    // otherwise it reuses the same id — see OdsFieldShell.ErrorId. An external AriaDescribedBy
+    // (e.g. a settings row's own hint) is appended, never replacing either internal id.
+    private string? DescribedBy
+    {
+        get
+        {
+            var hasHelp = !string.IsNullOrEmpty(Help);
+            var parts = new List<string>(4);
+            if (!string.IsNullOrEmpty(AriaDescribedBy))
+            {
+                parts.Add(AriaDescribedBy);
+            }
+
+            // The unit is announced too — it is part of what the number means, not decoration.
+            if (!string.IsNullOrEmpty(Unit))
+            {
+                parts.Add(UnitId);
+            }
+
+            if (hasHelp)
+            {
+                parts.Add($"{FieldId}-help");
+            }
+
+            if (!string.IsNullOrEmpty(Error))
+            {
+                parts.Add(hasHelp ? $"{FieldId}-help-error" : $"{FieldId}-help");
+            }
+
+            return parts.Count == 0 ? null : string.Join(' ', parts);
+        }
+    }
+
+    private Task OnInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString();
+        Value = string.IsNullOrEmpty(raw) || !decimal.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            ? null
+            : parsed;
+        return ValueChanged.InvokeAsync(Value);
+    }
+}

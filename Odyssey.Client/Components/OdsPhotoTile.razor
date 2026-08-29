@@ -1,0 +1,77 @@
+@*
+    OdsPhotoTile — a single square photo tile for the library grid + album detail
+    (Odyssey Design System · Photos · library layout, "Uniform grid"). Extends the
+    Journal gallery tile: it carries the photo Title as caption + alt text, an
+    "Archived" marker rendered as TEXT (not colour alone, WCAG 1.4.1), and hover
+    heart (favourite) + check (select) affordances. All meaning is in text/labels;
+    the icons are aria-hidden.
+*@
+
+<div class="pl-tile @(Selected ? "is-selected" : null)"
+     style="border-radius: var(--radius-md);">
+    @if (!string.IsNullOrEmpty(Photo.Src))
+    {
+        <img class="pl-tile-img" style="object-fit: cover;" src="@Photo.Src" alt="" loading="lazy" />
+    }
+    else
+    {
+        <div class="pl-tile-img" aria-hidden="true"
+             style="background: var(--mud-palette-surface); display:flex; align-items:center; justify-content:center;">
+            <span class="material-icons" style="color: var(--mud-palette-text-disabled); font-size: 34px;">image</span>
+        </div>
+    }
+    <div class="pl-tile-scrim" aria-hidden="true"></div>
+    @* Full-tile hit target as a real button: keyboard-operable (Enter/Space) and a sibling of the
+       check/heart controls, so there's no nested-interactive (WCAG 2.1.1 / 4.1.2). *@
+    <button type="button" class="pl-tile-hit" aria-label="@HitLabel" @onclick="OnTileClick"></button>
+    <span class="pl-tile-cap">@Photo.Label</span>
+    @if (Photo.Archived)
+    {
+        <span class="pl-tile-arch">Archived</span>
+    }
+    <button type="button" class="pl-check @(Selected ? "on" : null)"
+            aria-label="@(Selected ? "Deselect photo" : "Select photo")"
+            @onclick="OnCheckClick" @onclick:stopPropagation="true">
+        <span class="material-icons" aria-hidden="true">check</span>
+    </button>
+    <button type="button" class="pl-heart @(Photo.Favourite ? "on" : null)"
+            aria-label="@(Photo.Favourite ? "Remove from favourites" : "Add to favourites")"
+            aria-pressed="@(Photo.Favourite ? "true" : "false")"
+            @onclick="OnHeartClick" @onclick:stopPropagation="true">
+        <span class="material-icons" aria-hidden="true">@(Photo.Favourite ? "favorite" : "favorite_border")</span>
+    </button>
+</div>
+
+@code {
+    /// <summary>The tile's view model: id, image URL, display label (title → filename fallback), and state.</summary>
+    public sealed record Vm(Guid Id, string? Src, string Label, bool Archived, bool Favourite);
+
+    [Parameter, EditorRequired] public Vm Photo { get; set; } = default!;
+
+    /// <summary>When true, clicking the tile toggles selection instead of opening it.</summary>
+    [Parameter] public bool Selectable { get; set; }
+
+    [Parameter] public bool Selected { get; set; }
+
+    [Parameter] public EventCallback<Guid> OnOpen { get; set; }
+
+    [Parameter] public EventCallback<Guid> OnToggleSelect { get; set; }
+
+    /// <summary>Enter selection mode seeded with this photo (the check button when not already selecting).</summary>
+    [Parameter] public EventCallback<Guid> OnStartSelect { get; set; }
+
+    [Parameter] public EventCallback<Guid> OnToggleFavourite { get; set; }
+
+    // Accessible name for the full-tile hit button — reflects what a click does in the current mode.
+    private string HitLabel => Selectable
+        ? (Selected ? $"Deselect {Photo.Label}" : $"Select {Photo.Label}")
+        : $"Open {Photo.Label}";
+
+    private Task OnTileClick() =>
+        Selectable ? OnToggleSelect.InvokeAsync(Photo.Id) : OnOpen.InvokeAsync(Photo.Id);
+
+    private Task OnCheckClick() =>
+        Selectable ? OnToggleSelect.InvokeAsync(Photo.Id) : OnStartSelect.InvokeAsync(Photo.Id);
+
+    private Task OnHeartClick() => OnToggleFavourite.InvokeAsync(Photo.Id);
+}

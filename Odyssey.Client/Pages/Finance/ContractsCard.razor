@@ -1,0 +1,221 @@
+@page "/contracts"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.ContractsRead)]
+@inject IContractsApiClient Contracts
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IScrollManager ScrollManager
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IReferenceDataCache ReferenceData
+@inject IInsuranceApiClient Insurance
+@inject IAccountsApiClient Accounts
+
+<PageTitle>Contracts</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+
+<div class="con-shell">
+<MudStack Spacing="4">
+
+    <PageHeader Title="Contracts"
+                Icon="@Icons.Material.Filled.Handshake"
+                Problems="HeaderProblems"
+                ProblemsLabel="Ending soon"
+                ProblemsOpen="_problemsOpen" ProblemsOpenChanged="OnProblemsToggled"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New contract"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>
+            @ActiveCount contract@(ActiveCount == 1 ? "" : "s") on file
+        </SubLine>
+
+        <OverviewContent>
+            @if (_summary is not null)
+            {
+                <ContractsSummaryView Summary="_summary" />
+            }
+        </OverviewContent>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadContracts"
+                                Placeholder="Search name, party, description…"
+                                Class="ph-search" />
+                <OdsMultiSelect Label="Any type" Icon="handshake" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged"
+                                Options="OdsTypeRegistries.ContractOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Any status" Icon="event_available" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="ContractListItem" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Contracts per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="ContractListItem" Items="_contracts" BatchSize="_batch"
+                         ItemKey="@(c => (object)c.ContractId)" Noun="contracts" RevealKey="_flashId"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadContracts"
+                         HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                         EmptyIcon="handshake"
+                         EmptyDescription="Add a contract to record its type and active period, link the parties it relates to, and keep every signed document in one place.">
+            <RenderItem Context="c">
+                @{
+                    var isExpanded = IsExpanded(c.ContractId);
+                    var archived = c.Archived is not null;
+                    var typeInfo = OdsTypeRegistries.ContractTypeOf(c.Type);
+                    var headline = Headline(c);
+                    var detail = _details.GetValueOrDefault(c.ContractId);
+                }
+                <OdsExpandableCard Id="@($"con-{c.ContractId}")"
+                                   Open="isExpanded"
+                                   Dimmed="archived"
+                                   Flash="@(_flashId == c.ContractId)"
+                                   Label="@c.Name"
+                                   OnToggle="@(() => ToggleExpand(c.ContractId))">
+
+                    <Lead>
+                        <div class="acct-badge" style="background:@typeInfo.Soft;color:@typeInfo.Color;">
+                            <span class="material-icons" aria-hidden="true">@typeInfo.Icon</span>
+                        </div>
+                    </Lead>
+
+                    <Head>
+                        <div class="acct-name-row">
+                            <span class="acct-name">@c.Name</span>
+                            <OdsContractStatusChip Status="c.Status" Compact="true" />
+                        </div>
+                        <div class="acct-tags">
+                            <span>@typeInfo.Label</span>
+                            <span class="acct-dot">·</span>
+                            <span class="con-sub-inst"><span class="material-icons" aria-hidden="true">account_balance</span>@(string.IsNullOrWhiteSpace(c.InstitutionName) ? "No institution" : c.InstitutionName)</span>
+                            <span class="acct-dot">·</span>
+                            <span class="acct-counts">
+                                <span><span class="material-icons" aria-hidden="true">diversity_3</span>@c.PartyCount</span>
+                                <span><span class="material-icons" aria-hidden="true">description</span>@c.FileCount</span>
+                            </span>
+                        </div>
+                    </Head>
+
+                    <Figures>
+                        <div class="con-headline @(headline.HasValue ? "" : "none")">@headline.Value</div>
+                        <div class="con-headline-word @headline.Cls">@headline.Word</div>
+                    </Figures>
+
+                    <Actions>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                 Size="Size.Small" Color="Color.Default"
+                                 AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                            @if (_canUpdate)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(c))">Edit contract</MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.GroupAdd" OnClick="@(() => AddParty(c.ContractId))">Add party</MudMenuItem>
+                            }
+                            @if (_canUploadFiles)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="@(() => AttachDocument(c.ContractId))">Upload document</MudMenuItem>
+                            }
+                            <MudMenuItem OnClick="@(() => CopyId(c.ContractId))">
+                                <span class="odc-menu-item">
+                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
+                                    <span>Copy ID</span>
+                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
+                                </span>
+                            </MudMenuItem>
+                            @if (_canUpdate)
+                            {
+                                <MudDivider />
+                                <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Inventory2)" OnClick="@(() => ToggleArchive(c))">
+                                    @(archived ? "Restore" : "Archive")
+                                </MudMenuItem>
+                            }
+                            @if (_canDelete)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                             Style="color:var(--mud-palette-error);"
+                                             OnClick="@(() => ConfirmDelete(c))">Delete</MudMenuItem>
+                            }
+                        </MudMenu>
+                    </Actions>
+
+                    <Detail>
+                        @if (detail is null)
+                        {
+                            <div role="status" aria-live="polite" aria-busy="true">
+                                <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                                <span class="sr-only">Loading contract details…</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <ContractDetailView Contract="detail"
+                                                CanWrite="_canUpdate"
+                                                CanDownload="_canDownloadFiles"
+                                                CanUpload="_canUploadFiles"
+                                                OnAddParty="@(() => AddParty(c.ContractId))"
+                                                OnUpload="@(() => AttachDocument(c.ContractId))"
+                                                OnChanged="@(() => ReloadContract(c.ContractId))" />
+                        }
+                    </Detail>
+                </OdsExpandableCard>
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New contract</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New contract"
+                               Sub="Record a type and active period, link the parties, and upload the signed documents."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+</div>
+
+@if (_createKey != Guid.Empty)
+{
+    <CreateContractDialog @key="_createKey"
+                          @bind-Open="_createOpen"
+                          OnSaved="OnContractCreated" />
+}
+
+@if (_editContract is not null)
+{
+    <CreateContractDialog @key="_editContractKey"
+                          @bind-Open="_editContractOpen"
+                          Contract="_editContract"
+                          OnSaved="OnContractEdited" />
+}
+
+@if (_partyContract is not null)
+{
+    <AddContractPartyDialog @key="_partyKey"
+                            @bind-Open="_partyOpen"
+                            Contract="_partyContract"
+                            Accounts="_accountOptions"
+                            Institutions="_institutionOptions"
+                            Policies="_policyOptions"
+                            OnSaved="@(() => ReloadContract(_partyContract.ContractId))" />
+}
+
+@if (_uploadContract is not null)
+{
+    <ContractUploadDialog @key="_uploadKey"
+                          @bind-Open="_uploadOpen"
+                          Contract="_uploadContract"
+                          OnSaved="@(() => ReloadContract(_uploadContract.ContractId))" />
+}

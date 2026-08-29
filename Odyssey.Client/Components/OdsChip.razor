@@ -1,0 +1,48 @@
+@*
+    OdsChip — a compact status / category pill (Odyssey Design System · components/Chip).
+
+    Tone sets the semantic color: income · expense · pending · info · tag, or
+    default (neutral). Optional leading status Dot or Material Icon. Distinct
+    from OdsAlert (a block-level banner) and OdsBadge (a bare count/dot).
+
+    Money & status encoding holds: never use brand tide/sea to encode money —
+    use the income/expense tones.
+*@
+
+<span class="odc-chip @ToneClass">
+    @if (Dot)
+    {
+        <span class="odc-chip-dot" aria-hidden="true"></span>
+    }
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <span class="material-icons" aria-hidden="true">@Icon</span>
+    }
+    @ChildContent
+</span>
+
+@code {
+    /// <summary>Semantic color — default (neutral) / income / expense / pending / info / tag / warning / error / outline.</summary>
+    [Parameter] public OdsChipTone Tone { get; set; } = OdsChipTone.Default;
+
+    /// <summary>Leading Material Icons ligature name.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Show a leading status dot (uses the tone color).</summary>
+    [Parameter] public bool Dot { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string ToneClass => Tone switch
+    {
+        OdsChipTone.Income => "income",
+        OdsChipTone.Expense => "expense",
+        OdsChipTone.Pending => "pending",
+        OdsChipTone.Info => "info",
+        OdsChipTone.Tag => "tag",
+        OdsChipTone.Warning => "warning",
+        OdsChipTone.Error => "error",
+        OdsChipTone.Outline => "outline",
+        _ => string.Empty,
+    };
+}

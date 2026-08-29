@@ -1,0 +1,26 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+**/.vscode/
+.git/
+.gitignore
+README.md
+
+# Never let developer secrets into the build context. All three Dockerfiles do
+# `COPY . /src`, and the Web SDK publishes appsettings.*.json by default — without
+# these, `docker compose up --build` bakes the local .env and Development config
+# (API keys, DB passwords) into the published image.
+#
+# `*.env` as well as `.env*`, for the same reason .gitignore carries both: the two
+# patterns do not overlap, and `prod.env` (or `odyssey.env`, the name Docker's own
+# --env-file examples use) matches only the second.
+.env
+.env.*
+*.env
+!.env.example
+!.env.prod.example
+**/appsettings.Development.json
+
+# Local Claude state (settings.local.json can contain credentials)
+.claude/

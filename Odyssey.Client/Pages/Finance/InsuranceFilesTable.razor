@@ -1,0 +1,112 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IClipboardService Clipboard
+@inject IJSRuntime JsRuntime
+@inject IInsuranceApiClient Insurance
+
+@*
+    InsuranceFilesTable — the attachments table for an insurance policy (RenewalId
+    null) OR a specific renewal period (RenewalId set). Wraps the shared OdsFilesTable;
+    downloads + detach hit the PARENT-SCOPED routes via IInsuranceApiClient so the
+    IDOR-free guarantee holds (issue #175 §3/§10) — never the generic by-file-id route.
+    Display-only attach is owned by the host's "Attach" action (InsuranceUploadDialog).
+*@
+
+<OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
+    <OdsFilesTable Files="pageRows"
+                   TypeFor="@(row => KindMeta(FileById(row.Id).FileType))"
+                   Kinds="OdsTypeRegistries.PolicyFileOptions"
+                   Actions="@BuildMenu"
+                   OnDelete="@DeleteAction"
+                   Empty="@Empty" />
+</OdsInlinePager>
+
+@code {
+    /// <summary>The owning policy id (the download/detach route's <c>{id}</c>).</summary>
+    [Parameter, EditorRequired] public Guid PolicyId { get; set; }
+
+    /// <summary>The renewal id when these are renewal-level documents; null for policy-level.</summary>
+    [Parameter] public Guid? RenewalId { get; set; }
+
+    /// <summary>The attached documents (flattened from the policy or renewal DTO).</summary>
+    [Parameter] public IReadOnlyList<InsuranceFileItem> Files { get; set; } = [];
+
+    [Parameter] public bool CanDownload { get; set; }
+    [Parameter] public bool CanDelete { get; set; }
+
+    /// <summary>Raised after a detach so the host re-fetches the policy.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Full-width content shown when there are no rows.</summary>
+    [Parameter] public RenderFragment? Empty { get; set; }
+
+    private static OdsFileKindMeta KindMeta(PolicyFileType type)
+    {
+        var t = OdsTypeRegistries.PolicyFileTypeOf(type);
+        return new OdsFileKindMeta(t.Icon, t.Color, t.Soft);
+    }
+
+    private IEnumerable<OdsFilesRow> FileRows => Files.Select(f => new OdsFilesRow
+    {
+        Id = f.FileId.ToString(),
+        Name = f.FileName,
+        // The registry label (not the enum key) reads in the kind chip + avatar.
+        Kind = OdsTypeRegistries.PolicyFileTypeOf(f.FileType).Label,
+        SizeBytes = f.SizeBytes,
+        UploadedAtUtc = f.UploadedAtUtc,
+    });
+
+    private InsuranceFileItem FileById(string id) => Files.First(f => f.FileId.ToString() == id);
+
+    private IReadOnlyList<OdsMenuItem> BuildMenu(OdsFilesRow row)
+    {
+        var file = FileById(row.Id);
+        var menu = new List<OdsMenuItem>();
+
+        if (CanDownload)
+            menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(file)) });
+
+        menu.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID",
+            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(file.FileId.ToString(), "File ID copied.")),
+        });
+
+        return menu;
+    }
+
+    private async Task DownloadAsync(InsuranceFileItem file)
+    {
+        var result = RenewalId is { } rid
+            ? await Insurance.DownloadRenewalFileAsync(PolicyId, rid, file.FileId)
+            : await Insurance.DownloadPolicyFileAsync(PolicyId, file.FileId);
+
+        if (result.OrToast(Snackbar, "Download failed") is not { } content) { return; }
+
+        var contentType = content.ContentType ?? file.ContentType ?? "application/octet-stream";
+        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, file.FileName, contentType);
+    }
+
+    private EventCallback<OdsFilesRow> DeleteAction =>
+        CanDelete ? EventCallback.Factory.Create<OdsFilesRow>(this, row => ConfirmDetachAsync(FileById(row.Id))) : default;
+
+    private async Task ConfirmDetachAsync(InsuranceFileItem file)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Detach document",
+            $"Detach '{file.FileName}'? The file itself is kept in your files.",
+            yesText: "Detach", cancelText: "Cancel");
+
+        if (confirmed != true)
+            return;
+
+        var detached = RenewalId is { } rid
+            ? await Insurance.DetachRenewalFileAsync(PolicyId, rid, file.FileId)
+            : await Insurance.DetachPolicyFileAsync(PolicyId, file.FileId);
+
+        if (detached.Toast(Snackbar, "Detach failed", "Document detached."))
+            await OnChanged.InvokeAsync();
+    }
+}

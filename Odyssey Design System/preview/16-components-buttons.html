@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Buttons" subtitle="Filled, Outlined, Text, Danger × states" viewport="700x220" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Components · Buttons</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .grid { display: grid; grid-template-columns: auto auto auto auto; gap: 12px; align-items: center; }
+    .grid .lab { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .btn {
+      font: 500 13px/1 var(--font-sans);
+      letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 9px 16px; border-radius: 4px;
+      border: none; cursor: default;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn.filled    { background: var(--tide-400); color: var(--ink-950); }
+    .btn.filled.hov{ background: var(--tide-500); color: var(--ink-950); }
+    .btn.filled:disabled, .btn.disabled.filled { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.26); }
+    .btn.outlined  { background: transparent; color: var(--ink-50); border: 1px solid rgba(199,208,224,0.28); }
+    .btn.outlined.hov { background: rgba(255,255,255,0.06); }
+    .btn.text      { background: transparent; color: var(--tide-400); padding: 9px 12px; }
+    .btn.text.hov  { background: rgba(79, 215, 203, 0.10); }
+    .btn.danger    { background: var(--coral-500); color: white; }
+    .ic { width: 16px; height: 16px; display: inline-block; }
+  </style>
+  <div class="grid">
+    <div class="lab">Filled</div>
+    <button class="btn filled">New account</button>
+    <button class="btn filled hov">Hover</button>
+    <button class="btn filled disabled" disabled>Disabled</button>
+
+    <div class="lab">Outlined</div>
+    <button class="btn outlined">Import statement</button>
+    <button class="btn outlined hov">Hover</button>
+    <button class="btn outlined" style="opacity:0.38">Disabled</button>
+
+    <div class="lab">Text</div>
+    <button class="btn text">View all</button>
+    <button class="btn text hov">Hover</button>
+    <button class="btn text" style="opacity:0.38">Disabled</button>
+
+    <div class="lab">Danger</div>
+    <button class="btn danger">Delete</button>
+    <button class="btn danger" style="background:var(--coral-700)">Hover</button>
+    <button class="btn" style="background:transparent; color:var(--coral-500); border:1px solid var(--coral-500);">Flag</button>
+  </div>
+</body></html>

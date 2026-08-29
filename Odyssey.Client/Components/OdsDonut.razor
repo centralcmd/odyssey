@@ -1,0 +1,133 @@
+@*
+    OdsDonut — the allocation panel (Odyssey Design System · components/Donut).
+
+    The canonical data-viz across the product: Accounts (Asset allocation /
+    Liabilities), Budgets (Planned income / Planned expenses), expense-by-tag.
+    A ring whose hole holds only a muted watermark icon (never a number — large
+    sums would overflow) beside (or above) a legend "ledger" of slice rows,
+    closed by a total row where the sum lives.
+
+      • Layout="Row" (default) — ring left, legend right (single-donut look).
+      • Layout="Stack"         — ring above legend (use inside OdsDonutPair).
+
+    Slices draw largest-first by caller order, zero-values dropped, auto-colored
+    from the categorical --chart-* palette with a small gap so same-family hues
+    read apart. Pass Format to render money. This is one of the only two places
+    hand-built SVG is sanctioned — it's data viz, not illustration.
+*@
+
+<div class="odc-donut-panel">
+    @if (Title is not null || Sub is not null)
+    {
+        <div class="odc-chart-head">
+            <div>
+                @if (Title is not null)
+                {
+                    <div class="odc-chart-ttl">@Title</div>
+                }
+                @if (Sub is not null)
+                {
+                    <div class="odc-chart-sub">@Sub</div>
+                }
+            </div>
+        </div>
+    }
+    <div class="odc-donut-body @(Layout == OdsDonutLayout.Stack ? "stack" : null)">
+        <div class="odc-donut-ring" style="width:@(Size)px;height:@(Size)px;">
+            @* Title is a RenderFragment (can't stringify for a label), so an
+               unlabeled donut is decorative — the visible title/legend text carries
+               its meaning to AT. Only expose it as an image when given an AriaLabel. *@
+            <svg viewBox="@($"0 0 {Size} {Size}")" width="@Size" height="@Size" role="img" aria-label="@AriaLabel"
+                 aria-hidden="@(string.IsNullOrEmpty(AriaLabel) ? "true" : null)">
+                <circle cx="@(Size / 2.0)" cy="@(Size / 2.0)" r="@Fmt(_r)" stroke="@TrackColor" stroke-width="@Thickness" fill="none" />
+                @for (var i = 0; i < _slices.Count; i++)
+                {
+                    var s = _slices[i];
+                    <circle cx="@(Size / 2.0)" cy="@(Size / 2.0)" r="@Fmt(_r)" fill="none"
+                            stroke="@s.Color" stroke-width="@Thickness"
+                            stroke-dasharray="@($"{Fmt(s.Dash)} {Fmt(_circumference - s.Dash)}")"
+                            stroke-dashoffset="@Fmt(s.Offset)" stroke-linecap="butt" />
+                }
+            </svg>
+            @if (!string.IsNullOrEmpty(CenterIcon))
+            {
+                <div class="odc-donut-center" aria-hidden="true">
+                    <span class="material-icons odc-donut-center-ic">@CenterIcon</span>
+                </div>
+            }
+        </div>
+        <OdsDonutLegend Data="Data" Colors="Colors" TotalLabel="@TotalLabel" Format="Format" />
+    </div>
+</div>
+
+@code {
+    /// <summary>Slices in draw order (largest-first by convention); zero-values are dropped.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsDonutSlice> Data { get; set; } = [];
+
+    /// <summary>Panel heading (e.g. "Asset allocation"). Omit to hide the head.</summary>
+    [Parameter] public RenderFragment? Title { get; set; }
+
+    /// <summary>Sub-line under the title (e.g. "Where your money sits · 4 accounts").</summary>
+    [Parameter] public RenderFragment? Sub { get; set; }
+
+    /// <summary>Muted Material Icons watermark in the ring hole (e.g. "savings"). Never a number.</summary>
+    [Parameter] public string? CenterIcon { get; set; }
+
+    /// <summary>Label on the total row at the foot of the legend.</summary>
+    [Parameter] public string TotalLabel { get; set; } = "Total";
+
+    /// <summary>
+    /// Formats slice + total values. Receives the value and, for slice rows, the slice
+    /// (null on the total row) so it can format in the slice's own currency.
+    /// </summary>
+    [Parameter] public Func<decimal, OdsDonutSlice?, string> Format { get; set; } = (v, _) => v.ToString(System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>Row = ring beside legend (default) · Stack = ring above legend (two-up).</summary>
+    [Parameter] public OdsDonutLayout Layout { get; set; } = OdsDonutLayout.Row;
+
+    /// <summary>Outer diameter in px.</summary>
+    [Parameter] public int Size { get; set; } = 200;
+
+    /// <summary>Ring thickness in px.</summary>
+    [Parameter] public int Thickness { get; set; } = 26;
+
+    /// <summary>Slice palette. Defaults to the categorical --chart-1…6 tokens.</summary>
+    [Parameter] public IReadOnlyList<string>? Colors { get; set; }
+
+    /// <summary>Gap between slices in px (same-family hues stay distinct).</summary>
+    [Parameter] public double Gap { get; set; } = 7;
+
+    /// <summary>Unfilled track color behind the slices.</summary>
+    [Parameter] public string TrackColor { get; set; } = "var(--mud-palette-divider-light)";
+
+    /// <summary>Accessible summary of the breakdown.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    private double _r;
+    private double _circumference;
+    private List<Slice> _slices = [];
+
+    private readonly record struct Slice(string Color, double Dash, double Offset);
+
+    protected override void OnParametersSet()
+    {
+        _r = (Size - Thickness) / 2.0;
+        _circumference = 2 * Math.PI * _r;
+
+        var items = OdsDonutPalette.Filter(Data);
+        var total = items.Sum(d => d.Value);
+        var gap = items.Count > 1 ? Gap : 0;
+
+        _slices = new List<Slice>(items.Count);
+        double acc = 0;
+        for (var i = 0; i < items.Count; i++)
+        {
+            var frac = total > 0 ? (double)(items[i].Value / total) : 0;
+            var dash = Math.Max(frac * _circumference - gap, 1);
+            _slices.Add(new Slice(OdsDonutPalette.ColorFor(items[i], i, Colors), dash, -acc * _circumference));
+            acc += frac;
+        }
+    }
+
+    private static string Fmt(double v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}

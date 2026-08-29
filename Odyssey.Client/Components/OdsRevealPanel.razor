@@ -1,0 +1,65 @@
+@*
+    OdsRevealPanel — a segmented toggle whose selection reveals a connected panel below it
+    (Odyssey Design System · RevealPanel). Closed, it's just the bare OdsSegmentedControl; open, the
+    toggle becomes the header of one bordered surface with the body attached beneath a divider, so a
+    choice and the fields it controls read as a single control (recurrence rules, conditional option
+    groups, "advanced" reveals).
+
+    Open state is Value == OpenValue (or membership when OpenValues is set), unless an explicit Open
+    is passed. Pass Locked + LockedContent for a static, read-only header instead of the toggle.
+*@
+
+<div class="@(string.Join(' ', new[] { "odc-reveal", IsOpen ? "open" : null, Class }.Where(c => !string.IsNullOrEmpty(c))))">
+    <div class="odc-reveal-head">
+        @if (Locked)
+        {
+            @LockedContent
+        }
+        else
+        {
+            <OdsSegmentedControl Full="true" AriaLabel="@AriaLabel" Options="Options"
+                                 Value="@Value" ValueChanged="ValueChanged" />
+        }
+    </div>
+    @if (IsOpen)
+    {
+        <div class="odc-reveal-body">@ChildContent</div>
+    }
+</div>
+
+@code {
+    /// <summary>Selected value of the header toggle. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Header toggle options (same as OdsSegmentedControl).</summary>
+    [Parameter] public IReadOnlyList<OdsSegmentedOption> Options { get; set; } = [];
+
+    [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>The value that opens the connected body. Ignored when <see cref="Open"/> is passed.</summary>
+    [Parameter] public string? OpenValue { get; set; }
+
+    /// <summary>The set of values that open the body (alternative to a single <see cref="OpenValue"/>).</summary>
+    [Parameter] public IReadOnlyCollection<string>? OpenValues { get; set; }
+
+    /// <summary>Explicit open state — overrides OpenValue/OpenValues (e.g. open only when editable).</summary>
+    [Parameter] public bool? Open { get; set; }
+
+    /// <summary>Render a static, non-interactive header instead of the toggle.</summary>
+    [Parameter] public bool Locked { get; set; }
+
+    /// <summary>Header content when <see cref="Locked"/> (a status line, a read-only summary).</summary>
+    [Parameter] public RenderFragment? LockedContent { get; set; }
+
+    /// <summary>The revealed body — shown, and visually connected, only when open.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private bool IsOpen =>
+        Open ?? (OpenValues is not null
+            ? Value is not null && OpenValues.Contains(Value)
+            : Value == OpenValue);
+}

@@ -1,0 +1,73 @@
+/* Photo tile (.pl-tile*) — the square library/album thumbnail with its scrim,
+   full-tile hit target and hover check/heart affordances. Moved out of the
+   globally-linked wwwroot/css/photos.css by issue #371; every element below is
+   authored by this component, so the tile chrome can no longer leak. */
+
+.pl-tile {
+    position: relative; overflow: hidden; cursor: pointer; aspect-ratio: 1 / 1;
+    background: var(--mud-palette-surface);
+}
+
+.pl-tile-img { position: absolute; inset: 0; width: 100%; height: 100%; transition: transform var(--duration-slow) cubic-bezier(0.2,0.7,0.2,1); }
+
+.pl-tile:hover .pl-tile-img { transform: scale(1.05); }
+
+.pl-tile-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.28) 0%, transparent 26%, transparent 62%, rgba(0,0,0,0.42) 100%); opacity: 0; transition: opacity var(--duration-base); }
+
+.pl-tile:hover .pl-tile-scrim { opacity: 1; }
+
+/* Selection is a state marker, not a focus ring — it keeps its own 3px outline. */
+.pl-tile.is-selected { outline: 3px solid var(--nav-active); outline-offset: -3px; }
+
+.pl-check, .pl-heart {
+    position: absolute; top: 8px; z-index: 2; width: 26px; height: 26px; border-radius: 999px;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    border: none; color: #fff; opacity: 0; transition: opacity var(--duration-base), transform var(--duration-base), background var(--duration-base);
+    background: rgba(10,12,18,0.55); backdrop-filter: blur(2px);
+}
+
+.pl-check { left: 8px; }
+
+.pl-heart { right: 8px; }
+
+.pl-tile:hover .pl-check, .pl-tile:hover .pl-heart { opacity: 1; }
+
+.pl-check .material-icons, .pl-heart .material-icons { font-size: 16px; }
+
+.pl-check.on { opacity: 1; background: var(--tide-400); color: var(--ink-950, #0b0d12); }
+
+.pl-heart.on { opacity: 1; color: var(--rose-500, #F2557A); }
+
+.pl-heart:hover, .pl-check:hover { transform: scale(1.08); }
+
+/* Full-tile hit target (below the check/heart at z-index 2). Keyboard focus shows a ring
+   (WCAG 2.4.7); a real <button> gives Enter/Space activation for free (2.1.1). The ring is
+   inset by its own width so it stays inside the edge-to-edge tile. */
+.pl-tile-hit { position: absolute; inset: 0; z-index: 1; margin: 0; padding: 0; border: none; background: transparent; cursor: pointer; }
+
+.pl-tile-hit:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+/* Reveal the hover-only controls when anything in the tile is keyboard-focused (WCAG 2.4.7). */
+.pl-tile:focus-within .pl-check, .pl-tile:focus-within .pl-heart { opacity: 1; }
+
+.pl-check:focus-visible, .pl-heart:focus-visible {
+    opacity: 1;
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+}
+
+/* Always-on title caption over the scrim. */
+.pl-tile-cap {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; padding: 8px 10px;
+    font-size: 11px; color: rgba(255,255,255,0.92); opacity: 0;
+    transition: opacity var(--duration-base); pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.pl-tile:hover .pl-tile-cap { opacity: 1; }
+
+/* Archived marker rendered as TEXT, not colour alone (WCAG 1.4.1). */
+.pl-tile-arch { position: absolute; top: 8px; left: 8px; z-index: 2; padding: 2px 7px; border-radius: 999px; font: 600 10px/1.4 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: #fff; background: rgba(10,12,18,0.72); border: 1px solid rgba(255,255,255,0.18); }

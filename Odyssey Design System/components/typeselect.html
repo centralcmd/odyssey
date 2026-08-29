@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="TypeSelect" subtitle="The shared registry type picker behind AccountType / PolicyType / ContactType / file-type selectors — themed popover, colored glyph, far-right check, optional grouping. Domain wrappers delegate to it. Mounted from the DS namespace." viewport="900x560" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · TypeSelect</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 760px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; align-items: start; }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 6px; }
+    .sub { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 22px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>TypeSelect</h1>
+  <p class="sub">One engine, four vocabularies. Open any picker — selected option shows its check on the far right; Account groups into Assets / Liabilities.</p>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var TypeSelect = NS.TypeSelect;
+      var useState = React.useState;
+      var ACCOUNT_TYPES = NS.ACCOUNT_TYPES, ACCOUNT_TYPE_GROUPS = NS.ACCOUNT_TYPE_GROUPS,
+          INSURANCE_POLICY_TYPES = NS.INSURANCE_POLICY_TYPES, CONTACT_TYPES = NS.CONTACT_TYPES,
+          ACCOUNT_FILE_TYPES = NS.ACCOUNT_FILE_TYPES, CONTRACT_TYPES = NS.CONTRACT_TYPES;
+
+      function Pick(props) {
+        var s = useState(props.init);
+        return e(TypeSelect, Object.assign({}, props, { value: s[0], onChange: function (k) { s[1](k); } }));
+      }
+
+      var root = [
+        e('div', { key: 'a' }, e('div', { className: 'cap' }, ['Account type \u00b7 ', e('code', { key: 'c' }, 'groups')]),
+          e('div', { className: 'row' },
+            e(Pick, { key: 1, label: 'Account type', types: ACCOUNT_TYPES, groups: ACCOUNT_TYPE_GROUPS, init: 'SavingsAccount' }),
+            e(Pick, { key: 2, label: 'Account type', types: ACCOUNT_TYPES, groups: ACCOUNT_TYPE_GROUPS, init: 'Mortgage' }))),
+        e('div', { key: 'b' }, e('div', { className: 'cap' }, 'Policy type · Contact type · Account file type (flat)'),
+          e('div', { className: 'row' },
+            e(Pick, { key: 1, label: 'Policy type', types: INSURANCE_POLICY_TYPES, init: 'Home' }),
+            e(Pick, { key: 2, label: 'Contact type', types: CONTACT_TYPES, init: 'Merchant' }),
+            e(Pick, { key: 3, label: 'Contract type', types: CONTRACT_TYPES, init: 'Rental' }),
+            e(Pick, { key: 4, label: 'Document type', types: ACCOUNT_FILE_TYPES, init: 'Statement' })))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>

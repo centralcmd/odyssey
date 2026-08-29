@@ -1,0 +1,35 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.5.3">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>abd1f519-940b-4910-b438-f9edf796d4da</UserSecretsId>
+    <!--
+      ASPIRE010 (new in the 13.x SDK) nudges every AppHost toward AspireUseCliBundle=true, which
+      resolves DCP and the dashboard from a separately installed `aspire` CLI bundle rather than
+      from NuGet. We deliberately stay on the default of false: local dev is a plain `dotnet run`
+      on this project, needing no extra tooling on the machine or in CI, and what the bundle
+      unlocks is the deploy/publish path, which Odyssey does not use (it ships through
+      docker-compose.prod.yml and the GHCR images). Directory.Build.props sets
+      TreatWarningsAsErrors, so the nudge has to be silenced explicitly rather than tolerated.
+      Revisit if we ever adopt `aspire deploy`.
+    -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);ASPIRE010</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="MySqlConnector" />
+    <!-- Direct reference to pin transitive MessagePack (Aspire.Hosting -> StreamJsonRpc) and patch high-severity CVE GHSA-hv8m-jj95-wg3x -->
+    <PackageReference Include="MessagePack" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Odyssey.Api\Odyssey.Api.csproj" />
+    <ProjectReference Include="..\Odyssey.Client\Odyssey.Client.csproj" />
+    <ProjectReference Include="..\Odyssey.MigrationService\Odyssey.MigrationService.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,30 @@
+@inject NavigationManager NavigationManager
+@page "/not-authorized"
+@layout AuthLayout
+
+<PageTitle>403 - Not Authorized</PageTitle>
+
+<MudCard Elevation="2" Class="pa-6" Outlined="true">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudStack Row="true">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Error"/>
+            <MudText Typo="Typo.h4" GutterBottom="true" Color="Color.Error">403 - Not Authorized</MudText>
+        </MudStack>
+    </MudStack>
+
+    <MudCardContent>
+        <MudText Typo="Typo.body1" Color="Color.Warning" Class="mb-4">
+            You are signed in, but your account is missing one or more permissions <br/>
+            required to view this page. Please contact your administrator if you <br/>
+            believe this is an error.
+        </MudText>
+        <MudStack AlignItems="AlignItems.Center">
+            <MudLink Href="/" StartIcon="@Icons.Material.Filled.Home">Return Home</MudLink>
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private void GoHome() => NavigationManager.NavigateTo("/");
+}
+

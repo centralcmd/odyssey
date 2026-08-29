@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- @dsCard group="Colors" name="Colors · Light vs Dark" subtitle="Same card, two modes" viewport="700x280" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Colors · Light vs Dark</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 0; }
+    .panel { padding: 20px; min-height: 260px; }
+    .panel.light { background: #FAFBFD; color: var(--ink-900); }
+    .panel.dark  { background: var(--ink-900); color: var(--ink-50); }
+    .panel .card-demo {
+      border-radius: 8px; padding: 12px; margin-top: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .panel.light .card-demo { background: #FFFFFF; border: 1px solid rgba(14,21,37,0.10); box-shadow: 0 1px 2px rgba(14,21,37,0.08); }
+    .panel.dark .card-demo  { background: var(--ink-800); border: 1px solid rgba(199,208,224,0.12); box-shadow: 0 1px 2px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04) inset; }
+    .panel .label-mode { font: 500 11px/1 var(--font-sans); letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7; }
+    .panel h3 { margin: 6px 0 0; font-weight: 300; font-size: 26px; letter-spacing: -0.02em; }
+    .panel .row { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
+    .panel .btn { padding: 7px 14px; border-radius: 4px; font: 500 13px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; cursor: default; }
+    .panel.light .btn.primary { background: var(--tide-600); color: white; }
+    .panel.dark .btn.primary  { background: var(--tide-400); color: var(--ink-950); }
+    .panel.light .btn.outline { background: transparent; color: var(--ink-700); border: 1px solid rgba(14,21,37,0.28); }
+    .panel.dark .btn.outline  { background: transparent; color: var(--ink-50); border: 1px solid rgba(199,208,224,0.28); }
+    .panel .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 500; }
+    .panel.dark .num { color: var(--mint-500); }
+    .panel.light .num { color: var(--mint-700); }
+  </style>
+  <div class="panel light">
+    <div class="label-mode">Light</div>
+    <h3>Checking</h3>
+    <div class="card-demo">
+      <div>
+        <div style="font-size: 12px; opacity: 0.7;">Available · USD</div>
+        <div class="num">$ 4,182.50</div>
+      </div>
+      <div class="row">
+        <div class="btn outline">View</div>
+        <div class="btn primary">Add</div>
+      </div>
+    </div>
+  </div>
+  <div class="panel dark">
+    <div class="label-mode">Dark · default</div>
+    <h3>Checking</h3>
+    <div class="card-demo">
+      <div>
+        <div style="font-size: 12px; opacity: 0.7;">Available · USD</div>
+        <div class="num">$ 4,182.50</div>
+      </div>
+      <div class="row">
+        <div class="btn outline">View</div>
+        <div class="btn primary">Add</div>
+      </div>
+    </div>
+  </div>
+</body></html>

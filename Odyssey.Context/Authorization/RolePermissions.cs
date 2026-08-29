@@ -1,0 +1,263 @@
+using Odyssey.Dtos.Authorization;
+
+// The claim constants are referenced bare below to keep the role lists readable.
+using static Odyssey.Dtos.Authorization.PermissionClaims;
+
+namespace Odyssey.Context.Authorization;
+
+/// <summary>
+/// Which <see cref="PermissionClaims"/> each role holds. A server-side policy decision — deliberately
+/// not in <c>Odyssey.Dtos</c> alongside the claim vocabulary, so the browser client never ships
+/// (or reasons about) the role-to-claim mapping.
+/// </summary>
+/// <remarks>
+/// Seeded into <c>AspNetRoleClaims</c> by <c>OdysseyContext</c> and by the claim migrations. The
+/// permission claims baked into a user's auth cookie at login come from these, so a change here only
+/// reaches existing sessions after a sign-out/sign-in.
+/// </remarks>
+public static class RolePermissions
+{
+    public static readonly string[] CalendarModuleClaims =
+    [
+        CalendarCreate,
+        CalendarRead,
+        CalendarUpdate,
+        CalendarDelete,
+    ];
+
+    public static readonly string[] PhotosModuleClaims =
+    [
+        PhotosCreate,
+        PhotosRead,
+        PhotosUpdate,
+        PhotosDelete,
+        PhotoTagsCreate,
+        PhotoTagsRead,
+        PhotoTagsUpdate,
+        PhotoTagsDelete,
+        PhotoAlbumsCreate,
+        PhotoAlbumsRead,
+        PhotoAlbumsUpdate,
+        PhotoAlbumsDelete,
+    ];
+
+    public static readonly string[] JournalModuleClaims =
+    [
+        JournalCreate,
+        JournalRead,
+        JournalUpdate,
+        JournalDelete,
+        JournalTagsCreate,
+        JournalTagsRead,
+        JournalTagsUpdate,
+        JournalTagsDelete,
+        TasksCreate,
+        TasksRead,
+        TasksUpdate,
+        TasksDelete,
+        TaskTagsCreate,
+        TaskTagsRead,
+        TaskTagsUpdate,
+        TaskTagsDelete,
+    ];
+
+    public static readonly string[] AllClaims =
+    [
+        AccountsCreate,
+        AccountsRead,
+        AccountsUpdate,
+        AccountsDelete,
+        BudgetsCreate,
+        BudgetsRead,
+        BudgetsUpdate,
+        BudgetsDelete,
+        TransactionsCreate,
+        TransactionsRead,
+        TransactionsUpdate,
+        TransactionsDelete,
+        TransactionTagsCreate,
+        TransactionTagsRead,
+        TransactionTagsUpdate,
+        TransactionTagsDelete,
+        ContactsCreate,
+        ContactsRead,
+        ContactsUpdate,
+        ContactsDelete,
+        CurrenciesCreate,
+        CurrenciesRead,
+        CurrenciesUpdate,
+        CurrenciesDelete,
+        ExchangeRatesCreate,
+        ExchangeRatesRead,
+        ExchangeRatesUpdate,
+        ExchangeRatesDelete,
+        UserPreferencesCreate,
+        UserPreferencesRead,
+        UserPreferencesUpdate,
+        UserPreferencesDelete,
+        FilesCreate,
+        FilesRead,
+        FilesUpdate,
+        FilesDelete,
+        UsersManage,
+        FileAnalysisCreate,
+        FileAnalysisRead,
+        FileAnalysisImport,
+        UsersRead,
+        UsersUpdate,
+        DataExport,
+        FilesExportAll,
+        UsersDelete,
+        AccountsTermsRead,
+        AccountsTermsWrite,
+        TaxesCreate,
+        TaxesRead,
+        TaxesUpdate,
+        TaxesDelete,
+        AccountsEstimatesRead,
+        AccountsEstimatesWrite,
+        InsuranceCreate,
+        InsuranceRead,
+        InsuranceUpdate,
+        InsuranceDelete,
+        ContractsCreate,
+        ContractsRead,
+        ContractsUpdate,
+        ContractsDelete,
+        FileAnalysisAudit,
+        SubscriptionsCreate,
+        SubscriptionsRead,
+        SubscriptionsUpdate,
+        SubscriptionsDelete,
+        ..JournalModuleClaims,
+        ..PhotosModuleClaims,
+        ..CalendarModuleClaims,
+        SystemSettingsRead,
+        SystemSettingsUpdate,
+        SystemSettingsSecurityUpdate,
+    ];
+
+    public static readonly string[] AdminClaims =
+    [
+        ..AllClaims,
+    ];
+    
+    public static readonly string[] OwnerClaims =
+    [
+        AccountsCreate,
+        AccountsRead,
+        AccountsUpdate,
+        AccountsDelete,
+        BudgetsCreate,
+        BudgetsRead,
+        BudgetsUpdate,
+        BudgetsDelete,
+        TransactionsCreate,
+        TransactionsRead,
+        TransactionsUpdate,
+        TransactionsDelete,
+        TransactionTagsCreate,
+        TransactionTagsRead,
+        TransactionTagsUpdate,
+        TransactionTagsDelete,
+        ContactsCreate,
+        ContactsRead,
+        ContactsUpdate,
+        ContactsDelete,
+        CurrenciesCreate,
+        CurrenciesRead,
+        CurrenciesUpdate,
+        CurrenciesDelete,
+        ExchangeRatesCreate,
+        ExchangeRatesRead,
+        ExchangeRatesUpdate,
+        ExchangeRatesDelete,
+        UserPreferencesCreate,
+        UserPreferencesRead,
+        UserPreferencesUpdate,
+        UserPreferencesDelete,
+        FilesCreate,
+        FilesRead,
+        FilesUpdate,
+        FilesDelete,
+        FileAnalysisCreate,
+        FileAnalysisRead,
+        FileAnalysisImport,
+        AccountsTermsRead,
+        AccountsTermsWrite,
+        TaxesCreate,
+        TaxesRead,
+        TaxesUpdate,
+        TaxesDelete,
+        AccountsEstimatesRead,
+        AccountsEstimatesWrite,
+        InsuranceCreate,
+        InsuranceRead,
+        InsuranceUpdate,
+        InsuranceDelete,
+        ContractsCreate,
+        ContractsRead,
+        ContractsUpdate,
+        ContractsDelete,
+        SubscriptionsCreate,
+        SubscriptionsRead,
+        SubscriptionsUpdate,
+        SubscriptionsDelete,
+        ..JournalModuleClaims,
+        ..PhotosModuleClaims,
+        ..CalendarModuleClaims,
+    ];
+
+    public static readonly string[] UserClaims =
+    [
+        AccountsRead,
+        BudgetsRead,
+        TransactionsCreate,
+        TransactionsRead,
+        TransactionsUpdate,
+        TransactionsDelete,
+        TransactionTagsRead,
+        ContactsRead,
+        CurrenciesRead,
+        ExchangeRatesRead,
+        UserPreferencesRead,
+        UserPreferencesCreate,
+        UserPreferencesUpdate,
+        UserPreferencesDelete,
+        FilesRead,
+        FilesCreate,
+        FilesUpdate,
+        FilesDelete,
+        FileAnalysisCreate,
+        FileAnalysisRead,
+        FileAnalysisImport,
+        AccountsTermsRead,
+        TaxesRead,
+        AccountsEstimatesRead,
+        InsuranceRead,
+        ContractsRead,
+        SubscriptionsRead,
+        ..JournalModuleClaims,
+        ..PhotosModuleClaims,
+        ..CalendarModuleClaims,
+    ];
+
+    public static readonly string[] GuestClaims =
+    [
+        AccountsRead,
+        AccountsTermsRead,
+        BudgetsRead,
+        TransactionsRead,
+        TransactionTagsRead,
+        ContactsRead,
+        CurrenciesRead,
+        ExchangeRatesRead,
+        UserPreferencesRead,
+        UserPreferencesCreate,
+        UserPreferencesUpdate,
+        UserPreferencesDelete,
+        FilesRead,
+        TaxesRead,
+        AccountsEstimatesRead,
+    ];
+}

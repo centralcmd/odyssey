@@ -1,0 +1,317 @@
+@page "/journal"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Client.Pages.Photos
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.JournalRead)]
+@implements IAsyncDisposable
+@inject IJournalApiClient Journal
+@inject IJournalIcsApiClient JournalIcs
+@inject IFilesApiClient Files
+@inject IPhotosApiClient Photos
+@inject IPhotoTagsApiClient PhotoTags
+@inject IAlbumsApiClient Albums
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IJSRuntime JS
+@inject IReferenceDataCache ReferenceData
+@inject ITagsApiClient<ExistingJournalTag> JournalTags
+
+<PageTitle>Journal</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<div class="je-shell">
+<MudStack Spacing="4">
+
+    <PageHeader Title="Journal"
+                Icon="@Icons.Material.Filled.MenuBook"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New entry"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@_entries.Count @(_entries.Count == 1 ? "entry" : "entries") · @PhotoTotal @(PhotoTotal == 1 ? "photo" : "photos")</SubLine>
+
+        <OverviewContent>
+            <div class="je-overview">
+                <div class="je-stat-tiles">
+                    <OdsInfoTile Icon="edit_note" IconColor="var(--tag-text)" Label="Entries" ValueVariant="OdsInfoTileVariant.Mono">
+                        <Value>@_entries.Count</Value>
+                        <Foot>shown</Foot>
+                    </OdsInfoTile>
+                    <OdsInfoTile Icon="photo_library" IconColor="var(--sea-400)" Label="Photos" ValueVariant="OdsInfoTileVariant.Mono">
+                        <Value>@PhotoTotal</Value>
+                        <Foot>across shown entries</Foot>
+                    </OdsInfoTile>
+                </div>
+                <OdsBreakdownTile Label="By tag" Rows="TagRows" Empty="No tagged entries." />
+            </div>
+        </OverviewContent>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadEntries"
+                                Placeholder="Search title, content, location…" Class="ph-search" />
+                <OdsMultiSelect Label="Any tag" Values="_tagFilter" ValuesChanged="OnTagFilterChanged"
+                                Options="_tagOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Active" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="JournalEntrySummary" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Entries per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+
+        <ActionMenu>
+            <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="@(() => ExportAsync(filtered: false))">Export all as iCalendar</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">Export filtered (@_entries.Count) as iCalendar</MudMenuItem>
+            @if (_canImport)
+            {
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="OpenImport">Import from iCalendar…</MudMenuItem>
+            }
+        </ActionMenu>
+    </PageHeader>
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="JournalEntrySummary" Items="_entries" BatchSize="_batch"
+                         ItemKey="@(e => (object)e.JournalEntryId)" Noun="journal entries"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadEntries"
+                         HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                         EmptyIcon="menu_book"
+                         EmptyDescription="Keep a running, searchable record next to your finances — what happened, where, who it involved, with photos and files attached.">
+            <RenderItem Context="e">
+                @{
+                    var isExpanded = IsExpanded(e.JournalEntryId);
+                    var archived = e.Archived is not null;
+                    var detail = _details.GetValueOrDefault(e.JournalEntryId);
+                    var tags = EntryTags(e.TagIds);
+                }
+                <OdsExpandableCard Open="isExpanded"
+                                   Dimmed="archived"
+                                   AlignTop="true"
+                                   Label="@e.Title"
+                                   OnToggle="@(() => ToggleExpand(e.JournalEntryId))">
+
+                    <Lead>
+                        <div class="acct-badge">
+                            <span class="material-icons" aria-hidden="true">menu_book</span>
+                        </div>
+                    </Lead>
+
+                    <Head>
+                            <div class="acct-name-row">
+                                <span class="acct-name">@e.Title</span>
+                                @if (archived)
+                                {
+                                    <OdsChip Tone="OdsChipTone.Outline" Dot="true" Class="odc-todo-archived">Archived</OdsChip>
+                                }
+                            </div>
+                            <div class="je-subline">
+                                <span class="je-when mono">@e.EntryDate.ToLocalTime().ToString("ddd, MMM d, yyyy")</span>
+                                <span class="acct-dot">·</span>
+                                <span class="je-author"><span class="material-icons" aria-hidden="true">person</span>@e.CreatedByName</span>
+                                @if (!string.IsNullOrWhiteSpace(e.Location))
+                                {
+                                    <span class="acct-dot">·</span>
+                                    <span class="je-loc"><span class="material-icons" aria-hidden="true">place</span>@e.Location</span>
+                                }
+                            </div>
+                            <div class="je-snippet">@e.Snippet</div>
+                            <div class="je-cardfoot">
+                                @if (tags.Count > 0)
+                                {
+                                    <JournalTagChips Names="@tags.Select(t => t.Name)" Max="4" />
+                                }
+                                @if (e.ContactCount > 0)
+                                {
+                                    <span class="je-count"><span class="material-icons" aria-hidden="true">link</span><span class="mono">@e.ContactCount</span> @(e.ContactCount == 1 ? "contact" : "contacts")</span>
+                                }
+                                <JournalCounts Photos="e.PhotoCount" Files="e.AttachmentCount" />
+                            </div>
+                    </Head>
+
+                    <Actions>
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"
+                                     AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                                @if (_canUpdate)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(e))">Edit entry</MudMenuItem>
+                                }
+                                <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="@(() => ExportEntryAsync(e))">Export VJOURNAL</MudMenuItem>
+                                <MudMenuItem OnClick="@(() => CopyId(e.JournalEntryId))">
+                                    <span class="odc-menu-item">
+                                        <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
+                                        <span>Copy ID</span>
+                                        <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
+                                    </span>
+                                </MudMenuItem>
+                                @if (_canUpdate)
+                                {
+                                    <MudDivider />
+                                    <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Inventory2)" OnClick="@(() => ToggleArchive(e))">
+                                        @(archived ? "Unarchive" : "Archive")
+                                    </MudMenuItem>
+                                }
+                                @if (_canDelete)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" Style="color:var(--mud-palette-error);" OnClick="@(() => ConfirmDelete(e))">Delete</MudMenuItem>
+                                }
+                            </MudMenu>
+                    </Actions>
+
+                    <Detail>
+                            @if (detail is null)
+                            {
+                                <div role="status" aria-live="polite" aria-busy="true">
+                                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                                    <span class="sr-only">Loading entry…</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="je-meta-grid">
+                                    <OdsMetaTile Mono="true">
+                                        <Label>Entry date</Label>
+                                        <ChildContent>@detail.EntryDate.ToLocalTime().ToString("ddd, MMM d, yyyy")</ChildContent>
+                                    </OdsMetaTile>
+                                    <OdsMetaTile>
+                                        <Label>Location</Label>
+                                        <ChildContent>@(string.IsNullOrWhiteSpace(detail.Location) ? "—" : detail.Location)</ChildContent>
+                                    </OdsMetaTile>
+                                    <OdsMetaTile>
+                                        <Label>Written by</Label>
+                                        <ChildContent>@detail.CreatedByName</ChildContent>
+                                    </OdsMetaTile>
+                                    <OdsMetaTile>
+                                        <Label>Last edited</Label>
+                                        <ChildContent>@LastEdited(detail)</ChildContent>
+                                    </OdsMetaTile>
+                                    <OdsMetaTile>
+                                        <Label>Tags</Label>
+                                        <ChildContent>
+                                            @{ var dtags = EntryTags(detail.TagIds); }
+                                            @if (dtags.Count > 0) { <JournalTagChips Names="@dtags.Select(t => t.Name)" /> } else { <text>—</text> }
+                                        </ChildContent>
+                                    </OdsMetaTile>
+                                    <OdsMetaTile>
+                                        <Label>Contacts</Label>
+                                        <ChildContent>
+                                            @if (detail.ContactIds.Count > 0)
+                                            {
+                                                <span class="je-cp-row">
+                                                    @foreach (var cpId in detail.ContactIds)
+                                                    {
+                                                        var cp = _canReadContacts ? _contactById.GetValueOrDefault(cpId) : null;
+                                                        @if (cp is not null)
+                                                        {
+                                                            <OdsContactChip Name="@cp.ResolvedDisplayName" Type="@cp.Type.ToString()" Archived="@(cp.Archived is not null)" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <OdsContactChip Unavailable="true" />
+                                                        }
+                                                    }
+                                                </span>
+                                            }
+                                            else { <text>—</text> }
+                                        </ChildContent>
+                                    </OdsMetaTile>
+                                    @if (detail.Archived is { } archivedAt)
+                                    {
+                                        <OdsMetaTile Mono="true">
+                                            <Label>Archived</Label>
+                                            <ChildContent>@archivedAt.ToLocalTime().ToString("MMM dd, yyyy")</ChildContent>
+                                        </OdsMetaTile>
+                                    }
+                                    <div class="je-content-cell">
+                                        <OdsMetaTile>
+                                            <Label>Content</Label>
+                                            <ChildContent><div class="je-content">@detail.Content</div></ChildContent>
+                                        </OdsMetaTile>
+                                    </div>
+                                </div>
+
+                                <div class="je-media">
+                                    <JournalPhotoGallery Photos="GalleryPhotos(detail)" Title="Photos"
+                                                         OnOpen="@(p => OpenPhotoDetail(detail, p))" />
+                                    <OdsCollapsible Icon="attach_file" DefaultOpen="true">
+                                        <Title>Attachments</Title>
+                                        <Count>@detail.Attachments.Count</Count>
+                                        <ChildContent>
+                                            <JournalFilesTable Attachments="ResolvedAttachments(detail)" CanDownload="_canReadFiles" />
+                                        </ChildContent>
+                                    </OdsCollapsible>
+                                </div>
+                            }
+                    </Detail>
+                </OdsExpandableCard>
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">Write your first entry</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New entry"
+                               Sub="Title, content, an entry date, and any photos, files, tags, or contacts."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+</div>
+
+@if (_createKey != Guid.Empty)
+{
+    <CreateJournalEntryDialog @key="_createKey"
+                              @bind-Open="_createOpen"
+                              TagOptions="_tagOptions"
+                              ContactOptions="_contactOptions"
+                              OnSaved="OnEntryCreated" />
+}
+
+@if (_editEntry is not null)
+{
+    <CreateJournalEntryDialog @key="_editEntryKey"
+                              @bind-Open="_editEntryOpen"
+                              Entry="_editEntry"
+                              TagOptions="_tagOptions"
+                              ContactOptions="_contactOptions"
+                              OnSaved="OnEntryEdited" />
+}
+
+@* VJOURNAL import (issue #339) — gated on journal.create AND journal.update; self-resets on close, so
+   it is mounted through the close (bind-Open toggling) rather than @if-away'd. *@
+@if (_canImport)
+{
+    <ImportJournalEntriesDialog @bind-Open="_importOpen" OnChanged="OnEntriesImported" />
+}
+
+@* Clicking a photo opens the shared library detail dialog (Odyssey Design System · Photos · detail),
+   the same one the Photos library uses — with favourite, edit, archive and delete wired to the Photos
+   API and gated by the caller's photos.* claims. *@
+@if (_detailIndex is { } di)
+{
+    <PhotoDetailDialog Photos="_detailPhotos" Index="di"
+                       IndexChanged="@(i => _detailIndex = i)" OnClose="ClosePhotoDetail"
+                       OnToggleFavourite="ToggleFavouritePhotoAsync"
+                       OnEdit="OpenEditPhoto" OnToggleArchive="ArchivePhotoAsync" OnDelete="DeletePhotoAsync"
+                       CanUpdate="_canUpdatePhotos" CanDelete="_canDeletePhotos"
+                       TagName="PhotoTagName" PersonName="PhotoPersonName" AlbumName="PhotoAlbumName" />
+}
+
+@* Edit dialog stays mounted and toggles via Open (@key resets its state when the target changes). *@
+<EditPhotoDialog @key="_editPhotoId" Open="_editPhotoId is not null" OpenChanged="v => { if (!v) _editPhotoId = null; }"
+                 PhotoId="@(_editPhotoId ?? Guid.Empty)"
+                 TagOptions="_photoTagOptions" PeopleOptions="_photoPeopleOptions" AlbumOptions="_photoAlbumOptions"
+                 CanCreateTags="_canCreatePhotoTags" CanRenameFile="_canRenameFile" OnSaved="OnPhotoSaved" />

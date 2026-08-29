@@ -1,0 +1,110 @@
+@using Odyssey.Dtos.Finance
+
+@*
+    TaxReconciliation — the TaxStatementReport contrasting three sources for a tax
+    statement (Odyssey Design System · Tax Statements · reconciliation report):
+
+      • Declared — the figures stated on the official statement.
+      • Derived  — Odyssey's own position (net worth by account, advance tax + income
+                   summed from tagged transactions); net-worth rows read "Unavailable"
+                   until account balances are computed.
+      • Variance — the difference, shown via OdsDelta in variance mode (0 reconciles
+                   mint ✓, non-zero an amber discrepancy, null disabled).
+
+    The cross-year settlement is surfaced in the Tax section: advance tax paid within
+    the year (declared = assessed − settlement) reconciled against Odyssey's tag-derived
+    figure, then the settlement itself (declared) vs. the estimated outstanding tax.
+*@
+
+<div class="tx-recon">
+    <div class="tx-recon-head">
+        <span>Figure</span>
+        <span class="ta-r">Declared</span>
+        <span class="ta-r tx-h-derived">Odyssey-derived</span>
+        <span class="ta-r">Variance</span>
+    </div>
+
+    <div class="tx-recon-group"><span class="material-icons">account_balance_wallet</span>Net worth</div>
+    <div class="tx-recon-row">
+        <div class="tx-figure">Total assets</div>
+        @Cell(d.TotalAssets)
+        @DerivedCell(v.TotalAssets)
+        <span class="ta-r">@Variance(av ? Diff(d.TotalAssets, v.TotalAssets) : null)</span>
+    </div>
+    <div class="tx-recon-row">
+        <div class="tx-figure">Total liabilities</div>
+        @Cell(d.TotalLiabilities)
+        @DerivedCell(v.TotalLiabilities)
+        <span class="ta-r">@Variance(av ? Diff(d.TotalLiabilities, v.TotalLiabilities) : null)</span>
+    </div>
+    <div class="tx-recon-row total">
+        <div class="tx-figure">Net worth</div>
+        @Cell(d.NetWorth)
+        @DerivedCell(v.NetWorth)
+        <span class="ta-r">@Variance(recon.NetWorthVariance)</span>
+    </div>
+
+    <div class="tx-recon-group"><span class="material-icons">payments</span>Income</div>
+    <div class="tx-recon-row total">
+        <div class="tx-figure">Total income</div>
+        @Cell(d.TotalIncome)
+        <span class="tx-num">@Money(v.ActualIncome)</span>
+        <span class="ta-r">@Variance(recon.IncomeVariance)</span>
+    </div>
+
+    <div class="tx-recon-group"><span class="material-icons">gavel</span>Tax</div>
+    <div class="tx-recon-row">
+        <div class="tx-figure">Assessed tax</div>
+        @Cell(d.AssessedTax)
+        <span class="tx-num na">—</span>
+        <span class="ta-r"><span class="tx-var na">—</span></span>
+    </div>
+    <div class="tx-recon-row">
+        <div class="tx-figure">Advance tax paid</div>
+        @Cell(DeclaredAdvancePaid)
+        <span class="tx-num">@Money(v.PaidTax)</span>
+        <span class="ta-r">@Variance(recon.SettlementVariance)</span>
+    </div>
+    <div class="tx-recon-row total">
+        <div class="tx-figure">Settlement</div>
+        <span class="tx-num @(d.SettlementAmount is null ? "na" : null)">@(d.SettlementAmount is null ? "—" : Money(d.SettlementAmount))</span>
+        <span class="tx-num @(recon.OutstandingTax is null ? "na" : null)">@(recon.OutstandingTax is null ? "—" : Money(recon.OutstandingTax))</span>
+        <span class="ta-r">@Variance(recon.SettlementVariance)</span>
+    </div>
+</div>
+
+@code {
+    /// <summary>The statement whose reconciliation report is shown.</summary>
+    [Parameter, EditorRequired] public ExistingTaxStatement Statement { get; set; } = default!;
+
+    /// <summary>The computed report (declared / derived figures + variances).</summary>
+    [Parameter, EditorRequired] public TaxStatementReport Report { get; set; } = default!;
+
+    /// <summary>Formats an amount in the statement's base currency (the design-system taxMoney).</summary>
+    [Parameter, EditorRequired] public Func<decimal?, string> Money { get; set; } = n => n?.ToString() ?? "—";
+
+    private TaxStatementDeclaredFigures d => Report.Declared;
+    private TaxStatementDerivedFigures v => Report.Derived;
+    private TaxStatementReconciliation recon => Report.Reconciliation;
+    private bool av => Report.Derived.Available;
+
+    // The statement doesn't state advance tax paid directly — it's implied by the
+    // assessment (advance paid = assessed tax − settlement balance), shown beside the
+    // tag-derived figure so the two reconcile.
+    private decimal? DeclaredAdvancePaid =>
+        d.AssessedTax is null || d.SettlementAmount is null ? null : d.AssessedTax - d.SettlementAmount;
+
+    private static decimal? Diff(decimal? a, decimal? b) => a is null || b is null ? null : a - b;
+
+    private RenderFragment Cell(decimal? n) => n is null
+        ? @<span class="tx-num na">—</span>
+        : @<span class="tx-num">@Money(n)</span>;
+
+    // Derived net-worth columns read "Unavailable" until account balances are computed.
+    private RenderFragment DerivedCell(decimal? n) => !av || n is null
+        ? @<span class="tx-num na">Unavailable</span>
+        : @<span class="tx-num">@Money(n)</span>;
+
+    private RenderFragment Variance(decimal? value) =>
+        @<OdsDelta Mode="OdsDeltaMode.Variance" Value="value" Format="@(n => Money(n))" />;
+}

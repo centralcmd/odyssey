@@ -1,0 +1,97 @@
+@using Odyssey.Dtos
+@inject IAlbumsApiClient Albums
+@inject IPhotosApiClient Photos
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+@inject IUploadLimitsCache UploadLimits
+
+@*
+    AlbumFormDialog — create or edit an album (Odyssey Design System · Photos · album management).
+    Both modes carry an "Upload new photos to this album" dropzone (OdsFileUpload, kind picker off):
+    staged files are uploaded on save, one library Photo per file, then seeded into the new album's
+    PhotoIds (create) or appended to the ordered membership (edit). Edit also exposes a keyboard-operable
+    member list: move up/down, set-as-cover, and remove — all real buttons with aria-labels (spec §3 #5),
+    never pointer-only drag. Save PUTs the ordered PhotoIds + CoverPhotoId (Position = array index); the
+    cover is validated against membership server-side (§7).
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="Close"
+          Icon="@(IsEdit ? "edit" : "add_photo_alternate")" Title="@TitleFragment" Subtitle="@SubtitleFragment">
+    <ChildContent>
+        <div class="ods-modal-body pl-albform">
+            <OdsField Label="Album name" @bind-Value="_name" Icon="photo_album" Placeholder="e.g. Summer 2026" Required="true" />
+            <OdsField Label="Description" @bind-Value="_desc" Multiline="true" Rows="2" MaxLength="1024"
+                      Placeholder="What’s this album about? (optional)" />
+
+            @if (IsEdit)
+            {
+                <div class="odc-field">
+                    <label class="odc-field-label">Photos in this album — order &amp; cover</label>
+                    @if (_members.Count == 0)
+                    {
+                        <div class="pl-drop-hint">No photos yet — upload below or add from the library’s “Add to album”.</div>
+                    }
+                    else
+                    {
+                        <ul class="pl-memlist">
+                            @for (var i = 0; i < _members.Count; i++)
+                            {
+                                var idx = i;
+                                var id = _members[idx];
+                                var s = Summary(id);
+                                var label = Label(s);
+                                var isCover = _cover == id;
+                                <li class="pl-memrow" @key="id">
+                                    <span class="pl-memthumb" style="@ThumbStyle(s)"></span>
+                                    <span class="pl-memname">@label</span>
+                                    <span class="pl-mempos mono" aria-hidden="true">#@(idx + 1)</span>
+                                    <button type="button" class="pl-memcover @(isCover ? "on" : null)"
+                                            aria-pressed="@(isCover ? "true" : "false")"
+                                            aria-label="@(isCover ? $"{label} is the cover" : $"Set {label} as cover")"
+                                            @onclick="() => _cover = id">
+                                        <span class="material-icons" aria-hidden="true">@(isCover ? "star" : "star_border")</span>
+                                    </button>
+                                    <button type="button" class="pl-membtn" aria-label="@($"Move {label} up")"
+                                            disabled="@(idx == 0)" @onclick="() => Move(idx, -1)">
+                                        <span class="material-icons" aria-hidden="true">arrow_upward</span>
+                                    </button>
+                                    <button type="button" class="pl-membtn" aria-label="@($"Move {label} down")"
+                                            disabled="@(idx == _members.Count - 1)" @onclick="() => Move(idx, 1)">
+                                        <span class="material-icons" aria-hidden="true">arrow_downward</span>
+                                    </button>
+                                    <button type="button" class="pl-membtn" aria-label="@($"Remove {label} from album")"
+                                            @onclick="() => Remove(id)">
+                                        <span class="material-icons" aria-hidden="true">close</span>
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+
+            <div class="odc-field">
+                <label class="odc-field-label">Upload new photos to this album</label>
+                <OdsFileUpload Files="_files" FilesChanged="v => _files = [.. v]"
+                               ShowKinds="false"
+                               Accept=".jpg,.jpeg,.png,.gif,.webp"
+                               Hint="@($"JPEG, PNG, GIF or WebP · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")"
+                               Error="@_uploadError" />
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        @if (IsEdit)
+        {
+            <button type="button" class="pl-danger-link" @onclick="DeleteAsync">
+                <span class="material-icons" aria-hidden="true">delete</span>Delete album
+            </button>
+            <span style="flex:1"></span>
+        }
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="Close">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_busy" OnClick="SaveAsync"
+                   Disabled="@(_busy || string.IsNullOrWhiteSpace(_name))">
+            @(IsEdit ? "Save" : "Create")
+        </OdsButton>
+    </Footer>
+</OdsModal>

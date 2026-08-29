@@ -1,0 +1,34 @@
+@*
+    OdsDonutPair — two donut panels as separate recessed wells in a 2-up grid
+    (Odyssey Design System · components/Donut · Donut.Pair; mirrors the kit
+    .acct-donuts-row / .bgt-donuts-row restructure that replaced the single
+    center divider).
+
+    The account-overview layout (assets / liabilities, planned-in / planned-out).
+    Use stacked panels inside — give each child OdsDonut Layout="OdsDonutLayout.Stack"
+    so the two columns aren't too wide. Each panel sits in its own .odc-donut-card
+    well; the row collapses to a single column at ≤760px.
+*@
+
+<div class="odc-donut-pair">
+    @if (First is not null)
+    {
+        <div class="odc-donut-card">@First</div>
+    }
+    @if (Second is not null)
+    {
+        <div class="odc-donut-card">@Second</div>
+    }
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>The left panel (typically an OdsDonut with Layout=Stack).</summary>
+    [Parameter] public RenderFragment? First { get; set; }
+
+    /// <summary>The right panel (typically an OdsDonut with Layout=Stack).</summary>
+    [Parameter] public RenderFragment? Second { get; set; }
+
+    /// <summary>Alternative free-form content when not using First/Second.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

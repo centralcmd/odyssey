@@ -1,0 +1,34 @@
+# Caddy reverse proxy for Odyssey.
+#
+# Terminates TLS (automatic Let's Encrypt certs) and forwards everything to the client
+# container, whose own nginx serves the Blazor SPA and proxies /api/* to the API. So the
+# whole app lives behind a single origin — which is what keeps cookie auth simple.
+#
+# {$ODYSSEY_DOMAIN} is injected from the environment (see .env.prod). For local testing
+# without a public domain, set ODYSSEY_DOMAIN=localhost and Caddy issues an internal cert.
+
+{$ODYSSEY_DOMAIN} {
+	encode zstd gzip
+
+	# Allow file uploads up to the API's 64 MB transport ceiling plus multipart envelope headroom.
+	# Caddy's default is unlimited, but set it explicitly so this outermost hop stays aligned with
+	# (and never tighter than) the inner nginx client_max_body_size and the API's FileStorage cap.
+	#
+	# The cap users actually hit is admin-editable in System Settings and is bounded by that
+	# transport ceiling (issue #421 Wave 4), so lowering it needs no change here. Raising it past
+	# 64 MB means raising this, nginx, and FILE_UPLOAD_MAX_BYTES — outermost first.
+	# See docs/deployment.md, "Upload size".
+	request_body {
+		max_size 65MB
+	}
+
+	# HSTS — only meaningful over the https Caddy terminates, so it's set here rather than at
+	# the inner nginx. The remaining security headers (CSP, nosniff, frame-ancestors, …) are
+	# emitted by nginx and pass through this reverse proxy unchanged.
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+	# Forward the original scheme/host so the API (via ForwardedHeaders) marks cookies Secure
+	# and generates correct https links. Caddy sets X-Forwarded-* automatically. The client
+	# container runs unprivileged nginx on 8080.
+	reverse_proxy client:8080
+}

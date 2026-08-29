@@ -1,0 +1,87 @@
+name: Feature Request
+description: Suggest a new feature or improvement for Odyssey
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched existing issues and this has not already been requested
+          required: true
+
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected Area
+      description: Which part of the application would this feature touch?
+      options:
+        - API (Odyssey.Api — new endpoints, middleware, config)
+        - Client / Frontend (Odyssey.Client — new pages, UI components, UX)
+        - Finance (transactions, accounts, budgets, categories, reports)
+        - Auth (login, registration, session management, roles)
+        - Files / Attachments (Odyssey.Finance — upload, storage, AI file analysis)
+        - User Preferences (persisted per-page UI state)
+        - Database / EF Core (new entities, migrations, schema changes)
+        - Docker / Infrastructure (docker-compose, NGINX, CI/CD)
+        - Developer Experience (tooling, docs, tests, build)
+        - Other / Cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: |
+        What problem does this feature solve, or what limitation does it address?
+        Be specific — good feature requests start with a concrete pain point.
+      placeholder: |
+        As a user managing multiple bank accounts, I can't see a consolidated month-end
+        balance summary across all accounts, so I have to manually add them up each time.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        Describe the feature you'd like to see. Include any relevant UI sketches,
+        API shape, or data model ideas if you have them.
+      placeholder: |
+        Add a "Summary" card at the top of the Accounts page that shows:
+        - Total balance across all accounts
+        - Net change for the current month
+        The card should update in real-time when transactions are added/removed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you thought of other ways to solve this? Why is your proposed solution better?
+      placeholder: |
+        I considered a dedicated Reports page, but a summary card is more discoverable
+        and doesn't require navigating away from the Accounts view.
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: Your rough sense of how big this change is (no need to be exact).
+      options:
+        - Small — a few lines / single file
+        - Medium — a new component or endpoint + tests
+        - Large — multiple layers (API + Client + DB migration)
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Screenshots, mockups, links to similar features in other tools, or related issues.

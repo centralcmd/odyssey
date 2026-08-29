@@ -1,0 +1,32 @@
+@*
+    OdsSkeletonRow — a placeholder <tr> for a loading table
+    (Odyssey Design System · components/Skeleton · SkeletonRow).
+
+    Render a few inside a <tbody> while rows fetch so the row layout (including
+    right-aligned numeric cells) holds steady as real rows replace it. Columns
+    controls the cell count; pass 'end' per index in Align to size that cell as
+    a numeric column. Intended for raw / MudTable LoadingContent contexts.
+*@
+
+<tr class="odc-skel-row" aria-hidden="true">
+    @for (var i = 0; i < Columns; i++)
+    {
+        var isEnd = i < Align.Count && Align[i] == OdsAlign.End;
+        <td class="@(isEnd ? "num" : null)">
+            <span class="odc-skeleton text" style="@CellStyle(i, isEnd)"></span>
+        </td>
+    }
+</tr>
+
+@code {
+    /// <summary>Number of cells in the row. Match your table's column count.</summary>
+    [Parameter] public int Columns { get; set; } = 4;
+
+    /// <summary>Per-column-index alignment; End sizes that cell as a numeric column.</summary>
+    [Parameter] public IReadOnlyList<OdsAlign> Align { get; set; } = [];
+
+    private static string CellStyle(int index, bool isEnd) =>
+        isEnd
+            ? "width:56px;margin-left:auto;"
+            : $"width:{50 + ((index * 17) % 40)}%;";
+}

@@ -1,0 +1,113 @@
+@*
+    OdsAmountField — a money / numeric input with a fixed adornment
+    (Odyssey Design System · components/AmountField).
+
+    Consolidates the hand-rolled hero money inputs (the old .est-value / .trm-value /
+    .atm-amount markup) into one labelled control built on OdsFieldShell. The
+    adornment sits inside the box: Prefix on the left (e.g. "$"), Suffix on the right
+    (e.g. "%"). The numeric text is monospaced + tabular so digits line up. Two sizes:
+    default (data-entry rows) and "lg" (a hero amount input, e.g. an Estimate value).
+
+    Controlled: bind via @bind-Value. Input is kept as a string so partial entries
+    ("3.", "1,2") aren't clobbered; characters are sanitized to digits, separators and
+    (optionally, with AllowNegative) a leading minus — parse on submit.
+*@
+
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+               Help="@Help" HelpContent="@HelpContent" Error="@Error" Class="@Class">
+    <div class="@BoxClass">
+        @if (!string.IsNullOrEmpty(Prefix))
+        {
+            <span class="odc-amount-adorn pre" aria-hidden="true">@Prefix</span>
+        }
+        <input id="@FieldId"
+               class="odc-amount-input"
+               inputmode="decimal"
+               type="text"
+               value="@Value"
+               placeholder="@Placeholder"
+               disabled="@Disabled"
+               autofocus="@AutoFocus"
+               style="@(Align == "right" ? "text-align:right" : null)"
+               aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
+               aria-describedby="@DescribedBy"
+               @oninput="OnInput"
+               @attributes="UserAttributes" />
+        @if (!string.IsNullOrEmpty(Suffix))
+        {
+            <span class="odc-amount-adorn suf" aria-hidden="true">@Suffix</span>
+        }
+    </div>
+</OdsFieldShell>
+
+@code {
+    /// <summary>Visible label, rendered above the control.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>The raw string value. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Adornment shown to the left of the number (e.g. a currency symbol).</summary>
+    [Parameter] public string? Prefix { get; set; }
+
+    /// <summary>Adornment shown to the right of the number (e.g. "%").</summary>
+    [Parameter] public string? Suffix { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "0.00";
+
+    /// <summary>"md" (default, data-entry rows) or "lg" (a large, focal hero input).</summary>
+    [Parameter] public string Size { get; set; } = "md";
+
+    /// <summary>"left" (default) or "right" text alignment for the number.</summary>
+    [Parameter] public string Align { get; set; } = "left";
+
+    /// <summary>Allow a leading minus for rates / deltas that can go below zero.</summary>
+    [Parameter] public bool AllowNegative { get; set; }
+
+    [Parameter] public string? Help { get; set; }
+
+    /// <summary>Rich helper content (takes precedence over <see cref="Help"/>), e.g. a hint with bold.</summary>
+    [Parameter] public RenderFragment? HelpContent { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Optional { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public bool AutoFocus { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string FieldId = default!;
+
+    protected override void OnInitialized() => FieldId = Id ?? $"odc-amount-{Guid.NewGuid():N}";
+
+    private string BoxClass =>
+        string.Join(' ', new[]
+        {
+            "odc-amount",
+            Size == "lg" ? "lg" : null,
+            string.IsNullOrEmpty(Error) ? null : "error",
+            Disabled ? "disabled" : null,
+        }.Where(value => !string.IsNullOrEmpty(value)));
+
+    private string? DescribedBy =>
+        (string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help) && HelpContent is null) ? null : $"{FieldId}-help";
+
+    private Task OnInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? "";
+        Value = new string(raw.Where(ch => char.IsDigit(ch) || ch is '.' or ',' || (AllowNegative && ch is '-')).ToArray());
+        return ValueChanged.InvokeAsync(Value);
+    }
+}

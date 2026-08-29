@@ -1,0 +1,307 @@
+/* =============================================================
+   account-terms.css — Account interest-rate & fee history
+   The "Terms" section inside an expanded account record
+   (Accounts → account detail), plus the New / Edit term dialog.
+
+   Layered on kit.css. Reuses .field / .label / .helper / .atm-seg /
+   .atm-amount / .meta-grid / .empty-line and the chart tokens. This
+   file only adds the term-specific surfaces, prefixed .trm-*.
+   ============================================================= */
+
+/* ---- Section shell (lives in the collapsible body) ---- */
+.trm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 18px 16px 20px;
+}
+.trm-sub {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
+}
+.trm-sub-label {
+  font: 600 11px/1 var(--font-sans);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.trm-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light); }
+.trm-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+
+/* Kind glyph tile — soft tint + colored icon (account/file-type vocabulary). */
+.trm-kind-ic {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none; border-radius: 8px;
+}
+.trm-kind-ic.sm { width: 28px; height: 28px; }
+.trm-kind-ic.md { width: 34px; height: 34px; }
+.trm-kind-ic.lg { width: 42px; height: 42px; }
+
+/* =============================================================
+   HERO — the interest-rate step chart
+   ============================================================= */
+.trm-hero {
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 10px;
+  background: var(--mud-palette-surface);
+  overflow: hidden;
+}
+.trm-hero-head {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 16px 18px 12px;
+}
+.trm-hero-titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.trm-hero-kind {
+  display: flex; align-items: center; gap: 8px;
+  font: 500 13px/1 var(--font-sans); color: var(--mud-palette-text-primary);
+}
+.trm-hero-sub { font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.trm-hero-figs { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+.trm-hero-value {
+  font: 300 34px/0.95 var(--font-mono);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+.trm-delta {
+  display: inline-flex; align-items: center; gap: 3px;
+  font: 500 11.5px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  padding: 3px 8px 3px 5px; border-radius: 999px;
+}
+.trm-delta .material-icons { font-size: 14px; }
+.trm-delta.up   { color: oklch(0.80 0.15 150); background: oklch(0.80 0.15 150 / 0.13); }
+.trm-delta.down { color: oklch(0.74 0.16 22);  background: oklch(0.74 0.16 22 / 0.13); }
+.trm-delta.flat { color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); }
+
+.trm-chart-wrap { padding: 2px 12px 14px; }
+.trm-chart { display: block; width: 100%; height: auto; overflow: visible; }
+.trm-chart .grid { stroke: var(--chart-grid); stroke-width: 1; }
+.trm-chart .axis { font: 400 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
+.trm-chart .step { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.trm-chart .future { stroke-dasharray: 2 5; }
+.trm-chart .dot-halo { fill: var(--mud-palette-surface); }
+.trm-chart .nowline { stroke: var(--chart-axis); stroke-width: 1; stroke-dasharray: 2 4; }
+.trm-chart .nowlabel { font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; fill: var(--mud-palette-text-secondary); }
+
+/* =============================================================
+   CURRENT TERMS — three summary styles (the /terms/current view)
+   ============================================================= */
+
+/* ---- Tiles (default) ---- */
+.trm-summary.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+}
+.trm-tile {
+  position: relative;
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 13px 14px;
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 9px;
+  background: var(--mud-palette-surface);
+}
+.trm-tile-top { display: flex; align-items: center; gap: 9px; }
+.trm-tile-kind { font: 500 12px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.trm-tile-value {
+  font: 400 23px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--mud-palette-text-primary);
+}
+.trm-tile-foot {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font: 400 11px/1.3 var(--font-mono); color: var(--mud-palette-text-secondary);
+}
+.trm-bill {
+  font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em;
+  padding: 3px 7px; border-radius: 999px;
+  background: var(--mud-palette-action-default-hover);
+  color: var(--mud-palette-text-secondary);
+}
+
+/* ---- Compact row ---- */
+.trm-summary.row {
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 9px; overflow: hidden;
+  background: var(--mud-palette-surface);
+}
+.trm-srow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px;
+  border-top: 1px solid var(--mud-palette-divider-light);
+}
+.trm-srow:first-child { border-top: none; }
+.trm-srow-kind { font: 400 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.trm-srow-meta { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.trm-srow-date { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.trm-srow-value {
+  min-width: 92px; text-align: right;
+  font: 500 15px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+
+/* ---- Chips ---- */
+.trm-summary.chips { display: flex; flex-wrap: wrap; gap: 9px; }
+.trm-cchip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 13px 7px 8px; border-radius: 999px;
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-surface);
+}
+.trm-cchip-kind { font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.trm-cchip-value {
+  font: 500 13px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+  padding-left: 9px; margin-left: 1px;
+  border-left: 1px solid var(--mud-palette-divider);
+}
+
+/* =============================================================
+   HISTORY — grouped, as a table OR a vertical timeline
+   ============================================================= */
+.trm-history { display: flex; flex-direction: column; gap: 20px; }
+.trm-group-label {
+  display: flex; align-items: center; gap: 8px;
+  font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-primary);
+  margin-bottom: 9px;
+}
+.trm-group-count {
+  font: 500 10.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary);
+  background: var(--mud-palette-action-default-hover);
+  padding: 3px 7px; border-radius: 999px;
+}
+
+/* ---- Table ---- */
+.trm-tbl { width: 100%; border-collapse: collapse; }
+.trm-tbl thead th {
+  text-align: left;
+  font: 600 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+  padding: 0 12px 9px; border-bottom: 1px solid var(--mud-palette-divider);
+}
+.trm-tbl thead th.num { text-align: right; }
+.trm-tbl thead th.act { width: 44px; }
+.trm-tbl tbody td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--mud-palette-divider-light);
+  font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-primary);
+  vertical-align: middle;
+}
+.trm-tbl tbody tr:last-child td { border-bottom: none; }
+.trm-tbl tbody tr.current td { background: oklch(0.78 0.13 200 / 0.04); }
+.trm-row-kind { display: flex; align-items: center; gap: 10px; }
+.trm-row-kind-name { font: 400 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.trm-row-note { font: 400 11.5px/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+.trm-cell-date { font: 400 12.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.trm-cell-value {
+  text-align: right; font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  font-weight: 500;
+}
+.trm-inforce {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em;
+  color: oklch(0.78 0.13 200);
+  background: oklch(0.78 0.13 200 / 0.13);
+  padding: 3px 8px; border-radius: 999px;
+}
+.trm-superseded { font: 400 10.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); opacity: 0.7; }
+.trm-cell-act { text-align: right; }
+
+/* ---- Timeline ---- */
+.trm-timeline { position: relative; padding-left: 6px; }
+.trm-tl-item {
+  position: relative;
+  display: grid; grid-template-columns: 28px 1fr auto;
+  gap: 12px; align-items: start;
+  padding: 0 4px 18px 0;
+}
+.trm-tl-item:last-child { padding-bottom: 2px; }
+.trm-tl-rail {
+  position: relative; display: flex; justify-content: center;
+}
+.trm-tl-rail::before {
+  content: ""; position: absolute; top: 22px; bottom: -18px; left: 50%;
+  width: 2px; transform: translateX(-50%);
+  background: var(--mud-palette-divider);
+}
+.trm-tl-item:last-child .trm-tl-rail::before { display: none; }
+.trm-tl-node {
+  position: relative; z-index: 1; margin-top: 3px;
+  width: 13px; height: 13px; border-radius: 999px;
+  border: 2.5px solid var(--mud-palette-surface);
+  box-shadow: 0 0 0 1.5px currentColor;
+}
+.trm-tl-body { min-width: 0; }
+.trm-tl-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.trm-tl-kind { font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.trm-tl-date { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.trm-tl-note { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; }
+.trm-tl-figs { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.trm-tl-value {
+  font: 500 16px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+.trm-tl-actions { display: flex; gap: 2px; }
+
+/* Reveal row actions on hover (table + timeline) */
+.trm-tbl tbody tr .trm-rowbtns,
+.trm-tl-item .trm-rowbtns { opacity: 0; transition: opacity .12s ease; display: inline-flex; gap: 2px; }
+.trm-tbl tbody tr:hover .trm-rowbtns,
+.trm-tbl tbody tr:focus-within .trm-rowbtns,
+.trm-tl-item:hover .trm-rowbtns,
+.trm-tl-item:focus-within .trm-rowbtns { opacity: 1; }
+.trm-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--mud-palette-text-secondary);
+}
+.trm-iconbtn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.trm-iconbtn.danger:hover { color: var(--mud-palette-error); background: oklch(0.72 0.16 22 / 0.12); }
+.trm-iconbtn .material-icons { font-size: 18px; }
+
+/* Section toolbar (right of the collapsible title) */
+.trm-toolbar { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Per-kind empty hint within a group */
+.trm-group-empty {
+  font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+  padding: 10px 12px; border: 1px dashed var(--mud-palette-divider);
+  border-radius: 8px;
+}
+
+/* =============================================================
+   NEW / EDIT TERM dialog
+   ============================================================= */
+.trm-dialog { max-width: 560px; }
+
+/* Kind picker — eligibility-aware grid of selectable kinds */
+.trm-kind-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.trm-kind-opt {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 11px; text-align: left;
+  border: 1px solid var(--mud-palette-divider); border-radius: 9px;
+  background: var(--mud-palette-background); cursor: pointer;
+  transition: border-color .12s ease, background .12s ease;
+}
+.trm-kind-opt:hover { border-color: var(--mud-palette-text-secondary); }
+.trm-kind-opt.on { border-color: transparent; box-shadow: inset 0 0 0 2px var(--mud-palette-primary); background: var(--mud-palette-surface); }
+.trm-kind-opt-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.trm-kind-opt-name { font: 500 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.trm-kind-opt-grp { font: 400 10.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.trm-kind-check { margin-left: auto; color: var(--mud-palette-primary); }
+.trm-kind-ineligible {
+  font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary);
+  margin-top: 8px;
+}
+.trm-kind-ineligible b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+/* Value block — wraps the hero AmountField + its unit toggle head. */
+.trm-value-block { display: flex; flex-direction: column; gap: 10px; }
+
+.trm-foot-note { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.trm-field-head { display: flex; align-items: center; }

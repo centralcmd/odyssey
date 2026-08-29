@@ -1,0 +1,18 @@
+@using Odyssey.Dtos.Finance
+@* Which provider and model produced this job's results. Renders nothing until a job is loaded. *@
+@if (Job is { } job && !string.IsNullOrWhiteSpace(job.AnalyzerProvider))
+{
+    <span class="fan-provider">
+        <OdsMIcon Name="auto_awesome" Size="14" />
+        <span>@job.AnalyzerProvider</span>
+        @if (!string.IsNullOrWhiteSpace(job.AnalyzerModel))
+        {
+            <span class="fan-provider-model mono">@job.AnalyzerModel</span>
+        }
+    </span>
+}
+
+@code {
+    /// <summary>The loaded analysis job, if any.</summary>
+    [Parameter] public ExistingFileAnalysisJob? Job { get; set; }
+}

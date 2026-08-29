@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Odyssey.Dtos\Odyssey.Dtos.csproj" />
+      <ProjectReference Include="..\Odyssey.Context\Odyssey.Context.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Mapster" />
+      <!-- From the former Odyssey.Shared, which needed Microsoft.Extensions.Configuration.Abstractions
+           explicitly because it carried no FrameworkReference. Here the AspNetCore framework reference
+           above already provides it, and NU1510 fails the build if it is listed again. -->
+      <PackageReference Include="Microsoft.EntityFrameworkCore" />
+      <!-- VTODO/VEVENT .ics import/export (issues #330, #337). -->
+      <PackageReference Include="Ical.Net" />
+      <!-- Photo Library (issue #321): EXIF/IPTC/XMP extraction for uploaded images. -->
+      <PackageReference Include="MetadataExtractor" />
+      <!-- Recognise the MariaDB duplicate-key (1062) on the photo find-or-create hot paths so it can be
+           caught + re-fetched rather than bubbling to the GlobalExceptionHandler as a 409. -->
+      <PackageReference Include="MySqlConnector" />
+    </ItemGroup>
+
+</Project>

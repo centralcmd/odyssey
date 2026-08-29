@@ -1,0 +1,273 @@
+@using Odyssey.Client.Models
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthState
+@inject IAccountsApiClient Accounts
+@inject IFileAnalysisApiClient FileAnalysis
+@inject IReferenceDataCache ReferenceData
+@inject IFileAnalysisDisclosureCache Disclosures
+@inject IContactsApiClient Contacts
+@* Analyze/import/match go through the typed clients and branch on ApiResult.Status: 503 means the
+   file-analysis feature flag is off (Phase.Disabled), 400 means the consent gate rejected the request
+   (Phase.Blocked), anything else is a genuine failure (Phase.Failed).
+
+   The phase machine, the candidate rows and the merchant create/rollback live on FileAnalysisSession
+   (Odyssey.Client/Models) so they can be unit-tested; the consent gate and the review grid are their
+   own components. What is left here is the I/O and the per-phase framing. *@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="@HeaderIcon" IconTone="@HeaderTone"
+          Wide="IsWideFrame" Class="@ModalClass" AriaLabel="Analyze statement">
+    <Title>@_session.Title</Title>
+    <Subtitle>@_session.Subtitle</Subtitle>
+    <ChildContent>
+            <div class="fan-live" aria-live="polite" role="status">@_liveMsg</div>
+            <!-- Body -->
+            <div class="fan-content @(IsReview ? "wide" : "")">
+
+                @if (Phase == FileAnalysisPhase.Consent)
+                {
+                    @* Re-prompt after a 409 disclosure_changed (issue #439 §5.3c). Non-dismissable and
+                       above the gate, so the reason is read before the facts it applies to. tabindex=-1
+                       so focus can land here rather than on the affirmation that just reset; the text is
+                       also announced through the dialog's live region, so it is never conveyed by
+                       position alone. *@
+                    @if (_disclosureChangedNotice is { } notice)
+                    {
+                        <div class="fan-consent-reprompt" tabindex="-1" @ref="_disclosureChangedRef">
+                            <OdsAlert Severity="Severity.Warning">@notice</OdsAlert>
+                        </div>
+                    }
+                    <FileAnalysisConsentPanel FileName="@FileName" FileSizeBytes="FileSizeBytes"
+                                              VocabularyCount="_session.VocabularyCount"
+                                              Disclosure="@_disclosure"
+                                              DisclosureResolved="@Disclosures.IsResolved"
+                                              Checked="_consentChecked"
+                                              CheckedChanged="@(v => _consentChecked = v)" />
+                }
+                else if (Phase == FileAnalysisPhase.Analyzing)
+                {
+                    <div class="fan-state">
+                        <span class="fan-spinner" aria-hidden="true"></span>
+                        <FileAnalysisFileMeta FileName="@FileName" AccountName="@AccountName" />
+                        <div class="fan-steps">
+                            <div class="fan-step done"><OdsMIcon Name="check" Size="15" />Uploaded &amp; queued</div>
+                            <div class="fan-step active"><span class="fan-step-dot"></span>Extracting transactions…</div>
+                            <div class="fan-step"><span class="fan-step-dot"></span>Ready to review</div>
+                        </div>
+                        <p class="fan-state-note">This usually takes a few seconds.</p>
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.Matching)
+                {
+                    <div class="fan-state">
+                        <span class="fan-spinner" aria-hidden="true"></span>
+                        <FileAnalysisFileMeta FileName="@FileName" AccountName="@AccountName" />
+                        <FileAnalysisProviderChip Job="_session.Job" />
+                        <div class="fan-steps">
+                            <div class="fan-step done"><OdsMIcon Name="check" Size="15" />Extracted @_session.Rows.Count candidate@(_session.Rows.Count == 1 ? "" : "s")</div>
+                            <div class="fan-step active"><span class="fan-step-dot"></span>Matching against your records…</div>
+                            <div class="fan-step"><span class="fan-step-dot"></span>Ready to review</div>
+                        </div>
+                        <p class="fan-state-note">Only your contact and tag <b>names</b> are sent for matching@(_session.VocabularyCount > 0 ? $" — {_session.VocabularyCount} names this time" : ""). The statement isn’t re-sent.</p>
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.ReanalyzeConfirm)
+                {
+                    <div class="fan-fork">
+                        <div class="fan-fork-lead">
+                            <span class="fan-fork-ic"><OdsMIcon Name="history" Size="22" /></span>
+                            <div>
+                                <div class="fan-fork-t" tabindex="-1">A review is waiting for this file</div>
+                                <p class="fan-fork-s">
+                                    “@FileName” already has an open analysis with
+                                    <b>@_pendingN candidate@(_pendingN == 1 ? "" : "s")</b> still pending. Resume to continue
+                                    reviewing exactly where you left off — nothing is sent to Claude and you aren’t billed again.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="fan-fork-note">
+                            <OdsMIcon Name="info_outline" Size="14" />
+                            <span>Analyzing again uploads the whole statement to Claude a second time and creates a new, duplicate set of candidates.</span>
+                        </div>
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.ResumeLoading)
+                {
+                    <div class="fan-state">
+                        <span class="fan-spinner" aria-hidden="true"></span>
+                        <FileAnalysisFileMeta FileName="@FileName" AccountName="@AccountName" />
+                        <div class="fan-steps">
+                            <div class="fan-step done"><OdsMIcon Name="check" Size="15" />Found saved review</div>
+                            <div class="fan-step active"><span class="fan-step-dot"></span>Loading candidates…</div>
+                            <div class="fan-step"><span class="fan-step-dot"></span>Ready to review</div>
+                        </div>
+                        <p class="fan-state-note">Reopening the @_pendingN pending candidate@(_pendingN == 1 ? "" : "s") from your last review.</p>
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.NoLongerAvailable)
+                {
+                    <div class="fan-state" role="alert">
+                        <span class="fan-state-ic warn"><OdsMIcon Name="unpublished" Size="30" /></span>
+                        <div class="fan-state-title" tabindex="-1" @ref="_unavailableHeading">Nothing left to resume</div>
+                        <p class="fan-state-text">
+                            The review for “@FileName” has already been imported or removed, so there are no
+                            candidates to pick up. You can run a fresh analysis instead.
+                        </p>
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.Blocked)
+                {
+                    <div class="fan-state">
+                        <span class="fan-state-ic warn"><OdsMIcon Name="block" Size="30" /></span>
+                        <div class="fan-state-title">Only statements can be analyzed</div>
+                        <p class="fan-state-text">
+                            “@FileName” can’t be analyzed. Open <b>Edit</b> on the file and change its document type to
+                            <b>Statement</b>, then try again.
+                        </p>
+                        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                        {
+                            <p class="fan-state-note">@_errorMessage</p>
+                        }
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.Disabled)
+                {
+                    <div class="fan-state">
+                        <span class="fan-state-ic warn"><OdsMIcon Name="cloud_off" Size="30" /></span>
+                        <div class="fan-state-title">Analysis isn’t available</div>
+                        <p class="fan-state-text">The AI statement-analysis feature is not enabled on this server.</p>
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.Failed)
+                {
+                    <div class="fan-state">
+                        <span class="fan-state-ic err"><OdsMIcon Name="error_outline" Size="30" /></span>
+                        <div class="fan-state-title">We couldn’t read this statement</div>
+                        <p class="fan-state-text">
+                            @(_session.Job?.FailureMessage
+                                ?? _errorMessage
+                                ?? "The analyzer returned an error before any transactions were extracted. This can happen with scanned images or password-protected files.")
+                        </p>
+                        <FileAnalysisProviderChip Job="_session.Job" />
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.Empty)
+                {
+                    <div class="fan-state">
+                        <span class="fan-state-ic"><OdsMIcon Name="search_off" Size="30" /></span>
+                        <div class="fan-state-title">Nothing to import</div>
+                        <p class="fan-state-text">
+                            Odyssey didn’t find any transactions in “@FileName”. Check that every page uploaded, or add the
+                            transactions manually.
+                        </p>
+                        <FileAnalysisProviderChip Job="_session.Job" />
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.Done)
+                {
+                    <div class="fan-state">
+                        <span class="fan-state-ic ok"><OdsMIcon Name="check_circle" Size="30" /></span>
+                        <div class="fan-state-title">Imported @_importedCount transaction@(_importedCount == 1 ? "" : "s")</div>
+                        <p class="fan-state-text">
+                            @_importedCount candidate@(_importedCount == 1 ? " was" : "s were") added to
+                            <b>@(string.IsNullOrWhiteSpace(AccountName) ? "your account" : AccountName)</b>@(_failedCount > 0 ? $" · {_failedCount} skipped" : "").
+                            They’ll appear in Transactions with status <b>New</b>.
+                        </p>
+                        @if (_failures.Count > 0)
+                        {
+                            <div class="fan-failures">
+                                @foreach (var f in _failures)
+                                {
+                                    <div class="fan-failure"><OdsMIcon Name="error_outline" Size="15" />@f.Reason</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else // Review
+                {
+                    <FileAnalysisReviewGrid Session="_session" FileName="@FileName" AccountName="@AccountName"
+                                            OnReMatch="ReMatchAsync" OnReanalyze="ReanalyzeAsync"
+                                            OnCreateContact="CreateContactAsync"
+                                            OnAnnounce="OnGridAnnounce" />
+                }
+            </div>
+    </ChildContent>
+    <Footer>
+                @if (Phase == FileAnalysisPhase.Consent)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.CloudUpload"
+                               Disabled="@(!_consentChecked)" OnClick="ProceedFromConsentAsync">
+                        Send &amp; analyze
+                    </MudButton>
+                }
+                else if (Phase == FileAnalysisPhase.Analyzing)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Cancel</MudButton>
+                }
+                else if (Phase is FileAnalysisPhase.Blocked or FileAnalysisPhase.Disabled)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CloseAsync">Close</MudButton>
+                }
+                else if (Phase == FileAnalysisPhase.ReanalyzeConfirm)
+                {
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="AnalyzeAgain">Analyze again</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.PlaylistAddCheck" OnClick="ResumeFromConfirmAsync">Resume review</MudButton>
+                }
+                else if (Phase == FileAnalysisPhase.ResumeLoading)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Cancel</MudButton>
+                }
+                else if (Phase == FileAnalysisPhase.NoLongerAvailable)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Close</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.AutoFixHigh" OnClick="AnalyzeAgain">Analyze</MudButton>
+                }
+                else if (Phase == FileAnalysisPhase.Failed)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Close</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="ReanalyzeAsync">Try again</MudButton>
+                }
+                else if (Phase == FileAnalysisPhase.Empty)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Close</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="ReanalyzeAsync">Re-analyze</MudButton>
+                }
+                else if (Phase == FileAnalysisPhase.Done)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Done</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward"
+                               OnClick="ViewTransactions">View transactions</MudButton>
+                }
+                else // Review
+                {
+                    <div class="fan-foot-split">
+                        <div class="fan-foot-summary">
+                            <span class="fan-foot-count">@_session.SelectedCount of @_session.Rows.Count selected</span>
+                            @if (_session.SelectedCount > 0)
+                            {
+                                <span class="fan-foot-net mono @(_session.Net < 0 ? "expense" : "income")">net @FileAnalysisSession.FormatSigned(_session.Net)</span>
+                            }
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudButton Variant="Variant.Text" OnClick="CloseAsync">Cancel</MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.PlaylistAddCheck"
+                                       Disabled="@(_session.SelectedCount == 0 || _isImporting)"
+                                       OnClick="ImportAsync">
+                                @if (_isImporting)
+                                {
+                                    <OdsSpinner Class="me-2" Decorative="true" />
+                                }
+                                Import @_session.SelectedCount transaction@(_session.SelectedCount == 1 ? "" : "s")
+                            </MudButton>
+                        </div>
+                    </div>
+                }
+    </Footer>
+</OdsModal>

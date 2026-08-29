@@ -1,0 +1,118 @@
+@*
+    OdsTxnTable — the transactions ledger (Odyssey Design System · components/TxnTable).
+
+    THE shared transaction-row surface: the sortable, expandable, editable table behind
+    the Transactions page, the Accounts per-account section, the Budgets matched-
+    transactions panel and the Dashboard recent list. It owns the canonical column set
+    (direction avatar · Description · Contact · Account · Tag · Status · Amount ·
+    Date · row menu), the status→tone chip mapping and the signed income/expense amount
+    encoding, so a transaction row reads identically on every surface. No pagination —
+    the filtered list renders whole.
+
+    Typed to the real ExistingTransaction DTO (not a denormalized row) so a host can hand
+    the full record to its detail / edit panels. Wraps OdsRecordTable<ExistingTransaction>,
+    which owns the sort / accordion / inline-edit / saved-flash machinery; this component
+    only declares the columns + leading avatar and forwards the host's panels and actions.
+    `HideAccount` drops the Account column inside a single account.
+*@
+
+@using Odyssey.Dtos.Finance
+
+<OdsRecordTable TRow="ExistingTransaction"
+                Rows="@Rows"
+                RowKey="@(t => (object)t.TransactionId)"
+                Columns="@BuildColumns()"
+                Leading="@LeadingTemplate"
+                DefaultSort="@(DefaultSort ?? new OdsTableSort("date", OdsSortDirection.Desc))"
+                Sort="@Sort"
+                SortChanged="@SortChanged"
+                ServerSort="@ServerSort"
+                MultiOpen="@MultiOpen"
+                Actions="@Actions"
+                RenderDetail="@RenderDetail"
+                RenderEdit="@RenderEdit"
+                OnSave="@OnSave"
+                OnDelete="@OnDelete"
+                Loading="@Loading"
+                Refetching="@Refetching"
+                Error="@Error"
+                OnRetry="@OnRetry"
+                ErrorDescription="@ErrorDescription"
+                HasFilters="@HasFilters"
+                OnClearFilters="@OnClearFilters"
+                Noun="@Noun"
+                EmptyIcon="@EmptyIcon"
+                EmptyTitle="@EmptyTitle"
+                EmptyDescription="@EmptyDescription"
+                CreateAction="@CreateAction"
+                BarClass="@BarClass"
+                Empty="@Empty"
+                AriaLabel="@(AriaLabel ?? "Transactions")"
+                Class="@Class" />
+
+@code {
+    // The direction-tinted leading avatar — income points down (money in), expense is a cart.
+    private RenderFragment<ExistingTransaction> LeadingTemplate => t =>
+        @<OdsAvatar Icon="@(t.Amount >= 0 ? "arrow_downward" : "shopping_cart")" />;
+
+    // The canonical column set. Account is dropped when HideAccount is set.
+    private List<OdsRecordColumn<ExistingTransaction>> BuildColumns()
+    {
+        var columns = new List<OdsRecordColumn<ExistingTransaction>>
+        {
+            new()
+            {
+                Key = "desc", HeaderText = "Description", Sortable = true,
+                SortValue = t => t.Description.ToLowerInvariant(),
+                Cell = (t, ctx) => @<span class="d-inline-flex align-center" style="gap:8px;">@t.Description @if (ctx.JustSaved) { <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip> }</span>
+            },
+            new()
+            {
+                Key = "contact", HeaderText = "Contact", Sortable = true, CellClass = "odc-rec-muted",
+                SortValue = t => (t.Contact?.ResolvedDisplayName ?? "~").ToLowerInvariant(),
+                Cell = (t, ctx) => @<text>@(string.IsNullOrWhiteSpace(t.Contact?.ResolvedDisplayName) ? "—" : t.Contact!.ResolvedDisplayName)</text>
+            },
+        };
+
+        if (!HideAccount)
+        {
+            columns.Add(new()
+            {
+                Key = "account", HeaderText = "Account", Sortable = true, CellClass = "odc-rec-muted",
+                SortValue = t => (t.Account?.Name ?? "~").ToLowerInvariant(),
+                Cell = (t, ctx) => @<text>@(string.IsNullOrWhiteSpace(t.Account?.Name) ? "—" : t.Account!.Name)</text>
+            });
+        }
+
+        columns.Add(new()
+        {
+            // Up to TagCap chips then a "+N" overflow so the dense column keeps its height.
+            Key = "tag", HeaderText = "Tag", Sortable = true,
+            SortValue = t => TagSortValue(t),
+            Cell = (t, ctx) => @<OdsTagChips Tags="t.TransactionTags" Max="TagCap" />
+        });
+
+        columns.Add(new()
+        {
+            Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
+            SortValue = t => (int)t.Status,
+            Cell = (t, ctx) => @<OdsChip Tone="@StatusTone(t.Status)" Dot="true">@t.Status</OdsChip>
+        });
+
+        columns.Add(new()
+        {
+            Key = "amount", HeaderText = "Amount", Sortable = true, Align = OdsAlign.End, SortType = OdsSortType.Number,
+            SortValue = t => t.Amount,
+            Cell = (t, ctx) => @<span class="odc-money @(t.Amount >= 0 ? "income" : "expense")">@SignedAmount(t)</span>
+        });
+
+        columns.Add(new()
+        {
+            Key = "date", HeaderText = "Date", Sortable = true, Align = OdsAlign.End, CellClass = "odc-rec-muted", SortType = OdsSortType.Date,
+            SortValue = t => t.TimeStamp,
+            Cell = (t, ctx) => @<text>@t.TimeStamp.ToLocalTime().ToString("MMM dd, yyyy")</text>
+        });
+
+        return columns;
+    }
+}

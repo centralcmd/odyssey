@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Analysis log" description="The admin-only Analysis log at /analysis-log — an audit trail of every external AI file-analysis transfer (a statement sent to Claude). Per-row AI sparkline, source file, status and timing over the shared admin RecordTable. The expanded detail carries the conditions each transfer actually ran under — processor and region in force, the destination host, model, prompt version, names sent, lawful basis and the verbatim consent text — with a dimmed 'Not recorded' for jobs written before those columns existed, never back-filled with today's settings." -->
+<helmet>
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <link rel="stylesheet" href="../../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../../ui_kits/web/admin.css" />
+  <link rel="stylesheet" href="../../ui_kits/web/account.css" />
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script>
+    (async function () {
+      const until = (cond) => new Promise((res) => { (function tick() { cond() ? res() : requestAnimationFrame(tick); })(); });
+      await until(() => window.React && window.ReactDOM && window.ReactDOM.createRoot && window.Babel);
+      const run = (code, jsx) => { const out = jsx ? window.Babel.transform(code, { presets: ['react'] }).code : code; (0, eval)(out); };
+      const load = async (url, jsx) => { try { const r = await fetch(url); run(await r.text(), jsx); } catch (e) { console.error('[Analysis log template] failed to load ' + url, e); } };
+      await load('../../_ds_bundle.js', false);
+      await load('../../ui_kits/web/data.js', false);
+      for (const f of ['Components.jsx', 'page-header.jsx', 'FileAnalysisLog.jsx']) { await load('../../ui_kits/web/' + f, true); }
+      window.__falReady = true;
+    })();
+  </script>
+</helmet>
+<div data-theme="dark" style="min-height: 100vh; background: var(--mud-palette-background, #14161c); color: var(--mud-palette-text-primary, #e7ebf3); padding: 28px 28px 64px; box-sizing: border-box;">
+  <div id="fal-mount-root" style="max-width: 1180px; margin: 0 auto;"></div>
+  <div id="fal-loading" style="display: block; max-width: 1180px; margin: 0 auto; padding: 72px 0; text-align: center; font: 400 14px/1.5 var(--font-sans, system-ui); color: var(--mud-palette-text-secondary, #9aa3b2);">
+    Loading the Analysis log page…
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  _mountWhenReady() {
+    if (this._mounted) { this._renderApp(); return; }
+    if (!this._el) this._el = document.getElementById('fal-mount-root');
+    const ready = this._el && window.React && window.ReactDOM && window.ReactDOM.createRoot && window.__falReady && window.FileAnalysisLog;
+    if (!ready) { this._raf = setTimeout(() => this._mountWhenReady(), 80); return; }
+    this._root = window.ReactDOM.createRoot(this._el);
+    this._mounted = true;
+    const loader = document.getElementById('fal-loading');
+    if (loader) loader.style.display = 'none';
+    this._renderApp();
+  }
+  _renderApp() {
+    if (!this._root || !window.FileAnalysisLog) return;
+    this._root.render(window.React.createElement(window.FileAnalysisLog));
+  }
+  componentDidMount() { this._mountWhenReady(); }
+  componentWillUnmount() {
+    if (this._raf) clearTimeout(this._raf);
+    if (this._root) { try { this._root.unmount(); } catch (e) {} }
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Budgets" description="Budget plans — expandable records with planned-vs-actual item breakdowns, each item mapped to a transaction tag." -->
+<helmet>
+  <script src="../kit-app.js"></script>
+</helmet>
+<div data-theme="dark" style="min-height: 100vh; background: var(--mud-palette-background, #14161c); color: var(--mud-palette-text-primary, #e7ebf3); padding: 28px 28px 64px; box-sizing: border-box;">
+  <div id="kit-mount" style="max-width: 1240px; margin: 0 auto;"></div>
+  <div id="kit-loading" style="display: block; max-width: 1240px; margin: 0 auto; padding: 72px 0; text-align: center; font: 400 14px/1.5 var(--font-sans, system-ui); color: var(--mud-palette-text-secondary, #9aa3b2);">
+    Loading…
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  get COMPONENT() { return 'Budgets'; }
+  _mountWhenReady() {
+    if (this._mounted) return;
+    if (!this._el) this._el = document.getElementById('kit-mount');
+    const C = window[this.COMPONENT];
+    const ready = this._el && window.React && window.ReactDOM &&
+                  window.ReactDOM.createRoot && window.__kitReady && C;
+    if (!ready) { this._raf = setTimeout(() => this._mountWhenReady(), 80); return; }
+    this._root = window.ReactDOM.createRoot(this._el);
+    this._mounted = true;
+    const loader = document.getElementById('kit-loading');
+    if (loader) loader.style.display = 'none';
+    this._root.render(window.React.createElement(C, window.__KIT_PROPS));
+  }
+  componentDidMount() { this._mountWhenReady(); }
+  componentWillUnmount() {
+    if (this._raf) clearTimeout(this._raf);
+    if (this._root) { try { this._root.unmount(); } catch (e) {} }
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

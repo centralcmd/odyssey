@@ -1,0 +1,117 @@
+@*
+    OdsTable — the data-driven table primitive (Odyssey Design System · components/Table).
+
+    The table behind every ledger screen (Transactions, Files, Users). A
+    MudTable driven declaratively: pass Columns (each with a Cell renderer) and
+    Rows. Sorting is CONTROLLED — give Sort ({Key,Dir}) and an OnSort handler;
+    the component renders the indicator, you own the sort. A column with
+    Align=End right-aligns and renders monospace tabular figures (amounts,
+    dates). Dense for nav-embedded tables; OnRowClick for expand-in-place records.
+*@
+
+@typeparam TRow
+
+<MudTable Items="@Rows"
+          Dense="@Dense"
+          Hover="@(OnRowClick.HasDelegate)"
+          OnRowClick="@((TableRowClickEventArgs<TRow> args) => HandleRowClick(args))"
+          Breakpoint="Breakpoint.None"
+          Elevation="0"
+          Class="@Class">
+    <HeaderContent>
+        @foreach (var col in Columns)
+        {
+            <MudTh scope="col" Style="@HeaderStyle(col)">
+                @if (col.Sortable && OnSort.HasDelegate)
+                {
+                    <MudButton Variant="Variant.Text" Size="Size.Small"
+                               Class="px-1"
+                               EndIcon="@SortIcon(col)"
+                               OnClick="@(() => OnSort.InvokeAsync(col.Key))">
+                        @HeaderFor(col)
+                    </MudButton>
+                }
+                else
+                {
+                    @HeaderFor(col)
+                }
+            </MudTh>
+        }
+    </HeaderContent>
+    <RowTemplate>
+        @foreach (var col in Columns)
+        {
+            <MudTd DataLabel="@(col.HeaderText)" Style="@CellStyle(col)" Class="@col.CellClass">
+                @col.Cell?.Invoke(context)
+            </MudTd>
+        }
+    </RowTemplate>
+    <NoRecordsContent>
+        @if (Empty is not null)
+        {
+            @Empty
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary pa-4">No records.</MudText>
+        }
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    /// <summary>The column definitions.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsTableColumn<TRow>> Columns { get; set; } = [];
+
+    /// <summary>The rows.</summary>
+    [Parameter, EditorRequired] public IEnumerable<TRow> Rows { get; set; } = [];
+
+    /// <summary>Controlled sort state. The component renders the indicator; you do the sorting.</summary>
+    [Parameter] public OdsTableSort? Sort { get; set; }
+
+    /// <summary>Called with a column key when a sortable header is clicked.</summary>
+    [Parameter] public EventCallback<string> OnSort { get; set; }
+
+    /// <summary>Compact row height — nav-embedded tables, dense lists.</summary>
+    [Parameter] public bool Dense { get; set; }
+
+    /// <summary>Makes rows clickable — used for expand-in-place records.</summary>
+    [Parameter] public EventCallback<TRow> OnRowClick { get; set; }
+
+    /// <summary>Rendered when Rows is empty (e.g. an OdsEmptyState).</summary>
+    [Parameter] public RenderFragment? Empty { get; set; }
+
+    // No AriaLabel param: MudTable splats unmatched attributes onto its outer wrapper
+    // <div>, not the inner <table>, so an aria-label here never reaches the table's
+    // semantics (a silent no-op). A table that needs its own accessible name should use
+    // the native-<table> OdsRecordTable / OdsTxnTable, whose aria-label lands correctly.
+    [Parameter] public string? Class { get; set; }
+
+    private RenderFragment HeaderFor(OdsTableColumn<TRow> col) =>
+        col.Header ?? (builder => builder.AddContent(0, col.HeaderText));
+
+    private string? HeaderStyle(OdsTableColumn<TRow> col)
+    {
+        var parts = new List<string>(2);
+        if (!string.IsNullOrEmpty(col.Width)) parts.Add($"width:{col.Width};");
+        if (col.Align == OdsAlign.End) parts.Add("text-align:right;");
+        return parts.Count == 0 ? null : string.Concat(parts);
+    }
+
+    private string? CellStyle(OdsTableColumn<TRow> col) =>
+        col.Align == OdsAlign.End
+            ? "text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;"
+            : null;
+
+    private string SortIcon(OdsTableColumn<TRow> col)
+    {
+        var active = Sort is not null && Sort.Key == col.Key;
+        return active && Sort!.Dir == OdsSortDirection.Asc
+            ? Icons.Material.Filled.ArrowUpward
+            : Icons.Material.Filled.ArrowDownward;
+    }
+
+    private Task HandleRowClick(TableRowClickEventArgs<TRow> args) =>
+        OnRowClick.HasDelegate && args.Item is not null
+            ? OnRowClick.InvokeAsync(args.Item)
+            : Task.CompletedTask;
+}

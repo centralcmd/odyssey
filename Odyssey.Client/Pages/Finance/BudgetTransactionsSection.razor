@@ -1,0 +1,130 @@
+@using Odyssey.Dtos.Finance
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+@inject NavigationManager NavigationManager
+@inject ITransactionsApiClient Transactions
+
+@* Transaction list for an expanded budget card. The transactions shown are those
+   whose tag is one of the budget's item tags and whose timestamp falls within the
+   budget period — fetched via the transactions API tagIds/from/to parameters. *@
+<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="receipt_long">
+    <Title>Transactions</Title>
+    <Count>@_transactions.Count</Count>
+    <Actions>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="ViewAllTransactions">View all</MudButton>
+    </Actions>
+    <ChildContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_transactions.Count == 0)
+        {
+            <div class="empty-line">No transactions fall within this budget's period yet.</div>
+        }
+        else
+        {
+            @* The shared design-system ledger (matched transactions span accounts, so the
+               Account column stays). Rows expand in place; editing is on the Transactions page. *@
+            <OdsInlinePager Items="_transactions" Context="pageRows">
+                <OdsTxnTable Rows="pageRows" Actions="BuildActions">
+                    <RenderDetail Context="t">
+                        <TransactionDetailPanel Transaction="t" CanDownloadFiles="CanDownloadFiles" />
+                    </RenderDetail>
+                </OdsTxnTable>
+            </OdsInlinePager>
+        }
+    </ChildContent>
+</OdsCollapsible>
+
+@code {
+    [Parameter] public Guid BudgetId { get; set; }
+    [Parameter] public DateTime StartDate { get; set; }
+    [Parameter] public DateTime EndDate { get; set; }
+
+    // Transaction-tag ids drawn from the budget's items. With no tags there is nothing
+    // to match, so the list stays empty rather than fetching every transaction.
+    [Parameter] public IReadOnlyCollection<Guid> TagIds { get; set; } = [];
+
+    /// <summary>Gates the file-download buttons in an expanded row's attached-files detail.</summary>
+    [Parameter] public bool CanDownloadFiles { get; set; }
+
+    private List<ExistingTransaction> _transactions = [];
+    private bool _isLoading;
+    private bool _isOpen = false;
+
+    // Identifies the tag/date inputs of the last successful load so we can refetch
+    // when the budget's items or period change (e.g. after adding a budget item).
+    private string? _loadedSignature;
+    private string CurrentSignature =>
+        $"{StartDate:o}|{EndDate:o}|{string.Join(',', TagIds.OrderBy(id => id))}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!OperatingSystem.IsBrowser()) return;
+
+        // (Re)load whenever the tag/date inputs change — including the initial render
+        // and after the parent refreshes the budget following an item edit.
+        if (_loadedSignature != CurrentSignature && !_isLoading)
+            await LoadTransactionsAsync();
+    }
+
+    private void ToggleOpen() => _isOpen = !_isOpen;
+
+    private async Task LoadTransactionsAsync()
+    {
+        // No budget item tags means no transactions can match — skip the round trip.
+        if (TagIds.Count == 0)
+        {
+            _transactions = [];
+            _loadedSignature = CurrentSignature;
+            return;
+        }
+
+        _isLoading = true;
+        var signature = CurrentSignature;
+
+        var result = await Transactions.ListAllAsync(
+            tagIds: [.. TagIds.Select(id => id.ToString())],
+            from: StartDate,
+            to: EndDate);
+
+        _transactions = result.ItemsOrToast(Snackbar, "transactions");
+        if (result.IsSuccess)
+            // Only cache the signature on success, so a transient failure retries next trigger.
+            _loadedSignature = signature;
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private void ViewAllTransactions()
+    {
+        NavigationManager.NavigateTo("/transactions");
+    }
+
+    // Read-only row menu: expand/collapse the detail + copy the id.
+    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingTransaction t, OdsRecordActionContext ctx) =>
+    [
+        new()
+        {
+            Icon = ctx.Expanded ? "close" : "expand_more",
+            Label = ctx.Expanded ? "Collapse" : "View details",
+            OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
+        },
+        new()
+        {
+            Icon = "fingerprint",
+            TrailingIcon = "content_copy",
+            Label = "Copy ID",
+            OnClick = EventCallback.Factory.Create(this, () => CopyTransactionId(t.TransactionId)),
+        },
+    ];
+
+    private Task CopyTransactionId(Guid transactionId) =>
+        Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
+}

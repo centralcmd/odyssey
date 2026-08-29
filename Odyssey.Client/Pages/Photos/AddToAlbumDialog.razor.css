@@ -1,0 +1,26 @@
+/* Add-to-album checklist — the album rows, the "New album" affordance and the
+   inline create form. Moved out of the globally-linked wwwroot/css/photos.css
+   by issue #371. */
+
+.pl-alblist { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; }
+
+.pl-albrow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-sm, 4px); }
+
+.pl-albrow:hover { background: rgba(199,208,224,0.06); }
+
+.pl-albrow-cover { width: 40px; height: 40px; border-radius: 6px; flex: none; }
+
+.pl-albrow-name { flex: 1; text-align: left; font: 500 14px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+.pl-albrow-check { width: 22px; height: 22px; border-radius: 999px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--mud-palette-lines-inputs, rgba(199,208,224,0.35)); }
+
+.pl-albrow-check.on { background: var(--tide-400); border-color: var(--tide-400); color: var(--ink-950, #0b0d12); }
+
+.pl-albadd { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; padding: 10px; width: 100%; justify-content: center; cursor: pointer;
+      border: 1px dashed var(--mud-palette-lines-inputs, rgba(199,208,224,0.28)); border-radius: var(--radius-sm, 4px); background: transparent; color: var(--mud-palette-text-secondary); font: 500 13px/1 var(--font-sans); }
+
+.pl-albadd:hover { color: var(--brand-text); border-color: var(--nav-active); }
+
+.pl-albcreate { margin-top: 10px; padding: 12px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-sm, 4px); background: var(--mud-palette-background); }
+
+.pl-albcreate-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }

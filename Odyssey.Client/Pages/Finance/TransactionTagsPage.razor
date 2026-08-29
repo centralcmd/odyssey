@@ -1,0 +1,21 @@
+@page "/transaction-tags"
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.TransactionTagsRead)]
+
+<PageTitle>Transaction Tags</PageTitle>
+
+<OdsTagAdmin TRow="ExistingTransactionTag"
+             Title="Transaction tags"
+             Noun="transaction tags"
+             PageStateKey="transaction-tags-page"
+             CreateClaim="@PermissionClaims.TransactionTagsCreate"
+             UpdateClaim="@PermissionClaims.TransactionTagsUpdate"
+             DeleteClaim="@PermissionClaims.TransactionTagsDelete"
+             NamePlaceholder="e.g. Groceries"
+             ModalSubtitle="Tags group transactions and budget items by category."
+             EmptyDesc="Create your first tag to start categorizing transactions."
+             Id="@(t => t.TransactionTagId)"
+             Name="@(t => t.Name)"
+             Description="@(t => t.Description)"
+             Archived="@(t => t.Archived)" />

@@ -1,0 +1,288 @@
+/* =============================================================
+   account-estimates.css — Account value estimates
+   The "Estimates" section inside an expanded account record
+   (Accounts → account detail), positioned ABOVE the Terms section,
+   plus the New / Edit estimate dialog.
+
+   Layered on kit.css. Reuses .field / .label / .helper / .meta-grid /
+   the chart tokens (--chart-grid / --chart-axis). Sibling of
+   account-terms.css; this file only adds the estimate surfaces, .est-*.
+   An estimate is a single money value (no kind / unit / billing), so
+   there is no kind grid and no per-kind summary — one value leads.
+   ============================================================= */
+
+/* ---- Section shell (lives in the collapsible body) ---- */
+.est-section {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 18px 16px 20px;
+}
+.est-sub {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
+}
+.est-sub-label {
+  font: 600 11px/1 var(--font-sans);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.est-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light); }
+.est-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+
+/* Glyph tile — soft tint + colored icon (carries the account-type vocabulary,
+   so a Property estimate reads in the property hue). */
+.est-glyph {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none; border-radius: 8px;
+}
+.est-glyph.sm { width: 28px; height: 28px; }
+.est-glyph.md { width: 34px; height: 34px; }
+.est-glyph.lg { width: 42px; height: 42px; }
+
+/* =============================================================
+   HERO — current estimated value + delta + the value chart
+   ============================================================= */
+.est-hero {
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 10px;
+  background: var(--mud-palette-surface);
+  overflow: hidden;
+}
+.est-hero-head {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 16px 18px 12px;
+}
+.est-hero-titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.est-hero-kind {
+  display: flex; align-items: center; gap: 8px;
+  font: 500 13px/1 var(--font-sans); color: var(--mud-palette-text-primary);
+}
+.est-hero-sub { font: 400 11.5px/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.est-hero-figs { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+.est-hero-value {
+  font: 300 34px/0.95 var(--font-mono);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--finance-income);
+}
+.est-delta {
+  display: inline-flex; align-items: center; gap: 3px;
+  font: 500 11.5px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  padding: 3px 8px 3px 5px; border-radius: 999px;
+}
+.est-delta .material-icons { font-size: 14px; }
+.est-delta.up   { color: var(--finance-income);  background: oklch(0.80 0.15 150 / 0.13); }
+.est-delta.down { color: var(--finance-expense); background: oklch(0.74 0.16 22 / 0.13); }
+.est-delta.flat { color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); }
+
+.est-chart-wrap { padding: 2px 12px 14px; }
+.est-chart { display: block; width: 100%; height: auto; overflow: visible; }
+.est-chart .grid { stroke: var(--chart-grid); stroke-width: 1; }
+.est-chart .axis { font: 400 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
+.est-chart .line { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.est-chart .future { stroke-dasharray: 2 5; }
+.est-chart .dot-halo { fill: var(--mud-palette-surface); }
+.est-chart .nowline { stroke: var(--chart-axis); stroke-width: 1; stroke-dasharray: 2 4; }
+.est-chart .nowlabel { font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; fill: var(--mud-palette-text-secondary); }
+
+/* =============================================================
+   CURRENT — the value tile + the quiet transaction-balance secondary
+   (the only place the "estimate replaces balance in net worth" reads)
+   ============================================================= */
+.est-now {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px;
+}
+.est-now-tile {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 9px;
+  background: var(--mud-palette-surface);
+}
+.est-now-tile.secondary { background: transparent; }
+.est-now-label {
+  display: flex; align-items: center; gap: 7px;
+  font: 500 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.est-now-primary .est-now-value {
+  font: 400 27px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em; color: var(--finance-income);
+}
+.est-now-secondary .est-now-value {
+  font: 400 27px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em; color: var(--mud-palette-text-secondary);
+}
+.est-now-foot { display: flex; align-items: center; gap: 7px; font: 400 11.5px/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.est-networth {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em;
+  color: var(--brand-text);
+  background: oklch(0.79 0.115 188 / 0.12);
+  padding: 3px 8px 3px 6px; border-radius: 999px;
+}
+.est-networth .material-icons { font-size: 13px; }
+
+/* =============================================================
+   HISTORY — single list (no groups), as a table OR a timeline
+   ============================================================= */
+.est-history { display: flex; flex-direction: column; }
+.est-tbl { width: 100%; border-collapse: collapse; }
+.est-tbl thead th {
+  text-align: left;
+  font: 600 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+  padding: 0 12px 9px; border-bottom: 1px solid var(--mud-palette-divider);
+}
+.est-tbl thead th.num { text-align: right; }
+.est-tbl thead th.act { width: 44px; }
+.est-tbl tbody td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--mud-palette-divider-light);
+  font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-primary);
+  vertical-align: middle;
+}
+.est-tbl tbody tr:last-child td { border-bottom: none; }
+.est-tbl tbody tr.current td { background: oklch(0.80 0.15 150 / 0.05); }
+.est-cell-date { font: 400 12.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.est-row-note { font: 400 11.5px/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; max-width: 34ch; }
+.est-cell-value {
+  text-align: right; font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  font-weight: 500; color: var(--mud-palette-text-primary);
+}
+.est-tbl tbody tr.current .est-cell-value { color: var(--finance-income); }
+.est-change {
+  display: inline-flex; align-items: center; gap: 2px;
+  font: 500 12px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.est-change .material-icons { font-size: 14px; }
+.est-change.up   { color: var(--finance-income); }
+.est-change.down { color: var(--finance-expense); }
+.est-change.flat { color: var(--mud-palette-text-secondary); }
+.est-inforce {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em;
+  color: var(--finance-income);
+  background: oklch(0.80 0.15 150 / 0.13);
+  padding: 3px 8px; border-radius: 999px;
+}
+.est-inforce .material-icons { font-size: 12px; }
+.est-scheduled { font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; color: oklch(0.80 0.13 85); }
+.est-superseded { font: 400 10.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); opacity: 0.7; }
+.est-cell-act { text-align: right; }
+
+/* ---- Timeline ---- */
+.est-timeline { position: relative; padding-left: 6px; }
+.est-tl-item {
+  position: relative;
+  display: grid; grid-template-columns: 28px 1fr auto;
+  gap: 12px; align-items: start;
+  padding: 0 4px 18px 0;
+}
+.est-tl-item:last-child { padding-bottom: 2px; }
+.est-tl-rail { position: relative; display: flex; justify-content: center; }
+.est-tl-rail::before {
+  content: ""; position: absolute; top: 22px; bottom: -18px; left: 50%;
+  width: 2px; transform: translateX(-50%);
+  background: var(--mud-palette-divider);
+}
+.est-tl-item:last-child .est-tl-rail::before { display: none; }
+.est-tl-node {
+  position: relative; z-index: 1; margin-top: 3px;
+  width: 13px; height: 13px; border-radius: 999px;
+  border: 2.5px solid var(--mud-palette-surface);
+  box-shadow: 0 0 0 1.5px currentColor;
+}
+.est-tl-body { min-width: 0; }
+.est-tl-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.est-tl-date { font: 500 13px/1.3 var(--font-mono); color: var(--mud-palette-text-primary); }
+.est-tl-note { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; }
+.est-tl-figs { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.est-tl-value {
+  font: 500 16px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+.est-tl-item.current .est-tl-value { color: var(--finance-income); }
+.est-tl-actions { display: flex; gap: 2px; }
+
+/* Reveal row actions on hover (table + timeline) */
+.est-tbl tbody tr .est-rowbtns,
+.est-tl-item .est-rowbtns { opacity: 0; transition: opacity .12s ease; display: inline-flex; gap: 2px; }
+.est-tbl tbody tr:hover .est-rowbtns,
+.est-tbl tbody tr:focus-within .est-rowbtns,
+.est-tl-item:hover .est-rowbtns,
+.est-tl-item:focus-within .est-rowbtns { opacity: 1; }
+.est-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--mud-palette-text-secondary);
+}
+.est-iconbtn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.est-iconbtn.danger:hover { color: var(--mud-palette-error); background: oklch(0.72 0.16 22 / 0.12); }
+.est-iconbtn .material-icons { font-size: 18px; }
+
+/* =============================================================
+   EMPTY STATE — two treatments (tweakable)
+   ============================================================= */
+/* 'guided' — a richer prompt that frames the value proposition and shows the
+   transaction balance the estimate would stand beside. */
+.est-empty-guided {
+  border: 1px dashed var(--mud-palette-divider);
+  border-radius: 10px;
+  padding: 22px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.est-eg-head { display: flex; align-items: flex-start; gap: 14px; }
+.est-eg-title { font: 500 15px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.est-eg-desc { font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; max-width: 56ch; }
+.est-eg-balrow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-radius: 8px;
+  background: var(--mud-palette-background);
+  border: 1px solid var(--mud-palette-divider-light);
+}
+.est-eg-balrow .lab { font: 500 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.est-eg-balrow .val { margin-left: auto; font: 400 16px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); }
+.est-eg-actions { display: flex; align-items: center; gap: 12px; }
+.est-eg-rec {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.est-eg-rec .material-icons { font-size: 15px; color: var(--brand-text); }
+
+/* =============================================================
+   NEW / EDIT ESTIMATE dialog
+   ============================================================= */
+.est-dialog { max-width: 520px; }
+
+/* Value block — wraps the hero AmountField. */
+.est-value-block { display: flex; flex-direction: column; gap: 10px; }
+
+/* Locked-currency display (currency is always the account currency) */
+.est-currency-lock {
+  display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px;
+  border: 1px solid var(--mud-palette-divider); border-radius: 8px;
+  background: var(--mud-palette-background); opacity: 0.75;
+}
+.est-currency-lock .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
+.est-currency-lock .code { font: 500 13px/1 var(--font-mono); color: var(--mud-palette-text-primary); }
+.est-currency-lock .note { font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* Recommended / non-recommended account-type hint */
+.est-rec-hint {
+  display: flex; align-items: flex-start; gap: 8px;
+  font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary);
+  padding: 10px 12px; border-radius: 8px;
+  background: var(--mud-palette-action-default-hover);
+}
+.est-rec-hint .material-icons { font-size: 16px; color: var(--brand-text); flex: none; margin-top: 1px; }
+.est-rec-hint b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+.est-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }

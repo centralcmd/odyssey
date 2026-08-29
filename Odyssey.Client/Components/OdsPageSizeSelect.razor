@@ -1,0 +1,94 @@
+@*
+    OdsPageSizeSelect — the rows-per-page dropdown (Odyssey Design System · components/PageSizeSelect).
+
+    A compact "Show 25 ▾" trigger + a small menu of size presets (25 · 100 · 1000 · All by
+    default). Two uses:
+      • the TOOLBAR mirror mounted after the filters (Mirror=true, 40px tall to line up with
+        OdsSearchField / OdsMultiSelect) — bind it to the SAME page-size state the footer OdsPager
+        reads, and the two stay in sync;
+      • inside OdsPager's footer (Mirror=false, no prefix), as the canonical rows-per-page control.
+
+    Built on MudMenu so the popover portals out of any overflow:hidden card ancestor, flips to fit,
+    and provides the roving-focus keyboard model. Options are MudMenuItems (role=menuitem, like
+    OdsSortSelect) — an interactive control can't live inside role=option, so this is a menu, not a
+    listbox; selection reads from the trigger value + the row check. Value is an int; OdsPageSizes.All
+    (−1) renders "All". Bind via @bind-Value.
+*@
+
+<MudMenu AnchorOrigin="Origin.BottomRight"
+         TransformOrigin="Origin.TopRight"
+         Disabled="@Disabled"
+         OpenChanged="@(open => _open = open)"
+         Class="@($"odc-rpp {(Mirror ? "mirror" : null)} {Class}".Trim())"
+         @attributes="UserAttributes">
+    <ActivatorContent>
+        @* MudMenu does not auto-wire a custom activator — forward the click to ToggleAsync. *@
+        <button type="button"
+                class="odc-rpp-trigger"
+                aria-haspopup="menu"
+                aria-expanded="@(_open ? "true" : "false")"
+                aria-label="@($"{Label}: {OdsPageSizes.Format(Value)}")"
+                disabled="@Disabled"
+                @onclick="@context.ToggleAsync">
+            @if (!string.IsNullOrEmpty(Prefix))
+            {
+                <span class="odc-rpp-prefix">@Prefix</span>
+            }
+            <b>@OdsPageSizes.Format(Value)</b>
+            @if (!string.IsNullOrEmpty(Suffix))
+            {
+                <span class="odc-rpp-prefix">@Suffix</span>
+            }
+            <span class="material-icons odc-rpp-chev" aria-hidden="true">@(_open ? "expand_less" : "expand_more")</span>
+        </button>
+    </ActivatorContent>
+    <ChildContent>
+        @foreach (var option in Options)
+        {
+            var selected = option == Value;
+            <MudMenuItem OnClick="@(() => Pick(option))">
+                <div class="odc-typesel-item @(selected ? "selected" : null)">
+                    <span class="odc-typesel-lab">@OdsPageSizes.Format(option)</span>
+                    @if (selected)
+                    {
+                        <span class="odc-typesel-check" aria-hidden="true"><span class="material-icons">check</span></span>
+                    }
+                </div>
+            </MudMenuItem>
+        }
+    </ChildContent>
+</MudMenu>
+
+@code {
+    /// <summary>Current page size. <see cref="OdsPageSizes.All"/> (−1) means "all". Bindable via @bind-Value.</summary>
+    [Parameter] public int Value { get; set; } = 25;
+
+    [Parameter] public EventCallback<int> ValueChanged { get; set; }
+
+    /// <summary>The size presets. Defaults to 25 · 100 · 1000 · All.</summary>
+    [Parameter] public IReadOnlyList<int> Options { get; set; } = OdsPageSizes.Default;
+
+    /// <summary>Verb before the value on the trigger ("Show" by default; "" for a bare value).</summary>
+    [Parameter] public string Prefix { get; set; } = "Show";
+
+    /// <summary>Optional text after the value (e.g. "at a time" for a card-list batch size).</summary>
+    [Parameter] public string Suffix { get; set; } = "";
+
+    /// <summary>Accessible name for the control. Default "Rows per page".</summary>
+    [Parameter] public string Label { get; set; } = "Rows per page";
+
+    /// <summary>Toolbar mirror styling (40px tall). False for the footer pager copy (32px).</summary>
+    [Parameter] public bool Mirror { get; set; } = true;
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private bool _open;
+
+    // MudMenuItem closes the menu on click; we only emit the new value.
+    private Task Pick(int size) => size == Value ? Task.CompletedTask : ValueChanged.InvokeAsync(size);
+}

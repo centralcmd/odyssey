@@ -1,0 +1,398 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Error display — interactive demo" subtitle="Live playground for the ProblemDetails contract: pick what the server returns and watch the client parse it and route the detail to a toast, an inline field error, or a feature-disabled block. The inspector shows the raw body vs. what the user sees." viewport="1200x1000" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 36px 48px; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 1100px; margin: 0 auto; }
+    .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
+    .head h1 { font: var(--fw-light) var(--fs-h3)/1.15 var(--font-sans); letter-spacing: var(--tracking-tight); margin: 0; }
+    .head p { font: var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 8px 0 0; max-width: 62ch; }
+    .head-tools { display: flex; align-items: center; gap: 10px; flex: none; }
+    .ghost-btn { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); padding: 8px 13px; font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); text-decoration: none; white-space: nowrap; }
+    .ghost-btn:hover { background: var(--mud-palette-action-default-hover); }
+    .ghost-btn .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+
+    .layout { display: grid; grid-template-columns: 1fr 380px; gap: 26px; align-items: start; }
+    .col { display: flex; flex-direction: column; gap: 20px; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--mud-palette-divider-light); }
+    .panel-ttl { font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); display: flex; align-items: center; gap: 9px; }
+    .panel-ttl .material-icons { font-size: 19px; color: var(--mud-palette-text-secondary); }
+    .panel-body { padding: 18px; }
+    .totals-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .accounts-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px dashed var(--mud-palette-divider-light); }
+    .accounts-row:last-child { border-bottom: none; }
+    .accounts-row > div:first-child { min-width: 0; }
+    .acct-name { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); }
+    .acct-sub { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); margin-top: 3px; }
+    .acct-amt { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums; flex: none; white-space: nowrap; }
+
+    .ctrl-sec { padding: 16px 18px; border-bottom: 1px solid var(--mud-palette-divider-light); }
+    .ctrl-sec:last-child { border-bottom: none; }
+    .ctrl-cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; display: block; }
+    .ctrl-cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); font-size: 11px; }
+    .ctrl-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .ctrl-row + .ctrl-row { margin-top: 14px; }
+    .ctrl-lab { font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+    .ctrl-lab .material-icons { font-size: 16px; vertical-align: -3px; color: var(--mud-palette-text-secondary); margin-right: 5px; }
+
+    .insp { font-family: var(--font-mono); }
+    .insp-line { display: flex; gap: 8px; font: var(--fw-regular) 12px/1.6 var(--font-mono); }
+    .insp-k { color: var(--mud-palette-text-secondary); flex: none; width: 86px; }
+    .insp-v { color: var(--mud-palette-text-primary); word-break: break-word; min-width: 0; }
+    .insp-body { margin: 10px 0 0; padding: 12px 13px; border-radius: var(--radius-sm); background: var(--ink-950); border: 1px solid var(--mud-palette-divider); font: var(--fw-regular) 11.5px/1.6 var(--font-mono); color: var(--ink-100); white-space: pre-wrap; word-break: break-word; max-height: 168px; overflow: auto; }
+    [data-theme='light'] .insp-body { background: #0E1525; }
+    .insp-routed { margin-top: 14px; padding-top: 13px; border-top: 1px dashed var(--mud-palette-divider); }
+    .insp-routed .tag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: var(--radius-pill); font: var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans); }
+    .insp-routed .tag .material-icons { font-size: 14px; }
+    .tag.toast { background: var(--finance-expense-soft); color: var(--finance-expense); }
+    .tag.inline { background: var(--info-soft); color: var(--info-text); }
+    .tag.block { background: var(--finance-pending-soft); color: var(--pending-text); }
+    .tag.ok { background: var(--finance-income-soft); color: var(--finance-income); }
+    .insp-empty { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); font-family: var(--font-sans); }
+
+    .dlg-section-note { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .hint { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 10px; }
+    /* keep the toast stack inside this card's flow for the screenshot */
+    .odc-toast-stack { z-index: 1400; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <div class="page">
+    <div class="head">
+      <div>
+        <h1>ProblemDetails — live</h1>
+        <p>Choose what the server returns, run the flow, and watch the client parse <code style="font-family:var(--font-mono);color:var(--brand-text)">problem.detail</code> and route it to the right surface. The inspector shows the raw body next to what the user actually sees.</p>
+      </div>
+      <div class="head-tools">
+        <button class="ghost-btn" id="themeToggle"><span class="material-icons">light_mode</span><span id="themeLabel">Light</span></button>
+        <a class="ghost-btn" href="error-handling.html"><span class="material-icons">description</span>Spec</a>
+      </div>
+    </div>
+    <div id="root"></div>
+  </div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useCallback, useRef } = React;
+    const DS = window.OdysseyDesignSystem_d5aa51;
+    const { Button, Modal, Field, CustodianSelect, ProblemAlert, EmptyState, StatTile, Toast, ToastStack, Switch, SegmentedControl } = DS;
+
+    const REASON = { 400: 'Bad Request', 401: 'Unauthorized', 404: 'Not Found', 409: 'Conflict', 500: 'Internal Server Error', 502: 'Bad Gateway', 503: 'Service Unavailable' };
+
+    // ---- the shared helper, mirrored from the suggested C# approach ----
+    // Reads an HttpResponseMessage-like object → { message, code, title, status }.
+    // Shows problem.detail; falls back to the status reason phrase; guards a
+    // non-JSON body so a parser exception never reaches the UI.
+    function readProblem(res) {
+      const reason = REASON[res.status] || 'Request failed';
+      let problem = null;
+      if ((res.contentType || '').includes('json') && res.body) {
+        try { problem = JSON.parse(res.body); } catch (e) { problem = null; }
+      }
+      return {
+        message: (problem && problem.detail) || reason,
+        title: problem && problem.title,
+        code: problem && problem.code,
+        // ValidationProblemDetails: field -> [messages]. Present => we can route inline.
+        errors: problem && problem.errors,
+        status: res.status,
+      };
+    }
+
+    // first message for a named field in the errors map (case-insensitive key)
+    function fieldMsg(errors, field) {
+      if (!errors) return null;
+      const key = Object.keys(errors).find((k) => k.toLowerCase() === field.toLowerCase());
+      const v = key && errors[key];
+      return Array.isArray(v) ? v[0] : v || null;
+    }
+
+    // ---- canned server responses for the create-account endpoint ----
+    const CREATE = {
+      success: { seg: '201', status: 201, contentType: 'application/json', body: '' },
+      custodian: {
+        seg: '400', status: 400, contentType: 'application/problem+json',
+        body: JSON.stringify({ type: 'https://odyssey.app/errors/validation', title: 'Bad Request', status: 400, detail: 'One or more fields are invalid.', errors: { Custodian: ['The selected contact is archived and can’t be used as a custodian.'] } }, null, 2),
+      },
+      conflict: {
+        seg: '409', status: 409, contentType: 'application/problem+json',
+        body: JSON.stringify({ type: 'https://odyssey.app/errors/conflict', title: 'Conflict', status: 409, detail: 'That account name is already taken.', errors: { Name: ['An account named “Acme Treasury” already exists.'] } }, null, 2),
+      },
+      server: {
+        seg: '500', status: 500, contentType: 'application/problem+json',
+        body: JSON.stringify({ type: 'https://odyssey.app/errors/internal', title: 'Internal Server Error', status: 500, detail: 'Something went wrong on our end. Please try again.' }, null, 2),
+      },
+      nonjson: {
+        seg: '502', status: 502, contentType: 'text/html',
+        body: '<html><head><title>502 Bad Gateway</title></head><body><h1>502 Bad Gateway</h1></body></html>',
+      },
+    };
+
+    const CONTACTS = [
+      { id: 'cp1', name: 'Northwind Capital', type: 'bank' },
+      { id: 'cp2', name: 'Harbor Credit Union', type: 'bank' },
+      { id: 'cp3', name: 'Meridian Brokerage', type: 'broker' },
+    ];
+
+    let toastId = 0;
+
+    function App() {
+      const [toasts, setToasts] = useState([]);
+      const [inspector, setInspector] = useState(null);
+
+      const [dialogOpen, setDialogOpen] = useState(false);
+      const [analyzeOpen, setAnalyzeOpen] = useState(false);
+      const [name, setName] = useState('Acme Treasury');
+      const [nameError, setNameError] = useState('');
+      const [custodian, setCustodian] = useState('cp1');
+      const [custodianError, setCustodianError] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+
+      const [createScenario, setCreateScenario] = useState('custodian');
+      const scenarioRef = useRef(createScenario);
+      scenarioRef.current = createScenario;
+      const [totalsEnabled, setTotalsEnabled] = useState(true);
+      const [analysisEnabled, setAnalysisEnabled] = useState(false);
+
+      const pushToast = useCallback((t) => {
+        const id = ++toastId;
+        setToasts((cur) => [...cur, { ...t, id }]);
+        setTimeout(() => setToasts((cur) => cur.filter((x) => x.id !== id)), 6000);
+      }, []);
+      const closeToast = (id) => setToasts((cur) => cur.filter((x) => x.id !== id));
+
+      // GET /accounts/totals — runs whenever the feature switch flips
+      const loadTotals = (enabled) => {
+        if (enabled) {
+          setInspector({ method: 'GET /accounts/totals', status: 200, contentType: 'application/json', body: '{ "netWorth": 84210.55, … }', surface: 'ok', surfaceText: 'Totals render normally.' });
+          return;
+        }
+        const res = { status: 503, contentType: 'application/problem+json', body: JSON.stringify({ type: 'https://odyssey.app/errors/feature-disabled', title: 'Service Unavailable', status: 503, detail: 'Account totals are turned off for this workspace.', code: 'feature_disabled' }, null, 2) };
+        const p = readProblem(res);
+        setInspector({ method: 'GET /accounts/totals', status: res.status, contentType: res.contentType, body: res.body, surface: 'block', surfaceText: 'code = “' + p.code + '” → in-place ProblemAlert (info). Not a toast.' });
+      };
+
+      const submitCreate = () => {
+        const res = CREATE[scenarioRef.current];
+        setSubmitting(true);
+        setNameError('');
+        setCustodianError('');
+        setTimeout(() => {
+          setSubmitting(false);
+          const base = { method: 'POST /accounts', status: res.status, contentType: res.contentType };
+
+          // 2xx — success toast, dialog closes
+          if (res.status < 400) {
+            setInspector({ ...base, body: res.body || '(empty)', surface: 'ok', surfaceText: 'Created → success toast, dialog closes.' });
+            setDialogOpen(false);
+            pushToast({ severity: 'success', icon: 'check_circle', message: 'Account “' + name + '” created.' });
+            return;
+          }
+
+          const p = readProblem(res);
+
+          // 5xx / non-JSON / network — server-side, user can only retry → error toast
+          if (res.status >= 500) {
+            setInspector({ ...base, body: res.body, surface: 'toast', surfaceText: '5xx → error toast: “' + p.message + '”' + (res.contentType.includes('json') ? '' : ' (reason phrase — body wasn’t JSON)') });
+            pushToast({ severity: 'error', icon: 'error', message: p.message + (res.contentType.includes('json') ? '' : '. Please try again.') });
+            return;
+          }
+
+          // 4xx — user can fix. Anchor to the field(s) the response names; else toast.
+          const nameMsg = fieldMsg(p.errors, 'Name');
+          const custMsg = fieldMsg(p.errors, 'Custodian');
+          if (nameMsg || custMsg) {
+            if (nameMsg) setNameError(nameMsg);
+            if (custMsg) setCustodianError(custMsg);
+            const which = [nameMsg && 'name', custMsg && 'custodian'].filter(Boolean).join(' + ');
+            setInspector({ ...base, body: res.body, surface: 'inline', surfaceText: '4xx with an errors map → inline on the ' + which + ' field. Dialog stays open.' });
+          } else {
+            setInspector({ ...base, body: res.body, surface: 'toast', surfaceText: '4xx with no field target → error toast: “' + p.message + '”' });
+            pushToast({ severity: 'error', icon: 'error', message: p.message });
+          }
+        }, 420);
+      };
+
+      const onAnalyzeToggle = (v) => {
+        setAnalysisEnabled(v);
+        if (!v) {
+          const res = { status: 503, contentType: 'application/problem+json', body: JSON.stringify({ title: 'Service Unavailable', status: 503, detail: 'Statement analysis is turned off.', code: 'analysis_disabled' }, null, 2) };
+          setInspector({ method: 'POST /files/analyze', status: 503, contentType: res.contentType, body: res.body, surface: 'block', surfaceText: 'code = “analysis_disabled” → disabled block inside the dialog.' });
+        }
+      };
+
+      return (
+        <div className="layout">
+          {/* ---------------- LIVE SURFACES ---------------- */}
+          <div className="col">
+            <div className="panel">
+              <div className="panel-head">
+                <span className="panel-ttl"><span className="material-icons">account_balance</span>Totals</span>
+              </div>
+              <div className="panel-body">
+                {totalsEnabled ? (
+                  <div className="totals-grid">
+                    <StatTile overline="Net worth" value="kr 84,210" delta="▲ 2.4% MoM" deltaDir="up" />
+                    <StatTile overline="Assets" value="kr 92,640" valueClass="income" />
+                    <StatTile overline="Liabilities" value="−kr 8,430" valueClass="expense" />
+                  </div>
+                ) : (
+                  <ProblemAlert severity="info" title="Account totals are turned off"
+                    detail="Totals across accounts aren’t being computed for this workspace right now. Individual account balances are unaffected." />
+                )}
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="panel-head">
+                <span className="panel-ttl"><span className="material-icons">list</span>Accounts</span>
+                <Button variant="filled" icon="add" onClick={() => { setNameError(''); setCustodianError(''); setDialogOpen(true); }}>New account</Button>
+              </div>
+              <div className="panel-body" style={{ paddingTop: 4, paddingBottom: 4 }}>
+                <div className="accounts-row"><div><div className="acct-name">Operating · Northwind</div><div className="acct-sub">NO93 •••• 4021</div></div><span className="acct-amt">kr 41,980</span></div>
+                <div className="accounts-row"><div><div className="acct-name">Reserve · Harbor CU</div><div className="acct-sub">NO72 •••• 1188</div></div><span className="acct-amt">kr 50,660</span></div>
+                <div className="accounts-row"><div><div className="acct-name">Card · Meridian</div><div className="acct-sub">NO12 •••• 7745</div></div><span className="acct-amt" style={{ color: 'var(--finance-expense)' }}>−kr 8,430</span></div>
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="panel-head">
+                <span className="panel-ttl"><span className="material-icons">document_scanner</span>Statement</span>
+                <Button variant="outlined" icon="auto_awesome" onClick={() => setAnalyzeOpen(true)}>Analyze</Button>
+              </div>
+              <div className="panel-body">
+                <div className="dlg-section-note">Opens the file-analysis dialog. With the analysis feature switched off (right), the dialog shows the disabled block instead of the analyzer.</div>
+              </div>
+            </div>
+          </div>
+
+          {/* ---------------- CONTROLS + INSPECTOR ---------------- */}
+          <div className="col">
+            <div className="panel">
+              <div className="panel-head"><span className="panel-ttl"><span className="material-icons">dns</span>Server responses</span></div>
+
+              <div className="ctrl-sec">
+                <span className="ctrl-cap"><code>POST /accounts</code> returns</span>
+                <SegmentedControl
+                  full
+                  value={createScenario}
+                  onChange={setCreateScenario}
+                  options={[
+                    { value: 'success', label: '201' },
+                    { value: 'custodian', label: '400' },
+                    { value: 'conflict', label: '409' },
+                    { value: 'server', label: '500' },
+                    { value: 'nonjson', label: '502' },
+                  ]}
+                />
+                <div className="hint">Open <b style={{ color: 'var(--mud-palette-text-primary)', fontWeight: 500 }}>New account</b> and Create to run it. <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--brand-text)' }}>4xx</code> with a field → inline; <code style={{ fontFamily: 'var(--font-mono)', color: 'var(--brand-text)' }}>5xx</code> → toast.</div>
+              </div>
+
+              <div className="ctrl-sec">
+                <span className="ctrl-cap">Feature flags <code>code extension</code></span>
+                <div className="ctrl-row">
+                  <span className="ctrl-lab"><span className="material-icons">functions</span>Account totals</span>
+                  <Switch checked={totalsEnabled} onChange={(v) => { setTotalsEnabled(v); loadTotals(v); }} />
+                </div>
+                <div className="ctrl-row">
+                  <span className="ctrl-lab"><span className="material-icons">auto_awesome</span>Statement analysis</span>
+                  <Switch checked={analysisEnabled} onChange={onAnalyzeToggle} />
+                </div>
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="panel-head"><span className="panel-ttl"><span className="material-icons">travel_explore</span>Inspector</span></div>
+              <div className="panel-body insp">
+                {!inspector ? (
+                  <div className="insp-empty">Run a flow to see the raw response and where its <code style={{ fontFamily: 'var(--font-mono)' }}>detail</code> was routed.</div>
+                ) : (
+                  <React.Fragment>
+                    <div className="insp-line"><span className="insp-k">request</span><span className="insp-v">{inspector.method}</span></div>
+                    <div className="insp-line"><span className="insp-k">status</span><span className="insp-v">{inspector.status} {REASON[inspector.status] || ''}</span></div>
+                    <div className="insp-line"><span className="insp-k">content-type</span><span className="insp-v">{inspector.contentType}</span></div>
+                    <pre className="insp-body">{inspector.body}</pre>
+                    <div className="insp-routed">
+                      <span className={'tag ' + inspector.surface}>
+                        <span className="material-icons">{inspector.surface === 'toast' ? 'notifications' : inspector.surface === 'inline' ? 'edit_note' : inspector.surface === 'block' ? 'info' : 'check_circle'}</span>
+                        {inspector.surface === 'toast' ? 'Error toast' : inspector.surface === 'inline' ? 'Inline field error' : inspector.surface === 'block' ? 'In-place block' : 'Success'}
+                      </span>
+                      <div className="hint" style={{ marginTop: 9 }}>{inspector.surfaceText}</div>
+                    </div>
+                  </React.Fragment>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ---------------- DIALOGS ---------------- */}
+          {dialogOpen && (
+            <Modal open title="New account" icon="add_card" onClose={() => setDialogOpen(false)}
+              footer={<React.Fragment>
+                <Button variant="text" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                <Button variant="filled" loading={submitting} onClick={submitCreate}>Create account</Button>
+              </React.Fragment>}>
+              <Field label="Account name" value={name} onChange={(v) => { setName(v); setNameError(''); }} error={nameError || undefined} required />
+              <CustodianSelect
+                value={custodian}
+                onChange={(v) => { setCustodian(v); setCustodianError(''); }}
+                contacts={CONTACTS}
+                error={custodianError || undefined}
+                help={custodianError ? undefined : 'Where the account is held. Optional.'} />
+            </Modal>
+          )}
+
+          {analyzeOpen && (
+            <Modal open title="Analyze statement" icon="document_scanner" onClose={() => setAnalyzeOpen(false)}
+              footer={analysisEnabled
+                ? <React.Fragment>
+                    <Button variant="text" onClick={() => setAnalyzeOpen(false)}>Cancel</Button>
+                    <Button variant="filled" icon="auto_awesome">Run analysis</Button>
+                  </React.Fragment>
+                : <React.Fragment>
+                    <Button variant="text" onClick={() => setAnalyzeOpen(false)}>Close</Button>
+                    <Button variant="outlined" icon="upload_file">Upload anyway</Button>
+                  </React.Fragment>}>
+              {analysisEnabled ? (
+                <div className="dlg-section-note" style={{ padding: '8px 0' }}>Analyzer ready. Drop a statement to extract candidate transactions. (Flip “Statement analysis” off to see the disabled state.)</div>
+              ) : (
+                <ProblemAlert severity="info" title="Statement analysis is turned off"
+                  detail="Automatic transaction extraction isn’t available right now. You can still upload the file and add transactions manually." />
+              )}
+            </Modal>
+          )}
+
+          <ToastStack>
+            {toasts.map((t) => (
+              <Toast key={t.id} severity={t.severity} icon={t.icon} message={t.message} onClose={() => closeToast(t.id)} />
+            ))}
+          </ToastStack>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+    // theme toggle
+    (function () {
+      const btn = document.getElementById('themeToggle');
+      const label = document.getElementById('themeLabel');
+      const icon = btn.querySelector('.material-icons');
+      btn.addEventListener('click', function () {
+        const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+        document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+        label.textContent = dark ? 'Dark' : 'Light';
+        icon.textContent = dark ? 'dark_mode' : 'light_mode';
+      });
+    })();
+  </script>
+</body>
+</html>

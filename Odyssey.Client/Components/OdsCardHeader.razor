@@ -1,0 +1,32 @@
+@*
+    OdsCardHeader — the titled header row at the top of a card (Odyssey Design
+    System · components/CardHeader): a Title on the left and an optional Action
+    cluster (buttons, a menu, a chip) on the right, over a bottom divider. Pass
+    ChildContent instead of Title to render a custom heading node. Sits above an
+    OdsCardBody. Styled by .odc-card-header.
+*@
+
+<div class="odc-card-header @Class">
+    @if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        <div class="odc-card-header-ttl">@Title</div>
+    }
+    @Action
+</div>
+
+@code {
+    /// <summary>The header title (used when ChildContent is not supplied).</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Optional right-aligned action cluster.</summary>
+    [Parameter] public RenderFragment? Action { get; set; }
+
+    /// <summary>Custom heading node in place of Title.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+}

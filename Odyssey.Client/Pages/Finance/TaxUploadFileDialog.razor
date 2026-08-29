@@ -1,0 +1,170 @@
+@using Odyssey.Dtos.Finance
+@inject IFilesApiClient FilesApi
+@inject ISnackbar Snackbar
+@inject ITaxStatementsApiClient TaxStatements
+@inject IUploadLimitsCache UploadLimits
+
+@*
+    TaxUploadFileDialog — opened from a tax statement row's "Upload file" action
+    (Odyssey Design System · Tax Statements · TaxUploadModal). Uses the shared OdsFileUpload
+    dropzone, scoped to a tax statement via a tax guessKind + the TaxStatementFileType kinds:
+    drag/drop or browse, per-file rename + type picker, then upload + attach.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelClicked" Icon="cloud_upload" Class="afm-dialog">
+    <Title>Upload files</Title>
+    <Subtitle>Attach the tax return, assessment, or supporting documents to this statement.</Subtitle>
+    <ChildContent>
+        <div class="ods-modal-body">
+
+            <div class="efm-context">
+                <span class="efm-context-ic" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330);">
+                    <OdsMIcon Name="request_quote" Size="22" />
+                </span>
+                <div class="efm-context-meta">
+                    <div class="efm-context-acct">@StatementName</div>
+                    <div class="efm-context-facts">Documents attach to this tax statement</div>
+                </div>
+            </div>
+
+            <OdsFileUpload Files="_files" FilesChanged="OnFilesChanged"
+                           Accept=".pdf,.jpg,.jpeg,.png,.webp"
+                           Kinds="_kinds" GuessKind="GuessKind"
+                           Error="@_error"
+                           Hint="@($"PDF, JPG, PNG, WebP · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelClicked">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="upload_file"
+                   Disabled="@(_files.Count == 0)" Loading="_isUploading" OnClick="SubmitAsync">
+            @(_files.Count > 1 ? $"Upload {_files.Count} files" : "Upload")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    // The cap is admin-editable (issue #421 Wave 4), so it is read rather than compiled in and every
+    // message names the number actually in force. Seeded with the shipped fallback so a render that
+    // beats the fetch still validates against a sane number rather than zero.
+    private UploadLimitsDto _uploadLimits = UploadLimitsCache.Fallback;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _uploadLimits = await UploadLimits.GetAsync();
+    }
+
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after at least one successful upload so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    [Parameter] public Guid StatementId { get; set; }
+    [Parameter] public string StatementName { get; set; } = string.Empty;
+
+    private const int MaxFileCount = 64;
+    private static readonly string[] AllowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
+
+    // The TaxStatementFileType vocabulary projected to the OdsFileUpload kind shape (per-file picker).
+    private static readonly IReadOnlyList<OdsFileKind> _kinds =
+        [.. OdsTypeRegistries.TaxStatementFileTypes.Select(t => new OdsFileKind
+        {
+            Key = t.Key, Label = t.Label, Icon = t.Icon, Color = t.Color, Soft = t.Soft,
+        })];
+
+    private List<OdsUploadFile> _files = [];
+    private string? _error;
+    private bool _isUploading;
+
+    private Task CancelClicked() => OpenChanged.InvokeAsync(false);
+
+    // Controlled list — enforce the allow-list, per-file size cap and file-count cap.
+    private void OnFilesChanged(IReadOnlyList<OdsUploadFile> files)
+    {
+        var kept = new List<OdsUploadFile>();
+        foreach (var f in files)
+        {
+            var ext = Path.GetExtension(f.Name).ToLowerInvariant();
+            if (f.Source is not null && !AllowedExtensions.Contains(ext))
+            {
+                Snackbar.Add($"{f.Name}: unsupported type. Allowed: .pdf, .jpg, .jpeg, .png, .webp", Severity.Warning);
+                continue;
+            }
+            if (f.SizeBytes > _uploadLimits.MaxUploadBytes)
+            {
+                Snackbar.Add($"{f.Name}: exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.", Severity.Warning);
+                continue;
+            }
+            if (kept.Count >= MaxFileCount)
+            {
+                Snackbar.Add($"Cannot exceed {MaxFileCount} files per statement.", Severity.Warning);
+                break;
+            }
+            kept.Add(f);
+        }
+        _files = kept;
+        if (_error is not null && _files.Count > 0) _error = null;
+    }
+
+    private static string GuessKind(string name)
+    {
+        var isPdf = name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
+        var lower = name.ToLowerInvariant();
+        if (lower.Contains("assess") || lower.Contains("notice") || lower.Contains("vedtak") || lower.Contains("skatteoppgj"))
+            return nameof(TaxStatementFileType.TaxAssessment);
+        return isPdf ? nameof(TaxStatementFileType.TaxReturn) : nameof(TaxStatementFileType.SupportingDocument);
+    }
+
+    private static TaxStatementFileType TypeOf(OdsUploadFile f) =>
+        Enum.TryParse<TaxStatementFileType>(f.Kind, out var t) ? t : TaxStatementFileType.Other;
+
+    private async Task SubmitAsync()
+    {
+        if (_files.Count == 0 || _isUploading)
+            return;
+
+        _isUploading = true;
+        var uploaded = 0;
+        try
+        {
+            foreach (var item in _files.ToList())
+            {
+                if (item.Source is null) continue;
+                try
+                {
+                    var result = await FilesApi.UploadAsync(item.Source.ToApiUpload(_uploadLimits.MaxUploadBytes));
+                    var finalName = item.Name.Trim();
+                    if (!string.IsNullOrEmpty(finalName) && finalName != item.Source.Name)
+                        await FilesApi.UpdateMetadataAsync(result.Id, null, finalName);
+                    await AttachAsync(result.Id, TypeOf(item));
+                    uploaded++;
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add(ex.Message, Severity.Error);
+                }
+            }
+
+            if (uploaded > 0)
+            {
+                Snackbar.Add($"{uploaded} document(s) attached.", Severity.Success);
+                await OnSaved.InvokeAsync();
+                await OpenChanged.InvokeAsync(false);
+            }
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private async Task AttachAsync(Guid fileId, TaxStatementFileType fileType)
+    {
+        var attach = await TaxStatements.AttachFileAsync(
+            StatementId, new AttachTaxStatementFileRequest(fileId, fileType));
+        if (!attach.IsSuccess)
+            throw new InvalidOperationException($"Failed to attach document: {attach.Error}");
+    }
+}

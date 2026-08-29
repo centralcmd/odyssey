@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Account custodian" subtitle="The account ↔ contact 'held at' link: CustodianChip is the read-only, informational chip on the account card (type + archived state in text, icon decorative); CustodianSelect is the optional picker (reuses/extends Combobox) on the create dialog + inline edit grid. Live off the DS namespace." viewport="1180x760" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Account custodian</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 16px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 22px; align-items: start; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 20px 22px; }
+    .panel h3 { margin: 0 0 4px; font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+    .panel p.sub { margin: 0 0 18px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .states { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 4px 16px; }
+    .states .lbl { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .states .row { padding: 11px 0; border-top: 1px solid var(--mud-palette-divider); min-width: 0; }
+    .states .lbl.row { border-top: 1px solid var(--mud-palette-divider); }
+    .json { font-family: var(--font-mono); font-size: 12px; color: var(--brand-text); background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 16px; white-space: pre-wrap; }
+    .note { margin: 18px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 96ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .switchrow { display: flex; gap: 8px; margin-bottom: 14px; }
+    .switchrow button { font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); background: transparent; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-pill); padding: 6px 12px; cursor: pointer; }
+    .switchrow button.on { color: var(--ink-950); background: var(--tide-400); border-color: var(--tide-400); }
+  </style>
+</head>
+<body>
+  <div class="cap">Account custodian <code>&lt;CustodianChip custodian /&gt;</code> · <code>&lt;CustodianSelect value onChange contacts /&gt;</code></div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51 || {};
+    const { CustodianChip, CustodianSelect } = NS;
+
+    // Demo contacts — active banks/brokers + one archived (filtered out of
+    // the picker, but still shown as an existing link in the archived chip).
+    const CONTACTS = [
+      { id: 'c14', name: 'JPMorgan Chase', type: 'Institution', archived: null },
+      { id: 'c15', name: 'Ally Bank', type: 'Institution', archived: null },
+      { id: 'c16', name: 'American Express', type: 'Institution', archived: null },
+      { id: 'c17', name: 'Vanguard', type: 'Institution', archived: null },
+      { id: 'c2',  name: 'ACME Co Payroll', type: 'Company', archived: null },
+      { id: 'c9',  name: 'Michael Chen', type: 'Person', archived: null },
+      { id: 'c19', name: 'Wells Fargo', type: 'Institution', archived: '2021-03-12T00:00:00Z' },
+    ];
+    const byId = Object.fromEntries(CONTACTS.map(c => [c.id, c]));
+    const custodianOf = (id) => {
+      const c = byId[id]; if (!c) return null;
+      return { contactId: c.id, name: c.name, type: c.type, organizationNumber: null, archived: c.archived };
+    };
+
+    function Demo() {
+      const [value, setValue] = React.useState('c14');
+      const [variant, setVariant] = React.useState('default'); // default | loading | error
+
+      return (
+        <div className="grid">
+          <div className="panel">
+            <h3>CustodianChip — read display</h3>
+            <p className="sub">Informational, non-navigating. Type and archived state ride in text; the type icon is decorative.</p>
+            <div className="states">
+              <span className="lbl">Institution</span>
+              <span className="row"><CustodianChip custodian={custodianOf('c14')} /></span>
+              <span className="lbl row">Person</span>
+              <span className="row"><CustodianChip custodian={custodianOf('c9')} /></span>
+              <span className="lbl row">Archived</span>
+              <span className="row"><CustodianChip custodian={custodianOf('c19')} /></span>
+              <span className="lbl row">No custodian</span>
+              <span className="row"><CustodianChip custodian={null} /></span>
+              <span className="lbl row">Compact (row, sm)</span>
+              <span className="row"><CustodianChip custodian={custodianOf('c17')} size="sm" /></span>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>CustodianSelect — picker</h3>
+            <p className="sub">Optional · active contacts only · clearable. Reuses the Combobox.</p>
+            <div className="switchrow">
+              {['default','loading','error'].map(v => (
+                <button key={v} className={variant === v ? 'on' : ''} onClick={() => setVariant(v)}>{v}</button>
+              ))}
+            </div>
+            <CustodianSelect
+              value={value}
+              onChange={setValue}
+              contacts={CONTACTS}
+              loading={variant === 'loading'}
+              error={variant === 'error' ? 'That contact is archived — pick an active one.' : undefined}
+              help={variant === 'default' ? 'The bank, broker, or provider that holds this account.' : undefined}
+            />
+            <div className="json">CustodianId: {value ? `"${value}"` : 'null'}</div>
+          </div>
+        </div>
+      );
+    }
+
+    function Root() {
+      // The bundle may still be compiling the new components on the very first
+      // load; poll briefly so the card never renders blank.
+      const [ready, setReady] = React.useState(!!(CustodianChip && CustodianSelect));
+      React.useEffect(() => {
+        if (ready) return;
+        let n = 0;
+        const t = setInterval(() => {
+          const ns = window.OdysseyDesignSystem_d5aa51 || {};
+          if ((ns.CustodianChip && ns.CustodianSelect) || ++n > 20) { clearInterval(t); setReady(true); }
+        }, 100);
+        return () => clearInterval(t);
+      }, [ready]);
+      if (!(NS.CustodianChip && NS.CustodianSelect)) {
+        return <div className="note">Building components…</div>;
+      }
+      return <Demo />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+  </script>
+
+  <p class="note"><b>Custodian</b> is the optional link from an account to the <b>contact that holds it</b> — the bank for a bank account, the broker for a brokerage, the provider for a pension. It reuses the existing Contact entity rather than a separate institution concept. <b>CustodianChip</b> renders the link on the account card (collapsed row + detail), composing the chip language with the ContactType registry; it is informational only (no per-contact route in v1). <b>CustodianSelect</b> is the optional picker on the create dialog and the inline edit grid — a reuse/extension of <code>Combobox</code>, listing active contacts only, clearable, with no inline create and no type restriction.</p>
+</body>
+</html>

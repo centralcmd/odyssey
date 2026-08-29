@@ -1,0 +1,33 @@
+/* Tasks — /tasks (issue #311). The board / status-chip visuals ship globally
+   (odyssey-components.css); this file carries the toolbar, the board card body,
+   and the archived section. */
+.tk-shell { --tk: var(--sea-400); }
+
+
+.acct-list { display: flex; flex-direction: column; gap: 12px; }
+
+/* ── Board card body (OdsTaskBoard supplies the card shell + move buttons) ── */
+.tk-card-head { display: flex; align-items: flex-start; gap: 8px; }
+.tk-card-title { flex: 1; min-width: 0; font-weight: 500; font-size: 0.8125rem; line-height: 1.35; color: var(--mud-palette-text-primary); }
+.tk-card-note {
+    color: var(--mud-palette-text-secondary); font-size: 0.75rem; line-height: 1.5;
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.tk-card-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.tk-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tk-card-tags:empty { display: none; }
+.tk-att-count { display: inline-flex; align-items: center; gap: 3px; color: var(--mud-palette-text-secondary); font-size: 0.75rem; }
+.tk-att-count .mono { color: var(--mud-palette-text-primary); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.tk-att-count .material-icons { font-size: 13px; }
+
+/* ── Archived section (off-board, muted) ── */
+.tk-archived { margin-top: 24px; }
+.tk-archived-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--mud-palette-text-secondary); }
+.tk-archived-head .material-icons { font-size: 18px; }
+.tk-archived-title { font-weight: 500; font-size: 0.8125rem; color: var(--mud-palette-text-primary); }
+.tk-archived-count {
+    font-family: var(--font-mono); font-size: 0.75rem; font-variant-numeric: tabular-nums;
+    color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-disabled-background);
+    padding: 3px 7px; border-radius: 999px;
+}

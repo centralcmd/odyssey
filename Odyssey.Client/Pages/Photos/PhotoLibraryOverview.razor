@@ -1,0 +1,90 @@
+@using Odyssey.Dtos.Finance
+@inject IPhotosApiClient Photos
+@inject IPhotoTagsApiClient PhotoTags
+@inject IAlbumsApiClient Albums
+@inject ISnackbar Snackbar
+@inject IContactsApiClient Contacts
+
+@*
+    PhotoLibraryOverview — the shared header Overview panel for the Photos module (Odyssey Design System ·
+    Photos web UI kit). The same panel appears on /photos and /albums. Self-contained: it loads the
+    server-computed library stats + albums + tags + Person contacts and renders the stat tiles + the
+    By album / By tag / People breakdowns. Reloads whenever it is mounted (the header only renders it when
+    the Overview region is open), so counts are fresh each time it's shown.
+*@
+
+<div class="pl-overview">
+    <div class="pl-stat-tiles">
+        <OdsInfoTile Icon="photo_library" IconColor="var(--tide-400)" Label="Photos"
+                     Value="@(b => b.AddContent(0, _stats.TotalCount.ToString()))"
+                     Foot="@(b => b.AddContent(0, "in your library"))" />
+        <OdsInfoTile Icon="favorite" IconColor="var(--rose-500, #F2557A)" Label="Favourites"
+                     Value="@(b => b.AddContent(0, _stats.FavouriteCount.ToString()))"
+                     Foot="@(b => b.AddContent(0, "loved"))" />
+    </div>
+    <OdsBreakdownTile Label="By album" Empty="No albums." Rows="AlbumRows" />
+    <OdsBreakdownTile Label="By tag" Empty="No tags." Rows="TagRows" />
+    <OdsBreakdownTile Label="People" Empty="No people tagged." Rows="PeopleRows" />
+</div>
+
+@code {
+    private PhotoLibraryStats _stats = new();
+    private IReadOnlyList<PhotoAlbumSummary> _albums = [];
+    private IReadOnlyList<ExistingPhotoTag> _tags = [];
+    private IReadOnlyList<ExistingContact> _people = [];
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    /// <summary>Reload the library so the counts reflect the latest mutations. The host calls this after a
+    /// change while the panel is open; on (re)mount the panel loads itself.</summary>
+    public async Task RefreshAsync()
+    {
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _stats = (await Photos.GetStatsAsync()).ValueOrToast(Snackbar, "library stats", new PhotoLibraryStats());
+        _albums = (await Albums.ListAllAsync()).ItemsOrToast(Snackbar, "albums");
+        _tags = (await PhotoTags.ListAllAsync()).ItemsOrToast(Snackbar, "photo tags");
+        _people = (await Contacts.ListAllAsync(types: ["Person"])).ItemsOrToast(Snackbar, "people");
+    }
+
+    private IReadOnlyList<OdsBreakdownRow> AlbumRows =>
+        [.. _albums.Select(a => new OdsBreakdownRow
+        {
+            Key = a.PhotoAlbumId, Icon = "photo_album", IconColor = "var(--tide-400)", Label = a.Name, Count = a.PhotoCount,
+        })];
+
+    private IReadOnlyList<OdsBreakdownRow> TagRows
+    {
+        get
+        {
+            var counts = _stats.TagCounts.ToDictionary(c => c.Key, c => c.Count);
+            return [.. _tags
+                .Select(t => new { t, Count = counts.GetValueOrDefault(t.PhotoTagId) })
+                .Where(x => x.Count > 0)
+                .Select(x => new OdsBreakdownRow
+                {
+                    Key = x.t.PhotoTagId, Icon = "sell", IconColor = "var(--mud-palette-text-secondary)", Label = x.t.Name, Count = x.Count,
+                })];
+        }
+    }
+
+    // People limited to resolvable Person contacts, so a since-deleted person never shows (§10.4).
+    private IReadOnlyList<OdsBreakdownRow> PeopleRows
+    {
+        get
+        {
+            var counts = _stats.PersonCounts.ToDictionary(c => c.Key, c => c.Count);
+            return [.. _people
+                .Select(c => new { c, Count = counts.GetValueOrDefault(c.ContactId) })
+                .Where(x => x.Count > 0)
+                .Select(x => new OdsBreakdownRow
+                {
+                    Key = x.c.ContactId, Icon = "person", IconColor = "var(--mud-palette-text-secondary)", Label = x.c.ResolvedDisplayName, Count = x.Count,
+                })];
+        }
+    }
+}

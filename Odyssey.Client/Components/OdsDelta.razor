@@ -1,0 +1,91 @@
+@*
+    OdsDelta — one indicator for the product's three change/difference encodings
+    (Odyssey Design System · components/Delta), so they read consistently:
+
+      • Variance    — a reconciliation result: 0 reads reconciled (mint ✓), non-zero
+                      a discrepancy (amber), null "unavailable" (disabled).
+      • Directional — a period-over-period change: ↑/↓/– arrow + magnitude. Pass
+                      Neutral to mute the color when direction isn't good-or-bad (rates).
+      • Signed      — a signed amount: +/− + magnitude, mint up / coral down.
+
+    Format renders the magnitude (a money/percent formatter); the sign and glyph are
+    added here. Tabular monospace, inline. Styled by .odc-delta in the global sheet.
+*@
+
+@if (Value is null)
+{
+    <span class="@Cls("na")">@NaLabel@Tail</span>
+}
+else if (Mode == OdsDeltaMode.Variance)
+{
+    @if (Math.Round(Value.Value) == 0)
+    {
+        <span class="@Cls("reconciled")">
+            <span class="material-icons" aria-hidden="true">check_circle</span>
+            <span class="sr-only">reconciled, </span>
+            @(ZeroFormat is not null ? ZeroFormat() : Format(0))@Tail
+        </span>
+    }
+    else
+    {
+        <span class="@Cls("diff")">
+            <span aria-hidden="true">@(Value.Value < 0 ? "−" : "+")</span>
+            <span class="sr-only">variance, @(Value.Value < 0 ? "minus" : "plus") </span>
+            @Mag@Tail
+        </span>
+    }
+}
+else if (Mode == OdsDeltaMode.Directional)
+{
+    <span class="@Cls(Neutral ? "flat" : Dir)">
+        <span class="material-icons" aria-hidden="true">@Glyph</span>
+        @* The arrow is aria-hidden and color is not a signal — give AT the direction as text. *@
+        <span class="sr-only">@(Dir == "up" ? "up " : Dir == "down" ? "down " : "no change ")</span>
+        @Mag@Tail
+    </span>
+}
+else
+{
+    <span class="@Cls(Value.Value >= 0 ? "up" : "down")">
+        <span aria-hidden="true">@(Value.Value >= 0 ? "+" : "−")</span>
+        <span class="sr-only">@(Value.Value >= 0 ? "up " : "down ")</span>
+        @Mag@Tail
+    </span>
+}
+
+@code {
+    /// <summary>The number to render. Null → the <see cref="NaLabel"/>.</summary>
+    [Parameter] public decimal? Value { get; set; }
+
+    /// <summary>Formats the magnitude (sign + glyph are added by the component).</summary>
+    [Parameter] public Func<decimal, string> Format { get; set; } = static n => Math.Abs(n).ToString("#,##0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Variance · Directional · Signed (default).</summary>
+    [Parameter] public OdsDeltaMode Mode { get; set; } = OdsDeltaMode.Signed;
+
+    /// <summary>Directional: mute the color when direction isn't good-or-bad (e.g. rates).</summary>
+    [Parameter] public bool Neutral { get; set; }
+
+    /// <summary>Variance: how to render the reconciled 0 (default <c>Format(0)</c>).</summary>
+    [Parameter] public Func<string>? ZeroFormat { get; set; }
+
+    /// <summary>Text shown when <see cref="Value"/> is null.</summary>
+    [Parameter] public string NaLabel { get; set; } = "Unavailable";
+
+    /// <summary>Trailing context, e.g. "vs 2024" or "all-time".</summary>
+    [Parameter] public string? Suffix { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private string Mag => Format(Math.Abs(Value!.Value));
+
+    private string Dir => Value!.Value > 0 ? "up" : Value.Value < 0 ? "down" : "flat";
+
+    private string Glyph => Value!.Value > 0 ? "arrow_upward" : Value.Value < 0 ? "arrow_downward" : "remove";
+
+    private string Cls(string mode) => $"odc-delta {mode}{(string.IsNullOrEmpty(Class) ? "" : " " + Class)}";
+
+    private RenderFragment? Tail => string.IsNullOrEmpty(Suffix)
+        ? null
+        : @<span class="odc-delta-suffix"> @Suffix</span>;
+}

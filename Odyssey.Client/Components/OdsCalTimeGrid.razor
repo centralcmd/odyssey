@@ -1,0 +1,157 @@
+@*
+    OdsCalTimeGrid — the Week/Day hourly time-grid (Odyssey Design System · Calendar.jsx CalTimeGrid),
+    formalized as a Blazor atom for issue #329. One component serves both views: Days carries 7 dates
+    for a week or 1 for a day.
+
+    Layout: a day-column header, an all-day lane, then a scrollable 24-hour body auto-scrolled to open
+    near the current time. Timed events are absolutely positioned by start/end and split into
+    side-by-side columns when they overlap.
+
+    Accessibility (issue #329 §3, two-layer model):
+      • Structural layer — a role="grid" of thin, transparent per-day/per-hour gridcells carries the
+        roving-tabindex keyboard model (arrows move day/hour, Home/End jump to the day's first/last
+        slot, Enter/Space on an empty slot creates an event). It is pointer-events:none so mouse clicks
+        fall through to the visual column for time-precise slot creation.
+      • Event layer — every event block is an independently tabindex=0 <button> in normal Tab order,
+        overlaid on the grid, NEVER nested inside a gridcell (which would be invalid ARIA).
+
+    Drag/resize (mouse/touch, pointer events): move an event block to reschedule (duration preserved),
+    drag its bottom edge to resize the end, snapped to 15 minutes, with a live ghost preview. Gated by
+    CanUpdate. Cross-midnight events render clipped in each day they touch and are NOT draggable — they
+    are edited via the dialog (the keyboard-equivalent path). All writes are re-validated server-side.
+*@
+
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="cal-tg @(_drag is not null ? "dragging" : null)">
+    <div class="sr-only" id="@_instructionsId">
+        Use arrow keys to move between time slots. Press Enter to open or create an event. Drag with a
+        mouse to reschedule, or use the event's own dialog to change its time.
+    </div>
+
+    <div class="cal-tg-head" style="grid-template-columns:@HeadColumns">
+        <div class="cal-tg-corner"></div>
+        @foreach (var day in _days)
+        {
+            var isToday = day == TodayDate;
+            <div class="@("cal-tg-dayhead" + (isToday ? " today" : ""))">
+                <span class="cal-tg-wd">@CalendarGridMath.WeekdayHeaders(0)[(int)day.DayOfWeek]</span>
+                <span class="@("cal-tg-dnum" + (isToday ? " today" : ""))">@day.Day</span>
+            </div>
+        }
+    </div>
+
+    <div class="cal-tg-allday" style="grid-template-columns:@HeadColumns">
+        <div class="cal-tg-alllabel">all-day</div>
+        @for (var di = 0; di < _days.Count; di++)
+        {
+            var day = _days[di];
+            <div class="cal-tg-allcell"
+                 @onclick="() => OnSlotActivate(day, TimeSpan.Zero)"
+                 @ondragover:preventDefault="OnEventDrop.HasDelegate && CanUpdate"
+                 @ondrop="OnEventDrop.HasDelegate && CanUpdate ? EventCallback.Factory.Create<DragEventArgs>(this, () => OnAllDayDrop(day)) : default">
+                @foreach (var ev in AllDayFor(day))
+                {
+                    var draggable = OnEventDrop.HasDelegate && CanUpdate;
+                    <button type="button" class="cal-tg-allchip" style="@($"background:{ev.Color};color:{ev.Fg}")"
+                            draggable="@(draggable ? "true" : null)"
+                            aria-label="@AllDayName(ev)" title="@ev.Title"
+                            @onclick="() => OnEventActivate(ev.Id)" @onclick:stopPropagation="true"
+                            @ondragstart="draggable ? EventCallback.Factory.Create<DragEventArgs>(this, () => OnAllDayDragStart(ev.Id, day)) : default">
+                        @if (ev.Recurring)
+                        {
+                            <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
+                        }
+                        @ev.Title
+                    </button>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="cal-tg-body-scroll" @ref="_scrollRef">
+        <div class="cal-tg-body" @ref="_bodyRef" style="grid-template-columns:@HeadColumns; height:@(24 * HourPx)px"
+             @onpointermove="OnBodyPointerMove" @onpointerup="OnBodyPointerUp">
+            <div class="cal-tg-gutter">
+                @for (var h = 0; h < 24; h++)
+                {
+                    <div class="cal-tg-hour" style="height:@(HourPx)px"><span>@(h == 0 ? "" : $"{h:D2}:00")</span></div>
+                }
+            </div>
+
+            @for (var di = 0; di < _days.Count; di++)
+            {
+                var day = _days[di];
+                var isToday = day == TodayDate;
+                var placed = LayoutDay(day);
+                <div class="@("cal-tg-col" + (isToday ? " today" : ""))"
+                     @onclick="e => OnColumnClick(e, day)">
+                    @for (var h = 0; h < 24; h++)
+                    {
+                        <div class="cal-tg-line" style="top:@(h * HourPx)px"></div>
+                    }
+                    @foreach (var b in placed)
+                    {
+                        var ev = b.Event;
+                        var draggable = CanUpdate && OnEventChange.HasDelegate && !b.Clipped;
+                        <button type="button"
+                                class="@("cal-tg-ev" + (draggable ? " draggable" : "") + (_drag?.Id == ev.Id ? " dragging" : ""))"
+                                style="@BlockStyle(b)"
+                                aria-label="@TimedName(ev)" title="@ev.Title"
+                                @onpointerdown="draggable ? EventCallback.Factory.Create<PointerEventArgs>(this, e => BeginDrag(e, ev, DragMode.Move)) : default"
+                                @onpointerdown:stopPropagation="draggable"
+                                @onclick="() => OnEventActivate(ev.Id)" @onclick:stopPropagation="true">
+                            <span class="cal-tg-ev-t">
+                                @if (ev.Recurring)
+                                {
+                                    <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
+                                }
+                                @ev.Title
+                            </span>
+                            <span class="cal-tg-ev-time">@ev.Start.ToString("HH:mm")–@ev.End.ToString("HH:mm")</span>
+                            @if (!string.IsNullOrEmpty(ev.CalendarName))
+                            {
+                                <span class="cal-tg-ev-loc">@ev.CalendarName</span>
+                            }
+                            @if (draggable)
+                            {
+                                <span class="cal-tg-ev-resize" aria-hidden="true"
+                                      @onpointerdown="e => BeginDrag(e, ev, DragMode.Resize)"
+                                      @onpointerdown:stopPropagation="true"></span>
+                            }
+                        </button>
+                    }
+                </div>
+            }
+
+            @* Structural keyboard layer: role=grid of transparent hour slots, overlaid on the columns. *@
+            <div class="cal-tg-slots" role="grid" aria-label="Time slots" aria-describedby="@_instructionsId"
+                 style="grid-template-columns:repeat(@_days.Count, 1fr); left:@(GutterPx)px">
+                @for (var h = 0; h < 24; h++)
+                {
+                    var hour = h;
+                    <div role="row" style="display:contents">
+                        @for (var di = 0; di < _days.Count; di++)
+                        {
+                            var col = di;
+                            var idx = (hour * _days.Count) + di;
+                            <div role="gridcell" class="cal-tg-slot" style="height:@(HourPx)px"
+                                 tabindex="@(idx == _focusedSlot ? 0 : -1)"
+                                 @ref="_slotRefs[idx]"
+                                 aria-label="@SlotLabel(_days[col], hour)"
+                                 @onkeydown="e => OnSlotKeyDown(e, col, hour)"></div>
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (_drag is { } d)
+            {
+                <div class="cal-tg-ghost" style="@GhostStyle(d)">
+                    <span class="cal-tg-ev-time">@Hhmm(d.CurStart)–@Hhmm(d.CurEnd)</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>

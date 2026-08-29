@@ -1,0 +1,20 @@
+@page "/journal-tags"
+@using Odyssey.Client.Authorization
+@attribute [Authorize(Policy = PermissionClaims.JournalTagsRead)]
+
+<PageTitle>Journal Tags</PageTitle>
+
+<OdsTagAdmin TRow="ExistingJournalTag"
+             Title="Journal tags"
+             Noun="journal tags"
+             PageStateKey="journal-tags-page"
+             CreateClaim="@PermissionClaims.JournalTagsCreate"
+             UpdateClaim="@PermissionClaims.JournalTagsUpdate"
+             DeleteClaim="@PermissionClaims.JournalTagsDelete"
+             NamePlaceholder="e.g. Milestone"
+             ModalSubtitle="Tags group journal entries by category."
+             EmptyDesc="Create your first tag to start categorizing journal entries."
+             Id="@(t => t.JournalTagId)"
+             Name="@(t => t.Name)"
+             Description="@(t => t.Description)"
+             Archived="@(t => t.Archived)" />

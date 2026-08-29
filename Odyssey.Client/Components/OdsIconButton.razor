@@ -1,0 +1,56 @@
+@*
+    OdsIconButton — the bare icon-only button (Odyssey Design System · components/IconButton).
+
+    Used for the modal close, table row actions, and menu triggers. A
+    MudIconButton with the Odyssey size steps and a required accessible name.
+    Renders as a link when Href is set. Danger tints it for destructive actions.
+      sm = 28px · md = 36px (default) · lg = 44px (touch target).
+
+    AriaLabel is REQUIRED — the button shows no text.
+*@
+
+<MudIconButton Icon="@Icon"
+               Size="@MudSize"
+               Color="@(Danger ? Color.Error : Color.Default)"
+               Href="@Href"
+               ButtonType="@Type"
+               Disabled="@Disabled"
+               OnClick="OnClick"
+               aria-label="@AriaLabel"
+               Class="@Class"
+               @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Material Icons ligature name (use @Icons.Material.Filled.* constants).</summary>
+    [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
+
+    /// <summary>Accessible name — REQUIRED, since the button shows no text.</summary>
+    [Parameter, EditorRequired] public string AriaLabel { get; set; } = string.Empty;
+
+    /// <summary>sm = 28px · md = 36px (default) · lg = 44px.</summary>
+    [Parameter] public OdsSize Size { get; set; } = OdsSize.Md;
+
+    /// <summary>Tint for destructive actions.</summary>
+    [Parameter] public bool Danger { get; set; }
+
+    /// <summary>Render as a link with this href instead of a button.</summary>
+    [Parameter] public string? Href { get; set; }
+
+    [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private Size MudSize => Size switch
+    {
+        OdsSize.Sm => MudBlazor.Size.Small,
+        OdsSize.Lg => MudBlazor.Size.Large,
+        _ => MudBlazor.Size.Medium,
+    };
+}
