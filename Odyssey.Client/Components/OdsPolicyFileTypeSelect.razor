@@ -1,0 +1,49 @@
+@* DS parity — no consumer yet: the insurance attach flow consolidated onto OdsFileUpload's
+   per-file kind picker, which projects the same OdsTypeRegistries.PolicyFileTypes registry
+   into upload rows (Pages/Finance/InsuranceUploadDialog.razor), so no standalone picker is
+   mounted. Its Account / Transaction / TaxStatement siblings are still used by the older
+   one-type-per-section upload dialect. *@
+@*
+    OdsPolicyFileTypeSelect — a single-select pre-wired to the PolicyFileType vocabulary
+    (Odyssey Design System · components/PolicyFileTypeSelect): the documents that attach
+    to an insurance policy OR an individual renewal — Contract · Invoice · Terms &
+    conditions · Policy document · Claim document · Other, each rendered with its
+    Material icon in its category color. A thin wrapper over OdsSelect; Value is the
+    enum key. Bind via @bind-Value.
+*@
+
+<OdsSelect Value="@Value"
+           ValueChanged="ValueChanged"
+           Options="OdsTypeRegistries.PolicyFileOptions"
+           Label="@Label"
+           Placeholder="@Placeholder"
+           Help="@Help"
+           Error="@Error"
+           Required="@Required"
+           Disabled="@Disabled"
+           Class="@Class"
+           @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Selected enum key. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Document type";
+
+    [Parameter] public string? Placeholder { get; set; } = "Select type…";
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

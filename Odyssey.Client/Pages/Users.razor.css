@@ -1,0 +1,247 @@
+/* ── Users administration page (Odyssey Design System · admin.css) ──────────
+   Ported from the design system's kit.css table primitive + admin.css user
+   surface. Layout-only classes authored here; interactive controls are
+   MudBlazor and the .alert / .nomatch / .empty-line / .mono / .meta-grid /
+   .acct-detail primitives come from the page-shared scopes + app.css. All tints
+   use semantic palette tokens so the page reads correctly in light and dark. */
+
+/* ── Table (kit.css .tbl, scoped here) ── */
+.tbl {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.tbl th,
+.tbl td {
+    padding: 12px 16px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.tbl thead th {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    border-bottom: 1px solid var(--mud-palette-divider);
+    background: transparent;
+    white-space: nowrap;
+}
+
+.tbl tbody tr {
+    border-bottom: 1px solid var(--mud-palette-table-lines);
+}
+
+/* The whole row is the disclosure control — show it's clickable. */
+.usr-tbl tbody tr:not(.usr-detail-row) {
+    cursor: pointer;
+}
+
+.usr-tbl tbody tr:not(.usr-detail-row):hover {
+    background: var(--mud-palette-action-default-hover);
+}
+
+.usr-tbl tbody tr:not(.usr-detail-row):focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: -2px;
+}
+
+.usr-tbl td {
+    vertical-align: middle;
+}
+
+.usr-actions-col {
+    width: 110px;
+    text-align: right;
+}
+
+/* User identity cell */
+.usr-user-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.avatar {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    display: inline-grid;
+    place-items: center;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    background: var(--mud-palette-action-disabled-background);
+    color: var(--mud-palette-text-primary);
+}
+
+.usr-av-owner { background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent); color: var(--mud-palette-primary); }
+.usr-av-admin { background: color-mix(in srgb, var(--mud-palette-tertiary) 18%, transparent); color: var(--mud-palette-tertiary); }
+.usr-av-user  { background: color-mix(in srgb, var(--mud-palette-secondary) 16%, transparent); color: var(--mud-palette-secondary); }
+.usr-av-guest { background: var(--mud-palette-action-disabled-background); color: var(--mud-palette-text-secondary); }
+
+.usr-user-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--mud-palette-text-primary);
+    white-space: nowrap;
+}
+
+.usr-user-id {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    color: var(--mud-palette-text-secondary);
+    margin-top: 2px;
+}
+
+.usr-email {
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Row actions */
+.usr-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+}
+
+.usr-expand-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--mud-palette-text-secondary);
+}
+
+.usr-expand-btn:hover {
+    background: var(--mud-palette-action-default-hover);
+}
+
+.usr-expand-btn:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: var(--focus-ring-offset);
+}
+
+.usr-expand-btn ::deep .usr-chev,
+.collapsible-head ::deep .usr-chev {
+    color: var(--mud-palette-text-secondary);
+    transition: transform var(--duration-base) var(--ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .usr-expand-btn ::deep .usr-chev,
+    .collapsible-head ::deep .usr-chev { transition: none; }
+}
+
+.usr-expand-btn ::deep .usr-chev.open,
+.collapsible-head ::deep .usr-chev.open {
+    transform: rotate(180deg);
+}
+
+/* Expanded row tint + seamless detail cell */
+.usr-tbl tbody tr.expanded {
+    background: color-mix(in srgb, var(--mud-palette-primary) 6%, transparent);
+}
+
+.usr-tbl tbody tr.expanded td {
+    border-bottom-color: transparent;
+}
+
+.usr-detail-cell {
+    padding: 0 !important;
+    background: var(--mud-palette-background);
+}
+
+.usr-detail-cell ::deep .acct-detail {
+    border-top: 1px solid var(--mud-palette-primary);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--mud-palette-surface);
+}
+
+/* Metadata tile grid (kit.css .meta-grid / .meta-tile). These primitives are
+   scoped per page, so the Users detail must define them locally or the tiles
+   collapse into an unstyled text list. Columns are set by .usr-meta-grid below. */
+.usr-detail-cell ::deep .meta-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.usr-detail-cell ::deep .meta-tile {
+    border: 1px solid var(--mud-palette-divider);
+    background: var(--mud-palette-background);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.usr-detail-cell ::deep .meta-tile.wide {
+    grid-column: 1 / -1;
+}
+
+.usr-detail-cell ::deep .meta-tile-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+
+.usr-detail-cell ::deep .meta-tile-value {
+    font-size: 0.9375rem;
+    line-height: 1.3;
+    color: var(--mud-palette-text-primary);
+}
+
+.usr-detail-cell ::deep .meta-tile-value.mono {
+    font-family: 'Roboto Mono', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Detail meta grid: roomier (up to 3 columns) than the 2-col Account default. */
+.usr-detail-cell ::deep .usr-meta-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+    .usr-detail-cell ::deep .usr-meta-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .usr-detail-cell ::deep .usr-meta-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* The role pill, the status badges, the claim chips and the edit panel moved to
+   UserRolePill / UserStatusBadge / UserDetailPanel / UserEditPanel with their markup (issue #373);
+   their rules moved into those components' own stylesheets. */
+
+/* Pagination is now the shared OdsPager (see Users.razor); the bespoke .usr-pager* rules were removed. */
+
+/* Account-status cell: the enabled/disabled badge, plus the pending-reset chip when one is
+   outstanding (issue #406 §3). Stacked rather than a ninth column — the row is already at eight,
+   and "reset pending" is a qualifier on account status, not a fact of its own. */
+.usr-status-stack {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}

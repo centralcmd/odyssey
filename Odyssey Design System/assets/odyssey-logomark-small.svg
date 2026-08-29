@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Odyssey">
+  <title>Odyssey · small</title>
+  
+  
+  <circle cx="16" cy="16" r="13" fill="none" stroke="#006B5A" stroke-width="2.5"></circle>
+  
+  <line x1="16" y1="1.5" x2="16" y2="4" stroke="#006B5A" stroke-width="1.5"></line>
+  <line x1="16" y1="28" x2="16" y2="30.5" stroke="#006B5A" stroke-width="1.5"></line>
+  <line x1="1.5" y1="16" x2="4" y2="16" stroke="#006B5A" stroke-width="1.5"></line>
+  <line x1="28" y1="16" x2="30.5" y2="16" stroke="#006B5A" stroke-width="1.5"></line>
+  
+  <polygon points="16,4 13,16 16,13 19,16" fill="#00F5D4"></polygon>
+  
+  <polygon points="16,28 13,16 16,19 19,16" fill="#707070"></polygon>
+  
+  <circle cx="16" cy="16" r="1.6" fill="#00F5D4"></circle>
+</svg>

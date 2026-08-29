@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Chips + status" subtitle="Transaction status, account type, file type, tags, budget category" viewport="700x440" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Components · Chips + status</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 11px; border-radius: 999px;
+      font: 500 12px/1.2 var(--font-sans);
+      letter-spacing: 0.01em; white-space: nowrap;
+    }
+    .chip .dot { width: 6px; height: 6px; border-radius: 999px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+    .row-lab { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); min-width: 130px; }
+  </style>
+  <div class="row">
+    <div class="row-lab">Transaction status</div>
+    <div class="chip" style="background:rgba(26,165,224,0.16); color:var(--sea-400);"><span class="dot" style="background:var(--sea-400)"></span>New</div>
+    <div class="chip" style="background:rgba(74,222,128,0.16); color:var(--mint-500);"><span class="dot" style="background:var(--mint-500)"></span>Approved</div>
+    <div class="chip" style="background:rgba(255,107,107,0.16); color:var(--coral-500);"><span class="dot" style="background:var(--coral-500)"></span>Flagged</div>
+  </div>
+  <div class="row">
+    <div class="row-lab">Account status</div>
+    <div class="chip" style="background:rgba(61,214,140,0.16); color:var(--mint-500);"><span class="dot" style="background:var(--mint-500)"></span>Active</div>
+    <div class="chip" style="background:rgba(245,158,11,0.16); color:var(--amber-500);">Closed</div>
+    <div class="chip" style="background:transparent; border:1px solid var(--mud-palette-divider); color:var(--mud-palette-text-secondary);">Archived</div>
+  </div>
+  <div class="row">
+    <div class="row-lab">Account type · assets</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Cash</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Checking</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Savings</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Investment</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Pension</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Property</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Vehicle</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Other asset</div>
+  </div>
+  <div class="row">
+    <div class="row-lab">Account type · liabilities</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Credit card</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Mortgage</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Student loan</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Personal loan</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Car loan</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Tax debt</div>
+    <div class="chip" style="background:rgba(255,255,255,0.06); color:var(--ink-100);">Other liability</div>
+  </div>
+  <div class="row">
+    <div class="row-lab">Transaction tags</div>
+    <div class="chip" style="background:rgba(139,92,246,0.16); color:var(--violet-500);">Groceries</div>
+    <div class="chip" style="background:rgba(139,92,246,0.16); color:var(--violet-500);">Rent</div>
+    <div class="chip" style="background:rgba(139,92,246,0.16); color:var(--violet-500);">Subscriptions</div>
+    <div class="chip" style="background:rgba(139,92,246,0.16); color:var(--violet-500);">Transit</div>
+  </div>
+  <div class="row">
+    <div class="row-lab">Budget category</div>
+    <div class="chip" style="background:rgba(61,214,140,0.16); color:var(--mint-500);">Income</div>
+    <div class="chip" style="background:rgba(255,107,107,0.16); color:var(--coral-500);">Expense</div>
+  </div>
+  <div class="row">
+    <div class="row-lab">File type</div>
+    <div class="chip" style="background:oklch(0.79 0.115 188 / 0.16); color:oklch(0.79 0.115 188);">Statement</div>
+    <div class="chip" style="background:oklch(0.76 0.13 225 / 0.16); color:oklch(0.76 0.13 225);">Message</div>
+    <div class="chip" style="background:oklch(0.72 0.16 295 / 0.16); color:oklch(0.72 0.16 295);">Contract</div>
+    <div class="chip" style="background:oklch(0.75 0.16 330 / 0.16); color:oklch(0.75 0.16 330);">Tax</div>
+    <div class="chip" style="background:oklch(0.74 0.04 250 / 0.18); color:oklch(0.80 0.03 250);">Other</div>
+  </div>
+  <div class="row">
+    <div class="row-lab">File analysis</div>
+    <div class="chip" style="background:rgba(245,158,11,0.16); color:var(--amber-500);"><span class="dot" style="background:var(--amber-500)"></span>Analyzing…</div>
+    <div class="chip" style="background:rgba(61,214,140,0.16); color:var(--mint-500);">Ready · 4 matched</div>
+  </div>
+</body></html>

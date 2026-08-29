@@ -1,0 +1,166 @@
+@*
+    OdsTypeSelect — the one shared "pick a type" control behind every registry-backed
+    single select (Odyssey Design System · components/TypeSelect).
+
+    Renders the DS .odc-select trigger (a custom button, not a MudBlazor input) showing
+    the chosen type's colored glyph + label, opening a MudMenu popover whose rows carry a
+    colored category glyph, the label, and the selected check pinned to the far right.
+    Optional Groups split the list into labelled sections with separators (e.g. Assets /
+    Liabilities). Composes OdsFieldShell for the label / helper / error chrome.
+
+    Don't use this directly in product code — reach for the domain-typed wrapper
+    (OdsAccountTypeSelect, OdsContractTypeSelect, …), each of which feeds its canonical
+    registry in. This is the shared engine they delegate to. Value is the enum key.
+*@
+
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+               Help="@Help" Error="@Error" Class="@Class">
+    <div class="odc-typesel">
+    @* AnchorOrigin/TransformOrigin + MudBlazor's default FlipOnOpen overflow behaviour flip the
+       popover above the trigger when there isn't room below; MaxHeight caps it (DS Select/TypeSelect
+       clamp) so a long list scrolls instead of running off-screen. A compact trigger (e.g. the inline
+       file-kind picker) would otherwise pin the popover too narrow — it passes a PopoverClass that
+       widens it to fit the option names. *@
+    <MudMenu ActivationEvent="@MouseEvent.LeftClick"
+             AnchorOrigin="Origin.BottomCenter"
+             TransformOrigin="Origin.TopCenter"
+             FullWidth="true"
+             RelativeWidth="DropdownWidth.Relative"
+             MaxHeight="360"
+             PopoverClass="@PopoverClass"
+             Disabled="@Disabled"
+             OpenChanged="@(open => _open = open)">
+        <ActivatorContent>
+            <button type="button" id="@FieldId"
+                    class="odc-select-trigger @(_open ? "open" : null) @(Selected is null ? "placeholder" : null)"
+                    disabled="@Disabled"
+                    aria-haspopup="listbox" aria-expanded="@(_open ? "true" : "false")"
+                    aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
+                    aria-label="@AriaLabel"
+                    aria-describedby="@DescribedBy"
+                    @onclick="@context.ToggleAsync">
+                <span class="odc-select-trigger-main">
+                    @if (Selected is not null && !string.IsNullOrEmpty(Selected.Icon))
+                    {
+                        <span class="material-icons odc-opt-icon" style="color:@Selected.Color" aria-hidden="true">@Selected.Icon</span>
+                    }
+                    <span class="odc-select-val">@(Selected?.Label ?? Placeholder)</span>
+                </span>
+                <span class="material-icons odc-select-chev" aria-hidden="true">expand_more</span>
+            </button>
+        </ActivatorContent>
+        <ChildContent>
+            @if (Groups is not null)
+            {
+                var first = true;
+                foreach (var group in Groups)
+                {
+                    if (group.Items.Count == 0)
+                    {
+                        continue;
+                    }
+                    if (!first)
+                    {
+                        <div class="odc-typesel-sep" role="presentation"></div>
+                    }
+                    first = false;
+                    <div class="odc-typesel-group" role="presentation">@group.Label</div>
+                    foreach (var option in group.Items)
+                    {
+                        @OptionRow(option)
+                    }
+                }
+            }
+            else
+            {
+                foreach (var option in Types)
+                {
+                    @OptionRow(option)
+                }
+            }
+        </ChildContent>
+    </MudMenu>
+    </div>
+</OdsFieldShell>
+
+@code {
+    /// <summary>Selected enum key. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Flat list of options. Ignored when <see cref="Groups"/> is set.</summary>
+    [Parameter] public IReadOnlyList<OdsTypeOption> Types { get; set; } = [];
+
+    /// <summary>Labelled sections (e.g. Assets / Liabilities). When set, takes precedence over Types.</summary>
+    [Parameter] public IReadOnlyList<OdsTypeSelectGroup>? Groups { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "Select type…";
+
+    /// <summary>Accessible name for the trigger when used without a visible <see cref="Label"/>
+    /// (e.g. the compact inline file-kind picker). Rendered as aria-label on the trigger button.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Optional { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Extra class on the portaled popover — e.g. to widen the dropdown for a compact trigger
+    /// whose own width would otherwise pin the list too narrow.</summary>
+    [Parameter] public string? PopoverClass { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string FieldId = default!;
+
+    // Open state, so the trigger reports aria-expanded. Driven by MudMenu.OpenChanged
+    // (reading MudMenu.Open directly trips MUD0012).
+    private bool _open;
+
+    protected override void OnInitialized() => FieldId = Id ?? $"odc-typesel-{Guid.NewGuid():N}";
+
+    private IEnumerable<OdsTypeOption> AllOptions =>
+        Groups is not null ? Groups.SelectMany(g => g.Items) : Types;
+
+    private OdsTypeOption? Selected => AllOptions.FirstOrDefault(o => o.Key == Value);
+
+    private string? DescribedBy =>
+        (string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help)) ? null : $"{FieldId}-help";
+
+    private async Task Pick(OdsTypeOption option)
+    {
+        if (option.Key == Value)
+        {
+            return;
+        }
+        Value = option.Key;
+        await ValueChanged.InvokeAsync(option.Key);
+    }
+
+    private RenderFragment OptionRow(OdsTypeOption option) => __builder =>
+    {
+        <MudMenuItem OnClick="@(() => Pick(option))">
+            <div class="odc-typesel-item @(option.Key == Value ? "selected" : null)">
+                <span class="material-icons odc-opt-icon" style="color:@option.Color" aria-hidden="true">@option.Icon</span>
+                <span class="odc-typesel-lab">@option.Label</span>
+                @if (option.Key == Value)
+                {
+                    <span class="odc-typesel-check" aria-hidden="true"><span class="material-icons">check</span></span>
+                }
+            </div>
+        </MudMenuItem>
+    };
+}

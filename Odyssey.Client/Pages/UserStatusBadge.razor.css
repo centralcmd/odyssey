@@ -1,0 +1,28 @@
+/* ── Status badges ── moved here from Users.razor.css with the markup they style. */
+.usr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px 3px 7px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.usr-badge ::deep .mud-icon-root {
+    font-size: 14px;
+}
+
+.usr-badge.on { background: var(--status-active-soft); color: var(--status-active); }
+.usr-badge.off { background: var(--status-closed-soft); color: var(--pending-text); } /* text-safe amber (1.4.3), not the graphics amber-600 */
+.usr-badge.confirmed { background: color-mix(in srgb, var(--mud-palette-info) 16%, transparent); color: var(--mud-palette-info); }
+.usr-badge.unconfirmed { background: var(--status-archived-soft); color: var(--status-archived); }
+
+.usr-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+}

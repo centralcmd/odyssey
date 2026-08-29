@@ -1,0 +1,241 @@
+@*
+    ManageCalendarsDialog — the calendars CRUD dialog (Odyssey Design System · ManageCalendarsModal).
+    Per-row inline editor (name, description, colour swatch-select), an add row, and per-row delete.
+    Deleting a calendar that still holds events/patterns is blocked by the service (409) — rather than
+    proactively disabling Delete from a live count (this client only ever loads the current month-grid
+    window, not full history), the delete is attempted and the returned reason surfaces via the
+    standard error toast. Duplicate-name (409) on create/save is shown inline next to that row.
+*@
+
+@using System.Net
+@inject ICalendarApiClient CalendarApi
+@inject ISnackbar Snackbar
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="settings" Title="@TitleContent">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <MudStack Spacing="2">
+                @foreach (var calendar in Calendars)
+                {
+                    var editing = _editingId == calendar.CalendarId;
+                    <div class="@("cal-mgr-item" + (editing ? " editing" : ""))">
+                        <div class="cal-mgr-row">
+                            <span class="cal-mgr-swatch" style="@($"background:{calendar.Color}")" aria-hidden="true"></span>
+                            <div class="cal-mgr-id">
+                                <div class="cal-mgr-name">@calendar.Name</div>
+                                <div class="cal-mgr-sub">
+                                    @(string.IsNullOrWhiteSpace(calendar.Description) ? "No description" : calendar.Description)
+                                </div>
+                            </div>
+                            <div class="cal-mgr-actions">
+                                @* The tooltip adds the format the export produces — supplementary to the
+                                   accessible name, and shown on keyboard focus as the native title was not. *@
+                                <OdsTooltip Label="@($"Export {calendar.Name} as an .ics file")">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                                   aria-label="@($"Export {calendar.Name}")"
+                                                   OnClick="@(() => OnExport.InvokeAsync(calendar))" />
+                                </OdsTooltip>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" aria-label="@($"Edit {calendar.Name}")"
+                                               OnClick="@(() => { if (editing) { CancelEdit(); } else { StartEdit(calendar); } })" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" aria-label="@($"Delete {calendar.Name}")"
+                                               OnClick="@(() => DeleteAsync(calendar))" />
+                            </div>
+                        </div>
+                        @if (editing)
+                        {
+                            <div class="cal-mgr-editor">
+                                <OdsFormRow>
+                                    <OdsField Label="Name" Value="@_editDraft.Name" MaxLength="150" AutoFocus="true"
+                                              ValueChanged="@(v => _editDraft.Name = v)" Error="@_editError" />
+                                    <OdsField Label="Description" Optional="true" Value="@_editDraft.Description" MaxLength="1000"
+                                              ValueChanged="@(v => _editDraft.Description = v)" Placeholder="Optional" />
+                                </OdsFormRow>
+                                <OdsFieldShell Label="Colour">
+                                    <OdsColorSwatchSelect Value="@_editDraft.Color" ValueChanged="@(v => _editDraft.Color = v)" />
+                                </OdsFieldShell>
+                                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-2">
+                                    <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelEdit">Cancel</OdsButton>
+                                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_isSaving" OnClick="SaveEditAsync">Save</OdsButton>
+                                </MudStack>
+                            </div>
+                        }
+                    </div>
+                }
+            </MudStack>
+
+            @if (_adding)
+            {
+                <div class="cal-mgr-item editing mt-2">
+                    <div class="cal-mgr-add-head">
+                        <span class="material-icons" aria-hidden="true">add</span>
+                        <span>New calendar</span>
+                    </div>
+                    <div class="cal-mgr-editor">
+                        <OdsFormRow>
+                            <OdsField Label="Name" Value="@_newDraft.Name" MaxLength="150" AutoFocus="true"
+                                      ValueChanged="@(v => _newDraft.Name = v)" Error="@_addError" />
+                            <OdsField Label="Description" Optional="true" Value="@_newDraft.Description" MaxLength="1000"
+                                      ValueChanged="@(v => _newDraft.Description = v)" Placeholder="Optional" />
+                        </OdsFormRow>
+                        <OdsFieldShell Label="Colour">
+                            <OdsColorSwatchSelect Value="@_newDraft.Color" ValueChanged="@(v => _newDraft.Color = v)" />
+                        </OdsFieldShell>
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-2">
+                            <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => _adding = false)">Cancel</OdsButton>
+                            <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_isSaving" OnClick="SaveNewAsync">Create calendar</OdsButton>
+                        </MudStack>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" Class="mt-2"
+                           OnClick="@(() => { _adding = true; _editingId = null; })">New calendar</MudButton>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <div class="cal-mgr-footer">
+            <span class="cal-mgr-footer-spacer"></span>
+            <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Done</OdsButton>
+        </div>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter] public IReadOnlyList<ExistingCalendar> Calendars { get; set; } = [];
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Export a calendar as an .ics file (per-row download action). Handled by the page.</summary>
+    [Parameter] public EventCallback<ExistingCalendar> OnExport { get; set; }
+
+    private RenderFragment TitleContent => @<text>Manage calendars</text>;
+
+    private Guid? _editingId;
+    private RowDraft _editDraft = new();
+    private string? _editError;
+
+    private bool _adding;
+    private RowDraft _newDraft = new();
+    private string? _addError;
+
+    private bool _isSaving;
+
+    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+
+    private void StartEdit(ExistingCalendar calendar)
+    {
+        _editingId = calendar.CalendarId;
+        _editDraft = new RowDraft { Name = calendar.Name, Description = calendar.Description ?? string.Empty, Color = calendar.Color };
+        _editError = null;
+        _adding = false;
+    }
+
+    private void CancelEdit()
+    {
+        _editingId = null;
+        _editError = null;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editingId is not { } id || _isSaving)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_editDraft.Name))
+        {
+            _editError = "Name is required.";
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var result = await CalendarApi.UpdateCalendarAsync(id, ToNewCalendar(_editDraft));
+            if (result.IsSuccess)
+            {
+                _editingId = null;
+                _editError = null;
+                await OnChanged.InvokeAsync();
+            }
+            else
+            {
+                _editError = result.Status == HttpStatusCode.Conflict
+                    ? "A calendar with that name already exists."
+                    : result.Error;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SaveNewAsync()
+    {
+        if (_isSaving)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_newDraft.Name))
+        {
+            _addError = "Name is required.";
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var result = await CalendarApi.CreateCalendarAsync(ToNewCalendar(_newDraft));
+            if (result.IsSuccess)
+            {
+                _newDraft = new RowDraft();
+                _adding = false;
+                _addError = null;
+                await OnChanged.InvokeAsync();
+            }
+            else
+            {
+                _addError = result.Status == HttpStatusCode.Conflict
+                    ? "A calendar with that name already exists."
+                    : result.Error;
+            }
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteAsync(ExistingCalendar calendar)
+    {
+        if ((await CalendarApi.DeleteCalendarAsync(calendar.CalendarId)).Toast(Snackbar, "Unable to delete calendar", "Calendar deleted."))
+        {
+            if (_editingId == calendar.CalendarId)
+            {
+                _editingId = null;
+            }
+
+            await OnChanged.InvokeAsync();
+        }
+    }
+
+    private static NewCalendar ToNewCalendar(RowDraft draft) => new()
+    {
+        Name = draft.Name.Trim(),
+        Description = string.IsNullOrWhiteSpace(draft.Description) ? null : draft.Description.Trim(),
+        Color = draft.Color,
+    };
+
+    private sealed class RowDraft
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Color { get; set; } = OdsCalendarSwatches.DefaultColor;
+    }
+}

@@ -1,0 +1,143 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Charts — Sparkline & Donut (.odc-)" subtitle="Axis-less trend line + the canonical allocation donut. layout=row (ring beside ledger) and layout=stack (two-up). Exported on the DS namespace." viewport="860x900" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · Charts — Sparkline & Donut (.odc-)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .block { display: flex; flex-direction: column; gap: 14px; margin-bottom: 30px; }
+    .block:last-child { margin-bottom: 0; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .surface { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 22px 24px; }
+    .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .spark-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .odc-donut-center-ic { font-size: 64px; color: var(--mud-palette-text-secondary); }
+  </style>
+</head>
+<body>
+
+  <!-- Canonical single donut — layout=row (ring beside the ledger) -->
+  <div class="block">
+    <div class="cap">Donut <code>&lt;Donut data title centerIcon totalLabel format /&gt;</code> — ring + ledger + total</div>
+    <div class="surface odc-donut-panel">
+      <div class="odc-chart-head"><div>
+        <div class="odc-chart-ttl">November · expense by tag</div>
+        <div class="odc-chart-sub">USD · 6 tags</div>
+      </div></div>
+      <div class="odc-donut-body">
+        <div class="odc-donut-ring" style="width:200px;height:200px">
+          <svg viewBox="0 0 200 200" width="200" height="200" style="transform: rotate(-90deg); display:block;" role="img" aria-label="November expense by tag">
+            <circle cx="100" cy="100" r="87" stroke="var(--mud-palette-divider-light)" stroke-width="26" fill="none"/>
+            <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-1)" stroke-width="26" stroke-dasharray="249.9 296.7" stroke-dashoffset="0"/>
+            <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-2)" stroke-width="26" stroke-dasharray="64.1 482.5" stroke-dashoffset="-256.9"/>
+            <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-4)" stroke-width="26" stroke-dasharray="53.1 493.5" stroke-dashoffset="-328.0"/>
+            <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-6)" stroke-width="26" stroke-dasharray="31.3 515.3" stroke-dashoffset="-388.1"/>
+            <circle cx="100" cy="100" r="87" fill="none" stroke="var(--chart-3)" stroke-width="26" stroke-dasharray="20.3 526.3" stroke-dashoffset="-426.3"/>
+            <circle cx="100" cy="100" r="87" fill="none" stroke="var(--ink-400)" stroke-width="26" stroke-dasharray="85.9 460.7" stroke-dashoffset="-453.7"/>
+          </svg>
+          <div class="odc-donut-center" aria-hidden="true"><span class="material-icons odc-donut-center-ic">receipt_long</span></div>
+        </div>
+        <div class="odc-donut-legend">
+          <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-1)"></span><span class="odc-legend-name">Rent</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">47%</span><span class="odc-legend-amt">$ 2,400</span></div></div>
+          <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-2)"></span><span class="odc-legend-name">Groceries</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">13%</span><span class="odc-legend-amt">$ 678</span></div></div>
+          <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-4)"></span><span class="odc-legend-name">Dining</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">11%</span><span class="odc-legend-amt">$ 562</span></div></div>
+          <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-6)"></span><span class="odc-legend-name">Utilities</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">7%</span><span class="odc-legend-amt">$ 364</span></div></div>
+          <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-3)"></span><span class="odc-legend-name">Transit</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">5%</span><span class="odc-legend-amt">$ 248</span></div></div>
+          <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--ink-400)"></span><span class="odc-legend-name">Other</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">17%</span><span class="odc-legend-amt">$ 876</span></div></div>
+          <div class="odc-donut-total"><span class="odc-donut-total-lab">Total spend</span><div class="odc-legend-figs"><span class="odc-donut-total-pct">100%</span><span class="odc-donut-total-amt">$ 5,128</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-up — layout=stack inside Donut.Pair (assets / liabilities) -->
+  <div class="block">
+    <div class="cap">Two-up <code>&lt;Donut.Pair&gt;</code> — <code>layout="stack"</code> panels (assets / liabilities)</div>
+    <div class="surface">
+      <div class="odc-donut-pair">
+        <div class="odc-donut-panel">
+          <div class="odc-chart-head"><div><div class="odc-chart-ttl">Asset allocation</div><div class="odc-chart-sub">Where your money sits · 3 accounts</div></div></div>
+          <div class="odc-donut-body stack">
+            <div class="odc-donut-ring" style="width:180px;height:180px">
+              <svg viewBox="0 0 180 180" width="180" height="180" style="transform: rotate(-90deg); display:block;" role="img" aria-label="Assets by account">
+                <circle cx="90" cy="90" r="77" stroke="var(--mud-palette-divider-light)" stroke-width="26" fill="none"/>
+                <circle cx="90" cy="90" r="77" fill="none" stroke="var(--chart-1)" stroke-width="26" stroke-dasharray="254.0 229.8" stroke-dashoffset="0"/>
+                <circle cx="90" cy="90" r="77" fill="none" stroke="var(--chart-2)" stroke-width="26" stroke-dasharray="123.6 360.2" stroke-dashoffset="-261.0"/>
+                <circle cx="90" cy="90" r="77" fill="none" stroke="var(--chart-3)" stroke-width="26" stroke-dasharray="55.9 427.9" stroke-dashoffset="-391.6"/>
+              </svg>
+              <div class="odc-donut-center" aria-hidden="true"><span class="material-icons odc-donut-center-ic">account_balance_wallet</span></div>
+            </div>
+            <div class="odc-donut-legend">
+              <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-1)"></span><span class="odc-legend-name">Vanguard Brokerage</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">54%</span><span class="odc-legend-amt">$ 62,413</span></div></div>
+              <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-2)"></span><span class="odc-legend-name">Ally Savings</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">27%</span><span class="odc-legend-amt">$ 18,902</span></div></div>
+              <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-3)"></span><span class="odc-legend-name">Chase Checking</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">19%</span><span class="odc-legend-amt">$ 4,183</span></div></div>
+              <div class="odc-donut-total"><span class="odc-donut-total-lab">Total assets</span><div class="odc-legend-figs"><span class="odc-donut-total-pct">100%</span><span class="odc-donut-total-amt">$ 85,498</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="odc-donut-pair-div"></div>
+        <div class="odc-donut-panel">
+          <div class="odc-chart-head"><div><div class="odc-chart-ttl">Liabilities</div><div class="odc-chart-sub">What you owe · 2 accounts</div></div></div>
+          <div class="odc-donut-body stack">
+            <div class="odc-donut-ring" style="width:180px;height:180px">
+              <svg viewBox="0 0 180 180" width="180" height="180" style="transform: rotate(-90deg); display:block;" role="img" aria-label="Liabilities by account">
+                <circle cx="90" cy="90" r="77" stroke="var(--mud-palette-divider-light)" stroke-width="26" fill="none"/>
+                <circle cx="90" cy="90" r="77" fill="none" stroke="var(--chart-5)" stroke-width="26" stroke-dasharray="442.7 41.1" stroke-dashoffset="0"/>
+                <circle cx="90" cy="90" r="77" fill="none" stroke="var(--chart-4)" stroke-width="26" stroke-dasharray="26.9 457.0" stroke-dashoffset="-449.8"/>
+              </svg>
+              <div class="odc-donut-center" aria-hidden="true"><span class="material-icons odc-donut-center-ic">credit_card</span></div>
+            </div>
+            <div class="odc-donut-legend">
+              <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-5)"></span><span class="odc-legend-name">Citi Auto Loan</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">93%</span><span class="odc-legend-amt">$ 14,820</span></div></div>
+              <div class="odc-legend-row"><div class="odc-legend-main"><span class="odc-legend-swatch" style="background:var(--chart-4)"></span><span class="odc-legend-name">Amex Platinum</span></div><div class="odc-legend-figs"><span class="odc-legend-pct">7%</span><span class="odc-legend-amt">$ 1,128</span></div></div>
+              <div class="odc-donut-total"><span class="odc-donut-total-lab">Total owed</span><div class="odc-legend-figs"><span class="odc-donut-total-pct">100%</span><span class="odc-donut-total-amt">$ 15,948</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sparklines -->
+  <div class="block">
+    <div class="cap">Sparkline <code>&lt;Sparkline data /&gt;</code> — axis-less trend for stat tiles</div>
+    <div class="tiles">
+      <div class="odc-stat">
+        <div class="odc-stat-overline">Net worth</div>
+        <div class="odc-stat-num">$ 69,549</div>
+        <svg class="odc-sparkline" width="100%" height="40" viewBox="0 0 180 40" preserveAspectRatio="none" role="img" aria-label="Net worth, up over 6 months">
+          <path d="M 3,34 L 32,33 L 61,29 L 90,24 L 119,17 L 148,12 L 177,6 L 177,37 L 3,37 Z" fill="var(--chart-1)" fill-opacity="0.16"/>
+          <path d="M 3,34 L 32,33 L 61,29 L 90,24 L 119,17 L 148,12 L 177,6" fill="none" stroke="var(--chart-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+          <circle cx="177" cy="6" r="2.5" fill="var(--chart-1)"/>
+        </svg>
+        <div class="odc-stat-delta up">+$ 11,420 · 6 mo</div>
+      </div>
+      <div class="odc-stat">
+        <div class="odc-stat-overline">Spent this month</div>
+        <div class="odc-stat-num">$ 2,738</div>
+        <svg class="odc-sparkline" width="100%" height="40" viewBox="0 0 180 40" preserveAspectRatio="none" role="img" aria-label="Spending by week">
+          <path d="M 3,12 L 32,18 L 61,14 L 90,22 L 119,19 L 148,28 L 177,24 L 177,37 L 3,37 Z" fill="var(--chart-5)" fill-opacity="0.16"/>
+          <path d="M 3,12 L 32,18 L 61,14 L 90,22 L 119,19 L 148,28 L 177,24" fill="none" stroke="var(--chart-5)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+          <circle cx="177" cy="24" r="2.5" fill="var(--chart-5)"/>
+        </svg>
+        <div class="odc-stat-delta down">−$ 312 vs. plan</div>
+      </div>
+    </div>
+    <div class="spark-row">
+      <span>EUR · USD</span>
+      <svg class="odc-sparkline" width="120" height="28" viewBox="0 0 120 28" preserveAspectRatio="none" role="img" aria-label="EUR to USD, 30 days">
+        <path d="M 2,18 L 22,16 L 42,20 L 62,12 L 82,14 L 102,9 L 118,11" fill="none" stroke="var(--chart-2)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+      </svg>
+    </div>
+  </div>
+
+</body>
+</html>

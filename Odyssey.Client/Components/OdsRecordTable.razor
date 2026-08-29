@@ -1,0 +1,145 @@
+@*
+    OdsRecordTable — the sortable / expandable / editable record table
+    (Odyssey Design System · components/RecordTable).
+
+    The table behind every admin/ledger screen (Transaction tags, Contacts,
+    Currencies, Exchange rates, Users). It owns ALL the view machinery so a page
+    only declares its Columns and supplies the detail / edit panels:
+
+      • sortable headers (uncontrolled — give DefaultSort; the table sorts via
+        each column's SortValue), rendered as OdsSortHeader cells
+      • click a row (or a "View details" action) to expand it into a read-only
+        RenderDetail panel — accordion by default, MultiOpen to keep several open
+      • an inline RenderEdit panel that swaps in over the detail; rows being
+        edited never auto-collapse on sort
+      • a trailing actions cell: the more_vert overflow menu (an OdsMenu built
+        from Actions(row, ctx)) + the expand chevron
+      • the loading / refetching / error / empty states, delegated to OdsListStatus
+        (pass Loading + Error + HasFilters rather than assembling them per page)
+
+    Conceptually a MudTable with sort labels + expandable detail rows; built on
+    raw table markup (like OdsCollapsible) because the accordion + inline-edit +
+    saved-flash state machine is beyond MudTable's declarative model. Pairs with
+    the OdsSortHeader / OdsMetaTile atoms and OdsMenu when you hand-roll a table.
+*@
+
+@typeparam TRow
+
+@* The refetch bar sits above the table rather than inside it — a <tr> cannot carry it, and the
+   ARIA on it is owned once by OdsListStatus. *@
+@if (Refetching && !Loading && !Error)
+{
+    <OdsListStatus Refetching="true" Noun="@Noun" BarClass="@BarClass" />
+}
+@* The skeleton rows below are aria-hidden decoration, so the first fetch is announced here
+   instead — otherwise swapping the centered spinner (which carried role="status") for skeleton
+   rows would leave a screen-reader user with silence while the table loads. *@
+@if (Loading)
+{
+    <div class="sr-only" role="status" aria-live="polite">Loading @Noun…</div>
+}
+<table class="odc-rec @Class" aria-label="@AriaLabel" aria-busy="@(Loading ? "true" : "false")">
+    <thead>
+        <tr>
+            @if (Leading is not null)
+            {
+                <th scope="col" style="width:36px"></th>
+            }
+            @foreach (var col in Columns)
+            {
+                @if (col.Sortable)
+                {
+                    <OdsSortHeader SortKey="@col.Key" Sort="@EffectiveSort" OnSort="ToggleSort" Align="@col.Align"
+                                   Style="@(col.Width is not null ? $"width:{col.Width}" : null)">
+                        @HeaderFor(col)
+                    </OdsSortHeader>
+                }
+                else
+                {
+                    <th scope="col" class="@(col.Align == OdsAlign.End ? "odc-rec-numeric" : null)"
+                        style="@(col.Width is not null ? $"width:{col.Width}" : null)">
+                        @HeaderFor(col)
+                    </th>
+                }
+            }
+            <th scope="col" style="width:96px;text-align:right">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var row in VisibleRows)
+        {
+            var rk = RowKey(row);
+            var expanded = _openIds.Contains(rk);
+            var editing = _editIds.Contains(rk);
+            var cellCtx = new OdsRecordCellContext(expanded, editing, _savedIds.Contains(rk));
+            <tr class="@RowClass(expanded, editing)" @onclick="@(() => OnRowClick(rk, editing))">
+                @if (Leading is not null)
+                {
+                    <td>@Leading(row)</td>
+                }
+                @foreach (var col in Columns)
+                {
+                    <td class="@CellClass(col)">
+                        @col.Cell?.Invoke(row, cellCtx)
+                    </td>
+                }
+                <td>
+                    <div class="odc-rec-actions" @onclick:stopPropagation="true">
+                        @if (Actions is not null)
+                        {
+                            <OdsMenu Items="@Actions(row, ActionCtx(rk, expanded, editing))" AriaLabel="Row actions" />
+                        }
+                        <button type="button" class="odc-rec-expand"
+                                aria-label="@(expanded ? "Collapse row" : "Expand row")" aria-expanded="@(expanded ? "true" : "false")"
+                                disabled="@editing" @onclick="@(() => ToggleRow(rk))" @onclick:stopPropagation="true">
+                            <span class="material-icons odc-rec-chev @(expanded ? "open" : null)" aria-hidden="true">expand_more</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            @if (expanded)
+            {
+                <tr class="odc-rec-detail-row">
+                    <td class="odc-rec-detail-cell" colspan="@ColSpan">
+                        <div class="odc-rec-panel @(editing ? "editing" : null)">
+                            @if (editing && RenderEdit is not null)
+                            {
+                                @RenderEdit(row, EditCtx(rk))
+                            }
+                            else
+                            {
+                                @RenderDetail?.Invoke(row)
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        }
+        @* The first fetch renders OdsSkeletonRows shaped like this table's own columns, so the row
+           layout (including right-aligned numeric cells) holds steady as real rows replace it. This
+           is OdsListStatus's LoadingContent idea — the placeholder takes the shape of the thing
+           loading — supplied centrally here rather than per page, because only the table knows its
+           column count and alignment. A <tr> cannot live inside the status <td>, so loading is
+           rendered here and OdsListStatus below keeps the error / empty states. *@
+        @if (Loading)
+        {
+            @for (var i = 0; i < SkeletonRowCount; i++)
+            {
+                <OdsSkeletonRow Columns="@ColSpan" Align="@SkeletonAlign" />
+            }
+        }
+        @* One full-width status cell for the remaining pre-row states, so a page can neither invent
+           its own dialect nor show the onboarding copy for a failed or over-filtered load. *@
+        else if (Error || !VisibleRows.Any())
+        {
+            <tr class="odc-rec-detail-row">
+                <td colspan="@ColSpan" style="padding:0">
+                    <OdsListStatus Error="Error" OnRetry="OnRetry" ErrorDescription="@ErrorDescription"
+                                   IsEmpty="true" HasFilters="HasFilters" OnClearFilters="OnClearFilters"
+                                   Noun="@Noun" EmptyIcon="@EmptyIcon" EmptyTitle="@EmptyTitle"
+                                   EmptyDescription="@EmptyDescription" CreateAction="CreateAction" Empty="Empty" />
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

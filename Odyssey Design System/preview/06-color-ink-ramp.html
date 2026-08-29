@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- @dsCard group="Colors" name="Colors · Ink neutrals" subtitle="11-stop cool navy ramp used for surfaces + text" viewport="700x140" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Colors · Ink neutrals</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .swatch { display: flex; flex-direction: column; gap: 6px; }
+    .chip {
+      height: 64px; border-radius: 8px;
+      border: 1px solid var(--mud-palette-divider);
+      display: flex; align-items: flex-end; padding: 8px 10px;
+      font: 500 11px/1 var(--font-sans);
+      letter-spacing: 0.04em;
+    }
+    .chip .hex { color: rgba(255,255,255,0.85); font-family: var(--font-mono); }
+    .chip.dark .hex { color: rgba(255,255,255,0.85); }
+    .chip.light .hex { color: rgba(14,21,37,0.8); }
+    .grid-11 { display: grid; grid-template-columns: repeat(11, 1fr); gap: 6px; }
+    .row-title { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 8px; }
+    .name { font: 400 11px/1.2 var(--font-sans); color: rgba(255,255,255,0.65); margin-top: 4px; }
+  </style>
+  <div class="row-title">Ink — neutrals · 50→950</div>
+  <div class="grid-11">
+    <div class="swatch"><div class="chip light" style="background:var(--ink-50)"><span class="hex">F5F7FB</span></div><div class="name">50</div></div>
+    <div class="swatch"><div class="chip light" style="background:var(--ink-100)"><span class="hex">E6EBF4</span></div><div class="name">100</div></div>
+    <div class="swatch"><div class="chip light" style="background:var(--ink-200)"><span class="hex">C7D0E0</span></div><div class="name">200</div></div>
+    <div class="swatch"><div class="chip light" style="background:var(--ink-300)"><span class="hex">98A4BC</span></div><div class="name">300</div></div>
+    <div class="swatch"><div class="chip dark" style="background:var(--ink-400)"><span class="hex">6B7896</span></div><div class="name">400</div></div>
+    <div class="swatch"><div class="chip dark" style="background:var(--ink-500)"><span class="hex">4A5670</span></div><div class="name">500</div></div>
+    <div class="swatch"><div class="chip dark" style="background:var(--ink-600)"><span class="hex">2F3852</span></div><div class="name">600</div></div>
+    <div class="swatch"><div class="chip dark" style="background:var(--ink-700)"><span class="hex">1C2238</span></div><div class="name">700</div></div>
+    <div class="swatch"><div class="chip dark" style="background:var(--ink-800)"><span class="hex">141A2C</span></div><div class="name">800</div></div>
+    <div class="swatch"><div class="chip dark" style="background:var(--ink-900)"><span class="hex">0E1525</span></div><div class="name">900</div></div>
+    <div class="swatch"><div class="chip dark" style="background:var(--ink-950)"><span class="hex">080C18</span></div><div class="name">950</div></div>
+  </div>
+</body></html>

@@ -1,0 +1,131 @@
+@*
+    OdsMultiSelect — the checkbox-list filter with a count badge
+    (Odyssey Design System · components/MultiSelect).
+
+    The filter control behind every page header (account / status / tag /
+    direction on Transactions, type / status elsewhere). A trigger button shows
+    the label + a count badge of active selections; the popover is a checkbox
+    list with Clear / Done. Built on MudMenu so the popover is portaled out of
+    any overflow:hidden ancestor (the filter card), flips above when there isn't
+    room below, and closes on outside-click / Esc. Bind via @bind-Values.
+*@
+
+<MudMenu @ref="_menu"
+         AnchorOrigin="@Anchor"
+         TransformOrigin="@Transform"
+         PopoverClass="odc-ms-pop-paper"
+         ListClass="pa-0"
+         OpenChanged="@(open => _open = open)"
+         Class="@($"odc-ms {Class}".TrimEnd())"
+         @attributes="UserAttributes">
+    <ActivatorContent>
+        @* MudMenu does not auto-wire a custom activator — forward the click to
+           ToggleAsync or the popover never opens. *@
+        <button type="button"
+                id="@Id"
+                class="odc-ms-trigger"
+                aria-haspopup="true"
+                aria-expanded="@(_open ? "true" : "false")"
+                aria-describedby="@DescribedBy"
+                @onclick="@context.ToggleAsync">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <span class="material-icons" aria-hidden="true">@Icon</span>
+            }
+            <span class="odc-ms-label">@Label</span>
+            @if (Values.Count > 0)
+            {
+                <span class="odc-ms-count">@Values.Count</span>
+            }
+            <span class="material-icons odc-ms-chevron" aria-hidden="true">expand_more</span>
+        </button>
+    </ActivatorContent>
+    <ChildContent>
+        <div class="odc-ms-pop @AlignClass" role="group" aria-label="@Label">
+            @foreach (var option in Options)
+            {
+                <label class="odc-ms-opt odc-check">
+                    <input type="checkbox"
+                           checked="@_selected.Contains(option.Value)"
+                           @onchange="@(() => Toggle(option.Value))" />
+                    <span class="odc-check-box" aria-hidden="true">
+                        <span class="material-icons">check</span>
+                    </span>
+                    @if (!string.IsNullOrEmpty(option.Icon))
+                    {
+                        <span class="material-icons odc-opt-icon" style="@IconStyle(option)" aria-hidden="true">@option.Icon</span>
+                    }
+                    <span class="odc-check-label">@option.Label</span>
+                </label>
+            }
+            <div class="odc-ms-foot">
+                <button type="button" class="odc-btn text" @onclick="Clear" disabled="@(Values.Count == 0)">Clear</button>
+                <button type="button" class="odc-btn text" @onclick="Done">Done</button>
+            </div>
+        </div>
+    </ChildContent>
+</MudMenu>
+
+@code {
+    /// <summary>Trigger label (the filter's name, e.g. "Status").</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Selected values. Bindable via @bind-Values.</summary>
+    [Parameter] public IReadOnlyCollection<string> Values { get; set; } = [];
+
+    [Parameter] public EventCallback<IReadOnlyCollection<string>> ValuesChanged { get; set; }
+
+    /// <summary>The options.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsOption> Options { get; set; } = [];
+
+    /// <summary>Leading Material Icons ligature on the trigger.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Which edge the popover anchors to.</summary>
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    /// <summary>The trigger button's id — set this and point an OdsFieldShell's HtmlFor at it when
+    /// using this as a labelled form field rather than a filter-bar pill, so the accessible name comes
+    /// from the field's own label instead of every instance sharing this trigger's visible text.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Id(s) of element(s) describing this control (e.g. an OdsFieldShell's help line) —
+    /// rendered as aria-describedby on the trigger.</summary>
+    [Parameter] public string? DescribedBy { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private MudMenu _menu = default!;
+    private bool _open;
+
+    // Mirror the controlled Values into a local set so toggling a row is a single
+    // round-trip through ValuesChanged; OnParametersSet re-syncs to the parent.
+    private HashSet<string> _selected = [];
+
+    protected override void OnParametersSet() => _selected = [.. Values];
+
+    private Origin Anchor => Align == OdsAlign.End ? Origin.BottomRight : Origin.BottomLeft;
+    private Origin Transform => Align == OdsAlign.End ? Origin.TopRight : Origin.TopLeft;
+    private string AlignClass => Align == OdsAlign.End ? "end" : "start";
+
+    private static string? IconStyle(OdsOption option) =>
+        string.IsNullOrEmpty(option.IconColor) ? null : $"color:{option.IconColor};";
+
+    private Task Toggle(string value)
+    {
+        if (!_selected.Remove(value))
+            _selected.Add(value);
+        return ValuesChanged.InvokeAsync([.. _selected]);
+    }
+
+    private Task Clear()
+    {
+        _selected.Clear();
+        return ValuesChanged.InvokeAsync([]);
+    }
+
+    private Task Done() => _menu.CloseMenuAsync();
+}

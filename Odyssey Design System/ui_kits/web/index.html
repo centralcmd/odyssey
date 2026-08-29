@@ -1,0 +1,300 @@
+<!doctype html>
+<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now with contact import/export across the productivity surfaces — Contacts import/export as vCard (.vcf), Tasks as iCalendar VTODO (.ics), Journal entries as iCalendar VJOURNAL (.ics), and Calendar events export as iCalendar VEVENT — each reached from the page-header overflow (⋯) menu (export all / export filtered / import), with per-row / per-item export in the action menus and a UID-matched update-in-place import that summarises created / updated / skipped. Plus the Calendar module — a shared household Calendar (/calendar) of colour-coded calendars with one-off and recurring events across month, week, day and agenda views, keyboard-navigable date and time pickers, a manage-calendars dialog, and ICS (.ics) import/export. Plus the User Profile, the Journal module (Journal, Tasks kanban), Subscriptions, Contracts, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Odyssey · Web UI kit</title>
+  <link rel="icon" type="image/svg+xml" href="../../assets/odyssey-logomark.svg" />
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <link rel="stylesheet" href="kit.css" />
+  <link rel="stylesheet" href="account-signals.css" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="stylesheet" href="account.css" />
+  <link rel="stylesheet" href="onboarding.css" />
+  <link rel="stylesheet" href="account-terms.css" />
+  <link rel="stylesheet" href="account-estimates.css" />
+  <link rel="stylesheet" href="tax-statements.css" />
+  <link rel="stylesheet" href="insurance.css" />
+  <link rel="stylesheet" href="legal.css" />
+  <link rel="stylesheet" href="contracts.css" />
+  <link rel="stylesheet" href="subscriptions.css" />
+  <link rel="stylesheet" href="journal.css" />
+  <link rel="stylesheet" href="photos.css" />
+  <link rel="stylesheet" href="calendar.css" />
+  <link rel="stylesheet" href="contacts.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- Design-system bundle: the shared atoms (Button, Field, Select, Card, …)
+       come from here as window.OdysseyDesignSystem_d5aa51. Components.jsx bridges
+       them to the kit's names. Must load before the Babel scripts run. -->
+  <script src="../../_ds_bundle.js"></script>
+
+  <script src="data.js"></script>
+  <script src="tax-data.js"></script>
+  <script src="insurance-data.js"></script>
+  <script src="contracts-data.js"></script>
+  <script src="subscriptions-data.js"></script>
+  <script src="journal-data.js"></script>
+  <script src="photos-data.js"></script>
+  <script src="calendar-data.js"></script>
+  <script src="system-settings-data.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Components.jsx"></script>
+  <script type="text/babel" src="profile-fields.jsx"></script>
+  <script type="text/babel" src="page-header.jsx"></script>
+  <script type="text/babel" src="AppShell.jsx"></script>
+  <script type="text/babel" src="Login.jsx"></script>
+  <script type="text/babel" src="ForgotPassword.jsx"></script>
+  <script type="text/babel" src="ResetPassword.jsx"></script>
+  <script type="text/babel" src="ChangePasswordRequired.jsx"></script>
+  <script type="text/babel" src="Onboarding.jsx"></script>
+  <script type="text/babel" src="Dashboard.jsx"></script>
+  <script type="text/babel" src="AddAccountModal.jsx"></script>
+  <script type="text/babel" src="AddFileModal.jsx"></script>
+  <script type="text/babel" src="FileViewerModal.jsx"></script>
+  <script type="text/babel" src="AnalyzeFileModal.jsx"></script>
+  <script type="text/babel" src="AddTransactionModal.jsx"></script>
+  <script type="text/babel" src="AddTermModal.jsx"></script>
+  <script type="text/babel" src="AccountTerms.jsx"></script>
+  <script type="text/babel" src="AddEstimateModal.jsx"></script>
+  <script type="text/babel" src="AccountEstimates.jsx"></script>
+  <script type="text/babel" src="Accounts.jsx"></script>
+  <script type="text/babel" src="Files.jsx"></script>
+  <script type="text/babel" src="Transactions.jsx"></script>
+  <script type="text/babel" src="TransactionTags.jsx"></script>
+  <script type="text/babel" src="ContactImportModal.jsx"></script>
+  <script type="text/babel" src="Contacts.jsx"></script>
+  <script type="text/babel" src="Currencies.jsx"></script>
+  <script type="text/babel" src="ExchangeRates.jsx"></script>
+  <script type="text/babel" src="AddBudgetModal.jsx"></script>
+  <script type="text/babel" src="AddBudgetItemModal.jsx"></script>
+  <script type="text/babel" src="Budgets.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="AddTaxStatementModal.jsx"></script>
+  <script type="text/babel" src="TaxStatements.jsx"></script>
+  <script type="text/babel" src="AddInsurancePolicyModal.jsx"></script>
+  <script type="text/babel" src="AddRenewalModal.jsx"></script>
+  <script type="text/babel" src="InsuranceUploadModal.jsx"></script>
+  <script type="text/babel" src="Insurance.jsx"></script>
+  <script type="text/babel" src="AddContractModal.jsx"></script>
+  <script type="text/babel" src="AddContractPartyModal.jsx"></script>
+  <script type="text/babel" src="AddContractFileModal.jsx"></script>
+  <script type="text/babel" src="Contracts.jsx"></script>
+  <script type="text/babel" src="AddSubscriptionModal.jsx"></script>
+  <script type="text/babel" src="Subscriptions.jsx"></script>
+  <script type="text/babel" src="ImportJournalEntriesModal.jsx"></script>
+  <script type="text/babel" src="Journal.jsx"></script>
+  <script type="text/babel" src="AddCalendarEventModal.jsx"></script>
+  <script type="text/babel" src="ExportCalendarEventsModal.jsx"></script>
+  <script type="text/babel" src="ManageCalendarsModal.jsx"></script>
+  <script type="text/babel" src="ImportCalendarModal.jsx"></script>
+  <script type="text/babel" src="Calendar.jsx"></script>
+  <script type="text/babel" src="Photos.jsx"></script>
+  <script type="text/babel" src="ImportTasksModal.jsx"></script>
+  <script type="text/babel" src="Tasks.jsx"></script>
+  <script type="text/babel" src="Users.jsx"></script>
+  <script type="text/babel" src="Roles.jsx"></script>
+  <script type="text/babel" src="FileAnalysisLog.jsx"></script>
+  <script type="text/babel" src="SystemSettings.jsx"></script>
+  <script type="text/babel" src="legal-data.js"></script>
+  <script type="text/babel" src="LegalDocuments.jsx"></script>
+  <script type="text/babel" src="Preferences.jsx"></script>
+  <script type="text/babel" src="AccountTwoFactor.jsx"></script>
+  <script type="text/babel" src="Account.jsx"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const { useState, useEffect } = React;
+
+    function App() {
+      const [authed, setAuthed] = useState(true); // start on dashboard for review
+      const [view, setView] = useState('files'); // open on Files to review the ZIP export menu
+      const [authMode, setAuthMode] = useState('login');
+      const [dark, setDark] = useState(true);
+      const [tweaks, setTweak] = useTweaks({ reportLayout: 'table', summaryBaseCurrency: 'USD', endingWindowDays: 45, showOnboarding: false, cpCanImport: true, cpExportCap: false, cpImportOutcome: 'skips', tCanImport: true, tExportCap: false, tImportOutcome: 'skips', jCanImport: true, jCanReadCp: true, jExportCap: false, jImportOutcome: 'skips', showPasswordGate: false, cprOutcome: 'success', usersResetOutcome: 'delivered' });
+
+      // The "Sort by" control's anatomy, read by the SortSelect bridge in
+      // Components.jsx at render time — a tweak change re-renders the tree.
+      window.__sortVariant = 'split';
+
+      useEffect(() => {
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      }, [dark]);
+
+      if (!authed) {
+        if (authMode === 'register') return <Register onDone={() => setAuthMode('login')} onGoLogin={() => setAuthMode('login')} />;
+        if (authMode === 'forgot')   return <ForgotPassword onGoLogin={() => setAuthMode('login')} onGoReset={() => setAuthMode('reset')} />;
+        if (authMode === 'reset')    return <ResetPassword onGoLogin={() => setAuthMode('login')} onGoForgot={() => setAuthMode('forgot')} />;
+        return <Login onLogin={() => setAuthed(true)} onGoRegister={() => setAuthMode('register')} onGoForgot={() => setAuthMode('forgot')} />;
+      }
+
+      // First-sign-in onboarding gate (spec §3). Toggle it from the Tweaks panel
+      // to preview the blocking OnboardingLayout; “Save and continue” releases it.
+      if (tweaks.showOnboarding) {
+        return (
+          <React.Fragment>
+            <Onboarding onDone={() => setTweak('showOnboarding', false)} requestedLabel="the calendar" />
+            <TweaksPanel title="Tweaks">
+              <TweakSection label="Profile & onboarding" />
+              <TweakToggle label="First-sign-in gate" value={tweaks.showOnboarding}
+                           onChange={(v) => setTweak('showOnboarding', v)} />
+            </TweaksPanel>
+          </React.Fragment>
+        );
+      }
+
+      // Admin forced-reset gate (spec §3, target side). Toggle it from the
+      // Tweaks panel to preview the nav-less blocking /change-password-required.
+      if (tweaks.showPasswordGate) {
+        return (
+          <React.Fragment>
+            <ChangePasswordRequired
+              outcome={tweaks.cprOutcome}
+              onDone={() => setTweak('showPasswordGate', false)}
+              onLogout={() => { setTweak('showPasswordGate', false); setAuthed(false); }}
+              onGoForgot={() => { setTweak('showPasswordGate', false); setAuthed(false); setAuthMode('forgot'); }}
+            />
+            <TweaksPanel title="Tweaks">
+              <TweakSection label="Admin · Password reset gate" />
+              <TweakToggle label="Show forced-reset gate" value={tweaks.showPasswordGate}
+                           onChange={(v) => setTweak('showPasswordGate', v)} />
+              <TweakRadio label="Submit outcome" value={tweaks.cprOutcome}
+                          options={[{ value: 'success', label: 'Success' }, { value: 'wrong', label: 'Wrong current password' }, { value: 'policy', label: 'Policy rejected' }]}
+                          onChange={(v) => setTweak('cprOutcome', v)} />
+            </TweaksPanel>
+          </React.Fragment>
+        );
+      }
+
+      return (
+        <React.Fragment>
+        <AppShell
+          current={view}
+          onNavigate={setView}
+          onLogout={() => setAuthed(false)}
+          darkMode={dark}
+          onToggleDark={() => setDark(d => !d)}
+        >
+          {view === 'home'         && <Dashboard onNavigate={setView} />}
+          {view === 'accounts'     && <Accounts onNavigate={setView} />}
+          {view === 'files'        && <Files onNavigate={setView} />}
+          {view === 'transactions' && <Transactions onNavigate={setView} />}
+          {view === 'tags'           && <TransactionTags />}
+          {view === 'journal-tags'   && <JournalTags />}
+          {view === 'task-tags'      && <TaskTags />}
+          {view === 'photo-tags'     && <PhotoTags />}
+          {view === 'contacts' && <Contacts tweaks={tweaks} />}
+          {view === 'currencies'     && <Currencies />}
+          {view === 'exchange-rates' && <ExchangeRates />}
+          {view === 'budgets'      && <Budgets onNavigate={setView} />}
+          {view === 'tax-statements' && <TaxStatements tweaks={tweaks} onNavigate={setView} />}
+          {view === 'insurance'    && <Insurance tweaks={tweaks} onNavigate={setView} />}
+          {view === 'contracts'    && <Contracts tweaks={tweaks} onNavigate={setView} />}
+          {view === 'subscriptions'&& <Subscriptions />}
+          {view === 'journal'      && <Journal tweaks={tweaks} />}
+          {view === 'calendar'     && <Calendar />}
+          {view === 'photos'       && <Photos mode="library" />}
+          {view === 'albums'       && <Photos mode="albums" />}
+          {view === 'tasks'        && <Tasks tweaks={tweaks} />}
+          {view === 'users'        && <Users resetOutcome={tweaks.usersResetOutcome} />}
+          {view === 'roles'        && <Roles />}
+          {view === 'analysis-log' && <FileAnalysisLog />}
+          {view === 'legal-documents' && <LegalDocuments onGoAcceptTerms={() => {}} />}
+          {view === 'settings'     && <SystemSettings />}
+          {view === 'preferences'  && <PreferencesPage darkMode={dark} onToggleDark={() => setDark(d => !d)} />}
+          {view === 'user-account' && <AccountPage onLogout={() => setAuthed(false)} />}
+        </AppShell>
+        <TweaksPanel title="Tweaks">
+          <TweakSection label="Profile & onboarding" />
+          <TweakToggle label="First-sign-in gate" value={tweaks.showOnboarding}
+                       onChange={(v) => setTweak('showOnboarding', v)} />
+          <TweakSection label="Admin · Password reset gate" />
+          <TweakToggle label="Show forced-reset gate" value={tweaks.showPasswordGate}
+                       onChange={(v) => setTweak('showPasswordGate', v)} />
+          <TweakRadio label="Gate submit outcome" value={tweaks.cprOutcome}
+                      options={[{ value: 'success', label: 'Success' }, { value: 'wrong', label: 'Wrong password' }, { value: 'policy', label: 'Policy rejected' }]}
+                      onChange={(v) => setTweak('cprOutcome', v)} />
+          {view === 'users' && (
+            <React.Fragment>
+              <TweakSection label="Users · Send password reset" />
+              <TweakRadio label="Reset outcome" value={tweaks.usersResetOutcome}
+                          options={[{ value: 'delivered', label: 'Link sent' }, { value: 'undelivered', label: 'Applied, email failed' }, { value: 'no-email', label: 'No confirmed email' }, { value: 'throttled', label: 'Throttled' }]}
+                          onChange={(v) => setTweak('usersResetOutcome', v)} />
+            </React.Fragment>
+          )}
+          {view === 'tax-statements' && (
+            <React.Fragment>
+              <TweakSection label="Reconciliation report" />
+              <TweakRadio label="Layout" value={tweaks.reportLayout}
+                          options={[{ value: 'table', label: 'Table' }, { value: 'tiles', label: 'Tiles' }]}
+                          onChange={(v) => setTweak('reportLayout', v)} />
+            </React.Fragment>
+          )}
+          {view === 'insurance' && (
+            <React.Fragment>
+              <TweakSection label="Portfolio summary" />
+              <TweakSelect label="Base currency" value={tweaks.summaryBaseCurrency}
+                           options={[{ value: '', label: 'No conversion' }, { value: 'USD', label: 'USD' }, { value: 'EUR', label: 'EUR' }, { value: 'NOK', label: 'NOK' }]}
+                           onChange={(v) => setTweak('summaryBaseCurrency', v)} />
+            </React.Fragment>
+          )}
+          {view === 'contracts' && (
+            <React.Fragment>
+              <TweakSection label="Contracts list" />
+              <TweakSlider label="“Ending soon” window" min={7} max={120} step={1} value={tweaks.endingWindowDays}
+                           unit=" days" onChange={(v) => setTweak('endingWindowDays', v)} />
+            </React.Fragment>
+          )}
+          {view === 'contacts' && (
+            <React.Fragment>
+              <TweakSection label="Contacts vCard import / export" />
+              <TweakToggle label="Can import (create + update claims)" value={tweaks.cpCanImport}
+                           onChange={(v) => setTweak('cpCanImport', v)} />
+              <TweakToggle label="Simulate export cap exceeded" value={tweaks.cpExportCap}
+                           onChange={(v) => setTweak('cpExportCap', v)} />
+              <TweakRadio label="Import result" value={tweaks.cpImportOutcome}
+                          options={[{ value: 'clean', label: 'All clean' }, { value: 'skips', label: 'With skips' }, { value: 'rejected', label: 'File rejected' }]}
+                          onChange={(v) => setTweak('cpImportOutcome', v)} />
+            </React.Fragment>
+          )}
+          {view === 'tasks' && (
+            <React.Fragment>
+              <TweakSection label="Tasks iCalendar import / export" />
+              <TweakToggle label="Can import (create + update claims)" value={tweaks.tCanImport}
+                           onChange={(v) => setTweak('tCanImport', v)} />
+              <TweakToggle label="Simulate export cap exceeded" value={tweaks.tExportCap}
+                           onChange={(v) => setTweak('tExportCap', v)} />
+              <TweakRadio label="Import result" value={tweaks.tImportOutcome}
+                          options={[{ value: 'clean', label: 'All clean' }, { value: 'skips', label: 'With skips' }, { value: 'rejected', label: 'File rejected' }]}
+                          onChange={(v) => setTweak('tImportOutcome', v)} />
+            </React.Fragment>
+          )}
+          {view === 'journal' && (
+            <React.Fragment>
+              <TweakSection label="Journal VJOURNAL import / export" />
+              <TweakToggle label="Can import (create + update claims)" value={tweaks.jCanImport}
+                           onChange={(v) => setTweak('jCanImport', v)} />
+              <TweakToggle label="Can read contacts (link resolution)" value={tweaks.jCanReadCp}
+                           onChange={(v) => setTweak('jCanReadCp', v)} />
+              <TweakToggle label="Simulate export cap exceeded" value={tweaks.jExportCap}
+                           onChange={(v) => setTweak('jExportCap', v)} />
+              <TweakRadio label="Import result" value={tweaks.jImportOutcome}
+                          options={[{ value: 'clean', label: 'All clean' }, { value: 'skips', label: 'With skips' }, { value: 'rejected', label: 'File rejected' }]}
+                          onChange={(v) => setTweak('jImportOutcome', v)} />
+            </React.Fragment>
+          )}
+        </TweaksPanel>
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

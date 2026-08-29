@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- @dsCard group="Spacing" name="Spacing · Radii" subtitle="4 · 8 · 12 · pill" viewport="700x160" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Spacing · Radii</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .tile {
+      background: var(--mud-palette-surface);
+      border: 1px solid var(--mud-palette-divider);
+      padding: 14px;
+      display: flex; flex-direction: column; gap: 8px;
+      min-height: 88px;
+    }
+    .lab { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .val { font: 400 12px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+    .name { font: 500 14px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+  </style>
+  <div class="row">
+    <div class="tile" style="border-radius: 4px;">
+      <div class="lab">--radius-sm</div>
+      <div class="name">4 px</div>
+      <div class="val">buttons · inputs · chips</div>
+    </div>
+    <div class="tile" style="border-radius: 8px;">
+      <div class="lab">--radius-md</div>
+      <div class="name">8 px</div>
+      <div class="val">cards · stat tiles</div>
+    </div>
+    <div class="tile" style="border-radius: 12px;">
+      <div class="lab">--radius-lg</div>
+      <div class="name">12 px</div>
+      <div class="val">dialogs · modals · sheets</div>
+    </div>
+    <div class="tile" style="border-radius: 999px;">
+      <div class="lab">--radius-pill</div>
+      <div class="name">999 px</div>
+      <div class="val">status chips · avatars</div>
+    </div>
+  </div>
+</body></html>

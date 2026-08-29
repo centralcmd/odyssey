@@ -1,0 +1,122 @@
+@page "/"
+@using System.Globalization
+@using System.Security.Claims
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Finance
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ITransactionsApiClient Transactions
+@inject ISnackbar Snackbar
+@inject IAccountsApiClient Accounts
+
+<PageTitle>Home</PageTitle>
+
+@*
+    Dashboard — the home view at "/" (Odyssey Design System · Screens · Dashboard
+    (home) · Dashboard.jsx). A carded greeting PageHeader, the Net worth line
+    chart, and an excerpt of the shared transactions table showing recent activity.
+
+    Adapted from the specimen to the real contracts:
+      • Net worth is the live cross-currency sum of every non-archived account's
+        Balance (the same naive aggregate the Accounts page shows — the app has no
+        FX conversion, so a generic "$" is used). The history line is synthetic:
+        there is no stored net-worth-over-time series, so the design's eased growth
+        curve is resampled across the real span (earliest account year → this year)
+        and anchored to land exactly on today's figure.
+      • Recent transactions are the eight newest rows from api/transactions, drawn
+        with the design's Description · Tag · Status · Amount · Date columns.
+      • Each region is permission-gated: the chart needs accounts.read, the table
+        needs transactions.read; either is dropped (not 403'd) when not granted.
+*@
+
+<MudStack Spacing="6">
+
+    @* 1 · Greeting header (canonical carded PageHeader) *@
+    <PageHeader Title="@Greeting" Icon="@Icons.Material.Filled.SpaceDashboard">
+        <SubLine>@HeaderSubLine</SubLine>
+    </PageHeader>
+
+    @* 2 · Net worth chart (the design-system LineChart) *@
+    @if (_canReadAccounts)
+    {
+        @if (_isLoadingAccounts)
+        {
+            <OdsCard Class="ods-outline" Style="padding:20px;">
+                <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="300px" />
+            </OdsCard>
+        }
+        else
+        {
+            <OdsLineChart Class="ods-outline"
+                          Title="Net worth"
+                          Sub="@ChartSubLine"
+                          Series="_chartSeries"
+                          Color="var(--chart-1)"
+                          Format="FormatMoney"
+                          AxisFormat="KLabel"
+                          ShowDelta="true"
+                          DeltaSuffix="all-time"
+                          XTickEvery="2"
+                          AriaLabel="Net worth over time"
+                          EmptyLabel="No account balances to chart yet." />
+        }
+    }
+
+    @* 3 · Recent transactions — an excerpt of the shared transactions table *@
+    @if (_canReadTransactions)
+    {
+        <OdsCard Flush="true" Class="ods-outline" Style="overflow:hidden;">
+            <OdsCardHeader Title="Recent transactions">
+                <Action>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary"
+                               OnClick="@(() => NavigationManager.NavigateTo("transactions"))">View all</MudButton>
+                </Action>
+            </OdsCardHeader>
+
+            @if (_isLoadingTransactions)
+            {
+                <OdsCardBody>
+                    <OdsSkeleton Variant="OdsSkeletonVariant.Text" Lines="5" />
+                </OdsCardBody>
+            }
+            else
+            {
+                @* Edge-to-edge: the table fills the card, per the design system's CardBody padding:0. *@
+                <OdsCardBody Style="padding:0;">
+                    <OdsTable TRow="ExistingTransaction" Columns="Columns" Rows="RecentTransactions">
+                        <Empty>
+                            <OdsEmptyState Icon="receipt_long">
+                                <Title>No transactions yet</Title>
+                                <Description>New activity will appear here as it lands in your accounts.</Description>
+                            </OdsEmptyState>
+                        </Empty>
+                    </OdsTable>
+                </OdsCardBody>
+            }
+        </OdsCard>
+    }
+
+</MudStack>
+
+@code {
+    private RenderFragment<ExistingTransaction> IconCell => txn =>
+        @<span class="dsh-txn-avatar @(IsIncome(txn) ? "income" : "expense")">
+            <span class="material-icons">@(IsIncome(txn) ? "arrow_downward" : "arrow_upward")</span>
+        </span>;
+
+    private RenderFragment<ExistingTransaction> DescriptionCell => txn =>
+        @<text>@(string.IsNullOrWhiteSpace(txn.Description) ? "—" : txn.Description)</text>;
+
+    private RenderFragment<ExistingTransaction> TagCell => txn =>
+        @<OdsTagChips Tags="txn.TransactionTags" Max="2" />;
+
+    private RenderFragment<ExistingTransaction> StatusCell => txn =>
+        @<OdsChip Tone="StatusTone(txn.Status)" Dot="true">@txn.Status.ToString()</OdsChip>;
+
+    private RenderFragment<ExistingTransaction> AmountCell => txn =>
+        @<span class="@(IsIncome(txn) ? "dsh-amt income" : "dsh-amt expense")">@FormatSignedMoney(txn.Amount)</span>;
+
+    private RenderFragment<ExistingTransaction> DateCell => txn =>
+        @<span class="dsh-muted">@txn.TimeStamp.ToLocalTime().ToString("MMM d", CultureInfo.InvariantCulture)</span>;
+}

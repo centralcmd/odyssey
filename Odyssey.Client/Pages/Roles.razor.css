@@ -1,0 +1,184 @@
+/* ── Roles reference page (Odyssey Design System · admin.css + kit.css) ───────
+   Ported from the design system's Roles specimen. The role list rides the shared
+   record-row scaffold (.acct-list / .acct-item / .acct-head / .acct-controls /
+   .acct-expand / .acct-detail) — one global copy in odyssey-components.css
+   (issue #367) — and the permission-claims catalog reuses the admin.css .ua-cat
+   grid. This page keeps its hand-rolled head rather than OdsExpandableCard: its
+   trigger is the head row itself, not a chevron button. What is scoped here is
+   Roles-specific. All tints use semantic palette tokens so the page reads
+   correctly in light and dark mode. */
+
+/* Role names are always short — keep them at content width and never clip, so opt out
+   of the shared .acct-name truncation. */
+.acct-name.rol-name {
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--mud-palette-text-primary);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.rol-desc {
+    font-size: 0.78125rem;
+    line-height: 1.4;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* ── Role tile (square tinted glyph, per-role accent) ── */
+.rol-av {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: var(--mud-palette-action-disabled-background);
+    color: var(--mud-palette-text-secondary);
+}
+
+.rol-av ::deep .mud-icon-root {
+    font-size: 1.375rem;
+}
+
+.rol-av.owner   { background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);    color: var(--mud-palette-primary); }
+.rol-av.admin   { background: color-mix(in srgb, var(--mud-palette-tertiary) 18%, transparent);   color: var(--mud-palette-tertiary); }
+.rol-av.manager { background: color-mix(in srgb, var(--mud-palette-info) 16%, transparent);       color: var(--mud-palette-info); }
+.rol-av.member  { background: color-mix(in srgb, var(--mud-palette-secondary) 16%, transparent);  color: var(--mud-palette-secondary); }
+.rol-av.guest   { background: var(--mud-palette-action-disabled-background);                      color: var(--mud-palette-text-secondary); }
+
+/* ── Claim-count figure ── */
+.rol-figures {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+.rol-claim-figure {
+    font-family: 'Roboto Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.125rem;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--mud-palette-text-primary);
+}
+
+.rol-claim-label {
+    font-size: 0.6875rem;
+    line-height: 1;
+    color: var(--mud-palette-text-secondary);
+    letter-spacing: 0.02em;
+}
+
+/* ── Controls — the chevron is a MudIcon, so it needs its own rotation rule ── */
+.acct-expand ::deep .rol-chev {
+    color: var(--mud-palette-text-secondary);
+    transition: transform var(--duration-base) var(--ease-standard);
+}
+
+.acct-expand ::deep .rol-chev.open {
+    transform: rotate(180deg);
+}
+
+.rol-detail-note {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--mud-palette-text-secondary);
+}
+
+.rol-detail-note b {
+    color: var(--mud-palette-text-primary);
+    font-weight: 500;
+}
+
+/* ── Claim chips (read-only permission values) — monospace, dense ── */
+.rol-claims {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.rol-claim {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.71875rem;
+    font-weight: 500;
+    line-height: 1.3;
+    background: var(--mud-palette-action-disabled-background);
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}
+
+.rol-claim.granted {
+    background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
+    color: var(--mud-palette-primary);
+}
+
+/* ── Permission-claims catalog (header Info region) ── */
+.rol-cat {
+    padding: 4px 0 0;
+}
+
+.rol-cat-note {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: 14px;
+}
+
+.rol-cat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+}
+
+.rol-cat-card {
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: var(--mud-palette-background);
+}
+
+.rol-cat-name {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--mud-palette-text-primary);
+    margin-bottom: 9px;
+}
+
+.rol-cat-name ::deep .mud-icon-root {
+    font-size: 15px;
+    color: var(--mud-palette-text-secondary);
+}
+
+.rol-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.rol-action-chip {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--mud-palette-action-disabled-background);
+    color: var(--mud-palette-text-secondary);
+}

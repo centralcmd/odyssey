@@ -1,0 +1,132 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Client.Services
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+@inject IJournalApiClient Journal
+@inject Odyssey.Client.Services.IUploadLimitsCache UploadLimits
+
+@*
+    CreateJournalEntryDialog — the "New / Edit entry" dialog (issue #311; design-system update: edit
+    mode reuses this dialog instead of the old inline-edit panel). Fields mirror the NewJournalEntry /
+    UpdateJournalEntry DTOs via the shared JournalEntryFields grid. Newly-attached photos/files are
+    uploaded through the existing Files store first (POST /api/files); the entry write stores only the
+    resulting scalar ids.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="menu_book" Title="@(IsEdit ? "Edit entry" : "New entry")" Wide="true"
+               Subtitle="Title, content, an entry date, and any photos, files, tags, or contacts."
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create entry")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+    @if (_loadingDetail)
+    {
+        <OdsSpinner Size="OdsSize.Lg" AriaLabel="Loading entry" />
+    }
+    else
+    {
+        <JournalEntryFields Draft="_draft" TagOptions="TagOptions" ContactOptions="ContactOptions" AutoFocus="true"
+                            MaxMegabytes="@_maxUploadMb" />
+    }
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Active journal-tag options (id → name).</summary>
+    [Parameter] public IReadOnlyList<OdsOption> TagOptions { get; set; } = [];
+
+    /// <summary>Active contact options (id → name).</summary>
+    [Parameter] public IReadOnlyList<OdsOption> ContactOptions { get; set; } = [];
+
+    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>When set, the dialog edits this entry. Null = create mode.</summary>
+    [Parameter] public ExistingJournalEntry? Entry { get; set; }
+
+    private bool IsEdit => Entry is not null;
+    private bool _loadingDetail;
+
+    private JournalEntryDraft _draft = new();
+
+    /// <summary>The effective per-file upload cap, for the dropzone hints. Seeded from the cache's
+    /// fallback so the hint is never blank before the lookup resolves.</summary>
+    private int _maxUploadMb = UploadLimitsCache.Fallback.MaxUploadMegabytes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Ahead of the create-mode early return: both modes show the dropzones.
+        _maxUploadMb = (await UploadLimits.GetAsync()).MaxUploadMegabytes;
+
+        if (Entry is not { } entry)
+            return;
+
+        _loadingDetail = true;
+        try
+        {
+            var photoUploads = new List<OdsUploadFile>();
+            foreach (var p in entry.Photos.OrderBy(p => p.Position))
+                photoUploads.Add(await ToUploadAsync(p.FileId, "Image"));
+
+            var attachUploads = new List<OdsUploadFile>();
+            foreach (var a in entry.Attachments)
+                attachUploads.Add(await ToUploadAsync(a.FileId, "File"));
+
+            _draft = JournalEntryDraft.From(entry, photoUploads, attachUploads);
+        }
+        finally
+        {
+            _loadingDetail = false;
+        }
+    }
+
+    private async Task<OdsUploadFile> ToUploadAsync(Guid fileId, string kind)
+    {
+        var meta = await Files.GetMetadataAsync(fileId);
+        return new OdsUploadFile
+        {
+            Uid = fileId.ToString(),
+            Name = meta?.FileName ?? fileId.ToString(),
+            Kind = kind,
+            SizeBytes = meta?.SizeBytes,
+        };
+    }
+
+    private async Task<bool> SaveAsync()
+    {
+        if (!_draft.Validate())
+            return false;
+
+        if (IsEdit)
+        {
+            UpdateJournalEntry update;
+            try
+            {
+                update = await JournalWrite.ToUpdateAsync(_draft, Files, UploadLimits, Entry!.Archived is not null);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Couldn't upload an attached file: {ex.Message}", Severity.Error);
+                return false;
+            }
+
+            return (await Journal.UpdateAsync(Entry.JournalEntryId, update)).Toast(Snackbar, "Unable to update entry", "Entry updated.");
+        }
+
+        NewJournalEntry entry;
+        try
+        {
+            entry = await JournalWrite.ToNewAsync(_draft, Files, UploadLimits);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Couldn't upload an attached file: {ex.Message}", Severity.Error);
+            return false;
+        }
+
+        return (await Journal.CreateAsync(entry)).Toast(Snackbar, "Unable to create entry", "Entry created.");
+    }
+}

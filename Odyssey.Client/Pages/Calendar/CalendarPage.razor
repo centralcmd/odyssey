@@ -1,0 +1,157 @@
+@page "/calendar"
+@using Odyssey.Client.Authorization
+@attribute [Authorize(Policy = PermissionClaims.CalendarRead)]
+@inject ICalendarApiClient CalendarApi
+@inject IPageStateService PageState
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Calendar</PageTitle>
+
+<MudStack Spacing="4">
+
+    <PageHeader Title="Calendar"
+                Icon="@Icons.Material.Filled.CalendarMonth"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled" SearchOpenByDefault="true"
+                PrimaryActionText="New event"
+                OnPrimaryAction="@(() => OpenCreateDialog(null))"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@_events.Count @(_events.Count == 1 ? "event" : "events") this range · @_calendars.Count @(_calendars.Count == 1 ? "calendar" : "calendars")</SubLine>
+        <ActionMenu>
+            @if (_canManageCalendars)
+            {
+                <MudMenuItem Icon="@Icons.Material.Filled.Settings" OnClick="@(() => _manageCalendarsOpen = true)">Manage calendars</MudMenuItem>
+                <MudDivider />
+            }
+            <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="ExportAllEventsAsync">Export all as iCalendar</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="OpenExportFilteredDialog">Export filtered as iCalendar…</MudMenuItem>
+            @if (_canImport)
+            {
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="OpenImportDialog">Import from file…</MudMenuItem>
+            }
+        </ActionMenu>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                @* Search filters the already-fetched range client-side (OnSearchChanged rebuilds the
+                   view models); no OnSearch, since a refetch would ignore _search and re-return the
+                   same events. *@
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300"
+                                Placeholder="Search events by title or location…" Class="ph-search" />
+                <OdsMultiSelect Label="Calendars" Values="_visibleCalendarValues" ValuesChanged="OnVisibleCalendarsChanged"
+                                Options="_calendarOptions" Icon="calendar_month" Class="ph-select" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <div class="cal-toolbar">
+        <div class="cal-toolbar-nav">
+            <MudButton Variant="Variant.Outlined" OnClick="GoToday">Today</MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" aria-label="Previous period" OnClick="@(() => StepPeriod(-1))" />
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" aria-label="Next period" OnClick="@(() => StepPeriod(1))" />
+            <MudText Typo="Typo.h6">@PeriodLabel</MudText>
+        </div>
+        <OdsSegmentedControl AriaLabel="Calendar view" Options="_viewOptions" Value="@_view" ValueChanged="OnViewChanged" />
+    </div>
+
+    @* Ahead of every view: a failed fetch leaves _events empty, which the grids would otherwise
+       render as a legitimately empty period. Only the agenda list has an empty state of its own —
+       the month and time grids draw the period whether or not anything falls in it. *@
+    <OdsListStatus Loading="_isLoading" Error="_loadError" OnRetry="ReloadEventsAsync" Noun="calendar events">
+        @if (_view == "agenda")
+        {
+            <OdsListStatus IsEmpty="@(_viewModels.Count == 0)" HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                           Noun="events" EmptyIcon="calendar_month" EmptyTitle="No events in this range"
+                           EmptyDescription="Add one-off or recurring events to a colour-coded calendar and see them here.">
+                <CreateAction>
+                    @if (_canCreate)
+                    {
+                        <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="@(() => OpenCreateDialog(null))">Add your first event</OdsButton>
+                    }
+                </CreateAction>
+                <ChildContent>
+                    <MudCard Outlined="true">
+                        <MudCardContent>
+                            <MudStack Spacing="4">
+                                @foreach (var day in AgendaDays)
+                                {
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Class="mb-2">@day.ToString("dddd, MMMM d")</MudText>
+                                        <MudStack Spacing="1">
+                                            @foreach (var vm in AgendaEventsFor(day))
+                                            {
+                                                <button type="button" class="odc-cal-daypop-row" style="width:100%;" @onclick="() => OpenEventDialog(vm.Id)">
+                                                    <span class="odc-cal-daypop-swatch" style="@($"background:{vm.Color}")" aria-hidden="true"></span>
+                                                    <span class="odc-cal-daypop-time">@(vm.IsAllDay ? "All day" : vm.Start.ToString("HH:mm"))</span>
+                                                    <span class="odc-cal-daypop-t">
+                                                        @if (vm.Recurring)
+                                                        {
+                                                            <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
+                                                        }
+                                                        @vm.Title — @vm.CalendarName
+                                                    </span>
+                                                </button>
+                                            }
+                                        </MudStack>
+                                    </div>
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </ChildContent>
+            </OdsListStatus>
+        }
+        else if (_view is "week" or "day")
+        {
+            <OdsCalTimeGrid Days="CurrentDays" Events="_viewModels" VisibleCalendarIds="EffectiveVisibleIds"
+                            Today="TodayDate" CanCreate="_canCreate" CanUpdate="_canUpdate"
+                            OnSlotClick="OnSlotClicked"
+                            OnEventClick="OpenEventDialog"
+                            OnEventChange="HandleEventChange"
+                            OnEventDrop="DropCallback" />
+        }
+        else
+        {
+            <OdsCalendarGrid Month="_anchor" Events="_viewModels" VisibleCalendarIds="EffectiveVisibleIds"
+                              OnDayClick="@(day => OpenCreateDialog(day))"
+                              OnEventClick="OpenEventDialog"
+                              OnEventDrop="DropCallback" />
+        }
+    </OdsListStatus>
+</MudStack>
+
+<CalendarEventDialog @bind-Open="_eventDialogOpen"
+                      Mode="_eventDialogMode"
+                      EventId="_eventDialogEventId"
+                      PatternId="_eventDialogPatternId"
+                      DefaultDate="_eventDialogDefaultDate"
+                      DefaultTime="_eventDialogDefaultTime"
+                      Calendars="_calendars"
+                      CanUpdate="_canUpdate"
+                      CanDelete="_canDelete"
+                      OnSaved="ReloadEventsAsync"
+                      OnEditSeries="OpenSeriesDialog"
+                      OnExport="ExportEventDialogAsync" />
+
+<ManageCalendarsDialog @bind-Open="_manageCalendarsOpen"
+                        Calendars="_calendars"
+                        OnExport="ExportCalendarAsync"
+                        OnChanged="OnCalendarsChangedAsync" />
+
+<ImportCalendarDialog @bind-Open="_importOpen"
+                       Calendars="_calendars"
+                       DefaultCalendarId="_importDefaultCalendarId"
+                       OnChanged="ReloadEventsAsync" />
+
+<ExportEventScopeDialog Open="_exportScopeOpen" OpenChanged="OnExportScopeOpenChangedAsync"
+                         EventTitle="@(_exportScopeEvent?.Title ?? string.Empty)"
+                         OnChoose="ExportScopeChosenAsync" />
+
+<ExportCalendarEventsDialog @bind-Open="_exportBulkOpen"
+                             Calendars="_calendars"
+                             InitialFrom="_exportBulkFrom"
+                             InitialTo="_exportBulkTo"
+                             InitialCalendarIds="_visibleCalendarIds"
+                             InitialSearch="_search" />

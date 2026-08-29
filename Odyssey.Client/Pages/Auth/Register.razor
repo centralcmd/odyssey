@@ -1,0 +1,139 @@
+﻿@page "/register"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@inject AuthApiClient AuthApiClient
+
+<PageTitle>Register</PageTitle>
+
+<MudCard Outlined="true" Class="pa-8" Style="width: 100%; max-width: 420px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 28px;">
+        <OdsBrandMark Size="70" />
+        <span style="font-weight: 500; font-size: 14px; letter-spacing: 0.32em; color: var(--mud-palette-primary);">ODYSSEY</span>
+    </div>
+    <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Create account</MudText>
+
+    <MudTextField @bind-Value="email"
+                  Label="Email"
+                  Variant="Variant.Outlined"
+                  Required="true"
+                  Immediate="true"
+                  Class="mt-2" />
+    <MudTextField @bind-Value="password"
+                  Label="Password"
+                  InputType="InputType.Password"
+                  Variant="Variant.Outlined"
+                  Required="true"
+                  Immediate="true"
+                  Class="mt-4"
+                  autocomplete="new-password" />
+
+    @* The live checklist replaces the one-error-at-a-time validation this page used to do on
+       submit: the same rules, from the same PasswordPolicy, as /account and /reset-password. *@
+    @if (!registrationSucceeded)
+    {
+        <div class="mt-3 mb-1">
+            <OdsPasswordRules Password="@password" />
+        </div>
+    }
+
+    <MudTextField @bind-Value="confirmPassword"
+                  Label="Confirm Password"
+                  InputType="InputType.Password"
+                  Variant="Variant.Outlined"
+                  Required="true"
+                  Immediate="true"
+                  Class="mt-4"
+                  autocomplete="new-password"
+                  Error="@(confirmPassword.Length > 0 && password != confirmPassword)"
+                  ErrorText="Passwords do not match." />
+
+    @* Informational only (issue #354 §3 state 1) — the authoritative acceptance is recorded at first
+       login, since this step has no session to record consent against. *@
+    @if (!registrationSucceeded)
+    {
+        <div class="mt-5">
+            <OdsRegisterLegalReview @bind-AgreeLicense="agreeLicense"
+                                    @bind-AgreeTerms="agreeTerms"
+                                    TermsPublishedChanged="OnTermsPublishedChanged" />
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <MudAlert Severity="@(registrationSucceeded ? Severity.Success : Severity.Error)" Dense="true" Class="mt-4">@message</MudAlert>
+    }
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               Size="Size.Large"
+               FullWidth="true"
+               Class="mt-6"
+               Disabled="@(isSubmitting || !CanCreateAccount)"
+               OnClick="RegisterAsync">
+        Create account
+    </MudButton>
+
+    <MudText Typo="Typo.body2" Class="mt-4">
+        Already have an account?
+        <MudLink Href="/login">Login</MudLink>
+    </MudText>
+</MudCard>
+
+@code {
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string confirmPassword = string.Empty;
+    private string? message;
+    private bool isSubmitting;
+    private bool registrationSucceeded;
+    private bool agreeLicense;
+    private bool agreeTerms;
+    private bool termsPublished;
+
+    // The Terms box only counts when a Terms version actually exists — with none published there is no
+    // second box to tick, and requiring it would leave Create account permanently disabled.
+    private bool HasAgreedToEveryDocument => agreeLicense && (!termsPublished || agreeTerms);
+
+    // Driven by the same PasswordPolicy call that renders the checklist, so the button and the ticks
+    // can't disagree. The server's IdentityOptions.Password remains the authoritative gate.
+    private bool CanCreateAccount =>
+        !string.IsNullOrWhiteSpace(email)
+        && PasswordPolicy.IsSatisfied(password)
+        && password == confirmPassword
+        && HasAgreedToEveryDocument;
+
+    private void OnTermsPublishedChanged(bool published) => termsPublished = published;
+
+    private async Task RegisterAsync()
+    {
+        message = null;
+        registrationSucceeded = false;
+
+        if (!PasswordPolicy.IsSatisfied(password))
+        {
+            message = $"Your password must be at least {PasswordPolicy.MinLength} characters and include "
+                + "an uppercase letter, a lowercase letter, a number and a symbol.";
+            return;
+        }
+
+        if (password != confirmPassword)
+        {
+            message = "Passwords do not match.";
+            return;
+        }
+
+        isSubmitting = true;
+        var (succeeded, error) = await AuthApiClient.RegisterAsync(new RegisterRequest { Email = email, Password = password });
+
+        if (succeeded)
+        {
+            registrationSucceeded = true;
+            message = "Account created. Check your email for a confirmation link — you'll need to confirm before signing in.";
+        }
+        else
+        {
+            message = error;
+            isSubmitting = false;
+        }
+    }
+}

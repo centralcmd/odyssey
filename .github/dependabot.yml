@@ -1,0 +1,70 @@
+version: 2
+updates:
+  # .NET packages — versions are centrally managed in Directory.Packages.props.
+  # NOT covered here: Aspire.AppHost.Sdk, which is an MSBuild `Sdk=` attribute on
+  # Odyssey.AppHost/Odyssey.AppHost.csproj rather than a PackageReference. The nuget
+  # ecosystem does not read it, so that one has to be bumped by hand.
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      microsoft-aspnetcore:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.NET.*"
+          - "Microsoft.Extensions.*"
+      swashbuckle:
+        patterns:
+          - "Swashbuckle.*"
+      test:
+        patterns:
+          - "xunit*"
+          - "Moq"
+          - "AwesomeAssertions"
+          - "coverlet.*"
+          - "Microsoft.NET.Test.Sdk"
+    ignore:
+      # Block only the EF Core 10 major — Pomelo.EntityFrameworkCore.MySql 9.0.0 (still the
+      # latest stable) requires EF Core 9.x. Without update-types these entries also swallowed
+      # every 9.0.x patch, which is how the repo drifted from 9.0.13 to six patches behind.
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.AspNetCore.Identity.EntityFrameworkCore"
+        update-types: ["version-update:semver-major"]
+      # Pinned to MessagePack 2.5.x for StreamJsonRpc compatibility (Aspire.Hosting
+      # -> StreamJsonRpc 2.22.x targets MessagePack 2.x); 2.5.301 already patches
+      # GHSA-hv8m-jj95-wg3x, so a 3.x major bump is unneeded and risks runtime breakage
+      - dependency-name: "MessagePack"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions used across the workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # Docker base images — one Dockerfile per service
+  - package-ecosystem: "docker"
+    directories:
+      - "/Odyssey.Api"
+      - "/Odyssey.Client"
+      - "/Odyssey.MigrationService"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    groups:
+      docker:
+        patterns:
+          - "*"

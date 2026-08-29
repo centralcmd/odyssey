@@ -1,0 +1,92 @@
+@*
+    OdsMenu — the overflow / row-actions dropdown (Odyssey Design System · components/Menu).
+
+    The more_vert row-actions menu used on every record row. A MudMenu driven by
+    a flat Items list: set Divider for a separator, Header for a group label,
+    Danger for a destructive (error-colored) action. Defaults to a more_vert
+    icon-button trigger; pass Trigger to anchor it to your own element.
+*@
+
+<MudMenu AnchorOrigin="@Anchor"
+         TransformOrigin="@Transform"
+         Class="@Class">
+    <ActivatorContent>
+        @if (Trigger is not null)
+        {
+            @* Custom trigger must forward the activation click or the menu never opens. *@
+            <span @onclick="@context.ToggleAsync">@Trigger</span>
+        }
+        else
+        {
+            @* The activator must forward the click to ToggleAsync, or the menu never
+               opens (MudMenu does not auto-wire a custom ActivatorContent). *@
+            <OdsIconButton Icon="@Icons.Material.Filled.MoreVert"
+                           Size="OdsSize.Sm"
+                           AriaLabel="@AriaLabel"
+                           OnClick="@context.ToggleAsync" />
+        }
+    </ActivatorContent>
+    <ChildContent>
+        @foreach (var item in Items)
+        {
+            @if (item.Divider)
+            {
+                <MudDivider />
+            }
+            else if (!string.IsNullOrEmpty(item.Header))
+            {
+                <MudText Typo="Typo.overline" Class="px-4 py-1 mud-text-secondary">@item.Header</MudText>
+            }
+            else
+            {
+                @* OdsMenuItem.Icon is a Material Icons ligature (DS convention),
+                   not a MudBlazor SVG constant — render it via the icon font in
+                   the item content rather than MudMenuItem's Icon (which would
+                   leave an empty icon gutter). *@
+                <MudMenuItem Disabled="@item.Disabled" OnClick="item.OnClick">
+                    <span class="odc-menu-item @(item.Danger ? "danger" : null) @(string.IsNullOrEmpty(item.Description) ? null : "has-desc")">
+                        @if (!string.IsNullOrEmpty(item.Icon))
+                        {
+                            <span class="material-icons odc-menu-item-ic" aria-hidden="true">@item.Icon</span>
+                        }
+                        @* The description sits INSIDE the item content, so it is part of the item's
+                           accessible name as well as being visible — a disabled item must not convey
+                           its reason by colour alone. *@
+                        <span class="odc-menu-item-body">
+                            <span>@item.Label</span>
+                            @if (!string.IsNullOrEmpty(item.Description))
+                            {
+                                <span class="odc-menu-item-desc">@item.Description</span>
+                            }
+                        </span>
+                        @if (!string.IsNullOrEmpty(item.TrailingIcon))
+                        {
+                            @* Right-aligned affordance icon, revealed on row hover/focus
+                               (Odyssey Design System · ActionMenu trailingIcon). *@
+                            <span class="material-icons odc-menu-item-trail" aria-hidden="true">@item.TrailingIcon</span>
+                        }
+                    </span>
+                </MudMenuItem>
+            }
+        }
+    </ChildContent>
+</MudMenu>
+
+@code {
+    /// <summary>The menu items — normal items, dividers, and group headers in order.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsMenuItem> Items { get; set; } = [];
+
+    /// <summary>Which edge the popover anchors to.</summary>
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.End;
+
+    /// <summary>Custom trigger element. Defaults to a more_vert icon button.</summary>
+    [Parameter] public RenderFragment? Trigger { get; set; }
+
+    /// <summary>Accessible name for the default icon-button trigger.</summary>
+    [Parameter] public string AriaLabel { get; set; } = "Actions";
+
+    [Parameter] public string? Class { get; set; }
+
+    private Origin Anchor => Align == OdsAlign.Start ? Origin.BottomLeft : Origin.BottomRight;
+    private Origin Transform => Align == OdsAlign.Start ? Origin.TopLeft : Origin.TopRight;
+}

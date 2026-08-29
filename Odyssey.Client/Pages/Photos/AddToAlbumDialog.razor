@@ -1,0 +1,173 @@
+@inject IAlbumsApiClient Albums
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+
+@*
+    AddToAlbumDialog — add the selected photos to one or more albums (Odyssey Design System ·
+    Photos · add to album). Existing albums are appended (dedup, order preserved) via the album
+    PUT; a new album is created with the selection. Non-destructive: photos already in an album
+    are left in place.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="Close"
+          Icon="photo_album" Title="@TitleFragment" Subtitle="@SubtitleFragment">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <div class="pl-alblist" role="group" aria-label="Albums">
+                @foreach (var a in _albums)
+                {
+                    var on = _checked.Contains(a.PhotoAlbumId);
+                    <button type="button" class="pl-albrow @(on ? "on" : null)"
+                            aria-pressed="@(on ? "true" : "false")" @onclick="() => Toggle(a.PhotoAlbumId)">
+                        <span class="pl-albrow-cover" style="@CoverStyle(a)"></span>
+                        <span class="pl-albrow-name">@a.Name</span>
+                        <span class="pl-albrow-check @(on ? "on" : null)">
+                            @if (on)
+                            {
+                                <span class="material-icons" aria-hidden="true" style="font-size:15px;">check</span>
+                            }
+                        </span>
+                    </button>
+                }
+            </div>
+
+            @if (_creating)
+            {
+                <div class="pl-albcreate">
+                    <OdsField Label="New album name" @bind-Value="_newName" Placeholder="Album name" />
+                    <div class="pl-albcreate-actions">
+                        <OdsButton Variant="OdsButtonVariant.Text" OnClick="() => _creating = false">Cancel</OdsButton>
+                        <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="CreateAsync"
+                                   Disabled="@(string.IsNullOrWhiteSpace(_newName))">Create</OdsButton>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <button type="button" class="pl-albadd" @onclick="() => _creating = true">
+                    <span class="material-icons" aria-hidden="true">add</span>New album
+                </button>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="Close">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_busy"
+                   Disabled="_busy || _checked.Count == 0" OnClick="DoneAsync">Done</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The photos to add.</summary>
+    [Parameter] public IReadOnlyCollection<Guid> PhotoIds { get; set; } = [];
+
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private List<PhotoAlbumSummary> _albums = [];
+    private readonly HashSet<Guid> _checked = [];
+    private bool _creating;
+    private string _newName = string.Empty;
+    private bool _busy;
+    private bool _loaded;
+
+    private RenderFragment TitleFragment => builder => builder.AddContent(0, "Add to album");
+    private RenderFragment SubtitleFragment => builder =>
+        builder.AddContent(0, $"{PhotoIds.Count} photo{(PhotoIds.Count == 1 ? "" : "s")}");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && !_loaded)
+        {
+            _loaded = true;
+            _checked.Clear();
+            _creating = false;
+            _albums = (await Albums.ListAllAsync()).ItemsOrToast(Snackbar, "albums");
+        }
+        else if (!Open)
+        {
+            _loaded = false;
+        }
+    }
+
+    private string CoverStyle(PhotoAlbumSummary a) =>
+        a.CoverFileId is { } f
+            ? $"background: center/cover url('{Files.ContentUrl(f)}');"
+            : "background: var(--mud-palette-surface);";
+
+    private void Toggle(Guid id)
+    {
+        if (!_checked.Add(id))
+        {
+            _checked.Remove(id);
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        var name = _newName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            return;
+        }
+
+        var ok = (await Albums.CreateAsync(new NewPhotoAlbum { Name = name, PhotoIds = [.. PhotoIds] })).Toast(Snackbar,
+            "Create failed", "Album created.");
+        if (ok)
+        {
+            _creating = false;
+            _newName = string.Empty;
+            _albums = (await Albums.ListAllAsync()).ItemsOrToast(Snackbar, "albums");
+            await OnSaved.InvokeAsync();
+        }
+    }
+
+    private async Task DoneAsync()
+    {
+        _busy = true;
+        var added = 0;
+        foreach (var albumId in _checked.ToList())
+        {
+            var album = await Albums.GetAsync(albumId);
+            if (album is not { } a)
+            {
+                continue;
+            }
+
+            // Append the new photos, preserving existing order and dropping duplicates.
+            var members = a.PhotoIds.ToList();
+            foreach (var pid in PhotoIds)
+            {
+                if (!members.Contains(pid))
+                {
+                    members.Add(pid);
+                }
+            }
+
+            var ok = (await Albums.UpdateAsync(albumId, new UpdatePhotoAlbum
+            {
+                Name = a.Name,
+                Description = a.Description,
+                PhotoIds = [.. members],
+                CoverPhotoId = a.CoverPhotoId,
+                Archived = a.Archived is not null,
+            })).Toast(Snackbar, "Add to album failed");
+            if (ok)
+            {
+                added++;
+            }
+        }
+
+        _busy = false;
+        if (added > 0)
+        {
+            await OnSaved.InvokeAsync();
+        }
+
+        await Close();
+    }
+
+    private Task Close() => OpenChanged.InvokeAsync(false);
+}

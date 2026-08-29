@@ -1,0 +1,26 @@
+/* ── Role-permission claim chips ── moved here from Users.razor.css with the markup they style.
+   The surrounding .acct-detail / .meta-* overrides stay on the page, which already reaches them
+   through `.usr-detail-cell ::deep`. */
+.usr-claims-pad {
+    padding: 12px 14px;
+}
+
+.usr-claims {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.usr-claim {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.71875rem;
+    font-weight: 500;
+    line-height: 1.3;
+    background: var(--mud-palette-action-disabled-background);
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}

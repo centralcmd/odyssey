@@ -1,0 +1,115 @@
+@* /account · "Email address". The backend email-change flow needs a confirmation mail it can't yet
+   send, so this section renders the design and previews the success state without calling the API. *@
+
+<MudCard Elevation="1" Class="ods-outline">
+    <MudCardContent Class="pa-4">
+        <div class="acc-cardhead bordered">
+            <span class="acc-ic"><MudIcon Icon="@Icons.Material.Filled.AlternateEmail" /></span>
+            <div class="acc-sec-titles">
+                <div class="acc-sec-title">Email address</div>
+                <div class="acc-sec-sub">Your email is your sign-in identity and where security notifications are sent.</div>
+            </div>
+        </div>
+
+        <div class="acc-current-email">
+            <span class="acc-kv-label">Current email</span>
+            <code class="mono acc-current-email-val">@Email</code>
+            @if (EmailConfirmed)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info"
+                         Icon="@Icons.Material.Filled.MarkEmailRead">Email confirmed</MudChip>
+            }
+        </div>
+
+        @if (_sent)
+        {
+            <div class="alert info acc-block-alert" role="status">
+                <span class="material-icons alert-icon">info</span>
+                <div class="alert-body">
+                    <strong>Confirmation sent.</strong> We've emailed a confirmation link to your new address. Your sign-in email stays the same until you confirm it.
+                </div>
+            </div>
+        }
+
+        <div class="acc-form">
+            <MudTextField @bind-Value="_newEmail"
+                          Label="New email address"
+                          Placeholder="you@example.com"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Email"
+                          Immediate="true"
+                          Error="@FieldError"
+                          ErrorText="@ErrorText" />
+            <MudTextField @bind-Value="_password"
+                          Label="Current password"
+                          Placeholder="••••••••"
+                          HelperText="Confirm it's you before we change your email."
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Immediate="true" />
+            <div class="acc-form-actions">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Send"
+                           Disabled="@(!CanUpdate)"
+                           OnClick="UpdateEmail">Update email</MudButton>
+            </div>
+        </div>
+    </MudCardContent>
+</MudCard>
+
+<MudCard Elevation="1" Class="ods-outline">
+    <MudCardContent Class="pa-4">
+        <div class="acc-resend">
+            <div class="acc-cardhead">
+                <span class="acc-ic"><MudIcon Icon="@Icons.Material.Filled.MarkEmailUnread" /></span>
+                <div class="acc-sec-titles">
+                    <div class="acc-sec-title acc-sec-title-sm">Resend confirmation email</div>
+                    <div class="acc-sec-sub">Didn't get the confirmation message? Send it again to your current address.</div>
+                </div>
+            </div>
+            @if (_resent)
+            {
+                <span class="acc-saved"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />Sent — check your inbox</span>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.ForwardToInbox"
+                           OnClick="ResendConfirmation">Resend</MudButton>
+            }
+        </div>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    /// <summary>The sign-in email address.</summary>
+    [Parameter] public string Email { get; set; } = string.Empty;
+
+    /// <summary>Whether it has been confirmed.</summary>
+    [Parameter] public bool EmailConfirmed { get; set; }
+
+    private string _newEmail = string.Empty;
+    private string _password = string.Empty;
+    private bool _sent;
+    private bool _resent;
+
+    private bool LooksValid => System.Text.RegularExpressions.Regex.IsMatch(_newEmail, "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+    private bool IsSame => string.Equals(_newEmail.Trim(), Email, StringComparison.OrdinalIgnoreCase);
+    private bool FieldError => _newEmail.Length > 0 && (!LooksValid || IsSame);
+    private string? ErrorText => _newEmail.Length == 0 ? null
+        : !LooksValid ? "Enter a valid email address."
+        : IsSame ? "This is already your email address."
+        : null;
+    private bool CanUpdate => LooksValid && !IsSame && _password.Length > 0;
+
+    // Email change requires a confirmation email the backend can't yet send,
+    // so this previews the success state without calling the API.
+    private void UpdateEmail()
+    {
+        _sent = true;
+        _newEmail = string.Empty;
+        _password = string.Empty;
+    }
+
+    private void ResendConfirmation() => _resent = true;
+}

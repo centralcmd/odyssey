@@ -1,0 +1,64 @@
+/* Reconciliation report — TABLE layout (Figure | Declared | Derived | Variance).
+   Ported from the design system's tax-statements.css; tokens come from app.css /
+   odyssey-components.css. */
+
+.tx-recon {
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 8px;
+    background: var(--mud-palette-background);
+    overflow: hidden;
+}
+
+.tx-recon-head, .tx-recon-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) 1fr 1.05fr 1.05fr;
+    gap: 14px;
+    align-items: center;
+    padding: 10px 16px;
+}
+
+.tx-recon-head {
+    font-size: 0.65625rem; font-weight: 500; line-height: 1;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+
+.tx-recon-head .ta-r, .tx-recon-row .ta-r { text-align: right; }
+.tx-recon-head .tx-h-derived { color: var(--tide-400); }
+
+.tx-recon-group {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px 6px;
+    font-size: 0.65625rem; font-weight: 500; line-height: 1;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.tx-recon-group .material-icons { font-size: 15px; opacity: 0.8; }
+
+.tx-recon-row { border-top: 1px dashed var(--mud-palette-divider-light); }
+.tx-recon-group + .tx-recon-row { border-top: none; }
+.tx-recon-row.total { background: color-mix(in srgb, var(--tide-400) 6%, transparent); }
+
+.tx-figure { min-width: 0; font-size: 0.875rem; line-height: 1.35; color: var(--mud-palette-text-primary); }
+.tx-recon-row.total .tx-figure { font-weight: 500; }
+
+.tx-num {
+    font-family: var(--font-mono, 'Roboto Mono', monospace);
+    font-weight: 500; font-size: 0.875rem; line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    text-align: right; color: var(--mud-palette-text-primary); white-space: nowrap;
+}
+.tx-num.na {
+    color: var(--mud-palette-text-disabled);
+    font-family: var(--font-sans, inherit); font-size: 0.78125rem; font-weight: 400;
+}
+.tx-recon-row.total .tx-num { font-weight: 600; font-size: 0.9375rem; }
+
+/* The variance cell renders an OdsDelta (.odc-delta) — keep it right-aligned and
+   in the table's tabular monospace. */
+.tx-var.na {
+    color: var(--mud-palette-text-disabled);
+    font-family: var(--font-sans, inherit); font-size: 0.78125rem; font-weight: 400;
+}
+.ta-r ::deep .odc-delta { justify-content: flex-end; }

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-Odyssey.MigrationService-c2f3a30e-2e05-4f3a-b119-f0e44c46dc91</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- AddDataProtection() (issue #444 §14). This is a Microsoft.NET.Sdk.Worker host, so it carries
+         no ASP.NET Core framework reference and needs the full package rather than the abstractions
+         Odyssey.Context takes. -->
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Microsoft.Extensions.Hosting"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The drift guard's non-relational short-circuit is only observable from inside the type
+         (issue #468): every path out of MigrateAsync throws the same relational-provider error, so a
+         black-box test cannot tell the short-circuit from its absence. -->
+    <InternalsVisibleTo Include="Odyssey.MigrationService.Tests" />
+    <!-- And to the real-engine tier, which is the only place the information_schema snapshot can be
+         proven to return anything: a query that silently matched no indexes or foreign keys would
+         leave those kinds undetectable while every other test stayed green. -->
+    <InternalsVisibleTo Include="Odyssey.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Odyssey.Context\Odyssey.Context.csproj" />
+    <!-- Journal module now owns journal + photo + calendar (contexts merged): the seeder/services and
+         the metadata extractor used when seeding library photos come from Odyssey.Journal. -->
+    <ProjectReference Include="..\Odyssey.Core\Odyssey.Core.csproj" />
+    <!-- Reached transitively already, but named explicitly since SystemSettingsConfigAdoption now uses
+         FileAnalysisBaseUrlRule directly (issue #439). -->
+    <ProjectReference Include="..\Odyssey.Dtos\Odyssey.Dtos.csproj" />
+    <ProjectReference Include="..\Odyssey.TestData\Odyssey.TestData.csproj" />
+  </ItemGroup>
+</Project>

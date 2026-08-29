@@ -1,0 +1,81 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Client.Theme
+@using Odyssey.Dtos.Finance
+@inject ISnackbar Snackbar
+@inject IUserPreferenceService UserPreferences
+@inject IReferenceDataCache ReferenceData
+@inject ISubscriptionApiClient Subscriptions
+
+@*
+    CreateSubscriptionDialog — the create/edit subscription dialog (issue #293). Per the design-system
+    update, a record's Edit action reuses this dialog in edit mode instead of an inline expand-to-edit
+    panel. Fields mirror the NewSubscription / UpdateSubscription DTOs: name (required), external id
+    (optional), company (optional → Contact, OdsCombobox, scalar id only), a start/end window,
+    price (amount + currency), billing interval and the first-billing-date anchor, plus notes. Dates
+    bind DateTime? in the UI and convert to DateOnly at the DTO boundary. Scalar contact id only
+    (the §Security mass-assignment invariant). Pause / archive stay row actions — edit mode preserves
+    whatever state the record already carries.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="subscriptions"
+               Title="@(IsEdit ? "Edit subscription" : "New subscription")"
+               Subtitle="@(IsEdit
+                   ? "Update this subscription — what it is, who bills it, how much, and how often."
+                   : "Record what it is, who bills it, the price, and how often it recurs.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create subscription")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    <OdsField Label="Name" @bind-Value="_name" Placeholder="e.g. Netflix" Error="@_nameError" />
+
+    <OdsFormRow>
+        <OdsField Label="External id" @bind-Value="_externalId" MaxLength="128"
+                  Placeholder="Optional — membership / account no." />
+        <OdsFieldShell Label="Company" HtmlFor="@CompanyFieldId" Optional="true"
+                       Help="The company that bills this subscription, if tracked.">
+            <OdsCombobox InputId="@CompanyFieldId" Value="@_contactId" ValueChanged="@(v => _contactId = v)"
+                         Options="Companies" Placeholder="Search contacts…" />
+        </OdsFieldShell>
+    </OdsFormRow>
+
+    <OdsFormRow>
+        <OdsDateField Label="Start date" Required="true" @bind-Value="_startDate" Error="@_startError" />
+        <OdsDateField Label="End date" Optional="true" @bind-Value="_endDate" Min="_startDate"
+                      Placeholder="Open-ended" Error="@_endError" />
+    </OdsFormRow>
+
+    <OdsFormRow>
+        <OdsAmountField Label="Price" Required="true" Prefix="@CurrencySymbol" @bind-Value="_amount"
+                        Error="@_amountError" Class="sub-amount-expense" />
+        <MudAutocomplete T="string"
+                         Label="Currency"
+                         Variant="Variant.Outlined"
+                         Margin="Margin.Dense"
+                         Value="@_currencyCode"
+                         ValueChanged="OnCurrencyChanged"
+                         SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
+                         MinCharacters="0"
+                         MaxItems="10"
+                         Dense="true"
+                         CoerceValue="true"
+                         CoerceText="false"
+                         ResetValueOnEmptyText="false"
+                         ToStringFunc="@(code => code ?? string.Empty)" />
+    </OdsFormRow>
+
+    <OdsFormRow Cols="3">
+        <OdsBillingIntervalSelect Value="@_interval"
+                                  ValueChanged="OnIntervalChanged"
+                                  Placeholder="Choose a cadence…" Error="@_intervalError"
+                                  Help="@(_intervalError is null ? "How often it bills." : null)" />
+        <OdsNumberField Label="Every" Min="1" Step="1" Value="_intervalCount"
+                        ValueChanged="OnIntervalCountChanged" Help="@EveryHelpText" />
+        <OdsDateField Label="First billing date" Required="true" @bind-Value="_firstBillingDate"
+                      Help="The billing day is derived from this." Error="@_firstBillingError" />
+    </OdsFormRow>
+
+    <OdsNoteField Label="Notes" Optional="true" MaxLength="1024" @bind-Value="_notes"
+                  Placeholder="Plan tier, seats, renewal notes…" />
+</OdsFormDialog>

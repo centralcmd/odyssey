@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Table & Menu (.odc-)" subtitle="The ledger primitives — sortable data table and the row-actions overflow menu. Exported on the DS namespace." viewport="780x620" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · Table & Menu (.odc-)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .block { display: flex; flex-direction: column; gap: 12px; margin-bottom: 26px; }
+    .block:last-child { margin-bottom: 0; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .surface { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; }
+    .surface .odc-table th:first-child, .surface .odc-table td:first-child { padding-left: 16px; }
+    .surface .odc-table th:last-child, .surface .odc-table td:last-child { padding-right: 16px; }
+    .lower { display: grid; grid-template-columns: 220px 1fr; gap: 32px; align-items: start; }
+    .menu-host { position: relative; }
+    .menu-host .odc-menu-pop { position: static; box-shadow: var(--mud-elevation-8); }
+  </style>
+</head>
+<body>
+  <div class="block">
+    <div class="cap">Table <code>&lt;Table columns rows sort onSort /&gt;</code></div>
+    <div class="surface">
+      <table class="odc-table">
+        <thead>
+          <tr>
+            <th class="odc-th"><button class="odc-th-btn"><span>Description</span><span class="material-icons odc-th-sort">arrow_downward</span></button></th>
+            <th class="odc-th">Tag</th>
+            <th class="odc-th">Status</th>
+            <th class="odc-th num"><button class="odc-th-btn" data-active><span>Amount</span><span class="material-icons odc-th-sort">arrow_downward</span></button></th>
+            <th class="odc-th num"><button class="odc-th-btn"><span>Date</span><span class="material-icons odc-th-sort">arrow_downward</span></button></th>
+            <th class="odc-th odc-td-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Whole Foods Market</td>
+            <td><span class="odc-chip tag"><span class="material-icons">local_offer</span>Groceries</span></td>
+            <td><span class="odc-chip expense"><span class="odc-chip-dot"></span>Flagged</span></td>
+            <td class="num" style="color:var(--finance-expense)">−$ 104.20</td>
+            <td class="num">2026-05-22</td>
+            <td class="odc-td-actions"><button class="odc-iconbtn" aria-label="Row actions"><span class="material-icons">more_vert</span></button></td>
+          </tr>
+          <tr>
+            <td>Acme Payroll</td>
+            <td><span class="odc-chip tag"><span class="material-icons">local_offer</span>Salary</span></td>
+            <td><span class="odc-chip income"><span class="odc-chip-dot"></span>Approved</span></td>
+            <td class="num" style="color:var(--finance-income)">+$ 3,250.00</td>
+            <td class="num">2026-05-20</td>
+            <td class="odc-td-actions"><button class="odc-iconbtn" aria-label="Row actions"><span class="material-icons">more_vert</span></button></td>
+          </tr>
+          <tr>
+            <td>Pacific Gas &amp; Electric</td>
+            <td><span class="odc-chip tag"><span class="material-icons">local_offer</span>Utilities</span></td>
+            <td><span class="odc-chip info"><span class="odc-chip-dot"></span>New</span></td>
+            <td class="num" style="color:var(--finance-expense)">−$ 88.41</td>
+            <td class="num">2026-05-18</td>
+            <td class="odc-td-actions"><button class="odc-iconbtn" aria-label="Row actions"><span class="material-icons">more_vert</span></button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="lower">
+    <div class="block" style="margin-bottom:0">
+      <div class="cap">Menu <code>&lt;Menu items /&gt;</code></div>
+      <div class="menu-host">
+        <ul class="odc-menu-pop start down" role="menu">
+          <li role="none"><button class="odc-menu-item" role="menuitem"><span class="material-icons">visibility</span><span>View details</span></button></li>
+          <li role="none"><button class="odc-menu-item" role="menuitem"><span class="material-icons">edit</span><span>Edit</span></button></li>
+          <li role="none"><button class="odc-menu-item" role="menuitem"><span class="material-icons">content_copy</span><span>Copy transaction ID</span></button></li>
+          <li role="separator" class="odc-menu-divider"></li>
+          <li role="none"><button class="odc-menu-item danger" role="menuitem"><span class="material-icons">delete</span><span>Delete</span></button></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="block" style="margin-bottom:0">
+      <div class="cap">Dense variant <code>dense</code></div>
+      <div class="surface">
+        <table class="odc-table dense">
+          <thead><tr><th class="odc-th">Currency</th><th class="odc-th num">Rate</th></tr></thead>
+          <tbody>
+            <tr><td>EUR · Euro</td><td class="num">0.9214</td></tr>
+            <tr><td>GBP · Pound</td><td class="num">0.7880</td></tr>
+            <tr><td>JPY · Yen</td><td class="num">156.40</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

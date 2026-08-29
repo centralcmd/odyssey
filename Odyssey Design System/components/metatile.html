@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · MetaTile" subtitle="The labelled read-only field well of every expanded-record detail — always two per row in the .meta-grid; values are any node (text · mono · chip) and wrap to multiple lines inside their tile. Live render off the DS namespace." viewport="860x540" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · MetaTile</title>
+  <!-- Tokens + Material Icons, then the kit sheet that styles the tile
+       (.acct-detail / .meta-grid / .meta-tile live there). -->
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 12px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .surface { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; }
+    #root { min-height: 0; }
+    /* The card shows the panel context the tiles live in, minus the table above it. */
+    .surface .acct-detail { border-top: none; }
+    .note { margin: 14px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 86ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .note code { font-family: var(--font-mono); color: var(--brand-text); }
+  </style>
+</head>
+<body>
+  <div class="cap">MetaTile <code>&lt;MetaTile label value mono /&gt;</code></div>
+  <div class="surface"><div id="root"></div></div>
+  <p class="note"><b>Always two per row.</b> Tiles fill the <code>.meta-grid</code> in source order — there is no spanning variant. Long values (descriptions, GUIDs, file names) wrap to multiple lines inside their tile; row neighbors stretch to match, so the grid stays aligned. <b>value</b> is any node — plain text, <b>mono</b> for IDs / codes / timestamps, or a <b>Chip</b> for statuses and types. Absent values render an em dash, never an empty tile.</p>
+
+  <script type="text/babel" data-presets="env,react">
+    const { MetaTile, Chip } = window.OdysseyDesignSystem_d5aa51;
+
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <div className="acct-detail">
+        <div className="meta-grid">
+          <MetaTile label="Name" value="ACME Co Payroll" />
+          <MetaTile label="Type" value={<Chip tone="outline" icon="corporate_fare">Organization</Chip>} />
+          <MetaTile label="Contact ID" value="a3f9c1d2-0e84-4b17-9c52-6b1d44e0a7f3" mono />
+          <MetaTile label="Status" value={<Chip tone="income" dot>Active</Chip>} />
+          <MetaTile label="Description" value="Monthly payroll deposits from ACME Co — salary, expense reimbursements, and the occasional bonus. Matched automatically by the statement import." />
+          <MetaTile label="Archived" value="—" />
+        </div>
+      </div>
+    );
+  </script>
+</body>
+</html>

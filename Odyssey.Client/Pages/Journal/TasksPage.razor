@@ -1,0 +1,178 @@
+@page "/tasks"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@attribute [Authorize(Policy = PermissionClaims.TasksRead)]
+@implements IAsyncDisposable
+@inject ITaskApiClient Tasks
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IJSRuntime JS
+@inject ITagsApiClient<ExistingJournalTaskTag> TaskTags
+
+<PageTitle>Tasks</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<div class="tk-shell">
+<MudStack Spacing="4">
+
+    <PageHeader Title="Tasks"
+                Icon="@Icons.Material.Filled.Checklist"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New task"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@Count(JournalTaskStatus.Backlog) backlog · @Count(JournalTaskStatus.Doing) doing · @Count(JournalTaskStatus.Done) done · @Count(JournalTaskStatus.Archived) archived</SubLine>
+        <ActionMenu>
+            <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="@(() => ExportTasksAsync(TaskExportScope.All))">Export all as iCalendar</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportTasksAsync(TaskExportScope.Filtered))">Export filtered (@FilteredCount) as iCalendar</MudMenuItem>
+            @if (_canImport)
+            {
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="OpenImport">Import from iCalendar…</MudMenuItem>
+            }
+        </ActionMenu>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged" DebounceInterval="300"
+                                Placeholder="Search title, content…" Class="ph-search" />
+                <OdsMultiSelect Label="Any tag" Values="_tagFilter" ValuesChanged="OnTagFilterChanged"
+                                Options="_tagOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Any status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="_statusOptions" Class="ph-select" />
+                <OdsInlineSelect Prefix="View" Value="@_view" Options="_viewOptions" ValueChanged="OnViewChanged" />
+                @if (_view == "list")
+                {
+                    <OdsSortSelect TRow="JournalTaskSummary" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                }
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @* Board and list are two views over one fetch, so the load / error / first-run states are shared
+       and each view only declares whether ITS set came up empty. *@
+    <OdsListStatus Loading="_isLoading" Error="_loadError" OnRetry="LoadTasks"
+                   IsEmpty="@(_allTasks.Count == 0)" Noun="tasks" EmptyIcon="checklist"
+                   EmptyDescription="Track finance-adjacent (or any) to-dos on a shared board — Backlog, Doing, Done — with tags, deadlines, and attachments.">
+        <CreateAction>
+            @if (_canCreate)
+            {
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New task</OdsButton>
+            }
+        </CreateAction>
+        <ChildContent>
+            @if (_view == "board")
+            {
+                <OdsListStatus IsEmpty="@(BoardTasks.Count == 0 && ArchivedTasks.Count == 0)"
+                               HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                               Noun="tasks" EmptyIcon="checklist" EmptyTitle="No tasks to show">
+                    @if (BoardColumns.Count > 0)
+                    {
+                    <OdsTaskBoard TItem="JournalTaskSummary" Tasks="BoardTasks" Columns="BoardColumns"
+                                  Id="@(t => t.JournalTaskId)" Status="@(t => t.Status)" Position="@(t => t.Position)" Title="@(t => t.Title)"
+                                  OnMove="OnMove"
+                                  Style="@($"grid-template-columns: repeat({BoardColumns.Count}, minmax(0, 1fr));")">
+                        <RenderCard Context="t">
+                            <div class="tk-card-head">
+                                <span class="tk-card-title">@t.Title</span>
+                                <div @onclick:stopPropagation="true">
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"
+                                             AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                                        @if (_canUpdate)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OpenEdit(t))">Edit task</MudMenuItem>
+                                        }
+                                        <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="@(() => ExportTaskAsync(t))">Export as iCalendar</MudMenuItem>
+                                        @if (_canUpdate)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Inventory2" OnClick="@(() => ArchiveTask(t))">Archive</MudMenuItem>
+                                        }
+                                        @if (_canDelete)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" Style="color:var(--mud-palette-error);" OnClick="@(() => ConfirmDelete(t.JournalTaskId))">Delete</MudMenuItem>
+                                        }
+                                    </MudMenu>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(t.Snippet))
+                            {
+                                <div class="tk-card-note">@t.Snippet</div>
+                            }
+                            <div class="tk-card-foot">
+                                <OdsTodoStatusChip Status="t.Status" Compact="true" />
+                                <TaskDeadlineChip Deadline="t.Deadline" />
+                                @if (t.AttachmentCount > 0)
+                                {
+                                    <span class="tk-att-count"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">@t.AttachmentCount</span></span>
+                                }
+                            </div>
+                            @if (TagNames(t).Any())
+                            {
+                                <div class="tk-card-tags"><JournalTagChips Names="TagNames(t)" Max="4" /></div>
+                            }
+                        </RenderCard>
+                    </OdsTaskBoard>
+                    }
+
+                    @if (_showArchived && ArchivedTasks.Count > 0)
+                    {
+                        <div class="tk-archived">
+                            <div class="tk-archived-head">
+                                <span class="material-icons" aria-hidden="true">inventory_2</span>
+                                <span class="tk-archived-title">Archived</span>
+                                <span class="tk-archived-count">@ArchivedTasks.Count</span>
+                            </div>
+                            <div class="acct-list">
+                                @foreach (var t in ArchivedTasks)
+                                {
+                                    <TaskListRow Task="t" TagNames="TagNames(t)" CanUpdate="_canUpdate" CanDelete="_canDelete"
+                                                 OnStatus="@(s => SetStatus(t, s))" OnEdit="OpenEdit" OnExport="ExportTaskAsync" OnArchive="ArchiveTask"
+                                                 OnDelete="ConfirmDelete" OnCopyId="CopyId" />
+                                }
+                            </div>
+                        </div>
+                    }
+                </OdsListStatus>
+            }
+            else
+            {
+                <OdsListStatus IsEmpty="@(ListTasks.Count == 0)"
+                               HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                               Noun="tasks" EmptyIcon="checklist" EmptyTitle="No tasks to show">
+                    <div class="acct-list">
+                    @foreach (var t in ListTasks)
+                    {
+                        <TaskListRow Task="t" TagNames="TagNames(t)" CanUpdate="_canUpdate" CanDelete="_canDelete"
+                                     OnStatus="@(s => SetStatus(t, s))" OnEdit="OpenEdit" OnExport="ExportTaskAsync" OnArchive="ArchiveTask"
+                                     OnDelete="ConfirmDelete" OnCopyId="CopyId" />
+                    }
+                    @if (_canCreate)
+                    {
+                        <OdsAddRow Title="New task" Sub="Title, optional details, a deadline, tags, and attachments." OnClick="AddClicked" />
+                    }
+                    </div>
+                </OdsListStatus>
+            }
+        </ChildContent>
+    </OdsListStatus>
+</MudStack>
+</div>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <CreateTaskDialog @key="_dialogKey"
+                      @bind-Open="_dialogOpen"
+                      Task="_editTask"
+                      AttachmentUploads="_editUploads"
+                      TagOptions="_tagOptions"
+                      OnSaved="OnTaskSaved" />
+}
+
+@if (_canImport)
+{
+    <ImportTasksDialog @bind-Open="_importOpen" OnChanged="OnImported" />
+}

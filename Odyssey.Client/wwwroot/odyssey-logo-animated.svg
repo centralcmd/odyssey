@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240" role="img">
+  <title>Odyssey</title>
+  <desc>Odyssey personal finance compass logo — animated draw</desc>
+
+  
+
+  
+  <circle class="draw-ring-outer" cx="100" cy="105" r="90" fill="none" stroke="#006B5A" stroke-width="4.5"></circle>
+  
+  <circle class="draw-ring-inner" cx="100" cy="105" r="66" fill="none" stroke="#006B5A" stroke-width="1" stroke-dasharray="4 3"></circle>
+
+  
+  <line class="draw-tick-1" x1="100" y1="19" x2="100" y2="30" stroke="#006B5A" stroke-width="2.5"></line>
+  <line class="draw-tick-2" x1="100" y1="180" x2="100" y2="191" stroke="#006B5A" stroke-width="2.5"></line>
+  <line class="draw-tick-3" x1="14" y1="105" x2="25" y2="105" stroke="#006B5A" stroke-width="2.5"></line>
+  <line class="draw-tick-4" x1="175" y1="105" x2="186" y2="105" stroke="#006B5A" stroke-width="2.5"></line>
+
+  
+  <line class="draw-ord-1" x1="37" y1="42" x2="44" y2="49" stroke="#006B5A" stroke-width="1.5"></line>
+  <line class="draw-ord-2" x1="163" y1="42" x2="156" y2="49" stroke="#006B5A" stroke-width="1.5"></line>
+  <line class="draw-ord-3" x1="37" y1="168" x2="44" y2="161" stroke="#006B5A" stroke-width="1.5"></line>
+  <line class="draw-ord-4" x1="163" y1="168" x2="156" y2="161" stroke="#006B5A" stroke-width="1.5"></line>
+
+  
+  <polygon class="needle-n-tip" points="100,28 94,105 100,86 106,105" fill="#00F5D4"></polygon>
+  <polygon class="needle-n-tail" points="100,105 94,105 100,86 106,105" fill="#006B5A"></polygon>
+
+  
+  <polygon class="needle-s-tip" points="100,182 94,105 100,124 106,105" fill="#707070"></polygon>
+  <polygon class="needle-s-tail" points="100,105 94,105 100,124 106,105" fill="#404040"></polygon>
+
+  
+  <polygon class="needle-e-tip" points="182,105 100,99 119,105 100,111" fill="#707070"></polygon>
+  <polygon class="needle-e-tail" points="100,105 100,99 119,105 100,111" fill="#404040"></polygon>
+
+  
+  <polygon class="needle-w-tip" points="18,105 100,99 81,105 100,111" fill="#707070"></polygon>
+  <polygon class="needle-w-tail" points="100,105 100,99 81,105 100,111" fill="#404040"></polygon>
+
+  
+  <circle class="center-ring-el center-ring" cx="100" cy="105" r="8" stroke="#006B5A" stroke-width="2"></circle>
+  <circle class="center-dot-el" cx="100" cy="105" r="3.5" fill="#00F5D4"></circle>
+
+  
+  <text class="wordmark" x="100" y="226" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, sans-serif" font-weight="500" font-size="18" letter-spacing="5" fill="#00F5D4">ODYSSEY</text>
+</svg>

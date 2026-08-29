@@ -1,0 +1,102 @@
+@*
+    OdsSegmentedControl — a compact single-select toggle
+    (Odyssey Design System · components/SegmentedControl).
+
+    A button-bar sibling of OdsRadioGroup — use it for 2–3 short options
+    (the transaction direction Money in / Money out switch, dense view
+    switches). An option may carry an Icon and a Tone (income / expense) that
+    tints it when selected. Controlled via @bind-Value. Proper radiogroup
+    semantics — arrow keys move and select, Home/End jump to the ends.
+*@
+
+<div class="odc-seg @(Full ? "full" : null)" role="radiogroup" aria-label="@AriaLabel">
+    @for (var i = 0; i < Options.Count; i++)
+    {
+        var index = i;
+        var option = Options[index];
+        var active = option.Value == Value;
+        <button type="button"
+                role="radio"
+                aria-checked="@(active ? "true" : "false")"
+                tabindex="@(active ? 0 : -1)"
+                disabled="@option.Disabled"
+                class="odc-seg-btn @ToneClass(option)"
+                @ref="_buttonRefs[index]"
+                @onclick="@(() => Select(option))"
+                @onkeydown="OnKeyDown"
+                @onkeydown:preventDefault="false">
+            @if (!string.IsNullOrEmpty(option.Icon))
+            {
+                <span class="material-icons" aria-hidden="true">@option.Icon</span>
+            }
+            @option.Label
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>The options.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsSegmentedOption> Options { get; set; } = [];
+
+    /// <summary>Selected value. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Stretch each segment to fill the container width.</summary>
+    [Parameter] public bool Full { get; set; }
+
+    [Parameter] public string? AriaLabel { get; set; }
+
+    private ElementReference[] _buttonRefs = [];
+
+    protected override void OnParametersSet()
+    {
+        if (_buttonRefs.Length != Options.Count)
+            _buttonRefs = new ElementReference[Options.Count];
+    }
+
+    private static string ToneClass(OdsSegmentedOption option) => option.Tone switch
+    {
+        OdsChipTone.Income => "income",
+        OdsChipTone.Expense => "expense",
+        _ => string.Empty,
+    };
+
+    private Task Select(OdsSegmentedOption option)
+    {
+        if (option.Disabled || option.Value == Value)
+            return Task.CompletedTask;
+        Value = option.Value;
+        return ValueChanged.InvokeAsync(option.Value);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (Options.Count == 0)
+            return;
+
+        var index = -1;
+        for (var i = 0; i < Options.Count; i++)
+        {
+            if (Options[i].Value == Value) { index = i; break; }
+        }
+        if (index < 0)
+            return;
+
+        var nextIndex = e.Key switch
+        {
+            "ArrowRight" or "ArrowDown" => (index + 1) % Options.Count,
+            "ArrowLeft" or "ArrowUp" => (index - 1 + Options.Count) % Options.Count,
+            "Home" => 0,
+            "End" => Options.Count - 1,
+            _ => -1,
+        };
+        if (nextIndex < 0)
+            return;
+
+        await Select(Options[nextIndex]);
+        // APG radiogroup: selection and DOM focus move together (WCAG 2.1.1 / 4.1.2).
+        await _buttonRefs[nextIndex].FocusAsync();
+    }
+}

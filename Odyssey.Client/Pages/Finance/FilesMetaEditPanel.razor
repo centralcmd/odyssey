@@ -1,0 +1,63 @@
+@*
+    FilesMetaEditPanel — the flat Files page's inline edit panel (Odyssey Design
+    System · components/FilesTable → RecordTable edit panel), the in-row
+    replacement for the retired EditFileMetadataDialog.
+
+    The flat api/files contract exposes only two mutable metadata fields — file
+    name and description (the bytes are immutable, and document type is a
+    per-attachment concept a standalone file has no notion of). So this is the
+    flat-file variant of OdsFilesEditPanel: name + description instead of name +
+    document type. Commits a Patch back through the table's edit ctx.Save.
+*@
+
+<div class="odc-rec-edit-head">
+    <span class="material-icons odc-rec-edit-ic" aria-hidden="true">edit</span>
+    <span>Edit file — @File.Name</span>
+</div>
+<div class="odc-rec-edit-grid">
+    <div class="wide">
+        <OdsField Label="File name" @bind-Value="_name" Required="true"
+                  Error="@(_valid ? null : "A file needs a name.")" />
+    </div>
+    <div class="wide">
+        <OdsField Label="Description" @bind-Value="_description"
+                  Placeholder="Optional — what this file is." />
+    </div>
+</div>
+<div class="odc-rec-edit-actions">
+    <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => OnCancel.InvokeAsync())">Cancel</OdsButton>
+    <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Disabled="@(!_valid)" OnClick="Commit">
+        Save changes
+    </OdsButton>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public OdsFilesRow File { get; set; } = default!;
+
+    /// <summary>Commit the edit patch (a <see cref="Patch"/>).</summary>
+    [Parameter] public EventCallback<object?> OnSave { get; set; }
+
+    /// <summary>Leave edit mode without saving.</summary>
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+
+    private bool _valid => !string.IsNullOrWhiteSpace(_name);
+
+    protected override void OnInitialized()
+    {
+        _name = File.Name;
+        _description = File.Description ?? string.Empty;
+    }
+
+    private Task Commit() =>
+        _valid
+            ? OnSave.InvokeAsync(new Patch(
+                _name.Trim(),
+                string.IsNullOrWhiteSpace(_description) ? null : _description.Trim()))
+            : Task.CompletedTask;
+
+    /// <summary>The flat-file edit payload handed back through the table's OnSave.</summary>
+    public sealed record Patch(string Name, string? Description);
+}

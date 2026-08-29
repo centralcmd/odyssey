@@ -1,0 +1,179 @@
+/* ── Budget items table (view mode) ──────────────────────────────────
+   Five columns: item (+tag) · actual-vs-planned bar · actual · planned · actions.
+   Rows are color-coded by kind (income mint / expense coral) with a left accent —
+   no header band; the row color marks the Income / Expense split. */
+.bi-table { display: flex; flex-direction: column; }
+
+.bi-colhead,
+.bi-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(120px, 1fr) 104px 92px 56px;
+    gap: 14px;
+    align-items: center;
+    padding: 10px 16px;
+}
+
+.bi-colhead {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    border-bottom: 1px solid var(--mud-palette-divider-light);
+}
+
+.bi-right { text-align: right; }
+
+.bi-group { display: flex; flex-direction: column; }
+.bi-group + .bi-group { margin-top: 8px; }
+
+.bi-row { border-top: 1px dashed var(--mud-palette-divider-light); }
+.bi-group .bi-row:first-of-type { border-top: none; }
+
+/* Color-coded rows — a left accent + soft tint mark the kind. */
+.bi-row.income {
+    box-shadow: inset 3px 0 0 var(--finance-income);
+    background: color-mix(in srgb, var(--finance-income) 7%, transparent);
+}
+.bi-row.expense {
+    box-shadow: inset 3px 0 0 var(--finance-expense);
+    background: color-mix(in srgb, var(--finance-expense) 7%, transparent);
+}
+.bi-row.income  .bi-item-name { color: var(--finance-income); }
+.bi-row.expense .bi-item-name { color: var(--finance-expense); }
+.bi-row.income  .bi-actual { color: var(--finance-income); }
+.bi-row.expense .bi-actual { color: var(--finance-expense); }
+.bi-row.income  .bi-planned { color: color-mix(in srgb, var(--finance-income) 48%, var(--mud-palette-text-secondary)); }
+.bi-row.expense .bi-planned { color: color-mix(in srgb, var(--finance-expense) 48%, var(--mud-palette-text-secondary)); }
+/* Untagged items have no actual — keep the dash neutral. */
+.bi-row .bi-actual.muted { color: var(--mud-palette-text-secondary); }
+
+/* Item name + tag chip */
+.bi-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.bi-item-name {
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bi-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--finance-tag);
+    background: rgba(139, 92, 246, 0.14);
+    flex: none;
+    white-space: nowrap;
+}
+
+.bi-tag.untagged {
+    color: var(--mud-palette-text-secondary);
+    background: var(--mud-palette-action-disabled-background);
+}
+
+/* Actual-vs-planned bar */
+.bi-bar {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* The fill bar is now <OdsProgressBar> (income / expense / over tones). */
+
+.bi-over {
+    font-family: 'Roboto Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--finance-expense);
+}
+
+.bi-actual,
+.bi-planned {
+    font-size: 0.875rem;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.bi-actual { color: var(--mud-palette-text-primary); }
+.bi-planned { color: var(--mud-palette-text-secondary); }
+
+/* Row actions — a more-menu that reveals on hover (matches the edit/delete affordance). */
+.bi-actions {
+    display: flex;
+    justify-content: flex-end;
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.bi-row:hover .bi-actions,
+.bi-actions:focus-within { opacity: 1; }
+
+/* ── Edit multiple ───────────────────────────────────────────────────── */
+.bi-edit-grid { padding: 8px 16px 4px; }
+
+.bi-edit-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) 140px minmax(0, 1.2fr) 120px 40px;
+    gap: 10px;
+    padding: 4px 0 8px;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+
+.bi-edit-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) 140px minmax(0, 1.2fr) 120px 40px;
+    gap: 10px;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.bi-planned-input { text-align: right; }
+
+.bi-edit-actions { display: grid; place-items: center; }
+
+.bi-edit-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0 4px;
+}
+
+.bi-edit-note {
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+@media (max-width: 760px) {
+    .bi-colhead { display: none; }
+    .bi-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px 14px;
+    }
+    .bi-item    { order: 1; }
+    .bi-actions { order: 2; opacity: 1; }
+    .bi-actual  { order: 3; }
+    .bi-planned { order: 4; }
+    .bi-bar     { grid-column: 1 / -1; order: 5; }
+    .bi-edit-head { display: none; }
+    .bi-edit-row {
+        grid-template-columns: 1fr 1fr;
+    }
+}

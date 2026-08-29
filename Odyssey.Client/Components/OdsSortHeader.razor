@@ -1,0 +1,48 @@
+@*
+    OdsSortHeader — a controlled sortable table header cell (Odyssey Design System · components/SortHeader).
+
+    A sortable <th> for hand-rolled record tables — a MudTableSortLabel-style
+    header button with an arrow that points up (asc) / down (desc) and brightens
+    on the active column. Controlled: pass the shared Sort ({Key,Dir}) and an
+    OnSort handler — the component renders the indicator, the parent owns the
+    ordering. Align=End right-aligns the header for numeric columns.
+
+    OdsRecordTable renders these for you from its Columns; reach for OdsSortHeader
+    directly only when you hand-roll a <thead>.
+*@
+
+<th scope="col" class="@(Align == OdsAlign.End ? "odc-rec-numeric" : null)" style="@Style" aria-sort="@AriaSort">
+    <button type="button"
+            class="odc-rec-sort @(Align == OdsAlign.End ? "right" : null) @(Active ? "active" : null)"
+            @onclick="@(() => OnSort.InvokeAsync(SortKey))">
+        <span>@ChildContent</span>
+        <span class="material-icons odc-rec-sort-ic @(Active ? "active" : null) @(Active && Sort!.Dir == OdsSortDirection.Desc ? "desc" : null)"
+              aria-hidden="true">arrow_upward</span>
+    </button>
+</th>
+
+@code {
+    /// <summary>Visible column label.</summary>
+    [Parameter, EditorRequired] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>This column's sort key — compared against <c>Sort.Key</c> for the active state.</summary>
+    [Parameter, EditorRequired] public string SortKey { get; set; } = string.Empty;
+
+    /// <summary>Shared, controlled sort state.</summary>
+    [Parameter] public OdsTableSort? Sort { get; set; }
+
+    /// <summary>Called with this column's <see cref="SortKey"/> when the header is clicked.</summary>
+    [Parameter] public EventCallback<string> OnSort { get; set; }
+
+    /// <summary>End right-aligns the header for numeric columns (amounts, dates).</summary>
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    /// <summary>Extra inline style on the <c>&lt;th&gt;</c> (e.g. a fixed width).</summary>
+    [Parameter] public string? Style { get; set; }
+
+    private bool Active => Sort is not null && Sort.Key == SortKey;
+
+    private string AriaSort => Active
+        ? (Sort!.Dir == OdsSortDirection.Asc ? "ascending" : "descending")
+        : "none";
+}

@@ -1,0 +1,121 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · RecordTable (+ SortHeader · ActionMenu · MetaTile)" subtitle="The sortable / expandable / editable admin-table primitive behind Transaction tags, Contacts, Currencies, Exchange rates & Users. Live render off the DS namespace." viewport="860x620" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · RecordTable</title>
+  <!-- Tokens + Material Icons, then the kit sheets that style the record table
+       (.ua-tbl / .acct-detail / .meta-grid / .acct-menu live there). -->
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/admin.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 12px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .surface { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; }
+    .note { margin: 14px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 80ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+  </style>
+</head>
+<body>
+  <div class="cap">RecordTable <code>&lt;RecordTable columns rows renderDetail renderEdit actions /&gt;</code></div>
+  <div class="surface"><div id="root"></div></div>
+  <p class="note">One primitive owns sorting, accordion expand, the inline <b>Edit</b> swap, the row overflow menu (<b>ActionMenu</b>) and the expand chevron. A page only declares its columns, the <b>MetaTile</b> detail grid, and the edit panel. <b>SortHeader</b> renders each sortable header. Click a row to expand · click <b>Edit</b> in the row menu to swap in the editor.</p>
+
+  <script type="text/babel" data-presets="env,react">
+    const { RecordTable, MetaTile, Chip, Avatar, Field, Button } = window.OdysseyDesignSystem_d5aa51;
+
+    const TONE = { bg: 'oklch(0.79 0.115 188 / 0.16)', fg: 'oklch(0.79 0.115 188)' };
+    const SEED = [
+      { code: 'USD', name: 'US Dollar', symbol: '$', minor: 2, archived: false },
+      { code: 'EUR', name: 'Euro', symbol: '€', minor: 2, archived: false },
+      { code: 'JPY', name: 'Japanese Yen', symbol: '¥', minor: 0, archived: false },
+      { code: 'BTC', name: 'Bitcoin', symbol: '₿', minor: 8, archived: true },
+    ];
+    const statusChip = (c) => c.archived
+      ? <Chip tone="outline" dot>Archived</Chip>
+      : <Chip tone="income" dot>Active</Chip>;
+
+    const Detail = ({ c }) => (
+      <div className="acct-detail">
+        <div className="meta-grid">
+          <MetaTile label="Currency code" value={c.code} mono />
+          <MetaTile label="Symbol" value={c.symbol} />
+          <MetaTile label="Name" value={c.name} />
+          <MetaTile label="Minor units" value={`${c.minor} decimal place${c.minor === 1 ? '' : 's'}`} />
+          <MetaTile label="Status" value={statusChip(c)} />
+        </div>
+      </div>
+    );
+
+    const Edit = ({ c, onSave, onCancel }) => {
+      const [name, setName] = React.useState(c.name);
+      return (
+        <div className="acct-detail acct-edit">
+          <div className="acct-edit-head"><span className="material-icons" aria-hidden="true">edit</span><span>Edit currency</span></div>
+          <div className="edit-grid">
+            <div className="edit-wide"><Field label="Name" value={name} onChange={setName} /></div>
+          </div>
+          <div className="acct-edit-actions">
+            <Button variant="text" onClick={onCancel}>Cancel</Button>
+            <Button variant="filled" color="primary" icon="check" onClick={() => onSave({ name })}>Save changes</Button>
+          </div>
+        </div>
+      );
+    };
+
+    function Demo() {
+      const [rows, setRows] = React.useState(SEED);
+      const save = (code, patch) => setRows(rs => rs.map(c => c.code === code ? { ...c, ...patch } : c));
+      const del = (code) => setRows(rs => rs.filter(c => c.code !== code));
+      return (
+        <RecordTable
+          rows={rows}
+          rowKey={(c) => c.code}
+          defaultSort={{ key: 'code', dir: 'asc' }}
+          leading={(c) => <Avatar initials={c.symbol} tone={TONE} />}
+          columns={[
+            { key: 'code', header: 'Code', sortable: true, sortValue: (c) => c.code,
+              cell: (c, ctx) => <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span className="mono">{c.code}</span>{ctx.justSaved && <Chip tone="income" dot>Saved</Chip>}</span> },
+            { key: 'name', header: 'Name', sortable: true, sortValue: (c) => c.name.toLowerCase(), cell: (c) => c.name },
+            { key: 'minor', header: 'Minor units', sortable: true, align: 'right', className: 'muted', sortValue: (c) => c.minor, cell: (c) => c.minor },
+            { key: 'status', header: 'Status', sortable: true, sortValue: (c) => (c.archived ? 1 : 0), cell: statusChip },
+          ]}
+          actions={(c, ctx) => [
+            ...(ctx.editing ? [] : [{ icon: ctx.expanded ? 'close' : 'expand_more', label: ctx.expanded ? 'Collapse' : 'View details', onClick: ctx.toggle }]),
+            { icon: 'edit', label: 'Edit', onClick: ctx.startEdit },
+            { icon: c.archived ? 'unarchive' : 'archive', label: c.archived ? 'Restore' : 'Archive', onClick: () => save(c.code, { archived: !c.archived }) },
+            { divider: true },
+            { icon: 'delete', label: 'Delete', danger: true, onClick: ctx.remove },
+          ]}
+          renderDetail={(c) => <Detail c={c} />}
+          renderEdit={(c, { save: s, cancel }) => <Edit c={c} onSave={(p) => { save(c.code, p); s(p); }} onCancel={cancel} />}
+          onSave={save}
+          onDelete={del}
+        />
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+    // Open a representative row so the thumbnail shows the detail layout at rest.
+    const openRow = () => {
+      const rows = [...document.querySelectorAll('.ua-tbl tbody tr')].filter(t => !t.classList.contains('ua-detail-row'));
+      const target = rows.find(t => /EUR/.test(t.textContent));
+      if (target) target.click(); else if (!rows.length) return setTimeout(openRow, 60);
+    };
+    setTimeout(openRow, 140);
+  </script>
+</body>
+</html>

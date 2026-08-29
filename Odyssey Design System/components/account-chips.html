@@ -1,0 +1,108 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Account type & status chips" subtitle="The account-detail chip family: AccountTypeChip (type glyph + label + Asset/Liability group) and AccountStatusChip (tone dot + label + lifecycle date) — siblings of CustodianChip, one coherent pill structure across the account row and detail grid. Live off the DS namespace." viewport="1120x680" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Account type & status chips</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 16px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 20px 22px; }
+    .panel h3 { margin: 0 0 4px; font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+    .panel p.sub { margin: 0 0 16px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .row { display: grid; grid-template-columns: 130px 1fr; align-items: center; gap: 4px 16px; }
+    .row .lbl { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .row .cell { padding: 10px 0; border-top: 1px solid var(--mud-palette-divider); min-width: 0; }
+    .row .lbl.cell { border-top: 1px solid var(--mud-palette-divider); }
+    .stack { display: inline-flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+    .stack .life { color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-caption)/1.35 var(--font-sans); }
+    .note { margin: 18px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 96ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+  </style>
+</head>
+<body>
+  <div class="cap">Account detail chips <code>&lt;AccountTypeChip type /&gt;</code> · <code>&lt;AccountStatusChip label tone detail /&gt;</code></div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51 || {};
+    const { AccountTypeChip, AccountStatusChip } = NS;
+
+    function Demo() {
+      return (
+        <div className="grid">
+          <div className="panel">
+            <h3>AccountTypeChip</h3>
+            <p className="sub">Type glyph (in its categorical color) · label · muted Asset / Liability group.</p>
+            <div className="row">
+              <span className="lbl">Checking</span>
+              <span className="cell"><AccountTypeChip type="CheckingAccount" /></span>
+              <span className="lbl cell">Investment</span>
+              <span className="cell"><AccountTypeChip type="InvestmentAccount" /></span>
+              <span className="lbl cell">Credit card</span>
+              <span className="cell"><AccountTypeChip type="CreditCard" /></span>
+              <span className="lbl cell">Car loan</span>
+              <span className="cell"><AccountTypeChip type="CarLoan" /></span>
+              <span className="lbl cell">Compact (sm)</span>
+              <span className="cell"><AccountTypeChip type="Property" size="sm" /></span>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>AccountStatusChip</h3>
+            <p className="sub">Tone dot · label · muted date. In the detail tile the date becomes a full lifecycle line.</p>
+            <div className="row">
+              <span className="lbl">Open</span>
+              <span className="cell"><AccountStatusChip label="Open" tone="income" detail="since Mar 14, 2021" /></span>
+              <span className="lbl cell">Closed</span>
+              <span className="cell"><AccountStatusChip label="Closed" tone="pending" detail="on Mar 10, 2021" /></span>
+              <span className="lbl cell">Archived</span>
+              <span className="cell"><AccountStatusChip label="Archived" tone="outline" detail="on Jan 02, 2024" /></span>
+              <span className="lbl cell">Detail tile</span>
+              <span className="cell">
+                <span className="stack">
+                  <AccountStatusChip label="Closed" tone="pending" />
+                  <span className="life">Opened Apr 22, 2016 · Closed Mar 10, 2021</span>
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Root() {
+      const [ready, setReady] = React.useState(!!(AccountTypeChip && AccountStatusChip));
+      React.useEffect(() => {
+        if (ready) return;
+        let n = 0;
+        const t = setInterval(() => {
+          const ns = window.OdysseyDesignSystem_d5aa51 || {};
+          if ((ns.AccountTypeChip && ns.AccountStatusChip) || ++n > 20) { clearInterval(t); setReady(true); }
+        }, 100);
+        return () => clearInterval(t);
+      }, [ready]);
+      if (!(NS.AccountTypeChip && NS.AccountStatusChip)) return <div className="note">Building components…</div>;
+      return <Demo />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+  </script>
+
+  <p class="note">These two complete the <b>account-detail chip family</b> alongside <b>CustodianChip</b> — one coherent pill (leading accent · name · muted third segment), used in both the collapsed account row and the expanded metadata grid. <b>AccountTypeChip</b> draws from the <code>ACCOUNT_TYPES</code> registry; <b>AccountStatusChip</b> uses a tone-colored dot for the status state and carries the account's date context (a single date in the row, the full <i>Opened → Closed / Archived</i> lifecycle in the detail tile, where it replaces the former separate Opened / Closed fields).</p>
+</body>
+</html>

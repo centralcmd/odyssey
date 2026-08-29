@@ -1,0 +1,79 @@
+@using Odyssey.Dtos.Finance
+
+@* Planned income + expenses donuts side by side (divider between), shared by the
+   Budgets page header (aggregate across budgets) and each budget's expanded detail.
+   Empty panels keep the title with a short line. The host supplies the slices, the
+   sub-captions, and the legend/total formatters (the total row is slice == null). *@
+
+<OdsDonutPair>
+    <First>
+        @* Planned income *@
+        @if (IncomeSlices.Count == 0)
+        {
+            <div class="donut-panel">
+                <div class="chart-head">
+                    <div>
+                        <div class="chart-ttl">Planned income</div>
+                        <div class="chart-sub">@IncomeSub</div>
+                    </div>
+                </div>
+                <div class="donut-legend-empty">No planned income yet</div>
+            </div>
+        }
+        else
+        {
+            <OdsDonut Layout="OdsDonutLayout.Stack"
+                      CenterIcon="trending_up"
+                      Data="IncomeSlices"
+                      TotalLabel="Total planned in"
+                      Format="IncomeFormat"
+                      AriaLabel="Planned income by item">
+                <Title>Planned income</Title>
+                <Sub>@IncomeSub</Sub>
+            </OdsDonut>
+        }
+    </First>
+    <Second>
+        @* Planned expenses *@
+        @if (ExpenseSlices.Count == 0)
+        {
+            <div class="donut-panel">
+                <div class="chart-head">
+                    <div>
+                        <div class="chart-ttl">Planned expenses</div>
+                        <div class="chart-sub">@ExpenseSub</div>
+                    </div>
+                </div>
+                <div class="donut-legend-empty">No planned expenses yet</div>
+            </div>
+        }
+        else
+        {
+            <OdsDonut Layout="OdsDonutLayout.Stack"
+                      CenterIcon="shopping_cart"
+                      Data="ExpenseSlices"
+                      TotalLabel="Total planned out"
+                      Format="ExpenseFormat"
+                      AriaLabel="Planned expenses by item">
+                <Title>Planned expenses</Title>
+                <Sub>@ExpenseSub</Sub>
+            </OdsDonut>
+        }
+    </Second>
+</OdsDonutPair>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<OdsDonutSlice> IncomeSlices { get; set; } = [];
+
+    [Parameter, EditorRequired] public IReadOnlyList<OdsDonutSlice> ExpenseSlices { get; set; } = [];
+
+    /// <summary>Caption under each title (e.g. "Across 3 active budgets" or "4 items").</summary>
+    [Parameter] public string? IncomeSub { get; set; }
+
+    [Parameter] public string? ExpenseSub { get; set; }
+
+    /// <summary>Legend/total formatter; the total row is passed a null slice.</summary>
+    [Parameter, EditorRequired] public Func<decimal, OdsDonutSlice?, string> IncomeFormat { get; set; } = (v, _) => v.ToString();
+
+    [Parameter, EditorRequired] public Func<decimal, OdsDonutSlice?, string> ExpenseFormat { get; set; } = (v, _) => v.ToString();
+}

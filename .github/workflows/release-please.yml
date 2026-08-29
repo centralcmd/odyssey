@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# Serialize every run against the same Release PR. Two pushes to main in quick succession
+# otherwise race two release-please runs at one another over the same release branch and
+# PR. Never cancelled: a run interrupted between creating the tag and publishing the
+# GitHub Release would leave the release half-cut.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Release PR / tag
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      # On a normal push this maintains the open "Release PR" (version bump +
+      # CHANGELOG from Conventional Commits). When that PR is merged, this same
+      # step instead creates the git tag and the GitHub Release.
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Once a release is cut, build the images from the new tag and stamp them with
+  # the SemVer. We can't rely on a separate `push: tags` trigger because tags
+  # created by the default GITHUB_TOKEN don't start new workflow runs, so we drive
+  # the publish from this same run, gated on release-please having tagged.
+  publish-release-images:
+    name: Publish release images
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-images.yml
+    with:
+      ref: ${{ needs.release-please.outputs.tag_name }}
+      version: ${{ needs.release-please.outputs.version }}

@@ -1,0 +1,193 @@
+@using System.Globalization
+@*
+    OdsLineChart — the axis'd trend card (Odyssey Design System · components/LineChart).
+    Unlike OdsSparkline (compact, axis-less), this is the full card: a head (title · sub
+    on the left, headline figure + optional delta on the right) over an SVG line/area plot
+    with horizontal gridlines and value / category axis labels. Backs the Dashboard
+    net-worth chart and the Tax Statements overview.
+
+    Series is OdsLinePoint[] (oldest → newest); points with a null Value are skipped.
+    Format formats the headline + axis numbers (a money formatter); AxisFormat overrides
+    the y-axis ticks with a compact variant. Cumulative plots the running total. ShowDelta
+    adds a latest-vs-first delta (mint up / coral down) with DeltaSuffix text. A single
+    point renders as a dot; an empty series renders the EmptyLabel.
+
+    Pure SVG + tokens (default stroke --chart-1) so it re-themes light/dark. Styled by
+    .odc-lc / .odc-line-svg in the global sheet.
+*@
+
+<div class="@($"odc-lc{(string.IsNullOrEmpty(Class) ? "" : " " + Class)}")">
+    <div class="odc-lc-head">
+        <div>
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <div class="odc-lc-ttl">@Title</div>
+            }
+            @if (!string.IsNullOrEmpty(Sub))
+            {
+                <div class="odc-lc-sub">@Sub</div>
+            }
+        </div>
+        @if (Figure is not null || pts.Count > 0)
+        {
+            <div class="odc-lc-figure">
+                <div class="odc-lc-num">@(Figure ?? Format((decimal)pts[^1].Value))</div>
+                @if (ShowDelta && pts.Count > 1)
+                {
+                    var delta = pts[^1].Value - pts[0].Value;
+                    <div class="odc-lc-delta @(delta >= 0 ? "income" : "expense")">
+                        @(delta >= 0 ? "+" : "−")@Format((decimal)Math.Abs(delta))@(string.IsNullOrEmpty(DeltaSuffix) ? "" : " " + DeltaSuffix)
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (pts.Count == 0)
+    {
+        <div class="odc-lc-empty">@EmptyLabel</div>
+    }
+    else
+    {
+        <svg class="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
+             role="img" aria-label="@EffectiveAriaLabel">
+            <g stroke="var(--chart-grid)" stroke-width="1">
+                @foreach (var v in gridVals)
+                {
+                    <line x1="@x0" y1="@Fmt(Sy(v))" x2="@x1" y2="@Fmt(Sy(v))" />
+                }
+            </g>
+            @* Razor reserves <text> as a control keyword, so the axis labels are
+               emitted as raw SVG markup. *@
+            <g class="odc-lc-axis">@((MarkupString)YAxisMarkup)</g>
+            <g class="odc-lc-axis">@((MarkupString)XAxisMarkup)</g>
+            @if (Area && !single)
+            {
+                <defs>
+                    <linearGradient id="@fillId" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="@Color" stop-opacity="0.26" />
+                        <stop offset="100%" stop-color="@Color" stop-opacity="0" />
+                    </linearGradient>
+                </defs>
+                <path d="@AreaPath" fill="url(#@fillId)" />
+            }
+            @if (!single)
+            {
+                <polyline points="@LinePts" fill="none" stroke="@Color" stroke-width="2.4"
+                          stroke-linejoin="round" stroke-linecap="round" />
+            }
+            @for (var i = 0; i < pts.Count; i++)
+            {
+                <circle cx="@Fmt(Sx(i))" cy="@Fmt(Sy(pts[i].Value))"
+                        r="@(i == pts.Count - 1 ? "4" : "2.5")" fill="@Color" />
+            }
+        </svg>
+    }
+</div>
+
+@code {
+    /// <summary>The series, oldest → newest. Points with a null Value are skipped.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsLinePoint> Series { get; set; } = [];
+
+    /// <summary>Line + area + dot color. Default <c>var(--chart-1)</c>. Use a categorical chart token.</summary>
+    [Parameter] public string Color { get; set; } = "var(--chart-1)";
+
+    /// <summary>Plot the running total of Value instead of each point's own value.</summary>
+    [Parameter] public bool Cumulative { get; set; }
+
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public string? Sub { get; set; }
+
+    /// <summary>Formats the headline figure + (by default) the y-axis ticks.</summary>
+    [Parameter] public Func<decimal, string> Format { get; set; } = static n => n.ToString("#,##0.##", CultureInfo.InvariantCulture);
+
+    /// <summary>Compact y-axis tick formatter; falls back to <see cref="Format"/>.</summary>
+    [Parameter] public Func<decimal, string>? AxisFormat { get; set; }
+
+    /// <summary>Show a latest-vs-first delta beside the figure (mint up / coral down).</summary>
+    [Parameter] public bool ShowDelta { get; set; }
+
+    /// <summary>Trailing text on the delta, e.g. "all-time" or "vs 2024".</summary>
+    [Parameter] public string? DeltaSuffix { get; set; }
+
+    /// <summary>Override the headline figure (else the latest point, via <see cref="Format"/>).</summary>
+    [Parameter] public string? Figure { get; set; }
+
+    /// <summary>Render every Nth category label (the last is always shown). Default 1.</summary>
+    [Parameter] public int XTickEvery { get; set; } = 1;
+
+    /// <summary>Fill the area under the line. Default true.</summary>
+    [Parameter] public bool Area { get; set; } = true;
+
+    [Parameter] public string? AriaLabel { get; set; }
+
+    // Fall back to the visible title so an unlabeled chart still names itself to AT.
+    private string EffectiveAriaLabel =>
+        !string.IsNullOrEmpty(AriaLabel) ? AriaLabel
+        : !string.IsNullOrEmpty(Title) ? $"{Title} — line chart"
+        : "Line chart";
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Shown when the series has no plottable points.</summary>
+    [Parameter] public string EmptyLabel { get; set; } = "No data yet.";
+
+    private const double x0 = 64, x1 = 968, yTop = 28, yBot = 212;
+
+    private readonly List<(string Label, double Value)> pts = [];
+    private bool single;
+    private double yMin, yMax;
+    private double[] gridVals = [];
+    private string fillId = "";
+
+    private string FmtAxis(decimal n) => (AxisFormat ?? Format)(n);
+
+    protected override void OnParametersSet()
+    {
+        // Build the plotted points (oldest → newest), applying the running total in
+        // cumulative mode.
+        pts.Clear();
+        double acc = 0;
+        foreach (var p in Series)
+        {
+            if (p?.Value is null) continue;
+            acc += (double)p.Value.Value;
+            pts.Add((p.Label, Cumulative ? acc : (double)p.Value.Value));
+        }
+
+        if (pts.Count == 0) return;
+
+        single = pts.Count == 1;
+        var lo = pts.Min(p => p.Value);
+        var hi = pts.Max(p => p.Value);
+        var span = (hi - lo) != 0 ? hi - lo : (Math.Abs(hi) != 0 ? Math.Abs(hi) : 1);
+        yMin = Math.Max(0, lo - span * 0.18);
+        yMax = hi + span * 0.18;
+
+        gridVals = [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
+        fillId = $"odc-lc-fill-{Guid.NewGuid():N}";
+    }
+
+    private double Sx(int i) => single ? (x0 + x1) / 2 : x0 + i * (x1 - x0) / (pts.Count - 1);
+
+    private double Sy(double v) => yBot - (v - yMin) / (yMax - yMin != 0 ? yMax - yMin : 1) * (yBot - yTop);
+
+    private static string Fmt(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+
+    private string LinePts => string.Join(' ', pts.Select((p, i) => $"{Fmt(Sx(i))},{Fmt(Sy(p.Value))}"));
+
+    private string AreaPath =>
+        $"M {Fmt(Sx(0))} {Fmt(yBot)} " +
+        string.Join(' ', pts.Select((p, i) => $"L {Fmt(Sx(i))} {Fmt(Sy(p.Value))}")) +
+        $" L {Fmt(Sx(pts.Count - 1))} {Fmt(yBot)} Z";
+
+    private static string Enc(string s) => System.Net.WebUtility.HtmlEncode(s);
+
+    private string YAxisMarkup => string.Concat(gridVals.Select(v =>
+        $"<text x=\"{Fmt(x0 - 12)}\" y=\"{Fmt(Sy(v) + 4)}\" text-anchor=\"end\">{Enc(FmtAxis((decimal)Math.Round(v)))}</text>"));
+
+    private string XAxisMarkup => string.Concat(Enumerable.Range(0, pts.Count)
+        .Where(i => i % XTickEvery == 0 || i == pts.Count - 1)
+        .Select(i => $"<text x=\"{Fmt(Sx(i))}\" y=\"{Fmt(yBot + 26)}\" text-anchor=\"middle\">{Enc(pts[i].Label)}</text>"));
+}

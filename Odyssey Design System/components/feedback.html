@@ -1,0 +1,89 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Skeleton & Toast (.odc-)" subtitle="Loading placeholders (text / circle / block / table row) and the bottom-right snackbar — default, success, error with action. Exported on the DS namespace." viewport="820x520" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · Skeleton & Toast (.odc-)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 36px; align-items: start; }
+    .block { display: flex; flex-direction: column; gap: 14px; }
+    .span2 { grid-column: 1 / -1; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .surface { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 16px; }
+    .tile-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .toasts { display: flex; flex-direction: column; gap: 12px; }
+    .toasts .odc-toast { animation: none; position: relative; }
+  </style>
+</head>
+<body>
+  <div class="grid">
+
+    <div class="block">
+      <div class="cap">Skeleton <code>&lt;Skeleton variant lines /&gt;</code></div>
+      <div class="surface">
+        <div class="tile-head">
+          <span class="odc-skeleton circle" style="width:40px;height:40px"></span>
+          <div style="flex:1">
+            <span class="odc-skeleton text" style="width:45%"></span>
+            <span class="odc-skeleton text" style="width:30%"></span>
+          </div>
+        </div>
+        <span class="odc-skeleton block" style="width:100%;height:72px"></span>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Stat tile — loading</div>
+      <div class="odc-stat">
+        <span class="odc-skeleton text" style="width:40%"></span>
+        <span class="odc-skeleton text" style="width:70%;height:1.4em"></span>
+        <span class="odc-skeleton text" style="width:55%"></span>
+      </div>
+    </div>
+
+    <div class="block span2">
+      <div class="cap">Table — loading rows <code>&lt;SkeletonRow columns align /&gt;</code></div>
+      <div class="surface" style="padding:0;overflow:hidden">
+        <table class="odc-table">
+          <thead><tr><th class="odc-th">Description</th><th class="odc-th">Tag</th><th class="odc-th">Status</th><th class="odc-th num">Amount</th><th class="odc-th num">Date</th></tr></thead>
+          <tbody>
+            <tr class="odc-skel-row"><td><span class="odc-skeleton text" style="width:62%"></span></td><td><span class="odc-skeleton text" style="width:50%"></span></td><td><span class="odc-skeleton text" style="width:46%"></span></td><td class="num"><span class="odc-skeleton text" style="width:56px;margin-left:auto"></span></td><td class="num"><span class="odc-skeleton text" style="width:68px;margin-left:auto"></span></td></tr>
+            <tr class="odc-skel-row"><td><span class="odc-skeleton text" style="width:74%"></span></td><td><span class="odc-skeleton text" style="width:44%"></span></td><td><span class="odc-skeleton text" style="width:52%"></span></td><td class="num"><span class="odc-skeleton text" style="width:56px;margin-left:auto"></span></td><td class="num"><span class="odc-skeleton text" style="width:68px;margin-left:auto"></span></td></tr>
+            <tr class="odc-skel-row"><td><span class="odc-skeleton text" style="width:55%"></span></td><td><span class="odc-skeleton text" style="width:48%"></span></td><td><span class="odc-skeleton text" style="width:40%"></span></td><td class="num"><span class="odc-skeleton text" style="width:56px;margin-left:auto"></span></td><td class="num"><span class="odc-skeleton text" style="width:68px;margin-left:auto"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="block span2">
+      <div class="cap">Toast <code>&lt;Toast severity action onClose /&gt;</code> — bottom-right snackbar</div>
+      <div class="toasts">
+        <div class="odc-toast" role="status">
+          <div class="odc-toast-body">Saved.</div>
+          <button class="odc-toast-close" aria-label="Dismiss"><span class="material-icons">close</span></button>
+        </div>
+        <div class="odc-toast success" role="status">
+          <span class="material-icons odc-toast-ic">check_circle</span>
+          <div class="odc-toast-body">Approved 3 transactions.</div>
+          <button class="odc-toast-action">Undo</button>
+          <button class="odc-toast-close" aria-label="Dismiss"><span class="material-icons">close</span></button>
+        </div>
+        <div class="odc-toast error" role="alert">
+          <span class="material-icons odc-toast-ic">error</span>
+          <div class="odc-toast-body">Unable to import statement. Check the file format and try again.</div>
+          <button class="odc-toast-close" aria-label="Dismiss"><span class="material-icons">close</span></button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

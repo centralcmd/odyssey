@@ -1,0 +1,67 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Pages.Auth
+@using Odyssey.Client.Services
+@using Odyssey.Client.Theme
+@inherits LayoutComponentBase
+@implements IAsyncDisposable
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IUserPreferenceService UserPreferences
+@inject IProfileApiClient Profile
+@inject PasswordChangeRequiredNotifier PasswordChangeRequired
+@inject IJSRuntime JS
+
+<OdysseyThemeProvider></OdysseyThemeProvider>
+
+<MudLayout>
+    <AuthorizeView>
+        <Authorized>
+            @if (!_gateChecked)
+            {
+                @* Onboarding gate: resolve profile completeness before the app body renders (anti-flash,
+                   spec §5). An incomplete profile is redirected to /onboarding; a failed check fails open. *@
+                <div class="odn-gate-loading" role="status">
+                    <OdsSpinner Size="OdsSize.Lg" Decorative="true" />
+                    <span class="sr-only">Loading…</span>
+                </div>
+            }
+            else
+            {
+            <div class="odn-app">
+                @* First focusable — bypass the rail, jump to page content (WCAG 2.4.1). Inerted with the
+                   rest of the background while the modal palette is open so Tab can't escape the dialog. *@
+                <a class="ods-skip-link" href="#main-content" inert="@_paletteOpen">Skip to main content</a>
+
+                <NavRail @ref="_navRail" Current="@_current" CanView="_canView" SwitcherOpen="_switcherOpen"
+                         IsDark="_isDark" Inert="_paletteOpen"
+                         OnNavigate="OnNavigate" OnOpenSwitcher="ToggleSwitcher"
+                         OnOpenPalette="OpenPalette" OnToggleDark="ToggleDark" />
+
+                @if (_switcherOpen)
+                {
+                    <NavModuleSwitcher Current="@_current" CanView="_canView"
+                                       OnGoModule="GoModule" OnClose="CloseSwitcher" />
+                }
+
+                @* A <main> landmark carrying the skip-link target id. While the modal command palette is
+                   open the background is inert (removed from tab order + the AT tree). *@
+                <main class="odn-main" id="main-content" tabindex="-1" role="main" inert="@_paletteOpen">
+                    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+                        @Body
+                    </MudContainer>
+                </main>
+
+                @if (_paletteOpen)
+                {
+                    <NavCommandPalette CanView="_canView" CurrentModuleKey="@NavModel.ModuleOf(_current).Key"
+                                       OnClose="ClosePalette"
+                                       OnNavigate="OnNavigate" OnGoModule="GoModule" />
+                }
+            </div>
+            }
+        </Authorized>
+        <NotAuthorized>
+            <RedirectToLogin></RedirectToLogin>
+        </NotAuthorized>
+    </AuthorizeView>
+</MudLayout>

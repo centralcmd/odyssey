@@ -1,0 +1,126 @@
+<!doctype html>
+<!-- @dsCard group="Dialogs" name="Anatomy & conventions" subtitle="The shared dialog shell — scrim, head (title/sub/close), body, footer — plus the New/Create, Edit/Save, and Upload wording rules." viewport="1180x760" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Dialog anatomy</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <style>
+    html, body { min-height: 0; }
+    body { margin: 0; background: var(--mud-palette-background); font-family: var(--font-sans); color: var(--mud-palette-text-primary); width: 1180px; box-sizing: border-box; padding: 26px; }
+
+    .wrap { display: grid; grid-template-columns: 600px 1fr; gap: 30px; align-items: start; }
+
+    /* ---- annotated dialog (left) ---- */
+    .stage { position: relative; background:
+        repeating-linear-gradient(45deg, transparent, transparent 9px, rgba(255,255,255,0.013) 9px, rgba(255,255,255,0.013) 18px),
+        var(--mud-palette-background-grey, #0d1219);
+      border: 1px solid var(--mud-palette-divider); border-radius: 14px; padding: 34px 76px; overflow: hidden; }
+    /* A faux dialog using the real shell tokens (not the live component, so we can annotate it) */
+    .demo { position: relative; width: 100%; max-width: 400px; margin: 0 auto;
+      background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+      border-radius: 12px; box-shadow: var(--mud-elevation-16); }
+    .demo-head { display: flex; align-items: flex-start; gap: 14px; padding: 18px 24px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--mud-palette-divider-light); border-radius: 12px 12px 0 0; }
+    .demo-lead { flex: none; width: 38px; height: 38px; border-radius: 9px; display: grid; place-items: center; margin-top: 1px; background: rgba(79, 215, 203, 0.14); color: var(--tide-400); }
+    .demo-lead .material-icons { font-size: 21px; }
+    .demo-titles { flex: 1; min-width: 0; }
+    .demo-title { font: 500 18px/1.2 var(--font-sans); }
+    .demo-sub { font: 400 12.5px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 4px; max-width: 58ch; }
+    .demo-x { flex: none; display: grid; place-items: center; margin-top: 1px; width: 32px; height: 32px; border: none; border-radius: 999px; background: transparent; color: var(--mud-palette-text-secondary); }
+    .demo-body { padding: 16px 24px 18px; display: flex; flex-direction: column; gap: 14px; }
+    .demo-field { display: flex; flex-direction: column; gap: 5px; }
+    .demo-field .lab { font: 400 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .demo-field .inp { background: var(--mud-palette-background); border: 1px solid var(--mud-palette-lines-inputs); border-radius: 6px; padding: 11px 12px; font: 400 14px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .demo-field .inp.ph { color: var(--mud-palette-text-disabled); }
+    .demo-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--mud-palette-divider-light); background: rgba(255,255,255,0.02); border-radius: 0 0 12px 12px; }
+    .demo-btn { font: 500 12px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; padding: 10px 16px; border-radius: 6px; border: none; }
+    .demo-btn.text { background: transparent; color: var(--mud-palette-text-secondary); }
+    .demo-btn.filled { background: var(--tide-400); color: var(--ink-950); display: inline-flex; align-items: center; gap: 7px; }
+    .demo-btn .material-icons { font-size: 17px; }
+
+    /* annotation badges */
+    .pin { position: absolute; z-index: 5; display: flex; align-items: center; gap: 8px; }
+    .pin .dot { flex: none; width: 22px; height: 22px; border-radius: 999px; background: var(--tide-400); color: var(--ink-950); font: 700 11px/22px var(--font-mono); text-align: center; box-shadow: 0 0 0 4px var(--mud-palette-background); }
+    .pin .tag { font: 500 11px/1.3 var(--font-sans); color: var(--tide-300, var(--tide-400)); white-space: nowrap; }
+    .pin.right { flex-direction: row-reverse; }
+
+    /* ---- legend + conventions (right) ---- */
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+    .panel h3 { font: 600 13px/1 var(--font-sans); margin: 0 0 14px; letter-spacing: 0.01em; }
+    .legend { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .legend li { display: grid; grid-template-columns: 22px 1fr; gap: 11px; align-items: baseline; }
+    .legend .n { width: 22px; height: 22px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid var(--mud-palette-divider); color: var(--tide-400); font: 700 11px/20px var(--font-mono); text-align: center; }
+    .legend .d { font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .legend .d b { color: var(--mud-palette-text-primary); font-weight: 600; }
+    .legend .d code { font: 500 11px/1 var(--font-mono); color: var(--tide-400); }
+
+    .conv { display: grid; grid-template-columns: auto 1fr; gap: 9px 16px; }
+    .conv dt { font: 600 11px/1.4 var(--font-sans); letter-spacing: 0.05em; text-transform: uppercase; color: var(--tide-400); }
+    .conv dd { margin: 0; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .conv dd b { color: var(--mud-palette-text-primary); font-weight: 600; }
+    .conv dd code { font: 500 11px/1 var(--font-mono); color: var(--tide-300, var(--tide-400)); }
+
+    .note { font: 400 12px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 14px 0 0; padding-top: 14px; border-top: 1px solid var(--mud-palette-divider-light); }
+    .note b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .note code { font: 500 11px/1 var(--font-mono); color: var(--tide-400); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stage">
+      <div class="demo">
+        <div class="demo-head">
+          <div class="demo-lead"><span class="material-icons">account_balance_wallet</span></div>
+          <div class="demo-titles">
+            <div class="demo-title">New account</div>
+            <div class="demo-sub">Add an account to track its balance, files, and transactions.</div>
+          </div>
+          <button class="demo-x" aria-label="Close"><span class="material-icons" style="font-size:20px;">close</span></button>
+        </div>
+        <div class="demo-body">
+          <div class="demo-field"><span class="lab">Account name</span><span class="inp ph">e.g. Chase Sapphire</span></div>
+          <div class="demo-field"><span class="lab">Account type</span><span class="inp ph">Choose a type…</span></div>
+        </div>
+        <div class="demo-foot">
+          <button class="demo-btn text">Cancel</button>
+          <button class="demo-btn filled"><span class="material-icons">add</span>Create account</button>
+        </div>
+      </div>
+
+      <!-- annotation pins (sit in the stage gutters, beside the dialog) -->
+      <div class="pin" style="top: 14px; left: 10px;"><span class="dot">1</span><span class="tag">.aam-scrim</span></div>
+      <div class="pin right" style="top: 92px; right: 10px;"><span class="dot">2</span><span class="tag">.aam-dialog</span></div>
+      <div class="pin" style="top: 92px; left: 10px;"><span class="dot">3</span><span class="tag">.aam-head</span></div>
+      <div class="pin right" style="top: 138px; right: 10px;"><span class="dot">4</span><span class="tag">.aam-x</span></div>
+      <div class="pin" style="top: 232px; left: 10px;"><span class="dot">5</span><span class="tag">.aam-body</span></div>
+      <div class="pin" style="bottom: 64px; left: 10px;"><span class="dot">6</span><span class="tag">.aam-foot</span></div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h3>Anatomy</h3>
+        <ul class="legend">
+          <li><span class="n">1</span><span class="d"><b>Scrim</b> — <code>.aam-scrim</code>. Full-viewport backdrop (a subtle blur + tint) portaled to <code>&lt;body&gt;</code>. Click it to close; it also catches the focus trap.</span></li>
+          <li><span class="n">2</span><span class="d"><b>Dialog surface</b> — <code>.aam-dialog</code>. 12px radius, elevation-16, <code>max-width: 520px</code> (wide variants: <code>atm-</code> transaction, <code>afm-</code> upload, <code>fan-</code> analyze, <code>fvm-</code> viewer). Rises in on open.</span></li>
+          <li><span class="n">3</span><span class="d"><b>Head</b> — <code>.aam-head</code>, a tinted band (matching the footer) holding an optional <code>.aam-lead</code> icon tile, <code>.aam-title</code> (18px medium) and an optional <code>.aam-sub</code> (≤58ch, fills to the ×). The lead tile is brand-tide by default, with <code>.warning</code>/<code>.error</code> tints for destructive dialogs. The title states what the dialog does.</span></li>
+          <li><span class="n">4</span><span class="d"><b>Close</b> — <code>.aam-x</code>, a 32px round icon button. Esc also closes. Always present.</span></li>
+          <li><span class="n">5</span><span class="d"><b>Body</b> — <code>.aam-body</code>. A vertical stack (<code>gap: 16px</code>) of fields; inputs recess to the background well. Pairs sit in a <code>&lt;FormRow&gt;</code> (the <code>.odc-form-row</code> grid). Scrolls if tall.</span></li>
+          <li><span class="n">6</span><span class="d"><b>Footer</b> — <code>.aam-foot</code>. Right-aligned actions: a text <b>Cancel</b> then the filled primary. The primary names the outcome.</span></li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h3>Wording conventions</h3>
+        <dl class="conv">
+          <dt>Create</dt><dd>Trigger <b>New X</b> · title <b>New X</b> · primary <b>Create X</b> (e.g. New account → <code>Create account</code>).</dd>
+          <dt>Edit</dt><dd>Title <b>Edit X</b> · primary <b>Save changes</b>. The same dialog often does both, keyed on whether an item was passed.</dd>
+          <dt>Upload</dt><dd>Files are uploaded, not authored: trigger <b>Upload file</b> · title <b>Upload files</b> · primary <b>Upload</b> / <b>Upload N files</b>.</dd>
+          <dt>Process</dt><dd>Verb-specific for one-off flows — e.g. <b>Analyze file</b>. Title and primary share the verb.</dd>
+        </dl>
+        <p class="note"><b>Convergence note.</b> Every kit dialog here is built on the shared <code>.aam-dialog</code> shell. The design system also ships a consumable <b>Modal</b> component (<code>.odc-modal</code>) with a hardened focus-trap / scroll-lock / focus-restore a11y layer — see the <b>Modal</b> card. New work should build on <code>Modal</code>; the kit's <code>.aam-dialog</code> dialogs should converge onto it over time so behavior and a11y live in one place.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

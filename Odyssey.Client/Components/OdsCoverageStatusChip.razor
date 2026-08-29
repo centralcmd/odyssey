@@ -1,0 +1,50 @@
+@using Odyssey.Dtos.Finance
+@*
+    OdsCoverageStatusChip — the read display of an insurance policy's DERIVED coverage
+    status (Odyssey Design System · components/CoverageStatusChip). The Insurance
+    feature's sibling of OdsContractStatusChip. Status is computed server-side, never
+    stored (issue #175 §5): Active · ExpiringSoon · Lapsed · Upcoming · NoCoverage.
+
+    Accessibility: the status meaning lives in the visible text label, never in colour
+    or the glyph alone — the leading dot/icon is aria-hidden. Detail is an optional
+    muted trailing segment ("12 days left" / "ended Jun 1"). ShowIcon leads with the
+    status glyph instead of the status dot.
+*@
+
+<span class="@ChipClass">
+    @if (ShowIcon)
+    {
+        <span class="material-icons" aria-hidden="true">@_meta.Icon</span>
+    }
+    else if (_meta.Dot)
+    {
+        <span class="odc-chip-dot" aria-hidden="true"></span>
+    }
+    @_meta.Label
+    @if (!string.IsNullOrEmpty(Detail))
+    {
+        <span class="odc-coverage-detail">@Detail</span>
+    }
+</span>
+
+@code {
+    /// <summary>The derived coverage status to display.</summary>
+    [Parameter] public CoverageStatus Status { get; set; } = CoverageStatus.NoCoverage;
+
+    /// <summary>Optional muted trailing segment, e.g. "12 days left".</summary>
+    [Parameter] public string? Detail { get; set; }
+
+    /// <summary>Lead with the status glyph instead of the status dot.</summary>
+    [Parameter] public bool ShowIcon { get; set; }
+
+    /// <summary>Compact (sm) sizing for the collapsed policy row.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private OdsCoverageStatusMeta _meta => OdsCoverageStatus.Meta(Status);
+
+    private string ChipClass =>
+        string.Join(' ', new[] { "odc-chip", _meta.Tone, Compact ? "sm" : null, Class }
+            .Where(c => !string.IsNullOrEmpty(c)));
+}

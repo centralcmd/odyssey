@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 210" role="img" aria-label="Odyssey logomark">
+  <title>Odyssey logomark</title>
+
+  <circle cx="100" cy="105" r="90" fill="none" stroke="#006B5A" stroke-width="13"></circle>
+  <circle cx="100" cy="105" r="66" fill="none" stroke="#006B5A" stroke-width="2.5" stroke-dasharray="6 4"></circle>
+
+  <line x1="100" y1="9" x2="100" y2="29" stroke="#006B5A" stroke-width="7"></line>
+  <line x1="100" y1="181" x2="100" y2="201" stroke="#006B5A" stroke-width="7"></line>
+  <line x1="4" y1="105" x2="24" y2="105" stroke="#006B5A" stroke-width="7"></line>
+  <line x1="176" y1="105" x2="196" y2="105" stroke="#006B5A" stroke-width="7"></line>
+
+  <line x1="36" y1="41" x2="50" y2="55" stroke="#006B5A" stroke-width="5"></line>
+  <line x1="164" y1="41" x2="150" y2="55" stroke="#006B5A" stroke-width="5"></line>
+  <line x1="36" y1="169" x2="50" y2="155" stroke="#006B5A" stroke-width="5"></line>
+  <line x1="164" y1="169" x2="150" y2="155" stroke="#006B5A" stroke-width="5"></line>
+
+  <polygon points="100,25 91,105 100,82 109,105" fill="#00F5D4"></polygon>
+  <polygon points="100,105 91,105 100,82 109,105" fill="#006B5A"></polygon>
+
+  <polygon points="100,185 91,105 100,128 109,105" fill="#707070"></polygon>
+  <polygon points="100,105 91,105 100,128 109,105" fill="#404040"></polygon>
+
+  <polygon points="185,105 100,96 123,105 100,114" fill="#707070"></polygon>
+  <polygon points="100,105 100,96 123,105 100,114" fill="#404040"></polygon>
+
+  <polygon points="15,105 100,96 77,105 100,114" fill="#707070"></polygon>
+  <polygon points="100,105 100,96 77,105 100,114" fill="#404040"></polygon>
+
+  <circle cx="100" cy="105" r="11" fill="none" stroke="#006B5A" stroke-width="3"></circle>
+  <circle cx="100" cy="105" r="5" fill="#00F5D4"></circle>
+</svg>

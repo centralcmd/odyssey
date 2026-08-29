@@ -1,0 +1,159 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · SortSelect (.odc-sortsel)" subtitle="The filter-bar “Sort by” control — curated field select + typed direction toggle, one {key,dir} shared with the header sort" viewport="880x980" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · SortSelect (.odc-sortsel)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 780px; }
+    .block { display: flex; flex-direction: column; gap: 10px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .note { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .note code { font-family: var(--font-mono); }
+    /* filter-bar demo */
+    .filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .filter-bar .grow { flex: 1; min-width: 240px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px;
+      box-sizing: border-box; border: 1px solid var(--mud-palette-lines-inputs);
+      border-radius: var(--radius-sm); background: var(--mud-palette-surface);
+      color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans);
+      white-space: nowrap;
+    }
+    .pill .material-icons { font-size: 18px; }
+    /* typed-labels reference table */
+    .tl { border-collapse: collapse; width: 100%; }
+    .tl th, .tl td {
+      text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--mud-palette-divider);
+      font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans);
+    }
+    .tl th { font-weight: var(--fw-medium); color: var(--mud-palette-text-secondary); }
+    .tl td:first-child { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .tl .d { color: var(--brand-text); }
+  </style>
+</head>
+<body>
+  <div class="stack">
+
+    <div class="block">
+      <div class="cap">SortSelect <code>&lt;SortSelect variant="split" /&gt;</code> · the spec anatomy</div>
+      <div class="odc-sortsel split">
+        <div class="odc-sortsel-field">
+          <button type="button" class="odc-sortsel-trigger">
+            <span class="odc-sortsel-prefix">Sort by</span>
+            <span class="odc-sortsel-val">Date</span>
+            <span class="material-icons odc-select-chev">expand_more</span>
+          </button>
+        </div>
+        <button type="button" class="odc-sortsel-dir" aria-label="Sort descending — Newest first. Toggle direction">
+          <span class="material-icons">arrow_downward</span>
+          <span class="odc-sortsel-dirlabel">Newest first</span>
+        </button>
+      </div>
+      <div class="note">Field selector (visible <b>“Sort by”</b> label inside the trigger) + a direction toggle whose label is <b>typed</b> to the field. Both bind one <code>{key, dir}</code> — the same value the table headers drive on RecordTable pages. Changing the field applies its <b>natural default direction</b>; the toggle flips it.</div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Typed direction labels · <code>SortHelpers.dirLabel(type, dir)</code></div>
+      <table class="tl">
+        <tr><th>Field type</th><th>Default</th><th>Asc label</th><th>Desc label</th></tr>
+        <tr><td>text</td><td class="d">asc</td><td>A → Z</td><td>Z → A</td></tr>
+        <tr><td>number</td><td class="d">desc</td><td>Low → High</td><td>High → Low</td></tr>
+        <tr><td>date</td><td class="d">desc</td><td>Oldest first</td><td>Newest first</td></tr>
+        <tr><td>status</td><td class="d">asc</td><td>Defined order</td><td>Reversed</td></tr>
+      </table>
+      <div class="note">Direction is never conveyed by the arrow alone — the typed words are visible, and the <code>aria-label</code> always carries the plain word (“ascending” / “descending”). <code>SortHelpers.defaultDir</code> is the single authority, consulted identically by the dropdown <b>and</b> by header-click column changes.</div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Variant · <code>segmented</code></div>
+      <div class="odc-sortsel segmented">
+        <div class="odc-sortsel-field">
+          <button type="button" class="odc-sortsel-trigger">
+            <span class="odc-sortsel-prefix">Sort by</span>
+            <span class="odc-sortsel-val">Balance</span>
+            <span class="material-icons odc-select-chev">expand_more</span>
+          </button>
+        </div>
+        <div class="odc-seg odc-sortsel-seg" role="radiogroup" aria-label="Sort direction for Balance">
+          <button type="button" role="radio" aria-checked="false" class="odc-seg-btn"><span class="material-icons">arrow_upward</span><span>Low → High</span></button>
+          <button type="button" role="radio" aria-checked="true" class="odc-seg-btn"><span class="material-icons">arrow_downward</span><span>High → Low</span></button>
+        </div>
+      </div>
+      <div class="note">Both directions visible at once — reads fastest, costs the most width. Same one-<code>{key,dir}</code> contract.</div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Variant · <code>menu</code> (combined)</div>
+      <div class="odc-sortsel menu">
+        <button type="button" class="odc-sortsel-trigger">
+          <span class="material-icons odc-sortsel-glyph">swap_vert</span>
+          <span class="odc-sortsel-prefix">Sort by</span>
+          <span class="odc-sortsel-val">Date · Newest first</span>
+          <span class="material-icons odc-select-chev">expand_more</span>
+        </button>
+      </div>
+      <div class="note">One trigger; the popover lists <b>Field</b> then <b>Direction</b> sections. Most compact — two clicks to change direction.</div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Single-field page · same anatomy</div>
+      <div class="odc-sortsel split">
+        <div class="odc-sortsel-field">
+          <button type="button" class="odc-sortsel-trigger">
+            <span class="odc-sortsel-prefix">Sort by</span>
+            <span class="odc-sortsel-val">Name</span>
+            <span class="material-icons odc-select-chev">expand_more</span>
+          </button>
+        </div>
+        <button type="button" class="odc-sortsel-dir" aria-label="Sort ascending — A to Z. Toggle direction">
+          <span class="material-icons">arrow_upward</span>
+          <span class="odc-sortsel-dirlabel">A → Z</span>
+        </button>
+      </div>
+      <div class="note">With one curated field (e.g. Transaction tags) the control keeps the same field-select trigger + direction toggle as every other page — the dropdown simply offers that single option, so the filter bar stays consistent across pages.</div>
+    </div>
+
+    <div class="block">
+      <div class="cap">In context · end of the list-page filter bar</div>
+      <div class="filter-bar">
+        <div class="grow">
+          <div class="odc-field odc-searchfield">
+            <div class="odc-input-wrap">
+              <span class="material-icons odc-input-icon">search</span>
+              <input class="odc-input has-icon" type="search" placeholder="Search description, contact, amount…" />
+            </div>
+          </div>
+        </div>
+        <span class="pill">Any account <span class="material-icons">expand_more</span></span>
+        <span class="pill">Any status <span class="material-icons">expand_more</span></span>
+        <div class="odc-sortsel split">
+          <div class="odc-sortsel-field">
+            <button type="button" class="odc-sortsel-trigger">
+              <span class="odc-sortsel-prefix">Sort by</span>
+              <span class="odc-sortsel-val">Date</span>
+              <span class="material-icons odc-select-chev">expand_more</span>
+            </button>
+          </div>
+          <button type="button" class="odc-sortsel-dir" aria-label="Sort descending — Newest first. Toggle direction">
+            <span class="material-icons">arrow_downward</span>
+            <span class="odc-sortsel-dirlabel">Newest first</span>
+          </button>
+        </div>
+      </div>
+      <div class="note">The bar reads <b>search → filters → sort</b>, left to right, on every list page. Sort applies <b>after</b> search + filters, over the loaded window; null/empty values sort <b>last</b> in both directions; ties break on the record <b>id</b> (<code>SortHelpers.sortRows</code>).</div>
+    </div>
+
+  </div>
+</body>
+</html>

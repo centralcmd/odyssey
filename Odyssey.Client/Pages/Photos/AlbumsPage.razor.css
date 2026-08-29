@@ -1,0 +1,75 @@
+/* Albums page — the album card grid, the album back-row and the day-count pill.
+   Moved out of the globally-linked wwwroot/css/photos.css by issue #371. The
+   library chrome this page shares with PhotosCard (.pl-grid / .pl-skel /
+   .pl-selbar* / .pl-toolbtn / .pl-drop-hint) stays in odyssey-components.css —
+   one definition, two consumers. */
+
+/* Page body under the PageHeader — reproduces the design system's .pl-page vertical rhythm
+   (18px between the header and the content, and between stacked blocks like the album back-row
+   and its grid). The layout's MudContainer already supplies the horizontal padding. */
+.pl-page-body { display: flex; flex-direction: column; gap: 18px; margin-top: 18px; }
+
+/* ---- Timeline (grouped by month) ---- */
+.pl-daycount { color: var(--mud-palette-text-secondary); font-size: 12px; background: var(--mud-palette-surface); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--mud-palette-divider); }
+
+/* ---- Album cards ---- */
+.pl-albgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+
+.pl-albcard { position: relative; text-align: left; padding: 0; border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface); border-radius: var(--radius-lg, 12px); overflow: hidden; cursor: pointer; transition: border-color var(--duration-base), transform var(--duration-base); }
+
+.pl-albcard:hover { border-color: var(--nav-active); transform: translateY(-2px); }
+
+/* Full-card hit target (below the edit button at z-index 2) — real <button>, so keyboard-operable
+   without nesting interactives inside a role="button" div (WCAG 2.1.1 / 4.1.2). The focus ring is
+   inset by its own width so it stays inside the card's rounded edge. */
+.pl-albcard-hit { position: absolute; inset: 0; z-index: 1; margin: 0; padding: 0; border: none; background: transparent; cursor: pointer; }
+
+.pl-albcard-hit:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.pl-albcover { display: grid; gap: 2px; height: 170px; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+.pl-albcover.n1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+
+.pl-albcover-cell { width: 100%; height: 100%; }
+
+.pl-albmeta { padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; }
+
+.pl-albname { font: 600 15px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+.pl-albcount { font-size: 12px; color: var(--mud-palette-text-secondary); }
+
+/* ---- Album management: hover edit button + "New album" placeholder card ---- */
+.pl-albcard-manage { position: relative; text-align: left; }
+
+.pl-albedit { position: absolute; top: 10px; right: 10px; z-index: 2; width: 30px; height: 30px; border-radius: 999px; border: none; cursor: pointer;
+      background: rgba(10,12,18,0.6); color: #fff; display: inline-flex; align-items: center; justify-content: center; opacity: 0; transition: opacity var(--duration-base); backdrop-filter: blur(2px); }
+
+.pl-albcard-manage:hover .pl-albedit,
+.pl-albcard-manage:focus-within .pl-albedit { opacity: 1; }
+
+.pl-albedit:hover { background: rgba(10,12,18,0.85); }
+
+.pl-albedit:focus-visible {
+    opacity: 1;
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: var(--focus-ring-offset);
+}
+
+.pl-albnew { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 170px; cursor: pointer;
+      border: 1px dashed var(--mud-palette-lines-inputs, rgba(199,208,224,0.28)); border-radius: var(--radius-lg, 12px); background: transparent; color: var(--mud-palette-text-secondary); font: 500 13px/1 var(--font-sans); }
+
+.pl-albnew:hover { color: var(--brand-text); border-color: var(--nav-active); }
+
+/* ---- Back row (album detail → all albums) ---- */
+.pl-backrow { display: flex; align-items: center; gap: 8px; font: 500 13px/1 var(--font-sans); }
+
+.pl-backrow-back { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; color: var(--mud-palette-text-secondary); font: 500 13px/1 var(--font-sans); padding: 4px 0; }
+
+.pl-backrow-back:hover { color: var(--brand-text); }
+
+.pl-backrow-title { color: var(--mud-palette-text-primary); font: 600 15px/1 var(--font-sans); margin-left: 4px; }
+
+.pl-backrow .material-icons { font-size: 18px; }

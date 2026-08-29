@@ -1,0 +1,90 @@
+@* DS parity — no consumer yet, and deliberately not rolled out: there is no time series to
+   plot. The design system puts this on stat tiles / as the dashboard net-worth strip, but the
+   API stores no net-worth-over-time history (Pages/Finance/Home.razor:250 resamples a synthetic
+   curve for the axis'd OdsLineChart, which is what the DS specifies for that card), and the only
+   OdsStatTile consumer (BudgetsCard) holds single figures. Feeding this component today would
+   mean drawing a trend the data does not support. Adopt it when a history endpoint lands. *@
+@*
+    OdsSparkline — a compact, axis-less trend line (Odyssey Design System · components/Sparkline).
+
+    The net-worth strip on the Dashboard / stat tiles. Pure SVG computed from a
+    Data number series; no axes, no labels. The path auto-scales to the data's
+    own min/max. Area fill is the stroke color at low opacity. Uses the
+    categorical chart tokens (default --chart-1) so it re-themes per mode. Give
+    an AriaLabel summarizing the trend.
+*@
+
+<svg class="odc-sparkline"
+     width="@Width" height="@Height"
+     viewBox="@($"0 0 {Width} {Height}")"
+     role="img" aria-label="@AriaLabel"
+     aria-hidden="@(string.IsNullOrEmpty(AriaLabel) ? "true" : null)"
+     preserveAspectRatio="none">
+    @if (HasLine)
+    {
+        @if (Area)
+        {
+            <path d="@FillPath" fill="@Stroke" fill-opacity="0.16" stroke="none" />
+        }
+        <path d="@LinePath" fill="none" stroke="@Stroke" stroke-width="@StrokeWidth"
+              stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+        @if (ShowDot)
+        {
+            <circle cx="@Fmt(X(_n - 1))" cy="@Fmt(Y(Data[_n - 1]))" r="@Fmt(StrokeWidth + 0.5)" fill="@Stroke" />
+        }
+    }
+</svg>
+
+@code {
+    /// <summary>The series. Auto-scaled to its own min/max. Needs ≥ 2 points to draw.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<double> Data { get; set; } = [];
+
+    [Parameter] public int Width { get; set; } = 120;
+
+    [Parameter] public int Height { get; set; } = 36;
+
+    /// <summary>Line color — a --chart-* token or any CSS color.</summary>
+    [Parameter] public string Stroke { get; set; } = "var(--chart-1)";
+
+    /// <summary>Fill the area under the line (stroke color at low opacity).</summary>
+    [Parameter] public bool Area { get; set; } = true;
+
+    [Parameter] public double StrokeWidth { get; set; } = 2;
+
+    /// <summary>Dot on the last point.</summary>
+    [Parameter] public bool ShowDot { get; set; } = true;
+
+    /// <summary>Accessible summary of the trend.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    private int _n;
+    private double _min, _span, _pad;
+
+    protected override void OnParametersSet()
+    {
+        _n = Data.Count;
+        _pad = StrokeWidth + 1;
+        if (_n >= 2)
+        {
+            _min = Data.Min();
+            var max = Data.Max();
+            _span = max - _min;
+            if (_span == 0) _span = 1;
+        }
+    }
+
+    private bool HasLine => _n >= 2;
+
+    private double X(int i) => _pad + ((double)i / (_n - 1)) * (Width - _pad * 2);
+
+    private double Y(double v) => _pad + (1 - (v - _min) / _span) * (Height - _pad * 2);
+
+    private static string Fmt(double v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string Points => string.Join(' ', Enumerable.Range(0, _n).Select(i => $"{Fmt(X(i))},{Fmt(Y(Data[i]))}"));
+
+    private string LinePath => $"M {Points}";
+
+    private string FillPath =>
+        $"M {Fmt(X(0))},{Fmt(Height - _pad)} L {Points} L {Fmt(X(_n - 1))},{Fmt(Height - _pad)} Z";
+}

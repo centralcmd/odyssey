@@ -1,0 +1,2382 @@
+/* =============================================================
+   Odyssey Design System — components.css
+   Portable styles for the typed, consumable components in /components
+   (Button, Chip, StatTile, Alert, EmptyState, MIcon). Everything is
+   prefixed `.odc-` (Odyssey component) so it never collides with the
+   reference kit's own classes in ui_kits/web/kit.css. Token-driven and
+   self-contained: a project consuming a component via _ds_bundle.js
+   renders it correctly with ONLY the global token sheet loaded.
+   @imported by colors_and_type.css so it travels with the tokens.
+   ============================================================= */
+
+/* ---------- Button ---------- */
+.odc-btn {
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color var(--duration-base) var(--ease-standard), opacity var(--duration-base) var(--ease-standard);
+}
+.odc-btn .material-icons { font-size: 18px; }
+.odc-btn.full { width: 100%; justify-content: center; }
+.odc-btn.filled   { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.odc-btn.filled:hover   { background: var(--mud-palette-primary-darken); }
+.odc-btn.outlined { background: transparent; color: var(--mud-palette-text-primary); border-color: var(--mud-palette-lines-inputs); }
+.odc-btn.outlined:hover { background: var(--mud-palette-action-default-hover); }
+.odc-btn.text     { background: transparent; color: var(--brand-text); padding: 9px 12px; }
+.odc-btn.text:hover     { background: var(--mud-palette-action-default-hover); }
+.odc-btn.danger   { background: var(--mud-palette-error); color: #fff; }
+.odc-btn.danger:hover   { background: var(--coral-700); }
+.odc-btn:disabled {
+  background: var(--mud-palette-action-disabled-background);
+  color: var(--mud-palette-action-disabled);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+.odc-btn.outlined:disabled, .odc-btn.text:disabled { background: transparent; }
+/* Focus ring — documented as always-visible, 2px primary at 2px offset.
+   :focus-visible so it only shows for keyboard/AT users, never on mouse press. */
+.odc-btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+  outline-offset: var(--focus-ring-offset);
+}
+/* Loading — the busy CTA. Label dims, a spinner overlays center. */
+.odc-btn.loading { position: relative; color: transparent !important; pointer-events: none; }
+.odc-btn.loading .odc-btn-spin {
+  position: absolute; inset: 0; margin: auto;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid currentColor; border-top-color: transparent;
+  color: var(--mud-palette-primary-text);
+  animation: odc-spin 0.7s linear infinite;
+}
+.odc-btn.outlined.loading .odc-btn-spin, .odc-btn.text.loading .odc-btn-spin { color: var(--mud-palette-primary); }
+@keyframes odc-spin { to { transform: rotate(360deg); } }
+
+/* ---------- Chip ---------- */
+.odc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font: var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans);
+  background: var(--mud-palette-action-default-hover);
+  color: var(--mud-palette-text-primary);
+  white-space: nowrap;
+}
+.odc-chip .material-icons { font-size: 14px; }
+.odc-chip .odc-chip-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
+.odc-chip.income  { color: var(--finance-income);  background: var(--finance-income-soft); }
+.odc-chip.expense { color: var(--finance-expense); background: var(--finance-expense-soft); }
+.odc-chip.pending { color: var(--pending-text);   background: var(--finance-pending-soft); }
+.odc-chip.info    { color: var(--info-text);       background: var(--info-soft); }
+.odc-chip.tag     { color: var(--tag-text);        background: var(--tag-soft); }
+.odc-chip.warning { color: var(--pending-text);     background: var(--finance-pending-soft); }
+.odc-chip.error   { color: var(--finance-expense);  background: var(--finance-expense-soft); }
+.odc-chip.outline { color: var(--mud-palette-text-secondary); background: transparent; border: 1px solid var(--mud-palette-divider); }
+.odc-chip:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+/* Compact chip + the CoverageStatusChip's muted trailing detail segment
+   ("12 days left" / "ended Jun 1"). The detail keeps the chip's tone color but
+   reads quieter, separated by a hairline so the status word stays primary. */
+.odc-chip.sm { padding: 1px 8px; font-size: var(--fs-caption); }
+/* ContactChip: muted trailing segment (type label / "(archived)") and the
+   quieter archived treatment — the text cue carries the meaning, not color. */
+.odc-chip .odc-chip-sub { margin-left: 2px; opacity: 0.72; font-weight: var(--fw-regular); }
+.odc-chip.archived { opacity: 0.7; border-style: dashed; }
+.odc-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.odc-coverage-detail {
+  margin-left: 2px; padding-left: 7px; opacity: 0.72;
+  border-left: 1px solid currentColor; font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Stat tile ---------- */
+.odc-stat {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.odc-stat-overline {
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.odc-stat-num {
+  font: var(--fw-medium) var(--fs-h3)/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+  white-space: nowrap;
+}
+.odc-stat-num.income  { color: var(--finance-income); }
+.odc-stat-num.expense { color: var(--finance-expense); }
+.odc-stat-delta { font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); white-space: nowrap; }
+.odc-stat-delta.up   { color: var(--finance-income); }
+.odc-stat-delta.down { color: var(--finance-expense); }
+
+/* ---------- InfoTile ---------- */
+/* A labeled fact/stat tile: icon chip + overline, headline value, foot caption.
+   Re-tint a whole grid by setting --odc-infotile-accent / -accent-soft on the
+   grid container; per-tile tint comes from inline iconColor/iconSoft. */
+.odc-infotile {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 15px;
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  background: var(--mud-palette-surface);
+}
+.odc-infotile.elevated { box-shadow: var(--mud-elevation-1); }
+.odc-infotile-top { display: flex; align-items: center; gap: 9px; }
+.odc-infotile-ic {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: var(--radius-sm);
+  background: var(--odc-infotile-accent-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
+  color: var(--odc-infotile-accent, var(--brand-text)); flex: none;
+}
+.odc-infotile-ic .material-icons { font-size: 17px; }
+.odc-infotile-k {
+  font: 600 var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.odc-infotile-v {
+  font: var(--fw-regular) var(--fs-h4)/1.1 var(--font-mono);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+  color: var(--mud-palette-text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.odc-infotile-v.text { font-family: var(--font-sans); font-size: var(--fs-body1); letter-spacing: 0; }
+.odc-infotile-v.sm { font-size: var(--fs-body1); }
+.odc-infotile-foot { font: var(--fw-regular) var(--fs-overline)/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.odc-infotile.wide { grid-column: 1 / -1; }
+.odc-infotile.wide .odc-infotile-v { white-space: normal; overflow: visible; font-family: var(--font-sans); font-size: var(--fs-body2); line-height: 1.5; color: var(--mud-palette-text-secondary); letter-spacing: 0; }
+
+/* ---------- Alert ---------- */
+.odc-alert {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+}
+.odc-alert .material-icons { font-size: 20px; flex: none; }
+.odc-alert.info    { background: var(--info-soft);             border-color: var(--info-border);             color: var(--info-text); }
+.odc-alert.success { background: var(--finance-income-soft);   border-color: var(--finance-income-border);   color: var(--finance-income); }
+.odc-alert.warning { background: var(--finance-pending-soft);  border-color: var(--finance-pending-border);  color: var(--pending-text); }
+.odc-alert.error   { background: var(--finance-expense-soft);  border-color: var(--finance-expense-border);  color: var(--finance-expense); }
+.odc-alert-body { color: var(--mud-palette-text-primary); }
+.odc-alert-body .material-icons { display: none; }
+
+/* ---------- Password rules checklist ---------- */
+.odc-pw-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.odc-pw-rules.cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-5); }
+.odc-pw-rule { display: flex; align-items: center; gap: var(--space-2); font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); transition: color var(--duration-fast) var(--ease-standard); }
+.odc-pw-rule .material-icons { font-size: 16px; flex: none; color: var(--mud-palette-text-disabled); transition: color var(--duration-fast) var(--ease-standard); }
+.odc-pw-rule.met { color: var(--finance-income); }
+.odc-pw-rule.met .material-icons { color: var(--finance-income); }
+@media (max-width: 520px) { .odc-pw-rules.cols-2 { grid-template-columns: 1fr; } }
+
+/* ---------- Shared password-change form (current → new → confirm) ---------- */
+.odc-pw-form { display: flex; flex-direction: column; gap: var(--space-4); }
+.odc-pw-form-sep { height: 1px; background: var(--mud-palette-divider); margin: var(--space-1) 0; }
+.odc-pw-form-actions { display: flex; justify-content: flex-end; margin-top: var(--space-1); }
+
+/* ---------- Empty state ---------- */
+.odc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-6);
+}
+.odc-empty-ic {
+  width: 56px; height: 56px;
+  border-radius: var(--radius-md);
+  display: grid; place-items: center;
+  background: var(--mud-palette-action-default-hover);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-empty-ic .material-icons { font-size: 28px; }
+.odc-empty.muted-ic .odc-empty-ic { background: color-mix(in oklab, var(--mud-palette-text-secondary) 8%, transparent); color: var(--mud-palette-text-disabled); }
+.odc-empty-ttl  { font: var(--fw-medium) var(--fs-h5)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-empty-desc { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 42ch; }
+.odc-empty-actions { margin-top: var(--space-2); }
+
+/* ---------- Icon button (shared: modal close, table actions) ---------- */
+.odc-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex: none;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent; background: transparent;
+  color: var(--mud-palette-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
+}
+.odc-iconbtn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-iconbtn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-iconbtn:disabled { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
+
+/* ---------- Field (text input) ---------- */
+.odc-field { display: flex; flex-direction: column; gap: 6px; }
+.odc-field-label { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-field-req { color: var(--mud-palette-error); margin-left: 2px; }
+.odc-input-wrap { position: relative; display: flex; align-items: center; }
+.odc-input-icon {
+  position: absolute; left: 12px; pointer-events: none;
+  color: var(--mud-palette-text-secondary); font-size: 20px;
+}
+.odc-input {
+  width: 100%; box-sizing: border-box;
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-input.has-icon { padding-left: 38px; }
+.odc-input-multiline { min-height: 76px; resize: vertical; line-height: 1.45; }
+.odc-input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+.odc-input:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-input:focus { outline: none; border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
+.odc-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.odc-input.has-clear { padding-right: 38px; }
+.odc-input-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 24px; height: 24px;
+  border: none; border-radius: var(--radius-sm); background: transparent;
+  color: var(--mud-palette-text-secondary); cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-input-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-input-clear .material-icons { font-size: 16px; }
+/* SearchField: type="search" gets native webkit decorations — suppress them so
+   only the DS clear (.odc-input-clear) shows, never doubled up. */
+.odc-input[type="search"]::-webkit-search-cancel-button,
+.odc-input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+/* NumberField: hide the native type=number spinner arrows across browsers —
+   they don't match the DS chrome and aren't needed (values are typed). Applies
+   to every NumberField (coordinates, counts, the calendar interval, …). */
+.odc-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.odc-input[type="number"]::-webkit-outer-spin-button,
+.odc-input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.odc-field.error .odc-input { border-color: var(--mud-palette-error); }
+.odc-field.error .odc-input:focus { box-shadow: inset 0 0 0 1px var(--mud-palette-error); }
+.odc-field-help { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-field.error .odc-field-help { color: var(--mud-palette-error); }
+
+/* ---------- AmountField (money / numeric input with adornment) ---------- */
+.odc-amount {
+  display: flex; align-items: center; gap: 8px;
+  box-sizing: border-box; height: 44px; padding: 0 12px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-amount:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-amount:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
+.odc-amount.error { border-color: var(--mud-palette-error); }
+.odc-amount.error:focus-within { box-shadow: inset 0 0 0 1px var(--mud-palette-error); }
+.odc-amount.disabled { opacity: 0.5; cursor: not-allowed; }
+.odc-amount-adorn { flex: none; font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-amount-input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent; padding: 0;
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+.odc-amount-input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+.odc-amount-input:disabled { cursor: not-allowed; }
+/* Recess inputs to the page-background well inside modals, matching .odc-input. */
+.odc-modal-body .odc-amount { background-color: var(--mud-palette-background); }
+/* Hero variant — a large, focal amount input (e.g. an Estimate value). */
+.odc-amount.lg { height: 60px; gap: 8px; padding: 0 18px; border-radius: 12px; background: var(--mud-palette-background); }
+.odc-amount.lg .odc-amount-adorn { font: 500 22px/1 var(--font-sans); }
+.odc-amount.lg .odc-amount-input { font: 400 30px/1 var(--font-mono); letter-spacing: -0.01em; }
+
+/* ---------- StepperField (compact integer + trailing unit label) ---------- */
+.odc-stepper { display: flex; align-items: center; gap: 10px; height: var(--control-h); }
+.odc-stepper-num { width: 84px; flex: none; text-align: center; }
+.odc-stepper-unit { font: var(--fw-regular) var(--fs-body1)/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-stepper.error .odc-input { border-color: var(--mud-palette-error); }
+.odc-stepper.disabled .odc-stepper-unit { color: var(--mud-palette-text-disabled); }
+
+/* ---------- NoteField (multi-line input with character counter) ---------- */
+.odc-field-head { display: flex; align-items: center; gap: 8px; }
+.odc-field-head .odc-field-label { margin: 0; }
+.odc-field-count { margin-left: auto; flex: none; font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); font-variant-numeric: tabular-nums; }
+.odc-field-count.over { color: var(--mud-palette-error); }
+
+/* ---------- FormRow (paired-field column grid) ---------- */
+.odc-form-row { display: grid; }
+
+/* ---------- Form grid (two-column form layout for large dialogs / panels) ----------
+   Direct children are cells; add `.odc-form-grid-wide` to any child that should
+   span the full width (hero fields, textareas, file uploads, chip rows). Pairs
+   of short fields sit side by side. Collapses to a single column on narrow
+   viewports (where dialogs are near full-width anyway), so it stays dynamic. */
+.odc-form-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);
+  align-items: start;
+}
+.odc-form-grid > * { min-width: 0; }
+.odc-form-grid-wide { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .odc-form-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ---------- Select (themed popover — not a native <select>) ---------- */
+.odc-select { position: relative; }
+.odc-select-trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; box-sizing: border-box; cursor: pointer; text-align: left;
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px 9px 12px;
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-select-trigger:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-select-trigger.open { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
+.odc-select-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-select-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.odc-select-trigger.placeholder .odc-select-val { color: var(--mud-palette-placeholder); }
+.odc-select-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odc-select-chev { color: var(--mud-palette-text-secondary); font-size: 20px; flex: none; transition: transform var(--duration-base) var(--ease-standard); }
+.odc-select-trigger.open .odc-select-chev { transform: rotate(180deg); }
+.odc-select.error .odc-select-trigger,
+.odc-field.error .odc-select-trigger { border-color: var(--mud-palette-error); }
+.odc-select-pop {
+  position: fixed; z-index: var(--z-dropdown); margin: 0; padding: var(--space-1); list-style: none;
+  max-height: 320px; overflow-y: auto;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
+}
+.odc-select-opt {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  appearance: none; background: none; border: none; cursor: pointer; text-align: left;
+  padding: 9px 10px; border-radius: var(--radius-sm);
+  font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-select-opt:hover { background: var(--mud-palette-action-default-hover); }
+.odc-select-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-select-opt.selected { color: var(--brand-text); font-weight: var(--fw-medium); }
+.odc-select-tick { width: 16px; height: 16px; flex: none; display: grid; place-items: center; }
+.odc-select-tick .material-icons { font-size: 16px; color: var(--brand-text); }
+.odc-select-opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Optional per-option leading glyph (Select trigger + option rows, MultiSelect rows).
+   Color is set inline from the option's iconColor; inherits currentColor otherwise. */
+.odc-select-trigger-main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.odc-select-trigger-main .odc-select-val { flex: 1 1 auto; }
+/* Inline label prefix (e.g. "View  Board ▾") — matches the SortSelect prefix,
+   so a prefixed Select reads like the "Sort by" control on the toolbar. */
+.odc-select-prefix { color: var(--mud-palette-text-secondary); flex: none; }
+.odc-select-trigger-main:has(.odc-select-prefix) .odc-select-val { flex: 0 1 auto; }
+.odc-opt-icon { flex: none; font-size: 18px; line-height: 1; }
+
+/* ---------- TypeSelect (shared registry type picker — reuses .odc-select chrome) ---------- */
+/* Selected check pinned to the far right of the option row (vs base Select's left tick). */
+.odc-typesel-check { flex: none; width: 18px; height: 18px; display: grid; place-items: center; margin-left: var(--space-2); }
+.odc-typesel-check .material-icons { font-size: 18px; color: var(--brand-text); }
+/* Group heading + separator inside the popover. */
+.odc-typesel-group {
+  padding: 8px 10px 4px; font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary);
+}
+.odc-typesel-sep { height: 1px; background: var(--mud-palette-divider); margin: var(--space-1) 0; }
+
+/* ---------- SortSelect (filter-bar "Sort by" — field select + direction toggle) ---------- */
+.odc-sortsel { display: inline-flex; align-items: center; gap: 8px; }
+.odc-sortsel-field { position: relative; }
+.odc-sortsel-trigger, .odc-sortsel-dir {
+  display: inline-flex; align-items: center; gap: 8px;
+  box-sizing: border-box; height: 40px; padding: 0 10px 0 12px;
+  cursor: pointer; white-space: nowrap; text-align: left;
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-sortsel-dir { padding: 0 12px; gap: 6px; }
+.odc-sortsel-trigger:hover, .odc-sortsel-dir:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-sortsel-trigger.open { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
+.odc-sortsel-trigger:focus-visible, .odc-sortsel-dir:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset);
+}
+.odc-sortsel-trigger:disabled, .odc-sortsel-dir:disabled { opacity: 0.5; cursor: not-allowed; }
+.odc-sortsel-prefix { color: var(--mud-palette-text-secondary); flex: none; }
+.odc-sortsel-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odc-sortsel-glyph { color: var(--mud-palette-text-secondary); font-size: 18px; flex: none; }
+.odc-sortsel-dir .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-sortsel-dirlabel { font-size: var(--fs-body2); }
+/* Width stability: the current label + invisible ghosts of every other label
+   this control can show stack in one inline-grid cell, so the control is
+   always as wide as its widest state and the filter bar never reflows. */
+.odc-sortsel-stable { display: inline-grid; }
+.odc-sortsel-stable > * { grid-area: 1 / 1; white-space: nowrap; }
+.odc-sortsel-cur { justify-self: start; }
+.odc-sortsel-ghost { visibility: hidden; }
+/* Segmented direction pair sits on the same 40px line as the trigger. */
+.odc-sortsel-seg { align-self: center; }
+.odc-sortsel-seg .odc-seg-btn { padding: 7px 10px; }
+/* Combined-menu popover: group headings + separator (TypeSelect's pattern). */
+.odc-sortsel-group {
+  padding: 8px 10px 4px; font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary);
+  list-style: none;
+}
+.odc-sortsel-sep { height: 1px; background: var(--mud-palette-divider); margin: var(--space-1) 0; list-style: none; }
+
+/* ---------- Card ---------- */
+.odc-card {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: var(--space-4);
+}
+.odc-card.outlined { box-shadow: none; }
+.odc-card.flush { padding: 0; }
+
+/* Card composition slots — CardBody pads a flush Card; CardHeader is the
+   titled header row with a bottom divider (the action cluster sits at the end). */
+.odc-card-body { padding: 20px; }
+.odc-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--mud-palette-divider-light);
+}
+.odc-card-header-ttl { font: var(--fw-medium) 16px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+/* ---------- BreakdownTile (labelled icon·label·count distribution) ---------- */
+.odc-breakdown {
+  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+  background: var(--mud-palette-background); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.odc-breakdown-ov { font: var(--fw-medium) 10.5px/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.odc-breakdown-rows { display: flex; flex-direction: column; gap: 6px; }
+.odc-breakdown-row { display: flex; align-items: center; gap: 8px; font: var(--fw-regular) 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-breakdown-row .material-icons { font-size: 16px; flex: none; }
+.odc-breakdown-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odc-breakdown-n { margin-left: auto; font: 600 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
+.odc-breakdown-empty { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+/* Summary grid — the auto-fitting row of tiles a page's Overview lays out
+   (BreakdownTile "By type" / "By status", stat tiles, donut cards). */
+.odc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+
+/* ---------- Badge (count / dot indicator) ---------- */
+.odc-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box;
+  border-radius: var(--radius-pill);
+  font: var(--fw-medium) 11px/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  background: var(--mud-palette-error); color: #fff;
+}
+.odc-badge.primary { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.odc-badge.neutral { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-badge.dot { min-width: 0; width: 8px; height: 8px; padding: 0; }
+
+/* ---------- Tooltip (inverted bubble, both modes) ---------- */
+.odc-tip { position: relative; display: inline-flex; }
+.odc-tip-bubble {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: var(--ink-700); color: var(--ink-50);
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
+  white-space: nowrap; box-shadow: var(--mud-elevation-4);
+  opacity: 0; visibility: hidden; transition: opacity var(--duration-base) var(--ease-standard);
+  pointer-events: none; z-index: var(--z-raised);
+}
+.odc-tip:hover .odc-tip-bubble, .odc-tip:focus-within .odc-tip-bubble { opacity: 1; visibility: visible; }
+
+/* ---------- Avatar ---------- */
+.odc-avatar {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 40px; height: 40px; border-radius: var(--radius-pill);
+  background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary);
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
+  overflow: hidden;
+}
+.odc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.odc-avatar.sm { width: 28px; height: 28px; font-size: 12px; }
+.odc-avatar.lg { width: 56px; height: 56px; font-size: var(--fs-h5); }
+.odc-avatar.tide { background: rgba(79, 215, 203, 0.16); color: var(--brand-text); }
+.odc-avatar.sea    { background: var(--info-soft);            color: var(--sea-400); }
+.odc-avatar.violet { background: var(--tag-soft);             color: var(--violet-500); }
+.odc-avatar.mint   { background: var(--finance-income-soft);  color: var(--finance-income); }
+.odc-avatar.coral  { background: var(--finance-expense-soft); color: var(--finance-expense); }
+.odc-avatar.sq { border-radius: var(--radius-md); }
+
+/* ---------- Modal / dialog shell ---------- */
+.odc-scrim {
+  position: fixed; inset: 0; z-index: var(--z-scrim);
+  background: rgba(8, 12, 24, 0.62);
+  display: grid; place-items: center; padding: var(--space-6);
+  animation: odc-scrim-fade var(--duration-base) var(--ease-standard) both;
+}
+.odc-scrim::before {
+  content: ''; position: fixed; inset: 0; z-index: 0;
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+[data-theme='light'] .odc-scrim { background: rgba(40, 52, 74, 0.34); }
+@keyframes odc-scrim-fade { from { opacity: 0; } to { opacity: 1; } }
+.odc-modal {
+  position: relative; z-index: 1;   /* sit above the ::before blur layer */
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--mud-elevation-16);
+  width: 100%; max-width: 520px; max-height: calc(100vh - 48px);
+  display: flex; flex-direction: column; overflow: hidden;
+  /* fill-mode 'backwards' (not 'both'): after the entrance finishes the dialog
+     reverts to a true `transform: none`. With 'both' it retained the keyframe's
+     identity matrix — which still counts as a transform and makes the dialog
+     the containing block for position:fixed field popovers, anchoring them to
+     the dialog box instead of the viewport. */
+  animation: odc-modal-rise var(--duration-base) var(--ease-decelerate) backwards;
+}
+@keyframes odc-modal-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+.odc-modal.wide { max-width: 1240px; width: 96vw; }
+.odc-modal-head {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--mud-palette-divider-light);
+}
+[data-theme='light'] .odc-modal-head { background: rgba(20,30,50,0.02); }
+/* Optional leading icon tile — brand-tide default; severity variants for
+   destructive / confirm dialogs. Mirrors the kit's .aam-lead. */
+.odc-modal-lead {
+  flex: none; width: 38px; height: 38px; border-radius: 9px;
+  display: grid; place-items: center; margin-top: 1px;
+  background: rgba(79, 215, 203, 0.14); color: var(--tide-400);
+}
+.odc-modal-lead .material-icons { font-size: 21px; }
+.odc-modal-lead-glyph { font: var(--fw-medium) 22px/1 var(--font-sans); }
+.odc-modal-lead.warning { background: rgba(245, 184, 64, 0.15); color: var(--finance-pending); }
+.odc-modal-lead.error   { background: rgba(255, 107, 107, 0.15); color: var(--finance-expense); }
+.odc-modal-titles { flex: 1; min-width: 0; }
+.odc-modal-title { font: var(--fw-medium) var(--fs-h5)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-modal-sub { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; max-width: 58ch; }
+.odc-modal-body {
+  padding: var(--space-4) var(--space-5); overflow: auto;
+  font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary);
+  /* Form rhythm — dialogs are almost always stacked fields (the kit's .aam-body
+     contract). A single text child is unaffected. */
+  display: flex; flex-direction: column; gap: 16px;
+}
+/* Recess inputs to the page-background well color, matching inline edit forms.
+   Covers every DS form-control trigger so they read uniformly inside a dialog. */
+.odc-modal-body .odc-input, .odc-modal-body .odc-select-trigger,
+.odc-modal-body .odc-tagms-control, .odc-modal-body .odc-dp-trigger,
+.odc-modal-body .odc-ms-trigger { background-color: var(--mud-palette-background); }
+
+/* ---------- Scrollbar ----------
+   One shared thin-scrollbar treatment for every scrollable DS surface, so the
+   modal body, dropdowns and popovers all read the same instead of falling back
+   to the browser default. Add the `.odc-scroll` utility class to opt any other
+   container in; the DS surfaces listed here get it automatically. Firefox uses
+   the standard `scrollbar-*` properties; WebKit/Blink use ::-webkit-scrollbar.
+   The 3px surface-colored border insets the thumb into a rounded pill — it
+   assumes a surface-colored backing (true for these panels). */
+.odc-scroll,
+.odc-modal-body,
+.odc-select-pop, .odc-combo-pop, .odc-smarttags-pop,
+.odc-menu-pop, .odc-ms-pop {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mud-palette-lines-default) transparent;
+}
+.odc-scroll::-webkit-scrollbar,
+.odc-modal-body::-webkit-scrollbar,
+.odc-select-pop::-webkit-scrollbar, .odc-combo-pop::-webkit-scrollbar,
+.odc-smarttags-pop::-webkit-scrollbar,
+.odc-menu-pop::-webkit-scrollbar, .odc-ms-pop::-webkit-scrollbar { width: 10px; height: 10px; }
+.odc-scroll::-webkit-scrollbar-thumb,
+.odc-modal-body::-webkit-scrollbar-thumb,
+.odc-select-pop::-webkit-scrollbar-thumb, .odc-combo-pop::-webkit-scrollbar-thumb,
+.odc-smarttags-pop::-webkit-scrollbar-thumb,
+.odc-menu-pop::-webkit-scrollbar-thumb, .odc-ms-pop::-webkit-scrollbar-thumb {
+  background: var(--mud-palette-lines-default); border-radius: 5px;
+  border: 3px solid var(--mud-palette-surface);
+}
+.odc-scroll::-webkit-scrollbar-track,
+.odc-modal-body::-webkit-scrollbar-track,
+.odc-select-pop::-webkit-scrollbar-track, .odc-combo-pop::-webkit-scrollbar-track,
+.odc-smarttags-pop::-webkit-scrollbar-track,
+.odc-menu-pop::-webkit-scrollbar-track, .odc-ms-pop::-webkit-scrollbar-track { background: transparent; }
+.odc-modal-foot {
+  display: flex; justify-content: flex-end; gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(255,255,255,0.02);
+  border-top: 1px solid var(--mud-palette-divider-light);
+}
+[data-theme='light'] .odc-modal-foot { background: rgba(20,30,50,0.02); }
+
+/* ---------- Tabs ---------- */
+.odc-tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--mud-palette-divider); }
+.odc-tab {
+  appearance: none; background: transparent; border: none; cursor: pointer;
+  padding: 10px 14px; margin-bottom: -1px;
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+  border-bottom: var(--border-strong) solid transparent;
+  transition: color var(--duration-base) var(--ease-standard), border-color var(--duration-base) var(--ease-standard);
+}
+.odc-tab:hover { color: var(--mud-palette-text-primary); }
+.odc-tab.active { color: var(--brand-text); border-bottom-color: var(--mud-palette-primary); }
+.odc-tab:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; border-radius: var(--radius-sm); }
+
+/* ---------- Table ---------- */
+.odc-table {
+  width: 100%; border-collapse: collapse;
+  font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+}
+.odc-table th, .odc-table td {
+  text-align: left; padding: 12px var(--space-3);
+  height: var(--row-h);
+  border-bottom: 1px solid var(--mud-palette-table-lines);
+  vertical-align: middle;
+}
+.odc-table thead th {
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+  white-space: nowrap; user-select: none;
+  border-bottom: 1px solid var(--mud-palette-divider);
+}
+.odc-table tbody tr { transition: background-color var(--duration-base) var(--ease-standard); }
+.odc-table tbody tr:hover { background: var(--mud-palette-action-default-hover); }
+.odc-table tbody tr:last-child td { border-bottom: none; }
+.odc-table.clickable tbody tr { cursor: pointer; }
+.odc-table .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.odc-table thead th.num { font-family: var(--font-sans); }
+.odc-table.dense th, .odc-table.dense td { padding: 7px var(--space-3); height: var(--row-h-dense); }
+.odc-table-empty { text-align: center !important; color: var(--mud-palette-text-secondary); padding: var(--space-12) var(--space-4) !important; }
+.odc-th-btn {
+  appearance: none; background: none; border: none; cursor: pointer; padding: 6px 0; margin: -6px 0;
+  display: inline-flex; align-items: center; gap: 4px;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+}
+.odc-th.num .odc-th-btn { flex-direction: row-reverse; }
+.odc-th-btn:hover { color: var(--mud-palette-text-primary); }
+.odc-th-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); border-radius: 2px; }
+.odc-th-sort { font-size: 16px; opacity: 0; transition: opacity var(--duration-base) var(--ease-standard); }
+.odc-th-btn:hover .odc-th-sort { opacity: 0.5; }
+.odc-th-btn[data-active] .odc-th-sort { opacity: 1; color: var(--brand-text); }
+.odc-table .odc-td-actions { width: 1%; white-space: nowrap; text-align: right; }
+
+/* ---------- Menu (overflow / dropdown) ---------- */
+.odc-menu { position: relative; display: inline-flex; }
+.odc-menu-pop {
+  position: absolute; z-index: var(--z-dropdown); min-width: 184px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-8);
+  padding: var(--space-1); margin: 0; list-style: none;
+}
+.odc-menu-pop.end { right: 0; }
+.odc-menu-pop.start { left: 0; }
+.odc-menu-pop.up { bottom: calc(100% + 6px); }
+.odc-menu-pop.down { top: calc(100% + 6px); }
+.odc-menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  appearance: none; background: none; border: none; cursor: pointer; text-align: left;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  transition: background-color var(--duration-base) var(--ease-standard);
+}
+.odc-menu-item .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-menu-item:hover { background: var(--mud-palette-action-default-hover); }
+.odc-menu-item:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-menu-item.danger, .odc-menu-item.danger .material-icons { color: var(--mud-palette-error); }
+.odc-menu-item:disabled, .odc-menu-item:disabled .material-icons { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
+.odc-menu-item[aria-disabled="true"], .odc-menu-item[aria-disabled="true"] .material-icons { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
+.odc-menu-item[aria-disabled="true"]:hover { background: none; }
+.odc-menu-note { margin: 0; padding: 0 10px 8px 38px; max-width: 268px; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-menu-divider { height: 1px; background: var(--mud-palette-divider); margin: var(--space-1) 0; border: none; }
+.odc-menu-label {
+  padding: 6px 10px 2px;
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+
+/* ---------- Switch ---------- */
+.odc-switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.odc-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.odc-switch-track {
+  position: relative; flex: none; width: 38px; height: 22px;
+  border-radius: var(--radius-pill);
+  background: var(--mud-palette-lines-inputs);
+  transition: background-color var(--duration-base) var(--ease-standard);
+}
+.odc-switch-thumb {
+  position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+.odc-switch input:checked + .odc-switch-track { background: var(--mud-palette-primary); }
+.odc-switch input:checked + .odc-switch-track .odc-switch-thumb { transform: translateX(16px); }
+.odc-switch input:focus-visible + .odc-switch-track { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-switch.disabled { cursor: not-allowed; }
+.odc-switch input:disabled + .odc-switch-track { opacity: 0.5; }
+.odc-switch-label { font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+/* ---------- CapacityField ----------
+   A right-aligned numeric input (or a "No limit" stand-in) stacked over a
+   "No limit" switch. The count-cap control on the System settings groups. */
+.odc-capacity { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+/* Inline variant — one line for a SettingField frame: the value grows, the
+   inverse-action pill sits at the trailing edge. */
+.odc-capacity.inline { flex-direction: row; align-items: center; gap: 10px; }
+.odc-capacity.inline .odc-capacity-num { flex: 1; width: auto; min-width: 0; }
+.odc-capacity-value { flex: 1; text-align: right; font: var(--fw-regular) var(--fs-body1)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-capacity-pill {
+  flex: none; cursor: pointer; white-space: nowrap;
+  border: var(--border-thin, 1px) solid var(--mud-palette-divider);
+  border-radius: var(--radius-pill); background: transparent; padding: 4px 11px;
+  font: var(--fw-medium) var(--fs-overline)/1.2 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+  transition: border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-capacity-pill:hover:not(:disabled) { border-color: var(--mud-palette-lines-inputs, var(--mud-palette-divider)); color: var(--mud-palette-text-primary); }
+.odc-capacity-pill[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand-border); color: var(--brand-text); }
+.odc-capacity-pill:disabled { cursor: not-allowed; color: var(--mud-palette-text-disabled); }
+.odc-capacity-num { width: 120px; min-width: 120px; }
+.odc-capacity-nolimit {
+  box-sizing: border-box; width: 120px; height: 40px;
+  display: flex; align-items: center; justify-content: flex-end; padding: 0 12px;
+  border: 1px dashed var(--mud-palette-lines-inputs); border-radius: var(--radius-sm);
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.odc-capacity-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.odc-capacity-toggle.disabled { cursor: not-allowed; }
+.odc-capacity-toggle-lbl { font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+@media (max-width: 600px) {
+  .odc-capacity:not(.inline) { align-items: stretch; }
+  .odc-capacity-num, .odc-capacity-nolimit { width: 100%; }
+  .odc-capacity-toggle { justify-content: flex-end; }
+}
+
+/* ---------- NumberField unit adornment ---------- */
+/* A static unit pinned inside the input's trailing edge — %, MB, days. Stays
+   visible when the helper slot is taken over by an error message, which is the
+   whole reason it isn't helper text. Not interactive, so it never steals the
+   click that should focus the input. */
+.odc-input.has-unit { padding-right: 42px; }
+.odc-input-unit {
+  position: absolute; right: 12px; pointer-events: none;
+  font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-field.error .odc-input-unit { color: var(--mud-palette-error); }
+.odc-input:disabled ~ .odc-input-unit { color: var(--mud-palette-text-disabled); }
+
+/* ---------- SettingField (notched-outline setting block) ---------- */
+/* The MudBlazor Variant.Outlined shape, applied to one setting: the label sits
+   on the outline (a real fieldset/legend, so the BROWSER cuts the notch and it
+   tracks the label's own metrics at any zoom), the control sits inside, and one
+   always-visible helper line below carries the description plus the last-changed
+   stamp. The half-width alternative to .pref-row — lets a section card hold a
+   grid of related settings instead of one card per setting. */
+.odc-sfield { min-width: 0; }
+.odc-sfield-frame {
+  margin: 0; min-width: 0;
+  border: var(--border-thin, 1px) solid var(--mud-palette-lines-inputs, var(--mud-palette-divider));
+  border-radius: var(--radius-md); padding: 0 12px 11px;
+  background: var(--mud-palette-background);
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+/* Focus is the outline itself thickening — Mud's own outlined behaviour. The
+   inner control's ring is suppressed below, so there is exactly one focus
+   affordance; the padding gives back the extra border width so nothing shifts. */
+.odc-sfield-frame:focus-within { border-color: var(--mud-palette-primary); border-width: 2px; padding: 0 11px 10px; }
+.odc-sfield-frame.error { border-color: var(--mud-palette-error); }
+.odc-sfield-legend { padding: 0 6px; margin-left: 2px; background: transparent; }
+.odc-sfield-label { font: var(--fw-regular) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-sfield-frame:focus-within .odc-sfield-label { color: var(--mud-palette-primary); }
+.odc-sfield-frame.error .odc-sfield-label { color: var(--mud-palette-error); }
+.odc-sfield-ctrl { margin-top: 2px; }
+/* Inside the frame the control is just its value: its own border, background,
+   padding and helper slot are flattened, and it fills the frame's width. */
+.odc-sfield-ctrl .odc-field, .odc-sfield-ctrl .odc-capacity { width: 100%; min-width: 0; }
+.odc-sfield-ctrl .odc-input {
+  border: 0 !important; background: transparent !important;
+  padding: 0 !important; height: auto !important; min-height: 0 !important;
+  font: var(--fw-regular) var(--fs-body1)/1.5 var(--font-sans) !important;
+}
+.odc-sfield-ctrl .odc-input.has-unit { padding-right: 44px !important; }
+.odc-sfield-ctrl .odc-input-wrap { border: 0 !important; background: transparent !important; padding: 0 !important; }
+.odc-sfield-ctrl .odc-input-unit { right: 0 !important; }
+.odc-sfield-ctrl .odc-input:focus, .odc-sfield-ctrl .odc-input:focus-visible { outline: none !important; box-shadow: none !important; }
+/* The control's own help/error line is suppressed — SettingField owns both, so
+   the message renders once, below the frame. */
+.odc-sfield-ctrl .odc-field-help { display: none; }
+.odc-sfield-help {
+  margin: 5px 0 0; padding-left: 14px;
+  font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans);
+  color: var(--mud-palette-text-secondary); text-wrap: pretty;
+}
+.odc-sfield-stamp { opacity: 0.8; }
+.odc-sfield-err {
+  margin: 4px 0 0; padding-left: 14px;
+  font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
+  color: var(--mud-palette-error);
+}
+/* Advisory band — amber, role=status, below the helper line. The value will save;
+   it just is not free (memory, payload, third-party spend), or a heuristic check
+   thinks it looks wrong. Never gates the primary action. The literal word
+   "Advisory" carries the meaning so neither the tint nor the glyph has to — and
+   it is set in text-primary rather than amber, because amber text on an amber
+   tint clears 4.5:1 in neither theme (amber-500 is ~2:1 on the light tint,
+   amber-700 ~4.25:1). The amber carries the icon and the border only, through
+   the theme-aware --pending-text (amber-500 dark / amber-700 light), which
+   clears the 3:1 non-text minimum in both. */
+.odc-sfield-frame.advised { border-color: var(--pending-text); }
+.odc-sfield-advisory {
+  display: flex; gap: 8px; align-items: flex-start; margin: 7px 0 0;
+  padding: 9px 11px; border-radius: var(--radius-md, 8px);
+  background: var(--finance-pending-soft);
+  font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);
+  color: var(--mud-palette-text-primary); text-wrap: pretty;
+}
+.odc-sfield-advisory .material-icons { font-size: 16px; flex: none; color: var(--pending-text); margin-top: 1px; }
+.odc-sfield-advisory-t { font-weight: var(--fw-medium); color: var(--mud-palette-text-primary); }
+/* Direction marker, in the outline beside the label: this setting moves one way
+   only. It sits where the bound lives rather than in the helper prose, so it is
+   legible before the value is read. */
+.odc-sfield-bound {
+  margin-left: 7px; padding: 1px 6px; border-radius: var(--radius-pill, 999px);
+  border: var(--border-thin, 1px) solid var(--mud-palette-divider);
+  font: var(--fw-medium) 9.5px/1.5 var(--font-mono);
+  letter-spacing: var(--tracking-caps, 0.06em); text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); vertical-align: 1px;
+}
+/* A grid of setting fields; `wide` spans both columns for a content-width
+   control (a URL, a name) and for full-width switch/action tiles. */
+.odc-sfield-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 18px; }
+.odc-sfield.wide { grid-column: 1 / -1; }
+@media (max-width: 900px) { .odc-sfield-grid { grid-template-columns: 1fr; } }
+
+/* A switch or an action has no frame to notch a label into: it reads as one
+   tile, label and helper left, control right, matching the field's border. */
+.odc-sfield-tile {
+  display: flex; align-items: center; gap: 16px; justify-content: space-between;
+  border: var(--border-thin, 1px) solid var(--mud-palette-lines-inputs, var(--mud-palette-divider));
+  border-radius: var(--radius-md); background: var(--mud-palette-background);
+  padding: 12px 14px;
+}
+.odc-sfield-tile-main { min-width: 0; }
+.odc-sfield-tile .odc-sfield-label { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-sfield-tile .odc-sfield-help { padding-left: 0; margin-top: 4px; }
+
+/* ---------- SettingRow footer well ---------- */
+/* The full-card slot below a setting row: a tinted well flush to the card
+   edges. The tint IS the separator — no divider rule, and the content is not
+   re-indented to the row title, since the well already reads as belonging to
+   the row above it. Holds a content-width control (a text input) or a
+   cross-field error that can't fit the fixed control column. */
+.odc-setting-footer {
+  padding: 13px 16px 14px;
+  background: var(--mud-palette-action-default-hover);
+  border-top: 1px solid transparent;
+}
+/* Text control in the footer: grows with what's typed, up to a cap that keeps
+   the measure readable, and never shorter than a legible minimum. */
+.odc-setting-text { max-width: 420px; }
+.odc-setting-text .odc-input {
+  field-sizing: content;
+  min-width: 260px; max-width: 100%;
+}
+@supports not (field-sizing: content) {
+  .odc-setting-text .odc-input { width: 100%; }
+}
+@media (max-width: 600px) {
+  .odc-setting-text { max-width: none; }
+  .odc-setting-text .odc-input { min-width: 0; width: 100%; }
+}
+
+/* ---------- SettingRow: unsaved dot + advisory warning ---------- */
+/* The dot sits with the TITLE, not in the control column, so it stays attached
+   to the setting when the control moves to the footer well. */
+.odc-setting-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 999px;
+  margin-left: 8px; vertical-align: middle;
+  background: var(--mud-palette-warning);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
+}
+.odc-setting-warn-ic { font-size: 16px !important; margin-left: 6px; vertical-align: -3px; color: var(--amber-500); }
+/* Advisory band: amber, flush to the card edges, below the row and any footer.
+   Distinct from an error by colour and by not gating the primary action. */
+.odc-setting-warn {
+  display: flex; gap: 9px; align-items: flex-start;
+  padding: 11px 16px 12px;
+  background: rgba(245, 158, 11, 0.10);
+  border-top: 1px solid rgba(245, 158, 11, 0.24);
+  font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+}
+.odc-setting-warn .material-icons { font-size: 17px; flex: none; color: var(--amber-500); }
+.odc-setting-warn > div { max-width: 76ch; }
+/* A shared note above a group of rows — e.g. the four disclosure rows, whose
+   legal weight is a property of the set rather than of any one row. */
+.odc-setting-groupnote {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 13px 15px; border-radius: var(--radius-md);
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-surface);
+  font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-setting-groupnote .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-setting-groupnote > div { max-width: 82ch; }
+.odc-setting-groupnote b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+
+/* ---------- SecretSettingField (write-only credential) ---------- */
+/* The SettingField shape carrying a value that can never be read back. Three
+   states share one frame: `found` (a fixed-length dot mask — never the real
+   length, which is itself a leak), `not-set` (the entry input, inline, because
+   typing is the expected next action and there is nothing to protect yet), and
+   `unreadable` (coral outline, the state the whole store exists to make legible
+   rather than silent). Entry from `found` / `unreadable` is an explicit act —
+   the input only appears on Replace, so a stored credential cannot be
+   overwritten by a stray keystroke. */
+.odc-secret .odc-sfield-frame.unreadable { border-color: var(--mud-palette-error); }
+.odc-secret .odc-sfield-frame.unreadable .odc-sfield-label { color: var(--mud-palette-error); }
+.odc-secret-body {
+  display: flex; align-items: center; gap: 16px; justify-content: space-between;
+  margin-top: 3px; min-height: 30px;
+}
+.odc-secret-val { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
+/* Mono + tracking: the mask reads as a stored token rather than as text the
+   admin failed to type. Fixed count, so it discloses nothing about the value. */
+.odc-secret-mask {
+  font: var(--fw-regular) var(--fs-body1)/1.5 var(--font-mono);
+  letter-spacing: 0.16em; color: var(--mud-palette-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.odc-secret-empty { font: var(--fw-regular) var(--fs-body1)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-secret-bad {
+  display: inline-flex; align-items: center; gap: 7px;
+  font: var(--fw-medium) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-error);
+}
+.odc-secret-bad .material-icons { font-size: 17px; flex: none; }
+.odc-secret-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+/* Entry: a native password input, flattened into the frame like every other
+   SettingField control, with a reveal toggle. Revealing matters here — a
+   mistyped relay password is silent until mail stops — so the toggle is part of
+   the control, not an afterthought. */
+.odc-secret-entry { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.odc-sfield-ctrl .odc-secret-input {
+  flex: 1; min-width: 0; width: 100%;
+  font-family: var(--font-mono) !important; letter-spacing: 0.04em;
+}
+.odc-secret-eye {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-sm, 6px);
+  background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-secret-eye:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-secret-eye:disabled { color: var(--mud-palette-text-disabled); cursor: default; background: transparent; }
+.odc-secret-eye .material-icons { font-size: 18px; }
+/* Kind marker, in the outline where the bound marker lives: a derivation key is
+   a different class of loss, and that has to be legible before the value is. */
+.odc-secret-kind {
+  margin-left: 7px; padding: 1px 6px; border-radius: var(--radius-pill, 999px);
+  border: var(--border-thin, 1px) solid var(--finance-expense-border);
+  background: var(--finance-expense-soft);
+  font: var(--fw-medium) 9.5px/1.5 var(--font-mono);
+  letter-spacing: var(--tracking-caps, 0.06em); text-transform: uppercase;
+  color: var(--mud-palette-error); vertical-align: 1px;
+}
+.odc-secret-lock { display: inline-flex; align-items: center; gap: 5px; }
+.odc-secret-lock .material-icons { font-size: 14px; vertical-align: -2px; }
+
+/* The irreversible-clear callout in the confirm dialog. Coral, not amber: this
+   is not an advisory about cost, it is the loss itself. */
+.odc-secret-irrev {
+  display: flex; gap: 10px; align-items: flex-start;
+  margin: 14px 0 0; padding: 12px 13px; border-radius: var(--radius-md);
+  background: var(--finance-expense-soft);
+  border: var(--border-thin, 1px) solid var(--finance-expense-border);
+  font: var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans);
+  color: var(--mud-palette-text-primary); text-wrap: pretty;
+}
+.odc-secret-irrev .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-error); margin-top: 1px; }
+.odc-secret-irrev b { font-weight: var(--fw-medium); }
+.odc-secret-dialog-p { margin: 0 0 10px; font: var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.odc-secret-dialog-p:last-child { margin-bottom: 0; }
+.odc-secret-dialog-p b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+.odc-secret-dialog-key {
+  display: inline-block; margin: 0 0 14px; padding: 3px 8px;
+  border-radius: var(--radius-sm, 6px); background: var(--mud-palette-action-default-hover);
+  font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-mono); color: var(--mud-palette-text-secondary);
+}
+
+/* ---------- ErrorSummary (blocking problems beside a disabled action) ---------- */
+.odc-errsum-wrap { position: relative; display: inline-flex; }
+.odc-errsum {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 107, 107, 0.38);
+  background: rgba(255, 107, 107, 0.10);
+  color: var(--mud-palette-error);
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
+  white-space: nowrap; cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-errsum:hover { background: rgba(255, 107, 107, 0.18); }
+.odc-errsum:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+  outline-offset: var(--focus-ring-offset);
+}
+.odc-errsum .material-icons { font-size: 17px; }
+.odc-errsum-sep { opacity: 0.5; }
+.odc-errsum-act { text-decoration: underline; text-underline-offset: 2px; }
+.odc-errsum-chev { margin-left: -2px; margin-right: -3px; opacity: 0.8; }
+/* The problem list. Right-aligned under the control because its call site is a
+   page-header action group pinned to the right edge. */
+.odc-errsum-panel {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+  min-width: 300px; max-width: 420px; box-sizing: border-box;
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  background: var(--mud-palette-surface); box-shadow: var(--mud-elevation-8);
+  padding: 6px;
+}
+.odc-errsum-panel-head {
+  padding: 7px 10px 8px;
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.odc-errsum-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.odc-errsum-item {
+  width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--mud-palette-text-primary);
+  text-align: left; cursor: pointer;
+}
+.odc-errsum-item:hover { background: var(--mud-palette-action-default-hover); }
+.odc-errsum-item:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+  outline-offset: -2px;
+}
+.odc-errsum-item-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.odc-errsum-item-lbl { font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); }
+.odc-errsum-item-sec {
+  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-errsum-item-go { font-size: 16px !important; flex: none; color: var(--mud-palette-text-secondary); }
+
+/* ---------- Button count badge ---------- */
+/* A pending quantity the action is about to commit. Reads as a solid pill on
+   the filled CTA and as a primary pill on the quieter variants. */
+.odc-btn-badge {
+  flex: none; min-width: 19px; height: 19px; padding: 0 6px;
+  display: inline-grid; place-items: center; border-radius: 10px;
+  font: var(--fw-bold) var(--fs-caption)/1 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  background: var(--mud-palette-primary-text); color: var(--mud-palette-primary);
+}
+.odc-btn.outlined .odc-btn-badge, .odc-btn.text .odc-btn-badge {
+  background: var(--mud-palette-primary); color: var(--mud-palette-primary-text);
+}
+.odc-btn.danger .odc-btn-badge { background: #fff; color: var(--mud-palette-error); }
+.odc-btn:disabled .odc-btn-badge {
+  background: var(--mud-palette-action-disabled); color: var(--mud-palette-surface);
+}
+
+/* ---------- Checkbox ---------- */
+.odc-check { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.odc-check input { position: absolute; opacity: 0; width: 0; height: 0; }
+.odc-check-box {
+  position: relative; flex: none; width: 18px; height: 18px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--mud-palette-lines-inputs); background: transparent;
+  display: grid; place-items: center;
+  transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+.odc-check-box .material-icons { font-size: 16px; color: var(--mud-palette-primary-text); opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
+.odc-check input:checked + .odc-check-box,
+.odc-check input:indeterminate + .odc-check-box { background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); }
+.odc-check input:checked + .odc-check-box .material-icons,
+.odc-check input:indeterminate + .odc-check-box .material-icons { opacity: 1; }
+.odc-check input:focus-visible + .odc-check-box { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-check input:disabled + .odc-check-box { opacity: 0.5; cursor: not-allowed; }
+.odc-check-label { font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+/* ---------- Radio ---------- */
+.odc-radiogroup { display: flex; flex-direction: column; gap: 10px; }
+.odc-radiogroup.row { flex-direction: row; gap: var(--space-4); flex-wrap: wrap; }
+.odc-radio { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.odc-radio input { position: absolute; opacity: 0; width: 0; height: 0; }
+.odc-radio-dot {
+  position: relative; flex: none; width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--mud-palette-lines-inputs);
+  display: grid; place-items: center; transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.odc-radio-dot::after {
+  content: ''; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--mud-palette-primary); transform: scale(0); transition: transform var(--duration-fast) var(--ease-standard);
+}
+.odc-radio input:checked + .odc-radio-dot { border-color: var(--mud-palette-primary); }
+.odc-radio input:checked + .odc-radio-dot::after { transform: scale(1); }
+.odc-radio input:focus-visible + .odc-radio-dot { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-radio input:disabled + .odc-radio-dot { opacity: 0.5; cursor: not-allowed; }
+.odc-radio-label { font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+/* ---------- Combobox (searchable select w/ inline create) ---------- */
+.odc-combo { position: relative; }
+.odc-combo-pop {
+  /* Body-portaled (to escape modal/card/collapsible clipping), so it must stack
+     ABOVE the modal scrim (z 1200) — otherwise the dropdown hides behind the
+     dialog when a combobox is used inside a modal (e.g. the custodian picker). */
+  position: absolute; z-index: var(--z-popover); top: calc(100% + 6px); left: 0; right: 0;
+  box-sizing: border-box;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
+  padding: var(--space-1); margin: 0; list-style: none;
+  max-height: 264px; overflow-y: auto; overflow-x: hidden;
+}
+.odc-combo-opt {
+  box-sizing: border-box;
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-combo-opt > span:not(.material-icons) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.odc-combo-opt > .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-combo-opt.active { background: var(--mud-palette-action-default-hover); }
+.odc-combo-opt.selected { color: var(--brand-text); font-weight: var(--fw-medium); }
+.odc-combo-opt-check { flex: none; font-size: 18px !important; color: var(--brand-text) !important; }
+.odc-combo-create {
+  color: var(--brand-text);
+  border-top: 1px solid var(--mud-palette-divider);
+  margin-top: var(--space-1); padding-top: 10px;
+}
+.odc-combo-create > .material-icons { color: var(--brand-text); }
+.odc-combo-empty { padding: 12px; text-align: center; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+/* Combobox trailing controls — the clear (×) and chevron overlay INSIDE the
+   input on the right (like the Select trigger), not as inline siblings beside
+   the box. The clear sits left of the chevron; the input reserves room for
+   both. The leading type glyph matches the field's 20px icon scale. */
+.odc-combo .odc-select-chev { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); font-size: 20px !important; pointer-events: none; }
+.odc-combo .odc-input-clear { right: 35px; }
+.odc-combo .odc-input-icon { font-size: 20px !important; }
+.odc-combo .odc-input { padding-right: 38px; }
+.odc-combo .odc-input.has-clear { padding-right: 62px; }
+.odc-combo-opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- MatchIndicator (per-cell AI match annotation) ----------
+   States the source + confidence of an AI merchant/category match AS TEXT. The
+   leading glyph only tints (sea = AI, tide = created here); the words carry the
+   meaning, so meaning never rides on colour alone. Muted variants stay at AA
+   (text-secondary, not the disabled alpha). The 'suggestion' state is the
+   interactive sub-threshold chip — Apply (a real button, keyboard-operable) +
+   a ≥24px dismiss. */
+.odc-match {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%; min-width: 0;
+  font: var(--fw-regular) 11.5px/1.3 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+  vertical-align: middle;
+}
+/* Only the no-match state wraps (so its Create action drops to its own line). */
+.odc-match.none { flex-wrap: wrap; row-gap: 4px; }
+.odc-match.sm { font-size: 11px; }
+.odc-match-ic { font-size: 14px !important; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-match-txt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odc-match-txt b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+.odc-match-pct { flex: none; margin-left: 4px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* State tones — carried by the icon, never by the words alone. */
+.odc-match.ai .odc-match-ic      { color: var(--info-text); }
+.odc-match.created .odc-match-ic { color: var(--brand-text); }
+.odc-match.manual .odc-match-ic  { color: var(--mud-palette-text-secondary); }
+.odc-match.none  .odc-match-ic   { color: var(--mud-palette-text-disabled); }
+
+/* Sub-threshold "suggested-but-not-linked" — an actionable amber chip (amber =
+   the system's pending/needs-a-decision tone) the reviewer can Apply or ignore. */
+.odc-match.suggestion {
+  gap: 6px; padding: 3px 4px 3px 9px; border-radius: var(--radius-pill);
+  background: var(--finance-pending-soft); border: 1px solid var(--finance-pending-border);
+}
+/* Two-row, container-less form (matches the No match → Create treatment): a
+   status row ("Suggested by AI · 39%") over an action row ("+ Use ‹name›" +
+   dismiss), so a narrow cell shows the full name instead of one massive line.
+   Scoped via :has so flat/bundle-lag markup keeps the single-line amber pill. */
+.odc-match.suggestion:has(.odc-match-sugg-head) {
+  flex-direction: column; align-items: flex-start; gap: 5px;
+  padding: 0; background: none; border: none; border-radius: 0;
+  width: 100%;
+}
+.odc-match-sugg-head { display: flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; }
+.odc-match-sugg-actions { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; }
+.odc-match.suggestion .odc-match-ic { color: var(--pending-text); }
+.odc-match-x {
+  flex: none; cursor: pointer; border: none; background: transparent;
+  display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  color: var(--mud-palette-text-secondary); transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-match-x:hover { background: rgba(0,0,0,0.10); color: var(--mud-palette-text-primary); }
+.odc-match-x:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
+.odc-match-x .material-icons { font-size: 15px !important; }
+
+/* Inline action pill (brand-toned) — shared by the "No match → Create ‹name›"
+   recovery and the sub-threshold "Suggested by AI → Use ‹name›" action. A quiet
+   pill that mirrors the Combobox's Create "…" row. */
+.odc-match-act {
+  flex: none; max-width: 100%; min-width: 0;
+  display: inline-flex; align-items: center; gap: 3px;
+  cursor: pointer; border: 1px solid var(--brand-border);
+  background: var(--brand-soft); color: var(--brand-text);
+  font: var(--fw-medium) 11px/1 var(--font-sans); letter-spacing: 0.01em;
+  padding: 3px 8px 3px 5px; border-radius: var(--radius-pill);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-match-act:hover { background: color-mix(in srgb, var(--brand-text) 22%, transparent); }
+.odc-match-act:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-match-act .material-icons { font-size: 14px !important; flex: none; }
+.odc-match-act-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* No match → Create: same brand-soft pill as the suggestion "Use ‹name›" action. */
+.odc-match-createline { flex-basis: 100%; min-width: 0; display: flex; }
+.odc-match-create {
+  flex: none; max-width: 100%; min-width: 0;
+  display: inline-flex; align-items: center; gap: 3px;
+  cursor: pointer; border: 1px solid var(--brand-border);
+  background: var(--brand-soft); color: var(--brand-text);
+  font: var(--fw-medium) 11px/1 var(--font-sans); letter-spacing: 0.01em;
+  padding: 3px 8px 3px 5px; border-radius: var(--radius-pill);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-match-create:hover { background: color-mix(in srgb, var(--brand-text) 22%, transparent); }
+.odc-match-create:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-match-create .material-icons { font-size: 14px !important; flex: none; }
+.odc-match-create-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Custodian chip (account ↔ custodian contact link) ----------
+   The read-only, informational display of the contact that holds an
+   account. Composes the chip visual language + the ContactType registry
+   (icon color comes from the type, applied inline). Meaning is in text; the
+   icon is decorative. Archived + empty states carry textual cues, not color
+   alone, and keep muted text at AA contrast (text-secondary, not disabled). */
+.odc-custodian {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  padding: 3px 10px 3px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-action-default-hover);
+  font: var(--fw-regular) var(--fs-body2)/1.2 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  vertical-align: middle;
+}
+.odc-custodian.sm { gap: 5px; padding: 2px 8px 2px 6px; font-size: var(--fs-caption); }
+.odc-custodian-ic { font-size: 16px !important; flex: none; }
+.odc-custodian.sm .odc-custodian-ic { font-size: 14px !important; }
+.odc-custodian-name { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.odc-custodian-type { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); white-space: nowrap; }
+.odc-custodian-type::before { content: "·"; margin-right: 6px; color: var(--mud-palette-text-disabled); }
+.odc-custodian-archived { color: var(--mud-palette-text-secondary); font-style: italic; white-space: nowrap; }
+.odc-custodian.empty { color: var(--mud-palette-text-secondary); border-style: dashed; background: transparent; }
+.odc-custodian.empty .odc-custodian-ic { color: var(--mud-palette-text-disabled); }
+.odc-custodian.archived { background: transparent; color: var(--mud-palette-text-secondary); }
+.odc-custodian.archived .odc-custodian-name { font-weight: var(--fw-regular); }
+.odc-custodian-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- Account-type chip ----------
+   The sibling of the custodian chip — same pill shell, with the type glyph in
+   its categorical color. Renders the account type as a chip in the detail grid
+   so type + custodian read consistently. */
+.odc-typechip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  padding: 3px 10px 3px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-action-default-hover);
+  font: var(--fw-regular) var(--fs-body2)/1.2 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  vertical-align: middle;
+}
+.odc-typechip.sm { gap: 5px; padding: 2px 8px 2px 6px; font-size: var(--fs-caption); }
+.odc-typechip-ic { font-size: 16px !important; flex: none; }
+.odc-typechip-dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
+.odc-typechip.sm .odc-typechip-dot { width: 6px; height: 6px; }
+.odc-typechip.sm .odc-typechip-ic { font-size: 14px !important; }
+.odc-typechip-name { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.odc-typechip-group { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); white-space: nowrap; }
+.odc-typechip-group::before { content: "·"; margin-right: 6px; color: var(--mud-palette-text-disabled); }
+
+/* ---------- MultiSelect (filter) ---------- */
+.odc-ms { position: relative; display: inline-flex; }
+.odc-ms-trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer;
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
+  color: var(--mud-palette-text-primary); white-space: nowrap;
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-ms-trigger:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-ms-trigger[aria-expanded="true"] { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
+.odc-ms-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-ms-trigger .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-ms-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
+  background: var(--mud-palette-primary); color: var(--mud-palette-primary-text);
+  font: var(--fw-medium) 11px/1 var(--font-sans); font-variant-numeric: tabular-nums;
+}
+.odc-ms-pop {
+  position: absolute; z-index: var(--z-dropdown); top: calc(100% + 4px); min-width: 224px;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
+  padding: var(--space-2); margin: 0;
+}
+.odc-ms-pop.start { left: 0; }
+.odc-ms-pop.end { right: 0; }
+.odc-ms-opt { padding: 6px; border-radius: var(--radius-sm); cursor: pointer; width: 100%; }
+.odc-ms-opt:hover { background: var(--mud-palette-action-default-hover); }
+.odc-ms-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider); }
+
+/* ---------- TagChips (read display of a transaction's tag set) ---------- */
+.odc-tagchips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.odc-tagchips-empty { color: var(--mud-palette-text-secondary); }
+.odc-tagchips-more { cursor: default; font-variant-numeric: tabular-nums; }
+
+/* ---------- TagMultiSelect (multi-tag form picker) ---------- */
+.odc-field-opt { margin-left: 6px; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-tagms { position: relative; }
+.odc-tagms-control {
+  width: 100%; box-sizing: border-box;
+  display: flex; align-items: center; gap: 8px;
+  min-height: var(--control-h);
+  padding: 5px 8px 5px 10px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-sm);
+  color: var(--mud-palette-text-primary);
+  text-align: left; cursor: pointer;
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-tagms-control:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-tagms-control.open { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
+.odc-tagms-control:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-tagms-control:disabled { opacity: 0.5; cursor: not-allowed; }
+.odc-field.error .odc-tagms-control { border-color: var(--mud-palette-error); }
+.odc-tagms-chips { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.odc-tagms-ph { color: var(--mud-palette-text-disabled); font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans); }
+.odc-tagms-chip { padding-right: 4px; }
+.odc-tagms-x {
+  display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 2px;
+  border-radius: var(--radius-pill); cursor: pointer; color: currentColor; opacity: 0.7;
+  transition: opacity var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-tagms-x:hover { opacity: 1; background: color-mix(in oklab, currentColor 22%, transparent); }
+.odc-tagms-x .material-icons { font-size: 13px; }
+.odc-tagms-add { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--mud-palette-text-secondary); font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); }
+.odc-tagms-add .material-icons { font-size: 18px; }
+.odc-tagms-pop {
+  /* Body-portaled, so it must stack ABOVE the modal scrim (z 1200) — otherwise
+     the picker opens behind the dialog when used inside a modal (the Analyze
+     review grid, New-transaction). Matches .odc-combo-pop. */
+  z-index: var(--z-popover); box-sizing: border-box; min-width: 240px;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
+  padding: var(--space-2);
+}
+.odc-tagms-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
+.odc-tagms-search:focus-within { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
+.odc-tagms-search .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-tagms-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+.odc-tagms-list { max-height: 232px; overflow-y: auto; display: flex; flex-direction: column; }
+.odc-tagms-opt { padding: 7px 6px; border-radius: var(--radius-sm); cursor: pointer; width: 100%; box-sizing: border-box; }
+.odc-tagms-opt:hover { background: var(--mud-palette-action-default-hover); }
+.odc-tagms-create {
+  display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box;
+  padding: 7px 6px; border: none; border-radius: var(--radius-sm); cursor: pointer;
+  background: transparent; color: var(--brand-text); text-align: left;
+  font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans);
+}
+.odc-tagms-create:hover { background: var(--mud-palette-action-default-hover); }
+.odc-tagms-create .material-icons { font-size: 18px; }
+.odc-tagms-empty { padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+.odc-tagms-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider); }
+
+/* ---------- Skeleton (loading placeholder) ---------- */
+.odc-skeleton {
+  display: block; position: relative; overflow: hidden;
+  background: var(--mud-palette-action-default-hover);
+  border-radius: var(--radius-sm);
+}
+.odc-skeleton.text { height: 0.75em; border-radius: var(--radius-pill); margin: 0.18em 0; }
+.odc-skeleton.circle { border-radius: 50%; }
+.odc-skeleton.block { border-radius: var(--radius-md); }
+.odc-skeleton::after {
+  content: ''; position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--mud-palette-divider) 50%, transparent);
+  animation: odc-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes odc-shimmer { 100% { transform: translateX(100%); } }
+.odc-skeleton-lines { display: flex; flex-direction: column; gap: 8px; }
+/* a skeleton table row — drop into <tbody> while rows load */
+.odc-skel-row td { padding: 12px var(--space-3); border-bottom: 1px solid var(--mud-palette-table-lines); }
+
+/* ---------- Toast / Snackbar ---------- */
+.odc-toast-stack {
+  position: fixed; z-index: var(--z-toast); bottom: var(--space-6); right: var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  width: min(380px, calc(100vw - 48px)); pointer-events: none;
+}
+.odc-toast-stack.start { right: auto; left: var(--space-6); }
+.odc-toast-stack.center { right: 50%; transform: translateX(50%); align-items: center; }
+.odc-toast {
+  pointer-events: auto;
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink-700); color: var(--ink-50);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
+  font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);
+  animation: odc-toast-in var(--duration-slow) var(--ease-standard);
+}
+[data-theme='light'] .odc-toast { background: var(--ink-800); color: var(--ink-50); border-color: transparent; }
+@keyframes odc-toast-in { from { opacity: 0; transform: translateY(8px); } }
+.odc-toast-ic { font-size: 20px; flex: none; line-height: 1.4; }
+.odc-toast.success .odc-toast-ic { color: var(--mint-300); }
+.odc-toast.warning .odc-toast-ic { color: var(--amber-500); }
+.odc-toast.error   .odc-toast-ic { color: var(--coral-300); }
+.odc-toast.info    .odc-toast-ic { color: var(--sea-300); }
+.odc-toast-body { flex: 1; min-width: 0; }
+.odc-toast-action {
+  appearance: none; background: none; border: none; cursor: pointer;
+  color: var(--tide-300); padding: 0; margin-top: 2px;
+  font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);
+}
+.odc-toast-action:hover { text-decoration: underline; }
+.odc-toast-close {
+  appearance: none; background: none; border: none; cursor: pointer; flex: none;
+  color: var(--ink-300); width: 20px; height: 20px; display: grid; place-items: center;
+  border-radius: var(--radius-sm); margin: -1px -4px 0 0;
+}
+.odc-toast-close .material-icons { font-size: 18px; }
+.odc-toast-close:hover { color: var(--ink-50); }
+.odc-toast-close:focus-visible, .odc-toast-action:focus-visible { outline: var(--focus-ring-width) solid var(--tide-400); outline-offset: var(--focus-ring-offset); }
+
+/* ---------- Charts (Sparkline · Donut) ---------- */
+.odc-sparkline { display: block; }
+
+/* ---------- Delta (variance · directional · signed change) ---------- */
+.odc-delta { display: inline-flex; align-items: center; gap: 5px; font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.odc-delta .material-icons { font-size: 15px; }
+.odc-delta-suffix { color: var(--mud-palette-text-secondary); font-family: var(--font-sans); }
+.odc-delta.reconciled { color: var(--finance-income); }
+.odc-delta.diff       { color: var(--finance-pending); }
+.odc-delta.income, .odc-delta.up   { color: var(--finance-income); }
+.odc-delta.expense, .odc-delta.down { color: var(--finance-expense); }
+.odc-delta.flat { color: var(--mud-palette-text-secondary); }
+.odc-delta.na   { color: var(--mud-palette-text-disabled); font-family: var(--font-sans); font-weight: var(--fw-regular); }
+
+/* ---------- ProblemAlert (problem/signal fix-it block) ---------- */
+.odc-problem {
+  display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  border-radius: var(--radius-md); padding: 14px 16px; border: 1px solid transparent;
+}
+.odc-problem.warning { background: color-mix(in srgb, var(--finance-pending) 11%, transparent); border-color: color-mix(in srgb, var(--finance-pending) 32%, transparent); color: var(--finance-pending); }
+.odc-problem.error   { background: color-mix(in srgb, var(--finance-expense) 11%, transparent); border-color: color-mix(in srgb, var(--finance-expense) 32%, transparent); color: var(--finance-expense); }
+.odc-problem.info    { background: color-mix(in srgb, var(--sea-400) 11%, transparent);         border-color: color-mix(in srgb, var(--sea-400) 32%, transparent);         color: var(--sea-400); }
+.odc-problem-head { display: flex; align-items: center; gap: 10px; }
+.odc-problem-title { font: 600 var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); flex: 1 1 auto; min-width: 0; }
+.odc-problem-detail { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 72ch; text-wrap: pretty; }
+.odc-problem-cta {
+  flex: 0 0 auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+  border: none; border-radius: var(--radius-sm); padding: 7px 12px; cursor: pointer;
+  font: 600 var(--fs-caption)/1 var(--font-sans); letter-spacing: var(--tracking-wide);
+  transition: filter var(--duration-base) var(--ease-standard);
+}
+.odc-problem-cta .material-icons { font-size: 16px; }
+.odc-problem.warning .odc-problem-cta { background: var(--finance-pending); color: var(--ink-900); }
+.odc-problem.error   .odc-problem-cta { background: var(--finance-expense); color: #2A0E0E; }
+.odc-problem.info    .odc-problem-cta { background: var(--sea-400);         color: var(--ink-900); }
+.odc-problem-cta:hover { filter: brightness(1.08); }
+
+
+/* LineChart — the axis'd trend card (vs. the axis-less sparkline). Head =
+   title/sub + figure/delta; body = an auto-width SVG line+area plot. */
+.odc-lc {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: 20px;
+}
+.odc-lc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.odc-lc-head > div:first-child { min-width: 0; }
+.odc-lc-ttl { font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-lc-sub { font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 5px; }
+.odc-lc-figure { text-align: right; white-space: nowrap; }
+.odc-lc-num { font: var(--fw-medium) var(--fs-h6)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); white-space: nowrap; }
+.odc-lc-delta { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); margin-top: 5px; white-space: nowrap; }
+.odc-lc-delta.income  { color: var(--finance-income); }
+.odc-lc-delta.expense { color: var(--finance-expense); }
+.odc-lc-empty { padding: 28px 4px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-line-svg { width: 100%; height: auto; display: block; }
+.odc-lc-axis { font: var(--fw-regular) 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
+
+/* Donut allocation panel — ring + legend ("ledger") + total row, ported from
+   the kit's DonutPanel. The TOTAL lives at the foot of the legend, NOT in the
+   ring center, so large sums never overflow the hole. The hole holds only a
+   muted watermark icon naming the panel. */
+.odc-donut-panel { min-width: 0; }
+.odc-chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.odc-chart-head > div:first-child { flex: 1; min-width: 0; }
+.odc-chart-ttl { font: var(--fw-medium) var(--fs-body2)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-chart-sub { font: var(--fw-regular) var(--fs-overline)/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 5px; }
+
+/* Body: horizontal by default — ring on the left, legend ("ledger") on the
+   right. Add `.stack` to put the ring above the legend (the two-up
+   assets/liabilities overview, where two horizontal panels would be too wide). */
+.odc-donut-body { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: center; }
+.odc-donut-body.stack { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 18px; }
+.odc-donut-ring { position: relative; flex: none; }
+.odc-donut-ring svg { display: block; transform: rotate(-90deg); }
+.odc-donut-center { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.odc-donut-center-ic { font-size: 64px; color: var(--mud-palette-text-secondary); opacity: 0.34; }
+
+/* Legend ("ledger") — one row per slice: swatch + name on the left, then the
+   percent and amount in two fixed right-hand columns so figures line up and
+   match the total row below. */
+.odc-donut-legend { width: 100%; min-width: 0; }
+.odc-legend-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 8px 0; border-bottom: 1px dashed var(--mud-palette-divider-light); }
+.odc-legend-row:last-of-type { border-bottom: none; }
+.odc-legend-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.odc-legend-swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+.odc-legend-name { min-width: 0; font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odc-legend-figs { display: flex; align-items: baseline; gap: 14px; flex: none; }
+.odc-legend-pct { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); width: 34px; text-align: right; white-space: nowrap; }
+.odc-legend-amt { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); min-width: 76px; text-align: right; white-space: nowrap; }
+
+/* Sum row — the total lives here (out of the ring) so big numbers never overflow.
+   Label indents past the swatch; percent + amount sit in the same two columns. */
+.odc-donut-total { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--mud-palette-divider); }
+.odc-donut-total-lab { min-width: 0; padding-left: 21px; font: var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odc-donut-total-pct { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); width: 34px; text-align: right; white-space: nowrap; }
+.odc-donut-total-amt { font: var(--fw-medium) var(--fs-h6)/1.2 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); min-width: 76px; text-align: right; white-space: nowrap; }
+
+/* Two panels side by side with a hairline divider (assets / liabilities,
+   planned-in / planned-out) — the acct-overview layout. Panels stack internally. */
+.odc-donut-pair { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 28px; align-items: start; }
+.odc-donut-pair-div { background: var(--mud-palette-divider); width: 1px; align-self: stretch; }
+@media (max-width: 760px) {
+  .odc-donut-pair { grid-template-columns: 1fr; gap: 24px; }
+  .odc-donut-pair-div { display: none; }
+}
+
+/* ---------- Icon button sizes (base .odc-iconbtn defined above) ---------- */
+.odc-iconbtn.sm { width: 28px; height: 28px; }
+.odc-iconbtn.sm .material-icons { font-size: 18px; }
+.odc-iconbtn.lg { width: 44px; height: 44px; }
+.odc-iconbtn.lg .material-icons { font-size: 26px; }
+.odc-iconbtn.danger { color: var(--mud-palette-error); }
+.odc-iconbtn.danger:hover { background: var(--finance-expense-soft); color: var(--mud-palette-error); }
+
+/* ---------- Spinner (circular indeterminate — the one sanctioned loop) ---------- */
+.odc-spinner {
+  display: inline-block; flex: none; box-sizing: border-box;
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2.5px solid var(--mud-palette-action-default-hover);
+  border-top-color: var(--mud-palette-primary);
+  animation: odc-spin 0.7s linear infinite;
+}
+.odc-spinner.sm { width: 16px; height: 16px; border-width: 2px; }
+.odc-spinner.lg { width: 40px; height: 40px; border-width: 3px; }
+
+/* ---------- Progress bar (determinate — budget fill bars) ---------- */
+.odc-progress {
+  width: 100%; height: 6px; border-radius: var(--radius-pill);
+  background: var(--mud-palette-action-default-hover); overflow: hidden;
+}
+.odc-progress.tall { height: 10px; }
+.odc-progress-fill {
+  height: 100%; border-radius: inherit;
+  background: var(--mud-palette-primary);
+  transition: width var(--duration-slow) var(--ease-standard);
+}
+.odc-progress.income  .odc-progress-fill { background: var(--finance-income); }
+.odc-progress.expense .odc-progress-fill { background: var(--finance-expense); }
+.odc-progress.pending .odc-progress-fill { background: var(--finance-pending); }
+
+/* ---------- Collapsible (disclosure — record-detail sections, Files, advanced) ---------- */
+.odc-collapsible { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
+.odc-collapsible.flush { border: none; border-radius: 0; background: none; }
+.odc-collapsible-head { display: flex; align-items: center; }
+.odc-collapsible-trigger {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 10px;
+  appearance: none; background: none; border: none; cursor: pointer; text-align: left;
+  padding: 11px 14px;
+  transition: background-color var(--duration-base) var(--ease-standard);
+}
+.odc-collapsible-trigger:hover { background: var(--mud-palette-action-default-hover); }
+.odc-collapsible-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-collapsible-chev { color: var(--mud-palette-text-secondary); font-size: 20px; flex: none; transition: transform var(--duration-slow) var(--ease-standard); }
+.odc-collapsible[data-open] .odc-collapsible-chev { transform: rotate(180deg); }
+.odc-collapsible-lead { color: var(--mud-palette-text-secondary); font-size: 18px; flex: none; }
+.odc-collapsible-lead.glyph { font: 600 19px/1 var(--font-sans); display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
+.odc-collapsible-title { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary); flex: none; }
+.odc-collapsible-count {
+  font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary);
+  background: var(--mud-palette-action-disabled-background);
+  padding: 3px 7px; border-radius: 999px; font-variant-numeric: tabular-nums;
+}
+.odc-collapsible-action { flex: none; padding: 0 8px 0 4px; }
+.odc-collapsible-body { border-top: 1px solid var(--mud-palette-divider-light); }
+.odc-collapsible.flush .odc-collapsible-trigger { padding-left: 0; padding-right: 0; }
+
+/* ---------- Segmented control (single-select — txn direction Money in/out) ---------- */
+.odc-seg { display: inline-flex; background: var(--mud-palette-action-default-hover); border-radius: var(--radius-sm); padding: 3px; gap: 3px; }
+.odc-seg.full { display: flex; }
+.odc-seg.full .odc-seg-btn { flex: 1; justify-content: center; }
+.odc-seg-btn {
+  appearance: none; background: transparent; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  padding: 6px 14px; border-radius: 5px; color: var(--mud-palette-text-secondary);
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
+  transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
+}
+.odc-seg-btn .material-icons { font-size: 18px; }
+.odc-seg-btn:hover { color: var(--mud-palette-text-primary); }
+.odc-seg-btn[aria-checked="true"] { background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); box-shadow: var(--mud-elevation-1); }
+.odc-seg-btn[aria-checked="true"].income  { color: var(--finance-income); }
+.odc-seg-btn[aria-checked="true"].expense { color: var(--finance-expense); }
+.odc-seg-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-seg-btn:disabled { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
+
+/* ---------- Date picker (calendar popover) ---------- */
+.odc-dp { position: relative; display: inline-flex; flex-direction: column; }
+.odc-dp.full { display: flex; }
+.odc-dp-trigger {
+  display: inline-flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer;
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-dp-trigger .material-icons { font-size: 20px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-dp-val { flex: 1; text-align: left; }
+.odc-dp-trigger.placeholder .odc-dp-val { color: var(--mud-palette-placeholder); font-family: var(--font-sans); }
+.odc-dp-trigger:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-dp-trigger[aria-expanded="true"] { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
+.odc-dp-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-dp-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.odc-dp-pop {
+  /* Portaled to <body> (position:fixed via floatStyle), so it must sit ABOVE the
+     modal scrim (z 1200) — otherwise the calendar hides behind the dialog when a
+     date field is used inside a modal (New/Edit contract, upload validity).
+     Matches .odc-combo-pop / .odc-ms-pop. */
+  position: absolute; z-index: var(--z-popover); top: calc(100% + 6px); left: 0; width: 286px; box-sizing: border-box;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8); padding: var(--space-3);
+}
+.odc-dp-pop.end { left: auto; right: 0; }
+.odc-dp-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: var(--space-2); }
+.odc-dp-month { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.odc-dp-wd { text-align: center; padding: 6px 0; font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.odc-dp-day {
+  appearance: none; background: none; border: none; cursor: pointer; aspect-ratio: 1;
+  border-radius: var(--radius-sm); display: grid; place-items: center;
+  font: var(--fw-regular) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary); transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-dp-day.muted { color: var(--mud-palette-text-disabled); }
+.odc-dp-day:hover { background: var(--mud-palette-action-default-hover); }
+.odc-dp-day.today { box-shadow: inset 0 0 0 1px var(--mud-palette-lines-inputs); }
+.odc-dp-day.kbd { box-shadow: inset 0 0 0 2px var(--mud-palette-primary); }
+.odc-dp-day.selected.kbd { box-shadow: inset 0 0 0 2px var(--mud-palette-primary-text); }
+.odc-dp-day.selected { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.odc-dp-day.selected:hover { background: var(--mud-palette-primary-darken); }
+.odc-dp-day:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-dp-foot { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider); }
+
+/* ---------- Date range (two DatePickers as one inline pill) ----------
+   A compact filter/search-bar control: leading icon + caption, a from/to pair
+   of borderless DatePicker triggers joined by a dash, and a clear button. The
+   two triggers drop their own border/background and shrink to 30px so the pill
+   itself is the single input frame — matching Select / MultiSelect height. */
+.odc-dpr {
+  display: inline-flex; align-items: center; gap: 8px; height: 40px; box-sizing: border-box;
+  padding: 0 8px 0 12px; border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-sm); background: var(--mud-palette-surface);
+}
+.odc-dpr:focus-within { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
+.odc-dpr-ic { font-size: 16px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-dpr-lab { font: 600 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-dpr-dash { color: var(--mud-palette-text-secondary); flex: none; }
+.odc-dpr .odc-dp { min-width: 116px; }
+.odc-dpr .odc-dp-trigger { height: 30px; border: none; background: transparent; padding: 0 4px; box-shadow: none; }
+.odc-dpr .odc-dp-trigger:hover { background: var(--mud-palette-action-default-hover, rgba(199,208,224,0.08)); border-radius: var(--radius-sm); }
+.odc-dpr .odc-dp-trigger[aria-expanded="true"] { box-shadow: none; }
+.odc-dpr-clear {
+  flex: none; width: 26px; height: 26px; border-radius: var(--radius-sm); border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+  background: transparent; color: var(--mud-palette-text-secondary);
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-dpr-clear .material-icons { font-size: 15px; }
+.odc-dpr-clear:hover { color: var(--mud-palette-text-primary); background: var(--mud-palette-action-default-hover, rgba(199,208,224,0.08)); }
+.odc-dpr-clear:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
+
+/* ---------- Drawer + NavItem (the app's only chrome surface) ---------- */
+.odc-drawer {
+  width: 240px; flex: none; box-sizing: border-box; height: 100%;
+  display: flex; flex-direction: column;
+  background: var(--mud-palette-drawer-background); color: var(--mud-palette-drawer-text);
+  border-right: 1px solid var(--mud-palette-divider); padding: var(--space-4) var(--space-3);
+}
+.odc-drawer-brand { display: flex; align-items: center; gap: 10px; padding: var(--space-2) var(--space-2) var(--space-5); }
+.odc-drawer-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; overflow-y: auto; }
+.odc-drawer-foot { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--mud-palette-divider); padding-top: var(--space-3); margin-top: var(--space-3); }
+.odc-drawer-section { padding: var(--space-3) 12px var(--space-1); font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.odc-navitem {
+  display: flex; align-items: center; gap: 12px; width: 100%; box-sizing: border-box;
+  appearance: none; border: none; text-align: left; text-decoration: none; cursor: pointer;
+  padding: 9px 12px; border-radius: var(--radius-sm); background: transparent;
+  color: var(--mud-palette-text-secondary);
+  font: var(--fw-medium) var(--fs-body2)/1.2 var(--font-sans);
+  transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
+}
+.odc-navitem .material-icons { font-size: 22px; flex: none; }
+.odc-navitem .odc-navitem-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odc-navitem:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-navitem:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-navitem.active { background: color-mix(in oklab, var(--mud-palette-primary) 14%, transparent); color: var(--brand-text); }
+.odc-navitem.active .material-icons { color: var(--mud-palette-primary); }
+.odc-navitem .odc-badge { margin-left: auto; flex: none; }
+
+/* ---------- FileUpload ---------- */
+/* Dropzone + ready-file list + inline file-kind picker. Promoted from the web
+   kit's .afm- block; the file-kind accent colors live on the JS registry. */
+.odc-upload { display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* Dropzone */
+.odc-upload-drop {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  padding: var(--space-6) var(--space-5);
+  border: 1.5px dashed var(--mud-palette-divider);
+  border-radius: var(--radius-lg);
+  background: var(--mud-palette-background);
+  cursor: pointer; text-align: center;
+  transition: border-color var(--duration-base) var(--ease-standard), background-color var(--duration-base) var(--ease-standard);
+}
+.odc-upload-drop:hover { border-color: var(--mud-palette-text-disabled); }
+.odc-upload-drop.drag {
+  border-color: var(--mud-palette-primary);
+  background: color-mix(in srgb, var(--mud-palette-primary) 7%, transparent);
+}
+.odc-upload-drop.has-error { border-color: var(--mud-palette-error); }
+.odc-upload-drop:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-upload-drop-ic {
+  display: grid; place-items: center;
+  width: 48px; height: 48px; border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
+  color: var(--mud-palette-primary);
+}
+.odc-upload-drop-text { font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-upload-drop-text strong { font-weight: var(--fw-medium); }
+.odc-upload-drop-link { color: var(--mud-palette-primary); text-decoration: underline; text-underline-offset: 2px; }
+.odc-upload-drop-hint { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* Compact dropzone — horizontal, for tight modals */
+.odc-upload-drop.compact {
+  flex-direction: row; flex-wrap: wrap; justify-content: center;
+  gap: var(--space-1) var(--space-3); padding: var(--space-4) var(--space-4);
+}
+.odc-upload-drop.compact .odc-upload-drop-ic { width: 36px; height: 36px; border-radius: var(--radius-md); }
+.odc-upload-drop.compact .odc-upload-drop-hint { flex-basis: 100%; }
+
+.odc-upload-err { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-error); margin: calc(-1 * var(--space-2)) 0 0 var(--space-1); }
+
+/* Ready-file list */
+.odc-upload-list { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; }
+.odc-upload-list-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px var(--space-4);
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+  background: var(--mud-palette-action-default-hover);
+  border-bottom: 1px solid var(--mud-palette-divider-light);
+}
+.odc-upload-list-scroll { max-height: 246px; overflow-y: auto; }
+
+.odc-upload-file { display: flex; align-items: center; gap: var(--space-3); padding: 11px var(--space-4); }
+.odc-upload-file + .odc-upload-file { border-top: 1px solid var(--mud-palette-divider-light); }
+.odc-upload-file-ic { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--radius-md); }
+.odc-upload-file-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.odc-upload-file-name {
+  width: 100%; box-sizing: border-box; border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; padding: 3px 6px; margin: -3px -6px;
+  font: var(--fw-medium) var(--fs-body2)/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+  text-overflow: ellipsis;
+}
+.odc-upload-file-name:hover { border-color: var(--mud-palette-divider); }
+.odc-upload-file-name:focus { outline: none; border-color: var(--focus-ring); background: var(--mud-palette-background); }
+.odc-upload-file-sub { display: flex; align-items: center; gap: var(--space-3); }
+.odc-upload-file-size { font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.odc-upload-file-x {
+  flex: none; display: grid; place-items: center;
+  width: 30px; height: 30px; border: none; border-radius: var(--radius-pill);
+  background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-upload-file-x:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-error); }
+.odc-upload-file.has-meta { align-items: flex-start; }
+.odc-upload-file.has-meta .odc-upload-file-ic { margin-top: 2px; }
+.odc-upload-file-extra { margin-top: 10px; }
+
+/* Inline file-kind picker */
+/* Inline file-kind picker — a compact DS TypeSelect embedded in a file row.
+   The control, popover, positioning and scroll all come from .odc-select; here
+   we only shrink the trigger to sit inline next to the file size. */
+.odc-upload-kind { flex: none; }
+.odc-upload-kind .odc-field { margin: 0; }
+.odc-upload-kind .odc-select-trigger {
+  width: auto; gap: 6px; height: 30px; padding: 0 7px 0 9px;
+  border-radius: 7px;
+  font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans);
+}
+.odc-upload-kind .odc-select-trigger-main { flex: 0 1 auto; gap: 7px; }
+.odc-upload-kind .odc-select-trigger .odc-opt-icon { font-size: 16px; }
+.odc-upload-kind .odc-select-chev { font-size: 18px; }
+
+/* ---------- AccountSmartTagsSection ----------
+   The per-account "Smart tags" disclosure: reuses .odc-collapsible chrome, adds
+   the tag-management bar (removable chips + an Add-tag checklist popover) and
+   the empty / loading / no-match states. */
+.odc-smarttags .odc-collapsible-lead { color: var(--tag-text); }
+
+/* Management bar — label + watched-tag chips + the adder, total on the right */
+.odc-smarttags-bar {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-action-default-hover);
+}
+.odc-smarttags-bar-main { display: flex; align-items: center; flex-wrap: wrap; gap: 8px var(--space-3); min-width: 0; }
+.odc-smarttags-total {
+  flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  padding-left: var(--space-4); border-left: 1px solid var(--mud-palette-divider);
+}
+.odc-smarttags-total-lab {
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); white-space: nowrap;
+}
+.odc-smarttags-total-val { font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.odc-smarttags-total.income  .odc-smarttags-total-val { color: var(--finance-income); }
+.odc-smarttags-total.expense .odc-smarttags-total-val { color: var(--finance-expense); }
+.odc-smarttags-bar-label {
+  flex: none; font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+  letter-spacing: var(--tracking-caps); text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.odc-smarttags-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.odc-smarttags-chip { padding-right: 4px; }
+.odc-smarttags-chip-ic { font-size: 13px; margin-right: -1px; opacity: 0.85; }
+.odc-smarttags-x {
+  display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 1px;
+  appearance: none; border: none; padding: 0; background: transparent;
+  border-radius: var(--radius-pill); cursor: pointer; color: currentColor; opacity: 0.7;
+  transition: opacity var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-smarttags-x:hover { opacity: 1; background: color-mix(in oklab, currentColor 22%, transparent); }
+.odc-smarttags-x:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
+.odc-smarttags-x .material-icons { font-size: 13px; }
+
+/* Add-tag trigger — quiet bordered pill that opens the checklist */
+.odc-smarttags-adder { display: inline-flex; }
+.odc-smarttags-add {
+  display: inline-flex; align-items: center; gap: 4px;
+  appearance: none; cursor: pointer;
+  padding: 3px 10px 3px 8px;
+  border: 1px dashed var(--mud-palette-lines-inputs); border-radius: var(--radius-pill);
+  background: transparent; color: var(--mud-palette-text-secondary);
+  font: var(--fw-medium) var(--fs-body2)/1.2 var(--font-sans);
+  transition: border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-smarttags-add:hover { border-color: var(--mud-palette-primary); color: var(--brand-text); background: var(--mud-palette-action-default-hover); }
+.odc-smarttags-add.open { border-style: solid; border-color: var(--mud-palette-primary); color: var(--brand-text); }
+.odc-smarttags-add:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-smarttags-add .material-icons { font-size: 16px; }
+
+/* Checklist popover (portaled) */
+.odc-smarttags-pop {
+  z-index: var(--z-popover); box-sizing: border-box; min-width: 248px; max-width: 320px;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8); padding: var(--space-2);
+}
+.odc-smarttags-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
+.odc-smarttags-search:focus-within { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
+.odc-smarttags-search .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-smarttags-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+.odc-smarttags-list { max-height: 236px; overflow-y: auto; display: flex; flex-direction: column; }
+.odc-smarttags-opt { padding: 7px 6px; border-radius: var(--radius-sm); cursor: pointer; width: 100%; box-sizing: border-box; }
+.odc-smarttags-opt:hover { background: var(--mud-palette-action-default-hover); }
+.odc-smarttags-opt.blocked { cursor: not-allowed; }
+.odc-smarttags-opt.blocked .odc-check-label { color: var(--mud-palette-text-disabled); }
+.odc-smarttags-empty-opt { padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+.odc-smarttags-cap {
+  margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider);
+  font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--pending-text);
+}
+
+/* States */
+.odc-smarttags-table { /* the injected TxnTable sits flush in the body */ }
+.odc-smarttags .odc-empty { padding: var(--space-8) var(--space-6); }
+.odc-smarttags-loading { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-4); }
+.odc-smarttags-loading-txt { font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-smarttags-state {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-5) var(--space-4); flex-wrap: wrap;
+}
+.odc-smarttags-state.error .odc-smarttags-state-ic { color: var(--finance-expense); font-size: 22px; flex: none; }
+.odc-smarttags-state-txt { flex: 1; min-width: 200px; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-btn.sm { padding: 5px 12px; font-size: var(--fs-body2); }
+
+/* Indeterminate progress sweep for the loading state */
+.odc-progress.indeterminate { position: relative; }
+.odc-progress.indeterminate .odc-progress-fill {
+  position: absolute; left: 0; width: 36%; border-radius: inherit;
+  animation: odc-indeterminate 1.25s ease-in-out infinite;
+}
+@keyframes odc-indeterminate {
+  0%   { left: -38%; width: 38%; }
+  55%  { left: 62%;  width: 50%; }
+  100% { left: 100%; width: 36%; }
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .odc-skeleton::after, .odc-toast { animation: none; }
+  .odc-progress.indeterminate .odc-progress-fill { animation: none; left: 0; width: 100%; }
+  .odc-skeleton::after { display: none; }
+}
+
+
+/* ---------- Target-size helpers (WCAG 2.5.8) ----------
+   The smart-tag remove (16px) and toast close (20px) stay visually small but
+   get an invisible ≥24px hit area via an absolutely-positioned pseudo. */
+.odc-smarttags-x, .odc-toast-close { position: relative; }
+.odc-smarttags-x::after { content: ''; position: absolute; inset: -4px; }
+.odc-toast-close::after  { content: ''; position: absolute; inset: -2px; }
+
+/* ---------- Pager (server-paged flat-table list pages) ----------
+   Left cluster: rows-per-page selector + the "Showing X–Y of N" summary.
+   Right cluster: first / prev / next / last nav. Sits flush below a list/table
+   on its own row. At a bound the nav button is aria-disabled (a focusable
+   no-op), NOT native :disabled — so it keeps its dimmed-but-present treatment
+   and tab stop. */
+.odc-pager {
+  display: flex; align-items: center; justify-content: flex-end; gap: var(--space-6);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--mud-palette-lines-default);
+}
+.odc-pager-left { display: flex; align-items: center; gap: var(--space-6); min-width: 0; flex-wrap: wrap; }
+.odc-pager-size { display: inline-flex; align-items: center; gap: var(--space-2); }
+.odc-pager-size-label { font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.odc-pager-summary {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.odc-pager-nav { display: flex; align-items: center; gap: 0; }
+.odc-pager-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; min-width: 32px; /* ≥ 24px target */
+  padding: 0; border: none; border-radius: 50%;
+  background: transparent; color: var(--mud-palette-text-secondary);
+  cursor: pointer; transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
+}
+.odc-pager-btn .material-icons { font-size: 20px; }
+.odc-pager-btn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-pager-btn:focus-visible { outline: 2px solid var(--mud-palette-primary); outline-offset: var(--focus-ring-offset); }
+/* Bound / in-flight: dimmed and inert to the pointer, but still focusable. */
+.odc-pager-btn[aria-disabled="true"] {
+  color: var(--mud-palette-action-disabled);
+  cursor: default;
+}
+.odc-pager-btn[aria-disabled="true"]:hover { background: transparent; color: var(--mud-palette-action-disabled); }
+/* Busy spinner in the summary while a page is fetching. */
+.odc-pager-spin {
+  width: 13px; height: 13px; flex: none; border-radius: 50%;
+  border: 2px solid var(--mud-palette-divider); border-top-color: var(--mud-palette-primary);
+  animation: odc-pager-spin 0.7s linear infinite;
+}
+@keyframes odc-pager-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .odc-pager-spin { animation: none; border-top-color: var(--mud-palette-divider); }
+}
+
+/* ---------- Rows-per-page dropdown ----------
+   Shared trigger + menu used by the footer Pager (opens UPWARD) and by the
+   toolbar PageSizeSelect mirror (.mirror — opens DOWNWARD, 40px tall to line up
+   with SearchField / MultiSelect). */
+.odc-rpp { position: relative; display: inline-flex; }
+.odc-rpp-trigger {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; box-sizing: border-box;
+  padding: 0 6px 0 10px; cursor: pointer;
+  background: var(--mud-palette-background); color: var(--mud-palette-text-primary);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm);
+  font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans);
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-rpp-trigger:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-rpp-trigger:focus-visible { outline: 2px solid var(--mud-palette-primary); outline-offset: var(--focus-ring-offset); }
+.odc-rpp-trigger[aria-expanded="true"] { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
+.odc-rpp-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+.odc-rpp-prefix { color: var(--mud-palette-text-secondary); }
+.odc-rpp-trigger b { font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
+.odc-rpp-chev { font-size: 18px !important; color: var(--mud-palette-text-secondary); }
+.odc-rpp.mirror .odc-rpp-trigger { height: 40px; padding: 0 8px 0 12px; }
+/* Menu is fixed-positioned inline by the component (top/bottom + left set from
+   the trigger rect) so it escapes card / toolbar overflow; only the box styling
+   lives here. */
+.odc-rpp-menu {
+  z-index: var(--z-dropdown);
+  margin: 0; padding: 4px; list-style: none; min-width: 150px; box-sizing: border-box;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--radius-sm); box-shadow: var(--mud-elevation-8);
+}
+.odc-rpp-opt {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; height: 34px; padding: 0 10px; border: none; background: transparent;
+  border-radius: var(--radius-sm); cursor: pointer; text-align: left;
+  font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.odc-rpp-opt:hover { background: var(--mud-palette-action-default-hover); }
+.odc-rpp-opt.sel { color: var(--mud-palette-primary); font-weight: var(--fw-medium); }
+.odc-rpp-opt .material-icons { font-size: 18px; }
+
+/* ---------- Infinite list (card-list server paging) ----------
+   The card lists (Accounts, Budgets) page by appending batches as a sentinel
+   near the list end scrolls into view. A centered status pill reports progress;
+   skeleton cards hold the space for the batch in flight. No footer pager and no
+   toolbar mirror here — the only control is the "Load N at a time" batch size in
+   the toolbar (a PageSizeSelect). */
+.odc-infinite-status { display: flex; justify-content: center; padding: 12px 0 4px; }
+.odc-infinite-pill {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);
+  border-radius: var(--radius-pill); padding: 8px 16px;
+  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary); box-shadow: var(--mud-elevation-2);
+  font-variant-numeric: tabular-nums;
+}
+.odc-infinite-spin {
+  width: 13px; height: 13px; flex: none; border-radius: 50%;
+  border: 2px solid var(--mud-palette-divider); border-top-color: var(--mud-palette-primary);
+  animation: odc-pager-spin 0.7s linear infinite;
+}
+.odc-skel-card {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); padding: 16px;
+}
+.odc-skel-ic { width: 40px; height: 40px; border-radius: var(--radius-sm); flex: none; }
+.odc-skel-lines { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.odc-skel-bar { height: 12px; border-radius: 4px; }
+.odc-skel { background: var(--mud-palette-divider); animation: odc-skel-pulse 1.4s ease-in-out infinite; }
+@keyframes odc-skel-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .odc-skel { animation: none; }
+  .odc-infinite-spin { animation: none; border-top-color: var(--mud-palette-divider); }
+}
+
+/* ============================================================
+   Journal module — TodoStatusChip · JournalPhotoGallery · TaskBoard
+   ============================================================ */
+
+/* ---------- TodoStatusChip ---------- */
+/* Archived reuses the neutral outline tone but reads quieter than Backlog —
+   the text label ("Archived") is what distinguishes it, per a11y. */
+.odc-chip.outline.odc-todo-archived { opacity: 0.7; border-style: dashed; }
+
+/* ---------- JournalPhotoGallery ---------- */
+.odc-photogrid { display: flex; flex-direction: column; gap: var(--space-2); }
+.odc-photogrid-head { display: flex; align-items: center; gap: 8px; color: var(--mud-palette-text-secondary); }
+.odc-photogrid-head .material-icons { font-size: 18px; }
+.odc-photogrid-title { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-photogrid-count {
+  font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary);
+  background: var(--mud-palette-action-disabled-background);
+  padding: 3px 7px; border-radius: 999px; font-variant-numeric: tabular-nums;
+}
+.odc-photogrid-empty { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-photogrid-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.odc-photogrid-item { min-width: 0; }
+.odc-photogrid-tile {
+  display: flex; flex-direction: column; width: 100%; padding: 0; cursor: pointer;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-sm); overflow: hidden; transition: border-color var(--duration-base) var(--ease-standard);
+}
+.odc-photogrid-tile:hover { border-color: var(--mud-palette-lines-inputs); }
+.odc-photogrid-tile:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-photogrid-img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--mud-palette-background); }
+/* Striped placeholder — the sanctioned "drop a photo here" mock texture. */
+.odc-photogrid-ph {
+  display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3;
+  background-color: var(--mud-palette-background);
+  background-image: repeating-linear-gradient(45deg,
+    var(--mud-palette-action-default-hover) 0, var(--mud-palette-action-default-hover) 1px,
+    transparent 1px, transparent 9px);
+}
+.odc-photogrid-ph-label {
+  font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono);
+  text-transform: uppercase; letter-spacing: var(--tracking-caps);
+  color: var(--mud-palette-text-secondary); opacity: 0.75;
+}
+.odc-photogrid-name {
+  font: var(--fw-regular) 11px/1.2 var(--font-mono); color: var(--mud-palette-text-secondary);
+  padding: 6px 8px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-top: 1px solid var(--mud-palette-divider);
+}
+
+/* ---------- TaskBoard (kanban) ---------- */
+.odc-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); align-items: start; }
+.odc-board-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.odc-board-col {
+  display: flex; flex-direction: column; gap: var(--space-3); min-width: 0;
+  background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); padding: var(--space-3);
+  transition: border-color var(--duration-base) var(--ease-standard), background-color var(--duration-base) var(--ease-standard);
+}
+.odc-board-col.dragover { border-color: var(--mud-palette-primary); background: var(--mud-palette-action-default-hover); }
+.odc-board-colhead { display: flex; align-items: center; gap: 8px; padding: 2px 4px; }
+.odc-board-coltitle {
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); text-transform: uppercase;
+  letter-spacing: var(--tracking-caps); color: var(--mud-palette-text-secondary);
+}
+.odc-board-colcount {
+  margin-left: auto; font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono);
+  color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-disabled-background);
+  padding: 3px 7px; border-radius: 999px; font-variant-numeric: tabular-nums;
+}
+.odc-board-cards { display: flex; flex-direction: column; gap: var(--space-2); min-height: 40px; }
+.odc-board-empty {
+  font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+  text-align: center; padding: var(--space-4); border: 1px dashed var(--mud-palette-divider); border-radius: var(--radius-sm);
+}
+.odc-board-card {
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-sm); padding: var(--space-3);
+  display: flex; flex-direction: column; gap: var(--space-2); cursor: grab;
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-board-card:hover { border-color: var(--mud-palette-lines-inputs); }
+.odc-board-card.dragging { opacity: 0.5; cursor: grabbing; border-color: var(--mud-palette-primary); }
+.odc-board-cardbody { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.odc-board-cardtitle { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-board-moves {
+  display: flex; align-items: center; gap: 2px; margin-top: 2px;
+  padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider);
+}
+.odc-board-move {
+  appearance: none; background: none; border: none; cursor: pointer;
+  width: 28px; height: 28px; border-radius: var(--radius-sm); display: grid; place-items: center;
+  color: var(--mud-palette-text-secondary); transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-board-move .material-icons { font-size: 18px; }
+.odc-board-move:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-board-move:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
+.odc-board-move:disabled { opacity: 0.32; cursor: not-allowed; }
+.odc-board-move:last-child { margin-left: auto; }
+@media (max-width: 900px) { .odc-board { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   Calendar module — ColorSwatchSelect · TimeField · CalendarGrid
+   ============================================================ */
+
+/* ---------- ColorSwatchSelect (curated palette) ---------- */
+.odc-swatchsel { display: flex; flex-wrap: wrap; gap: 10px; }
+.odc-swatch {
+  appearance: none; cursor: pointer; width: 30px; height: 30px; flex: none;
+  border-radius: var(--radius-pill); background: var(--sw);
+  border: 2px solid transparent; box-shadow: 0 0 0 1px var(--mud-palette-divider) inset;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+  transition: transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+}
+.odc-swatch:hover { transform: scale(1.08); }
+.odc-swatch.selected { box-shadow: 0 0 0 2px var(--mud-palette-surface) inset, 0 0 0 4px var(--sw); }
+.odc-swatch-check { font-size: 18px; line-height: 1; display: block; color: var(--sw-fg); }
+.odc-swatch:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 3px; }
+.odc-swatch:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* ---------- TimeField ---------- */
+.odc-timefield {
+  position: relative; display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-sm); padding: 0 10px 0 12px; height: var(--control-h);
+}
+.odc-timefield.full { display: flex; width: 100%; }
+.odc-timefield-ic { font-size: 20px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-timefield-input {
+  flex: 1; min-width: 0; border: none; background: none; outline: none; height: 100%;
+  font: var(--fw-regular) var(--fs-body1)/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+.odc-timefield-input::placeholder { color: var(--mud-palette-placeholder); font-family: var(--font-sans); }
+.odc-timefield:focus-within { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
+.odc-timefield.error { border-color: var(--mud-palette-error); }
+.odc-timefield.disabled { opacity: 0.5; }
+.odc-timefield-clear {
+  appearance: none; background: none; border: none; cursor: pointer; flex: none;
+  width: 22px; height: 22px; border-radius: var(--radius-pill); display: grid; place-items: center;
+  color: var(--mud-palette-text-secondary);
+}
+.odc-timefield-clear .material-icons { font-size: 16px; }
+.odc-timefield-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-timefield-pop {
+  z-index: var(--z-popover); box-sizing: border-box; max-height: 240px; overflow-y: auto;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8); padding: 6px;
+}
+.odc-timefield-opt {
+  display: block; width: 100%; text-align: left; appearance: none; background: none; border: none; cursor: pointer;
+  padding: 7px 10px; border-radius: var(--radius-sm);
+  font: var(--fw-regular) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+.odc-timefield-opt:hover { background: var(--mud-palette-action-default-hover); }
+.odc-timefield-opt.active { background: var(--mud-palette-action-default-hover); box-shadow: inset 0 0 0 1px var(--brand-text); }
+.odc-timefield-opt.selected { background: var(--brand-soft); color: var(--brand-text); }
+.odc-timefield-opt.selected.active { box-shadow: inset 0 0 0 1px var(--brand-text); }
+
+/* ---------- CalendarGrid (month) ---------- */
+.odc-cal {
+  display: flex; flex-direction: column; border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); overflow: hidden; background: var(--mud-palette-surface);
+}
+.odc-cal-wdhead { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--mud-palette-background-gray); }
+.odc-cal-wd {
+  text-align: center; padding: 8px 0; border-bottom: 1px solid var(--mud-palette-divider);
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps);
+  text-transform: uppercase; color: var(--mud-palette-text-secondary);
+}
+.odc-cal-week { display: grid; grid-template-columns: repeat(7, 1fr); }
+.odc-cal-week:not(:last-child) { border-bottom: 1px solid var(--mud-palette-divider); }
+.odc-cal-day {
+  position: relative; min-height: 118px; padding: 4px 0 6px; box-sizing: border-box; cursor: pointer;
+  display: flex; flex-direction: column; gap: 3px; overflow: hidden;
+  border-right: 1px solid var(--mud-palette-divider); transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-cal-week .odc-cal-day:last-child { border-right: none; }
+.odc-cal-day:hover { background: var(--mud-palette-action-default-hover); }
+.odc-cal-day.muted { background: var(--mud-palette-background-gray); }
+.odc-cal-day.dragover { background: var(--brand-soft); box-shadow: inset 0 0 0 2px var(--mud-palette-primary); }
+.odc-cal-chip[draggable="true"] { cursor: grab; }
+.odc-cal-chip.dragging { opacity: 0.45; }
+.odc-cal-day.muted .odc-cal-daynum { color: var(--mud-palette-text-disabled); }
+.odc-cal-day:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; z-index: 2; }
+.odc-cal-daynum-row { display: flex; align-items: baseline; gap: 5px; padding: 0 8px; min-height: 22px; }
+.odc-cal-daymo { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.odc-cal-daynum {
+  margin-left: auto; font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary); min-width: 22px; height: 22px; display: grid; place-items: center; border-radius: var(--radius-pill);
+}
+.odc-cal-daynum.today { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.odc-cal-items { display: flex; flex-direction: column; gap: 2px; padding: 0 4px; min-height: 0; }
+.odc-cal-chip {
+  appearance: none; border: none; cursor: pointer; text-align: left; width: 100%; box-sizing: border-box;
+  display: flex; align-items: center; gap: 5px; padding: 2px 7px; height: 20px; border-radius: var(--radius-sm);
+  font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); overflow: hidden;
+}
+.odc-cal-chip-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
+.odc-cal-chip-rec { font-size: 12px; opacity: 0.85; }
+/* All-day: filled swatch strip. Flush square edges where it continues into an adjacent day. */
+.odc-cal-chip.allday { background: var(--chip); color: var(--chip-fg); }
+.odc-cal-chip.allday.cont-l { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -4px; padding-left: 11px; }
+.odc-cal-chip.allday.cont-r { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: -4px; padding-right: 11px; }
+/* Timed: quiet row with a colour dot + tabular time. */
+.odc-cal-chip.timed { background: transparent; color: var(--mud-palette-text-primary); padding-left: 4px; }
+.odc-cal-chip.timed:hover { background: var(--mud-palette-action-default-hover); }
+.odc-cal-chip.allday:hover { filter: brightness(1.06); }
+.odc-cal-chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--chip); flex: none; }
+.odc-cal-chip-time { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-cal-chip:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
+.odc-cal-more {
+  appearance: none; background: none; border: none; cursor: pointer; text-align: left; width: 100%;
+  padding: 2px 7px; border-radius: var(--radius-sm); font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-cal-more:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-cal-more:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
+
+/* Day-overflow popover */
+.odc-cal-popcatch { position: fixed; inset: 0; z-index: 1290; }
+.odc-cal-daypop {
+  z-index: var(--z-popover); width: 268px; box-sizing: border-box; background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
+  overflow: hidden;
+}
+.odc-cal-daypop-head { padding: 12px 16px 8px; text-align: center; border-bottom: 1px solid var(--mud-palette-divider); }
+.odc-cal-daypop-wd { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.odc-cal-daypop-n { font: var(--fw-light) var(--fs-h3)/1.1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-cal-daypop-list { max-height: 240px; overflow-y: auto; padding: 6px; }
+.odc-cal-daypop-row {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; appearance: none; background: none;
+  border: none; cursor: pointer; padding: 7px 10px; border-radius: var(--radius-sm);
+}
+.odc-cal-daypop-row:hover { background: var(--mud-palette-action-default-hover); }
+.odc-cal-daypop-row:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -1px; }
+.odc-cal-daypop-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.odc-cal-daypop-time { font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); flex: none; min-width: 52px; }
+.odc-cal-daypop-t { flex: 1; min-width: 0; font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.odc-cal-daypop-foot { border-top: 1px solid var(--mud-palette-divider); padding: 6px; }
+.odc-cal-daypop-foot .odc-btn { width: 100%; justify-content: center; }
+
+
+/* ---------- RevealPanel (segmented toggle + connected body) ---------- */
+.odc-reveal.open {
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  background: var(--mud-palette-background-gray); overflow: hidden;
+}
+.odc-reveal.open .odc-reveal-head { padding: 12px; border-bottom: 1px solid var(--mud-palette-divider); }
+.odc-reveal-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }

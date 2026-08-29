@@ -1,0 +1,13 @@
+/* Contracts — /contracts
+   Sibling of Accounts / Insurance / Tax Statements: the same expandable-record
+   scaffold, which is now the shared OdsExpandableCard — one global `.acct-*` copy
+   in wwwroot/css/odyssey-components.css (issue #367). The contract-specific
+   summary strip, headline, parties list and dialog bits are global (con-* in
+   odyssey-components.css) because they live in child components. The feature accent
+   is a warm clay/bronze (oklch hue 42). */
+
+.con-shell {
+    --con: oklch(0.70 0.13 42);
+    --con-soft: oklch(0.70 0.13 42 / 0.16);
+}
+

@@ -1,0 +1,53 @@
+@*
+    OdsBreakdownTile — a labelled summary tile that lists a small distribution as
+    icon · label · count rows (Odyssey Design System · components/BreakdownTile).
+    "By type", "By status", "By currency" and the like — the generic form of a
+    page Overview's by-type breakdown, so any page can drop one (or several, fed
+    different data) into a .odc-summary-grid.
+
+    Pass Label (the overline caption) and Rows — each an OdsBreakdownRow
+    { Icon, IconColor, Label, Count, Key }. The count is right-aligned in tabular
+    monospace; the icon tints to IconColor. When Rows is empty the Empty message
+    shows instead. Styled by .odc-breakdown-*.
+*@
+
+<div class="odc-breakdown @Class">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="odc-breakdown-ov">@Label</span>
+    }
+    @if (Rows.Count > 0)
+    {
+        <div class="odc-breakdown-rows">
+            @foreach (var (row, i) in Rows.Select((r, i) => (r, i)))
+            {
+                <div class="odc-breakdown-row" @key="row.Key ?? i">
+                    @if (!string.IsNullOrEmpty(row.Icon))
+                    {
+                        <span class="material-icons" aria-hidden="true"
+                              style="@(string.IsNullOrEmpty(row.IconColor) ? null : $"color:{row.IconColor};")">@row.Icon</span>
+                    }
+                    <span class="odc-breakdown-label">@row.Label</span>
+                    <span class="odc-breakdown-n">@row.Count</span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="odc-breakdown-empty">@Empty</div>
+    }
+</div>
+
+@code {
+    /// <summary>The overline caption (e.g. "By type").</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>The distribution rows.</summary>
+    [Parameter] public IReadOnlyList<OdsBreakdownRow> Rows { get; set; } = [];
+
+    /// <summary>Message shown when there are no rows.</summary>
+    [Parameter] public string Empty { get; set; } = "Nothing to show.";
+
+    [Parameter] public string? Class { get; set; }
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- @dsCard group="Type" name="Type · Tabular figures" subtitle="Roboto Mono · tnum for ledgers" viewport="700x280" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Type · Tabular figures</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .demo {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    .panel {
+      padding: 14px; border: 1px solid var(--mud-palette-divider); border-radius: 8px;
+      background: var(--mud-palette-surface);
+    }
+    .col-head { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+    .line { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; border-bottom: 1px dashed var(--mud-palette-divider-light); }
+    .line:last-child { border-bottom: none; }
+    .label { font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .num { font: 500 15px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+    .num.income { color: var(--finance-income); }
+    .num.expense { color: var(--finance-expense); }
+    .total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; margin-top: 8px; border-top: 1px solid var(--mud-palette-divider); }
+    .total .num { font-size: 22px; font-weight: 500; }
+  </style>
+  <div class="demo">
+    <div class="panel">
+      <div class="col-head">Tabular figures · expenses</div>
+      <div class="line"><span class="label">Whole Foods Market</span><span class="num expense">−128.40</span></div>
+      <div class="line"><span class="label">Spotify subscription</span><span class="num expense">−  9.99</span></div>
+      <div class="line"><span class="label">Uber · 14 Nov</span><span class="num expense">− 24.18</span></div>
+      <div class="line"><span class="label">Pacific Gas & Electric</span><span class="num expense">−112.75</span></div>
+      <div class="total"><span class="label">Total</span><span class="num expense">− 275.32</span></div>
+    </div>
+    <div class="panel">
+      <div class="col-head">Tabular figures · income</div>
+      <div class="line"><span class="label">Payroll · ACME Co</span><span class="num income">+3,250.00</span></div>
+      <div class="line"><span class="label">Refund · Delta Air</span><span class="num income">+  118.40</span></div>
+      <div class="line"><span class="label">Interest</span><span class="num income">+    4.12</span></div>
+      <div class="line"><span class="label">Reimbursement</span><span class="num income">+   42.00</span></div>
+      <div class="total"><span class="label">Total</span><span class="num income">+3,414.52</span></div>
+    </div>
+  </div>
+</body></html>

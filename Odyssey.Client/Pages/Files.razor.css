@@ -1,0 +1,5 @@
+/* ── Files page (Odyssey Design System · Screens · Files page) ───────────────
+   The whole table is now the shared <OdsFilesTable> (kind avatar / name / Type
+   chip + controlled sort live in Components/OdsFilesTable.razor[.css]); the
+   header filter bar uses the .ph-filter-bar / .ph-search / .ph-select contract
+   owned by Components/PageHeader.razor.css. Nothing page-scoped remains. */

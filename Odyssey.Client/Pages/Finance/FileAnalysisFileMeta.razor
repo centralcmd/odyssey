@@ -1,0 +1,17 @@
+@* The "which file, which account" line every analyze-file phase repeats. *@
+<div class="fan-filemeta">
+    <span class="fan-file-ic"><OdsMIcon Name="description" Size="18" /></span>
+    <span class="fan-file-name">@FileName</span>
+    @if (!string.IsNullOrWhiteSpace(AccountName))
+    {
+        <span class="fan-file-acct">@AccountName</span>
+    }
+</div>
+
+@code {
+    /// <summary>The statement being analyzed.</summary>
+    [Parameter] public string FileName { get; set; } = "";
+
+    /// <summary>The account it belongs to; omitted when unknown.</summary>
+    [Parameter] public string? AccountName { get; set; }
+}

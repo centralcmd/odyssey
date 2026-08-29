@@ -1,0 +1,13 @@
+@inherits LayoutComponentBase
+
+@*
+    OnboardingLayout — the first-sign-in profile gate surface (issue #316 §5). Deliberately omits the
+    module rail / nav shell (the MainLayout chrome) so a user with an incomplete profile cannot navigate
+    into the app until the required fields are saved. Just the theme + the page's own centered card.
+*@
+
+<OdysseyThemeProvider></OdysseyThemeProvider>
+
+<main id="main-content" role="main">
+    @Body
+</main>

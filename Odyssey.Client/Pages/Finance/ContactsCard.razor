@@ -1,0 +1,181 @@
+@page "/contacts"
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Authorization
+@attribute [Authorize(Policy = PermissionClaims.ContactsRead)]
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject Odyssey.ApiClient.Resources.IContactVCardApiClient VCardApi
+@inject IJSRuntime JS
+@inject IContactsApiClient Contacts
+@inject IReferenceDataCache ReferenceData
+
+<PageTitle>Contacts</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<MudStack Spacing="4">
+
+    <PageHeader Title="Contacts"
+                Icon="@Icons.Material.Filled.Groups"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New contact"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@_activeCount active · @_archivedCount archived</SubLine>
+        <ActionMenu>
+            <MudMenuItem Icon="@Icons.Material.Filled.Download" OnClick="@(() => ExportAsync(filtered: false))">Export all as vCard</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">Export filtered (@_totalCount) as vCard</MudMenuItem>
+            @if (_canImport)
+            {
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="OpenImportDialog">Import from vCard…</MudMenuItem>
+            }
+        </ActionMenu>
+        <OverviewContent>
+            <div class="odc-summary-grid">
+                <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No contacts." />
+                <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No contacts." />
+            </div>
+        </OverviewContent>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="ReloadAsync"
+                                Placeholder="Search name or notes…" Class="ph-search" />
+                <OdsContactTypeMultiSelect Label="Type" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged" Class="ph-select" />
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="ExistingContact" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @{
+        var columns = new List<OdsRecordColumn<ExistingContact>>
+        {
+            new()
+            {
+                Key = "name", HeaderText = "Name", Sortable = true,
+                SortValue = c => c.ResolvedDisplayName.ToLowerInvariant(),
+                Cell = (c, ctx) => @<span class="d-inline-flex align-center" style="gap:8px;">
+                    @c.ResolvedDisplayName
+                    @if (!string.IsNullOrWhiteSpace(c.DisplayName))
+                    {
+                        <span class="material-icons odc-rec-muted" aria-hidden="true" title="Display name overridden" style="font-size:15px;">badge</span>
+                    }
+                    @if (ctx.JustSaved) { <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip> }
+                </span>
+            },
+            new()
+            {
+                Key = "type", HeaderText = "Type", Sortable = true, SortType = OdsSortType.Status,
+                SortValue = c => (int)c.Type,
+                Cell = (c, ctx) => @<OdsChip Tone="OdsChipTone.Outline" Icon="@ContactTypeMeta.Icon(c.Type)">@c.Type</OdsChip>
+            },
+            new()
+            {
+                Key = "contact", HeaderText = "Contact", CellClass = "odc-rec-muted",
+                Cell = (c, ctx) => @<text>
+                    @{
+                        var addr = c.Addresses.Count; var em = c.EmailAddresses.Count; var ph = c.PhoneNumbers.Count;
+                    }
+                    @if (addr + em + ph == 0)
+                    {
+                        <span class="odc-rec-muted">—</span>
+                    }
+                    else
+                    {
+                        <span class="d-inline-flex align-center" style="gap:10px;color:var(--mud-palette-text-secondary);">
+                            @if (addr > 0) { <span class="d-inline-flex align-center" style="gap:3px;"><span class="material-icons" aria-hidden="true" style="font-size:14px;">location_on</span>@addr</span> }
+                            @if (em > 0) { <span class="d-inline-flex align-center" style="gap:3px;"><span class="material-icons" aria-hidden="true" style="font-size:14px;">mail</span>@em</span> }
+                            @if (ph > 0) { <span class="d-inline-flex align-center" style="gap:3px;"><span class="material-icons" aria-hidden="true" style="font-size:14px;">call</span>@ph</span> }
+                        </span>
+                    }
+                </text>
+            },
+            new()
+            {
+                Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
+                SortValue = c => c.Archived is null ? 0 : 1,
+                Cell = (c, ctx) => @<text>
+                    @if (c.Archived is not null)
+                    {
+                        <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
+                    }
+                    else
+                    {
+                        <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
+                    }
+                </text>
+            },
+        };
+    }
+
+    <MudCard Outlined="true">
+        <OdsRecordTable TRow="ExistingContact"
+                        AriaLabel="Contacts"
+                        Rows="@_contacts"
+                        Loading="_isLoading"
+                        Refetching="_refetching"
+                        Error="_loadError"
+                        OnRetry="GetContacts"
+                        HasFilters="_hasFilters"
+                        OnClearFilters="ClearFilters"
+                        Noun="contacts"
+                        EmptyIcon="store"
+                        EmptyDescription="Add the people and organizations money moves to and from."
+                        ServerSort="true"
+                        RowKey="@(c => (object)c.ContactId)"
+                        Columns="@columns"
+                        DefaultSort="@DefaultSort"
+                        Sort="_sort"
+                        SortChanged="OnSortChanged"
+                        Actions="BuildActions"
+                        OnDelete="HandleDelete">
+            <Leading Context="c">
+                @{
+                    var typeMeta = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
+                }
+                <OdsAvatar Icon="@typeMeta.Icon" Bg="@typeMeta.Soft" Fg="@typeMeta.Color" />
+            </Leading>
+            <RenderDetail Context="c">
+                <ContactDetailPanel Contact="c" CanEdit="_canUpdate" OnChanged="RefreshContactAsync"
+                                         AddRequest="@(_addRequest is { } r && r.Id == c.ContactId ? (r.Kind, r.Nonce) : ((string, Guid)?)null)"
+                                         OnAddConsumed="@(() => _addRequest = null)" />
+            </RenderDetail>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New contact</OdsButton>
+                }
+            </CreateAction>
+        </OdsRecordTable>
+        @if (_totalCount > 0)
+        {
+            <OdsPager Page="_page" PageChanged="OnPageChanged"
+                      PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+                      TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
+        }
+    </MudCard>
+</MudStack>
+
+<ContactImportDialog @bind-Open="_importOpen" OnChanged="OnImportedAsync" />
+
+@if (_createKey != Guid.Empty)
+{
+    <ContactDialog @key="_createKey"
+                        @bind-Open="_createOpen"
+                        OnSaved="RefreshAsync" />
+}
+
+@if (_editKey != Guid.Empty)
+{
+    <ContactDialog @key="_editKey"
+                        @bind-Open="_editOpen"
+                        Contact="_editTarget"
+                        OnSaved="OnEditSaved" />
+}

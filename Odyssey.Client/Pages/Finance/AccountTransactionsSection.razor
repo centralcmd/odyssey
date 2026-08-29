@@ -1,0 +1,100 @@
+@using Odyssey.Dtos.Finance
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+@inject NavigationManager NavigationManager
+@inject ITransactionsApiClient Transactions
+
+<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="receipt_long">
+    <Title>Transactions</Title>
+    <Count>@_transactions.Count</Count>
+    <Actions>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                   OnClick="ViewAllTransactions">View all</MudButton>
+    </Actions>
+    <ChildContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_transactions.Count == 0)
+        {
+            <div class="empty-line">No transactions recorded for this account yet.</div>
+        }
+        else
+        {
+            @* The shared design-system ledger, dropping the Account column (one account).
+               Rows expand in place to the read-only detail; editing happens on the
+               Transactions page (the "View all" link). *@
+            <OdsInlinePager Items="_transactions" Context="pageRows">
+                <OdsTxnTable Rows="pageRows" HideAccount="true" Actions="BuildActions">
+                    <RenderDetail Context="t">
+                        <TransactionDetailPanel Transaction="t" CanDownloadFiles="CanDownloadFiles" />
+                    </RenderDetail>
+                </OdsTxnTable>
+            </OdsInlinePager>
+        }
+    </ChildContent>
+</OdsCollapsible>
+
+@code {
+    [Parameter] public Guid AccountId { get; set; }
+
+    /// <summary>Gates the file-download buttons in an expanded row's attached-files detail.</summary>
+    [Parameter] public bool CanDownloadFiles { get; set; }
+
+    private List<ExistingTransaction> _transactions = [];
+    private bool _isLoading;
+    private bool _isOpen = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!OperatingSystem.IsBrowser()) return;
+        await LoadTransactionsAsync();
+    }
+
+    private async Task ToggleOpen()
+    {
+        _isOpen = !_isOpen;
+        // Lazy-load on first expand if the initial fetch was skipped (e.g. prerender).
+        if (_isOpen && _transactions.Count == 0 && !_isLoading)
+            await LoadTransactionsAsync();
+    }
+
+    private async Task LoadTransactionsAsync()
+    {
+        _isLoading = true;
+        _transactions = (await Transactions.ListAllAsync(accountIds: [AccountId.ToString()]))
+            .ItemsOrToast(Snackbar, "transactions");
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private void ViewAllTransactions()
+    {
+        NavigationManager.NavigateTo("/transactions");
+    }
+
+    // Read-only row menu: expand/collapse the detail + copy the id.
+    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingTransaction t, OdsRecordActionContext ctx) =>
+    [
+        new()
+        {
+            Icon = ctx.Expanded ? "close" : "expand_more",
+            Label = ctx.Expanded ? "Collapse" : "View details",
+            OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
+        },
+        new()
+        {
+            Icon = "fingerprint",
+            TrailingIcon = "content_copy",
+            Label = "Copy ID",
+            OnClick = EventCallback.Factory.Create(this, () => CopyTransactionId(t.TransactionId)),
+        },
+    ];
+
+    private Task CopyTransactionId(Guid transactionId) =>
+        Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
+}

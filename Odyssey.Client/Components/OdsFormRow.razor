@@ -1,0 +1,39 @@
+@*
+    OdsFormRow — an equal-width column grid for paired form fields
+    (Odyssey Design System · components/FormRow).
+
+    The component form of the old .aam-row2 / .est-row2 / .trm-row2. Defaults to two
+    columns with the standard 14px form gutter and top-aligned cells (so a field with
+    a helper / error line doesn't drag its neighbour down). Leave a cell empty with an
+    inline <div></div> when you want one field on its own in a two-column row.
+*@
+
+<div class="@WrapperClass" style="@GridStyle" @attributes="UserAttributes">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>Number of equal columns. Default 2.</summary>
+    [Parameter] public int Cols { get; set; } = 2;
+
+    /// <summary>Column gap in px. Default 14.</summary>
+    [Parameter] public int Gap { get; set; } = 14;
+
+    /// <summary>Cross-axis alignment of cells. Default "start".</summary>
+    [Parameter] public string Align { get; set; } = "start";
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Style { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string WrapperClass =>
+        string.IsNullOrEmpty(Class) ? "odc-form-row" : $"odc-form-row {Class}";
+
+    private string GridStyle =>
+        $"grid-template-columns:repeat({Cols},minmax(0,1fr));gap:{Gap}px;align-items:{Align};{Style}";
+}

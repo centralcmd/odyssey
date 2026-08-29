@@ -1,0 +1,114 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="SettingField" subtitle="One setting as a notched-outline field block (MudBlazor Variant.Outlined): label on the outline, control inside, description + last-changed stamp on one always-visible helper line. Plus a non-blocking `advisory` band for a value that is legal but not free, and a `lower only` / `raise only` marker for a setting whose opposite direction is refused. The half-width alternative to SettingRow." viewport="980x1000" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · SettingField</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html,body{margin:0;background:var(--mud-palette-background)}
+    body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:30px 32px}
+    .stack{display:flex;flex-direction:column;gap:26px;max-width:880px}
+    .cap{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);margin-bottom:12px}
+    h1{font:var(--fw-bold) var(--fs-h6)/1 var(--font-sans);margin:0 0 22px}
+    code{font-family:var(--font-mono);font-size:.8em;color:var(--brand-text)}
+    a{color:var(--brand-text)}a:hover{color:var(--mud-palette-primary)}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>SettingField — <code>&lt;SettingField label help meta&gt;&lt;control /&gt;&lt;/SettingField&gt;</code></h1>
+  <div id="root" class="stack"></div>
+  <script>
+    (function () {
+      var e = React.createElement, useState = React.useState;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var SettingField = NS.SettingField, NumberField = NS.NumberField,
+          TextInputField = NS.TextInputField, CapacityField = NS.CapacityField,
+          Switch = NS.Switch, Button = NS.Button;
+
+      function Num(p) {
+        var s = useState(p.init);
+        return e(SettingField, { label: p.label, htmlFor: p.id, help: p.help, meta: p.meta, error: p.error,
+            advisory: p.advisory, bound: p.bound, dirty: p.dirty },
+          e(NumberField, { id: p.id, value: s[0], unit: p.unit, min: p.min, max: p.max, step: 1, align: 'right',
+            error: p.error ? ' ' : undefined, onChange: function (v) { s[1](v); } }));
+      }
+      function Txt(p) {
+        var s = useState(p.init);
+        return e(SettingField, { label: p.label, htmlFor: p.id, help: p.help, meta: p.meta, wide: true },
+          e(TextInputField, { id: p.id, value: s[0], onChange: function (v) { s[1](v); } }));
+      }
+      function Cap(p) {
+        var v = useState(p.init), u = useState(!!p.unlimited);
+        return e(SettingField, { label: p.label, labelId: p.id + '-label', help: p.help, meta: p.meta },
+          e(CapacityField, { variant: 'inline', value: v[0], unlimited: u[0], label: p.label,
+            ariaLabelledBy: p.id + '-label', min: 1, max: 100000,
+            onValueChange: function (n) { v[1](n); }, onUnlimitedChange: function (b) { u[1](b); } }));
+      }
+      function Tile(p) {
+        var s = useState(!!p.init);
+        return e('div', { className: 'odc-sfield wide' },
+          e('div', { className: 'odc-sfield-tile' },
+            e('div', { className: 'odc-sfield-tile-main' },
+              e('span', { className: 'odc-sfield-label', id: p.id + '-label' }, p.label),
+              e('div', { className: 'odc-sfield-help' },
+                e('span', null, p.help + ' '),
+                e('span', { className: 'odc-sfield-stamp' }, p.meta))),
+            p.action
+              ? e(Button, { variant: 'filled', icon: 'file_download' }, p.action)
+              : e(Switch, { checked: s[0], 'aria-labelledby': p.id + '-label', onChange: function (c) { s[1](c); } })));
+      }
+
+      var body = [
+        e('div', { key: 'a' },
+          e('div', { className: 'cap' }, 'A section card\u2019s grid — two settings per line'),
+          e('div', { className: 'odc-sfield-grid' },
+            e(Num, { key: 1, id: 'sf-idle', label: 'Idle session timeout', init: 30, unit: 'min', min: 5, max: 480,
+              help: 'Signed-out after this long without activity.', meta: 'Last changed by A. Holm, 12 Mar 2026.' }),
+            e(Num, { key: 2, id: 'sf-upload', label: 'Maximum upload size', init: 25, unit: 'MB', min: 1, max: 64,
+              help: 'Rejected above this size.', meta: 'Never changed — default value.', dirty: true }),
+            e(Cap, { key: 3, id: 'sf-imp', label: 'Maximum contacts per import', init: 5000,
+              help: 'Rows above the cap are skipped.', meta: 'Last changed by R. Vik, 4 Feb 2026.' }),
+            e(Cap, { key: 4, id: 'sf-exp', label: 'Maximum contacts per export', init: 5000, unlimited: true,
+              help: 'Unbounded exports can time out on large tenants.', meta: 'Never changed — default value.' }),
+            e(Txt, { key: 5, id: 'sf-url', label: 'Privacy notice URL', init: 'https://example.org/privacy',
+              help: 'Linked at the consent gate — GDPR Art. 13(1)(e).', meta: 'Last changed by A. Holm, 12 Mar 2026.' }),
+            e(Tile, { key: 6, id: 'sf-sw', label: 'Require two-factor authentication', init: true,
+              help: 'Applies to every account on this instance.', meta: 'Last changed by A. Holm, 2 Jan 2026.' }),
+            e(Tile, { key: 7, id: 'sf-act', label: 'Database export', action: 'Export database JSON',
+              help: 'A full JSON snapshot of this instance.', meta: 'Last run 18 Mar 2026.' }))),
+        e('div', { key: 'b' },
+          e('div', { className: 'cap' }, 'Advisory — legal, but not free. Never blocks Save'),
+          e('div', { className: 'odc-sfield-grid' },
+            e(Num, { key: 1, id: 'sf-adv', label: 'Maximum response tokens', init: 32000, min: 1024, max: 64000,
+              help: 'The output ceiling on each extraction call.', meta: 'Last changed by A. Holm, 12 Mar 2026.',
+              advisory: 'Above the shipped default of 8,096. Every extraction is billed on the tokens it returns, so this raises per-document spend.' }),
+            e(Num, { key: 2, id: 'sf-adv2', label: 'Metadata read size', init: 16, unit: 'MB', min: 1, max: 16,
+              help: 'How much of an accepted image is read to pull EXIF.', meta: 'Never changed — default value.',
+              advisory: 'Above the shipped default of 8 MB. The prefix is held as one buffer per extraction.' }))),
+        e('div', { key: 'c' },
+          e('div', { className: 'cap' }, 'Single-direction — the marker sits where the bound lives'),
+          e('div', { className: 'odc-sfield-grid' },
+            e(Num, { key: 1, id: 'sf-lo', label: 'Maximum generated occurrences', init: 1000, min: 1, max: 1000, bound: 'lower-only',
+              help: 'Each occurrence is saved as its own event, so raising this multiplies what one request writes — and lowering it back does not undo rows already written. Can be lowered but not raised: 1–1,000.',
+              meta: 'Never changed — default value.' }),
+            e(Num, { key: 2, id: 'sf-hi', label: 'Tracked recipients', init: 20000, min: 20000, max: 200000, bound: 'raise-only',
+              help: 'At capacity the throttle stops throttling, so a smaller table weakens the limit rather than tightening it. Can be raised but not lowered: 20,000–200,000.',
+              meta: 'Never changed — default value.' }))),
+        e('div', { key: 'd' },
+          e('div', { className: 'cap' }, 'Error — outline turns coral, the description stays'),
+          e('div', { className: 'odc-sfield-grid' },
+            e(Num, { key: 1, id: 'sf-err', label: 'Retention period', init: null, unit: 'days', min: 1, max: 3650,
+              error: 'Enter a value.', help: 'Records are purged after this long.', meta: 'Never changed — default value.' }),
+            e(Num, { key: 2, id: 'sf-err2', label: 'Photos per record', init: 200, unit: '', min: 1, max: 50,
+              error: 'Cannot exceed 50.', help: 'Can be lowered but not raised: 1–50.', meta: 'Last changed by R. Vik, 4 Feb 2026.' })))
+      ];
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, body));
+    })();
+  </script>
+</body>
+</html>

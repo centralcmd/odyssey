@@ -1,0 +1,152 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IInsuranceApiClient Insurance
+@inject ISnackbar Snackbar
+
+@*
+    CreateInsurancePolicyDialog — the "New policy" dialog (issue #175), reused in edit mode
+    when an InsurancePolicy is supplied (design-system update: every record's Edit action
+    opens its create dialog rather than an inline panel). Fields mirror the
+    NewInsurancePolicy / UpdateInsurancePolicy DTOs: name (required), policy number
+    (optional), type, insurer (required → Contact, OdsCombobox), insured account
+    (optional → Account, OdsCombobox) and notes. Scalar ids only (the §6/§10
+    mass-assignment invariant); a new policy starts with no renewals (→ NoCoverage) and no
+    documents, and renewal periods/documents stay managed from the policy itself.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="shield" Title="@(IsEdit ? "Edit insurance policy" : "New insurance policy")"
+               Subtitle="@(IsEdit
+                   ? "Update the insurer and policy details. Renewal periods and documents are managed from the policy."
+                   : "Record the insurer and policy details, then add renewal periods and documents from the policy.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create policy")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    <OdsField Label="Policy name" @bind-Value="_name" Placeholder="e.g. Home & Contents 2026"
+              Error="@_nameError" />
+
+    <OdsFormRow>
+        <OdsField Label="Policy number" @bind-Value="_policyNumber" Placeholder="Optional — insurer's reference" />
+        <OdsInsurancePolicyTypeSelect Value="@_type"
+                                      ValueChanged="@(v => { _type = v; _typeError = null; })"
+                                      Placeholder="Choose a type…" Error="@_typeError" />
+    </OdsFormRow>
+
+    <div class="odc-field @(_insurerError ? "error" : "")">
+        <label class="odc-field-label" for="@InsurerInputId">Insurer</label>
+        <OdsCombobox InputId="@InsurerInputId" Value="@_insurerId" ValueChanged="OnInsurerChanged"
+                     Options="Insurers" Placeholder="Search insurers…" Error="_insurerError" />
+        <div class="odc-field-help @(_insurerError ? "error" : "")">
+            @(_insurerError ? "Choose the insurer." : "The contact that issues this policy.")
+        </div>
+    </div>
+
+    <div class="odc-field">
+        <label class="odc-field-label" for="@AccountInputId">Insured account <span class="odc-field-opt">Optional</span></label>
+        <OdsCombobox InputId="@AccountInputId" Value="@_insuredAccountId" ValueChanged="@(v => _insuredAccountId = v)"
+                     Options="Accounts" Placeholder="Search accounts…" />
+        <div class="odc-field-help">Link the account representing the insured asset, if any.</div>
+    </div>
+
+    <OdsNoteField Label="Notes" Optional="true" MaxLength="1024" @bind-Value="_notes"
+                  Placeholder="What this policy covers, excess, named parties…" />
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Active insurer options (non-archived contacts).</summary>
+    [Parameter] public IReadOnlyList<OdsOption> Insurers { get; set; } = [];
+
+    /// <summary>Active insured-account options (non-archived accounts).</summary>
+    [Parameter] public IReadOnlyList<OdsOption> Accounts { get; set; } = [];
+
+    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>When set, the dialog edits this policy. Null = create mode.</summary>
+    [Parameter] public ExistingInsurancePolicy? InsurancePolicy { get; set; }
+
+    private bool IsEdit => InsurancePolicy is not null;
+
+    private string InsurerInputId => IsEdit ? "ins-edit-insurer" : "ins-new-insurer";
+    private string AccountInputId => IsEdit ? "ins-edit-account" : "ins-new-account";
+
+    private string? _name;
+    private string? _policyNumber;
+    private string _type = string.Empty;
+    private string? _insurerId;
+    private string? _insuredAccountId;
+    private string? _notes;
+
+    private string? _nameError;
+    private string? _typeError;
+    private bool _insurerError;
+
+    protected override void OnInitialized()
+    {
+        if (InsurancePolicy is { } policy)
+        {
+            _name             = policy.Name;
+            _policyNumber     = policy.PolicyNumber;
+            _type             = policy.Type.ToString();
+            _insurerId        = policy.Insurer.ContactId.ToString();
+            _insuredAccountId = policy.InsuredAccount?.AccountId.ToString();
+            _notes            = policy.Notes;
+        }
+    }
+
+    private void OnInsurerChanged(string? value)
+    {
+        _insurerId = value;
+        _insurerError = false;
+    }
+
+    private async Task<bool> SaveAsync()
+    {
+        _nameError = string.IsNullOrWhiteSpace(_name) ? "Give the policy a name." : null;
+        _typeError = string.IsNullOrEmpty(_type) ? "Pick a policy type." : null;
+        _insurerError = !Guid.TryParse(_insurerId, out var insurerId);
+        if (_nameError is not null || _typeError is not null || _insurerError)
+            return false;
+
+        Guid? insuredAccountId = Guid.TryParse(_insuredAccountId, out var acc) ? acc : null;
+        var name = _name!.Trim();
+        var policyNumber = string.IsNullOrWhiteSpace(_policyNumber) ? null : _policyNumber!.Trim();
+        var type = Enum.TryParse<InsurancePolicyType>(_type, out var t) ? t : InsurancePolicyType.Other;
+        var notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes!.Trim();
+
+        if (InsurancePolicy is { } existing)
+        {
+            var update = new UpdateInsurancePolicy
+            {
+                Name = name,
+                PolicyNumber = policyNumber,
+                Type = type,
+                InsurerId = insurerId,
+                InsuredAccountId = insuredAccountId,
+                Notes = notes,
+                // Archive/restore is a separate row action — preserve whatever the record already has.
+                Archived = existing.Archived is not null,
+            };
+
+            return (await Insurance.UpdateAsync(existing.InsurancePolicyId, update)).Toast(Snackbar,
+                "Unable to update policy", "Policy updated.");
+        }
+
+        var policy = new NewInsurancePolicy
+        {
+            Name = name,
+            PolicyNumber = policyNumber,
+            Type = type,
+            InsurerId = insurerId,
+            InsuredAccountId = insuredAccountId,
+            Notes = notes,
+        };
+
+        return (await Insurance.CreateAsync(policy)).Toast(Snackbar, "Unable to create policy", "Policy created.");
+    }
+}

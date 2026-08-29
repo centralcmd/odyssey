@@ -1,0 +1,153 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Contact type pickers" subtitle="ContactTypeSelect + ContactTypeMultiSelect — typed, registry-backed pickers with per-option icon & color. Live & interactive." viewport="1100x920" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Contact type pickers</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- compiled design-system bundle -->
+  <script src="../_ds_bundle.js"></script>
+
+  <!-- registry fallback so the demo renders even before the bundle carries the typed components -->
+  <script src="../ui_kits/web/data.js"></script>
+
+  <style>
+    html, body { min-height: 0; background: var(--mud-palette-background); }
+    body { width: 1100px; padding: 24px; box-sizing: border-box; font-family: var(--font-sans); color: var(--mud-palette-text-primary); }
+
+    .spec-doc { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 20px 22px; margin-bottom: 20px; }
+    .spec-doc h2 { font: 600 16px/1.3 var(--font-sans); margin: 0 0 7px; }
+    .spec-lead { font: 400 13px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 94ch; }
+    .spec-lead b { color: var(--tide-400); font-weight: 500; }
+    .spec-lead code { font: 500 12px/1 var(--font-mono); color: var(--tide-400); }
+    .spec-src { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+    .spec-src .pill { font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 6px 11px; }
+    .spec-src .pill b { color: var(--tide-400); font-weight: 600; }
+
+    .stage-label { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 4px 0 12px 2px; display: flex; align-items: center; gap: 8px; }
+    .stage-label .material-icons { font-size: 15px; color: var(--tide-400); }
+
+    .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+    .demo-card { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 18px; min-height: 240px; }
+    .demo-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .demo-name { font: 500 14px/1.2 var(--font-mono); color: var(--mud-palette-text-primary); }
+    .demo-kind { font: 500 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 5px 9px; }
+    .demo-ctl { max-width: 340px; }
+    .demo-out { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--mud-palette-divider-light); display: flex; flex-direction: column; gap: 8px; }
+    .demo-out-lab { font: 500 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .demo-out-val { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 28px; }
+    .demo-out-empty { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-disabled); }
+    .demo-out-code { font: 500 11.5px/1.5 var(--font-mono); color: var(--tide-400); }
+    .demo-avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+    .demo-avatar .material-icons { font-size: 16px; }
+
+    .spec-notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .spec-notes li { position: relative; padding-left: 22px; font: 400 12.5px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .spec-notes li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .spec-notes li code { font: 500 11.5px/1 var(--font-mono); color: var(--tide-400); }
+    .spec-notes li .material-icons { position: absolute; left: 0; top: 0; font-size: 16px; color: var(--tide-400); }
+  </style>
+</head>
+<body>
+  <div class="spec-doc">
+    <h2>Contact type pickers</h2>
+    <p class="spec-lead"><b>ContactTypeSelect</b> (single) and <b>ContactTypeMultiSelect</b> (filter) are typed, domain pickers pre-wired to the <code>CONTACT_TYPES</code> registry so every option shows its Material icon in its category color, with no per-call option wiring. The single-select delegates to the shared <code>TypeSelect</code> (colored glyph, label, far-right check); the multi wraps <code>MultiSelect</code>. Value is the enum key; everything the control accepts (label, help, error, disabled…) passes straight through.</p>
+    <div class="spec-src">
+      <span class="pill">Single → <b>TypeSelect</b> · multi → <b>MultiSelect</b></span>
+      <span class="pill">Registry <b>CONTACT_TYPES</b></span>
+      <span class="pill">Enum <b>ContactType</b></span>
+      <span class="pill">Used by <b>Contacts.jsx</b></span>
+    </div>
+  </div>
+
+  <div class="stage-label"><span class="material-icons">touch_app</span>Live &amp; interactive · open each picker</div>
+  <div id="root"></div>
+
+  <div class="spec-doc" style="margin-top: 20px;">
+    <ul class="spec-notes">
+      <li><span class="material-icons">bolt</span><b>Zero option wiring.</b> <code>&lt;ContactTypeSelect value onChange /&gt;</code> — no <code>options</code> prop. The registry is the source; pass <code>types</code> only to subset or reorder (e.g. drop <code>Other</code>).</li>
+      <li><span class="material-icons">palette</span><b>Icon + color travel with the value.</b> The selected option's glyph shows in the trigger in its category hue, and again on every row — the same identity used by the table avatar and the type chip.</li>
+      <li><span class="material-icons">extension</span><b>Built on the base controls.</b> <code>Select</code> / <code>MultiSelect</code> now take an optional <code>icon</code> &amp; <code>iconColor</code> per option — additive and backward-compatible (options without an icon render exactly as before).</li>
+      <li><span class="material-icons">hub</span><b>One registry.</b> <code>CONTACT_TYPES</code> is exported on the DS namespace; the multi-select reads it too. Recolor a type once and both pickers, the avatar, and the chip update together.</li>
+    </ul>
+  </div>
+
+  <script type="text/babel" data-presets="env,react">
+    const DS = window.OdysseyDesignSystem_d5aa51;
+    const CONTACT_TYPES = DS.CONTACT_TYPES
+      || (window.OdysseyData && window.OdysseyData.contactTypes) || [];
+    const cpOptions = CONTACT_TYPES.map(t => ({ value: t.key, label: t.label, icon: t.icon, iconColor: t.color }));
+    // Prefer the real typed components; fall back to registry-fed base controls
+    // until the bundle is rebuilt with them (icons appear once it is).
+    const ContactTypeSelect = DS.ContactTypeSelect
+      || (({ types, ...p }) => <DS.Select options={cpOptions} {...p} />);
+    const ContactTypeMultiSelect = DS.ContactTypeMultiSelect
+      || (({ types, ...p }) => <DS.MultiSelect options={cpOptions} icon="store" {...p} />);
+    const byKey = Object.fromEntries(CONTACT_TYPES.map(t => [t.key, t]));
+
+    const TypeChip = ({ k }) => {
+      const t = byKey[k];
+      if (!t) return null;
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 8px', border: '1px solid var(--mud-palette-divider)', borderRadius: 999, font: '500 12px/1 var(--font-sans)' }}>
+          <span className="material-icons" style={{ fontSize: 16, color: t.color }}>{t.icon}</span>{t.label}
+        </span>
+      );
+    };
+
+    function Demo() {
+      const { useState } = React;
+      const [type, setType] = useState('Person');
+      const [filter, setFilter] = useState(['Person', 'Organization']);
+
+      return (
+        <div className="demo-grid">
+          <div className="demo-card">
+            <div className="demo-head">
+              <span className="demo-name">ContactTypeSelect</span>
+              <span className="demo-kind">single</span>
+            </div>
+            <div className="demo-ctl">
+              <ContactTypeSelect label="Type" value={type} onChange={setType}
+                help="The kind of entity money moves to or from." />
+            </div>
+            <div className="demo-out">
+              <span className="demo-out-lab">value</span>
+              <div className="demo-out-val">
+                <TypeChip k={type} />
+                <span className="demo-out-code">"{type}"</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="demo-card">
+            <div className="demo-head">
+              <span className="demo-name">ContactTypeMultiSelect</span>
+              <span className="demo-kind">filter</span>
+            </div>
+            <div className="demo-ctl" style={{ maxWidth: 220 }}>
+              <ContactTypeMultiSelect value={filter} onChange={setFilter} />
+            </div>
+            <div className="demo-out">
+              <span className="demo-out-lab">value</span>
+              <div className="demo-out-val">
+                {filter.length
+                  ? filter.map(k => <TypeChip key={k} k={k} />)
+                  : <span className="demo-out-empty">No types selected — shows all.</span>}
+              </div>
+              <span className="demo-out-code">[{filter.map(k => `"${k}"`).join(', ')}]</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+</body>
+</html>

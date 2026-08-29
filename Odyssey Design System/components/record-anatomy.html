@@ -1,0 +1,212 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · RecordTable — row lifecycle (view ⇄ edit)" subtitle="The intended look & behavior of a record row: rest, expanded detail (view mode), inline edit, and the Saved flash — plus the conventions every page's detail/edit panel must follow." viewport="1240x1080" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · RecordTable row lifecycle</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/admin.css" />
+  <style>
+    html, body { min-height: 0; }
+    body { margin: 0; background: var(--mud-palette-background); font-family: var(--font-sans); color: var(--mud-palette-text-primary); width: 1240px; box-sizing: border-box; padding: 26px; }
+
+    .wrap { display: grid; grid-template-columns: 640px 1fr; gap: 28px; align-items: start; }
+
+    /* ---- annotated table (left) — static markup on the REAL kit classes ---- */
+    .stage { position: relative; background:
+        repeating-linear-gradient(45deg, transparent, transparent 9px, rgba(255,255,255,0.013) 9px, rgba(255,255,255,0.013) 18px),
+        var(--mud-palette-background-grey, #0d1219);
+      border: 1px solid var(--mud-palette-divider); border-radius: 14px; padding: 30px 52px; }
+    .surface { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; }
+    .stage .tbl tbody tr { cursor: default; }
+
+    .demo-avatar { flex: none; width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center;
+      background: oklch(0.79 0.115 188 / 0.16); color: oklch(0.79 0.115 188); font: 600 13px/1 var(--font-sans); }
+    .demo-btn { font: 500 12px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; padding: 10px 16px; border-radius: 6px; border: none; cursor: pointer; }
+    .demo-btn.text { background: transparent; color: var(--mud-palette-text-secondary); }
+    .demo-btn.filled { background: var(--tide-400); color: var(--ink-950); display: inline-flex; align-items: center; gap: 7px; }
+    .demo-btn .material-icons { font-size: 17px; }
+    .demo-field { display: flex; flex-direction: column; gap: 5px; }
+    .demo-field .lab { font: 400 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .demo-field .inp { background: var(--mud-palette-background); border: 1px solid var(--mud-palette-lines-inputs); border-radius: 6px; padding: 10px 12px; font: 400 14px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .demo-field .inp.sel { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .demo-field .inp.sel .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+
+    /* annotation pins */
+    .pin { position: absolute; z-index: 5; display: flex; align-items: center; gap: 8px; }
+    .pin .dot { flex: none; width: 22px; height: 22px; border-radius: 999px; background: var(--tide-400); color: var(--ink-950); font: 700 11px/22px var(--font-mono); text-align: center; box-shadow: 0 0 0 4px var(--mud-palette-background); }
+    .pin.right { flex-direction: row-reverse; }
+
+    /* ---- legend + lifecycle (right) ---- */
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+    .panel h3 { font: 600 13px/1 var(--font-sans); margin: 0 0 14px; letter-spacing: 0.01em; }
+    .legend { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .legend li { display: grid; grid-template-columns: 22px 1fr; gap: 11px; align-items: baseline; }
+    .legend .n { width: 22px; height: 22px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid var(--mud-palette-divider); color: var(--tide-400); font: 700 11px/20px var(--font-mono); text-align: center; }
+    .legend .d { font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .legend .d b { color: var(--mud-palette-text-primary); font-weight: 600; }
+    .legend .d code { font: 500 11px/1 var(--font-mono); color: var(--tide-400); }
+
+    /* lifecycle strip */
+    .flow { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: 0 0 14px; }
+    .flow .st { font: 500 11.5px/1 var(--font-sans); padding: 7px 11px; border-radius: 999px; border: 1px solid var(--mud-palette-divider); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+    .flow .st.hot { border-color: transparent; background: rgba(79, 215, 203, 0.12); color: var(--tide-400); }
+    .flow .arr { font: 400 10px/1 var(--font-sans); color: var(--mud-palette-text-disabled); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .flow .arr .material-icons { font-size: 14px; color: var(--mud-palette-text-disabled); }
+    .flow .arr .via { font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+
+    .rules { display: grid; grid-template-columns: auto 1fr; gap: 9px 16px; margin: 0; }
+    .rules dt { font: 600 11px/1.4 var(--font-sans); letter-spacing: 0.05em; text-transform: uppercase; color: var(--tide-400); }
+    .rules dd { margin: 0; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .rules dd b { color: var(--mud-palette-text-primary); font-weight: 600; }
+    .rules dd code { font: 500 11px/1 var(--font-mono); color: var(--tide-300, var(--tide-400)); }
+
+    .note { font: 400 12px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 14px 0 0; padding-top: 14px; border-top: 1px solid var(--mud-palette-divider-light); }
+    .note b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .note code { font: 500 11px/1 var(--font-mono); color: var(--tide-400); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stage">
+      <div class="surface">
+        <table class="tbl ua-tbl">
+          <thead>
+            <tr>
+              <th style="width: 36px;"></th>
+              <th><button class="ua-sort active" type="button">Name<span class="material-icons ua-sort-ic active" style="font-size: 15px;">arrow_upward</span></button></th>
+              <th><button class="ua-sort" type="button">Type<span class="material-icons ua-sort-ic" style="font-size: 15px;">arrow_upward</span></button></th>
+              <th><button class="ua-sort" type="button">Status<span class="material-icons ua-sort-ic" style="font-size: 15px;">arrow_upward</span></button></th>
+              <th style="width: 84px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ① rest + ② saved flash -->
+            <tr>
+              <td><span class="demo-avatar">A</span></td>
+              <td><span style="display: inline-flex; align-items: center; gap: 8px;"><span class="ua-user-name">Acme Logistics</span><span class="chip income"><span class="dot" style="background: currentColor;"></span>Saved</span></span></td>
+              <td><span class="chip info">Supplier</span></td>
+              <td><span class="chip income"><span class="dot" style="background: currentColor;"></span>Active</span></td>
+              <td>
+                <div class="ua-row-actions">
+                  <button class="ua-expand-btn" type="button" aria-label="Expand row" aria-expanded="false"><span class="material-icons ua-chev" style="font-size: 20px;">expand_more</span></button>
+                  <button class="ua-expand-btn" type="button" aria-label="Row actions"><span class="material-icons" style="font-size: 20px;">more_vert</span></button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- ③ expanded row → ④ view mode (detail) -->
+            <tr class="expanded">
+              <td><span class="demo-avatar">B</span></td>
+              <td><span class="ua-user-name">Beacon Energy</span></td>
+              <td><span class="chip tag">Utility</span></td>
+              <td><span class="chip income"><span class="dot" style="background: currentColor;"></span>Active</span></td>
+              <td>
+                <div class="ua-row-actions">
+                  <button class="ua-expand-btn" type="button" aria-label="Collapse row" aria-expanded="true"><span class="material-icons ua-chev open" style="font-size: 20px;">expand_more</span></button>
+                  <button class="ua-expand-btn" type="button" aria-label="Row actions"><span class="material-icons" style="font-size: 20px;">more_vert</span></button>
+                </div>
+              </td>
+            </tr>
+            <tr class="ua-detail-row">
+              <td class="ua-detail-cell" colspan="5">
+                <div class="acct-detail">
+                  <div class="meta-grid">
+                    <div class="meta-tile"><span class="meta-tile-label">Contact</span><span class="meta-tile-value">Beacon Energy</span></div>
+                    <div class="meta-tile"><span class="meta-tile-label">Type</span><span class="meta-tile-value"><span class="chip tag">Utility</span></span></div>
+                    <div class="meta-tile"><span class="meta-tile-label">Notes</span><span class="meta-tile-value">Quarterly utilities provider — net 30 terms.</span></div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- ⑤ edit mode -->
+            <tr class="expanded">
+              <td><span class="demo-avatar">C</span></td>
+              <td><span class="ua-user-name">Cobalt Freight</span></td>
+              <td><span class="chip info">Supplier</span></td>
+              <td><span class="chip outline">Archived</span></td>
+              <td>
+                <div class="ua-row-actions">
+                  <button class="ua-expand-btn" type="button" disabled aria-label="Collapse row" aria-expanded="true"><span class="material-icons ua-chev open" style="font-size: 20px;">expand_more</span></button>
+                  <button class="ua-expand-btn" type="button" aria-label="Row actions"><span class="material-icons" style="font-size: 20px;">more_vert</span></button>
+                </div>
+              </td>
+            </tr>
+            <tr class="ua-detail-row">
+              <td class="ua-detail-cell" colspan="5">
+                <div class="acct-detail acct-edit">
+                  <div class="acct-edit-head"><span class="material-icons" aria-hidden="true" style="font-size: 18px;">edit</span><span>Edit contact</span></div>
+                  <div class="edit-grid" style="margin-top: 12px;">
+                    <div class="demo-field"><span class="lab">Name</span><span class="inp">Cobalt Freight</span></div>
+                    <div class="demo-field"><span class="lab">Type</span><span class="inp sel"><span>Supplier</span><span class="material-icons">expand_more</span></span></div>
+                  </div>
+                  <div class="acct-edit-actions" style="margin-top: 12px;">
+                    <button class="demo-btn text" type="button">Cancel</button>
+                    <button class="demo-btn filled" type="button"><span class="material-icons">check</span>Save changes</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ⑦ the row overflow menu (ActionMenu), as opened from the rest row's kebab -->
+      <div class="acct-menu-pop" style="position: absolute; top: 150px; right: 58px;" role="menu" aria-label="Row actions">
+        <button class="acct-menu-item" type="button"><span class="material-icons" style="font-size: 18px;">expand_more</span>View details</button>
+        <button class="acct-menu-item" type="button"><span class="material-icons" style="font-size: 18px;">edit</span>Edit</button>
+        <button class="acct-menu-item" type="button"><span class="material-icons" style="font-size: 18px;">archive</span>Archive</button>
+        <div class="acct-menu-sep"></div>
+        <button class="acct-menu-item danger" type="button"><span class="material-icons" style="font-size: 18px;">delete</span>Delete</button>
+      </div>
+
+      <!-- annotation pins -->
+      <div class="pin" style="top: 78px; left: 22px;"><span class="dot">1</span></div>
+      <div class="pin right" style="top: 78px; right: 22px;"><span class="dot">2</span></div>
+      <div class="pin" style="top: 138px; left: 22px;"><span class="dot">3</span></div>
+      <div class="pin" style="top: 218px; left: 22px;"><span class="dot">4</span></div>
+      <div class="pin" style="top: 420px; left: 22px;"><span class="dot">5</span></div>
+      <div class="pin right" style="bottom: 48px; right: 22px;"><span class="dot">6</span></div>
+      <div class="pin right" style="top: 150px; right: 22px;"><span class="dot">7</span></div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h3>Row lifecycle</h3>
+        <div class="flow">
+          <span class="st">Rest</span>
+          <span class="arr"><span class="material-icons">east</span><span class="via">row click</span></span>
+          <span class="st">View (detail)</span>
+          <span class="arr"><span class="material-icons">east</span><span class="via">menu · Edit</span></span>
+          <span class="st hot">Edit</span>
+          <span class="arr"><span class="material-icons">east</span><span class="via">save</span></span>
+          <span class="st hot">Saved flash</span>
+          <span class="arr"><span class="material-icons">east</span><span class="via">~2.2s</span></span>
+          <span class="st">Rest</span>
+        </div>
+        <ul class="legend">
+          <li><span class="n">1</span><span class="d"><b>Rest.</b> One line per record: optional 36px leading <code>Avatar</code>, then the page's columns, then the trailing action cluster — expand chevron + overflow menu (<code>ActionMenu</code>). The whole row is a click target for expand.</span></li>
+          <li><span class="n">2</span><span class="d"><b>Saved flash.</b> After a save the row collapses back and a transient <code>Saved</code> chip (income tone, dotted) appears beside the primary cell for ~2.2s (<code>savedFlashMs</code>). No toast, no dialog — confirmation lives in the row.</span></li>
+          <li><span class="n">3</span><span class="d"><b>Expanded row.</b> Tide tint <code>rgba(79,215,203,.06)</code>, bottom rule suppressed so row + panel read as one unit; the chevron rotates 180°. Accordion by default — opening a row closes the previous one (<code>multiOpen</code> is opt-in).</span></li>
+          <li><span class="n">4</span><span class="d"><b>View mode</b> — <code>.acct-detail</code>. The full record, read-only: a 2-column <code>.meta-grid</code> of <code>MetaTile</code> wells (recessed to background, 11px uppercase label / 15px value). Always two tiles per row — no spanning; long values wrap inside their tile. Panel sits on the background well under a 1px primary top rule.</span></li>
+          <li><span class="n">5</span><span class="d"><b>Edit mode</b> — <code>.acct-detail.acct-edit</code>, swapped in place of the detail panel (never a dialog). Head is <code>edit</code> icon + <b>Edit X</b>; fields sit in a 2-column <code>.edit-grid</code>, each field occupying a single column (no full-width spanning), inputs recessed to the same well color. Long-text fields (descriptions, notes) render as resizable multi-line textareas via <code>Field multiline</code>. The expand chevron disables while editing.</span></li>
+          <li><span class="n">6</span><span class="d"><b>Edit actions.</b> Right-aligned: text <b>Cancel</b> (back to view mode, unchanged) then filled primary <b>Save changes</b>. Same wording as the Edit dialogs — see the dialog anatomy card.</span></li>
+          <li><span class="n">7</span><span class="d"><b>Overflow menu</b> — <code>ActionMenu</code>, opened from the kebab. Fixed order: <b>View details</b> / <b>Collapse</b> (hidden while editing), <b>Edit</b>, record-specific items (Archive / Restore), then a separator and <b>Delete</b> — always last, danger-tinted.</span></li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h3>Conventions</h3>
+        <dl class="rules">
+          <dt>Owned</dt><dd>The primitive owns sorting (<code>SortHeader</code>), accordion expand, the view ⇄ edit swap, the overflow menu, delete, and the Saved flash. <b>Pages never re-implement these.</b></dd>
+          <dt>Per-page</dt><dd>A page declares only its columns, the <code>MetaTile</code> detail grid, and the edit fields (<code>renderDetail</code> / <code>renderEdit</code>). Both panels may hold custom content but keep the panel shape above.</dd>
+          <dt>Entry points</dt><dd>View: click the row or chevron. Edit: <b>Edit</b> in the row's overflow menu (also from a collapsed row — it expands straight into edit).</dd>
+        </dl>
+        <p class="note"><b>Where it's used.</b> Contacts, Transaction tags, Currencies, Exchange rates and Users all render this one primitive (<code>RecordTable</code>) — see the live, clickable card next to this one. The files surface (<code>FilesTable</code> — Accounts detail, Transaction panels, Files page) is a <b>preset</b> of it: same lifecycle, with <b>Preview</b> (the document viewer) as a file-specific menu item distinct from <b>View details</b>. If a new admin page needs a sortable list with per-row view/edit, it should consume <code>RecordTable</code>, not fork the pattern.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

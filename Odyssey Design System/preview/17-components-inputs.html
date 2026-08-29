@@ -1,0 +1,66 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Text fields" subtitle="MudTextField Outlined · default, focus, error, disabled" viewport="700x290" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Components · Text fields</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .input {
+      background: transparent; border: 1px solid var(--mud-palette-lines-inputs);
+      border-radius: 4px;
+      padding: 11px 12px;
+      color: var(--mud-palette-text-primary);
+      font: 400 14px/1.2 var(--font-sans);
+      position: relative;
+    }
+    .input.focused {
+      border: 2px solid var(--tide-400);
+      padding: 10px 11px;
+    }
+    .input.error {
+      border: 1px solid var(--coral-500);
+    }
+    .input.disabled {
+      color: rgba(255,255,255,0.38);
+      background: rgba(255,255,255,0.04);
+    }
+    .lab { font: 400 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-left: 4px; }
+    .lab.focused { color: var(--tide-400); }
+    .lab.error { color: var(--coral-500); }
+    .helper { font: 400 11px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); margin-left: 4px; }
+    .helper.error { color: var(--coral-500); }
+  </style>
+  <div class="grid">
+    <div class="field">
+      <div class="lab">Email</div>
+      <div class="input">jane@odyssey.app</div>
+      <div class="helper">Default · outlined variant</div>
+    </div>
+    <div class="field">
+      <div class="lab focused">Email</div>
+      <div class="input focused">jane@odyssey.app</div>
+      <div class="helper">Focused · 2px primary ring</div>
+    </div>
+    <div class="field">
+      <div class="lab">Account name</div>
+      <div class="input" style="color:var(--mud-palette-text-disabled)">Placeholder text</div>
+      <div class="helper">Empty</div>
+    </div>
+    <div class="field">
+      <div class="lab error">Password</div>
+      <div class="input error">••••••</div>
+      <div class="helper error">Password is required.</div>
+    </div>
+    <div class="field">
+      <div class="lab">Currency</div>
+      <div class="input disabled">USD</div>
+      <div class="helper">Disabled</div>
+    </div>
+    <div class="field">
+      <div class="lab">Amount</div>
+      <div class="input mono" style="text-align:right;">128.40</div>
+      <div class="helper">Mono · tabular figures</div>
+    </div>
+  </div>
+</body></html>

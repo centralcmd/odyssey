@@ -1,0 +1,116 @@
+@page "/login"
+@layout AuthLayout
+@attribute [AllowAnonymous]
+@inject AuthApiClient AuthApiClient
+@inject CookieAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>Login</PageTitle>
+
+<MudCard Outlined="true" Class="pa-8" Style="width: 100%; max-width: 420px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 0 12px; margin-bottom: 20px;">
+        <OdsBrandMark Size="120" />
+        <span style="font-weight: 500; font-size: 24px; letter-spacing: 0.32em; color: var(--mud-palette-primary);">ODYSSEY</span>
+    </div>
+
+    @if (_phase == LoginPhase.Password)
+    {
+        <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Sign in</MudText>
+
+        <MudTextField @bind-Value="_request.Email"
+                      Label="Username or Email"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Class="mt-2" />
+        <MudTextField @bind-Value="_request.Password"
+                      Label="Password"
+                      InputType="InputType.Password"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      Class="mt-4"
+                      OnKeyDown="OnPasswordKeyDown" />
+
+        @* The way back in for a user who can't sign in — password phase only; during the 2FA
+           challenge the password is not what's blocking them (issue #405). *@
+        <div class="auth-forgot-row">
+            <MudLink Href="/forgot-password" Typo="Typo.body2">Forgot your password?</MudLink>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-4">@_errorMessage</MudAlert>
+        }
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Size="Size.Large"
+                   FullWidth="true"
+                   Class="mt-6"
+                   Disabled="_isSubmitting"
+                   OnClick="SignInAsync">
+            Sign in
+        </MudButton>
+
+        <MudText Typo="Typo.body2" Class="mt-4">
+            Need an account?
+            <MudLink Href="/register">Register</MudLink>
+        </MudText>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Two-step verification</MudText>
+        <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-2" Style="color: var(--mud-palette-text-secondary);">
+            @(_useRecoveryCode
+                ? "Enter one of the recovery codes you saved when you set up two-factor."
+                : "Enter the 6-digit code from your authenticator app.")
+        </MudText>
+
+        <MudTextField @bind-Value="_code"
+                      Label="@(_useRecoveryCode ? "Recovery code" : "Authentication code")"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Immediate="true"
+                      InputMode="@(_useRecoveryCode ? InputMode.text : InputMode.numeric)"
+                      MaxLength="@(_useRecoveryCode ? 32 : 6)"
+                      Class="mt-2"
+                      OnKeyDown="OnCodeKeyDown" />
+
+        @if (!_useRecoveryCode)
+        {
+            <div class="auth-remember mt-3">
+                <OdsCheckbox @bind-Checked="_rememberDevice">
+                    <span class="auth-remember-text">
+                        <span class="auth-remember-ttl">Remember this device</span>
+                        <span class="auth-remember-sub">Skip the verification code on this browser next time. Avoid this on shared computers.</span>
+                    </span>
+                </OdsCheckbox>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-4">@_errorMessage</MudAlert>
+        }
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Size="Size.Large"
+                   FullWidth="true"
+                   Class="mt-6"
+                   Disabled="@(_isSubmitting || string.IsNullOrWhiteSpace(_code))"
+                   OnClick="SubmitTwoFactorAsync">
+            Verify
+        </MudButton>
+
+        <div class="mt-4" style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="ToggleRecoveryCode">
+                @(_useRecoveryCode ? "Use your authenticator app instead" : "Can't access your app? Use a recovery code")
+            </MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Default" Size="Size.Small" OnClick="BackToPassword">
+                Back to sign in
+            </MudButton>
+        </div>
+    }
+</MudCard>

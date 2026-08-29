@@ -1,0 +1,93 @@
+/* ── Legal documents page (issue #354; Odyssey Design System · LegalDocuments) ────────────────
+   The feature's own chrome — the editor, version table, blocker and modal bodies — is in the GLOBAL
+   wwwroot/css/legal.css, because it is shared with the /accept-terms interstitial and the registration
+   review, and because several of its classes style content inside OdsModal, which MudBlazor teleports
+   out of this component's DOM subtree where scoped CSS cannot reach.
+
+   What remains here is the labelled-section scaffold and the load-failure panel this page composes
+   itself from. They mirror the same rules in Settings.razor.css: the design system models them as a
+   shared global (admin.css .set-section / .ss-retry), but in the Blazor client they are page-scoped, so
+   each page that uses the scaffold carries it. All values are tokens. */
+
+/* ── Section stack (admin.css .set-section) ── */
+.set-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.set-section-head {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.set-section-ic {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    background: var(--mud-palette-action-disabled-background);
+    color: var(--mud-palette-text-secondary);
+}
+
+.set-section-ic ::deep .mud-icon-root {
+    font-size: 17px;
+}
+
+.set-section-title {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap;
+}
+
+.set-section-rule {
+    flex: 1;
+    height: 1px;
+    background: var(--mud-palette-divider);
+}
+
+/* ── Load-failure panel (admin.css .ss-retry) ── */
+.ss-retry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 13px;
+    text-align: center;
+    padding: 56px 24px;
+    border: 1px dashed var(--mud-palette-divider);
+    border-radius: var(--radius-lg, 12px);
+}
+
+.ss-retry ::deep .mud-icon-root {
+    font-size: 30px;
+    color: var(--mud-palette-warning);
+}
+
+.ss-retry-ttl {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--mud-palette-text-primary);
+}
+
+.ss-retry-desc {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--mud-palette-text-secondary);
+    max-width: 360px;
+}
+
+/* The "Published <date>" caption beside the "Editing on top of version N" tag — the DS applied this
+   inline; as a class it stays token-driven. */
+.lg-editor-published {
+    font: 400 12px/1 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}

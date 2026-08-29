@@ -1,0 +1,223 @@
+@page "/account"
+@attribute [Authorize]
+@inject AuthApiClient AuthApiClient
+@inject CookieAuthenticationStateProvider AuthStateProvider
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject IScrollManager ScrollManager
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject Odyssey.ApiClient.Resources.IProfileApiClient ProfileApi
+
+<PageTitle>Account</PageTitle>
+
+@*
+    User Account — the self-service page at /account (Odyssey Design System ·
+    Components · User Account, p.25). An instance of the PageHeader pattern (the
+    person is the subject: avatar leading slot, name title, role · email · 2FA
+    chips, a Problems nudge, and an Overview region) wrapped around five stacked
+    setting sections filtered live by the header Search.
+
+    Each section is its own component (issue #373) and owns its own form state and
+    API calls; this page owns the identity the header renders, the search filter and
+    the page-state persistence. Backend reality: identity comes from
+    `GET manage/info` + the cookie claims; Password is wired to Identity's
+    change-password endpoint and two-factor to its built-in `POST /manage/2fa`.
+    Email change/resend still has no backend (coming later), so that section
+    behaves as a guided preview without hitting the API.
+*@
+
+<MudStack Spacing="6">
+
+    <PageHeader Title="@ResolvedName"
+                Problems="@HeaderProblems"
+                ProblemsOpen="_problemsOpen" ProblemsOpenChanged="OnProblemsToggled"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled">
+        <Leading>
+            <span class="ph-avatar" aria-hidden="true">@ResolvedInitials</span>
+        </Leading>
+        <SubLine>@_email · @@@_username</SubLine>
+        <TitleChips>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                     Icon="@RoleIcon">@(_role ?? "Member")</MudChip>
+            @if (_emailConfirmed)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info"
+                         Icon="@Icons.Material.Filled.MarkEmailRead">Email confirmed</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Warning"
+                         Icon="@Icons.Material.Filled.MarkEmailUnread">Email unconfirmed</MudChip>
+            }
+            @if (_twoFactor.Enabled)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Success"
+                         Icon="@Icons.Material.Filled.VerifiedUser">2FA on</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                         Icon="@Icons.Material.Filled.GppMaybe">2FA off</MudChip>
+            }
+        </TitleChips>
+        <PrimaryAction>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.Logout"
+                       OnClick="LogoutAsync">Sign out</MudButton>
+        </PrimaryAction>
+        <OverviewContent>
+            <div class="acc-cards">
+                @* Identity *@
+                <MudCard Elevation="0" Class="ods-outline">
+                    <MudCardContent Class="pa-4">
+                        <div class="acc-card-head">
+                            <MudIcon Icon="@Icons.Material.Filled.Badge" Size="Size.Small" />
+                            <span class="acc-card-ttl">Identity</span>
+                        </div>
+                        <div class="acc-kv"><span class="acc-kv-label">Name</span><span class="acc-kv-val">@(ProfileValidation.ResolveName(_profile) is { Length: > 0 } n ? n : "—")</span></div>
+                        <div class="acc-kv"><span class="acc-kv-label">Email</span><span class="acc-kv-val mono">@_email</span></div>
+                        <div class="acc-kv"><span class="acc-kv-label">Username</span><span class="acc-kv-val mono">@_username</span></div>
+                        <div class="acc-card-foot acc-card-foot-row">
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Badge"
+                                       OnClick="@(() => ScrollToSection("profile"))">Edit profile</MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.AlternateEmail"
+                                       OnClick="@(() => ScrollToSection("email"))">Manage email</MudButton>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+
+                @* Security *@
+                <MudCard Elevation="0" Class="ods-outline">
+                    <MudCardContent Class="pa-4">
+                        <div class="acc-card-head">
+                            <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Small" />
+                            <span class="acc-card-ttl">Security</span>
+                        </div>
+                        <div class="acc-kv"><span class="acc-kv-label">Password</span><span class="acc-kv-val">Set</span></div>
+                        <div class="acc-kv"><span class="acc-kv-label">Two-factor</span><span class="acc-kv-val">@(_twoFactor.Enabled ? "On · authenticator" : "Off")</span></div>
+                        <div class="acc-kv"><span class="acc-kv-label">Recovery codes</span><span class="acc-kv-val mono">@(_twoFactor.Enabled ? $"{_twoFactor.RecoveryCodesRemaining} left" : "—")</span></div>
+                        <div class="acc-card-foot">
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                       StartIcon="@(_twoFactor.Enabled ? Icons.Material.Filled.Tune : Icons.Material.Filled.AddModerator)"
+                                       OnClick="@(() => ScrollToSection("twofa"))">@(_twoFactor.Enabled ? "Manage security" : "Set up two-factor")</MudButton>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+
+                @* Access *@
+                <MudCard Elevation="0" Class="ods-outline">
+                    <MudCardContent Class="pa-4">
+                        <div class="acc-card-head">
+                            <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Small" />
+                            <span class="acc-card-ttl">Access</span>
+                        </div>
+                        <div class="acc-kv"><span class="acc-kv-label">Role</span><span class="acc-kv-val">@(_role ?? "Member")</span></div>
+                        <div class="acc-kv"><span class="acc-kv-label">Permissions</span><span class="acc-kv-val mono">@_permissions.Count granted</span></div>
+                        <div class="acc-kv"><span class="acc-kv-label">User ID</span><span class="acc-kv-val mono">@ShortId</span></div>
+                        <div class="acc-card-foot">
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Visibility"
+                                       OnClick="@(() => ScrollToSection("permissions"))">View permissions</MudButton>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </div>
+        </OverviewContent>
+        <SearchContent>
+            <div class="acc-search">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                Placeholder="Search account settings — e.g. 2fa, email, password…" />
+                @if (!string.IsNullOrWhiteSpace(_search))
+                {
+                    <div class="acc-search-meta">
+                        @if (VisibleSectionCount > 0)
+                        {
+                            <span>@VisibleSectionCount @(VisibleSectionCount == 1 ? "section matches" : "sections match") “@_search.Trim()”</span>
+                        }
+                        else
+                        {
+                            <span>No sections match “@_search.Trim()”</span>
+                        }
+                    </div>
+                }
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @if (_isLoading)
+    {
+        <MudCard Elevation="1" Class="ods-outline">
+            <MudCardContent Class="pa-6">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <OdsSpinner Size="OdsSize.Lg" AriaLabel="Loading your account" />
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Loading your account…</MudText>
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <div class="acc-list">
+
+            @* ── 1 · Your profile (identity) ──────────────────────────────── *@
+            @if (Matches("profile"))
+            {
+                <div id="acc-sec-profile" class="acc-section">
+                    <AccountProfileSection Profile="_profile" ProfileChanged="OnProfileSaved" />
+                </div>
+            }
+
+            @* ── 2 · Email address ───────────────────────────────────────── *@
+            @if (Matches("email"))
+            {
+                <div id="acc-sec-email" class="acc-section">
+                    <AccountEmailSection Email="@_email" EmailConfirmed="_emailConfirmed" />
+                </div>
+            }
+
+            @* ── 3 · Password ────────────────────────────────────────────── *@
+            @if (Matches("password"))
+            {
+                <div id="acc-sec-password" class="acc-section">
+                    <AccountPasswordSection />
+                </div>
+            }
+
+            @* ── 4 · Two-factor authentication ───────────────────────────── *@
+            @if (Matches("twofa"))
+            {
+                <div id="acc-sec-twofa" class="acc-section">
+                    <AccountTwoFactorSection Email="@_email" Status="_twoFactor" StatusChanged="OnTwoFactorChanged" />
+                </div>
+            }
+
+            @* ── 5 · Permissions ─────────────────────────────────────────── *@
+            @if (Matches("permissions"))
+            {
+                <div id="acc-sec-permissions" class="acc-section">
+                    <AccountPermissionsSection Profile="_profile" Username="@_username" Email="@_email"
+                                               UserId="@_userId" Role="@_role" Permissions="_permissions" />
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_search) && VisibleSectionCount == 0)
+            {
+                <MudCard Elevation="1" Class="ods-outline">
+                    <MudCardContent>
+                        <div class="nomatch">
+                            <span class="nomatch-ic"><MudIcon Icon="@Icons.Material.Filled.SearchOff" /></span>
+                            <MudText Typo="Typo.subtitle1">No settings match your search</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Nothing here matches “@_search.Trim()”. Try a term like "email", "password", or "2fa".
+                            </MudText>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            }
+        </div>
+    }
+</MudStack>

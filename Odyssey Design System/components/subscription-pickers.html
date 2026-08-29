@@ -1,0 +1,106 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Subscription pickers & chips" subtitle="The Subscriptions vocabulary: BillingIntervalSelect / BillingIntervalMultiSelect (the BillingInterval enum), BillingIntervalChip (cadence + DERIVED anchor), and SubscriptionStatusChip (independent Paused / Archived states). Live off the DS namespace." viewport="1120x720" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Subscription pickers & chips</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 16px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 20px 22px; }
+    .panel h3 { margin: 0 0 4px; font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+    .panel p.sub { margin: 0 0 16px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .row { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 4px 16px; }
+    .row .lbl { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .row .cell { padding: 10px 0; border-top: 1px solid var(--mud-palette-divider); min-width: 0; }
+    .row .lbl.cell { border-top: 1px solid var(--mud-palette-divider); }
+    .stack { display: flex; flex-direction: column; gap: 12px; }
+    .note { margin: 18px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 96ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+  </style>
+</head>
+<body>
+  <div class="cap">Subscriptions <code>&lt;BillingIntervalSelect /&gt;</code> · <code>&lt;BillingIntervalChip /&gt;</code> · <code>&lt;SubscriptionStatusChip /&gt;</code></div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51 || {};
+
+    function Demo() {
+      const { BillingIntervalSelect, BillingIntervalMultiSelect, BillingIntervalChip, SubscriptionStatusChip } = window.OdysseyDesignSystem_d5aa51;
+      const [interval, setInterval] = React.useState('Monthly');
+      const [filter, setFilter] = React.useState(['Monthly', 'Yearly']);
+      return (
+        <div className="grid">
+          <div className="panel">
+            <h3>Pickers</h3>
+            <p className="sub">The BillingInterval enum, Daily → Yearly (numeric order). Single-select for the form, multi for the list filter.</p>
+            <div className="stack">
+              <BillingIntervalSelect value={interval} onChange={setInterval} />
+              <BillingIntervalMultiSelect value={filter} onChange={setFilter} />
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Read chips</h3>
+            <p className="sub">Cadence + derived anchor (never stored); independent Paused / Archived states.</p>
+            <div className="row">
+              <span className="lbl">Monthly</span>
+              <span className="cell"><BillingIntervalChip interval="Monthly" firstBillingDate="2026-01-15" /></span>
+              <span className="lbl cell">Yearly</span>
+              <span className="cell"><BillingIntervalChip interval="Yearly" firstBillingDate="2026-01-15" /></span>
+              <span className="lbl cell">Weekly</span>
+              <span className="cell"><BillingIntervalChip interval="Weekly" firstBillingDate="2025-10-01" /></span>
+              <span className="lbl cell">Daily</span>
+              <span className="cell"><BillingIntervalChip interval="Daily" firstBillingDate="2025-01-01" /></span>
+              <span className="lbl cell">Every 2 mo</span>
+              <span className="cell"><BillingIntervalChip interval="Monthly" count={2} firstBillingDate="2026-01-15" /></span>
+              <span className="lbl cell">Every 3 yr</span>
+              <span className="cell"><BillingIntervalChip interval="Yearly" count={3} firstBillingDate="2026-01-15" /></span>
+              <span className="lbl cell">Paused</span>
+              <span className="cell"><SubscriptionStatusChip paused /></span>
+              <span className="lbl cell">Ended</span>
+              <span className="cell"><SubscriptionStatusChip ended /></span>
+              <span className="lbl cell">Ended + archived</span>
+              <span className="cell"><SubscriptionStatusChip ended archived /></span>
+              <span className="lbl cell">Active</span>
+              <span className="cell"><SubscriptionStatusChip showActive /></span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Root() {
+      const has = () => { const n = window.OdysseyDesignSystem_d5aa51 || {}; return n.BillingIntervalSelect && n.BillingIntervalChip && n.SubscriptionStatusChip; };
+      const [ready, setReady] = React.useState(!!has());
+      React.useEffect(() => {
+        if (ready) return;
+        let n = 0;
+        const t = setInterval(() => { if (has() || ++n > 20) { clearInterval(t); setReady(true); } }, 100);
+        return () => clearInterval(t);
+      }, [ready]);
+      if (!has()) return <div className="note">Building components…</div>;
+      return <Demo />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+  </script>
+
+  <p class="note">The <b>Subscriptions</b> feature vocabulary. <b>BillingIntervalSelect</b> / <b>BillingIntervalMultiSelect</b> are typed wrappers over the shared <b>TypeSelect</b> / <b>MultiSelect</b>, fed the <code>BILLING_INTERVALS</code> registry (Daily · Weekly · Monthly · Yearly, in enum order). <b>BillingIntervalChip</b> shows a subscription's cadence with the per-cycle billing anchor <i>derived</i> from <code>firstBillingDate</code> + interval at render time — never stored, and honouring the <code>count</code> ("every N") multiplier. <b>SubscriptionStatusChip</b> renders the two <i>independent</i> lifecycle flags (Paused · Archived) as text-labelled chips; the meaning never rides on colour alone.</p>
+</body>
+</html>

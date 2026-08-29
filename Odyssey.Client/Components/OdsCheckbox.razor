@@ -1,0 +1,90 @@
+@*
+    OdsCheckbox — a boolean with an optional indeterminate state
+    (Odyssey Design System · components/Checkbox).
+
+    A native <input type="checkbox"> under a styled .odc-check-box, matching the DS
+    Checkbox atom (the DS chrome is a custom box, not MudBlazor's). Row-select in the
+    Analyze-file candidate table, batch-edit grids, the login "remember this device"
+    opt-in, settings lists. Supports a string Label or a rich ChildContent label, a
+    mixed ("select all") header state, and an AriaLabel for a label-less control
+    (e.g. a dense row selector). Two-way bindable via @bind-Checked.
+*@
+
+@inject IJSRuntime Js
+
+<label class="odc-check odc-checkbox @(Disabled ? "disabled" : null) @Class" for="@FieldId">
+    <input type="checkbox" id="@FieldId"
+           @ref="_input"
+           checked="@Checked"
+           disabled="@Disabled"
+           aria-label="@AriaLabel"
+           @onchange="OnChange"
+           @attributes="UserAttributes" />
+    <span class="odc-check-box @(Mixed ? "mixed" : null)" aria-hidden="true">
+        <span class="material-icons">@(Mixed ? "remove" : "check")</span>
+    </span>
+    @if (ChildContent is not null)
+    {
+        <span class="odc-check-label">@ChildContent</span>
+    }
+    else if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="odc-check-label">@Label</span>
+    }
+</label>
+
+@code {
+    /// <summary>Checked state. Bindable via @bind-Checked.</summary>
+    [Parameter] public bool Checked { get; set; }
+
+    [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+
+    /// <summary>Mixed state for "select all" headers (shown as a dash when not fully checked).</summary>
+    [Parameter] public bool Indeterminate { get; set; }
+
+    /// <summary>Plain-text label beside the box. Use <see cref="ChildContent"/> for a rich label.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Rich label content beside the box (takes precedence over <see cref="Label"/>).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Accessible name for a label-less checkbox (e.g. a dense row selector). Applied to the input.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string FieldId = default!;
+    private ElementReference _input;
+    private bool _appliedMixed;
+
+    protected override void OnInitialized() => FieldId = Id ?? $"odc-check-{Guid.NewGuid():N}";
+
+    // Mixed (dash) only when asked for and not already fully checked — the "select all" header.
+    private bool Mixed => Indeterminate && !Checked;
+
+    // Reflect the mixed state onto the native input's `indeterminate` DOM property (which Blazor can't
+    // bind) so assistive tech announces "mixed" rather than the false "not checked" — and clear it when
+    // the state resolves. Only touches JS when the value actually changes.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Mixed == _appliedMixed && !firstRender)
+            return;
+        _appliedMixed = Mixed;
+        try { await Js.InvokeVoidAsync("odsSetIndeterminate", _input, Mixed); }
+        catch { /* JS unavailable (e.g. prerender / teardown) */ }
+    }
+
+    private Task OnChange(ChangeEventArgs e)
+    {
+        var next = e.Value is bool b ? b : !Checked;
+        Checked = next;
+        return CheckedChanged.InvokeAsync(next);
+    }
+}

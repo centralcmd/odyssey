@@ -1,0 +1,293 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Page header (preview)" subtitle="Problems · Overview · Search toggles + severity rollup" viewport="700x580" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Page header (preview)</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="_card.css">
+  <style>
+    .pgh-card { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 8px; padding: 16px; }
+
+    .pgh-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .pgh-h { font: 300 28px/1 var(--font-sans); letter-spacing: -0.02em; margin: 0; color: var(--mud-palette-text-primary); }
+    .pgh-sub { font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 6px; }
+    .pgh-actions { display: flex; gap: 8px; flex: none; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* Overflow "More" menu — rightmost control; the kit's more_vert ActionMenu */
+    .pgh-menu { position: relative; display: inline-flex; }
+    .pgh-iconbtn {
+      width: 36px; height: 36px; border-radius: 999px; border: none; background: transparent;
+      color: var(--mud-palette-text-secondary); cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; transition: background .12s;
+    }
+    .pgh-iconbtn:hover, .pgh-iconbtn.active { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+    .pgh-iconbtn .material-icons { font-size: 22px; }
+    .pgh-menu-pop {
+      position: absolute; top: 42px; right: 0; z-index: 50; min-width: 200px; padding: 6px;
+      background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-inputs);
+      border-radius: 8px; box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+      animation: drop .14s ease;
+    }
+    .pgh-menu-item {
+      display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+      padding: 9px 10px; border-radius: 6px; border: none; background: transparent; cursor: pointer;
+      color: var(--mud-palette-text-primary); font: 400 14px/1 var(--font-sans);
+    }
+    .pgh-menu-item:hover { background: var(--mud-palette-action-default-hover); }
+    .pgh-menu-item .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+    .pgh-menu-sep { height: 1px; background: var(--mud-palette-divider); margin: 6px 4px; }
+
+    /* Buttons — mirror the kit: variant encodes toggle state */
+    .btn {
+      font: 500 13px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 9px 14px; border-radius: 4px; border: 1px solid transparent;
+      display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+      transition: background .12s, border-color .12s, color .12s;
+    }
+    .btn .material-icons { font-size: 18px; }
+    .btn.filled   { background: var(--tide-400); color: var(--ink-950); }
+    .btn.filled:hover { background: var(--tide-500); }
+    .btn.outlined { background: transparent; color: var(--ink-50); border-color: rgba(199,208,224,0.28); }
+    .btn.outlined:hover { background: rgba(255,255,255,0.06); }
+
+    /* ---- Problems (severity "signal") toggle — lifted from account-signals.css ----
+       Same toggle contract as Overview: tinted-outline when closed, solid fill
+       when open. Tint = highest severity in the rollup. Carries a count badge. */
+    .btn.signal { gap: 7px; transition: none; text-transform: uppercase; }
+    .btn.signal .signal-count {
+      font: 600 11px/1 var(--font-mono);
+      padding: 2px 6px; border-radius: 999px; background: currentColor;
+    }
+    .btn.signal.warning .signal-count { color: var(--finance-pending); }
+    .btn.signal.error   .signal-count { color: var(--finance-expense); }
+    .btn.signal.info    .signal-count { color: var(--sea-400); }
+    .btn.signal .signal-count span { color: var(--mud-palette-surface); }
+    .btn.signal.warning {
+      background: var(--finance-pending-soft); color: var(--finance-pending);
+      border-color: color-mix(in srgb, var(--finance-pending) 40%, transparent);
+    }
+    .btn.signal.warning:hover { background: color-mix(in srgb, var(--finance-pending) 22%, transparent); }
+    .btn.signal.error {
+      background: var(--finance-expense-soft); color: var(--finance-expense);
+      border-color: color-mix(in srgb, var(--finance-expense) 40%, transparent);
+    }
+    .btn.signal.error:hover { background: color-mix(in srgb, var(--finance-expense) 22%, transparent); }
+    .btn.signal.info {
+      background: rgba(56, 189, 248, 0.10); color: var(--sea-400);
+      border-color: rgba(56, 189, 248, 0.34);
+    }
+    .btn.signal.info:hover { background: rgba(56, 189, 248, 0.18); }
+    .btn.signal.active.warning { background: var(--finance-pending); color: var(--ink-900); border-color: transparent; }
+    .btn.signal.active.error   { background: var(--finance-expense); color: #2A0E0E;        border-color: transparent; }
+    .btn.signal.active.info    { background: var(--sea-400);         color: var(--ink-900); border-color: transparent; }
+    .btn.signal.active .signal-count { background: rgba(0,0,0,0.22); color: inherit; }
+
+    /* Expansion regions */
+    .pgh-region { border-top: 1px solid var(--mud-palette-divider); margin-top: 16px; padding-top: 16px; animation: drop .16s ease; }
+
+    .pgh-slot {
+      border: 1px dashed var(--mud-palette-lines-inputs); border-radius: 6px; height: 84px;
+      background-image: repeating-linear-gradient(135deg, rgba(199,208,224,0.05) 0 9px, transparent 9px 18px);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--mud-palette-text-secondary); font: 400 11px/1 var(--font-mono); letter-spacing: 0.03em;
+    }
+
+    .pgh-filter { display: flex; gap: 10px; align-items: center; }
+    .pgh-input {
+      flex: 1; background: transparent; color: var(--mud-palette-text-secondary);
+      border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px;
+      padding: 10px 12px; font: 400 13px/1.2 var(--font-sans);
+    }
+    .pgh-pill {
+      border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 10px; justify-content: space-between;
+      font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); min-width: 124px; cursor: default;
+    }
+    .pgh-pill .material-icons { font-size: 18px; }
+
+    /* ---- Alert blocks inside the Problems rollup (one per affected account) ---- */
+    .signal-panel { display: flex; flex-direction: column; gap: 10px; }
+    .alert {
+      display: flex; align-items: flex-start; gap: 12px; width: 100%;
+      padding: 12px 16px; border-radius: 8px; border: 1px solid transparent;
+      font: 400 14px/1.5 var(--font-sans); box-sizing: border-box;
+    }
+    .alert .alert-icon { flex: 0 0 auto; margin-top: 1px; }
+    .alert .alert-body { flex: 1 1 auto; min-width: 0; color: var(--mud-palette-text-primary); }
+    .alert .alert-body strong { font-weight: 600; }
+    .alert.info    { background: rgba(56, 189, 248, 0.10); border-color: rgba(56, 189, 248, 0.28); color: var(--sea-400); }
+    .alert.warning { background: var(--finance-pending-soft); border-color: color-mix(in srgb, var(--finance-pending) 32%, transparent); color: var(--finance-pending); }
+    .alert.error   { background: var(--finance-expense-soft); border-color: color-mix(in srgb, var(--finance-expense) 32%, transparent); color: var(--finance-expense); }
+    .alert.compact { padding: 9px 12px; align-items: center; font-size: 13px; }
+    .alert.compact .alert-icon { margin-top: 0; }
+    .alert .alert-fix {
+      flex: none; align-self: center; font: 600 12px/1 var(--font-sans); letter-spacing: 0.02em;
+      color: inherit; background: transparent; border: none; cursor: pointer;
+      padding: 6px 8px; border-radius: 4px; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap;
+    }
+    .alert .alert-fix:hover { background: rgba(255,255,255,0.06); }
+    .signal-row { cursor: pointer; transition: filter .12s; }
+    .signal-row:hover { filter: brightness(1.06); }
+    .sev-tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.85; margin-right: 2px; }
+
+    .hint { font: 400 11px/1.45 var(--font-mono); color: var(--mud-palette-text-secondary); margin: 0 0 12px 2px; }
+    .hint b { color: var(--tide-400); font-weight: 500; }
+
+    /* ---- Documentation legend: how each severity reads ---- */
+    .doc { margin-top: 16px; display: grid; gap: 9px; }
+    .doc-h { font: 500 11px/1.4 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 1px; }
+    .doc-row { display: grid; grid-template-columns: 88px 150px 1fr; gap: 12px; align-items: center; font: 400 12.5px/1.4 var(--font-sans); }
+    .doc-sev { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/1 var(--font-mono); }
+    .doc-token { font: 400 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+    .doc-desc { color: var(--mud-palette-text-secondary); }
+    .doc-desc b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+    .c-warning { color: var(--finance-pending); }
+    .c-error   { color: var(--finance-expense); }
+    .c-info    { color: var(--sea-400); }
+    .bg-warning { background: var(--finance-pending); }
+    .bg-error   { background: var(--finance-expense); }
+    .bg-info    { background: var(--sea-400); }
+
+    @keyframes drop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  </style>
+</head>
+<body>
+  <p class="hint">Toggle <b>Problems</b>, <b>Overview</b> and <b>Search</b> — each fills when its region is open. The <b>Problems</b> toggle is tinted by the highest severity present and carries a count of affected accounts.</p>
+
+  <div class="pgh-card">
+    <div class="pgh-top" id="topRow" style="margin-bottom: 16px;">
+      <div>
+        <h1 class="pgh-h">Accounts</h1>
+        <div class="pgh-sub">12 active · combined $48,260.00</div>
+      </div>
+      <div class="pgh-actions">
+        <button class="btn signal error" id="btnSignal">
+          <svg class="sev-svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="flex:none">
+            <path d="M11.13 3.66 1.73 19.5a1 1 0 0 0 .87 1.5h18.8a1 1 0 0 0 .87-1.5L12.87 3.66a1 1 0 0 0-1.74 0Zm.87 4.59a1.05 1.05 0 0 1 1.05 1.13l-.33 4.7a.72.72 0 0 1-1.44 0l-.33-4.7A1.05 1.05 0 0 1 12 8.25Zm0 8.0a1.12 1.12 0 1 1 0 2.25 1.12 1.12 0 0 1 0-2.25Z"></path>
+          </svg>
+          <span class="material-icons" style="display:none">error_outline</span>
+          Problems<span class="signal-count"><span id="signalCount">3</span></span>
+        </button>
+        <button class="btn outlined" id="btnOverview"><span class="material-icons">donut_large</span>Overview</button>
+        <button class="btn outlined" id="btnSearch"><span class="material-icons">search</span>Search</button>
+        <button class="btn filled" id="btnAdd"><span class="material-icons">add</span>New account</button>
+        <div class="pgh-menu" id="menuWrap">
+          <button class="pgh-iconbtn" id="btnMenu" aria-label="More actions" aria-haspopup="menu"><span class="material-icons">more_vert</span></button>
+          <div class="pgh-menu-pop" id="menuPop" role="menu" style="display:none;">
+            <button class="pgh-menu-item" role="menuitem"><span class="material-icons">download</span>Export accounts</button>
+            <button class="pgh-menu-item" role="menuitem"><span class="material-icons">upload_file</span>Import statements</button>
+            <div class="pgh-menu-sep"></div>
+            <button class="pgh-menu-item" role="menuitem"><span class="material-icons">archive</span>View archived</button>
+            <button class="pgh-menu-item" role="menuitem"><span class="material-icons">tune</span>Manage account types</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="regions"></div>
+  </div>
+
+  <div class="doc">
+    <div class="doc-h">How a problem reads in the rollup · severity = the existing finance convention</div>
+    <div class="doc-row">
+      <span class="doc-sev c-error"><span class="sw bg-error"></span>Error</span>
+      <span class="doc-token">--finance-expense · coral</span>
+      <span class="doc-desc"><b>Blocking.</b> Something failed and needs action — a sync error, an expired connection. <code>role="alert"</code>.</span>
+    </div>
+    <div class="doc-row">
+      <span class="doc-sev c-warning"><span class="sw bg-warning"></span>Warning</span>
+      <span class="doc-token">--finance-pending · amber</span>
+      <span class="doc-desc"><b>Recoverable.</b> Degraded but not broken — a missing rate, stale data. The account still works.</span>
+    </div>
+    <div class="doc-row">
+      <span class="doc-sev c-info"><span class="sw bg-info"></span>Info</span>
+      <span class="doc-token">--sea-400 · sea</span>
+      <span class="doc-desc"><b>Neutral notice.</b> A passive heads-up, no action required. <code>role="status"</code>.</span>
+    </div>
+  </div>
+
+  <script>
+    const state = { signal: true, overview: false, search: false };
+    const btnSignal = document.getElementById('btnSignal');
+    const btnOverview = document.getElementById('btnOverview');
+    const btnSearch = document.getElementById('btnSearch');
+    const topRow = document.getElementById('topRow');
+    const regions = document.getElementById('regions');
+
+    // One rollup row per affected account, one of each severity to document them.
+    const ROLLUP = [
+      { sev: 'error',   name: 'Citi Checking',     tag: 'Error',   body: 'The last sync with Citi failed — this balance may be out of date.' },
+      { sev: 'warning', name: 'Vanguard Brokerage', tag: 'Warning', body: 'No EUR → USD rate for today, so this account is left out of the combined total.' },
+      { sev: 'info',    name: 'Barclays Savings',   tag: 'Info',    body: 'Statement for May is ready to import — no action required.' },
+    ];
+
+    const sevIcon = (sev) => sev === 'warning'
+      ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="flex:none">
+           <path d="M11.13 3.66 1.73 19.5a1 1 0 0 0 .87 1.5h18.8a1 1 0 0 0 .87-1.5L12.87 3.66a1 1 0 0 0-1.74 0Zm.87 4.59a1.05 1.05 0 0 1 1.05 1.13l-.33 4.7a.72.72 0 0 1-1.44 0l-.33-4.7A1.05 1.05 0 0 1 12 8.25Zm0 8.0a1.12 1.12 0 1 1 0 2.25 1.12 1.12 0 0 1 0-2.25Z"></path>
+         </svg>`
+      : `<span class="material-icons" style="font-size:18px">${sev === 'error' ? 'error_outline' : 'info_outline'}</span>`;
+
+    const signalRegion = () =>
+      `<div class="pgh-region"><div class="signal-panel">` +
+        ROLLUP.map(r =>
+          `<div class="alert ${r.sev} compact signal-row" role="${r.sev === 'error' ? 'alert' : 'status'}">` +
+            `<span class="alert-icon">${sevIcon(r.sev)}</span>` +
+            `<div class="alert-body"><span class="sev-tag">${r.tag}</span> <strong>${r.name}.</strong> ${r.body}</div>` +
+            `<button class="alert-fix">View &rarr;</button>` +
+          `</div>`
+        ).join('') +
+      `</div></div>`;
+
+    const overviewRegion = () =>
+      `<div class="pgh-region"><div class="pgh-slot">overview region — charts · stats · KPIs</div></div>`;
+
+    const searchRegion = () =>
+      `<div class="pgh-region"><div class="pgh-filter">` +
+        `<input class="pgh-input" placeholder="Search name, description, account number…">` +
+        `<div class="pgh-pill">Any type <span class="material-icons">expand_more</span></div>` +
+        `<div class="pgh-pill">Any status <span class="material-icons">expand_more</span></div>` +
+      `</div></div>`;
+
+    function render() {
+      // Problems toggle keeps its severity tint (error here); .active = open
+      btnSignal.className = 'btn signal error' + (state.signal ? ' active' : '');
+      btnOverview.className = 'btn ' + (state.overview ? 'filled' : 'outlined');
+      btnSearch.className   = 'btn ' + (state.search ? 'filled' : 'outlined');
+
+      // Regions stack in order: Problems, then Overview, then Search
+      let html = '';
+      if (state.signal)   html += signalRegion();
+      if (state.overview) html += overviewRegion();
+      if (state.search)   html += searchRegion();
+      regions.innerHTML = html;
+
+      const anyOpen = state.signal || state.overview || state.search;
+      topRow.style.marginBottom = anyOpen ? '16px' : '0px';
+    }
+
+    btnSignal.addEventListener('click', () => { state.signal = !state.signal; render(); });
+    btnOverview.addEventListener('click', () => { state.overview = !state.overview; render(); });
+    btnSearch.addEventListener('click', () => { state.search = !state.search; render(); });
+
+    // Overflow menu open/close
+    const btnMenu = document.getElementById('btnMenu');
+    const menuPop = document.getElementById('menuPop');
+    const menuWrap = document.getElementById('menuWrap');
+    let menuOpen = false;
+    const setMenu = (v) => {
+      menuOpen = v;
+      menuPop.style.display = v ? 'block' : 'none';
+      btnMenu.classList.toggle('active', v);
+    };
+    btnMenu.addEventListener('click', (e) => { e.stopPropagation(); setMenu(!menuOpen); });
+    menuPop.querySelectorAll('.pgh-menu-item').forEach(it => it.addEventListener('click', () => setMenu(false)));
+    document.addEventListener('mousedown', (e) => { if (menuOpen && !menuWrap.contains(e.target)) setMenu(false); });
+    document.getElementById('btnAdd').addEventListener('click', () => {
+      const b = document.getElementById('btnAdd');
+      b.style.transform = 'scale(0.96)';
+      setTimeout(() => { b.style.transform = ''; }, 110);
+    });
+
+    render();
+  </script>
+</body></html>

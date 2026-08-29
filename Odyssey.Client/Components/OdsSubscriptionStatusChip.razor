@@ -1,0 +1,58 @@
+@*
+    OdsSubscriptionStatusChip — the read display of a subscription's lifecycle states (issue #293) as
+    chips: Paused (temporarily not billing, still visible), Ended (its term has lapsed — DERIVED from
+    EndDate, never stored) and Archived (hidden/retired). Paused and Archived are orthogonal stored
+    flags; Ended is derived. This renders one chip per active state — Ended supersedes Paused (a pause
+    is moot once the term is over), Archived stacks after — and an "Active" chip when none is set (only
+    when ShowActive).
+
+    Sibling of OdsCoverageStatusChip / OdsContractStatusChip: the state meaning lives in the visible
+    text label, never colour or glyph alone (the leading dot/icon is aria-hidden). Tone follows the
+    finance vocabulary — Paused = pending (amber), Ended = expense (coral), Archived = neutral,
+    Active = active (mint).
+*@
+
+@{
+    var ended = Ended;
+    var paused = Paused && !ended; // Ended supersedes Paused.
+}
+@if (paused || ended || Archived || ShowActive)
+{
+    <span class="odc-substatus">
+        @if (ended)
+        {
+            <OdsChip Tone="OdsChipTone.Expense" Icon="@(ShowIcon ? "event_busy" : null)" Dot="@(!ShowIcon)">Ended</OdsChip>
+        }
+        @if (paused)
+        {
+            <OdsChip Tone="OdsChipTone.Pending" Icon="@(ShowIcon ? "pause_circle" : null)" Dot="@(!ShowIcon)">Paused</OdsChip>
+        }
+        @if (Archived)
+        {
+            <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
+        }
+        @if (!paused && !ended && !Archived && ShowActive)
+        {
+            <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
+        }
+    </span>
+}
+
+@code {
+    /// <summary>Whether the subscription is currently paused. Ignored when <see cref="Ended"/> is set
+    /// (Ended supersedes Paused).</summary>
+    [Parameter] public bool Paused { get; set; }
+
+    /// <summary>Whether the subscription's term has lapsed (derived: EndDate ≤ today). Supersedes Paused.</summary>
+    [Parameter] public bool Ended { get; set; }
+
+    /// <summary>Whether the subscription is archived.</summary>
+    [Parameter] public bool Archived { get; set; }
+
+    /// <summary>Render an "Active" chip when no state is set (default false — a plain active row
+    /// shows nothing).</summary>
+    [Parameter] public bool ShowActive { get; set; }
+
+    /// <summary>Lead the Paused/Ended chip with its glyph instead of a dot.</summary>
+    [Parameter] public bool ShowIcon { get; set; }
+}

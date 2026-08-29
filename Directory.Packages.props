@@ -1,0 +1,82 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Bogus" Version="35.6.5" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.62.0" />
+    <!-- 4.14.0+ : Testcontainers 4.6.0 pulled SSH.NET 2024.2.0, which carries high-severity
+         advisory GHSA-q939-rpr3-3284. 4.14.0 depends on SSH.NET 2026.0.0 and clears it. -->
+    <PackageVersion Include="Testcontainers.MySql" Version="4.14.0" />
+    <PackageVersion Include="Xunit.SkippableFact" Version="1.5.85" />
+    <PackageVersion Include="MailKit" Version="4.17.0" />
+    <PackageVersion Include="Ical.Net" Version="5.2.3" />
+    <PackageVersion Include="Mapster" Version="10.0.12" />
+    <!-- Pure-managed (Apache-2.0) EXIF/IPTC/XMP reader for the Photos module (issue #321). No native
+         dependency — deliberately chosen over ImageSharp (Split license) / Magick.NET / SkiaSharp. -->
+    <PackageVersion Include="MetadataExtractor" Version="2.9.3" />
+    <PackageVersion Include="Microsoft.AspNetCore.App.Internal.Assets" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.19" />
+    <!-- Data Protection for the encrypted secret settings (issue #444). Abstractions goes to
+         Odyssey.Context (a plain library, so IDataProtector needs a package); the full
+         package goes to Odyssey.MigrationService (a Worker host, so AddDataProtection() needs one).
+         Odyssey.Api needs neither — both are in its shared framework. -->
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <!-- Pinned to 9.x: Pomelo.EntityFrameworkCore.MySql 9.0.0 (latest) requires EF Core 9.x -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.19" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.19" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.19" />
+    <!-- Referenced explicitly by the context projects so the pinned patch flows to their
+         consumers. Pomelo 9.0.0 only floors it at 9.0.0, which left Odyssey.TestData/
+         Odyssey.E2ETests resolving 9.0.0 against DLLs compiled for the pinned patch (MSB3277).
+         Keep this on the same version as the other three EF entries. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.19" />
+    <PackageVersion Include="Microsoft.NET.Sdk.WebAssembly.Pack" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageVersion Include="MySqlConnector" Version="2.6.2" />
+    <PackageVersion Include="MudBlazor" Version="9.9.0" />
+    <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+    <PackageVersion Include="QRCoder" Version="1.8.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.3" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.Filters" Version="10.0.1" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.Swagger" Version="10.2.3" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.2.3" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <!-- The Apache-2.0 community fork of FluentAssertions. FluentAssertions 8.0 moved to the
+         Xceed license, which is free for open source but charges for commercial use; the fork
+         continues the 7.x lineage under the original terms. See THIRD-PARTY-NOTICES.md. -->
+    <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
+    <!-- The Blazor component renderer for Odyssey.Client.Tests (issue #444 §13 step 4a). That project
+         had no renderer at all, so a component could ship unable to render and still "pass" — the
+         OdsPasswordChangeForm precedent is exact: it threw on every render, took down two live pages,
+         and no test caught it. -->
+    <PackageVersion Include="bunit" Version="2.9.0" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <!-- Retry + circuit breaker for the file-analysis provider's HttpClient — the one third-party
+         network call in the app (issue #382). Ships out of dotnet/extensions, whose versions run
+         ahead of the 10.0.x runtime pins. -->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.9.0" />
+    <!-- Odyssey.ApiClient's only package dependency: IServiceCollection for its AddOdysseyApiClient
+         registration extension. Abstractions-only, so the library stays free of any web dependency. -->
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <!-- Test-only: Odyssey.ApiClient.Tests builds a real container to exercise AddOdysseyApiClient. -->
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <!-- Pins transitive MessagePack (Aspire.Hosting -> StreamJsonRpc) against high-severity
+         GHSA-hv8m-jj95-wg3x, patched in 2.5.301. As of Aspire 13.5.3 the transitive floor has
+         caught up (StreamJsonRpc 2.25.29 asks for 2.5.302 itself), so this is now defence in
+         depth rather than the only thing holding the CVE off. Keep it, and keep it on the 2.5.x
+         line: StreamJsonRpc targets the MessagePack 2.x API, so a 3.x bump risks runtime
+         breakage for nothing. -->
+    <PackageVersion Include="MessagePack" Version="2.5.302" />
+  </ItemGroup>
+</Project>

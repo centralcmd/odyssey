@@ -1,0 +1,87 @@
+@using Odyssey.Client.Components
+@using Odyssey.Client.Services
+@using Odyssey.Dtos.Finance
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+@inject IJSRuntime JsRuntime
+
+@*
+    JournalFilesTable — the read-only attachments well for a journal entry / task. Wraps the shared
+    OdsFilesTable over hydrated file metadata; the menu offers Download (generic files content endpoint,
+    files.read) and Copy ID. Files are added/removed from the parent's edit dialog, so this surface is
+    read-only (no OnDelete).
+*@
+
+@if (Attachments.Count == 0)
+{
+    <div class="je-att-empty">No attachments.</div>
+}
+else
+{
+    <OdsInlinePager Items="Rows" Context="pageRows">
+        <OdsFilesTable Files="pageRows"
+                       TypeFor="@(row => KindMeta(row.Kind))"
+                       Actions="@BuildMenu" />
+    </OdsInlinePager>
+}
+
+@code {
+    /// <summary>Hydrated metadata for the entry's/task's attachment files (dangling / no-access ids omitted by the host).</summary>
+    [Parameter] public IReadOnlyList<FileMetadataResponse> Attachments { get; set; } = [];
+
+    [Parameter] public bool CanDownload { get; set; }
+
+    private IReadOnlyList<OdsFilesRow> Rows => [.. Attachments.Select(f => new OdsFilesRow
+    {
+        Id = f.Id.ToString(),
+        Name = f.FileName,
+        Kind = KindLabel(f.ContentType),
+        SizeBytes = f.SizeBytes,
+        UploadedAtUtc = f.UploadedAtUtc,
+        Description = f.Description,
+    })];
+
+    private FileMetadataResponse? FileById(string id) =>
+        Attachments.FirstOrDefault(f => f.Id.ToString() == id);
+
+    private static string KindLabel(string contentType) => contentType switch
+    {
+        var t when t.StartsWith("image/", StringComparison.OrdinalIgnoreCase) => "Image",
+        "application/pdf" => "PDF",
+        var t when t.StartsWith("text/", StringComparison.OrdinalIgnoreCase) => "Text",
+        _ => "File",
+    };
+
+    private static OdsFileKindMeta KindMeta(string kind) => kind switch
+    {
+        "Image" => new OdsFileKindMeta("image", "var(--sea-400)", "var(--info-soft)"),
+        "PDF" => new OdsFileKindMeta("picture_as_pdf", "var(--finance-expense)", "var(--finance-expense-soft)"),
+        "Text" => new OdsFileKindMeta("description", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-default-hover)"),
+        _ => new OdsFileKindMeta("insert_drive_file", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-default-hover)"),
+    };
+
+    private IReadOnlyList<OdsMenuItem> BuildMenu(OdsFilesRow row)
+    {
+        var menu = new List<OdsMenuItem>();
+        if (CanDownload)
+            menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(row.Id)) });
+        menu.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID",
+            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(row.Id, "File ID copied.")),
+        });
+        return menu;
+    }
+
+    private async Task DownloadAsync(string id)
+    {
+        if (!Guid.TryParse(id, out var fileId))
+            return;
+        var meta = FileById(id);
+        var content = await Files.GetContentAsync(fileId);
+        if (content is null) { Snackbar.Add("Download failed.", Severity.Error); return; }
+        var contentType = content.ContentType ?? meta?.ContentType ?? "application/octet-stream";
+        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, meta?.FileName ?? "file", contentType);
+    }
+}

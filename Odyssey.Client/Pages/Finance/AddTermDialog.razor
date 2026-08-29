@@ -1,0 +1,160 @@
+@using System.Globalization
+@using Odyssey.Dtos.Finance
+@inject IReferenceDataCache ReferenceData
+@inject ISnackbar Snackbar
+@inject IAccountsApiClient Accounts
+
+@*
+    AddTermDialog — New / Edit dialog for an account term (interest-rate & fee history),
+    built on the shared OdsModal shell like every other create/edit dialog. The field set
+    mirrors the NewAccountTerm DTO and the AccountTermService validation: eligibility-gated
+    kind, percentage-or-amount value, currency (amount only), effective date, billing
+    period (fees only), and a note. Rejects an exact (kind, effectiveFrom) duplicate
+    client-side; the API still has the final say (400 / 409 surfaced as a toast).
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="@(IsEdit ? "edit" : "§")"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="trm-dialog">
+    <ChildContent>
+        <div class="ods-modal-body">
+
+            @* Term kind — eligibility-gated grid (new) or a locked tile (edit) *@
+            <div class="trm-field">
+                <div class="trm-label">Term</div>
+                @if (IsEdit)
+                {
+                    var info = TermKindVisuals.Info(_kind);
+                    <div class="trm-kind-opt on" style="cursor:default;">
+                        <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
+                            <span class="material-icons" style="font-size:18px;">@info.Icon</span>
+                        </span>
+                        <span class="trm-kind-opt-txt">
+                            <span class="trm-kind-opt-name">@info.Label</span>
+                            <span class="trm-kind-opt-grp">@(info.Group == TermGroup.Rate ? "Rate" : "Fee")</span>
+                        </span>
+                    </div>
+                }
+                else
+                {
+                    <div class="trm-kind-grid">
+                        @foreach (var k in _eligibleKinds)
+                        {
+                            var info = TermKindVisuals.Info(k);
+                            var on = k == _kind;
+                            <button type="button" class="trm-kind-opt @(on ? "on" : "")" @onclick="@(() => PickKind(k))">
+                                <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
+                                    <span class="material-icons" style="font-size:18px;">@info.Icon</span>
+                                </span>
+                                <span class="trm-kind-opt-txt">
+                                    <span class="trm-kind-opt-name">@info.Label</span>
+                                    <span class="trm-kind-opt-grp">@(info.Group == TermGroup.Rate ? "Rate" : "Fee")</span>
+                                </span>
+                                @if (on)
+                                {
+                                    <span class="material-icons trm-kind-check" style="font-size:18px;">check_circle</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                    @if (_eligibleKinds.Count < TermKindVisuals.All.Count)
+                    {
+                        <div class="trm-kind-ineligible">
+                            Some kinds don’t apply to a <b>@AccountTypeVisuals.Label(Account.AccountType)</b> account and are hidden.
+                        </div>
+                    }
+                }
+                @if (_errors.TryGetValue("kind", out var kindErr))
+                {
+                    <div class="trm-err">@kindErr</div>
+                }
+            </div>
+
+            @* Unit + value — the hero input *@
+            <div class="trm-value-block">
+                <div class="trm-field-head">
+                    <div class="trm-label" style="margin-bottom:0;">Value</div>
+                    @if (!IsRate)
+                    {
+                        <div style="margin-left:auto;">
+                            <OdsSegmentedControl Value="@_unit.ToString()" ValueChanged="OnUnitChanged"
+                                                 Options="_unitOptions" AriaLabel="Unit" />
+                        </div>
+                    }
+                </div>
+
+                <OdsAmountField Size="lg" AllowNegative="true"
+                                Prefix="@(IsPercentage ? null : CurrencySymbol(_currency))"
+                                Suffix="@(IsPercentage ? "%" : null)"
+                                Value="@_valueStr" ValueChanged="OnValueChanged"
+                                Error="@(_errors.TryGetValue("value", out var valErr) ? valErr : null)">
+                    <HelpContent>
+                        @if (IsPercentage)
+                        {
+                            <text>Stored as a fraction: <b>@PreviewFraction</b>@(IsRate ? " · annual" : "")</text>
+                        }
+                        else
+                        {
+                            <text>Flat amount in <b>@_currency</b>@BillingSuffixHint</text>
+                        }
+                    </HelpContent>
+                </OdsAmountField>
+            </div>
+
+            @* Currency (amount) + effective date *@
+            <OdsFormRow>
+                @if (!IsPercentage)
+                {
+                    <OdsSelect Label="Currency" Value="@_currency" ValueChanged="OnCurrencyChanged"
+                               Options="_currencyOptions" />
+                }
+                else
+                {
+                    <div class="trm-field">
+                        <div class="trm-label">Currency</div>
+                        <div class="trm-locked">
+                            <span class="material-icons">block</span>
+                            <span class="trm-locked-txt">Not used for a rate</span>
+                        </div>
+                    </div>
+                }
+                <OdsDatePicker Value="_effectiveFrom" ValueChanged="OnEffectiveFromChanged"
+                               Label="Effective from" />
+            </OdsFormRow>
+            @if (_errors.TryGetValue("effectiveFrom", out var dateErr))
+            {
+                <div class="trm-err" style="margin-top:-6px;">@dateErr</div>
+            }
+
+            @* Billing period — fees only *@
+            @if (!IsRate)
+            {
+                <div class="trm-field">
+                    <div class="trm-label">Billing period <span class="trm-opt">Optional</span></div>
+                    <OdsSelect Value="@_billingPeriod" ValueChanged="OnBillingChanged" Options="_billingOptions" />
+                </div>
+            }
+
+            @* Note *@
+            <OdsNoteField Label="Note" Optional="true" MaxLength="512"
+                          Value="@_note" ValueChanged="OnNoteChanged"
+                          Placeholder="What changed, and why — e.g. “Fed cut pass-through”."
+                          Error="@(_errors.TryGetValue("note", out var noteErr) ? noteErr : null)" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")"
+                   Loading="_isSaving" OnClick="SubmitAsync">
+            @(IsEdit ? "Save changes" : "Create term")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit term" : "New term")</text>;
+
+    private RenderFragment SubtitleFragment => IsEdit
+        ? @<text>Correct this rate or fee entry.</text>
+        : @<text>Record a rate or fee on @Account.Name, effective from a date.</text>;
+}

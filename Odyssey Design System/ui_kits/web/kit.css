@@ -1,0 +1,2018 @@
+/* Odyssey Web UI kit — shared styles. Tokens come from ../../colors_and_type.css,
+   which the HTML links directly (a direct <link> is required — loading it via
+   @import prevents the embedded icon font from rendering in some engines). */
+
+html, body, #root {
+  margin: 0; padding: 0;
+  background: var(--mud-palette-background);
+  color: var(--mud-palette-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+* { box-sizing: border-box; }
+
+/* ---------- App shell ----------
+   Drawer-only layout: the AppBar was removed and its contents (the logomark
+   + ODYSSEY wordmark, and the user-account action) moved into the drawer.
+   Grid is two columns, full-height. */
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.drawer {
+  background: var(--mud-palette-drawer-background);
+  border-right: 1px solid var(--mud-palette-divider);
+  padding: 12px 8px;
+  overflow-y: auto;
+  box-shadow: var(--mud-elevation-1);
+  /* Flex column so the brand sits at top, nav fills the middle, and the
+     theme-toggle pin lands at the bottom regardless of nav height. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Brand lockup at the top of the drawer — same composition as the login
+   card (compass + tide-glow caps wordmark), 56px to fit a 240px column. */
+.drawer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 8px 24px;
+}
+.drawer-wordmark {
+  font: 500 14px/1 var(--font-sans);
+  letter-spacing: 0.32em;
+  color: #00F5D4;
+}
+
+.drawer-nav { display: flex; flex-direction: column; }
+
+.drawer .nav-link {
+  display: flex; align-items: center; gap: 14px;
+  /* Button reset — nav links are <button>s (JS-driven nav, keyboard-operable). */
+  width: 100%; text-align: left; border: none; background: transparent; appearance: none;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font: 400 14px/1 var(--font-sans);
+  color: var(--mud-palette-drawer-text);
+  cursor: pointer;
+  margin-bottom: 2px;
+  text-decoration: none;
+}
+.drawer .nav-link .material-icons,
+.drawer .nav-link .nav-icon-svg { font-size: 20px; color: var(--mud-palette-text-secondary); flex: 0 0 20px; }
+.drawer .nav-link:hover { background: var(--mud-palette-action-default-hover); }
+/* Always-visible keyboard focus ring — matches the .odc-* layer + README. */
+.drawer .nav-link:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+.drawer .nav-link.active { background: rgba(79, 215, 203, 0.12); color: var(--tide-400); }
+.drawer .nav-link.active .material-icons,
+.drawer .nav-link.active .nav-icon-svg { color: var(--tide-400); }
+.drawer .nav-divider { height: 1px; background: var(--mud-palette-divider); margin: 12px 12px; }
+
+/* Theme toggle — pinned to the bottom of the drawer. Kit-level affordance,
+   not part of the product nav, so it's an unlabeled icon button. */
+.drawer-foot {
+  margin-top: auto;
+  padding: 12px 8px 4px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.main {
+  padding: 24px 32px 64px;
+  overflow-y: auto;
+}
+.container-lg { max-width: 1280px; margin: 0 auto; }
+
+/* ---------- Card ---------- */
+.card {
+  background: var(--mud-palette-surface);
+  border-radius: 8px;
+  box-shadow: var(--mud-elevation-1);
+  border: 1px solid var(--mud-palette-divider);
+}
+.card.outlined { box-shadow: none; }
+.card.flat     { box-shadow: none; border: none; }
+.card-body { padding: 20px; }
+.card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--mud-palette-divider-light); }
+.card-header .ttl { font: 500 16px/1 var(--font-sans); }
+
+/* ---------- Buttons ---------- */
+.btn {
+  font: 500 13px/1 var(--font-sans);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 9px 16px; border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+.btn:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+.btn.filled.primary   { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.btn.filled.primary:hover { background: var(--tide-500); }
+.btn.filled.secondary { background: var(--mud-palette-secondary); color: var(--mud-palette-secondary-text); }
+.btn.outlined         { background: transparent; color: var(--mud-palette-text-primary); border-color: var(--mud-palette-lines-inputs); }
+.btn.outlined:hover   { background: var(--mud-palette-action-default-hover); }
+.btn.text             { background: transparent; color: var(--mud-palette-primary); padding: 9px 12px; }
+.btn.text:hover       { background: rgba(79, 215, 203, 0.10); }
+.btn.danger           { background: var(--mud-palette-error); color: white; }
+.btn.full             { width: 100%; justify-content: center; }
+.btn[disabled], .btn.disabled { background: var(--mud-palette-action-disabled-background); color: var(--mud-palette-action-disabled); cursor: not-allowed; border-color: transparent; }
+.btn .material-icons { font-size: 18px; }
+
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 999px;
+  background: transparent; border: none;
+  display: inline-grid; place-items: center;
+  color: var(--mud-palette-text-secondary);
+  cursor: pointer;
+}
+.icon-btn:hover { background: var(--mud-palette-action-default-hover); }
+.icon-btn:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+.icon-btn.lg { width: 44px; height: 44px; }
+.icon-btn .material-icons { font-size: 22px; }
+
+/* ---------- Field (MudTextField Outlined) ----------
+   Metrics mirror the DS `.odc-field` family (components.css) EXACTLY so the
+   kit-local atoms (DateField, AccountTypePicker, EditFileModal type picker,
+   static form fields) line up pixel-for-pixel with DS Field/Select when they
+   share a row. gap 6, label 14/500/primary, control 16px @ 9px padding. */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field .label { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.field input, .field select, .field textarea {
+  background: transparent; color: var(--mud-palette-text-primary);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: 4px;
+  padding: 9px 12px;
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
+  width: 100%;
+  outline: none;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border: 2px solid var(--focus-ring, var(--mud-palette-primary)); padding: 8px 11px; }
+
+/* Native <select>: strip the OS arrow and re-draw the kit's expand_more chevron
+   in the secondary ink so dropdowns match the MultiSelect / Collapsible triggers. */
+.field select {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  padding-right: 38px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%2398A4BC'%3E%3Cpath d='M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.field select:hover { border-color: var(--mud-palette-text-secondary); }
+.field select:focus { padding-right: 37px; }
+[data-theme='light'] .field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%234A5670'%3E%3Cpath d='M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E");
+}
+
+/* Native date input: align the calendar-picker glyph with the secondary ink tone. */
+.field input[type="date"] { cursor: text; }
+.field input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer; opacity: 0.55; transition: opacity 120ms ease;
+}
+.field input[type="date"]:hover::-webkit-calendar-picker-indicator { opacity: 0.9; }
+
+.field.error input { border-color: var(--mud-palette-error); }
+.field.error .label { color: var(--mud-palette-error); }
+.field .helper { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.field.error .helper { color: var(--mud-palette-error); }
+
+/* clearable field (search) */
+.field-control { position: relative; display: flex; }
+.field-control.has-clear input { padding-right: 38px; }
+.field-control.has-clear input:focus { padding-right: 37px; }
+.field-clear {
+  position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; border: none; border-radius: 999px;
+  background: transparent; cursor: pointer; color: var(--mud-palette-text-secondary);
+}
+.field-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+
+/* ---------- Chip ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  font: 500 11px/1.4 var(--font-sans);
+  background: rgba(255,255,255,0.06);
+  color: var(--mud-palette-text-primary);
+  white-space: nowrap;
+}
+.chip .dot { width: 6px; height: 6px; border-radius: 999px; }
+.chip.income  { background: var(--finance-income-soft);  color: var(--finance-income); }
+.chip.expense { background: var(--finance-expense-soft); color: var(--finance-expense); }
+.chip.pending { background: var(--finance-pending-soft); color: var(--finance-pending); }
+.chip.tag     { background: rgba(139,92,246,0.16); color: var(--tag-text); }
+.chip.info    { background: rgba(26,165,224,0.16); color: var(--sea-400); }
+.chip.outline { background: transparent; border: 1px solid var(--mud-palette-divider); color: var(--mud-palette-text-secondary); }
+
+/* ---------- Alert (block notification) ----------
+   Distinct from .chip — block layout, larger radius, full width, top-aligned
+   icon. Severity tints reuse the finance soft-bg + accent stack so we don't
+   sprout a third color system. */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font: 400 14px/1.5 var(--font-sans);
+  box-sizing: border-box;
+}
+.alert .alert-icon { font-size: 20px; line-height: 1.4; flex: 0 0 auto; margin-top: 1px; }
+.alert .alert-body { flex: 1 1 auto; min-width: 0; color: var(--mud-palette-text-primary); }
+.alert.info {
+  background: rgba(56, 189, 248, 0.10);
+  border-color: rgba(56, 189, 248, 0.28);
+  color: var(--sea-400);
+}
+.alert.success {
+  background: var(--finance-income-soft);
+  border-color: color-mix(in srgb, var(--finance-income) 32%, transparent);
+  color: var(--finance-income);
+}
+.alert.error {
+  background: var(--finance-expense-soft);
+  border-color: color-mix(in srgb, var(--finance-expense) 32%, transparent);
+  color: var(--finance-expense);
+}
+.alert.warning {
+  background: var(--finance-pending-soft);
+  border-color: color-mix(in srgb, var(--finance-pending) 32%, transparent);
+  color: var(--finance-pending);
+}
+
+/* ---------- Avatar ---------- */
+.avatar {
+  width: 36px; height: 36px; border-radius: 999px;
+  display: inline-grid; place-items: center;
+  background: rgba(255,255,255,0.06);
+  color: var(--mud-palette-text-primary);
+  font: 500 13px/1 var(--font-sans);
+}
+.avatar.sq { border-radius: 8px; }
+.avatar.lg { width: 48px; height: 48px; }
+.avatar .material-icons { font-size: 20px; }
+
+/* ---------- Switch ---------- */
+.switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .track {
+  position: absolute; cursor: pointer; inset: 0;
+  background: var(--mud-palette-lines-default);
+  border-radius: 999px; transition: background-color 150ms ease;
+}
+.switch .knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 999px;
+  background: white;
+  transition: transform 150ms ease;
+}
+.switch input:checked + .track { background: var(--mud-palette-primary); }
+.switch input:checked + .track .knob { transform: translateX(16px); }
+
+/* ---------- Table ---------- */
+.tbl { width: 100%; border-collapse: separate; border-spacing: 0; }
+.tbl th, .tbl td { padding: 12px 14px; text-align: left; vertical-align: middle; }
+.tbl thead th {
+  font: 500 11px/1 var(--font-sans);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+  border-bottom: 1px solid var(--mud-palette-divider);
+  background: transparent;
+}
+.tbl tbody tr { border-bottom: 1px solid var(--mud-palette-table-lines); }
+.tbl tbody tr:hover { background: var(--mud-palette-action-default-hover); cursor: pointer; }
+.tbl tbody tr.selected { background: rgba(79, 215, 203, 0.08); }
+.tbl td .ods-money { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+.tbl td.numeric { text-align: right; white-space: nowrap; }
+.tbl th.numeric { text-align: right; white-space: nowrap; }
+
+/* ---------- Stat tile ---------- */
+.stat {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 8px;
+  padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 6px;
+  box-shadow: var(--mud-elevation-1);
+}
+.stat .overline {
+  font: 500 11px/1 var(--font-sans);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.stat .num {
+  font: 500 28px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+.stat .delta { font: 400 12px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.stat .delta.up   { color: var(--finance-income); }
+.stat .delta.down { color: var(--finance-expense); }
+
+/* ---------- Page header ---------- */
+.page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.page-head h1 { margin: 0; font: 300 32px/1 var(--font-sans); letter-spacing: -0.02em; }
+.page-head .sub { font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 4px; }
+
+/* Optional leading icon tile — same tinted-tile vocabulary as .pref-ic, scaled
+   up to balance the 32px title and aligned to the title row's centre. */
+.page-head .ph-titles { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.page-head .ph-lead {
+  flex: none; width: 48px; height: 48px; border-radius: 11px;
+  display: grid; place-items: center;
+  background: rgba(79, 215, 203, 0.14); color: var(--tide-400);
+}
+.page-head .ph-lead .material-icons { font-size: 26px; }
+
+/* Larger leading avatar variant — for headers whose title block runs to a
+   third (chips) line, a 64px user avatar balances the taller stack and leaves
+   room for a real photo later. Pass as the `icon` node; drop an <img> inside
+   and it fills the circle. */
+.page-head .ph-avatar {
+  flex: none; width: 88px; height: 88px; border-radius: var(--radius-pill);
+  display: grid; place-items: center; overflow: hidden;
+  font: 400 30px/1 var(--font-sans); letter-spacing: 0.02em;
+  background: rgba(79, 215, 203, 0.14); color: var(--tide-400);
+}
+.page-head .ph-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Optional third line under the title/sub: a wrapping row of status chips. */
+.page-head .ph-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.page-head .ph-titletext { min-width: 0; }
+
+/* Expandable regions inside a PageHeader card (Overview / Search).
+   Each region carries its own top divider; stacked regions add a gap. */
+.ph-region { border-top: 1px solid var(--mud-palette-divider); padding-top: 16px; }
+.ph-region + .ph-region { margin-top: 16px; }
+
+/* ---------- Preference card ----------
+   One setting per outlined card: a tide-tinted icon + label + one-line
+   description on the left, exactly one control on the right. Stacked with a
+   12px gap to read as a single settings group. The row wraps on narrow
+   viewports so the control drops below the label rather than crushing it. */
+.pref-list { display: flex; flex-direction: column; gap: 12px; }
+.pref-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+}
+.pref-main { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.pref-ic {
+  flex: none; width: 40px; height: 40px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: rgba(79, 215, 203, 0.14); color: var(--tide-400);
+}
+.pref-text { min-width: 0; }
+.pref-ttl  { font: 500 15px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.pref-desc { font: 400 13px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+.pref-control { flex: none; margin-left: auto; }
+.pref-select { width: 220px; }
+.pref-select .multiselect-summary { flex: 1 1 auto; min-width: 0; }
+
+/* ---------- Dashboard greeting ----------
+   The home view is the ONE exception to the page-header scaffold: instead of a
+   "title · count · total" row it opens with a personalised greeting hero —
+   a date overline, a display-size salutation, and the same action cluster. */
+.dash-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.dash-head .greet-over {
+  font: 500 12px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); margin-bottom: 14px;
+}
+.dash-head .greet { margin: 0; font: 300 52px/1 var(--font-sans); letter-spacing: -0.02em; color: var(--mud-palette-text-primary); }
+.dash-head .greet b { font-weight: 400; }
+.dash-head .greet-sub { font: 400 14px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 12px; }
+.dash-head .dash-actions { display: flex; gap: 8px; flex: none; padding-bottom: 6px; }
+
+/* ---------- Utility ---------- */
+.row { display: flex; align-items: center; gap: 8px; }
+.row-sb { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; } .gap-6 { gap: 24px; }
+.muted { color: var(--mud-palette-text-secondary); }
+.mono  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.income  { color: var(--finance-income); }
+.expense { color: var(--finance-expense); }
+
+.grid-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-12 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+
+/* ---------- Login surface ---------- */
+.auth-shell {
+  min-height: 100vh;
+  display: grid; place-items: center;
+  padding: 32px 16px;
+}
+.auth-card { width: 100%; max-width: 420px; }
+
+/* "Remember this device" opt-in on the two-step verification card */
+.auth-remember { cursor: pointer; }
+.auth-remember .odc-check { align-items: flex-start; }
+.auth-remember .odc-check-box { margin-top: 1px; }
+.auth-remember-text { display: flex; flex-direction: column; gap: 2px; }
+.auth-remember-ttl { font: 400 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.auth-remember-sub { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* Confirm-email states (verifying / confirmed / failed) */
+.auth-confirm { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 8px 0; }
+.auth-confirm-spin {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid var(--mud-palette-divider);
+  border-top-color: var(--mud-palette-primary);
+  animation: fan-spin 0.8s linear infinite;
+}
+.auth-confirm-icon {
+  width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 30px;
+}
+.auth-confirm-icon.ok { background: rgba(74,222,128,0.14); color: var(--mint-500); }
+.auth-confirm-icon.bad { background: rgba(248,113,113,0.14); color: var(--mud-palette-error); }
+
+/* ---------- Receipt grid ---------- */
+.receipt-grid { display: grid; grid-template-columns: 240px 1fr; gap: 20px; }
+.receipt-thumb {
+  background: var(--ink-700); border-radius: 8px; padding: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--mud-palette-divider);
+}
+.receipt-thumb .paper {
+  background: #FDFAF1; color: #333;
+  font: 400 10px/1.4 var(--font-mono);
+  padding: 14px; border-radius: 4px;
+  min-height: 240px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.receipt-thumb .paper .head { font-weight: 700; font-size: 12px; text-align: center; margin-bottom: 6px; }
+.receipt-thumb .paper .line { display: flex; justify-content: space-between; }
+.receipt-thumb .paper .total { border-top: 1px dashed #999; padding-top: 4px; margin-top: 4px; font-weight: 700; }
+
+/* ---------- Budget bar ---------- */
+.budget-row { display: grid; grid-template-columns: 1fr 200px 100px 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--mud-palette-table-lines); }
+.budget-row:last-child { border-bottom: none; }
+.bar {
+  height: 8px; background: var(--mud-palette-action-disabled-background);
+  border-radius: 999px; overflow: hidden;
+}
+.bar .fill { height: 100%; background: var(--mud-palette-primary); border-radius: 999px; }
+.bar .fill.over { background: var(--finance-expense); }
+.bar .fill.expense { background: color-mix(in srgb, var(--finance-expense) 72%, transparent); }
+.bar .fill.income { background: var(--finance-income); }
+
+/* ---------- Budget detail (items + breakdown) ---------- */
+.bgt-breakdown { display: flex; flex-direction: column; gap: 14px; margin-top: 2px; }
+/* Per-budget allocation donuts, recessed like the meta wells above them. */
+.bgt-donuts {
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-background);
+  border-radius: 8px; padding: 18px 20px;
+}
+.bgt-donuts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+@media (max-width: 760px) { .bgt-donuts-row { grid-template-columns: 1fr; } }
+.bgt-balance { gap: 14px; }
+/* Match the recessed well background of the donut cards above them. */
+.bgt-balance .odc-stat { background: var(--mud-palette-background); }
+@media (max-width: 720px) { .bgt-balance { grid-template-columns: 1fr 1fr; } }
+
+.bgt-items { display: flex; flex-direction: column; }
+.bgt-group { display: flex; flex-direction: column; }
+.bgt-group + .bgt-group { margin-top: 8px; }
+
+/* Color-coded rows mark the Income / Expense split (no header band). */
+.bgt-item-row.income  { box-shadow: inset 3px 0 0 var(--finance-income);  background: color-mix(in srgb, var(--finance-income) 7%, transparent); }
+.bgt-item-row.expense { box-shadow: inset 3px 0 0 var(--finance-expense); background: color-mix(in srgb, var(--finance-expense) 7%, transparent); }
+.bgt-item-row.income  .bgt-item-name { color: var(--finance-income); }
+.bgt-item-row.expense .bgt-item-name { color: var(--finance-expense); }
+.bgt-item-row.income  .bgt-actual { color: var(--finance-income); }
+.bgt-item-row.expense .bgt-actual { color: var(--finance-expense); }
+.bgt-item-row.income  .bgt-planned { color: color-mix(in srgb, var(--finance-income) 48%,  var(--mud-palette-text-secondary)); }
+.bgt-item-row.expense .bgt-planned { color: color-mix(in srgb, var(--finance-expense) 48%, var(--mud-palette-text-secondary)); }
+/* untagged items have no actual — keep the dash neutral */
+.bgt-item-row .bgt-actual.muted { color: var(--mud-palette-text-secondary); }
+
+.bgt-item-head, .bgt-item-row {
+  display: grid;
+  grid-template-columns: minmax(0,1.4fr) minmax(120px,1fr) 104px 92px 64px;
+  gap: 14px; align-items: center;
+}
+.bgt-item-head {
+  padding: 4px 14px 8px;
+  font: 500 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.bgt-item-head .ta-r { text-align: right; }
+.bgt-item-row { padding: 9px 14px; border-top: 1px dashed var(--mud-palette-divider-light); }
+
+.bgt-item-id { min-width: 0; display: flex; flex-direction: row; align-items: center; gap: 9px; }
+.bgt-item-name { font: 400 14px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bgt-item-id .chip { flex: none; }
+
+.bgt-bar-wrap { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.bgt-over { font: 500 10.5px/1 var(--font-mono); color: var(--finance-expense); }
+
+.bgt-num { font: 500 13px/1.3 var(--font-mono); text-align: right; }
+
+.bgt-item-act { display: flex; justify-content: flex-end; gap: 2px; }
+/* Action menu trigger reveals on row hover (matches the old edit/delete affordance) */
+.bgt-item-act .acct-menu { opacity: 0; transition: opacity .12s ease; }
+.bgt-item-row:hover .bgt-item-act .acct-menu,
+.bgt-item-act .acct-menu:focus-within { opacity: 1; }
+
+/* inline "Edit multiple" batch-edit mode */
+.bgt-edit-head, .bgt-edit-row {
+  display: grid;
+  grid-template-columns: minmax(0,1.4fr) 132px minmax(120px,1fr) 104px 40px;
+  gap: 12px; align-items: center;
+}
+.bgt-edit-head {
+  padding: 4px 14px 8px;
+  font: 500 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.bgt-edit-head .ta-r { text-align: right; }
+.bgt-edit-row { padding: 8px 14px; border-top: 1px dashed var(--mud-palette-divider-light); }
+.bgt-edit-row .field { gap: 0; }
+/* batch-edit delete button (its own column, always visible) */
+.bgt-rowbtn {
+  width: 28px; height: 28px; border-radius: 999px; border: none; background: transparent;
+  display: grid; place-items: center; cursor: pointer;
+  color: var(--mud-palette-text-secondary); transition: background .12s ease, color .12s ease;
+}
+.bgt-rowbtn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.bgt-rowbtn.del:hover { color: var(--mud-palette-error); }
+.bgt-edit-row .multiselect-trigger { padding: 8px 10px; background-color: var(--mud-palette-background); }
+.bgt-edit-input {
+  width: 100%; background: var(--mud-palette-background);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px;
+  padding: 9px 10px; font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
+  color: var(--mud-palette-text-primary); outline: none;
+}
+.bgt-edit-input:focus { border: 2px solid var(--focus-ring, var(--mud-palette-primary)); padding: 8px 9px; }
+.bgt-edit-input.ta-r { text-align: right; font-family: var(--font-mono); }
+.bgt-edit-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px 4px; margin-top: 4px;
+  border-top: 1px solid var(--mud-palette-divider-light);
+  font: 400 12px/1 var(--font-sans);
+}
+
+/* inline add-item form */
+.bgt-additem {
+  margin: 8px 14px 12px; padding: 14px;
+  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+  background: var(--mud-palette-surface);
+}
+.bgt-additem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.bgt-additem .field input, .bgt-additem .multiselect-trigger { background-color: var(--mud-palette-background); }
+.bgt-additem-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+
+
+/* ---------- Accounts list ---------- */
+.acct-list { display: flex; flex-direction: column; gap: 12px; }
+
+.acct-item { overflow: hidden; transition: border-color .15s ease, box-shadow .15s ease; }
+.acct-item.open { border-color: var(--mud-palette-lines-default); box-shadow: var(--mud-elevation-2); }
+.acct-item.dimmed .acct-head { opacity: 0.62; }
+
+.acct-head {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto auto;
+  gap: 18px; align-items: center;
+  padding: 16px 18px;
+  cursor: pointer;
+}
+.acct-head:hover { background: var(--mud-palette-action-default-hover); }
+
+.acct-id { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.acct-name-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.acct-name-row .chip { flex-shrink: 0; }
+.acct-name { font: 500 16px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acct-desc { font: 400 13px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acct-tags {
+  display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; white-space: nowrap;
+  font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+  margin-top: 2px;
+}
+.acct-type { color: var(--mud-palette-text-secondary); }
+.acct-dot { opacity: 0.4; }
+
+.acct-figures { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; }
+.acct-balance { font: 500 22px/1 var(--font-mono); }
+.acct-delta { font: 400 12px/1 var(--font-mono); }
+.acct-counts { display: inline-flex; gap: 12px; font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.acct-counts span { display: inline-flex; align-items: center; gap: 4px; }
+.acct-counts .material-icons { opacity: 0.65; }
+.acct-counts .acct-count-glyph { font-size: 15px; line-height: 1; font-weight: 600; opacity: 0.65; }
+
+.acct-controls { display: flex; align-items: center; gap: 2px; }
+.acct-expand {
+  width: 36px; height: 36px; border-radius: 999px;
+  background: transparent; border: none; cursor: pointer;
+  display: grid; place-items: center; color: var(--mud-palette-text-secondary);
+}
+.acct-expand:hover { background: var(--mud-palette-action-default-hover); }
+.chev { transition: transform .18s ease; }
+.chev.open { transform: rotate(180deg); }
+
+/* action menu (more_vert dropdown) */
+.acct-menu { position: relative; display: inline-flex; }
+.acct-menu-pop {
+  position: fixed; z-index: 1000;
+  min-width: 200px; padding: 6px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 8px; box-shadow: var(--mud-elevation-8);
+}
+/* Themed scrollbar for scrollable pops (long option lists) */
+.acct-menu-pop { scrollbar-width: thin; scrollbar-color: var(--mud-palette-lines-inputs) transparent; }
+.acct-menu-pop::-webkit-scrollbar { width: 12px; }
+.acct-menu-pop::-webkit-scrollbar-track { background: transparent; }
+.acct-menu-pop::-webkit-scrollbar-thumb {
+  background: var(--mud-palette-lines-inputs); border-radius: 999px;
+  border: 3px solid var(--mud-palette-surface); background-clip: padding-box;
+}
+.acct-menu-pop::-webkit-scrollbar-thumb:hover {
+  background: var(--mud-palette-text-secondary); background-clip: padding-box;
+}
+.acct-menu-item {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  padding: 9px 10px; border-radius: 6px; border: none; background: transparent;
+  color: var(--mud-palette-text-primary); cursor: pointer; text-align: left;
+  font: 400 14px/1 var(--font-sans);
+}
+.acct-menu-item:hover { background: var(--mud-palette-action-default-hover); }
+.acct-menu-item .material-icons { color: var(--mud-palette-text-secondary); }
+.acct-menu-glyph { flex: none; width: 18px; text-align: center; font: 600 17px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.acct-menu-item.danger { color: var(--mud-palette-error); }
+.acct-menu-item.danger .material-icons { color: var(--mud-palette-error); }
+/* An action that is unavailable, and the one line saying why. aria-disabled
+   (not the disabled attribute) keeps the item in the roving-focus order, so the
+   reason is reachable by keyboard instead of skipped. */
+.acct-menu-item[aria-disabled="true"], .acct-menu-item[aria-disabled="true"] .material-icons { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
+.acct-menu-item[aria-disabled="true"]:hover { background: transparent; }
+.acct-menu-note { margin: 0; padding: 0 10px 8px 39px; max-width: 268px; font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+/* Trailing affordance icon — pushed to the right edge, revealed on row hover/focus. */
+.acct-menu-item-trail { margin-left: auto; opacity: 0; transition: opacity 120ms ease; }
+.acct-menu-item:hover .acct-menu-item-trail,
+.acct-menu-item:focus-visible .acct-menu-item-trail { opacity: 1; }
+.acct-menu-sep { height: 1px; background: var(--mud-palette-divider-light); margin: 6px 4px; }
+
+/* multi-select filter (checkbox dropdown) */
+.multiselect { position: relative; }
+.multiselect-trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; box-sizing: border-box; cursor: pointer; text-align: left;
+  background: transparent; color: var(--mud-palette-text-primary);
+  border: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: 4px; padding: 9px 10px 9px 12px;
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
+}
+.multiselect-trigger:hover { border-color: var(--mud-palette-text-secondary); }
+.multiselect-trigger.active { border-color: var(--mud-palette-primary); }
+.multiselect-trigger .chev { color: var(--mud-palette-text-secondary); }
+.multiselect-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.multiselect-pop { padding: 6px; max-height: 320px; overflow-y: auto; }
+.multiselect-item {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  padding: 9px 10px; border-radius: 6px; border: none; background: transparent;
+  cursor: pointer; text-align: left; color: var(--mud-palette-text-primary);
+  font: 400 14px/1 var(--font-sans);
+}
+.multiselect-item:hover { background: var(--mud-palette-action-default-hover); }
+.ms-check {
+  width: 18px; height: 18px; flex: none; border-radius: 4px;
+  border: 1px solid var(--mud-palette-lines-inputs);
+  display: flex; align-items: center; justify-content: center; color: #fff;
+}
+.ms-check.on { background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); }
+.ms-check .material-icons { color: #fff; }
+.multiselect-item.ms-clear { color: var(--mud-palette-text-secondary); }
+
+/* single-select (custom Select): leading tick slot + selected tint */
+.ms-tick { width: 16px; height: 16px; flex: none; display: flex; align-items: center; justify-content: center; }
+.ms-tick .material-icons { color: var(--mud-palette-primary); }
+.multiselect-item.selected { color: var(--mud-palette-primary); }
+
+/* date trigger: calendar glyph + placeholder tone */
+.datefield-trigger.placeholder .multiselect-summary { color: var(--mud-palette-placeholder); }
+.datefield-ic { color: var(--mud-palette-text-secondary); flex: none; }
+
+/* date picker popover */
+.datepicker-pop { padding: 12px; width: 268px; }
+.dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.dp-title { font: 500 14px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.dp-nav {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; border-radius: 6px; cursor: pointer;
+  color: var(--mud-palette-text-secondary);
+}
+.dp-nav:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dp-wd { margin-bottom: 4px; }
+.dp-wd-cell {
+  text-align: center; font: 500 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+  padding: 4px 0; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.dp-cell {
+  height: 32px; border: none; background: transparent; border-radius: 6px; cursor: pointer;
+  color: var(--mud-palette-text-primary); font: 400 13px/1 var(--font-mono);
+  display: flex; align-items: center; justify-content: center;
+}
+.dp-cell.empty { cursor: default; }
+.dp-cell:not(.empty):hover { background: var(--mud-palette-action-default-hover); }
+.dp-cell.today { box-shadow: inset 0 0 0 1px var(--mud-palette-lines-inputs); }
+.dp-cell.sel, .dp-cell.sel:hover {
+  background: var(--mud-palette-primary); color: var(--mud-palette-primary-text, #07261F); font-weight: 600;
+}
+.dp-foot {
+  display: flex; justify-content: space-between; gap: 8px;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider-light);
+}
+.dp-foot-btn {
+  border: none; background: transparent; cursor: pointer; padding: 6px 8px; border-radius: 6px;
+  font: 500 13px/1 var(--font-sans); color: var(--mud-palette-primary);
+}
+.dp-foot-btn:hover { background: var(--mud-palette-action-default-hover); }
+.dp-foot-btn.clear { color: var(--mud-palette-text-secondary); }
+
+/* account overview charts (donuts folded into the header card) */
+.acct-overview { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 28px; align-items: start; }
+/* Asset/liability donuts as two separate recessed wells (mirrors .bgt-donuts). */
+.acct-donuts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.acct-donut-card {
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-background);
+  border-radius: 8px; padding: 18px 20px;
+}
+@media (max-width: 760px) { .acct-donuts-row { grid-template-columns: 1fr; } }
+.acct-overview-div { background: var(--mud-palette-divider); width: 1px; align-self: stretch; }
+@media (max-width: 760px) {
+  .acct-overview { grid-template-columns: 1fr; gap: 0; }
+  .acct-overview-div { display: none; }
+  .acct-overview .odc-donut-panel + .odc-donut-panel { border-top: 1px solid var(--mud-palette-divider); padding-top: 18px; margin-top: 18px; }
+}
+/* Padding sits on the card itself (no CardBody), so it must out-specify the
+   bridge's .odc-card.flush (which zeroes padding on every kit Card). */
+.odc-card.chart-card { padding: 20px; }
+.chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.chart-ttl { font: 500 14px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.chart-sub { font: 400 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 5px; }
+.chart-figure { text-align: right; white-space: nowrap; }
+.chart-figure-num { font: 500 18px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); white-space: nowrap; }
+.chart-figure-delta { font: 500 11px/1 var(--font-mono); margin-top: 5px; white-space: nowrap; }
+
+/* The allocation donut (ring + ledger + total) is the single canonical
+   .odc-donut-* component in components.css — Accounts/Budgets DonutPanel emits
+   those classes (layout="stack"). Nothing donut-specific lives here anymore. */
+
+.line-svg { width: 100%; height: auto; display: block; }
+.line-axis { font: 400 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
+
+/* expanded detail */
+.acct-detail {
+  border-top: 1px solid var(--mud-palette-divider-light);
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 14px;
+  /* Sit on the card surface — same as the edit form — so the expanded panel
+     reads as a continuation of the card, not a black void below it. */
+  background: var(--mud-palette-surface);
+}
+.meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.meta-tile {
+  border: 1px solid var(--mud-palette-divider);
+  /* Recess the wells one step under the surface panel — subtle, not a black hole. */
+  background: var(--mud-palette-background);
+  border-radius: 8px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.meta-tile-label { font: 500 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+/* Values own multiline: tiles never span columns, so long values (descriptions,
+   GUIDs, file names) wrap inside their tile — anywhere-breaking keeps unbroken
+   tokens from blowing out the 2-up grid. */
+.meta-tile-value { font: 400 15px/1.45 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; text-wrap: pretty; }
+
+/* collapsible sections (Files / Transactions) */
+.collapsible { border: 1px solid var(--mud-palette-divider); border-radius: 8px; background: var(--mud-palette-background); overflow: hidden; }
+.collapsible-head {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 11px 14px; cursor: pointer;
+}
+.collapsible-head:hover { background: var(--mud-palette-action-default-hover); }
+.collapsible-ic { color: var(--mud-palette-text-secondary); }
+.collapsible-title { font: 500 14px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.collapsible-count {
+  font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary);
+  background: var(--mud-palette-action-disabled-background);
+  padding: 3px 7px; border-radius: 999px;
+}
+.collapsible-body { border-top: 1px solid var(--mud-palette-divider-light); }
+.empty-line { padding: 16px 14px; font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* ---------- Empty state (centered surface) ---------- */
+.empty-state {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 8px;
+  padding: 56px 24px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.empty-state .es-ic {
+  width: 64px; height: 64px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: rgba(79,215,203,0.10); color: var(--tide-400);
+  margin-bottom: 2px;
+}
+.empty-state.muted-ic .es-ic { background: rgba(255,255,255,0.04); color: var(--mud-palette-text-secondary); }
+.empty-state .es-ttl  { font: 500 17px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.empty-state .es-desc { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 360px; }
+.empty-state .es-actions { margin-top: 8px; }
+
+/* ===========================================================================
+   DS-atom compatibility. The shared atoms (Field, Select, Card, EmptyState…)
+   now render from the design-system bundle as `.odc-*` elements. These rules
+   re-apply the kit's context-specific treatments to them so pages that styled
+   the old `.field input` / `.multiselect-trigger` keep their look. The local
+   DateField still renders `.multiselect-trigger`, so its rules above stand.
+   =========================================================================== */
+
+/* Recess inputs + selects to the form-well color inside edit forms, the
+   accounts filter bar, and modals (mirrors the .field input rules above). */
+.acct-edit .odc-input, .acct-edit .odc-select-trigger, .acct-edit .odc-tagms-control,
+.acct-edit .odc-dp-trigger, .acct-edit .odc-ms-trigger,
+.acct-filter-bar .odc-input, .acct-filter-bar .odc-select-trigger,
+.acct-filter-bar .odc-sortsel-trigger, .acct-filter-bar .odc-sortsel-dir,
+.aam-body .odc-input, .aam-body .odc-select-trigger, .aam-body .odc-tagms-control,
+.aam-body .odc-dp-trigger, .aam-body .odc-ms-trigger,
+.odc-modal-body .odc-input, .odc-modal-body .odc-select-trigger,
+.bgt-edit-row .odc-select-trigger,
+.bgt-additem .odc-input, .bgt-additem .odc-select-trigger { background-color: var(--mud-palette-background); }
+
+/* Compact selects inside the analyze-file candidate grid. */
+.fan-cell .odc-select-trigger { box-sizing: border-box; height: 34px; padding: 0 9px; font-size: 13px; background-color: var(--mud-palette-surface); }
+.fan-cell .odc-select-val { font-size: 13px; }
+.fan-cell .odc-select-chev { font-size: 18px; }
+.fan-cur .odc-select-trigger { padding-right: 6px; }
+
+/* The DS EmptyState is bare by design; the kit frames it as a surface. */
+.empty-state-surface {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 12px;
+}
+
+/* file rows */
+.file-list { display: flex; flex-direction: column; }
+.file-row {
+  display: grid; grid-template-columns: 32px minmax(0,1fr) auto 72px 112px auto;
+  gap: 12px; align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--mud-palette-divider-light);
+}
+.file-row:last-child { border-bottom: none; }
+.file-ic { width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center; background: var(--mud-palette-action-disabled-background); color: var(--mud-palette-text-secondary); }
+.file-name { font: 400 13px/1.3 var(--font-mono); color: var(--mud-palette-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-meta { font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); text-align: right; }
+/* Action menu trigger reveals on row hover (matches the budget item rows) */
+.file-row .acct-menu { opacity: 0; transition: opacity .12s ease; }
+.file-row:hover .acct-menu,
+.file-row .acct-menu:focus-within { opacity: 1; }
+
+/* inline edit form */
+/* The read-only detail panel uses the deep-recess background so its surface-tiles
+   pop. The edit form has bare inputs instead of tiles, so it keeps the card's own
+   surface — that way its fields read exactly like the search box and every other
+   form in the app (transparent input + border on surface), not floating on black. */
+.acct-edit { background: var(--mud-palette-surface); }
+/* Recess the edit inputs to the same well color as the detail meta-tiles so the
+   two views read consistently. background-color only — keep the select chevron
+   background-image intact. */
+.acct-edit .field input,
+.acct-edit .field select,
+.acct-edit .field textarea,
+.acct-edit .multiselect-trigger { background-color: var(--mud-palette-background); }
+
+/* Accounts search/filter bar: recess the search input + filter dropdowns to the
+   same well color as the edit form, so the whole accounts page reads consistently. */
+.acct-filter-bar .field input,
+.acct-filter-bar .multiselect-trigger { background-color: var(--mud-palette-background); }
+.acct-edit-head { display: flex; align-items: center; gap: 8px; white-space: nowrap; font: 500 14px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.acct-edit-head .material-icons { color: var(--mud-palette-text-secondary); }
+.edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.edit-wide { grid-column: auto; }
+.acct-edit-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 2px; }
+.acct-item.editing { border-color: var(--mud-palette-primary); box-shadow: var(--mud-elevation-2); }
+.acct-item.editing .acct-head { cursor: default; }
+.acct-item.editing.dimmed .acct-head { opacity: 1; }
+
+/* add-account row */
+.acct-add {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 18px; width: 100%;
+  border: 1px dashed var(--mud-palette-lines-default);
+  border-radius: 8px; background: transparent; cursor: pointer; text-align: left;
+  transition: border-color .15s ease, background .15s ease;
+}
+.acct-add:hover { background: var(--mud-palette-action-default-hover); border-color: var(--mud-palette-primary); }
+.acct-add-title { font: 500 14px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.acct-add-sub { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; }
+
+/* ============================================================
+   Add-account modal (AddAccountModal.jsx)
+   Scrim + centered dialog, reusing the components-dialog pattern.
+   ============================================================ */
+.aam-scrim {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(8, 12, 24, 0.62);
+  /* NOTE: backdrop-filter lives on ::before, NOT here. A backdrop-filter (like
+     transform/filter) makes an element the containing block for its position:fixed
+     descendants — which would re-anchor every field popover to this scrolling scrim
+     instead of the viewport, so they'd render detached from their trigger. The blur
+     layer is a sibling of the dialog, so the dialog's fixed popovers stay
+     viewport-anchored and land correctly. */
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 7vh 20px 40px;
+  overflow-y: auto;
+  animation: aam-fade 140ms ease both;
+}
+.aam-scrim::before {
+  content: ''; position: fixed; inset: 0; z-index: 0;
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+[data-theme='light'] .aam-scrim { background: rgba(40, 52, 74, 0.34); }
+@keyframes aam-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.aam-dialog {
+  position: relative; z-index: 1;   /* sit above the ::before blur layer */
+  width: 100%; max-width: 520px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 12px;
+  box-shadow: var(--mud-elevation-16);
+  overflow: visible;            /* let field popovers escape */
+  /* fill-mode 'backwards' (not 'both'): after the entrance finishes the dialog
+     reverts to a true `transform: none`. With 'both' it retained the keyframe's
+     identity matrix(1,0,0,1,0,0) — which, though visually nil, still counts as a
+     transform and makes the dialog the containing block for its position:fixed
+     field popovers, anchoring them to the dialog box instead of the viewport. */
+  animation: aam-rise 160ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@keyframes aam-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.aam-head {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 18px 24px;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--mud-palette-divider-light);
+  border-radius: 12px 12px 0 0;
+}
+[data-theme='light'] .aam-head { background: rgba(20,30,50,0.02); }
+
+/* Optional leading icon tile — mirrors the page header's .ph-lead, scaled to the
+   18px dialog title. Brand-tide by default; severity variants (warning amber,
+   error coral) let a destructive/confirm dialog read at a glance. */
+.aam-lead {
+  flex: none; width: 38px; height: 38px; border-radius: 9px;
+  display: grid; place-items: center; margin-top: 1px;
+  background: rgba(79, 215, 203, 0.14); color: var(--tide-400);
+}
+.aam-lead .material-icons { font-size: 21px; }
+.aam-lead.warning { background: rgba(245, 184, 64, 0.15); color: var(--finance-pending); }
+.aam-lead.error   { background: rgba(255, 107, 107, 0.15); color: var(--finance-expense); }
+
+/* Title column fills the width up to the close button, so the sub wraps only as
+   it nears the × — a generous measure cap keeps the wide dialogs readable. */
+.aam-titles { flex: 1; min-width: 0; }
+.aam-title { font: 500 18px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.aam-sub   { font: 400 12.5px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 4px; max-width: 58ch; }
+.aam-x {
+  flex: none; display: grid; place-items: center; margin-top: 1px;
+  width: 32px; height: 32px; border: none; border-radius: 999px;
+  background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.aam-x:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+
+.aam-body {
+  padding: 16px 24px 18px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+/* Recess inputs to the same well color as the inline edit form for consistency.
+   (.odc-modal-body is the DS Modal's body — same contract as .aam-body.) */
+.aam-body .field input,
+.odc-modal-body .field input,
+.aam-body .multiselect-trigger,
+.odc-modal-body .multiselect-trigger { background-color: var(--mud-palette-background); }
+.aam-err { color: var(--mud-palette-error); }
+.aam-body .field.error input,
+.odc-modal-body .field.error input { border-color: var(--mud-palette-error); }
+
+.aam-foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 20px; margin-top: 2px;
+  border-top: 1px solid var(--mud-palette-divider-light);
+  background: rgba(255,255,255,0.02);
+  border-radius: 0 0 12px 12px;
+}
+[data-theme='light'] .aam-foot { background: rgba(20,30,50,0.02); }
+
+/* ---- group note under the type picker ---- */
+.aam-group-note {
+  display: flex; align-items: center; gap: 10px; margin-top: -4px;
+  font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.aam-group-pill {
+  font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 4px 8px; border-radius: 999px;
+}
+.aam-group-pill.asset    { background: oklch(0.79 0.115 188 / 0.16); color: var(--tide-400); }
+.aam-group-pill.liability { background: oklch(0.72 0.16 22 / 0.16); color: var(--coral-500); }
+
+/* ---- account-type picker ---- */
+.aam-type-trigger.has-error { border-color: var(--mud-palette-error); }
+.aam-type-current { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto; }
+.aam-type-current > span:not(.aam-type-ic) { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aam-type-ic {
+  flex: none; display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 7px;
+}
+.aam-type-ic.sm { width: 22px; height: 22px; border-radius: 6px; }
+
+.aam-type-pop { max-height: 340px; overflow-y: auto; padding: 6px; }
+.aam-type-group {
+  font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+  padding: 8px 10px 6px;
+}
+.aam-type-item {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  padding: 7px 10px; border: none; border-radius: 7px;
+  background: transparent; cursor: pointer; text-align: left;
+  font: 400 14px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+}
+.aam-type-item:hover { background: var(--mud-palette-action-default-hover); }
+.aam-type-item.selected { background: var(--mud-palette-action-default-hover); }
+.aam-type-lab { flex: 1; min-width: 0; }
+.aam-type-check { color: var(--mud-palette-primary); }
+
+/* ============================================================
+   Add-file modal (AddFileModal) — extends the .aam-* shell.
+   ============================================================ */
+.afm-dialog { max-width: 560px; }
+
+/* ---- Per-file validity editor ----
+   The account upload's Valid-from / to · Issued · Issued-by editor. Rendered
+   beneath each file row via the DS FileUpload `renderFileExtra` slot (AfmValidity
+   in AddFileModal.jsx). The dropzone / file-list / kind-picker styles that used
+   to live here are gone — those surfaces render from the DS FileUpload
+   (`.odc-upload-*`) now. */
+.afm-meta-toggle {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--mud-palette-divider); border-radius: 999px;
+  background: transparent; cursor: pointer;
+  padding: 4px 10px 4px 8px;
+  font: 500 11.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.afm-meta-toggle:hover { border-color: var(--mud-palette-primary); color: var(--mud-palette-text-primary); }
+.afm-meta-toggle.on { border-color: var(--mud-palette-primary); color: var(--mud-palette-primary); }
+.afm-meta { margin-top: 10px; }
+.afm-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ---- Edit-file modal: read-only context strip + full-width type picker ---- */
+.efm-context {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 10px;
+  background: var(--mud-palette-background);
+  border: 1px solid var(--mud-palette-lines-default);
+}
+.efm-context-ic {
+  flex: none; display: grid; place-items: center;
+  width: 40px; height: 40px; border-radius: 9px;
+}
+.efm-context-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.efm-context-acct {
+  font: 600 13.5px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+}
+.efm-context-facts { font-size: 12px; color: var(--mud-palette-text-secondary); }
+
+.efm-type { position: relative; }
+.efm-type-trigger {
+  gap: 10px;
+  border-radius: 8px;
+}
+.efm-type-ic {
+  flex: none; display: grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 6px;
+}
+.efm-type-lab { flex: 1 1 auto; min-width: 0; text-align: left; font: var(--fw-medium) 14px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.efm-type-trigger .chev { margin-left: auto; }
+.efm-type-pop { padding: 6px; }
+
+/* ============================================================
+   Add transaction modal (.atm-*) — built on the shared .aam-* shell
+   ============================================================ */
+/* On large screens the New-transaction form uses the DS two-column form layout
+   (.odc-form-grid) to take advantage of the width; the modal grows to 880px and
+   collapses to one column (and shrinks to fit) on smaller viewports. */
+.atm-dialog { max-width: 880px; }
+/* Optional-field marker — unified with the design system's .odc-field-opt so
+   every "Optional" hint reads identically (sentence case, caption, muted)
+   whether it comes from a DS Field/Select or a hand-rolled kit label. */
+.atm-opt {
+  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary); margin-left: 6px;
+}
+
+/* ---- Amount block: the hero of the form ---- */
+.atm-amount-block { display: flex; flex-direction: column; gap: 10px; }
+
+.atm-seg {
+  display: inline-flex; align-self: flex-start; gap: 3px;
+  padding: 3px; border-radius: 9px;
+  background: var(--mud-palette-background);
+  border: 1px solid var(--mud-palette-divider);
+}
+.atm-seg-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 14px; border: none; border-radius: 7px;
+  background: transparent; cursor: pointer;
+  font: 500 13px/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+  transition: background .14s ease, color .14s ease;
+}
+.atm-seg-btn .material-icons { font-size: 16px; }
+.atm-seg-btn:hover { color: var(--mud-palette-text-primary); }
+.atm-seg-btn.on.expense { background: oklch(0.72 0.16 22 / 0.16); color: oklch(0.74 0.16 22); }
+.atm-seg-btn.on.income  { background: oklch(0.80 0.15 150 / 0.16); color: oklch(0.80 0.15 150); }
+
+.atm-amount {
+  display: flex; align-items: center; gap: 6px;
+  height: 64px; padding: 0 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-background);
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+.atm-amount:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); }
+.atm-amount.has-error { border-color: var(--mud-palette-error); }
+.atm-amount-sign {
+  font: 600 30px/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary); width: 18px; text-align: center;
+}
+.atm-amount.expense .atm-amount-sign { color: oklch(0.74 0.16 22); }
+.atm-amount.income  .atm-amount-sign { color: oklch(0.80 0.15 150); }
+.atm-amount-cur {
+  font: 500 22px/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.atm-amount input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  font: 600 30px/1 var(--font-mono, var(--font-sans));
+  color: var(--mud-palette-text-primary);
+  letter-spacing: -0.01em;
+}
+.atm-amount input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+
+/* ---- Account picker: current value tile + locked summary ---- */
+.atm-acct-current, .atm-cp-current {
+  display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;
+}
+.atm-acct-name {
+  font: 500 13.5px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.atm-acct-num {
+  font-size: 12px; color: var(--mud-palette-text-secondary); flex: none;
+}
+.atm-acct-pop { max-height: 320px; overflow-y: auto; padding: 6px; }
+.atm-acct-pop .aam-type-item { gap: 10px; }
+
+.atm-acct-locked {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px;
+  border: 1px solid var(--mud-palette-divider-light);
+  background: var(--mud-palette-background);
+}
+.atm-locked-pill {
+  margin-left: auto; flex: none;
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 500 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+  padding: 5px 9px; border-radius: 999px;
+  background: var(--mud-palette-action-default-hover);
+}
+.atm-locked-pill .material-icons { font-size: 13px; }
+
+/* ---- Contact combobox ---- */
+.atm-cp-avatar {
+  flex: none; display: grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 7px;
+  background: oklch(0.72 0.16 295 / 0.16); color: oklch(0.72 0.16 295);
+}
+.atm-cp-avatar .material-icons { font-size: 15px; }
+/* Selected-state chip inside the trigger fits within the control line-box so the
+   trigger matches the standard control height (≈42px) when a value is chosen. */
+.multiselect-trigger .atm-cp-avatar { width: 22px; height: 22px; border-radius: 6px; }
+.atm-cp-avatar.add { background: var(--mud-palette-primary-hover, oklch(0.79 0.115 188 / 0.16)); color: var(--mud-palette-primary); }
+.atm-cp-name {
+  font: 500 13.5px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.atm-cp-type {
+  flex: none; margin-left: auto;
+  font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+  padding: 4px 8px; border-radius: 999px;
+  background: var(--mud-palette-action-default-hover);
+}
+.atm-cp-clear {
+  flex: none; display: grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 999px; cursor: pointer;
+  color: var(--mud-palette-text-secondary);
+  transition: background .12s ease, color .12s ease;
+}
+.atm-cp-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.atm-cp-pop { padding: 0; max-height: 320px; display: flex; flex-direction: column; }
+.atm-cp-search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-bottom: 1px solid var(--mud-palette-divider-light);
+  color: var(--mud-palette-text-secondary);
+}
+.atm-cp-search input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font: 400 13.5px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+}
+.atm-cp-list { overflow-y: auto; padding: 6px; }
+.atm-cp-list .aam-type-item { gap: 10px; }
+.atm-cp-create .aam-type-lab { color: var(--mud-palette-primary); font-weight: 500; }
+.atm-cp-empty {
+  padding: 16px 12px; text-align: center;
+  font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+
+/* ---- Advanced (status + ids) ---- */
+.atm-adv {
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 10px; background: var(--mud-palette-background);
+  overflow: hidden;
+}
+.atm-adv-toggle {
+  display: flex; align-items: center; gap: 8px; width: 100%; white-space: nowrap;
+  padding: 12px 14px; border: none; background: transparent; cursor: pointer;
+  font: 500 13.5px/1 var(--font-sans); color: var(--mud-palette-text-primary);
+  text-align: left;
+}
+.atm-adv-toggle .chev { color: var(--mud-palette-text-secondary); transition: transform .16s ease; }
+.atm-adv-toggle .chev.open { transform: rotate(180deg); }
+.atm-adv-hint {
+  margin-left: auto; font: 400 11.5px/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+}
+.atm-adv-body {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 4px 14px 16px;
+  border-top: 1px solid var(--mud-palette-divider-light);
+}
+.atm-status-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.atm-status-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 13px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-surface);
+  font: 500 12.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+  transition: background .14s ease, color .14s ease, border-color .14s ease;
+}
+.atm-status-chip .material-icons { font-size: 15px; }
+.atm-status-chip:hover { color: var(--mud-palette-text-primary); }
+
+/* ============================================================
+   File viewer modal (FileViewerModal.jsx) — extends the .aam-* shell
+   into a large document viewer: header · toolbar · stage · footer.
+   ============================================================ */
+.fvm-scrim { align-items: center; padding: 4vh 20px; }
+.fvm-dialog {
+  max-width: 940px;
+  height: min(88vh, 920px);
+  display: flex; flex-direction: column;
+  overflow: hidden;            /* stage scrolls internally; nothing escapes here */
+}
+
+/* ---- Header ---- */
+.fvm-head {
+  flex: none;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px 14px 18px;
+  border-bottom: 1px solid var(--mud-palette-divider);
+}
+.fvm-head-ic {
+  flex: none; display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 8px;
+}
+.fvm-head-main { min-width: 0; flex: 1; }
+.fvm-head-name {
+  font: 500 15px/1.25 var(--font-sans); color: var(--mud-palette-text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fvm-head-meta {
+  display: flex; align-items: center; gap: 8px; margin-top: 4px;
+  font: 400 12.5px/1.3 var(--font-sans);
+}
+.fvm-head-meta .chip { transform: translateY(-0.5px); }
+.fvm-dot { color: var(--mud-palette-text-disabled); }
+.fvm-x { flex: none; }
+
+/* ---- Toolbar ---- */
+.fvm-bar {
+  flex: none;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  gap: 12px; padding: 8px 14px;
+  border-bottom: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-background);
+}
+.fvm-bar-l { justify-self: start; }
+.fvm-bar-c { justify-self: center; }
+.fvm-bar-r { justify-self: end; display: flex; align-items: center; gap: 4px; }
+
+.fvm-tbtn {
+  display: grid; place-items: center;
+  width: 32px; height: 32px; border-radius: 7px;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--mud-palette-text-secondary);
+  transition: background .12s ease, color .12s ease;
+}
+.fvm-tbtn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.fvm-tbtn:disabled { color: var(--mud-palette-text-disabled); cursor: default; background: transparent; }
+
+.fvm-pager, .fvm-zoom {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 2px; border-radius: 9px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+}
+.fvm-pager-lab {
+  min-width: 52px; text-align: center;
+  font-size: 12.5px; color: var(--mud-palette-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.fvm-zlabel {
+  min-width: 52px; height: 32px; padding: 0 4px;
+  border: none; background: transparent; cursor: pointer; border-radius: 6px;
+  font: 500 12.5px/1 var(--font-sans); color: var(--mud-palette-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.fvm-zlabel:hover { background: var(--mud-palette-action-default-hover); }
+
+/* ---- Stage (recessed) ---- */
+.fvm-stage {
+  flex: 1; min-height: 0; overflow: auto;
+  background: var(--ink-950);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 32px;
+}
+.fvm-stage.is-empty { align-items: center; }
+[data-theme='light'] .fvm-stage { background: var(--ink-200); }
+.fvm-canvas {
+  transform-origin: top center;
+  transition: transform .14s ease;
+  flex: none;
+}
+
+/* ---- White paper pages (file content — light in both themes) ---- */
+.fvm-page {
+  background: #FFFFFF; color: #141A2C;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+.fvm-doc {
+  width: 660px; min-height: 854px;   /* ~Letter ratio */
+  padding: 48px 52px;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+}
+.fvm-doc-band {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding-bottom: 18px; border-bottom: 2px solid #141A2C;
+}
+.fvm-doc-band > div:first-child { flex: 1; min-width: 0; padding-right: 20px; }
+.fvm-doc-bank { font: 700 18px/1.25 var(--font-sans); color: #0E1525; }
+.fvm-doc-acct { font: 500 12px/1.4 var(--font-mono); color: #4A5670; margin-top: 6px; letter-spacing: 0.02em; }
+.fvm-doc-band-r { text-align: right; flex: none; }
+.fvm-doc-kind { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: #6B7896; }
+.fvm-doc-period { font: 500 13px/1.4 var(--font-sans); color: #1C2238; margin-top: 6px; }
+
+.fvm-doc-summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  margin: 26px 0 12px;
+}
+.fvm-doc-tile {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 14px; border: 1px solid #E6EBF4; border-radius: 8px; background: #F5F7FB;
+}
+.fvm-doc-tlab { font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: #6B7896; }
+.fvm-doc-tval { font: 600 15px/1 var(--font-mono); color: #0E1525; font-variant-numeric: tabular-nums; }
+.fvm-doc-tval.pos { color: #15803D; }
+.fvm-doc-tval.neg { color: #B23B3B; }
+
+.fvm-doc-h {
+  font: 600 13px/1 var(--font-sans); color: #1C2238;
+  margin: 28px 0 12px; padding-bottom: 8px; border-bottom: 1px solid #E6EBF4;
+}
+.fvm-doc-tbl { width: 100%; border-collapse: collapse; }
+.fvm-doc-tbl th {
+  text-align: left; font: 500 10px/1 var(--font-sans); letter-spacing: 0.05em;
+  text-transform: uppercase; color: #6B7896; padding: 0 0 10px;
+}
+.fvm-doc-tbl th.r, .fvm-doc-tbl td.r { text-align: right; }
+.fvm-doc-tbl td {
+  font: 400 12.5px/1.4 var(--font-sans); color: #1C2238;
+  padding: 9px 0; border-top: 1px solid #EEF1F7;
+}
+.fvm-doc-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.fvm-doc-tbl td.pos { color: #15803D; }
+.fvm-doc-tbl td.neg { color: #B23B3B; }
+.fvm-doc-foot {
+  display: flex; justify-content: space-between;
+  margin-top: 40px; padding-top: 14px; border-top: 1px solid #E6EBF4;
+  font: 400 10.5px/1.4 var(--font-mono); color: #98A4BC;
+}
+
+/* ---- Receipt paper (image stand-in) ---- */
+.fvm-receipt {
+  width: 360px; padding: 32px 30px 38px;
+  box-sizing: border-box;
+  font-family: var(--font-mono); color: #1C2238;
+}
+.fvm-rc-store { text-align: center; font: 700 16px/1.2 var(--font-mono); letter-spacing: 0.04em; }
+.fvm-rc-sub { text-align: center; font-size: 11px; color: #4A5670; margin-top: 4px; }
+.fvm-rc-rule { border-top: 1px dashed #98A4BC; margin: 14px 0; }
+.fvm-rc-line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font-size: 12.5px; line-height: 1.5; padding: 4px 0; }
+.fvm-rc-line > span:first-child { min-width: 0; }
+.fvm-rc-line > span:last-child { flex: none; font-variant-numeric: tabular-nums; }
+.fvm-rc-total { font-weight: 700; font-size: 14px; }
+.fvm-rc-meta { text-align: center; font-size: 10.5px; color: #4A5670; margin-top: 4px; }
+.fvm-rc-thanks { text-align: center; font-size: 12px; letter-spacing: 0.12em; margin-top: 18px; }
+
+/* ---- Unsupported / empty ---- */
+.fvm-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 12px; max-width: 360px; padding: 24px;
+}
+.fvm-empty-ic {
+  display: grid; place-items: center; width: 72px; height: 72px; border-radius: 999px;
+  background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary);
+  margin-bottom: 4px;
+}
+.fvm-empty-ttl { font: 500 17px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.fvm-empty-sub { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-bottom: 8px; }
+.fvm-empty-sub .mono { font-family: var(--font-mono); color: var(--mud-palette-text-primary); }
+
+/* ---- Footer ---- */
+.fvm-foot {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-top: 1px solid var(--mud-palette-divider);
+  background: rgba(255,255,255,0.02);
+}
+[data-theme='light'] .fvm-foot { background: rgba(20,30,50,0.02); }
+.fvm-foot-note { display: inline-flex; align-items: center; gap: 6px; font: 400 12px/1 var(--font-sans); }
+.fvm-foot-note .material-icons { font-size: 14px; }
+.fvm-foot-actions { display: flex; gap: 10px; }
+
+@media (max-width: 720px) {
+  .fvm-doc { width: 100%; min-width: 0; padding: 28px 22px; min-height: 0; }
+  .fvm-doc-summary { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ============================================================
+   Analyze file dialog (AnalyzeFileModal)
+   Wide variant of the .aam-* shell. The review table is the budget
+   "Edit multiple" grid, widened with read-only extraction columns.
+   ============================================================ */
+.fan-dialog { max-width: 560px; display: flex; flex-direction: column; max-height: 90vh; }
+.fan-dialog.wide { max-width: 1240px; width: 96vw; }
+.fan-body { flex: 1 1 auto; min-height: 0; }
+.fan-body.wide { overflow: auto; gap: 12px; }
+.fan-foot { flex: 0 0 auto; }
+
+/* ===================== Consent gate (before any bytes leave) ===================== */
+.fan-dialog.consent { max-width: 700px; }
+.fan-consent { display: flex; flex-direction: column; gap: 18px; padding: 4px 2px 2px; }
+
+/* transfer route: Odyssey → processor */
+.fan-xfer {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+  padding: 13px 16px; border-radius: 10px;
+  background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider);
+}
+.fan-xfer-node { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fan-xfer-node:last-child { justify-content: flex-end; text-align: right; }
+.fan-xfer-ic { width: 34px; height: 34px; border-radius: 8px; flex: none; display: grid; place-items: center; }
+.fan-xfer-ic.in  { background: rgba(79,215,203,0.14); color: var(--tide-400); }
+.fan-xfer-ic.out { background: var(--finance-pending-soft); color: var(--amber-500); }
+.fan-xfer-meta { min-width: 0; }
+.fan-xfer-t { font: 500 13.5px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fan-xfer-s { font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fan-xfer-s.mono { font-family: var(--font-mono); font-size: 10.5px; }
+.fan-xfer-arrow { color: var(--mud-palette-text-secondary); display: inline-flex; flex: none; }
+
+/* doc preview + facts */
+/* doc preview + facts — columns are height-matched so the card doesn't jut below the list */
+.fan-consent-grid { display: grid; grid-template-columns: 196px 1fr; gap: 20px; align-items: start; }
+
+.fan-consent-doc { display: flex; flex-direction: column; gap: 8px; }
+.fan-docprev {
+  border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--mud-palette-divider);
+  box-shadow: var(--mud-elevation-4);
+}
+.fan-docprev-page { background: #f4f5f7; padding: 14px 14px; height: 168px; box-sizing: border-box; overflow: hidden; }
+.fan-docprev-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.fan-docprev-logo { width: 46px; height: 12px; border-radius: 3px; background: #9aa3b2; }
+.fan-docprev-headmeta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.fan-docprev-headmeta span { display: block; height: 5px; border-radius: 2px; background: #c8cdd6; }
+.fan-docprev-headmeta span:first-child { width: 52px; }
+.fan-docprev-headmeta span:last-child  { width: 34px; }
+.fan-docprev-acctline { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; }
+.fan-docprev-acctlabel { font: 600 8px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: #8a93a3; }
+.fan-docprev-redact {
+  display: inline-flex; align-items: center; gap: 3px;
+  font: 600 7.5px/1 var(--font-sans); letter-spacing: 0.02em; text-transform: uppercase;
+  color: #fff; background: #2c3340; border-radius: 3px; padding: 3px 6px 3px 4px;
+}
+.fan-docprev-rows { display: flex; flex-direction: column; gap: 8px; }
+.fan-docprev-row { display: grid; grid-template-columns: 34px 1fr 40px; gap: 8px; align-items: center; }
+.fan-docprev-row span { height: 6px; border-radius: 2px; background: #d2d7df; }
+.fan-docprev-row .d   { background: #dfe3ea; }
+.fan-docprev-row .amt { background: #c2c8d2; justify-self: end; width: 40px; }
+.fan-doc-cap {
+  display: flex; align-items: center; gap: 6px;
+  font: 400 11.5px/1.4 var(--font-mono); color: var(--mud-palette-text-secondary);
+}
+.fan-doc-cap .material-icons { color: var(--sea-400); flex: none; }
+.fan-doc-cap b { color: var(--mud-palette-text-primary); font-weight: 500; word-break: break-all; }
+
+.fan-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.fan-facts li { display: flex; gap: 11px; align-items: flex-start; }
+.fan-facts li .material-icons { color: var(--mud-palette-text-secondary); flex: none; margin-top: 1px; }
+.fan-facts li div { font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.fan-facts li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.fan-link { color: var(--sea-400); text-decoration: none; border-bottom: 1px solid currentColor; }
+.fan-link:hover { color: var(--tide-400); }
+
+/* the consent affirmation */
+.fan-consent-check {
+  display: flex; gap: 12px; align-items: flex-start; cursor: pointer;
+  padding: 14px 15px; border-radius: 10px;
+  background: rgba(79,215,203,0.07); border: 1px solid rgba(79,215,203,0.35);
+}
+.fan-consent-check:hover { background: rgba(79,215,203,0.10); }
+.fan-consent-check .fan-check { margin-top: 1px; flex: none; position: relative; }
+.fan-consent-check .odc-check { align-items: flex-start; }
+.fan-consent-check .odc-check-box { margin-top: 1px; }
+.fan-consent-text { font: 400 13px/1.55 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+.fan-consent-basis {
+  display: flex; align-items: center; gap: 7px;
+  font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.fan-consent-basis .material-icons { color: var(--mud-palette-text-secondary); flex: none; }
+.fan-consent-basis b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+@media (max-width: 620px) {
+  .fan-consent-grid { grid-template-columns: 1fr; }
+  .fan-consent-doc { max-width: 240px; }
+}
+
+/* ---- Provider chip ---- */
+.fan-provider {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 4px 10px 4px 8px; border-radius: 999px;
+  background: rgba(79, 215, 203, 0.12); color: var(--tide-400);
+  font: 500 12px/1 var(--font-sans);
+}
+.fan-provider .material-icons { color: var(--tide-400); }
+.fan-provider-model { color: var(--mud-palette-text-secondary); font-size: 11px; letter-spacing: 0; white-space: nowrap; }
+
+/* ---- File context line ---- */
+.fan-filemeta { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fan-file-ic {
+  width: 30px; height: 30px; border-radius: 7px; flex: none;
+  display: grid; place-items: center;
+  background: rgba(26,165,224,0.16); color: var(--sea-400);
+}
+.fan-file-name { font: 500 14px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fan-file-acct { font: 400 12px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.fan-file-acct .mono { opacity: 0.7; }
+
+/* ===================== Review ===================== */
+.fan-review { display: flex; flex-direction: column; gap: 12px; }
+.fan-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-bottom: 2px;
+}
+.fan-toolbar-right { display: flex; align-items: center; gap: 10px; flex: none; }
+.fan-foundpill {
+  font: 500 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+  padding: 5px 10px; border-radius: 999px; border: 1px solid var(--mud-palette-divider);
+}
+
+.fan-table-wrap {
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: 10px; overflow-x: auto; overflow-y: visible;
+  background: var(--mud-palette-background);
+}
+.fan-table { min-width: 1220px; display: flex; flex-direction: column; }
+
+.fan-row-head, .fan-row {
+  display: grid;
+  grid-template-columns: 34px 112px minmax(146px,1.1fr) minmax(202px,1.6fr) minmax(190px,1.45fr) 120px 80px 92px 104px 38px;
+  gap: 10px; align-items: start;
+}
+.fan-row-head {
+  padding: 11px 14px; position: sticky; top: 0; z-index: 2;
+  background: var(--mud-palette-surface);
+  border-bottom: 1px solid var(--mud-palette-divider);
+  font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.fan-row-head .ta-r { text-align: right; }
+.fan-row {
+  padding: 7px 14px; border-top: 1px dashed var(--mud-palette-divider-light);
+  transition: opacity .12s ease, background .12s ease;
+}
+.fan-row:first-of-type { border-top: none; }
+.fan-row.low { box-shadow: inset 3px 0 0 var(--amber-500); }
+.fan-row.off { opacity: 0.42; }
+.fan-row.off.low { box-shadow: inset 3px 0 0 rgba(245,158,11,0.4); }
+.fan-row:hover { background: var(--mud-palette-action-default-hover); }
+
+/* cells */
+.fan-cell { min-width: 0; }
+.fan-cell.ro { font: 400 13px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.fan-ro-text { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fan-ro-empty { color: var(--mud-palette-text-disabled); }
+.fan-ref { font-size: 11.5px; color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+
+/* editable inputs — match the budget batch-edit input */
+.fan-input {
+  width: 100%; box-sizing: border-box; height: 34px; background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px;
+  padding: 7px 9px; font: var(--fw-regular) 13px/1.4 var(--font-sans);
+  color: var(--mud-palette-text-primary); outline: none;
+}
+.fan-input:focus { border: 2px solid var(--focus-ring, var(--mud-palette-primary)); padding: 6px 8px; }
+.fan-input.ta-r { text-align: right; }
+.fan-amount { position: relative; }
+.fan-amount.expense .fan-input { color: var(--finance-expense); }
+.fan-amount.income  .fan-input { color: var(--finance-income); }
+
+/* compact date + currency triggers inside the grid */
+.fan-cell .multiselect-trigger,
+.fan-cell .datefield-trigger {
+  box-sizing: border-box; height: 34px; padding: 0 9px; background-color: var(--mud-palette-surface);
+  font-size: 13px;
+}
+.fan-cell .multiselect-summary { font-size: 13px; }
+.fan-cur .multiselect-trigger { padding-right: 6px; }
+
+/* match cell — the merchant Combobox / category TagMultiSelect stacked over its
+   MatchIndicator (source + confidence as text). Rows are align-start so the
+   single-line cells line up with the control, and the indicator sits beneath. */
+.fan-matchcell { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+/* The static indicator fills the cell so its label isn't collapsed by the
+   shrink-to-content of an inline-flex flex-item; the suggestion chip hugs. */
+.fan-matchcell > .odc-match { display: flex; max-width: 100%; }
+.fan-matchcell > .odc-match.suggestion { display: inline-flex; align-self: flex-start; max-width: 100%; }
+/* No match → Create: small green clickable text on its own line under "No match". */
+/* No match → Create: same brand-soft pill as the suggestion "Use ‹name›" action. */
+.odc-match-createline { flex-basis: 100%; min-width: 0; display: flex; }
+.odc-match-create {
+  flex: none; max-width: 100%; min-width: 0;
+  display: inline-flex; align-items: center; gap: 3px;
+  cursor: pointer; border: 1px solid var(--brand-border, var(--tide-400));
+  background: var(--brand-soft, rgba(79,215,203,0.12)); color: var(--brand-text, var(--tide-400));
+  font: var(--fw-medium, 500) 11px/1 var(--font-sans); letter-spacing: 0.01em;
+  padding: 3px 8px 3px 5px; border-radius: var(--radius-pill, 999px);
+  transition: background-color 120ms ease;
+}
+.odc-match-create:hover { background: color-mix(in srgb, var(--brand-text, var(--tide-400)) 22%, transparent); }
+.odc-match-create:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+.odc-match-create .material-icons { font-size: 14px !important; flex: none; }
+.odc-match-create-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odc-match-create:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; border-radius: 2px; }
+.odc-match-create-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fan-row-head { align-items: center; }
+
+/* compact Combobox inside the grid (matches the 34px cell controls) */
+.fan-cell .odc-combo .odc-input {
+  box-sizing: border-box; height: 34px; padding-top: 0; padding-bottom: 0;
+  font-size: 13px; background-color: var(--mud-palette-surface);
+}
+/* compact TagMultiSelect control inside the grid */
+.fan-cell .odc-tagms-control {
+  min-height: 34px; padding: 4px 8px; font-size: 13px;
+  background-color: var(--mud-palette-surface);
+}
+.fan-cell .odc-tagms-chip { font-size: 11.5px; }
+
+/* checkbox (custom, tide) */
+.fan-check { display: inline-grid; place-items: center; cursor: pointer; }
+.fan-check input { position: absolute; opacity: 0; width: 0; height: 0; }
+.fan-check-box {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 1.5px solid var(--mud-palette-lines-inputs);
+  display: grid; place-items: center; color: transparent;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.fan-check input:checked + .fan-check-box {
+  background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); color: var(--ink-950);
+}
+.fan-check input:indeterminate + .fan-check-box {
+  background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); color: var(--ink-950);
+}
+.fan-check input:indeterminate + .fan-check-box::after {
+  content: ''; width: 9px; height: 2px; background: var(--ink-950); border-radius: 1px; position: absolute;
+}
+.fan-check input:indeterminate + .fan-check-box .material-icons { display: none; }
+.fan-check input:focus-visible + .fan-check-box { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+
+/* confidence meter (read-only) */
+.fan-conf-cell { display: flex; }
+/* Row cells align to the top (align-items:start) so multi-line match cells stack
+   cleanly; the checkbox and confidence meter must center on the 34px first-line
+   control height so they line up with the input text, not the cell top. */
+.fan-row .fan-check { height: 34px; align-self: start; }
+.fan-row .odc-check { height: 34px; align-self: start; justify-content: center; }
+.fan-row-head .odc-check { justify-content: center; }
+.fan-row .fan-conf-cell { min-height: 34px; align-items: center; }
+.fan-conf { display: inline-flex; align-items: center; gap: 7px; }
+.fan-conf.empty { color: var(--mud-palette-text-disabled); }
+.fan-conf-meter { width: 34px; height: 4px; border-radius: 999px; background: var(--mud-palette-divider); overflow: hidden; }
+.fan-conf-fill { display: block; height: 100%; border-radius: 999px; }
+.fan-conf-pct { font-size: 11.5px; color: var(--mud-palette-text-secondary); }
+.fan-conf.info    .fan-conf-fill { background: var(--sea-400); }
+.fan-conf.pending .fan-conf-fill { background: var(--amber-500); }
+.fan-conf.expense .fan-conf-fill { background: var(--coral-500); }
+.fan-conf.expense .fan-conf-pct { color: var(--coral-500); }
+
+.fan-rm { display: flex; justify-content: center; }
+
+/* toolbar re-match (quiet) — re-run the MATCH step only, no re-extract */
+.fan-rematch {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  border: 1px solid var(--mud-palette-divider); background: transparent;
+  border-radius: 999px; padding: 4px 11px;
+  font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+  transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+}
+.fan-rematch:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); border-color: var(--mud-palette-lines-default); }
+.fan-rematch:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+.fan-rematch .material-icons { font-size: 14px; }
+
+/* match-degraded notice (role=alert) — non-blocking; Review opens with raw
+   candidates and this amber banner + a Re-match action. */
+.fan-degraded {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 10px; margin-bottom: 12px;
+  background: var(--finance-pending-soft); border: 1px solid var(--finance-pending-border);
+}
+.fan-degraded > .material-icons { color: var(--pending-text); flex: none; }
+.fan-degraded-text { flex: 1; min-width: 0; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.fan-degraded-text b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.fan-degraded .btn { flex: none; }
+
+.fan-editnote {
+  display: flex; align-items: center; gap: 7px;
+  font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.fan-editnote .material-icons { color: var(--mud-palette-text-secondary); flex: none; }
+
+.fan-allgone {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 44px 20px; text-align: center;
+  color: var(--mud-palette-text-secondary);
+  border: 1px dashed var(--mud-palette-divider); border-radius: 10px;
+}
+
+/* footer split for the review phase */
+.fan-foot-split { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 16px; }
+.fan-foot-summary { display: flex; align-items: baseline; gap: 12px; }
+.fan-foot-count { font: 500 13px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.fan-foot-net { font-size: 13px; }
+.fan-foot-net.expense { color: var(--finance-expense); }
+.fan-foot-net.income { color: var(--finance-income); }
+
+/* ===================== Single-column states ===================== */
+.fan-state {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 14px; padding: 26px 24px 12px;
+}
+.fan-state-ic {
+  width: 60px; height: 60px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(199,208,224,0.10); color: var(--mud-palette-text-secondary);
+}
+.fan-state-ic.ok   { background: var(--finance-income-soft); color: var(--finance-income); }
+.fan-state-ic.err  { background: var(--finance-expense-soft); color: var(--finance-expense); }
+.fan-state-ic.warn { background: var(--finance-pending-soft); color: var(--finance-pending); }
+.fan-state-title { font: 500 16px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.fan-state-text { font: 400 13.5px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 46ch; margin: 0; text-wrap: pretty; }
+.fan-state-text b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.fan-state-note { font: 400 12px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 42ch; margin: 4px 0 0; }
+
+/* Visually-hidden dialog-scoped live region (announces the async resume state). */
+.fan-live {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ===================== Reanalyze-confirm fork (resume vs. analyze again) ===================== */
+.fan-fork { display: flex; flex-direction: column; gap: 16px; padding: 6px 2px 2px; }
+.fan-fork-lead { display: flex; gap: 14px; align-items: flex-start; }
+.fan-fork-ic {
+  width: 44px; height: 44px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: rgba(79,215,203,0.12); color: var(--tide-400);
+}
+.fan-fork-t { font: 500 15px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); margin-bottom: 5px; }
+.fan-fork-s { font: 400 13.5px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0; text-wrap: pretty; }
+.fan-fork-s b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.fan-fork-note {
+  display: flex; gap: 9px; align-items: flex-start;
+  padding: 11px 13px; border-radius: 8px;
+  background: var(--finance-pending-soft); border: 1px solid rgba(232,178,86,0.28);
+  font: 400 12px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.fan-fork-note .material-icons { color: var(--finance-pending); flex: none; margin-top: 1px; }
+
+/* analyzing spinner — the only continuous motion (per the system) */
+.fan-spinner {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 3px solid var(--mud-palette-divider);
+  border-top-color: var(--mud-palette-primary);
+  animation: fan-spin 0.8s linear infinite;
+}
+@keyframes fan-spin { to { transform: rotate(360deg); } }
+
+.fan-steps { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; align-items: flex-start; }
+.fan-step {
+  display: flex; align-items: center; gap: 9px; white-space: nowrap;
+  font: 400 13px/1 var(--font-sans); color: var(--mud-palette-text-disabled);
+}
+.fan-step .material-icons { color: var(--finance-income); }
+.fan-step.done { color: var(--mud-palette-text-secondary); }
+.fan-step.active { color: var(--mud-palette-text-primary); font-weight: 500; }
+.fan-step-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; opacity: 0.55; }
+.fan-step.active .fan-step-dot { border-color: var(--mud-palette-primary); border-top-color: transparent; animation: fan-spin 0.8s linear infinite; opacity: 1; }
+
+.fan-failures { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 420px; margin-top: 4px; }
+.fan-failure {
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  font: 400 12.5px/1.3 var(--font-sans); color: var(--finance-expense);
+  background: var(--finance-expense-soft); border-radius: 6px; padding: 8px 10px;
+}
+
+@media (max-width: 720px) {
+  .fan-foot-split { flex-direction: column; align-items: stretch; gap: 10px; }
+  .fan-foot-split .row { justify-content: flex-end; }
+}
+
+/* ---------- Reduced motion ----------
+   Drops decorative entrance/flash motion + chrome transitions in the kit layer
+   (the .odc-* layer has its own block in components.css). The loading spinner
+   keeps spinning — it's essential progress feedback, not decoration. */
+@media (prefers-reduced-motion: reduce) {
+  .aam-scrim { animation: none; }
+  .aam-dialog { animation: none; }
+  .nav-link, .icon-btn, .btn, .field input, .field select, .field textarea,
+  .ua-chev, .bgt-edit-input, .fan-input { transition: none; }
+}
+
+/* ==================================================================
+   Module navigation — icon rail + module switcher + command palette
+   (v2 shell). Replaces the flat drawer internals; the AppShell props
+   contract is unchanged. Everyday nav lives in the rail; ⌘K jumps
+   across modules. See AppShell.jsx.
+   ================================================================== */
+.odn-app { display: flex; min-height: 100vh; }
+
+.odn-rail {
+  width: 64px; flex: 0 0 auto;
+  background: var(--mud-palette-background-gray);
+  border-right: 1px solid var(--mud-palette-divider);
+  box-shadow: var(--mud-elevation-1);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 0; overflow: visible; z-index: 20;
+  /* Stay in view while the page scrolls — pin to the top of the viewport. */
+  position: sticky; top: 0; align-self: flex-start; height: 100vh;
+}
+.odn-brand { margin-bottom: 6px; display: flex; }
+
+.odn-railbtn {
+  width: 44px; height: 44px; border-radius: 9px; border: 0; background: transparent;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  position: relative; flex: 0 0 auto; transition: background 120ms ease;
+}
+.odn-railbtn .material-icons { font-size: 22px; color: var(--mud-palette-text-secondary); transition: color 120ms ease; }
+.odn-railbtn .nav-icon-svg { color: var(--mud-palette-text-secondary); }
+.odn-railbtn:hover { background: var(--mud-palette-action-default-hover); }
+.odn-railbtn:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+.odn-railbtn.active { background: rgba(79, 215, 203, 0.12); }
+.odn-railbtn.active .material-icons, .odn-railbtn.active .nav-icon-svg { color: var(--tide-400); }
+.odn-railbtn.active::before { content: ''; position: absolute; left: -12px; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--tide-400); }
+
+/* tooltip */
+.odn-tip { position: relative; }
+.odn-tip::after {
+  content: attr(data-tip); position: absolute; left: 52px; top: 50%; transform: translateY(-50%) translateX(-4px);
+  white-space: nowrap; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);
+  color: var(--mud-palette-text-primary); font: 400 12px/1 var(--font-sans); padding: 6px 9px; border-radius: 6px;
+  opacity: 0; pointer-events: none; box-shadow: var(--mud-elevation-4); transition: opacity 120ms ease, transform 120ms ease; z-index: 60;
+}
+.odn-tip:hover::after, .odn-tip:focus-visible::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+
+/* module switcher chip */
+.odn-modbtn {
+  width: 46px; height: 46px; border-radius: 11px; background: rgba(79, 215, 203, 0.12);
+  display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; border: 0; flex: 0 0 auto;
+}
+.odn-modbtn .material-icons { font-size: 23px; color: var(--tide-400); }
+.odn-modbtn:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+.odn-modchev {
+  position: absolute; right: -3px; bottom: -3px; width: 17px; height: 17px; border-radius: 50%;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default);
+  display: flex; align-items: center; justify-content: center;
+}
+.odn-modchev .material-icons { font-size: 12px; color: var(--mud-palette-text-secondary); }
+.odn-modlabel {
+  font: 600 8.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); text-align: center; margin: 4px 0 8px; max-width: 58px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 0 auto;
+}
+.odn-divider { height: 1px; width: 30px; background: var(--mud-palette-divider); margin: 2px 0 6px; flex: 0 0 auto; }
+.odn-subdiv { height: 1px; width: 24px; background: var(--mud-palette-divider); margin: 5px 0; flex: 0 0 auto; }
+
+.odn-foot { margin-top: auto; padding-top: 10px; display: flex; }
+
+/* module popover */
+.odn-catch { position: fixed; inset: 0; z-index: 15; }
+.odn-modpop {
+  position: fixed; top: 100px; left: 74px; width: 250px; background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-default); border-radius: 12px; box-shadow: var(--mud-elevation-16);
+  padding: 8px; z-index: 80; animation: odn-pop 130ms ease;
+}
+.odn-modpop::before {
+  content: ''; position: absolute; left: -7px; top: 22px; width: 12px; height: 12px; background: var(--mud-palette-surface);
+  border-left: 1px solid var(--mud-palette-lines-default); border-bottom: 1px solid var(--mud-palette-lines-default); transform: rotate(45deg);
+}
+@keyframes odn-pop { from { opacity: 0; transform: translateY(-4px); } }
+.odn-modpop-lg { font: 600 10px/1 var(--font-sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 8px 10px 6px; }
+.odn-modrow { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 10px; border-radius: 8px; cursor: pointer; border: 0; background: transparent; width: 100%; text-align: left; }
+.odn-modrow:hover { background: var(--mud-palette-action-default-hover); }
+.odn-modrow:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odn-modrow.active { background: rgba(79, 215, 203, 0.12); }
+.odn-modrow-ic { width: 30px; height: 30px; border-radius: 7px; background: var(--mud-palette-action-default-hover); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.odn-modrow-ic .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odn-modrow.active .odn-modrow-ic { background: var(--mud-palette-surface); }
+.odn-modrow.active .odn-modrow-ic .material-icons { color: var(--tide-400); }
+.odn-modrow-t { font: 500 13.5px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odn-modrow.active .odn-modrow-t { color: var(--tide-400); }
+.odn-modrow-c { margin-left: auto; font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); display: flex; align-items: center; }
+.odn-modrow.active .odn-modrow-c { color: var(--tide-400); }
+.odn-modsoon { font: 400 11px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); padding: 8px 10px 4px; opacity: 0.8; }
+
+/* command palette */
+.odn-scrim { position: fixed; inset: 0; background: var(--color-overlay-scrim); display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh; z-index: 100; animation: odn-fade 120ms ease; }
+@keyframes odn-fade { from { opacity: 0; } }
+.odn-cmd { width: 560px; max-width: 92vw; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-default); border-radius: 14px; box-shadow: var(--mud-elevation-16); overflow: hidden; animation: odn-cmd-in 140ms ease; }
+@keyframes odn-cmd-in { from { opacity: 0; transform: translateY(-8px) scale(.99); } }
+.odn-cmd-input { display: flex; align-items: center; gap: 12px; padding: 17px 20px; border-bottom: 1px solid var(--mud-palette-divider); }
+.odn-cmd-input .material-icons { font-size: 22px; color: var(--mud-palette-text-secondary); }
+.odn-cmd-input input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--mud-palette-text-primary); font: 400 17px/1.2 var(--font-sans); }
+.odn-cmd-input input::placeholder { color: var(--mud-palette-text-secondary); }
+.odn-cmd-esc { font: 500 10.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px; padding: 4px 6px; }
+.odn-cmd-list { max-height: 52vh; overflow-y: auto; padding: 6px; }
+.odn-cmd-sec { font: 600 10px/1 var(--font-sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 12px 14px 6px; }
+.odn-cmd-row { display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 44px; border-radius: 8px; font: 400 14px/1 var(--font-sans); color: var(--mud-palette-drawer-text); cursor: pointer; border: 0; background: transparent; width: 100%; text-align: left; }
+.odn-cmd-row .material-icons { font-size: 19px; color: var(--mud-palette-text-secondary); }
+.odn-cmd-row .nav-icon-svg { color: var(--mud-palette-text-secondary); }
+.odn-cmd-row.sel { background: rgba(79, 215, 203, 0.12); }
+.odn-cmd-row.sel, .odn-cmd-row.sel .material-icons, .odn-cmd-row.sel .nav-icon-svg { color: var(--tide-400); }
+.odn-cmd-grp { margin-left: auto; font: 400 11.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odn-cmd-row.sel .odn-cmd-grp { color: var(--tide-400); opacity: 0.85; }
+.odn-cmd-kbd { margin-left: 8px; font: 500 10.5px/1 var(--font-mono); border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px; padding: 4px 6px; color: var(--mud-palette-text-secondary); }
+.odn-cmd-empty { padding: 32px 14px; text-align: center; color: var(--mud-palette-text-secondary); font: 400 14px/1.4 var(--font-sans); }
+.odn-cmd-foot { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--mud-palette-divider); font: 400 11.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odn-cmd-foot .odn-kbd { font: 500 10px/1 var(--font-mono); border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px; padding: 3px 5px; margin-right: 5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .odn-modpop, .odn-scrim, .odn-cmd { animation: none; }
+  .odn-railbtn, .odn-tip::after { transition: none; }
+}

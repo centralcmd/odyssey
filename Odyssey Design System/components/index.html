@@ -1,0 +1,94 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Typed atoms (.odc-)" subtitle="Button · Chip · StatTile · Alert · EmptyState — exported on the DS namespace" viewport="780x560" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · Typed atoms (.odc-)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .block { display: flex; flex-direction: column; gap: 12px; margin-bottom: 26px; }
+    .block:last-child { margin-bottom: 0; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--mud-palette-primary); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .alerts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .es-wrap { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); }
+  </style>
+</head>
+<body>
+  <div class="block">
+    <div class="cap">Button <code>&lt;Button variant /&gt;</code></div>
+    <div class="row">
+      <button class="odc-btn filled"><span class="material-icons">add</span><span>New account</span></button>
+      <button class="odc-btn outlined"><span class="material-icons">file_upload</span><span>Import statement</span></button>
+      <button class="odc-btn text"><span>View all</span></button>
+      <button class="odc-btn danger"><span class="material-icons">delete</span><span>Delete</span></button>
+      <button class="odc-btn filled loading"><span>Saving</span><span class="odc-btn-spin"></span></button>
+      <button class="odc-btn filled" disabled><span>Disabled</span></button>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="cap">Chip <code>&lt;Chip tone /&gt;</code></div>
+    <div class="row">
+      <span class="odc-chip income"><span class="odc-chip-dot"></span>Approved</span>
+      <span class="odc-chip expense"><span class="odc-chip-dot"></span>Flagged</span>
+      <span class="odc-chip info"><span class="odc-chip-dot"></span>New</span>
+      <span class="odc-chip tag"><span class="material-icons">local_offer</span>Groceries</span>
+      <span class="odc-chip pending"><span class="odc-chip-dot"></span>Pending</span>
+      <span class="odc-chip">Default</span>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="cap">StatTile <code>&lt;StatTile /&gt;</code></div>
+    <div class="stats">
+      <div class="odc-stat">
+        <div class="odc-stat-overline">Net worth</div>
+        <div class="odc-stat-num">$ 69,549.08</div>
+        <div class="odc-stat-delta up">+$ 68,367.08 all-time</div>
+      </div>
+      <div class="odc-stat">
+        <div class="odc-stat-overline">Spent this month</div>
+        <div class="odc-stat-num">$ 2,738.89</div>
+        <div class="odc-stat-delta down">−$ 312.40 vs. plan</div>
+      </div>
+      <div class="odc-stat">
+        <div class="odc-stat-overline">Accounts</div>
+        <div class="odc-stat-num">6</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="cap">Alert <code>&lt;Alert severity /&gt;</code></div>
+    <div class="alerts">
+      <div class="odc-alert info" role="status"><span class="material-icons">info</span><div class="odc-alert-body">Two-factor authentication is off. Turn it on to secure your account.</div></div>
+      <div class="odc-alert success" role="status"><span class="material-icons">check_circle</span><div class="odc-alert-body">Approved 3 transactions.</div></div>
+      <div class="odc-alert warning" role="status"><span class="material-icons">warning</span><div class="odc-alert-body">2 exchange rates are stale.</div></div>
+      <div class="odc-alert error" role="alert"><span class="material-icons">error</span><div class="odc-alert-body">Unable to sign in. Check your username and password.</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="cap">EmptyState <code>&lt;EmptyState /&gt;</code></div>
+    <div class="es-wrap">
+      <div class="odc-empty">
+        <div class="odc-empty-ic"><span class="material-icons">receipt_long</span></div>
+        <div class="odc-empty-ttl">No transactions yet</div>
+        <div class="odc-empty-desc">Import a statement to get started.</div>
+        <div class="odc-empty-actions">
+          <button class="odc-btn filled"><span class="material-icons">file_upload</span><span>Import statement</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

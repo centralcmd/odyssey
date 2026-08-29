@@ -1,0 +1,40 @@
+/* Subscriptions — /subscriptions (issue #293)
+   Sibling of Accounts / Contracts / Insurance: the same expandable-record scaffold,
+   which is now the shared OdsExpandableCard — one global `.acct-*` copy in
+   wwwroot/css/odyssey-components.css (issue #367). What is left here is the
+   subscription-specific collapsed-row affordances (external-id / company / cadence tag
+   line, the price caption) and the detail tiles. The feature accent is a violet (oklch
+   hue 295). The expense-hue price input (.sub-amount-expense) lives global in
+   odyssey-components.css because the create dialog is a separate component. */
+
+.sub-shell {
+    --sub: oklch(0.72 0.16 295);
+    --sub-soft: oklch(0.72 0.16 295 / 0.16);
+}
+
+
+/* ── Header Overview — run-rate stat tiles above the breakdown grid ── */
+.sub-overview { display: flex; flex-direction: column; gap: 12px; }
+.sub-stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+/* The run-rate tiles sit ON the card surface, so use the inset background + no elevation to match the
+   sibling breakdown tiles; the recurring-spend figure reads in the finance-expense hue. */
+.sub-stat-tiles ::deep .sub-runrate-tile { background: var(--mud-palette-background); box-shadow: none; }
+.sub-stat-tiles ::deep .sub-runrate-tile .odc-infotile-v { color: var(--finance-expense); }
+
+/* ── Collapsed-row tag line — external id · company · cadence ── */
+.sub-extid-inline { color: var(--mud-palette-text-secondary); letter-spacing: 0.01em; }
+.sub-inst, .sub-cadence { display: inline-flex; align-items: center; gap: 5px; }
+.sub-inst .material-icons, .sub-cadence .material-icons { font-size: 14px; color: var(--mud-palette-text-secondary); }
+.sub-inst { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Headline figure — a recurring expense, so it reads in the finance-expense hue. ── */
+.acct-figures .sub-price { color: var(--finance-expense); }
+.acct-figures .sub-figure-word { font-size: 12px; line-height: 1; color: var(--mud-palette-text-secondary); margin-top: 4px; }
+
+/* Detail fact tiles — the OdsInfoTile grid, accented with the subscription hue. */
+.sub-tiles {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
+    --odc-infotile-accent: var(--sub);
+    --odc-infotile-accent-soft: var(--sub-soft);
+}
+.sub-tiles ::deep .sub-price-tile .odc-infotile-v { color: var(--finance-expense); }

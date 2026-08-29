@@ -1,0 +1,47 @@
+@*
+    OdsAccountFileTypeSelect — a single-select pre-wired to the AccountFileType
+    vocabulary (Odyssey Design System · components/AccountFileTypeSelect).
+
+    The kind of document attached to an *account*: Message · Statement · Contract ·
+    Tax · Documentation · Other — each rendered with its Material icon in its category
+    color. A thin,
+    domain-typed wrapper over OdsSelect; every OdsSelect prop passes straight through.
+    Value is the enum key. Bind via @bind-Value. For files attached to a *transaction*,
+    use OdsTransactionFileTypeSelect.
+*@
+
+<OdsSelect Value="@Value"
+           ValueChanged="ValueChanged"
+           Options="OdsTypeRegistries.AccountFileOptions"
+           Label="@Label"
+           Placeholder="@Placeholder"
+           Help="@Help"
+           Error="@Error"
+           Required="@Required"
+           Disabled="@Disabled"
+           Class="@Class"
+           @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Selected enum key. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Type";
+
+    [Parameter] public string? Placeholder { get; set; } = "Select type…";
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

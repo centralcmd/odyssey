@@ -1,0 +1,148 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Finance
+
+@* Add/edit budget item. Caller gates which mode by passing ExistingItem (edit) or not
+   (add); the matching budgets permission is enforced page-side and by the API. *@
+@attribute [Authorize(Policy = PermissionClaims.TransactionTagsRead)]
+
+@inject IBudgetItemsApiClient BudgetItems
+@inject ISnackbar Snackbar
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="@(IsEdit ? "edit" : "playlist_add")"
+               Title="@(IsEdit ? "Edit budget item" : "New budget item")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create budget item")"
+               OnSubmit="SaveAsync">
+    <SubtitleContent>
+        @(IsEdit ? "Update this line" : "Plan an income or expense line")@(string.IsNullOrWhiteSpace(BudgetName) ? "" : " for ")<strong>@BudgetName</strong>. Link a tag to track its actuals automatically.
+    </SubtitleContent>
+    <ChildContent>
+        <!-- Item name -->
+        <MudTextField @bind-Value="_name"
+                      Label="Item name"
+                      Placeholder="e.g. Childcare"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Error="@_nameError"
+                      ErrorText="Give the item a name."
+                      Immediate="true" />
+
+        <!-- Category + Planned amount -->
+        <OdsFormRow>
+            <OdsBudgetCategoryTypeSelect Label="Category" @bind-Value="_categoryType" />
+            <MudNumericField T="decimal?"
+                             @bind-Value="_plannedAmount"
+                             Label="Planned amount"
+                             Placeholder="0.00"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense"
+                             HideSpinButtons="true"
+                             Error="@_plannedError"
+                             ErrorText="Enter a planned amount." />
+        </OdsFormRow>
+
+        <!-- Transaction tag -->
+        <MudSelect T="ExistingTransactionTag"
+                   Label="Transaction tag"
+                   @bind-Value="_selectedTag"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Dense="true"
+                   Clearable="true"
+                   Placeholder="No tag"
+                   HelperText="Optional — matched transactions become this item's actual.">
+            @foreach (var tag in AvailableTransactionTags)
+            {
+                var inUse = UsedTransactionTagIds.Contains(tag.TransactionTagId);
+                <MudSelectItem T="ExistingTransactionTag" Value="@tag" Disabled="@inUse">
+                    @tag.Name@(inUse ? " (in use)" : "")
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        <!-- Description -->
+        <MudTextField @bind-Value="_description"
+                      Label="Description"
+                      Placeholder="Optional"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense" />
+    </ChildContent>
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after a successful add/edit so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    [Parameter]
+    public Guid BudgetId { get; set; }
+
+    [Parameter]
+    public string? BudgetName { get; set; }
+
+    [Parameter]
+    public List<ExistingTransactionTag> TransactionTags { get; set; } = [];
+
+    [Parameter]
+    public List<Guid> UsedTransactionTagIds { get; set; } = [];
+
+    // When set, the dialog edits this item (PUT) instead of creating a new one (POST).
+    [Parameter]
+    public ExistingBudgetItem? ExistingItem { get; set; }
+
+    private bool IsEdit => ExistingItem is not null;
+
+    private string? _name;
+    private string? _description;
+    private BudgetCategoryType _categoryType = BudgetCategoryType.Expense;
+    private ExistingTransactionTag? _selectedTag;
+    private decimal? _plannedAmount;
+
+    private bool _nameError;
+    private bool _plannedError;
+
+    protected override void OnInitialized()
+    {
+        if (ExistingItem is null)
+            return;
+
+        _name = ExistingItem.Name;
+        _description = ExistingItem.Description;
+        _categoryType = ExistingItem.CategoryType;
+        _plannedAmount = ExistingItem.PlannedAmount;
+        _selectedTag = TransactionTags.FirstOrDefault(t => t.TransactionTagId == ExistingItem.TransactionTagId);
+    }
+
+    // Show every active tag so the selector is never empty; tags already claimed by
+    // another item in this budget are rendered disabled (see markup) rather than hidden.
+    private IEnumerable<ExistingTransactionTag> AvailableTransactionTags =>
+        TransactionTags
+            .Where(tag => tag.Archived is null)
+            .OrderBy(tag => tag.Name);
+
+    private async Task<bool> SaveAsync()
+    {
+        _nameError = string.IsNullOrWhiteSpace(_name);
+        _plannedError = _plannedAmount is null;
+        if (_nameError || _plannedError)
+            return false;
+
+        var payload = new NewBudgetItem
+        {
+            BudgetId = BudgetId,
+            Name = _name!.Trim(),
+            Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+            CategoryType = _categoryType,
+            PlannedAmount = _plannedAmount!.Value,
+            TransactionTagId = _selectedTag?.TransactionTagId,
+        };
+
+        return IsEdit
+            ? (await BudgetItems.UpdateAsync(ExistingItem!.BudgetItemId, payload)).Toast(Snackbar, "Unable to save item", "Budget item updated.")
+            : (await BudgetItems.CreateAsync(payload)).Toast(Snackbar, "Unable to add item", "Budget item added.");
+    }
+}

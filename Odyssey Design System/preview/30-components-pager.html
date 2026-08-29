@@ -1,0 +1,162 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Pager" subtitle="The shared list pager — rows-per-page (25/100/1000/All) + Showing X–Y of N + first/prev/next/last, with a synced PageSizeSelect toolbar mirror · aria-disabled no-op at bounds" viewport="820x900" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Components · Pager</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="_card.css">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- compiled design-system bundle: defines window.OdysseyDesignSystem_d5aa51 (Pager, PageSizeSelect, EmptyState) -->
+  <script src="../_ds_bundle.js"></script>
+  <style>
+    body { padding: 6px 2px; }
+    .sec-label {
+      font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 10px;
+    }
+    .sec + .sec { margin-top: 26px; }
+    .note { font: 400 12px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 74ch; }
+    .note code { font-family: var(--font-mono); color: var(--tide-400); font-size: 11px; }
+
+    /* A stand-in list panel so the pager reads in its real home: a table footer. */
+    .demo-panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 8px; overflow: hidden; }
+    /* toolbar row where the PageSizeSelect mirror lives */
+    .demo-tools {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border-bottom: 1px solid var(--mud-palette-table-lines);
+    }
+    .demo-search {
+      flex: 1; min-width: 0; height: 40px; display: flex; align-items: center; gap: 8px;
+      padding: 0 12px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: 6px;
+      color: var(--mud-palette-placeholder); font: 400 13px/1 var(--font-sans);
+    }
+    .demo-search .material-icons { font-size: 20px; color: var(--mud-palette-text-secondary); }
+    .demo-rows { padding: 4px 0; }
+    .demo-row {
+      display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 16px;
+      border-bottom: 1px solid var(--mud-palette-table-lines); font: 400 13px/1 var(--font-sans);
+      color: var(--mud-palette-text-primary);
+    }
+    .demo-row:last-child { border-bottom: none; }
+    .demo-dot { width: 26px; height: 26px; border-radius: 6px; background: var(--mud-palette-action-default-hover); flex: none; }
+    .demo-row .mono { margin-left: auto; font-family: var(--font-mono); color: var(--mud-palette-text-secondary); font-variant-numeric: tabular-nums; }
+
+    .variants { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    .variant { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 8px; }
+    .variant-cap { font: 500 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); padding: 12px 14px 0; }
+    .variant > .odc-pager { border-top: none; padding: 10px 14px 12px; }
+    .odc-empty { padding: 30px 18px !important; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const { useState } = React;
+    const NS = window.OdysseyDesignSystem_d5aa51;
+    const { Pager, PageSizeSelect, EmptyState } = NS;
+
+    // Interactive demo — first/prev/next/last + the rows-per-page selector drive
+    // real page state over 1,284 rows. The toolbar PageSizeSelect mirror and the
+    // footer Pager share one pageSize, so changing either updates both.
+    function LivePanel() {
+      const [page, setPage] = useState(4);
+      const [pageSize, setPageSize] = useState(25);
+      const total = 1284;
+      const all = pageSize === 'all';
+      const size = all ? total : pageSize;
+      const start = (page - 1) * size;
+      const rows = Array.from({ length: Math.min(size, total - start) }, (_, i) => start + i + 1).slice(0, 6);
+      const setSize = (s) => { setPageSize(s); setPage(1); };
+      return (
+        <div className="demo-panel">
+          <div className="demo-tools">
+            <span className="demo-search"><span className="material-icons">search</span>Search transactions</span>
+            <PageSizeSelect value={pageSize} onChange={setSize} />
+          </div>
+          <div className="demo-rows">
+            {rows.map((n) => (
+              <div className="demo-row" key={n}>
+                <span className="demo-dot" />
+                <span>Transaction row {n}</span>
+                <span className="mono">····{(1000 + n * 7) % 9000}</span>
+              </div>
+            ))}
+            <div className="demo-row" style={{ color: 'var(--mud-palette-text-disabled)', fontStyle: 'italic' }}>
+              <span style={{ marginLeft: 38 }}>…{(all ? total : size) - 6} more rows on this page</span>
+            </div>
+          </div>
+          <Pager page={page} pageSize={pageSize} totalCount={total}
+            onPageChange={setPage} onPageSizeChange={setSize} />
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <div>
+          <div className="sec">
+            <div className="sec-label">Live · change page &amp; rows-per-page</div>
+            <p className="note">
+              The shared pager below every server-paged flat table. Rows-per-page presets are
+              <code>25 · 100 · 1000 · All</code> (default 25); <code>All</code> fetches every matching row.
+              The footer is the canonical home of the size control; the <code>PageSizeSelect</code> in the toolbar
+              is a synced mirror — change either and both update (and the page resets to 1). Page to the first or
+              last page: the bound button stays focusable but becomes an <code>aria-disabled</code> no-op, and focus
+              hops to the opposite button so it's never lost.
+            </p>
+            <LivePanel />
+          </div>
+
+          <div className="sec">
+            <div className="sec-label">States</div>
+            <div className="variants">
+              <div className="variant">
+                <div className="variant-cap">MIDDLE PAGE — all four nav buttons active</div>
+                <Pager page={4} pageSize={25} totalCount={1284} onPageChange={() => {}} onPageSizeChange={() => {}} />
+              </div>
+              <div className="variant">
+                <div className="variant-cap">FIRST PAGE — First + Prev are aria-disabled no-ops</div>
+                <Pager page={1} pageSize={25} totalCount={1284} onPageChange={() => {}} onPageSizeChange={() => {}} />
+              </div>
+              <div className="variant">
+                <div className="variant-cap">LAST PAGE — Next + Last are aria-disabled no-ops</div>
+                <Pager page={52} pageSize={25} totalCount={1284} onPageChange={() => {}} onPageSizeChange={() => {}} />
+              </div>
+              <div className="variant">
+                <div className="variant-cap">ALL — one page over every matching row</div>
+                <Pager page={1} pageSize="all" totalCount={1284} onPageChange={() => {}} onPageSizeChange={() => {}} />
+              </div>
+              <div className="variant">
+                <div className="variant-cap">LOADING — fetch in flight, nav inert + busy, selector disabled</div>
+                <Pager page={4} pageSize={25} totalCount={1284} loading onPageChange={() => {}} onPageSizeChange={() => {}} />
+              </div>
+              <div className="variant">
+                <div className="variant-cap">EMPTY — summary reads "0 results"</div>
+                <Pager page={1} pageSize={25} totalCount={0} onPageChange={() => {}} onPageSizeChange={() => {}} />
+              </div>
+            </div>
+          </div>
+
+          <div className="sec">
+            <div className="sec-label">Empty result — pager pairs with the no-match EmptyState</div>
+            <p className="note">
+              When a query matches nothing the list shows the muted no-match <code>EmptyState</code> above an inert
+              pager reading <code>0 results</code>. Empty is a distinct outcome from Error (which keeps the last good
+              page + a Retry) — never conflated.
+            </p>
+            <div className="demo-panel">
+              <EmptyState mutedIcon icon="receipt_long" title="No transactions match"
+                desc="Try a different search, or clear the filters to see everything." />
+              <Pager page={1} pageSize={25} totalCount={0} onPageChange={() => {}} onPageSizeChange={() => {}} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body></html>

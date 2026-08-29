@@ -1,0 +1,203 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · DateField + FileUpload" subtitle="Labelled date field (DatePicker in FieldShell) · dropzone + ready-file list — exported on the DS namespace" viewport="820x760" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · DateField + FileUpload</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 32px; align-items: start; }
+    .block { display: flex; flex-direction: column; gap: 12px; }
+    .span2 { grid-column: 1 / -1; }
+    .cap {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .cap .k { font: var(--fw-regular) 10px/1 var(--font-mono); color: var(--mud-palette-text-secondary); text-transform: none; letter-spacing: 0; }
+  </style>
+</head>
+<body>
+  <div class="grid">
+
+    <!-- DateField — labelled date (DatePicker in FieldShell) -->
+    <div class="block">
+      <div class="cap">Empty <code>&lt;DateField /&gt;</code></div>
+      <div class="odc-field">
+        <label class="odc-field-label">Statement date<span class="odc-field-opt">Optional</span></label>
+        <div class="odc-dp full">
+          <button type="button" class="odc-dp-trigger placeholder" aria-haspopup="dialog" aria-expanded="false">
+            <span class="material-icons">calendar_today</span>
+            <span class="odc-dp-val">Select date</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DateField — filled + error -->
+    <div class="block">
+      <div class="cap">Filled · error <span class="k">ISO value · error line</span></div>
+      <div class="odc-field">
+        <label class="odc-field-label">Opened on<span class="odc-field-req" aria-hidden="true">*</span></label>
+        <div class="odc-dp full">
+          <button type="button" class="odc-dp-trigger" aria-haspopup="dialog" aria-expanded="false">
+            <span class="material-icons">calendar_today</span>
+            <span class="odc-dp-val">2026-01-15</span>
+          </button>
+        </div>
+      </div>
+      <div class="odc-field error">
+        <label class="odc-field-label">Effective date<span class="odc-field-req" aria-hidden="true">*</span></label>
+        <div class="odc-dp full">
+          <button type="button" class="odc-dp-trigger placeholder" aria-haspopup="dialog" aria-expanded="false">
+            <span class="material-icons">calendar_today</span>
+            <span class="odc-dp-val">Select date</span>
+          </button>
+        </div>
+        <div class="odc-field-help">Pick a date to continue.</div>
+      </div>
+    </div>
+
+    <!-- Default dropzone -->
+    <div class="block">
+      <div class="cap">Dropzone <code>&lt;FileUpload /&gt;</code></div>
+      <div class="odc-upload-drop" role="button" tabindex="0">
+        <span class="odc-upload-drop-ic"><span class="material-icons" style="font-size:26px">cloud_upload</span></span>
+        <div class="odc-upload-drop-text"><strong>Drop files here</strong> or <span class="odc-upload-drop-link">browse</span></div>
+        <div class="odc-upload-drop-hint">PDF, JPG, PNG · up to 64&nbsp;MB each · multiple at once</div>
+      </div>
+    </div>
+
+    <!-- States -->
+    <div class="block">
+      <div class="cap">States <span class="k">drag · error</span></div>
+      <div class="odc-upload-drop drag">
+        <span class="odc-upload-drop-ic"><span class="material-icons" style="font-size:26px">cloud_upload</span></span>
+        <div class="odc-upload-drop-text"><strong>Drop files here</strong> or <span class="odc-upload-drop-link">browse</span></div>
+        <div class="odc-upload-drop-hint">Release to add · primary ring + 7% fill</div>
+      </div>
+      <div>
+        <div class="odc-upload-drop has-error">
+          <span class="odc-upload-drop-ic"><span class="material-icons" style="font-size:26px">cloud_upload</span></span>
+          <div class="odc-upload-drop-text"><strong>Drop files here</strong> or <span class="odc-upload-drop-link">browse</span></div>
+          <div class="odc-upload-drop-hint">PDF, JPG, PNG · up to 64&nbsp;MB each</div>
+        </div>
+        <div class="odc-upload-err">Add at least one file.</div>
+      </div>
+    </div>
+
+    <!-- Ready-file list -->
+    <div class="block span2">
+      <div class="cap">Ready-file list <span class="k">each row: rename · kind picker · size · remove</span></div>
+      <div class="odc-upload-list">
+        <div class="odc-upload-list-head">
+          <span>3 files ready</span>
+          <span class="odc-upload-file-size">8.4 MB</span>
+        </div>
+        <div class="odc-upload-list-scroll">
+          <!-- row 1 -->
+          <div class="odc-upload-file">
+            <span class="odc-upload-file-ic" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" style="font-size:20px">description</span></span>
+            <div class="odc-upload-file-main">
+              <input class="odc-upload-file-name" value="bank_statement_january_2026.pdf" spellcheck="false" aria-label="File name" />
+              <div class="odc-upload-file-sub">
+                <div class="odc-upload-kind">
+                  <div class="odc-select">
+                    <button type="button" class="odc-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="File type">
+                      <span class="odc-select-trigger-main">
+                        <span class="material-icons odc-opt-icon" style="color:oklch(0.79 0.115 188)">description</span>
+                        <span class="odc-select-val">Statement</span>
+                      </span>
+                      <span class="material-icons odc-select-chev">expand_more</span>
+                    </button>
+                  </div>
+                </div>
+                <span class="odc-upload-file-size">4.3 KB</span>
+              </div>
+            </div>
+            <button type="button" class="odc-upload-file-x" aria-label="Remove file"><span class="material-icons" style="font-size:18px">close</span></button>
+          </div>
+          <!-- row 2 — kind picker open -->
+          <div class="odc-upload-file">
+            <span class="odc-upload-file-ic" style="background:oklch(0.80 0.15 150 / 0.16);color:oklch(0.80 0.15 150)"><span class="material-icons" style="font-size:20px">receipt_long</span></span>
+            <div class="odc-upload-file-main">
+              <input class="odc-upload-file-name" value="costco_receipt_1123.jpg" spellcheck="false" aria-label="File name" />
+              <div class="odc-upload-file-sub">
+                <div class="odc-upload-kind">
+                  <div class="odc-select">
+                    <button type="button" class="odc-select-trigger open" aria-haspopup="listbox" aria-expanded="true" aria-label="File type">
+                      <span class="odc-select-trigger-main">
+                        <span class="material-icons odc-opt-icon" style="color:oklch(0.80 0.15 150)">receipt_long</span>
+                        <span class="odc-select-val">Receipt</span>
+                      </span>
+                      <span class="material-icons odc-select-chev">expand_more</span>
+                    </button>
+                    <ul class="odc-select-pop" role="listbox" style="position:absolute;top:34px;left:0;min-width:184px">
+                      <li><button type="button" role="option" class="odc-select-opt">
+                        <span class="material-icons odc-opt-icon" style="color:oklch(0.79 0.115 188)">description</span>
+                        <span class="odc-select-opt-label">Statement</span>
+                      </button></li>
+                      <li><button type="button" role="option" class="odc-select-opt">
+                        <span class="material-icons odc-opt-icon" style="color:oklch(0.74 0.02 250)">insert_drive_file</span>
+                        <span class="odc-select-opt-label">Document</span>
+                      </button></li>
+                      <li><button type="button" role="option" aria-selected="true" class="odc-select-opt selected">
+                        <span class="material-icons odc-opt-icon" style="color:oklch(0.80 0.15 150)">receipt_long</span>
+                        <span class="odc-select-opt-label">Receipt</span>
+                        <span class="odc-typesel-check"><span class="material-icons">check</span></span>
+                      </button></li>
+                      <li><button type="button" role="option" class="odc-select-opt">
+                        <span class="material-icons odc-opt-icon" style="color:oklch(0.75 0.16 330)">request_quote</span>
+                        <span class="odc-select-opt-label">Tax</span>
+                      </button></li>
+                    </ul>
+                  </div>
+                </div>
+                <span class="odc-upload-file-size">1.2 MB</span>
+              </div>
+            </div>
+            <button type="button" class="odc-upload-file-x" aria-label="Remove file"><span class="material-icons" style="font-size:18px">close</span></button>
+          </div>
+          <!-- row 3 -->
+          <div class="odc-upload-file">
+            <span class="odc-upload-file-ic" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" style="font-size:20px">request_quote</span></span>
+            <div class="odc-upload-file-main">
+              <input class="odc-upload-file-name" value="1099_div_2025.pdf" spellcheck="false" aria-label="File name" />
+              <div class="odc-upload-file-sub">
+                <div class="odc-upload-kind">
+                  <div class="odc-select">
+                    <button type="button" class="odc-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="File type">
+                      <span class="odc-select-trigger-main">
+                        <span class="material-icons odc-opt-icon" style="color:oklch(0.75 0.16 330)">request_quote</span>
+                        <span class="odc-select-val">Tax</span>
+                      </span>
+                      <span class="material-icons odc-select-chev">expand_more</span>
+                    </button>
+                  </div>
+                </div>
+                <span class="odc-upload-file-size">4.4 MB</span>
+              </div>
+            </div>
+            <button type="button" class="odc-upload-file-x" aria-label="Remove file"><span class="material-icons" style="font-size:18px">close</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compact variant -->
+    <div class="block span2">
+      <div class="cap">Compact <code>compact</code> <span class="k">horizontal — for tight modals</span></div>
+      <div class="odc-upload-drop compact">
+        <span class="odc-upload-drop-ic"><span class="material-icons" style="font-size:22px">cloud_upload</span></span>
+        <div class="odc-upload-drop-text"><strong>Drop files here</strong> or <span class="odc-upload-drop-link">browse</span></div>
+        <div class="odc-upload-drop-hint">PDF, JPG, PNG · up to 64&nbsp;MB each · multiple at once</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

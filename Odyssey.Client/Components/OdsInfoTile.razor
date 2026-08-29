@@ -1,0 +1,90 @@
+@*
+    OdsInfoTile — a labeled fact/stat tile (Odyssey Design System · components/InfoTile).
+
+    An icon chip + uppercase label on top, a headline value, and an optional muted
+    foot caption — on an elevated card. The richer sibling of OdsMetaTile (a bare
+    label/value well) and OdsStatTile (a bare figure). Used for policy/account facts
+    and current-state snapshots where each fact reads as its own tile in a responsive
+    grid.
+
+    The icon chip defaults to the brand accent; pass IconColor (+ optional IconSoft
+    background) to tint it per-tile. To re-tint a whole grid at once, set
+    --odc-infotile-accent / --odc-infotile-accent-soft on the grid container instead.
+
+    ValueVariant: Mono (default — numbers/IDs/dates, tabular) · Text (proportional,
+    for names/labels) · Sm (smaller, for dates). Wide makes the tile span all grid
+    columns and lets its value wrap (e.g. a notes tile).
+*@
+
+<div class="@TileClass" style="@Style">
+    <div class="odc-infotile-top">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <span class="odc-infotile-ic" style="@IconStyle">
+                <span class="material-icons" aria-hidden="true">@Icon</span>
+            </span>
+        }
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <span class="odc-infotile-k">@Label</span>
+        }
+    </div>
+    <div class="odc-infotile-v @VariantClass">@Value</div>
+    @if (Foot is not null)
+    {
+        <div class="odc-infotile-foot">@Foot</div>
+    }
+</div>
+
+@code {
+    /// <summary>Leading Material Icons ligature.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Per-tile icon foreground color (any CSS color). Inherits the grid accent otherwise.</summary>
+    [Parameter] public string? IconColor { get; set; }
+
+    /// <summary>Per-tile icon background tint. Pairs with <see cref="IconColor"/>.</summary>
+    [Parameter] public string? IconSoft { get; set; }
+
+    /// <summary>Uppercase overline label.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Headline value.</summary>
+    [Parameter] public RenderFragment? Value { get; set; }
+
+    /// <summary>Optional muted foot caption.</summary>
+    [Parameter] public RenderFragment? Foot { get; set; }
+
+    /// <summary>Value typography — Mono (numbers/dates) · Text (names/labels) · Sm (dates).</summary>
+    [Parameter] public OdsInfoTileVariant ValueVariant { get; set; } = OdsInfoTileVariant.Mono;
+
+    /// <summary>Span all grid columns and let the value wrap (e.g. a notes tile).</summary>
+    [Parameter] public bool Wide { get; set; }
+
+    /// <summary>Drop the card elevation.</summary>
+    [Parameter] public bool Elevated { get; set; } = true;
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Style { get; set; }
+
+    private string TileClass =>
+        string.Join(' ', new[]
+        {
+            "odc-infotile",
+            Elevated ? "elevated" : null,
+            Wide ? "wide" : null,
+            Class,
+        }.Where(c => !string.IsNullOrEmpty(c)));
+
+    private string VariantClass => ValueVariant switch
+    {
+        OdsInfoTileVariant.Text => "text",
+        OdsInfoTileVariant.Sm => "sm",
+        _ => "mono",
+    };
+
+    private string? IconStyle =>
+        string.IsNullOrEmpty(IconColor) ? null
+            : $"color:{IconColor};{(string.IsNullOrEmpty(IconSoft) ? "" : $"background:{IconSoft};")}";
+}

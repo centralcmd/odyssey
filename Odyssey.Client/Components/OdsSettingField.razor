@@ -1,0 +1,243 @@
+@*
+    OdsSettingField — one setting as a self-contained field block, in MudBlazor's
+    Variant.Outlined shape (Odyssey Design System · components/SettingField).
+
+    The label sits ON the field's outline, the control sits inside it, and one
+    always-visible helper line below carries the description and the "last changed"
+    stamp. Where OdsSettingRow spends a full card's width on one value, this folds
+    label, control, description and provenance into a half-width block — so a section
+    card holds an `.odc-sfield-grid` of related settings instead of a stack of
+    one-setting cards. That is the System settings catalogue; OdsSettingRow remains
+    the Preferences row.
+
+    The outline is a real fieldset/legend, not a floating span over a border: the
+    BROWSER cuts the notch, so the gap tracks the label's own text metrics at any font
+    size or zoom, and nothing has to be painted to match the card behind it. Inside the
+    frame the child control is just its value — its border, background, padding and own
+    helper slot are flattened by the sheet, and focus thickens the outline instead of
+    adding a second ring.
+
+    A switch or an action has no text value to notch a label into, so it uses the
+    sibling `.odc-sfield-tile` shape (Tile="true") — label and helper left, control
+    right — and spans the grid.
+*@
+
+@if (Tile)
+{
+    <div class="@WrapperClass" @attributes="UserAttributes">
+        <div class="odc-sfield-tile">
+            <div class="odc-sfield-tile-main">
+                @* tabindex="-1" only when something can actually point at this element. LabelId
+                   exists precisely so the page's problems rollup can move focus here, and
+                   window.odsFocusById is a bare .focus() — a silent no-op on a non-focusable node. *@
+                <span class="odc-sfield-label" id="@LabelId" tabindex="@(LabelId is null ? null : "-1")">@Label</span>
+                @if (HasHelpLine)
+                {
+                    <div class="odc-sfield-help" id="@HelpId">
+                        @if (!string.IsNullOrEmpty(Help))
+                        {
+                            <span>@Help </span>
+                        }
+                        @if (!string.IsNullOrEmpty(Meta))
+                        {
+                            <span class="odc-sfield-stamp">@Meta</span>
+                        }
+                        @if (Dirty)
+                        {
+                            <span class="odc-setting-dot" title="Unsaved change" aria-hidden="true"></span>
+                            <span class="sr-only"> (unsaved change)</span>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="odc-sfield-tile-ctrl">@ChildContent</div>
+        </div>
+        @* Not role="status": a live region inserted into the DOM at the same time as its content is
+           frequently not announced at all, so announcement is routed through the page's own
+           OdsLiveAnnouncer, and this text is reached from the control's aria-describedby (AdvisoryId).
+           The wrapper, the aria-hidden glyph and the visible word "Advisory" are supplied HERE so the
+           three things that make an advisory accessible cannot be forgotten at a call site. *@
+        @if (Advisory is not null)
+        {
+            <div class="odc-sfield-advisory" id="@AdvisoryId">
+                <span class="material-icons" aria-hidden="true">info</span>
+                <div><b class="odc-sfield-advisory-t">Advisory</b> @Advisory</div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="@WrapperClass" @attributes="UserAttributes">
+        <fieldset class="@FrameClass">
+            <legend class="odc-sfield-legend">
+                @if (HtmlFor is not null)
+                {
+                    <label class="odc-sfield-label" id="@LabelId" for="@HtmlFor"
+                           tabindex="@(LabelId is null ? null : "-1")">@Label</label>
+                }
+                else
+                {
+                    <span class="odc-sfield-label" id="@LabelId"
+                          tabindex="@(LabelId is null ? null : "-1")">@Label</span>
+                }
+                @if (BoundMarker is { } marker)
+                {
+                    <span class="odc-sfield-bound">@marker</span>
+                }
+            </legend>
+            <div class="odc-sfield-ctrl">@ChildContent</div>
+        </fieldset>
+        @* Above the helper line and never displacing it: the reader keeps the definition of the
+           setting while fixing the value. *@
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <div class="odc-sfield-err" id="@ErrorId" role="alert">@Error</div>
+        }
+        @if (HasHelpLine)
+        {
+            <div class="odc-sfield-help" id="@HelpId">
+                @if (!string.IsNullOrEmpty(Help))
+                {
+                    <span>@Help </span>
+                }
+                @if (!string.IsNullOrEmpty(Meta))
+                {
+                    <span class="odc-sfield-stamp">@Meta</span>
+                }
+                @if (Dirty)
+                {
+                    <span class="odc-setting-dot" title="Unsaved change" aria-hidden="true"></span>
+                    <span class="sr-only"> (unsaved change)</span>
+                }
+            </div>
+        }
+        @* Not role="status": a live region inserted into the DOM at the same time as its content is
+           frequently not announced at all, so announcement is routed through the page's own
+           OdsLiveAnnouncer, and this text is reached from the control's aria-describedby (AdvisoryId).
+           The wrapper, the aria-hidden glyph and the visible word "Advisory" are supplied HERE so the
+           three things that make an advisory accessible cannot be forgotten at a call site. *@
+        @if (Advisory is not null)
+        {
+            <div class="odc-sfield-advisory" id="@AdvisoryId">
+                <span class="material-icons" aria-hidden="true">info</span>
+                <div><b class="odc-sfield-advisory-t">Advisory</b> @Advisory</div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>The setting's label — rendered on the field's outline.</summary>
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Id of the control inside, so the legend is a real <c>&lt;label for&gt;</c>. Omit for a control
+    /// with no single focusable input (a capacity field flips between an input and static text) and
+    /// point the control's <c>aria-labelledby</c> at <see cref="LabelId"/> instead.
+    /// </summary>
+    [Parameter] public string? HtmlFor { get; set; }
+
+    /// <summary>
+    /// Explicit id for the label element. Also makes the label a programmatic focus target, so a
+    /// page-level problems rollup can jump to the row.
+    /// </summary>
+    [Parameter] public string? LabelId { get; set; }
+
+    /// <summary>What the setting does. Always visible, first on the helper line — never behind a
+    /// disclosure: at a full page of settings a "?" per row is a page of buttons nobody presses.</summary>
+    [Parameter] public string? Help { get; set; }
+
+    /// <summary>Provenance: who last changed the value, and when. Renders dimmer, at the end of the
+    /// helper line — it is what an administrator actually scans for.</summary>
+    [Parameter] public string? Meta { get; set; }
+
+    /// <summary>Id of the helper line, for the control's <c>aria-describedby</c>.</summary>
+    [Parameter] public string? HelpId { get; set; }
+
+    /// <summary>Blocking message. Renders above the helper line and turns the outline coral; it does
+    /// not displace <see cref="Help"/>.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>Id of the error element, for the control's <c>aria-describedby</c>.</summary>
+    [Parameter] public string? ErrorId { get; set; }
+
+    /// <summary>
+    /// Non-blocking advisory, in an amber <c>role="status"</c> band below the helper line — for a
+    /// value that will save but is not free (memory, response payload, third-party spend), or a check
+    /// the server can only make heuristically.
+    ///
+    /// <para>
+    /// The slot carries the MESSAGE only: this component supplies the wrapper, the
+    /// <c>aria-hidden</c> glyph and the visible word "Advisory", so the three things that make an
+    /// advisory accessible cannot be forgotten at a call site — its meaning is available as TEXT
+    /// (WCAG 1.4.1), it differs from a field error by more than hue, and it is static described-by
+    /// text that <see cref="AdvisoryId"/> can append to the control's <c>aria-describedby</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// It never sets <c>aria-invalid</c>, never marks the row invalid and never blocks a save. A
+    /// value that cannot be accepted is an <see cref="Error"/> instead.
+    /// </para>
+    /// </summary>
+    [Parameter] public RenderFragment? Advisory { get; set; }
+
+    /// <summary>Id on the advisory element, for the control's <c>aria-describedby</c>.</summary>
+    [Parameter] public string? AdvisoryId { get; set; }
+
+    /// <summary>
+    /// Marks a setting that moves one way only, with a small marker in the outline beside the label —
+    /// because that is where the bound lives. Use it where the opposite direction is refused rather
+    /// than merely discouraged. The reason belongs in <see cref="Help"/>; the marker only says which
+    /// way.
+    /// </summary>
+    [Parameter] public OdsSettingBound Bound { get; set; } = OdsSettingBound.None;
+
+    /// <summary>Show the unsaved-change dot on the helper line.</summary>
+    [Parameter] public bool Dirty { get; set; }
+
+    /// <summary>Span both columns of the setting grid — for a control whose width is set by its
+    /// content (a URL, a name), and for every <see cref="Tile"/>.</summary>
+    [Parameter] public bool Wide { get; set; }
+
+    /// <summary>
+    /// Render the tile shape instead of the notched frame — for a switch or an action, which has no
+    /// text value to notch a label into. Implies <see cref="Wide"/>.
+    /// </summary>
+    [Parameter] public bool Tile { get; set; }
+
+    /// <summary>Exactly one control.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string WrapperClass =>
+        string.Join(' ', new[]
+        {
+            "odc-sfield",
+            (Wide || Tile) ? "wide" : null,
+            Class,
+        }.Where(value => !string.IsNullOrEmpty(value)));
+
+    private string FrameClass =>
+        string.Join(' ', new[]
+        {
+            "odc-sfield-frame",
+            string.IsNullOrEmpty(Error) ? null : "error",
+            // The advised outline is suppressed while an error is showing: coral outranks amber,
+            // and two border colours cannot both win.
+            Advisory is not null && string.IsNullOrEmpty(Error) ? "advised" : null,
+        }.Where(value => !string.IsNullOrEmpty(value)));
+
+    private string? BoundMarker => Bound switch
+    {
+        OdsSettingBound.LowerOnly => "lower only",
+        OdsSettingBound.RaiseOnly => "raise only",
+        _ => null,
+    };
+
+    private bool HasHelpLine => !string.IsNullOrEmpty(Help) || !string.IsNullOrEmpty(Meta) || Dirty;
+}

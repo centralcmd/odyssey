@@ -1,0 +1,209 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Account rate & fee history" subtitle="The Terms section in an account detail — step-line rate chart, current-terms summary, grouped editable history + New term dialog. Live render of AccountTerms.jsx" viewport="1200x1500" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Account rate &amp; fee history</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/account-signals.css" />
+  <link rel="stylesheet" href="../ui_kits/web/admin.css" />
+  <link rel="stylesheet" href="../ui_kits/web/account.css" />
+  <link rel="stylesheet" href="../ui_kits/web/account-terms.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="../_ds_bundle.js"></script>
+  <script src="../ui_kits/web/data.js"></script>
+
+  <style>
+    html, body { min-height: 0; background: var(--mud-palette-background); }
+    body { width: 1200px; padding: 24px; box-sizing: border-box; }
+    .spec-doc { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+    .spec-doc h2 { font: 600 15px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); margin: 0 0 6px; }
+    .spec-lead { font: 400 13px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 96ch; }
+    .spec-lead b { color: var(--tide-400); font-weight: 500; }
+    .spec-src { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+    .spec-src .pill { font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 5px 10px; }
+    .spec-src .pill b { color: var(--tide-400); font-weight: 600; }
+    table.spec-tbl { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    table.spec-tbl th { text-align: left; font: 600 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 0 12px 8px; border-bottom: 1px solid var(--mud-palette-divider); }
+    table.spec-tbl td { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); padding: 9px 12px; border-bottom: 1px solid var(--mud-palette-divider-light); vertical-align: top; }
+    table.spec-tbl td.f { font-family: var(--font-mono); color: var(--tide-400); white-space: nowrap; }
+    table.spec-tbl td.t { font-family: var(--font-mono); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+    table.spec-tbl tr:last-child td { border-bottom: none; }
+    .spec-notes { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+    .spec-notes li { position: relative; padding-left: 20px; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .spec-notes li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .spec-notes li .material-icons { position: absolute; left: 0; top: 1px; font-size: 15px; color: var(--tide-400); }
+
+    /* Tweak control bar */
+    .twk { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 18px;
+           background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+           padding: 11px 16px; margin-bottom: 18px; }
+    .twk-grp { display: flex; align-items: center; gap: 9px; }
+    .twk-lab { font: 600 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .twk-seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 9px; background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider); }
+    .twk-seg button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 13px; border: none; border-radius: 7px;
+                      background: transparent; cursor: pointer; font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .twk-seg button .material-icons { font-size: 16px; }
+    .twk-seg button.on { background: var(--tide-400); color: var(--ink-950); }
+    .twk-spacer { flex: 1; }
+
+    /* Account detail context card (mimics the expanded account record's body) */
+    .detail-stage { display: flex; flex-direction: column; gap: 18px; }
+    .stage-label { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 2px 0 -4px 2px; display: flex; align-items: center; gap: 8px; }
+    .stage-label .material-icons { font-size: 15px; color: var(--tide-400); }
+    .dcard { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; overflow: hidden; }
+    .dcard-head { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--mud-palette-divider-light); }
+    .dcard-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .dcard-name-row { display: flex; align-items: center; gap: 10px; }
+    .dcard-name { font: 500 16px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .dcard-tags { display: flex; align-items: center; gap: 8px; font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .dcard-dot { opacity: 0.5; }
+    .dcard-bal { margin-left: auto; font: 400 19px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <div class="spec-doc">
+    <h2>Account rate &amp; fee history · <span style="color:var(--mud-palette-text-secondary);font-weight:400;">accounts/{id} → Terms</span></h2>
+    <p class="spec-lead">A time-versioned history of an account's <b>terms</b> — its interest rate, an optional expected return, and the prices of its bank services (fees) — living as a new section inside the expanded account record, beside Files &amp; Transactions. The latest entry on or before a date is the value <b>in force</b> (implicit supersession — no <code>EffectiveTo</code>). It leads with the interest rate: a <b>step-line chart</b> of the rate over time, a <b>current-terms</b> summary, then the full <b>grouped, editable history</b>. Frontend for the backend <code>AccountTerm</code> spec.</p>
+    <div class="spec-src">
+      <span class="pill">DTO <b>NewAccountTerm</b> · <b>ExistingAccountTerm</b> · <b>CurrentAccountTerm</b></span>
+      <span class="pill">Enum <b>TermKind</b> · <b>TermValueUnit</b> · <b>BillingPeriod</b></span>
+      <span class="pill">API <b>AccountController</b> /terms</span>
+      <span class="pill">Claims <b>accounts.terms.{read,write}</b></span>
+    </div>
+
+    <table class="spec-tbl">
+      <thead><tr><th>Zone / column</th><th>DTO field</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Hero chart</td><td class="f">Value · EffectiveFrom</td><td class="t">decimal · date</td><td>Step line — the rate holds flat and jumps on each change; current value + delta vs the prior entry.</td></tr>
+        <tr><td>Current terms</td><td class="f">CurrentAccountTerm</td><td class="t">projection</td><td>One value in force per kind (<code>GET …/terms/current</code>). Summary style is tweakable: tiles · row · chips.</td></tr>
+        <tr><td>Term</td><td class="f">TermKind</td><td class="t">enum</td><td>Glyph + tint per kind. Rates lead; fees are the second group. Eligibility-gated by account type.</td></tr>
+        <tr><td>Value</td><td class="f">Value · ValueUnit</td><td class="t">decimal · enum</td><td>Percentage (fraction in [-1,1]) or a money Amount; currency required for amounts.</td></tr>
+        <tr><td>Effective from</td><td class="f">EffectiveFrom</td><td class="t">DateTime</td><td>Past or future (future = <code>Scheduled</code>). Default sort, newest first.</td></tr>
+        <tr><td>Billing</td><td class="f">BillingPeriod</td><td class="t">enum?</td><td>Optional context for fees (<code>/mo · /yr · /txn</code>); null for rates.</td></tr>
+        <tr><td>Actions</td><td class="f">AccountTermId</td><td class="t">Guid</td><td>Edit / Delete in place; New term opens the create dialog. <code>accounts.terms.write</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <ul class="spec-notes">
+      <li><span class="material-icons">show_chart</span><b>Step line, not a trend.</b> Effective-dated rates hold flat until superseded, so the chart steps — never interpolates — and extends the current value to a dashed <b>Today</b> marker.</li>
+      <li><span class="material-icons">rule</span><b>Eligibility is enforced in the dialog.</b> Interest rate only on interest-bearing accounts, expected return only on investment / pension, fees broadly. Ineligible kinds are hidden from the picker.</li>
+      <li><span class="material-icons">history</span><b>History is append-style.</b> A newer-dated entry supersedes the prior one in <code>Current terms</code> while both stay visible in the full history; the in-force row is marked.</li>
+      <li><span class="material-icons">tune</span><b>Tweak the surface.</b> Toggle the current-terms summary (tiles / row / chips) and the history view (table / timeline) in the bar below.</li>
+    </ul>
+  </div>
+
+  <div id="root"></div>
+
+  <script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/page-header.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/Accounts.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AddTermModal.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AccountTerms.jsx"></script>
+  <script type="text/babel" data-presets="env,react">
+    const { useState } = React;
+    const D = window.OdysseyData;
+    const H = window.OdysseyHelpers;
+    const typeInfo = (k) => D.accountTypeById[k] || { label: k, icon: 'help_outline', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)' };
+
+    const Seg = ({ value, onChange, options }) => (
+      <div className="twk-seg" role="tablist">
+        {options.map(o => (
+          <button key={o.value} role="tab" aria-selected={value === o.value}
+            className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
+            {o.icon && <span className="material-icons">{o.icon}</span>}{o.label}
+          </button>
+        ))}
+      </div>
+    );
+
+    const DetailCard = ({ account, summaryStyle, historyStyle }) => {
+      const ti = typeInfo(account.type);
+      const st = H.accountStatus(account);
+      return (
+        <div className="dcard">
+          <div className="dcard-head">
+            <Avatar icon={ti.icon} tone={{ bg: ti.soft, fg: ti.color }} square size="lg" />
+            <div className="dcard-id">
+              <div className="dcard-name-row">
+                <span className="dcard-name">{account.name}</span>
+                <Chip tone={st.tone} dot>{st.label}</Chip>
+              </div>
+              <div className="dcard-tags">
+                <span>{window.ACCOUNT_TYPE_LABEL[account.type]}</span>
+                <span className="dcard-dot">·</span>
+                <span className="mono">{account.number}</span>
+                <span className="dcard-dot">·</span>
+                <span className="mono">{account.currency}</span>
+              </div>
+            </div>
+            <div className="dcard-bal" style={{ color: account.balance < 0 ? 'var(--finance-expense)' : 'var(--finance-income)' }}>
+              {H.money(account.balance)}
+            </div>
+          </div>
+          <AccountTerms account={account} summaryStyle={summaryStyle} historyStyle={historyStyle} chrome={false} />
+        </div>
+      );
+    };
+
+    function Spec() {
+      const [summaryStyle, setSummaryStyle] = useState('tiles');
+      const [historyStyle, setHistoryStyle] = useState('table');
+      const [theme, setTheme] = useState('dark');
+      React.useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+
+      const savings = D.accountById['2'];   // rate dropping — the headline story
+      const card    = D.accountById['3'];   // APR rising + annual fee + cash-advance fee
+      const empty   = D.accountById['1'];   // Chase Checking — no terms yet
+
+      return (
+        <React.Fragment>
+          <div className="twk">
+            <div className="twk-grp">
+              <span className="twk-lab">Current terms</span>
+              <Seg value={summaryStyle} onChange={setSummaryStyle} options={[
+                { value: 'tiles', label: 'Tiles', icon: 'grid_view' },
+                { value: 'row', label: 'Row', icon: 'table_rows' },
+                { value: 'chips', label: 'Chips', icon: 'label' },
+              ]} />
+            </div>
+            <div className="twk-grp">
+              <span className="twk-lab">History</span>
+              <Seg value={historyStyle} onChange={setHistoryStyle} options={[
+                { value: 'table', label: 'Table', icon: 'table_chart' },
+                { value: 'timeline', label: 'Timeline', icon: 'timeline' },
+              ]} />
+            </div>
+            <div className="twk-spacer" />
+            <div className="twk-grp">
+              <span className="twk-lab">Theme</span>
+              <Seg value={theme} onChange={setTheme} options={[
+                { value: 'dark', label: 'Dark', icon: 'dark_mode' },
+                { value: 'light', label: 'Light', icon: 'light_mode' },
+              ]} />
+            </div>
+          </div>
+
+          <div className="detail-stage">
+            <div className="stage-label"><span className="material-icons">savings</span>Savings · a high-yield rate stepped down over two years</div>
+            <DetailCard account={savings} summaryStyle={summaryStyle} historyStyle={historyStyle} />
+
+            <div className="stage-label"><span className="material-icons">credit_card</span>Credit card · rising APR with an annual fee and a cash-advance fee</div>
+            <DetailCard account={card} summaryStyle={summaryStyle} historyStyle={historyStyle} />
+
+            <div className="stage-label"><span className="material-icons">inbox</span>Empty state · an account with no terms yet</div>
+            <DetailCard account={empty} summaryStyle={summaryStyle} historyStyle={historyStyle} />
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Spec />);
+  </script>
+</body>
+</html>

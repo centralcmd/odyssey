@@ -1,0 +1,180 @@
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Authorization
+@typeparam TRow
+@inject ITagsApiClient<TRow> Tags
+@inject ISnackbar Snackbar
+@inject IReferenceDataCache ReferenceData
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+
+@*
+    OdsTagAdmin — the one tag-management surface, shared by all four tag families (transaction,
+    journal, task and photo tags). The design system builds them from a single factory
+    (ui_kits/web/TransactionTags.jsx · createTagsPage) because they carry the same
+    Name / Description / Archived shape and the same page: a PageHeader with a status breakdown and a
+    search/status/sort toolbar, an OdsRecordTable with a read-only detail panel and archive/delete row
+    actions, and one AddTagModal reused for both create and row Edit.
+
+    The four route pages (/transaction-tags, /journal-tags, /task-tags, /photo-tags) instantiate it
+    with their claims, copy and DTO accessors. Writes post a plain { Name, Description, Archived }
+    body, valid for every tag resource (ApiClient · TagWrite).
+
+    Tag names are user- and file-influenced, so they render as auto-encoded text (never MarkupString).
+*@
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<MudStack Spacing="4">
+
+    <PageHeader Title="@Title"
+                Icon="@Icons.Material.Filled.LocalOffer"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New tag"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@_activeCount active · @_archivedCount archived</SubLine>
+        <OverviewContent>
+            <div class="odc-summary-grid">
+                <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No tags." />
+            </div>
+        </OverviewContent>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="ReloadAsync"
+                                Placeholder="@SearchPlaceholder" Class="ph-search" />
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="TRow" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @{
+        var columns = new List<OdsRecordColumn<TRow>>
+        {
+            new()
+            {
+                Key = "name", HeaderText = "Name", Sortable = true,
+                SortValue = t => Name(t).ToLowerInvariant(),
+                Cell = (t, ctx) => @<span class="d-inline-flex align-center" style="gap:8px;">@Name(t) @if (ctx.JustSaved) { <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip> }</span>
+            },
+            new()
+            {
+                Key = "description", HeaderText = "Description", Sortable = true, CellClass = "odc-rec-muted",
+                SortValue = t => string.IsNullOrWhiteSpace(Description(t)) ? "~" : Description(t)!.ToLowerInvariant(),
+                Cell = (t, ctx) => @<text>@(string.IsNullOrWhiteSpace(Description(t)) ? "—" : Description(t))</text>
+            },
+            new()
+            {
+                Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
+                SortValue = t => Archived(t) is null ? 0 : 1,
+                Cell = (t, ctx) => @<text>
+                    @if (Archived(t) is not null)
+                    {
+                        <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
+                    }
+                    else
+                    {
+                        <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
+                    }
+                </text>
+            },
+        };
+    }
+
+    <MudCard Outlined="true">
+        <OdsRecordTable TRow="TRow"
+                        AriaLabel="@Title"
+                        Rows="@_tags"
+                        Loading="_isLoading"
+                        Refetching="_refetching"
+                        Error="_loadError"
+                        OnRetry="GetTags"
+                        HasFilters="_hasFilters"
+                        OnClearFilters="ClearFilters"
+                        Noun="@Noun"
+                        EmptyIcon="local_offer"
+                        EmptyDescription="@EmptyDesc"
+                        ServerSort="true"
+                        RowKey="@(t => (object)Id(t))"
+                        Columns="@columns"
+                        DefaultSort="@DefaultSort"
+                        Sort="_sort"
+                        SortChanged="OnSortChanged"
+                        Actions="BuildActions"
+                        OnDelete="HandleDelete">
+            <Leading Context="t">
+                <OdsAvatar Icon="local_offer" />
+            </Leading>
+            <RenderDetail Context="t">
+                <div class="odc-meta-grid">
+                    <OdsMetaTile>
+                        <Label>Name</Label>
+                        <ChildContent>@Name(t)</ChildContent>
+                    </OdsMetaTile>
+                    <OdsMetaTile>
+                        <Label>Status</Label>
+                        <ChildContent>
+                            @if (Archived(t) is not null)
+                            {
+                                <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
+                            }
+                            else
+                            {
+                                <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
+                            }
+                        </ChildContent>
+                    </OdsMetaTile>
+                    <OdsMetaTile>
+                        <Label>Description</Label>
+                        <ChildContent>@(string.IsNullOrWhiteSpace(Description(t)) ? "—" : Description(t))</ChildContent>
+                    </OdsMetaTile>
+                    @if (Archived(t) is { } archivedAt)
+                    {
+                        <OdsMetaTile Mono="true">
+                            <Label>Archived</Label>
+                            <ChildContent>@archivedAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</ChildContent>
+                        </OdsMetaTile>
+                    }
+                </div>
+            </RenderDetail>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New tag</OdsButton>
+                }
+            </CreateAction>
+        </OdsRecordTable>
+        @if (_totalCount > 0)
+        {
+            <OdsPager Page="_page" PageChanged="OnPageChanged"
+                      PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+                      TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
+        }
+    </MudCard>
+</MudStack>
+
+@*
+    One dialog serves create and row Edit (DS AddTagModal). A fresh key each time re-initialises it
+    from the chosen row — or from nothing, for a create.
+*@
+@if (_formKey != Guid.Empty)
+{
+    <OdsFormDialog @key="_formKey" @bind-Open="_formOpen"
+                   Icon="local_offer"
+                   Title="@(_isEditing ? "Edit tag" : "New tag")"
+                   Subtitle="@ModalSubtitle"
+                   SubmitLabel="@(_isEditing ? "Save changes" : "Create tag")"
+                   SubmitIcon="@(_isEditing ? "check" : "add")"
+                   OnSubmit="SaveAsync" OnSaved="OnFormSaved">
+        <OdsField Label="Name" @bind-Value="_draftName" Placeholder="@NamePlaceholder"
+                  Help="Up to 64 characters" MaxLength="@TagWrite.MaxNameLength" AutoFocus="true"
+                  Error="@(_draftNameError ? "Give the tag a name." : null)" />
+        <OdsField Label="Description" Optional="true" @bind-Value="_draftDescription"
+                  Placeholder="Optional — what this tag is for" Help="Up to 256 characters"
+                  MaxLength="@TagWrite.MaxDescriptionLength" Multiline="true" />
+    </OdsFormDialog>
+}

@@ -1,0 +1,20 @@
+:host {
+    display: block;
+}
+
+/* Onboarding gate (issue #316): brief loader while profile completeness is resolved before the
+   app body renders (anti-flash). Fails open on a failed fetch. */
+.odn-gate-loading {
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Page-bottom breathing room, shared by every page (not per-page — the last card/section on any
+   page sat flush against the viewport edge once scrolled all the way down, since nothing in the
+   shell added trailing space after @Body). Plain rule, no ::deep: .odn-main is a literal element
+   in this component's own markup, not a child component's rendered output. */
+.odn-main {
+    padding-bottom: 32px;
+}

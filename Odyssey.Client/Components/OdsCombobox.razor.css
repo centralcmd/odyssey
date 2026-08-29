@@ -1,0 +1,24 @@
+/* Trigger leading glyph for a selected option (Odyssey Design System · .odc-input-icon).
+   The wrapper and the MudAutocomplete input live in this component's own DOM, so the
+   overlay + the text inset reach the input via ::deep. The dropdown option rows render in
+   MudBlazor's teleported popover and are styled globally (odyssey-components.css) instead. */
+.odc-combo-wrap {
+    position: relative;
+}
+
+.odc-combo-lead {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 1;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Inset the input text so the selected value clears the leading glyph. */
+.odc-combo-wrap.has-lead ::deep .mud-input-slot {
+    padding-left: 36px;
+}

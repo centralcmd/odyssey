@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Tax Statements page" description="Per-year tax records with declared-vs-derived reconciliation, a cross-year settlement flow, a review workflow, tag derivation and document storage." -->
+<helmet>
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <link rel="stylesheet" href="../../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../../ui_kits/web/account.css" />
+  <link rel="stylesheet" href="../../ui_kits/web/tax-statements.css" />
+
+  <!-- Babel is needed to transpile the kit's JSX. React/ReactDOM are provided by
+       the DC runtime (React 18.3.1) — we deliberately do NOT load our own copy,
+       which would crash the runtime with a duplicate-React error. -->
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- The Tax Statements page is the kit's existing React app, authored as JSX
+       across several files that register their exports on window. We load every
+       dependency through one ordered loader so it runs only AFTER the runtime's
+       React is ready: the compiled design-system bundle, the kit's seed data,
+       then the page's atoms + the page itself (JSX, transpiled on the fly).
+       The logic class polls for window.TaxStatements and mounts once done. -->
+  <script>
+    (async function () {
+      const until = (cond) => new Promise((res) => {
+        (function tick() { cond() ? res() : requestAnimationFrame(tick); })();
+      });
+      await until(() => window.React && window.ReactDOM && window.ReactDOM.createRoot && window.Babel);
+
+      const run = (code, jsx) => {
+        const out = jsx ? window.Babel.transform(code, { presets: ['react'] }).code : code;
+        (0, eval)(out);
+      };
+      const load = async (url, jsx) => {
+        try { const r = await fetch(url); run(await r.text(), jsx); }
+        catch (e) { console.error('[Tax Statements template] failed to load ' + url, e); }
+      };
+
+      await load('../../_ds_bundle.js', false);
+      await load('../../ui_kits/web/data.js', false);
+      await load('../../ui_kits/web/tax-data.js', false);
+      for (const f of ['Components.jsx', 'page-header.jsx', 'Accounts.jsx', 'AddTaxStatementModal.jsx', 'TaxStatements.jsx']) {
+        await load('../../ui_kits/web/' + f, true);
+      }
+    })();
+  </script>
+</helmet>
+
+<div data-theme="dark" style="min-height: 100vh; background: var(--mud-palette-background, #14161c); color: var(--mud-palette-text-primary, #e7ebf3); padding: 28px 28px 64px; box-sizing: border-box;">
+  <div id="tx-mount-root" style="max-width: 1180px; margin: 0 auto;"></div>
+  <div id="tx-loading" style="display: block; max-width: 1180px; margin: 0 auto; padding: 72px 0; text-align: center; font: 400 14px/1.5 var(--font-sans, system-ui); color: var(--mud-palette-text-secondary, #9aa3b2);">
+    Loading the Tax Statements page…
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;reportLayout&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;table&quot;, &quot;tiles&quot;], &quot;default&quot;: &quot;table&quot;, &quot;tsType&quot;: &quot;'table' | 'tiles'&quot; }
+}">
+class Component extends DCLogic {
+  // The Tax Statements page is the kit's existing multi-file React app
+  // (TaxStatements.jsx + its atoms), loaded via <helmet>. We mount it as a React
+  // root into a ref'd container using the runtime's React (the same instance the
+  // kit's hooks run against), and re-render it when the Tweaks props change.
+
+  _tweaks() {
+    return {
+      reportLayout: this.props.reportLayout || 'table',
+    };
+  }
+
+  _mountWhenReady() {
+    if (this._mounted) { this._renderApp(); return; }
+    if (!this._el) this._el = document.getElementById('tx-mount-root');
+    const ready = this._el && window.React && window.ReactDOM &&
+                  window.ReactDOM.createRoot && window.TaxStatements;
+    if (!ready) {
+      this._raf = setTimeout(() => this._mountWhenReady(), 80);
+      return;
+    }
+    this._root = window.ReactDOM.createRoot(this._el);
+    this._mounted = true;
+    const loader = document.getElementById('tx-loading');
+    if (loader) loader.style.display = 'none'; // hide the placeholder once mounted
+    this._renderApp();
+  }
+
+  _renderApp() {
+    if (!this._root || !window.TaxStatements) return;
+    this._root.render(window.React.createElement(window.TaxStatements, { tweaks: this._tweaks() }));
+  }
+
+  componentDidMount() { this._mountWhenReady(); }
+  componentDidUpdate() { this._renderApp(); }
+
+  componentWillUnmount() {
+    if (this._raf) clearTimeout(this._raf);
+    if (this._root) { try { this._root.unmount(); } catch (e) {} }
+  }
+
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

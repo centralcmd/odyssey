@@ -1,0 +1,20 @@
+/* Breathing room between the page header and the library content (Odyssey Design System · the
+   .page-head scaffold carries a bottom gap). The shared client PageHeader has no bottom margin, so
+   the dense full-bleed thumbnail grid otherwise butts right against the filter bar and reads as
+   cramped. Scoped to this page so table/list pages (which sit tight by design) are unaffected. */
+.pl-selbar,
+.pl-grid {
+    margin-top: 16px;
+}
+
+/* ---- Grid: load-more pager ----
+   Moved out of the globally-linked wwwroot/css/photos.css by issue #371 — this page is the
+   only consumer. The library chrome shared with AlbumsPage (.pl-grid / .pl-skel / .pl-selbar* /
+   .pl-toolbtn / .pl-drop-hint) stays in odyssey-components.css. */
+.pl-loadmore { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; }
+.pl-loadmore-txt { color: var(--mud-palette-text-secondary); font-size: 12px; }
+
+.pl-drop-btn { margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: var(--radius-sm); border: none; cursor: pointer;
+      background: var(--tide-400); color: var(--ink-950, #0b0d12); font: 600 13px/1 var(--font-sans); }
+
+.pl-drop-btn .material-icons { font-size: 16px; }

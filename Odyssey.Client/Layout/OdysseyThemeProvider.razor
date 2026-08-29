@@ -1,0 +1,36 @@
+@using Odyssey.Client.Theme
+@implements IDisposable
+@inject IUserPreferenceService UserPreferences
+
+<MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" Theme="OdysseyTheme.Theme"/>
+
+@code {
+    private MudThemeProvider? _mudThemeProvider;
+    private bool _isDarkMode;
+
+    // Paint the last-known theme synchronously (after injection, before first render)
+    // so there's no flash before the async reload in OnAfterRenderAsync.
+    protected override void OnInitialized() =>
+        _isDarkMode = UserPreferences.Current.DarkModeEnabled;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !OperatingSystem.IsBrowser())
+            return;
+
+        _isDarkMode = await UserPreferences.GetDarkModePreferencesAsync();
+        UserPreferences.DarkModeChanged += OnDarkModeChanged;
+        StateHasChanged();
+    }
+
+    private void OnDarkModeChanged(bool isDarkMode)
+    {
+        _isDarkMode = isDarkMode;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        UserPreferences.DarkModeChanged -= OnDarkModeChanged;
+    }
+}

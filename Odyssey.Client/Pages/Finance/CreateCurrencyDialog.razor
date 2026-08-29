@@ -1,0 +1,142 @@
+@*
+    Create / edit dialog for a currency (Odyssey Design System · Currencies AddCurrencyModal).
+    One dialog serves both modes: pass an existing currency to prefill and switch into edit mode.
+    CurrencyCode is the ISO-4217 primary key, so edit mode locks it; only Symbol, Name and
+    Minor units are editable. Archive / restore stays a row action and is preserved here.
+*@
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Finance
+@inject ICurrenciesApiClient Currencies
+@inject IReferenceDataCache ReferenceData
+@inject ISnackbar Snackbar
+
+
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="attach_money" Title="@(IsEdit ? "Edit currency" : "New currency")"
+               Subtitle="@(IsEdit
+                   ? "Update this currency's name, symbol, or precision."
+                   : "Enable a currency your accounts and budgets can be denominated in.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create currency")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    <!-- Code + Symbol -->
+    <OdsFormRow>
+        <MudTextField @bind-Value="_currencyCode"
+                      Label="Code"
+                      Placeholder="e.g. USD"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      MaxLength="3"
+                      ReadOnly="@IsEdit"
+                      HelperText="@(IsEdit ? "ISO-4217 code — can't be changed" : null)"
+                      Error="@_codeError"
+                      ErrorText="Enter an ISO 4217 code."
+                      Immediate="true" />
+        <MudTextField @bind-Value="_symbol"
+                      Label="Symbol"
+                      Placeholder="e.g. $"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Error="@_symbolError"
+                      ErrorText="Enter a symbol." />
+    </OdsFormRow>
+
+    <!-- Name -->
+    <MudTextField @bind-Value="_name"
+                  Label="Name"
+                  Placeholder="e.g. US Dollar"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Error="@_nameError"
+                  ErrorText="Give the currency a name." />
+
+    <!-- Minor units -->
+    <MudNumericField T="int"
+                     @bind-Value="_minorUnits"
+                     Label="Minor units"
+                     Variant="Variant.Outlined"
+                     Margin="Margin.Dense"
+                     Min="0"
+                     Max="12"
+                     HideSpinButtons="true"
+                     HelperText="Decimal places — 2 for most currencies, 0 for yen." />
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>When set, the dialog edits this currency (code locked). Null = create mode.</summary>
+    [Parameter] public ExistingCurrency? Currency { get; set; }
+
+    private string? _currencyCode;
+    private string? _name;
+    private string? _symbol;
+    private int _minorUnits = 2;
+    private bool _codeError;
+    private bool _nameError;
+    private bool _symbolError;
+
+    private bool IsEdit => Currency is not null;
+
+    protected override void OnInitialized()
+    {
+        if (Currency is null)
+            return;
+
+        _currencyCode = Currency.CurrencyCode;
+        _name = Currency.Name;
+        _symbol = Currency.Symbol;
+        _minorUnits = Currency.MinorUnits;
+    }
+
+    private async Task<bool> SaveAsync()
+    {
+        _codeError = !IsEdit && string.IsNullOrWhiteSpace(_currencyCode);
+        _nameError = string.IsNullOrWhiteSpace(_name);
+        _symbolError = string.IsNullOrWhiteSpace(_symbol);
+        if (_codeError || _nameError || _symbolError)
+            return false;
+
+        if (IsEdit)
+        {
+            // Preserve the current archival state — archive/restore is a separate row action.
+            var update = new NewCurrency
+            {
+                CurrencyCode = Currency!.CurrencyCode,
+                Name = _name!.Trim(),
+                Symbol = _symbol!.Trim(),
+                MinorUnits = _minorUnits,
+                Archived = Currency.Archived is not null,
+            };
+
+            return Invalidated((await Currencies.UpdateAsync(Currency.CurrencyCode, update)).Toast(Snackbar, "Update failed", "Currency updated."));
+        }
+
+        var newCurrency = new NewCurrency
+        {
+            CurrencyCode = _currencyCode!.Trim().ToUpperInvariant(),
+            Name = _name!.Trim(),
+            Symbol = _symbol!.Trim(),
+            MinorUnits = _minorUnits,
+            Archived = false,
+        };
+
+        return Invalidated((await Currencies.CreateAsync(newCurrency)).Toast(Snackbar, "Unable to create currency", "Currency created."));
+    }
+
+    // Currencies are cached for the whole session (issue #372) — a successful write here has to drop
+    // that cache or every picker keeps offering the old list until the app reloads.
+    private bool Invalidated(bool saved)
+    {
+        if (saved)
+            ReferenceData.InvalidateCurrencies();
+        return saved;
+    }
+}

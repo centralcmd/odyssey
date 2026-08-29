@@ -1,0 +1,119 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Forms & surfaces (.odc-)" subtitle="Field · Select · Card · Badge · Avatar · Tabs · Tooltip · Modal — exported on the DS namespace" viewport="820x640" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · Forms & surfaces (.odc-)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 32px; }
+    .block { display: flex; flex-direction: column; gap: 12px; }
+    .span2 { grid-column: 1 / -1; }
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .modal-host { position: static; padding: 0; background: transparent; display: block; }
+    .modal-host .odc-modal { box-shadow: var(--mud-elevation-8); }
+  </style>
+</head>
+<body>
+  <div class="grid">
+
+    <div class="block">
+      <div class="cap">Field <code>&lt;Field /&gt;</code></div>
+      <div class="odc-field">
+        <label class="odc-field-label">Email address<span class="odc-field-req">*</span></label>
+        <div class="odc-input-wrap">
+          <span class="material-icons odc-input-icon">mail</span>
+          <input class="odc-input has-icon" value="jane@odyssey.app" />
+        </div>
+        <div class="odc-field-help">We'll send a confirmation link.</div>
+      </div>
+      <div class="odc-field error">
+        <label class="odc-field-label">Amount</label>
+        <div class="odc-input-wrap"><input class="odc-input" value="-" /></div>
+        <div class="odc-field-help">Enter an amount.</div>
+      </div>
+      <div class="odc-field">
+        <label class="odc-field-label">Description<span class="odc-field-opt">Optional</span></label>
+        <div class="odc-input-wrap"><textarea class="odc-input odc-input-multiline" rows="3">Grocery chain — Mission &amp; SoMa locations.</textarea></div>
+        <div class="odc-field-help"><code>multiline</code> — a resizable textarea for long values like descriptions and notes.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Select <code>&lt;Select /&gt;</code></div>
+      <div class="odc-field">
+        <label class="odc-field-label">Account</label>
+        <div class="odc-select-wrap">
+          <select class="odc-select"><option>Everyday Checking · USD</option><option>Savings · USD</option></select>
+          <span class="material-icons odc-select-chev">expand_more</span>
+        </div>
+        <div class="odc-field-help">Where this transaction is logged.</div>
+      </div>
+      <div class="cap" style="margin-top:6px">Tabs <code>&lt;Tabs /&gt;</code></div>
+      <div class="odc-tabs" role="tablist">
+        <button class="odc-tab active" role="tab">Overview</button>
+        <button class="odc-tab" role="tab">Security</button>
+        <button class="odc-tab" role="tab">Permissions</button>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Card <code>&lt;Card /&gt;</code></div>
+      <div class="odc-card">
+        <div class="odc-stat-overline">Elevated</div>
+        <div style="font-size:14px;color:var(--mud-palette-text-secondary);margin-top:6px">Default surface — stat tiles, dashboards.</div>
+      </div>
+      <div class="odc-card outlined">
+        <div class="odc-stat-overline">Outlined</div>
+        <div style="font-size:14px;color:var(--mud-palette-text-secondary);margin-top:6px">No shadow — forms (per the system).</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Badge · Avatar · Tooltip</div>
+      <div class="row">
+        <span class="odc-badge">3</span>
+        <span class="odc-badge primary">12</span>
+        <span class="odc-badge neutral">99+</span>
+        <span class="odc-badge dot"></span>
+      </div>
+      <div class="row">
+        <span class="odc-avatar sm">JS</span>
+        <span class="odc-avatar">JS</span>
+        <span class="odc-avatar tide"><span class="material-icons">account_circle</span></span>
+        <span class="odc-avatar lg">JS</span>
+        <span class="odc-tip"><button class="odc-iconbtn"><span class="material-icons">help</span></button><span class="odc-tip-bubble" role="tooltip">Tooltip on hover/focus</span></span>
+      </div>
+    </div>
+
+    <div class="block span2">
+      <div class="cap">Modal <code>&lt;Modal /&gt;</code></div>
+      <div class="modal-host">
+        <div class="odc-modal" role="dialog" style="max-width:520px">
+          <div class="odc-modal-head">
+            <div class="odc-modal-titles">
+              <div class="odc-modal-title">Delete account</div>
+              <div class="odc-modal-sub">This removes the account and its 248 transactions.</div>
+            </div>
+            <button class="odc-iconbtn" aria-label="Close"><span class="material-icons">close</span></button>
+          </div>
+          <div class="odc-modal-body">Type the account name to confirm. This can't be undone.</div>
+          <div class="odc-modal-foot">
+            <button class="odc-btn text">Cancel</button>
+            <button class="odc-btn danger"><span class="material-icons">delete</span><span>Delete account</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,136 @@
+@*
+    OdsCollapsible — a disclosure: a header row that expands a body in place
+    (Odyssey Design System · components/Collapsible).
+
+    The record-detail "Files" / "Transactions" / "Terms" sections, the Budgets
+    item list, the Users role-permissions reveal, advanced-option reveals. Works
+    controlled (Open + OnToggle) or uncontrolled (DefaultOpen). Lead/Icon is a
+    Material Icons ligature OR a literal symbol (e.g. "§"); Count shows a muted
+    pill (e.g. a file count). Actions pin a control to the right of the header.
+    The body sits flush under a hairline divider — content brings its own padding.
+    Flush drops the border + horizontal inset to embed inside another surface.
+*@
+
+<div class="odc-collapsible @(Flush ? "flush" : null) @Class" data-open="@(IsOpen ? "" : null)">
+    @* Header actions (when supplied) sit beside the toggle as a sibling — not nested
+       inside the button — so interactive controls (menus, links) stay valid and a
+       click on them doesn't toggle the disclosure. *@
+    <div class="odc-collapsible-head">
+        @* The disclosure heading wraps the trigger button (the WAI-ARIA accordion
+           pattern) so screen readers can navigate sections by heading. display:contents
+           keeps the button as the flex child it always was, so layout is untouched.
+           HeadingLevel=0 opts out (e.g. a non-section "advanced options" reveal). *@
+        @if (HeadingLevel > 0)
+        {
+            <div role="heading" aria-level="@HeadingLevel" style="display:contents">
+                @Trigger
+            </div>
+        }
+        else
+        {
+            @Trigger
+        }
+        @if (Actions is not null)
+        {
+            <div class="odc-collapsible-action">@Actions</div>
+        }
+    </div>
+    @if (IsOpen)
+    {
+        <div class="odc-collapsible-body">@ChildContent</div>
+    }
+</div>
+
+@code {
+    /// <summary>Header label.</summary>
+    [Parameter, EditorRequired] public RenderFragment? Title { get; set; }
+
+    /// <summary>Leading glyph — a Material Icons ligature (e.g. "attach_file") or a literal
+    /// symbol (e.g. "§"). <see cref="Icon"/> is an alias.</summary>
+    [Parameter] public string? Lead { get; set; }
+
+    /// <summary>Alias of <see cref="Lead"/> — leading Material Icons ligature or literal symbol.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>A muted pill at the end of the header label (e.g. an item count).</summary>
+    [Parameter] public RenderFragment? Count { get; set; }
+
+    /// <summary>Optional header actions (menu / link / buttons), pinned to the right of the
+    /// toggle. Clicks here do not toggle the disclosure.</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    /// <summary>Controlled open state — pair with OnToggle / @bind-Open.</summary>
+    [Parameter] public bool? Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Fires with the next open state on header activation.</summary>
+    [Parameter] public EventCallback<bool> OnToggle { get; set; }
+
+    /// <summary>Initial open state when uncontrolled.</summary>
+    [Parameter] public bool DefaultOpen { get; set; }
+
+    /// <summary>Drop the border and horizontal padding (embed inside another surface).</summary>
+    [Parameter] public bool Flush { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root (e.g. a section-specific modifier).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Wrap the trigger in an ARIA heading of this level (the WAI-ARIA accordion
+    /// pattern) so assistive tech can navigate sections by heading. Default 2; pass 0 to opt
+    /// out (e.g. a non-section "advanced options" reveal).</summary>
+    [Parameter] public int HeadingLevel { get; set; } = 2;
+
+    private bool _internal;
+
+    /// <summary>The trigger button — rendered either bare or wrapped in an ARIA heading.</summary>
+    private RenderFragment Trigger => __builder =>
+    {
+        <button type="button"
+                class="odc-collapsible-trigger"
+                aria-expanded="@(IsOpen ? "true" : "false")"
+                @onclick="Toggle">
+            @* Chevron leads the row (design-system order) — left of the lead glyph. *@
+            <span class="material-icons odc-collapsible-chev" aria-hidden="true">expand_more</span>
+            @if (!string.IsNullOrEmpty(Glyph))
+            {
+                @if (IsLigature(Glyph))
+                {
+                    <span class="material-icons odc-collapsible-lead" aria-hidden="true">@Glyph</span>
+                }
+                else
+                {
+                    <span class="odc-collapsible-lead glyph" aria-hidden="true">@Glyph</span>
+                }
+            }
+            <span class="odc-collapsible-title">@Title</span>
+            @if (Count is not null)
+            {
+                <span class="odc-collapsible-count">@Count</span>
+            }
+        </button>
+    };
+
+    /// <summary>The resolved leading glyph — <see cref="Icon"/> takes precedence over <see cref="Lead"/>.</summary>
+    private string? Glyph => string.IsNullOrEmpty(Icon) ? Lead : Icon;
+
+    /// <summary>A Material Icons ligature is all-lowercase ASCII letters, digits and underscores
+    /// (e.g. "attach_file"); anything else (e.g. "§") renders as a literal symbol.</summary>
+    private static bool IsLigature(string value) =>
+        value.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '_');
+
+    protected override void OnInitialized() => _internal = DefaultOpen;
+
+    private bool IsOpen => Open ?? _internal;
+
+    private async Task Toggle()
+    {
+        var next = !IsOpen;
+        if (Open is null)
+            _internal = next;
+        await OpenChanged.InvokeAsync(next);
+        await OnToggle.InvokeAsync(next);
+    }
+}

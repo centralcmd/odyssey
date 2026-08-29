@@ -1,0 +1,48 @@
+@* DS parity — no consumer yet: no surface carries a count badge. The module rail shows no
+   per-module counts, and status is rendered by the OdsChip family. Nothing in the client
+   renders MudBadge either. *@
+@*
+    OdsBadge — a compact count / status indicator (Odyssey Design System · components/Badge).
+
+    Distinct from OdsChip (which carries a label): a bare count or dot.
+    Tone = error (default, notifications) · primary · neutral. Set Dot for a
+    bare 8px dot; otherwise pass Count (values above Max render as "{Max}+")
+    or arbitrary child content.
+*@
+
+@if (Dot)
+{
+    <span class="odc-badge @ToneClass dot" aria-hidden="true"></span>
+}
+else
+{
+    <span class="odc-badge @ToneClass">@Content</span>
+}
+
+@code {
+    /// <summary>error (default, notifications) · primary · neutral.</summary>
+    [Parameter] public OdsBadgeTone Tone { get; set; } = OdsBadgeTone.Error;
+
+    /// <summary>Render a bare dot instead of a count / label.</summary>
+    [Parameter] public bool Dot { get; set; }
+
+    /// <summary>Numeric count; values above <see cref="Max"/> render as "{Max}+".</summary>
+    [Parameter] public int? Count { get; set; }
+
+    /// <summary>Cap for the count display.</summary>
+    [Parameter] public int Max { get; set; } = 99;
+
+    /// <summary>Arbitrary content shown when <see cref="Count"/> is not set.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string ToneClass => Tone switch
+    {
+        OdsBadgeTone.Primary => "primary",
+        OdsBadgeTone.Neutral => "neutral",
+        _ => string.Empty,
+    };
+
+    private RenderFragment Content => Count is { } c
+        ? builder => builder.AddContent(0, c > Max ? $"{Max}+" : c.ToString())
+        : ChildContent ?? (builder => { });
+}

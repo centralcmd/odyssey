@@ -1,0 +1,59 @@
+@*
+    OdsProblemAlert — the fix-it block for a data condition that needs attention
+    (Odyssey Design System · components/ProblemAlert). The expanded-detail half of
+    the problem/signal system (the PageHeader signal rollup + a row severity Chip
+    are the other two): a severity icon + title on one row (with an optional fix CTA
+    pinned right), then the detail below.
+
+    Severity tints the block — Warning (amber) · Error (coral) · Info (sea). Pass
+    ActionLabel + OnAction for the fix (routes to where it's resolved). The glyph is
+    the shared OdsSeverityIcon. Styled by .odc-problem in the global sheet.
+*@
+
+<div class="@($"odc-problem {Sev}{(string.IsNullOrEmpty(Class) ? "" : " " + Class)}")"
+     role="@(Severity == OdsSeverity.Error ? "alert" : "status")">
+    <div class="odc-problem-head">
+        <OdsSeverityIcon Severity="Severity" Size="20" />
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <div class="odc-problem-title">@Title</div>
+        }
+        @if (!string.IsNullOrEmpty(ActionLabel))
+        {
+            <button type="button" class="odc-problem-cta" @onclick="OnAction">
+                @ActionLabel
+                <span class="material-icons" aria-hidden="true">@ActionIcon</span>
+            </button>
+        }
+    </div>
+    @if (!string.IsNullOrEmpty(Detail))
+    {
+        <p class="odc-problem-detail">@Detail</p>
+    }
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>Warning (amber) · Error (coral) · Info (sea). Default Warning.</summary>
+    [Parameter] public OdsSeverity Severity { get; set; } = OdsSeverity.Warning;
+
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public string? Detail { get; set; }
+
+    /// <summary>Fix CTA label, pinned top-right. Omit for no action.</summary>
+    [Parameter] public string? ActionLabel { get; set; }
+
+    /// <summary>Trailing icon on the CTA. Default arrow_forward.</summary>
+    [Parameter] public string ActionIcon { get; set; } = "arrow_forward";
+
+    /// <summary>Invoked when the fix CTA is pressed (routes to where it's resolved).</summary>
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Extra content rendered below the detail line.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string Sev => Severity.ToString().ToLowerInvariant();
+}

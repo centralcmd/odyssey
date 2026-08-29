@@ -1,0 +1,125 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · AccountSmartTagsSection" subtitle="Per-account Smart Tags disclosure — a saved tag watchlist that surfaces matching transactions inside the expanded account record. Live off the DS namespace." viewport="1120x760" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · AccountSmartTagsSection</title>
+  <!-- Tokens + component styles, then the kit sheets that style the injected
+       ledger table (.ua-tbl / .acct-txn-table live there). -->
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/admin.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px 40px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 12px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .stack { display: flex; flex-direction: column; gap: 30px; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .note { margin: 14px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 92ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+  </style>
+</head>
+<body>
+  <div class="cap">AccountSmartTagsSection <code>&lt;AccountSmartTagsSection tags tagOptions transactions onAddTag onRemoveTag renderTable /&gt;</code></div>
+  <div class="stack" id="root"></div>
+  <p class="note">The expanded-account "Smart tags" disclosure: a saved, per-account tag watchlist. Watched tags show as removable <b>.odc-chip.tag</b> chips; the dashed <b>Add tag</b> control opens a checklist where <b>check → add</b> / <b>uncheck → remove</b> (one call each, matching the per-tag endpoints). The header pill counts matching transactions; the body steps through <b>NoSmartTags → Loading → NoTransactions → HasTransactions</b>. The ledger is injected via <b>renderTable</b> (the shared <b>TxnTable</b>), so the section never depends on the table's render contract. Read-only viewers (<b>canWrite=false</b>) keep the chips + table but lose every add/remove control.</p>
+
+  <script type="text/babel" data-presets="env,react">
+    const { AccountSmartTagsSection, TxnTable } = window.OdysseyDesignSystem_d5aa51;
+
+    const TAGS = [
+      { value: 't1', label: 'Groceries' }, { value: 't2', label: 'Subscriptions' },
+      { value: 't3', label: 'Transit' },   { value: 't4', label: 'Rent' },
+      { value: 't6', label: 'Dining' },    { value: 't7', label: 'Utilities' },
+      { value: 't9', label: 'Reimbursable' },
+    ];
+    const LABEL = Object.fromEntries(TAGS.map(t => [t.value, t.label]));
+
+    // Account's transactions (denormalized rows for TxnTable), each with a tag set.
+    const TXNS = [
+      { id: 'x1',  desc: 'Whole Foods Market · Mission', status: 'Approved', amount: -128.40, date: '2026-05-22', dir: 'expense', icon: 'shopping_cart', tags: ['t1', 't9'] },
+      { id: 'x13', desc: 'Costco Wholesale',             status: 'New',      amount: -96.30,  date: '2026-05-18', dir: 'expense', icon: 'shopping_cart', tags: ['t1'] },
+      { id: 'x5',  desc: 'PG&E · Electric',              status: 'Approved', amount: -104.20, date: '2026-05-14', dir: 'expense', icon: 'bolt',          tags: ['t7'] },
+      { id: 'x9',  desc: 'City Water · Quarterly',       status: 'Flagged',  amount: -61.18,  date: '2026-05-09', dir: 'expense', icon: 'water_drop',    tags: ['t7'] },
+      { id: 'x2',  desc: 'Acme Co · Payroll',            status: 'Approved', amount: 3250.00, date: '2026-05-01', dir: 'income',  icon: 'arrow_downward', tags: ['t5'] },
+      { id: 'x3',  desc: 'Spotify · Monthly',            status: 'Approved', amount: -11.99,  date: '2026-05-03', dir: 'expense', icon: 'music_note',    tags: ['t2'] },
+      { id: 'x4',  desc: 'BART · Monthly pass',          status: 'New',      amount: -88.00,  date: '2026-05-05', dir: 'expense', icon: 'local_taxi',    tags: ['t3'] },
+    ];
+
+    const renderTable = (rows) => (
+      <div className="acct-txn-table">
+        <TxnTable
+          txns={rows.map(t => ({ ...t, tags: t.tags.map(id => LABEL[id]) }))}
+          hideAccount
+        />
+      </div>
+    );
+
+    // ---- Interactive primary instance (seeded with Groceries + Utilities) ----
+    function Live() {
+      const [ids, setIds] = React.useState(['t1', 't7']);
+      const [loading, setLoading] = React.useState(false);
+      const first = React.useRef(true);
+      React.useEffect(() => {
+        if (first.current) { first.current = false; return; }
+        setLoading(true);
+        const h = setTimeout(() => setLoading(false), 440);
+        return () => clearTimeout(h);
+      }, [ids.join(',')]);
+
+      const matches = TXNS.filter(t => t.tags.some(id => ids.includes(id)));
+      return (
+        <AccountSmartTagsSection
+          tags={ids.map(id => ({ id, label: LABEL[id] }))}
+          tagOptions={TAGS}
+          transactions={matches}
+          loading={loading}
+          onAddTag={(id) => setIds(p => p.includes(id) ? p : [...p, id])}
+          onRemoveTag={(id) => setIds(p => p.filter(x => x !== id))}
+          renderTable={renderTable}
+          defaultOpen
+        />
+      );
+    }
+
+    function Demo() {
+      return (
+        <React.Fragment>
+          <Live />
+          <div className="pair">
+            <div>
+              <div className="cap">NoSmartTags — empty, writer can add the first</div>
+              <AccountSmartTagsSection tags={[]} tagOptions={TAGS} transactions={[]} renderTable={renderTable} defaultOpen />
+            </div>
+            <div>
+              <div className="cap">Read-only viewer (canWrite=false)</div>
+              <AccountSmartTagsSection
+                tags={[{ id: 't2', label: 'Subscriptions' }]}
+                tagOptions={TAGS}
+                transactions={TXNS.filter(t => t.tags.includes('t2'))}
+                canWrite={false}
+                renderTable={renderTable}
+                defaultOpen
+              />
+            </div>
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+</body>
+</html>

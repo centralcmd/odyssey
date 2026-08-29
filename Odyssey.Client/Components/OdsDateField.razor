@@ -1,0 +1,85 @@
+@*
+    OdsDateField — the labelled single-date field (Odyssey Design System ·
+    components/DateField): the OdsDatePicker calendar wrapped in the shared
+    OdsFieldShell chrome (label row with the required `*` / muted "Optional"
+    marker, and the helper / error line below). The date sibling of OdsField /
+    OdsAmountField / OdsNumberField / OdsNoteField, so a date entry reads and
+    aligns identically to every other labelled control in a form.
+
+    Binds DateTime? (via @bind-Value) — the OdsDatePicker DateTime? contract, not
+    the design system's ISO-string signature (a deliberate Blazor adaptation).
+    Min / Max disable out-of-range days.
+*@
+
+<OdsFieldShell Label="@Label" HtmlFor="@_id" Required="Required" Optional="Optional"
+               Help="@Help" Error="@Error" Class="@Class">
+    <OdsDatePicker Value="Value" ValueChanged="ValueChanged" Placeholder="@Placeholder"
+                   Min="Min" Max="Max" Align="Align" Full="Full" Disabled="Disabled" id="@_id"
+                   aria-label="@AriaLabel"
+                   aria-describedby="@DescribedByIds"
+                   aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")" />
+</OdsFieldShell>
+
+@code {
+    /// <summary>Field label rendered above the control.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Accessible name for the control itself — use when the field sits under a shared group
+    /// label (e.g. a "Starts" row holding both a date and a time) so a screen reader can still tell the
+    /// controls apart. Rendered as aria-label on the picker.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>Selected date, or null when empty. Bindable via @bind-Value.</summary>
+    [Parameter] public DateTime? Value { get; set; }
+
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "Select date";
+
+    /// <summary>Earliest selectable date.</summary>
+    [Parameter] public DateTime? Min { get; set; }
+
+    /// <summary>Latest selectable date.</summary>
+    [Parameter] public DateTime? Max { get; set; }
+
+    /// <summary>Helper text shown below the control.</summary>
+    [Parameter] public string? Help { get; set; }
+
+    /// <summary>Error message — flips the field to its error state and replaces the helper.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Optional { get; set; }
+
+    /// <summary>Popover alignment relative to the field. Start (default) / End.</summary>
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    /// <summary>Stretch to the container width. Default true (the DS default), matching every other field.</summary>
+    [Parameter] public bool Full { get; set; } = true;
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Optional explicit control id; a stable one is generated when omitted.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Additional id(s) this control's aria-describedby should include, alongside its own
+    /// help/error text — for a control living under a shared group instruction (e.g. a date range's
+    /// combined "both dates together, up to 92 days" rule) that no single field's own Help covers.
+    /// Space-separated, ARIA's standard multi-id format.</summary>
+    [Parameter] public string? DescribedBy { get; set; }
+
+    private string _id = default!;
+
+    /// <summary>Whether the shell renders a help/error line for the input to point at.</summary>
+    private bool HasDescription => !string.IsNullOrEmpty(Error) || !string.IsNullOrEmpty(Help);
+
+    private string? DescribedByIds =>
+        string.Join(' ', new[] { HasDescription ? $"{_id}-help" : null, DescribedBy }.Where(id => !string.IsNullOrEmpty(id))) is { Length: > 0 } ids
+            ? ids
+            : null;
+
+    protected override void OnInitialized() => _id = Id ?? $"ods-datefield-{Guid.NewGuid():N}";
+}

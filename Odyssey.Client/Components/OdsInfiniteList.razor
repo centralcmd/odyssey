@@ -1,0 +1,58 @@
+@*
+    OdsInfiniteList — the card-list counterpart to OdsInlinePager (Odyssey Design System ·
+    Components kit InfiniteList).
+
+    For the expandable card pages (Accounts, Budgets), which fetch their full set (the overview /
+    net-worth needs every row) and would be heavy to render all at once. It renders the first
+    BatchSize cards and appends the next batch when an IntersectionObserver sentinel near the end
+    scrolls into view; a centered status pill reports "X of N loaded". The only size control is the
+    toolbar's "Load N at a time" batch size (an OdsPageSizeSelect the page owns). `Trailing` (e.g.
+    an OdsAddRow) renders only once everything is loaded, since it would be unreachable mid-scroll.
+    `RevealKey` force-loads up to a specific item (the Accounts "jump to" so a flagged card beyond
+    the window still renders + scrolls into view).
+
+    Platform note: unlike the DS prototype (which fakes a 500ms fetch + skeletons), the rows are
+    already in memory here, so the append is immediate and the pill rests at "scroll for more" —
+    no dishonest spinner.
+*@
+
+@typeparam TItem
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@* The list never assembles its own loading / error / empty states — OdsListStatus owns all four
+   and this component owns only the windowing, so a card page cannot render "nothing here yet"
+   for a failed load without saying so. *@
+<OdsListStatus Loading="Loading" Refetching="Refetching" Error="Error" OnRetry="OnRetry"
+               ErrorDescription="@ErrorDescription"
+               IsEmpty="@(Total == 0)" HasFilters="HasFilters" OnClearFilters="OnClearFilters"
+               Noun="@Noun" EmptyIcon="@EmptyIcon" EmptyTitle="@EmptyTitle"
+               EmptyDescription="@EmptyDescription" CreateAction="CreateAction" Empty="Empty"
+               BarClass="@BarClass">
+    @* No wrapper element — the rendered card is a direct child of the host list container so its
+       `.acct-list > .acct-item` styling holds. (Card expand state lives in the host page, keyed by
+       item id, so omitting @key is safe.) *@
+    @foreach (var item in Items.Take(Shown))
+    {
+        @RenderItem(item)
+    }
+
+    @if (HasMore)
+    {
+        <div @ref="_sentinel" aria-hidden="true" style="height:1px"></div>
+        @* The pill is a real button so the next batch is reachable by keyboard (WCAG 2.1.1), not
+           only by scrolling the IntersectionObserver sentinel into view. It stays inside the
+           aria-live status region, whose text updates ("X of N") as batches load. *@
+        <div class="odc-infinite-status" role="status" aria-live="polite">
+            <button type="button" class="odc-infinite-pill" @onclick="Grow"
+                    aria-label="@($"Load more — {Shown:N0} of {Total:N0} {Noun} loaded")">
+                <span class="material-icons" aria-hidden="true" style="font-size:16px">expand_more</span>
+                @Shown.ToString("N0") of @Total.ToString("N0") @Noun · load more
+            </button>
+        </div>
+    }
+    else if (Trailing is not null)
+    {
+        @Trailing
+    }
+</OdsListStatus>

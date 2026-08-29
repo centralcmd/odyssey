@@ -1,0 +1,221 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="SettingRow" subtitle="The setting-row scaffold and the four control shapes it takes: a fixed-width control in the right-hand column (Switch, NumberField, CapacityField), and a content-width text control in the tinted Footer well. Covers the decimal row's % unit affordance, the Field-inside-SettingRow rules, and the save bar's blocking-error summary + unsaved-change badge." viewport="1060x1320" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · SettingRow — text, decimal, footer</title>
+  <meta charset="utf-8" />
+  <!-- Tokens + Material Icons, the .odc-* component sheet, then the kit sheet
+       that styles the row scaffold (.pref-row / .pref-list live there). -->
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px 40px; }
+    .stack { display: flex; flex-direction: column; gap: 30px; max-width: 940px; }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 6px; }
+    .lede { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 26px; max-width: 700px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 8px; }
+    .note { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-bottom: 14px; max-width: 720px; }
+    .note code, .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .sep { height: 1px; background: var(--mud-palette-divider); }
+    .savebar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 14px 16px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); }
+    .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .rule { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 14px 16px; }
+    .rule-h { display: flex; align-items: center; gap: 7px; font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); margin-bottom: 8px; }
+    .rule-h .material-icons { font-size: 17px; }
+    .rule .rule-h { color: var(--brand-text); }
+    .rule p { font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0; }
+    .rule code { font-family: var(--font-mono); color: var(--brand-text); }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>SettingRow — text and decimal rows</h1>
+  <p class="lede">One row, one control. The right-hand column takes controls of a fixed width; a control whose width is set by what someone types goes in the <code style="font-family:var(--font-mono);color:var(--brand-text)">footer</code> well instead.</p>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var Card = NS.Card, FieldShell = NS.FieldShell, Switch = NS.Switch;
+
+      // The three pieces below mirror their sources 1:1 so this card renders in
+      // the same turn the sources change, before the bundle recompiles.
+      // SettingRow → components/SettingRow.jsx
+      function SettingRow(p) {
+        return e(Card, { outlined: true, flush: true },
+          e('div', { className: 'card-body pref-row' },
+            e('div', { className: 'pref-main' },
+              e('span', { className: 'pref-ic' + (p.danger ? ' danger' : '') },
+                e('span', { className: 'material-icons', 'aria-hidden': 'true', style: { fontSize: 20 } }, p.icon)),
+              e('div', { className: 'pref-text' },
+                e('div', { className: 'pref-ttl', id: p.titleId }, p.title),
+                p.desc ? e('div', { className: 'pref-desc', id: p.descId }, p.desc) : null)),
+            e('div', { className: 'pref-control' }, p.children)),
+          p.footer ? e('div', { className: 'odc-setting-footer' }, p.footer) : null);
+      }
+      // NumberField with the `unit` adornment → components/NumberField.jsx
+      function NumberField(p) {
+        var id = p.id, unitId = id + '-unit', helpId = id + '-help';
+        var described = [p.ariaDescribedBy, p.unit ? unitId : null, p.help ? helpId : null,
+          p.error ? helpId : null].filter(Boolean).join(' ') || undefined;
+        var input = e('input', {
+          id: id, className: 'odc-input' + (p.unit ? ' has-unit' : ''), type: 'number',
+          value: p.value == null ? '' : p.value, min: p.min, max: p.max, step: p.step,
+          disabled: p.disabled, style: { textAlign: 'right' },
+          'aria-invalid': p.error ? true : undefined, 'aria-labelledby': p.ariaLabelledBy,
+          'aria-describedby': described, onChange: function (ev) { p.onChange(ev.target.value === '' ? null : parseFloat(ev.target.value)); },
+        });
+        return e(FieldShell, { htmlFor: id, help: p.help, error: p.error, className: p.className },
+          p.unit ? e('div', { className: 'odc-input-wrap' }, input, e('span', { className: 'odc-input-unit', id: unitId }, p.unit)) : input);
+      }
+      // TextInputField → components/TextInputField.jsx
+      var TextInputField = NS.TextInputField || function (p) {
+        var id = p.id, helpId = id + '-help';
+        var described = [p.ariaDescribedBy, p.help ? helpId : null, p.error ? helpId : null].filter(Boolean).join(' ') || undefined;
+        return e(FieldShell, { htmlFor: id, help: p.help, error: p.error, className: p.className,
+          aside: (p.showCount && p.maxLength) ? e('span', { className: 'odc-field-count' }, (p.value || '').length + '/' + p.maxLength) : null },
+          e('input', { id: id, className: 'odc-input', type: 'text', value: p.value || '',
+            placeholder: p.placeholder, maxLength: p.maxLength, inputMode: p.inputMode, disabled: p.disabled,
+            'aria-invalid': p.error ? true : undefined, 'aria-labelledby': p.ariaLabelledBy,
+            'aria-describedby': described, onChange: function (ev) { p.onChange(ev.target.value); } }));
+      };
+      // ErrorSummary → components/ErrorSummary.jsx
+      var ErrorSummary = NS.ErrorSummary || function (p) {
+        if (!p.count) return null;
+        var lbl = p.count + ' problem' + (p.count === 1 ? '' : 's');
+        return e('button', { type: 'button', className: 'odc-errsum', 'aria-label': lbl + ', review', onClick: p.onReview },
+          e('span', { className: 'material-icons', 'aria-hidden': 'true' }, 'error_outline'),
+          e('span', { 'aria-hidden': 'true' }, lbl),
+          e('span', { className: 'odc-errsum-sep', 'aria-hidden': 'true' }, '\u00b7'),
+          e('span', { className: 'odc-errsum-act', 'aria-hidden': 'true' }, 'Review'));
+      };
+      // Button with the count badge → components/Button.jsx
+      function Btn(p) {
+        return e('button', { type: 'button', disabled: p.disabled,
+          className: 'odc-btn ' + (p.variant || 'filled') },
+          p.icon ? e('span', { className: 'material-icons', 'aria-hidden': 'true' }, p.icon) : null,
+          e('span', null, p.children),
+          p.badge ? e('span', { className: 'odc-btn-badge', 'aria-hidden': 'true' }, p.badge) : null,
+          p.badge ? e('span', { className: 'odc-sr-only' }, ', ' + p.badge + ' ' + p.badgeLabel) : null);
+      }
+
+      // ---- Demo rows ----
+      function TextRow(props) {
+        var s = React.useState(props.value), v = s[0], set = s[1];
+        var err = props.error === undefined ? null : props.error;
+        return e(SettingRow, {
+          icon: 'link', titleId: props.id + '-ttl', descId: props.id + '-desc',
+          title: 'AI processor privacy notice',
+          desc: 'Linked from the analysis consent prompt. Must be a public https:// URL your provider publishes.',
+          footer: e('div', { className: 'odc-setting-text' },
+            e(TextInputField, {
+              id: props.id, value: v, onChange: set, inputMode: 'url', maxLength: 2048,
+              placeholder: 'https://…', disabled: props.disabled, error: err || undefined,
+              help: err ? undefined : 'Shown to every user before their first file is sent for analysis.',
+              ariaLabelledBy: props.id + '-ttl', ariaDescribedBy: props.id + '-desc' })),
+        });
+      }
+
+      function PercentRow(props) {
+        var s = React.useState(props.value), v = s[0], set = s[1];
+        return e(SettingRow, {
+          icon: 'query_stats', titleId: props.id + '-ttl', descId: props.id + '-desc',
+          title: 'Minimum analysis confidence',
+          desc: 'Below this, an analysed file is queued for manual review instead of being filed automatically.',
+        }, e('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } },
+          e(NumberField, {
+            id: props.id, className: 'odc-capacity-num', value: v, min: 0, max: 100, step: 1,
+            unit: '%', disabled: props.disabled, error: props.error,
+            ariaLabelledBy: props.id + '-ttl', ariaDescribedBy: props.id + '-desc',
+            onChange: set })));
+      }
+
+      function SizeRow() {
+        var s = React.useState(5), v = s[0], set = s[1];
+        return e(SettingRow, {
+          icon: 'sd_storage', titleId: 'sz-ttl', descId: 'sz-desc',
+          title: 'Maximum import file size',
+          desc: 'Largest iCalendar (.ics) upload accepted before the request is rejected.',
+        }, e('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } },
+          e(NumberField, { id: 'sz', className: 'odc-capacity-num', value: v, min: 1, max: 512, step: 1,
+            unit: 'MB', ariaLabelledBy: 'sz-ttl', ariaDescribedBy: 'sz-desc', onChange: set })));
+      }
+
+      function SwitchRow() {
+        var s = React.useState(true), v = s[0], set = s[1];
+        return e(SettingRow, {
+          icon: 'auto_awesome', titleId: 'sw-ttl',
+          title: 'Send files for AI analysis',
+          desc: 'Uploaded files are sent to the configured processor to be classified and summarised.',
+        }, e(Switch, { checked: v, onChange: set, 'aria-labelledby': 'sw-ttl' }));
+      }
+
+      var root = [
+        e('div', { key: 'text' },
+          e('div', { className: 'cap' }, 'Text row · the ', e('code', { key: 'c' }, 'footer'), ' well'),
+          e('div', { className: 'note' }, 'A URL or a name is as wide as its content, and the row is ',
+            e('code', { key: 'a' }, 'align-items:center'), ' with a ', e('code', { key: 'b' }, 'flex:none'),
+            ' control column that never wraps — so a text control in that column overflows, and shoves the row about the moment its error line appears. The footer is a tinted well flush to the card edges: the tint is the separator, so there is no divider and no indent to the title. The input grows with what is typed, up to a 420px cap, and is labelled by the row title.'),
+          e('div', { className: 'pref-list' },
+            e(TextRow, { key: 1, id: 'tx1', value: 'https://acme.example/ai-privacy-notice' }),
+            e(TextRow, { key: 2, id: 'tx2', value: 'acme.example/notice', error: 'Enter a full https:// URL' }),
+            e(TextRow, { key: 3, id: 'tx3', value: 'https://acme.example/ai-privacy-notice', disabled: true }))),
+
+        e('div', { className: 'sep', key: 's1' }),
+
+        e('div', { key: 'dec' },
+          e('div', { className: 'cap' }, 'Decimal row · the ', e('code', { key: 'c' }, 'unit'), ' adornment'),
+          e('div', { className: 'note' }, 'A stored 0.0–1.0 fraction is entered as a whole percent: ',
+            e('code', { key: 'a' }, 'min=0 max=100 step=1 unit="%"'),
+            ', scaled at the page boundary (×100 in, ÷100 out). Never expose the raw fraction with ',
+            e('code', { key: 'b' }, 'step=0.01'), ' — “0.62” gives no clue it is a proportion and the two-decimal stepper is a fiddly target. The unit sits inside the input’s trailing edge rather than in the helper line, so it survives an error message; it is appended to ',
+            e('code', { key: 'c2' }, 'aria-describedby'), ', never used in place of the label.'),
+          e('div', { className: 'pref-list' },
+            e(PercentRow, { key: 1, id: 'pc1', value: 62 }),
+            e(PercentRow, { key: 2, id: 'pc2', value: 140, error: 'Must be between 0% and 100%' }),
+            e(SizeRow, { key: 3 }),
+            e(SwitchRow, { key: 4 }))),
+
+        e('div', { className: 'sep', key: 's2' }),
+
+        e('div', { key: 'rules' },
+          e('div', { className: 'cap' }, 'Which slot a field goes in'),
+          e('div', { className: 'rules' },
+            e('div', { className: 'rule' },
+              e('div', { className: 'rule-h' }, e('span', { className: 'material-icons', key: 'i' }, 'tune'), 'Control column'),
+              e('p', null, 'Fixed, predictable width: ', e('code', { key: 'a' }, 'Switch'), ', ',
+                e('code', { key: 'b' }, 'NumberField'), ', ', e('code', { key: 'c' }, 'CapacityField'), ', ',
+                e('code', { key: 'd' }, 'Select'), ', a ', e('code', { key: 'e' }, 'Button'),
+                '. Numeric fields pin to 120px and right-align, so a column of them lines up down the page.')),
+            e('div', { className: 'rule' },
+              e('div', { className: 'rule-h' }, e('span', { className: 'material-icons', key: 'i' }, 'notes'), 'Footer well'),
+              e('p', null, 'Anything content-width — ', e('code', { key: 'a' }, 'TextInputField'), ', ',
+                e('code', { key: 'b' }, 'Field'), ', a chip list — plus a cross-field or round-trip error that cannot fit the column. Use ',
+                e('code', { key: 'c' }, 'TextInputField'), ' here, not ', e('code', { key: 'd' }, 'Field'),
+                ': the row owns the title and description this control must point ', e('code', { key: 'e' }, 'aria-labelledby'), ' at.')))),
+
+        e('div', { className: 'sep', key: 's3' }),
+
+        e('div', { key: 'save' },
+          e('div', { className: 'cap' }, 'Save bar · blocking problems and pending changes'),
+          e('div', { className: 'note' }, 'At 42 rows across 11 sections, a disabled Save with its cause two screens away is a dead end. The summary is a button, not a banner — pressing it moves focus to the first blocking field, which is what makes the disabled action recoverable by keyboard. The count pill on Save answers the other half: how much is waiting to be committed.'),
+          e('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+            e('div', { className: 'savebar' },
+              e(ErrorSummary, { count: 2, onReview: function () {} }),
+              e(Btn, { disabled: true, icon: 'save', badge: 3, badgeLabel: 'unsaved changes' }, 'Save changes')),
+            e('div', { className: 'savebar' },
+              e(Btn, { icon: 'save', badge: 3, badgeLabel: 'unsaved changes' }, 'Save changes')),
+            e('div', { className: 'savebar' },
+              e(Btn, { icon: 'save' }, 'Save changes'))))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>

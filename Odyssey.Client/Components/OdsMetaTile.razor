@@ -1,0 +1,30 @@
+@*
+    OdsMetaTile — a labelled read-only field well (Odyssey Design System · components/MetaTile).
+
+    One key/value cell in a detail grid — the read-only wells that fill an
+    expanded record's panel (a .odc-meta-grid of these sits inside an
+    OdsRecordTable's RenderDetail). Maps to a MudField in read-only display mode.
+    Mono sets the value in Roboto Mono (IDs, codes, timestamps). Tiles always sit
+    two per row — there is no spanning variant; long values (descriptions, GUIDs,
+    file names) wrap to multiple lines inside their tile. Value is any content —
+    drop an OdsChip in for a status.
+*@
+
+<div class="odc-meta-tile">
+    <div class="odc-meta-tile-label">@Label</div>
+    <div class="odc-meta-tile-value @(Mono ? "mono" : null) @ValueClass">@ChildContent</div>
+</div>
+
+@code {
+    /// <summary>Uppercase field label.</summary>
+    [Parameter, EditorRequired] public RenderFragment? Label { get; set; }
+
+    /// <summary>Field value — text or any content (e.g. an OdsChip for a status).</summary>
+    [Parameter, EditorRequired] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Render the value in Roboto Mono (IDs, codes, timestamps).</summary>
+    [Parameter] public bool Mono { get; set; }
+
+    /// <summary>Extra class on the value element.</summary>
+    [Parameter] public string? ValueClass { get; set; }
+}

@@ -1,0 +1,53 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Brand · rasterized favicons" subtitle="16 / 32 / 192 / 512 px PNG exports on a tab-bar surface" viewport="700x220" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Brand · rasterized favicons</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    body { padding: 14px 20px; }
+    .head { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 14px; }
+    .row { display: flex; align-items: flex-end; gap: 36px; padding: 8px 0 18px; }
+    .cell { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .frame {
+      display: grid; place-items: center;
+      background: #FFFFFF;
+      border: 1px solid var(--mud-palette-divider);
+      border-radius: 4px;
+      padding: 6px;
+    }
+    .lab  { font: 500 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .sz   { font: 400 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+    .note { font: 400 11px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); border-top: 1px solid var(--mud-palette-divider-light); padding-top: 12px; }
+    .note .mono { font-family: var(--font-mono); color: var(--mud-palette-text-primary); }
+  </style>
+
+  <div class="head">Rasterized favicons · shown 1:1 on a white tab-bar surface</div>
+  <div class="row">
+    <div class="cell">
+      <div class="frame"><img src="../assets/odyssey-favicon-16.png"  width="16"  height="16"  alt="16"/></div>
+      <div class="sz">16 × 16</div>
+      <div class="lab">browser tab</div>
+    </div>
+    <div class="cell">
+      <div class="frame"><img src="../assets/odyssey-favicon-32.png"  width="32"  height="32"  alt="32"/></div>
+      <div class="sz">32 × 32</div>
+      <div class="lab">retina tab · 32px favicon</div>
+    </div>
+    <div class="cell">
+      <div class="frame"><img src="../assets/odyssey-favicon-192.png" width="96"  height="96"  alt="192"/></div>
+      <div class="sz">192 × 192 <span style="opacity:0.6">(shown 96)</span></div>
+      <div class="lab">android · pwa</div>
+    </div>
+    <div class="cell">
+      <div class="frame"><img src="../assets/odyssey-favicon-512.png" width="128" height="128" alt="512"/></div>
+      <div class="sz">512 × 512 <span style="opacity:0.6">(shown 128)</span></div>
+      <div class="lab">apple touch · pwa</div>
+    </div>
+  </div>
+
+  <div class="note">
+    16 + 32 px render from <span class="mono">odyssey-logomark-small.svg</span> — a simplified mark
+    that drops the inner dashed ring, ordinal ticks, and gray E/W needles so the silhouette stays readable.
+    192 + 512 px render from the full <span class="mono">odyssey-logomark.svg</span>.
+  </div>
+</body></html>

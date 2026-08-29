@@ -1,0 +1,73 @@
+@*
+    OdsCoordinateField — paired latitude / longitude entry (Odyssey Design System · CoordinateField).
+
+    Two OdsNumberFields in an OdsFormRow, each with its geographic range enforced (lat −90…90,
+    lng −180…180) and an inline out-of-range error, so every "pin a place" spot reads and validates
+    identically instead of re-deriving the ranges. Bind the two ends via @bind-Lat / @bind-Lng
+    (decimal?, the Blazor-idiomatic form of the design's {lat,lng} pair — mirrors OdsDatePicker's
+    DateTime? adaptation).
+*@
+
+<div class="@(string.IsNullOrEmpty(Class) ? "odc-coordfield" : $"odc-coordfield {Class}")">
+    <OdsFormRow Cols="2">
+        <OdsNumberField Label="@LatLabel" Value="Lat" ValueChanged="OnLatChanged"
+                        Placeholder="−90 … 90" Min="-90" Max="90" Step="0.000001"
+                        Required="Required" Optional="Optional" Disabled="Disabled" Error="@LatError" />
+        <OdsNumberField Label="@LngLabel" Value="Lng" ValueChanged="OnLngChanged"
+                        Placeholder="−180 … 180" Min="-180" Max="180" Step="0.000001"
+                        Required="Required" Optional="Optional" Disabled="Disabled" Error="@LngError" />
+    </OdsFormRow>
+    @if (Message is not null)
+    {
+        <div class="odc-field-help" style="margin-top: 6px;">@Message</div>
+    }
+</div>
+
+@code {
+    /// <summary>Latitude in decimal degrees, or null when empty. Bindable via @bind-Lat.</summary>
+    [Parameter] public decimal? Lat { get; set; }
+
+    [Parameter] public EventCallback<decimal?> LatChanged { get; set; }
+
+    /// <summary>Longitude in decimal degrees, or null when empty. Bindable via @bind-Lng.</summary>
+    [Parameter] public decimal? Lng { get; set; }
+
+    [Parameter] public EventCallback<decimal?> LngChanged { get; set; }
+
+    [Parameter] public string LatLabel { get; set; } = "Latitude";
+
+    [Parameter] public string LngLabel { get; set; } = "Longitude";
+
+    /// <summary>Helper text below the pair. Suppressed while a range error shows.</summary>
+    [Parameter] public string? Help { get; set; }
+
+    /// <summary>Explicit error message below the pair.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Optional { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private string? LatError => Lat is < -90m or > 90m ? "Must be between −90 and 90" : null;
+
+    private string? LngError => Lng is < -180m or > 180m ? "Must be between −180 and 180" : null;
+
+    private string? Message =>
+        Error ?? (LatError is null && LngError is null ? Help : null);
+
+    private Task OnLatChanged(decimal? value)
+    {
+        Lat = value;
+        return LatChanged.InvokeAsync(value);
+    }
+
+    private Task OnLngChanged(decimal? value)
+    {
+        Lng = value;
+        return LngChanged.InvokeAsync(value);
+    }
+}

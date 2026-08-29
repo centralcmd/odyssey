@@ -1,0 +1,184 @@
+@using Odyssey.Dtos.Finance
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IClipboardService Clipboard
+@inject IBudgetItemsApiClient BudgetItems
+
+@* Budget items collapsible — grouped income/expense rows with an actual-vs-planned
+   bar, plus an inline "edit multiple" mode (name · category · tag · planned).
+   Actuals come from the parent's per-tag report sums; the parent reloads on change. *@
+<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="list_alt">
+    <Title>Budget items</Title>
+    <Count>@Items.Count</Count>
+    <Actions>
+        @if (CanCreate || CanUpdate || CanDelete)
+        {
+            @if (_isEditing)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Check" OnClick="StopEditing">Done</MudButton>
+            }
+            else
+            {
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"
+                         AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                    @if (CanCreate)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Add" OnClick="AddItem">New item</MudMenuItem>
+                    }
+                    @if (CanUpdate)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="StartEditing">Edit items</MudMenuItem>
+                    }
+                </MudMenu>
+            }
+        }
+    </Actions>
+    <ChildContent>
+            @if (Items.Count == 0)
+            {
+                <div class="empty-line">No budget items yet. Add income and expense items to plan this period.</div>
+            }
+            else if (_isEditing)
+            {
+                <!-- ── Edit multiple ─────────────────────────────────────── -->
+                <div class="bi-edit-grid">
+                    <div class="bi-edit-head">
+                        <span>Item</span>
+                        <span>Category</span>
+                        <span>Transaction tag</span>
+                        <span class="bi-right">Planned</span>
+                        <span></span>
+                    </div>
+                    @foreach (var item in Items)
+                    {
+                        var draft = GetDraft(item);
+                        <div class="bi-edit-row">
+                            <MudTextField T="string" Value="@draft.Name" ValueChanged="@(v => OnNameChanged(item, v))"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth="true" />
+                            <MudSelect T="BudgetCategoryType" Value="@draft.CategoryType" ValueChanged="@(v => OnCategoryChanged(item, v))"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                <MudSelectItem T="BudgetCategoryType" Value="BudgetCategoryType.Income">Income</MudSelectItem>
+                                <MudSelectItem T="BudgetCategoryType" Value="BudgetCategoryType.Expense">Expense</MudSelectItem>
+                            </MudSelect>
+                            <MudSelect T="Guid?" Value="@draft.TransactionTagId" ValueChanged="@(v => OnTagChanged(item, v))"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                <MudSelectItem T="Guid?" Value="@(null)">None</MudSelectItem>
+                                @foreach (var tag in AvailableTagsForItem(item.BudgetItemId))
+                                {
+                                    <MudSelectItem T="Guid?" Value="@tag.TransactionTagId">@tag.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudNumericField T="decimal" Value="@draft.PlannedAmount" ValueChanged="@(v => OnPlannedChanged(item, v))"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true"
+                                             Class="bi-planned-input" />
+                            <div class="bi-edit-actions">
+                                @if (CanDelete)
+                                {
+                                    <OdsIconButton Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" Danger="true"
+                                                   Disabled="@_isBusy" OnClick="@(() => DeleteItem(item))"
+                                                   AriaLabel="Delete budget item" />
+                                }
+                            </div>
+                        </div>
+                    }
+                    <div class="bi-edit-foot">
+                        <span class="bi-edit-note">Changes apply as you type.</span>
+                        @if (CanCreate)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Add" OnClick="AddItem">New item</MudButton>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- ── View ──────────────────────────────────────────────── -->
+                @* Rows are color-coded by kind (income mint / expense coral) via a left
+                   accent — no header band; the row color marks the split. *@
+                <div class="bi-table">
+                    <div class="bi-colhead">
+                        <span>Item</span>
+                        <span>Actual vs planned</span>
+                        <span class="bi-right">Actual</span>
+                        <span class="bi-right">Planned</span>
+                        <span></span>
+                    </div>
+
+                    @foreach (var group in VisibleGroups)
+                    {
+                        var income = group.Category == BudgetCategoryType.Income;
+                        <div class="bi-group">
+                            @foreach (var item in group.Items)
+                            {
+                                var actual = ItemActual(item);
+                                var planned = item.PlannedAmount;
+                                var fraction = planned > 0 && actual is not null ? (double)(actual.Value / planned) : 0;
+                                var pct = Math.Clamp(fraction, 0, 1) * 100;
+                                var over = !income && actual is not null && actual.Value > planned;
+                                var barTone = income ? OdsProgressTone.Income : (over ? OdsProgressTone.Over : OdsProgressTone.Expense);
+                                <div class="bi-row @(income ? "income" : "expense")">
+                                    <div class="bi-item">
+                                        <span class="bi-item-name">@item.Name</span>
+                                        @if (item.TransactionTagId is not null)
+                                        {
+                                            <span class="bi-tag">@TagName(item.TransactionTagId)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="bi-tag untagged">Untagged</span>
+                                        }
+                                    </div>
+                                    <div class="bi-bar">
+                                        <OdsProgressBar Value="@pct" Tone="@barTone" />
+                                        @if (over)
+                                        {
+                                            <span class="bi-over">over by @Format(actual!.Value - planned, CurrencyCode)</span>
+                                        }
+                                    </div>
+                                    <div class="bi-actual mono @(item.TransactionTagId is null ? "muted" : "")">@(actual is null ? "—" : Format(actual.Value, CurrencyCode))</div>
+                                    <div class="bi-planned mono">@Format(planned, CurrencyCode)</div>
+                                    <div class="bi-actions">
+                                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"
+                                                 AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                                            @if (CanUpdate)
+                                            {
+                                                <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                             OnClick="@(() => EditItem(item))">Edit</MudMenuItem>
+                                            }
+                                            <MudMenuItem OnClick="@(() => CopyItemId(item))">
+                                                <span class="odc-menu-item">
+                                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
+                                                    <span>Copy ID</span>
+                                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
+                                                </span>
+                                            </MudMenuItem>
+                                            @if (CanDelete)
+                                            {
+                                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                             Style="color:var(--mud-palette-error);"
+                                                             OnClick="@(() => DeleteItem(item))">Delete</MudMenuItem>
+                                            }
+                                        </MudMenu>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+    </ChildContent>
+</OdsCollapsible>
+
+@if (_itemKey != Guid.Empty)
+{
+    <CreateBudgetItemDialog @key="_itemKey"
+                            @bind-Open="_itemDialogOpen"
+                            BudgetId="BudgetId"
+                            BudgetName="@BudgetName"
+                            TransactionTags="TransactionTags"
+                            UsedTransactionTagIds="_dialogUsedTagIds"
+                            ExistingItem="_editItem"
+                            OnSaved="OnItemSaved" />
+}

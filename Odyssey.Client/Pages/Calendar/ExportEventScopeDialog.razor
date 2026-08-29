@@ -1,0 +1,106 @@
+@*
+    ExportEventScopeDialog — the occurrence-vs-series prompt for exporting a single recurring event from
+    CalendarEventDialog (issue #340, Odyssey Design System · ExportEventScopeModal). A standalone event
+    never opens this; the page downloads it immediately. Renders on top of the still-open event dialog
+    (no close-then-open sequencing) — CalendarPage owns which event this is for.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="event_repeat"
+          Title="@TitleContent" Subtitle="@SubtitleContent" Class="cal-exp-scope">
+    <ChildContent>
+        <div class="ods-modal-body cal-exp-scope-body" role="radiogroup" aria-label="What to export">
+            @for (var i = 0; i < _choices.Length; i++)
+            {
+                var index = i;
+                var choice = _choices[index];
+                <button type="button" role="radio" aria-checked="@(_scope == choice.Scope ? "true" : "false")"
+                        tabindex="@(_scope == choice.Scope ? 0 : -1)"
+                        @ref="_choiceRefs[index]"
+                        class="@("cal-exp-choice" + (_scope == choice.Scope ? " sel" : ""))"
+                        @onclick="@(() => Pick(choice.Scope))"
+                        @onkeydown="@(e => OnKeyAsync(e, index))">
+                    <span class="material-icons cal-exp-choice-radio" aria-hidden="true">@(_scope == choice.Scope ? "radio_button_checked" : "radio_button_unchecked")</span>
+                    <span class="cal-exp-choice-t"><b>@choice.Title</b><span>@choice.Description</span></span>
+                </button>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <div style="flex:1"></div>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="download" OnClick="ChooseAsync">Export</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The recurring event's title — shown in the subtitle so the choice is unambiguous.</summary>
+    [Parameter] public string EventTitle { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback<CalendarEventExportScope> OnChoose { get; set; }
+
+    private readonly record struct Choice(CalendarEventExportScope Scope, string Title, string Description);
+
+    private static readonly Choice[] _choices =
+    [
+        new(CalendarEventExportScope.Occurrence, "This occurrence", "Just the one dated event, as a standalone VEVENT."),
+        new(CalendarEventExportScope.Series, "Entire series", "The full recurring rule as one RRULE VEVENT."),
+    ];
+
+    private readonly ElementReference[] _choiceRefs = new ElementReference[_choices.Length];
+
+    private CalendarEventExportScope _scope = CalendarEventExportScope.Occurrence;
+    private bool _wasOpen;
+
+    private RenderFragment TitleContent => @<text>Export event</text>;
+
+    private RenderFragment SubtitleContent => @<text>"@EventTitle" is part of a recurring series. Choose what to export.</text>;
+
+    protected override void OnParametersSet()
+    {
+        // Reset only on the closed→open edge — OnParametersSet reruns on every re-render while Open
+        // stays true (e.g. after the user picks a scope), so resetting unconditionally would fight the
+        // user's own click back to the default before they can submit it.
+        if (Open && !_wasOpen)
+        {
+            _scope = CalendarEventExportScope.Occurrence;
+        }
+
+        _wasOpen = Open;
+    }
+
+    private void Pick(CalendarEventExportScope scope) => _scope = scope;
+
+    // Radiogroup keyboard model (WCAG 2.1.1 / 4.1.2, APG radio pattern): arrows + Home/End move the
+    // selection and the focus together across the two choices. Only the selected radio is in the tab
+    // order (roving tabindex), so the group is a single tab stop — mirrors AddContractPartyDialog's
+    // party-kind picker.
+    private async Task OnKeyAsync(KeyboardEventArgs e, int index)
+    {
+        int? next = e.Key switch
+        {
+            "ArrowRight" or "ArrowDown" => (index + 1) % _choices.Length,
+            "ArrowLeft" or "ArrowUp" => (index - 1 + _choices.Length) % _choices.Length,
+            "Home" => 0,
+            "End" => _choices.Length - 1,
+            _ => null,
+        };
+        if (next is not { } ni)
+        {
+            return;
+        }
+
+        Pick(_choices[ni].Scope);
+        await _choiceRefs[ni].FocusAsync();
+    }
+
+    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+
+    private async Task ChooseAsync()
+    {
+        await OnChoose.InvokeAsync(_scope);
+        await CloseAsync();
+    }
+}

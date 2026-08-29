@@ -1,0 +1,28 @@
+/* Shared card shell for preview/*.html — designs are scaled to 700px wide
+   and capped at the registered card height. Body bg matches dark surface. */
+@import url('../colors_and_type.css');
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--mud-palette-background);
+  color: var(--mud-palette-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  padding: 20px;
+  box-sizing: border-box;
+  width: 700px;
+}
+* { box-sizing: border-box; }
+
+.row     { display: flex; gap: 12px; align-items: center; }
+.row-sb  { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.col     { display: flex; flex-direction: column; gap: 8px; }
+.stack-2 { display: flex; flex-direction: column; gap: 8px; }
+.stack-3 { display: flex; flex-direction: column; gap: 12px; }
+.grid    { display: grid; gap: 12px; }
+.label   { font: 500 11px/1.4 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.meta    { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.mono    { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }

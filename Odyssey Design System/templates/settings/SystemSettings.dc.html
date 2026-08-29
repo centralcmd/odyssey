@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="System settings" description="Admin-only, instance-wide runtime settings — 63 settings across sixteen sections. One card per SECTION, holding a two-column grid of SettingFields: each setting is a notched outline (MudBlazor Variant.Outlined) with its label on the border, its value inside, and one always-visible helper line carrying the description plus the last-changed stamp. Six control types: switch and action as full-width tiles; number, MB size cap, percent (a stored 0.0–1.0 fraction entered as whole percent), capacity (a number or No limit, with an inverse-action pill), and free text spanning both columns. Carries the settings-page patterns: per-claim locking, non-blocking amber advisories on the cost-bearing caps (raised above their shipped default), on the file-analysis kill switch when it is on, on a model or destination moved off its shipped default, and on the processor-host heuristic, blocking shape validation on the provider base URL (absolute https, no userinfo, query, fragment or path — canonicalised so https://host/ and https://host are one value), single-direction rows marked `lower only` / `raise only` in the outline, a group round-trip alert, and an expandable problem list beside a disabled Save that scrolls, focuses and flashes the offending field." -->
+<helmet>
+  <script src="../kit-app.js"></script>
+</helmet>
+<div data-theme="dark" style="min-height: 100vh; background: var(--mud-palette-background, #14161c); color: var(--mud-palette-text-primary, #e7ebf3); padding: 28px 28px 64px; box-sizing: border-box;">
+  <div id="kit-mount" style="max-width: 1240px; margin: 0 auto;"></div>
+  <div id="kit-loading" style="display: block; max-width: 1240px; margin: 0 auto; padding: 72px 0; text-align: center; font: 400 14px/1.5 var(--font-sans, system-ui); color: var(--mud-palette-text-secondary, #9aa3b2);">
+    Loading…
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  get COMPONENT() { return 'SystemSettings'; }
+  _mountWhenReady() {
+    if (this._mounted) return;
+    if (!this._el) this._el = document.getElementById('kit-mount');
+    const C = window[this.COMPONENT];
+    const ready = this._el && window.React && window.ReactDOM &&
+                  window.ReactDOM.createRoot && window.__kitReady && C;
+    if (!ready) { this._raf = setTimeout(() => this._mountWhenReady(), 80); return; }
+    this._root = window.ReactDOM.createRoot(this._el);
+    this._mounted = true;
+    const loader = document.getElementById('kit-loading');
+    if (loader) loader.style.display = 'none';
+    this._root.render(window.React.createElement(C, window.__KIT_PROPS));
+  }
+  componentDidMount() { this._mountWhenReady(); }
+  componentWillUnmount() {
+    if (this._raf) clearTimeout(this._raf);
+    if (this._root) { try { this._root.unmount(); } catch (e) {} }
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

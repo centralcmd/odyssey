@@ -1,0 +1,54 @@
+@*
+    OdsAccountStatusChip — the read display of an account's status as a chip
+    (Odyssey Design System · components/AccountStatusChip).
+
+    The status sibling of OdsAccountTypeChip / OdsCustodianChip: the same
+    .odc-typechip pill shell, but the leading accent is a tone-colored dot
+    (status is a state, not a category with an icon) followed by the status word
+    and an optional muted trailing Detail segment — the date context
+    (e.g. "since Mar 14, 2021" / "on Mar 10, 2021"). Reads consistently with
+    type + custodian in the account-detail metadata grid.
+
+    Tone maps to the dot color — Income (open) · Pending (closed) ·
+    Outline/Default (archived). The dot is decorative (aria-hidden); the label
+    carries the meaning.
+*@
+
+<span class="@ChipClass">
+    <span class="odc-typechip-dot" style="@DotStyle" aria-hidden="true"></span>
+    <span class="odc-typechip-name">@Label</span>
+    @if (!string.IsNullOrWhiteSpace(Detail))
+    {
+        <span class="odc-typechip-group">@Detail</span>
+    }
+</span>
+
+@code {
+    /// <summary>Status word — Open / Closed / Archived.</summary>
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    /// <summary>Tone → dot color. Income (open) · Pending (closed) · Outline (archived).</summary>
+    [Parameter] public OdsChipTone Tone { get; set; } = OdsChipTone.Outline;
+
+    /// <summary>Muted trailing date segment, e.g. "since Mar 14, 2021" / "on Mar 10, 2021".</summary>
+    [Parameter] public string? Detail { get; set; }
+
+    /// <summary>Compact (sm) sizing for the collapsed account row.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private string SizeSuffix => Compact ? " sm" : string.Empty;
+    private string ClassSuffix => string.IsNullOrWhiteSpace(Class) ? string.Empty : $" {Class}";
+    private string ChipClass => $"odc-typechip{SizeSuffix}{ClassSuffix}";
+
+    // Mirrors the design system's STATUS_DOT_COLOR map (components/AccountStatusChip.jsx).
+    private string DotStyle => $"background:{Tone switch
+    {
+        OdsChipTone.Income => "var(--finance-income)",
+        OdsChipTone.Pending or OdsChipTone.Warning => "var(--finance-pending)",
+        OdsChipTone.Expense or OdsChipTone.Error => "var(--finance-expense)",
+        OdsChipTone.Info => "var(--sea-400)",
+        _ => "var(--mud-palette-text-secondary)",
+    }};";
+}

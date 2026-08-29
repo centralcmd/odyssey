@@ -1,0 +1,89 @@
+@using System.Globalization
+@*
+    OdsStepperField — a compact integer input paired with a trailing, auto-pluralizing unit
+    (Odyssey Design System · StepperField): "every 2 weeks", "after 10 occurrences". The count
+    sibling of OdsAmountField (whose adornment sits inside the box); here the unit reads as a
+    separate word beside a small number box. Emits an int, or null when cleared. Give the unit in
+    its singular form; pass UnitPlural when it isn't a simple "+s". Bind via @bind-Value.
+*@
+
+@if (Label is not null || Help is not null || Error is not null)
+{
+    <OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+                   Help="@Help" Error="@Error" Class="@Class">
+        @Control
+    </OdsFieldShell>
+}
+else
+{
+    @Control
+}
+
+@code {
+    /// <summary>Optional label. Omit (with no help/error) to render just the bare control for embedding.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Integer value, or null when unset. Bindable via @bind-Value.</summary>
+    [Parameter] public int? Value { get; set; }
+
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+
+    /// <summary>Unit in its singular form (e.g. "week", "occurrence"). Auto-pluralizes when value ≠ 1.</summary>
+    [Parameter] public string? Unit { get; set; }
+
+    /// <summary>Explicit plural when the unit isn't a simple "+s".</summary>
+    [Parameter] public string? UnitPlural { get; set; }
+
+    [Parameter] public int Min { get; set; } = 1;
+
+    [Parameter] public int? Max { get; set; }
+
+    [Parameter] public int Step { get; set; } = 1;
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Optional { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public bool AutoFocus { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    private string FieldId = default!;
+
+    protected override void OnInitialized() => FieldId = Id ?? $"odc-stepper-{Guid.NewGuid():N}";
+
+    private string? UnitLabel =>
+        string.IsNullOrEmpty(Unit) ? null : (Value == 1 ? Unit : (UnitPlural ?? Unit + "s"));
+
+    private RenderFragment Control => __builder =>
+    {
+        <div class="@(string.Join(' ', new[] { "odc-stepper", Disabled ? "disabled" : null, string.IsNullOrEmpty(Error) ? null : "error" }.Where(c => c is not null)))">
+            <input id="@FieldId" class="odc-input odc-stepper-num" type="number"
+                   value="@(Value?.ToString(CultureInfo.InvariantCulture))"
+                   min="@Min" max="@Max" step="@Step" disabled="@Disabled" autofocus="@AutoFocus"
+                   aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
+                   @oninput="OnInput" />
+            @if (UnitLabel is not null)
+            {
+                <span class="odc-stepper-unit">@UnitLabel</span>
+            }
+        </div>
+    };
+
+    private Task OnInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString();
+        Value = string.IsNullOrEmpty(raw) || !int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? null
+            : parsed;
+        return ValueChanged.InvokeAsync(Value);
+    }
+}

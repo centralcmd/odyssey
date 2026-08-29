@@ -1,0 +1,58 @@
+@*
+    EditPhotoDialog — the photo metadata editor (Odyssey Design System · Photos · edit).
+    Title, date/time taken, caption, location + coordinates, tags, people (existing Person
+    contacts — never created here, spec §9), and album membership. Loads the full photo
+    on open; PUTs UpdatePhoto on save (preserving the current archived/favourite state).
+    Creating new tags is done on the Photo Tags page; extraction still auto-creates on add.
+*@
+@inject IPhotosApiClient Photos
+@inject IPhotoTagsApiClient PhotoTags
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+@inject ITagsApiClient<ExistingPhotoTag> PhotoTagWrites
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" Icon="edit"
+               Title="Edit details" Subtitle="@_photo?.FileName"
+               SubmitLabel="Save changes" SubmitIcon="check"
+               OnSubmit="SaveAsync" OnSaved="OnSaved">
+    @if (_photo is null)
+    {
+        <div class="pl-vprov">Loading…</div>
+    }
+    else
+    {
+        <div class="pl-editbody">
+            <div class="pl-edit-banner">
+                <div class="pl-edit-bannerimg"
+                     style="background-image: url('@Files.ContentUrl(_photo.FileId)');@(_photo is { PixelWidth: > 0 and { } bw, PixelHeight: > 0 and { } bh } ? $" aspect-ratio: {bw} / {bh};" : "")"></div>
+            </div>
+            <OdsField Label="Title" @bind-Value="_title" Icon="title" MaxLength="200"
+                      Placeholder="A short title (optional)" Help="Falls back to the file name when empty." />
+            <OdsField Label="File name" @bind-Value="_fileName" Icon="image" MaxLength="256"
+                      Disabled="@(!CanRenameFile)"
+                      Help="@(CanRenameFile ? "The stored file's name." : null)" />
+            <div class="odc-form-grid">
+                <OdsDateField Label="Date taken" @bind-Value="_date" />
+                <OdsTimeField Label="Time" @bind-Value="_time" />
+            </div>
+            <OdsTagMultiSelect Label="Albums" Value="_albums" ValueChanged="v => _albums = v" Options="AlbumOptions"
+                               Placeholder="Not in any album" AddLabel="Add to album"
+                               EmptyText="No matching album. Create albums on the Albums page." />
+            <OdsTagMultiSelect Label="Tags" Value="_tags" ValueChanged="v => _tags = v" Options="_tagOpts"
+                               Placeholder="No tags" AddLabel="Add tag"
+                               OnCreate="@(CanCreateTags ? CreateTagOption : null)" />
+            <OdsTagMultiSelect Label="People" Value="_people" ValueChanged="v => _people = v" Options="PeopleOptions"
+                               Placeholder="No one tagged" AddLabel="Tag a person"
+                               EmptyText="No matching person. People come from your Person contacts." />
+            <OdsField Label="Caption" @bind-Value="_caption" Multiline="true" Rows="2" MaxLength="2000"
+                      Placeholder="Write a caption…" />
+            <OdsField Label="Location" @bind-Value="_location" Icon="place" MaxLength="256"
+                      Placeholder="Add a place — e.g. Lisbon, Portugal" />
+            <OdsCoordinateField @bind-Lat="_lat" @bind-Lng="_lng" Optional="true" />
+            @if (_lat is not null || _lng is not null || !string.IsNullOrWhiteSpace(_location))
+            {
+                <div class="pl-rail-map" aria-hidden="true" style="height: 84px;"><span class="mono">map preview</span></div>
+            }
+        </div>
+    }
+</OdsFormDialog>

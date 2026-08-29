@@ -1,0 +1,172 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Analyze file dialog" subtitle="AI matching: Combobox merchant cell, per-cell match indicators + sub-threshold suggestion chips, the Matching step and the non-blocking match-degraded fallback. Toggle match outcome and the contacts.create claim. Plus consent, resume, imported, empty, failed, blocked — and the two runtime-settings states: Analysis off (the live kill switch, 503 feature_disabled) and Disclosure changed (the 409 re-prompt, affirmation cleared)." viewport="960x640" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Odyssey · Analyze file dialog</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/odyssey-logomark.svg" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- compiled design-system bundle: defines window.OdysseyDesignSystem_d5aa51 that Components.jsx reads atoms from -->
+  <script src="../_ds_bundle.js"></script>
+
+  <script src="../ui_kits/web/data.js"></script>
+
+  <style>
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--mud-palette-background);
+      font-family: var(--font-sans); color: var(--mud-palette-text-primary);
+    }
+    /* Faint app backdrop so the dialog reads as an overlay */
+    .specimen-bg {
+      position: fixed; inset: 0; padding: 40px 56px; opacity: 0.5;
+      pointer-events: none; overflow: hidden;
+    }
+    .specimen-bg h1 { font: 300 32px/1 var(--font-sans); letter-spacing: -0.02em; color: var(--ink-50); margin: 0 0 6px; }
+    .specimen-bg p  { font: 400 13px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 24px; }
+    .specimen-bg .bar { height: 46px; border-radius: 8px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); margin-bottom: 10px; }
+
+    /* Phase switcher — sits above the dialog scrim */
+    .switcher {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 4000; display: flex; gap: 4px; padding: 5px;
+      background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+      border-radius: 999px; box-shadow: var(--mud-elevation-8);
+    }
+    .switcher button {
+      border: none; background: transparent; cursor: pointer;
+      font: 500 12px/1 var(--font-sans); letter-spacing: 0.02em;
+      color: var(--mud-palette-text-secondary);
+      padding: 8px 13px; border-radius: 999px; transition: background .12s, color .12s;
+    }
+    .switcher button:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+    .switcher button.on { background: var(--mud-palette-primary); color: var(--ink-950); }
+    /* second control bar — match outcome + contacts.create claim */
+    .switcher.subbar { top: 62px; }
+    .switcher-label { align-self: center; padding: 0 3px 0 7px; font: 500 10px/1 var(--font-sans); letter-spacing: 0.05em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .switcher-sep { width: 1px; align-self: stretch; margin: 3px 3px; background: var(--mud-palette-divider); }
+
+    /* The kit's modal plays an entrance fade/rise — aam-fade on the scrim,
+       aam-rise on the dialog — that both start at opacity:0. The Design-System
+       card thumbnail is a DOM-clone capture that snapshots that opening frame,
+       which leaves the card looking blank. This specimen-only override pins the
+       dialog to its end-state so it always reads as the rendered design (the
+       shared kit CSS is left untouched). */
+    .aam-scrim, .odc-scrim  { animation: none !important; }
+    .aam-dialog, .odc-modal { animation: none !important; opacity: 1 !important; transform: none !important; }
+  </style>
+</head>
+<body>
+  <div class="specimen-bg">
+    <h1>Files</h1>
+    <p>6 files across 3 accounts</p>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  </div>
+
+  <div id="root"></div>
+
+  <script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AnalyzeFileModal.jsx"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const { useState } = React;
+    const D = window.OdysseyData;
+
+    // A statement file (eligible) and a receipt (blocked) to drive the states.
+    const statementFile = { id: 'f4', name: 'amex_statement_october.pdf', kind: 'Statement', size: '512 KB', uploaded: '2026-05-01' };
+    const receiptFile   = { id: 'f3', name: 'costco_receipt_1123.jpg',    kind: 'Receipt',   size: '1.2 MB', uploaded: '2026-05-18' };
+    const account = D.accountById['3'];
+
+    const PHASES = [
+      { key: 'consent',   label: 'Consent' },
+      { key: 'reanalyzeConfirm', label: 'Reanalyze?' },
+      { key: 'resumeLoading',    label: 'Resuming' },
+      { key: 'analyzing', label: 'Analyzing' },
+      { key: 'matching',  label: 'Matching' },
+      { key: 'review',    label: 'Review' },
+      { key: 'done',      label: 'Imported' },
+      { key: 'noLongerAvailable', label: 'Gone' },
+      { key: 'featureDisabled', label: 'Analysis off' },
+      { key: 'configUnavailable', label: 'Config broken' },
+      { key: 'staleDisclosure', label: 'Disclosure changed' },
+      { key: 'empty',     label: 'Empty' },
+      { key: 'failed',    label: 'Failed' },
+      { key: 'blocked',   label: 'Blocked' },
+    ];
+    // Match outcome (drives the per-cell suggestions vs. the degraded fallback).
+    const MATCH = [
+      { key: 'Completed', label: 'Matched' },
+      { key: 'Failed',    label: 'Match failed' },
+      { key: 'Skipped',   label: 'Over cap' },
+    ];
+
+    // The host-resolved resumable summary the dialog opens with (counts only).
+    const resumeSummary = D.resumableSummaryForFile(statementFile)
+      || { fileId: 'f4', analysisJobId: 'fa-f4', status: 'Completed', candidateCount: 9, pendingCount: 9 };
+
+    function Specimen() {
+      const [phase, setPhase] = useState('review');
+      const [matchStatus, setMatchStatus] = useState('Completed');
+      const [canCreate, setCanCreate] = useState(true);
+      // Blocked needs a non-statement file; everything else uses the statement.
+      const file = phase === 'blocked' ? receiptFile : statementFile;
+      // Two runtime-settings states (issue #439). "Analysis off" is the live kill
+      // switch answering 503 feature_disabled — modelled by handing the dialog a
+      // disclosure with enabled:false rather than by faking a phase, because that
+      // is exactly what turns the affordance and the gate off in the product.
+      // "Disclosure changed" is the post-409 consent gate: the facts moved while
+      // the gate was open, so the affirmation is cleared and re-prompted.
+      const disclosure = phase === 'featureDisabled'
+        ? Object.assign({}, D.analysisDisclosure(), { enabled: false })
+        : phase === 'configUnavailable'
+          ? Object.assign({}, D.analysisDisclosure(), { model: null, baseUrlUsable: false })
+          : undefined;
+      const dialogPhase = phase === 'featureDisabled' ? 'consent'
+        : phase === 'configUnavailable' ? 'consent'
+        : phase === 'staleDisclosure' ? 'consent' : phase;
+      return (
+        <React.Fragment>
+          <div className="switcher">
+            {PHASES.map(p => (
+              <button key={p.key} className={phase === p.key ? 'on' : ''} onClick={() => setPhase(p.key)}>{p.label}</button>
+            ))}
+          </div>
+          <div className="switcher subbar">
+            <span className="switcher-label">Match</span>
+            {MATCH.map(m => (
+              <button key={m.key} className={matchStatus === m.key ? 'on' : ''} onClick={() => setMatchStatus(m.key)}>{m.label}</button>
+            ))}
+            <span className="switcher-sep" />
+            <span className="switcher-label">Create</span>
+            <button className={canCreate ? 'on' : ''} onClick={() => setCanCreate(true)}>Allowed</button>
+            <button className={!canCreate ? 'on' : ''} onClick={() => setCanCreate(false)}>No claim</button>
+          </div>
+          <AnalyzeFileModal
+            key={`${phase}-${matchStatus}-${canCreate}`}
+            file={file}
+            account={account}
+            initialPhase={dialogPhase}
+            disclosure={disclosure}
+            staleDisclosure={phase === 'staleDisclosure'}
+            matchStatus={matchStatus}
+            canCreateContact={canCreate}
+            resumeSummary={resumeSummary}
+            demoFreeze
+            onClose={() => {}}
+            onNavigateTransactions={() => {}}
+          />
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Specimen />);
+  </script>
+</body>
+</html>

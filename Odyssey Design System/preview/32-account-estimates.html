@@ -1,0 +1,211 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Account value estimates" subtitle="The Estimates section in an account detail — value chart (step / smooth), current-value + quiet transaction-balance, editable history. Live render of AccountEstimates.jsx" viewport="1200x1640" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Account value estimates</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/account-signals.css" />
+  <link rel="stylesheet" href="../ui_kits/web/admin.css" />
+  <link rel="stylesheet" href="../ui_kits/web/account.css" />
+  <link rel="stylesheet" href="../ui_kits/web/account-estimates.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="../_ds_bundle.js"></script>
+  <script src="../ui_kits/web/data.js"></script>
+
+  <style>
+    html, body { min-height: 0; background: var(--mud-palette-background); }
+    body { width: 1200px; padding: 24px; box-sizing: border-box; }
+    .spec-doc { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+    .spec-doc h2 { font: 600 15px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); margin: 0 0 6px; }
+    .spec-lead { font: 400 13px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 96ch; }
+    .spec-lead b { color: var(--tide-400); font-weight: 500; }
+    .spec-src { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+    .spec-src .pill { font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 5px 10px; }
+    .spec-src .pill b { color: var(--tide-400); font-weight: 600; }
+    .spec-notes { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+    .spec-notes li { position: relative; padding-left: 20px; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .spec-notes li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .spec-notes li .material-icons { position: absolute; left: 0; top: 1px; font-size: 15px; color: var(--tide-400); }
+
+    .twk { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 18px;
+           background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+           padding: 11px 16px; margin-bottom: 18px; }
+    .twk-grp { display: flex; align-items: center; gap: 9px; }
+    .twk-lab { font: 600 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .twk-seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 9px; background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider); }
+    .twk-seg button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 13px; border: none; border-radius: 7px;
+                      background: transparent; cursor: pointer; font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .twk-seg button .material-icons { font-size: 16px; }
+    .twk-seg button.on { background: var(--tide-400); color: var(--ink-950); }
+    .twk-spacer { flex: 1; }
+
+    .detail-stage { display: flex; flex-direction: column; gap: 18px; }
+    .stage-label { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 2px 0 -4px 2px; display: flex; align-items: center; gap: 8px; }
+    .stage-label .material-icons { font-size: 15px; color: var(--tide-400); }
+    .dcard { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; overflow: hidden; }
+    .dcard-head { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--mud-palette-divider-light); }
+    .dcard-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .dcard-name-row { display: flex; align-items: center; gap: 10px; }
+    .dcard-name { font: 500 16px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .dcard-tags { display: flex; align-items: center; gap: 8px; font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .dcard-dot { opacity: 0.5; }
+    .dcard-bal { margin-left: auto; text-align: right; }
+    .dcard-bal .v { font: 400 19px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--finance-income); }
+    .dcard-bal .l { display: block; font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="spec-doc">
+    <h2>Account value estimates · <span style="color:var(--mud-palette-text-secondary);font-weight:400;">accounts/{id} → Estimates</span></h2>
+    <p class="spec-lead">A time-versioned history of an account's <b>estimated value</b> — a single money amount in the account's own currency, effective from a date — living as a new section inside the expanded account record, positioned <b>above</b> Terms. It's the sibling of the Terms feature for assets the transaction ledger can't represent (a house, a car). The latest entry on or before a date is the value <b>in force</b> (implicit supersession — no <code>EffectiveTo</code>). It leads with the current value, a <b>value chart</b> over time, then the full <b>editable history</b>. The current estimate <b>replaces the transaction balance</b> in net worth — shown here as the headline, with the transaction balance kept as a quiet secondary.</p>
+    <div class="spec-src">
+      <span class="pill">DTO <b>NewAccountEstimate</b> · <b>ExistingAccountEstimate</b> · <b>CurrentAccountEstimate</b></span>
+      <span class="pill">Entity <b>AccountEstimate</b></span>
+      <span class="pill">API <b>AccountController</b> /estimates</span>
+      <span class="pill">Claims <b>accounts.estimates.{read,write}</b></span>
+    </div>
+
+    <ul class="spec-notes">
+      <li><span class="material-icons">show_chart</span><b>Discrete appraisals, held flat.</b> An estimate holds until the next one supersedes it, so the chart steps — but it can also read as a smooth value trend (tweak below); both extend the current value to a dashed <b>Today</b> marker.</li>
+      <li><span class="material-icons">account_balance</span><b>Estimate replaces balance in net worth.</b> When an estimate exists it is the account's contributed value; the transaction balance stays visible but quiet. A Property with no transactions still contributes its estimated worth.</li>
+      <li><span class="material-icons">tune</span><b>Tweak the surface.</b> Toggle the value chart (step / smooth), the history view (table / timeline) and the empty-state treatment (standard / guided) in the bar below.</li>
+      <li><span class="material-icons">recommend</span><b>Every account type is eligible.</b> A recommended subset (Property · Vehicle · Other asset · Investment · Pension) is highlighted in the dialog, but estimates are never blocked on any type.</li>
+    </ul>
+  </div>
+
+  <div id="root"></div>
+
+  <script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AddEstimateModal.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AccountEstimates.jsx"></script>
+  <script type="text/babel" data-presets="env,react">
+    const { useState } = React;
+    const D = window.OdysseyData;
+    const H = window.OdysseyHelpers;
+    // AccountEstimates / AddEstimateModal read ACCOUNT_TYPE_LABEL (normally set by
+    // Accounts.jsx); seed it from the registry so this standalone card matches.
+    window.ACCOUNT_TYPE_LABEL = Object.fromEntries(D.accountTypes.map(t => [t.key, t.label]));
+    const typeInfo = (k) => D.accountTypeById[k] || { label: k, icon: 'help_outline', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)' };
+
+    const Seg = ({ value, onChange, options }) => (
+      <div className="twk-seg" role="tablist">
+        {options.map(o => (
+          <button key={o.value} role="tab" aria-selected={value === o.value}
+            className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
+            {o.icon && <span className="material-icons">{o.icon}</span>}{o.label}
+          </button>
+        ))}
+      </div>
+    );
+
+    const DetailCard = ({ account, txns, historyStyle, chartMode, emptyStyle }) => {
+      const ti = typeInfo(account.type);
+      const st = H.accountStatus(account);
+      const cur = H.currentEstimate(account.id);
+      const txnSum = (txns || []).reduce((s, t) => s + t.amount, 0);
+      return (
+        <div className="dcard">
+          <div className="dcard-head">
+            <Avatar icon={ti.icon} tone={{ bg: ti.soft, fg: ti.color }} square size="lg" />
+            <div className="dcard-id">
+              <div className="dcard-name-row">
+                <span className="dcard-name">{account.name}</span>
+                <Chip tone={st.tone} dot>{st.label}</Chip>
+              </div>
+              <div className="dcard-tags">
+                <span>{window.ACCOUNT_TYPE_LABEL[account.type]}</span>
+                <span className="dcard-dot">·</span>
+                <span className="mono">{account.number}</span>
+                <span className="dcard-dot">·</span>
+                <span className="mono">{account.currency}</span>
+              </div>
+            </div>
+            <div className="dcard-bal">
+              <span className="l">{cur ? 'Estimated value' : 'Balance'}</span>
+              <span className="v" style={!cur ? { color: txnSum < 0 ? 'var(--finance-expense)' : 'var(--finance-income)' } : undefined}>
+                {H.money(cur ? cur.value : txnSum, account.currency)}
+              </span>
+            </div>
+          </div>
+          <AccountEstimates account={account} txns={txns} chrome={false}
+            historyStyle={historyStyle} chartMode={chartMode} emptyStyle={emptyStyle} />
+        </div>
+      );
+    };
+
+    function Spec() {
+      const [chartMode, setChartMode] = useState('step');
+      const [historyStyle, setHistoryStyle] = useState('table');
+      const [emptyStyle, setEmptyStyle] = useState('guided');
+      const [theme, setTheme] = useState('dark');
+      React.useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+
+      const property = D.accountById['7'];   // Maple St Residence — appraisals over time
+      // Same property, but with a few capital transactions logged (down payment +
+      // improvements) — to show the estimate leading over a non-zero balance.
+      const withTxns = [
+        { id: 'pt1', amount: 25000.00 },
+        { id: 'pt2', amount: 9800.00 },
+        { id: 'pt3', amount: -2400.00 },
+      ];
+      // A fresh asset account with no estimates yet — drives the empty state.
+      const emptyAcct = { ...property, id: 'demo-empty', name: 'Lakeshore Cabin', number: '·CBN2', accountNumber: 'PROP 7782 0031' };
+
+      return (
+        <React.Fragment>
+          <div className="twk">
+            <div className="twk-grp">
+              <span className="twk-lab">Value chart</span>
+              <Seg value={chartMode} onChange={setChartMode} options={[
+                { value: 'step', label: 'Step', icon: 'stairs' },
+                { value: 'smooth', label: 'Smooth', icon: 'show_chart' },
+              ]} />
+            </div>
+            <div className="twk-grp">
+              <span className="twk-lab">History</span>
+              <Seg value={historyStyle} onChange={setHistoryStyle} options={[
+                { value: 'table', label: 'Table', icon: 'table_chart' },
+                { value: 'timeline', label: 'Timeline', icon: 'timeline' },
+              ]} />
+            </div>
+            <div className="twk-grp">
+              <span className="twk-lab">Empty state</span>
+              <Seg value={emptyStyle} onChange={setEmptyStyle} options={[
+                { value: 'standard', label: 'Standard', icon: 'crop_square' },
+                { value: 'guided', label: 'Guided', icon: 'auto_awesome' },
+              ]} />
+            </div>
+            <div className="twk-spacer" />
+            <div className="twk-grp">
+              <span className="twk-lab">Theme</span>
+              <Seg value={theme} onChange={setTheme} options={[
+                { value: 'dark', label: 'Dark', icon: 'dark_mode' },
+                { value: 'light', label: 'Light', icon: 'light_mode' },
+              ]} />
+            </div>
+          </div>
+
+          <div className="detail-stage">
+            <div className="stage-label"><span className="material-icons">home</span>Property · appraised value over time, no transactions</div>
+            <DetailCard account={property} txns={[]} historyStyle={historyStyle} chartMode={chartMode} emptyStyle={emptyStyle} />
+
+            <div className="stage-label"><span className="material-icons">home_work</span>Property · with capital transactions logged — the estimate still leads</div>
+            <DetailCard account={property} txns={withTxns} historyStyle={historyStyle} chartMode={chartMode} emptyStyle={emptyStyle} />
+
+            <div className="stage-label"><span className="material-icons">inbox</span>Empty state · an asset account with no estimate yet</div>
+            <DetailCard account={emptyAcct} txns={[]} historyStyle={historyStyle} chartMode={chartMode} emptyStyle={emptyStyle} />
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Spec />);
+  </script>
+</body>
+</html>

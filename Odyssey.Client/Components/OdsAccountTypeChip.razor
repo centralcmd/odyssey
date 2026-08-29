@@ -1,0 +1,59 @@
+@using Odyssey.Client.Pages.Finance
+@using Odyssey.Dtos.Finance
+
+@*
+    OdsAccountTypeChip — the read display of an account's type as a chip
+    (Odyssey Design System · components/AccountTypeChip).
+
+    The sibling of OdsCustodianChip: the same pill shell, with the type glyph in
+    its categorical color and a muted Asset / Liability group segment, so type +
+    custodian read consistently in the account-detail metadata grid (and a
+    compact variant on the collapsed row).
+
+    Visuals (icon · color · label · group) are drawn from the canonical
+    AccountTypeVisuals registry — never re-hardcoded. The glyph is decorative
+    (aria-hidden); the label carries the meaning.
+*@
+
+<span class="@ChipClass">
+    <span class="material-icons odc-typechip-ic" aria-hidden="true" style="@IconStyle">@_icon</span>
+    <span class="odc-typechip-name">@_label</span>
+    @if (ShowGroup && _groupLabel is not null)
+    {
+        <span class="odc-typechip-group">@_groupLabel</span>
+    }
+</span>
+
+@code {
+    /// <summary>The account type to display.</summary>
+    [Parameter, EditorRequired] public AccountType Type { get; set; }
+
+    /// <summary>Show the trailing Asset / Liability group segment. Default true.</summary>
+    [Parameter] public bool ShowGroup { get; set; } = true;
+
+    /// <summary>Compact (sm) sizing for the collapsed account row.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private string _icon = string.Empty;
+    private string _label = string.Empty;
+    private string? _groupLabel;
+
+    protected override void OnParametersSet()
+    {
+        _icon = AccountTypeVisuals.MaterialIcon(Type);
+        _label = AccountTypeVisuals.Label(Type);
+        _groupLabel = AccountTypeVisuals.Group(Type) switch
+        {
+            AccountGroup.Asset => "Asset",
+            AccountGroup.Liability => "Liability",
+            _ => null,
+        };
+    }
+
+    private string SizeSuffix => Compact ? " sm" : string.Empty;
+    private string ClassSuffix => string.IsNullOrWhiteSpace(Class) ? string.Empty : $" {Class}";
+    private string ChipClass => $"odc-typechip{SizeSuffix}{ClassSuffix}";
+    private string IconStyle => $"color:{AccountTypeVisuals.FgColor(Type)};";
+}

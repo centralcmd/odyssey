@@ -1,0 +1,179 @@
+@page "/photos"
+@attribute [Authorize(Policy = PermissionClaims.PhotosRead)]
+@using Odyssey.Dtos.Finance
+@inject IPhotosApiClient Photos
+@inject IPhotoTagsApiClient PhotoTags
+@inject IAlbumsApiClient Albums
+@inject IFilesApiClient Files
+@inject AuthenticationStateProvider Auth
+@inject IPageStateService PageState
+@inject ISnackbar Snackbar
+@inject IContactsApiClient Contacts
+
+@*
+    Photos — the personal photo library grid (/photos). Uniform newest-first thumbnail grid with
+    search + album/tag/people/date-range/favourites/archival filters, sort, page-size paging, a
+    heart (favourite) + multi-select bulk actions, a detail lightbox, a metadata editor, and upload
+    (new files or pick existing). Design: Odyssey Design System · Photos · "Uniform grid". Cross-claim
+    ids are hydrated to names from the loaded tag/album/contact options (spec §10.5).
+*@
+
+<PageHeader Title="Photos" Icon="@Icons.Material.Filled.PhotoLibrary"
+            SubLine="@SubFragment"
+            OverviewContent="OverviewFragment" OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+            SearchContent="SearchFragment" SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+            PrimaryActionText="@(_canCreate ? "Upload" : null)" PrimaryActionIcon="@Icons.Material.Filled.Upload"
+            OnPrimaryAction="() => _uploadOpen = true" ShowPrimaryAction="_canCreate" />
+
+@if (_selecting)
+{
+    <div class="pl-selbar">
+        <div class="pl-selbar-l">
+            <button type="button" class="pl-selclose" aria-label="Exit selection" @onclick="ExitSelect">
+                <span class="material-icons" aria-hidden="true">close</span>
+            </button>
+            <span class="pl-selcount"><b>@_selected.Count</b> selected</span>
+            <button type="button" class="pl-sellink" @onclick="ToggleSelectAll">
+                @(_selected.Count >= _photos.Count ? "Clear" : $"Select all {_photos.Count}")
+            </button>
+        </div>
+        <div class="pl-selbar-r">
+            @if (_canManageAlbums)
+            {
+                <button type="button" class="pl-selact" @onclick="OpenAddToAlbum">
+                    <span class="material-icons" aria-hidden="true">photo_album</span><span>Add to album</span>
+                </button>
+            }
+            @if (_canUpdate && !_archivedView)
+            {
+                <button type="button" class="pl-selact" @onclick="() => BulkFavouriteAsync()">
+                    <span class="material-icons" aria-hidden="true">favorite</span><span>Favourite</span>
+                </button>
+            }
+            @if (_canUpdate)
+            {
+                <button type="button" class="pl-selact" @onclick="() => BulkArchiveAsync(!_archivedView)">
+                    <span class="material-icons" aria-hidden="true">@(_archivedView ? "unarchive" : "inventory_2")</span>
+                    <span>@(_archivedView ? "Unarchive" : "Archive")</span>
+                </button>
+            }
+            @if (_canDelete)
+            {
+                <button type="button" class="pl-selact" @onclick="BulkDeleteAsync">
+                    <span class="material-icons" aria-hidden="true">delete</span><span>Delete</span>
+                </button>
+            }
+        </div>
+    </div>
+}
+
+<OdsListStatus Loading="@(_loading && _photos.Count == 0)" Error="_loadError" OnRetry="ReloadAsync"
+               IsEmpty="@(_photos.Count == 0)" HasFilters="HasFilters" OnClearFilters="ClearFiltersAsync"
+               Noun="photos" EmptyIcon="add_photo_alternate"
+               EmptyTitle="@EmptyTitle" EmptyDescription="@EmptySubtitle">
+    @* Shape-matched placeholder: a grid of skeleton tiles reads better here than a lone spinner. *@
+    <LoadingContent>
+        <div class="pl-grid">
+            @for (var i = 0; i < _pageSize; i++)
+            {
+                <div class="pl-skel"></div>
+            }
+        </div>
+    </LoadingContent>
+    <CreateAction>
+        @if (_canCreate && !_archivedView)
+        {
+            <OdsButton Variant="OdsButtonVariant.Filled" Icon="upload" OnClick="() => _uploadOpen = true">Upload</OdsButton>
+        }
+    </CreateAction>
+    <ChildContent>
+        <div class="pl-grid">
+            @foreach (var p in _photos)
+            {
+                <OdsPhotoTile Photo="TileVm(p)" Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
+                              OnOpen="OpenDetail" OnToggleSelect="ToggleSelect" OnStartSelect="StartSelectWith"
+                              OnToggleFavourite="ToggleFavouriteAsync" />
+            }
+        </div>
+        @if (_photos.Count < _total)
+        {
+            <div class="pl-loadmore">
+                <span class="pl-loadmore-txt mono">Showing @_photos.Count of @_total</span>
+                <button type="button" class="pl-drop-btn" @onclick="LoadMore">
+                    Load @Math.Min(_pageSize, _total - _photos.Count) more
+                </button>
+            </div>
+        }
+    </ChildContent>
+</OdsListStatus>
+
+@if (_detailIndex is { } di)
+{
+    <PhotoDetailDialog Photos="_photos" Index="di" IndexChanged="i => _detailIndex = i"
+                       OnClose="() => _detailIndex = null"
+                       OnEdit="OpenEditFromDetail" OnToggleFavourite="ToggleFavouriteAsync"
+                       OnToggleArchive="ToggleArchiveAsync" OnDelete="DeleteAsync"
+                       CanUpdate="_canUpdate" CanDelete="_canDelete"
+                       TagName="TagName" PersonName="PersonName" AlbumName="AlbumName" />
+}
+
+@* Dialogs stay mounted and toggle via Open (@bind-Open pattern) — an inline MudDialog @if-unmounted
+   on close orphans it. @key resets internal state when the target record changes. *@
+<EditPhotoDialog @key="_editId" Open="_editId is not null" OpenChanged="v => { if (!v) _editId = null; }"
+                 PhotoId="@(_editId ?? Guid.Empty)"
+                 TagOptions="_tagOptions" PeopleOptions="_peopleOptions" AlbumOptions="_albumOptions"
+                 CanCreateTags="_canCreateTags" CanRenameFile="_canRenameFile" OnSaved="OnPhotoSaved" />
+
+<AddToAlbumDialog Open="_addToAlbumIds is not null" OpenChanged="v => { if (!v) _addToAlbumIds = null; }"
+                  PhotoIds="@(_addToAlbumIds ?? [])" OnSaved="OnAlbumsChanged" />
+
+<UploadPhotosDialog Open="_uploadOpen" OpenChanged="v => _uploadOpen = v" OnSaved="OnUploaded" />
+
+@code {
+    // The Overview panel is the shared PhotoLibraryOverview (identical on /photos and /albums). @ref lets
+    // RefreshAsync update it live after a mutation while it's open; it's null while the panel is collapsed.
+    private RenderFragment OverviewFragment => __builder =>
+    {
+        <PhotoLibraryOverview @ref="_overview" />
+    };
+
+    private RenderFragment SearchFragment => __builder =>
+    {
+        @* Uses the client's global .ph-filter-bar / .ph-search / .ph-select helpers (like every other
+           list page) — NOT the DS kit's .row/.gap-3, which don't exist here and left the row unstyled. *@
+        <div class="ph-filter-bar">
+            @* Server-backed search: debounced by the field so one request fires once typing settles.
+               ValueChanged only records the term; OnSearch (debounce-elapsed) does the fetch. *@
+            <OdsSearchField Class="ph-search" Value="@_search" ValueChanged="OnSearchChanged"
+                            DebounceInterval="300" OnSearch="OnSearchSubmitted"
+                            Placeholder="Search title, caption, location…" AriaLabel="Search photos" />
+            <OdsMultiSelect Class="ph-select" Label="Any album" Values="_albums" ValuesChanged="v => ApplyFilter(() => _albums = v)"
+                            Options="_albumOptions" Icon="photo_album" />
+            <OdsMultiSelect Class="ph-select" Label="Any tag" Values="_tags" ValuesChanged="v => ApplyFilter(() => _tags = v)"
+                            Options="_tagOptions" Icon="sell" />
+            <OdsMultiSelect Class="ph-select" Label="Anyone" Values="_people" ValuesChanged="v => ApplyFilter(() => _people = v)"
+                            Options="_peopleOptions" Icon="person" />
+            <OdsDateRangePicker Label="Taken" AriaLabel="Filter by date taken"
+                                From="_from" FromChanged="v => ApplyFilter(() => _from = v)"
+                                To="_to" ToChanged="v => ApplyFilter(() => _to = v)" />
+            <OdsSortSelect TRow="PhotoSummary" Fields="SortFields" Sort="_sort"
+                           SortChanged="s => ApplyFilter(() => _sort = s)" />
+            <OdsPageSizeSelect Value="_pageSize" ValueChanged="v => ApplyFilter(() => { _pageSize = v; })"
+                               Options="PageSizes" Prefix="Show" Suffix="per page" Label="Photos per page" />
+            <button type="button" class="pl-toolbtn @(_favouritesOnly ? "on" : null)"
+                    aria-pressed="@(_favouritesOnly ? "true" : "false")"
+                    @onclick="() => ApplyFilter(() => _favouritesOnly = !_favouritesOnly)">
+                <span class="material-icons" aria-hidden="true">@(_favouritesOnly ? "favorite" : "favorite_border")</span> Favourites
+            </button>
+            <button type="button" class="pl-toolbtn @(_archivedView ? "on" : null)"
+                    aria-pressed="@(_archivedView ? "true" : "false")"
+                    @onclick="() => ApplyFilter(() => { _archivedView = !_archivedView; })">
+                <span class="material-icons" aria-hidden="true">inventory_2</span> @(_archivedView ? "Archived" : "Archive")
+            </button>
+            <button type="button" class="pl-toolbtn @(_selecting ? "on" : null)"
+                    aria-pressed="@(_selecting ? "true" : "false")" @onclick="() => { _selecting = !_selecting; _selected.Clear(); }">
+                <span class="material-icons" aria-hidden="true">check_box</span> Select
+            </button>
+        </div>
+    };
+}

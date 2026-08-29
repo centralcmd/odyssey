@@ -1,0 +1,113 @@
+@*
+    OdsFieldShell — the labelled-field wrapper every form control shares
+    (Odyssey Design System · components/FieldShell).
+
+    The composition primitive behind OdsAmountField / OdsNoteField / OdsNumberField:
+    the label row (with the required `*` / muted "Optional" marker and an optional
+    right-aligned Aside slot — e.g. a character counter), the control itself
+    (ChildContent), and the helper / error line below. Reach for it directly when
+    you need to label a control the kit doesn't wrap yet.
+
+    Pass HtmlFor matching your control's id so the label is associated and the
+    helper line gets id="<HtmlFor>-help" for the control to point aria-describedby at.
+*@
+
+<div class="@WrapperClass" id="@Id" @attributes="UserAttributes">
+    @if (Aside is not null)
+    {
+        <div class="odc-field-head">
+            @if (Label is not null)
+            {
+                @Label_()
+            }
+            else
+            {
+                <span></span>
+            }
+            @Aside
+        </div>
+    }
+    else if (Label is not null)
+    {
+        @Label_()
+    }
+    @ChildContent
+    @if (HelpContent is not null)
+    {
+        <div class="odc-field-help" id="@HelpId">@HelpContent</div>
+    }
+    else if (!string.IsNullOrEmpty(Help))
+    {
+        <div class="odc-field-help" id="@HelpId">@Help</div>
+    }
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <div class="odc-field-help error" id="@ErrorId" role="alert">@Error</div>
+    }
+</div>
+
+@code {
+    /// <summary>Visible label, rendered above the control.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>The control's id — associates the label and names the helper line.</summary>
+    [Parameter] public string? HtmlFor { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    /// <summary>Render a muted "Optional" marker after the label.</summary>
+    [Parameter] public bool Optional { get; set; }
+
+    /// <summary>Helper text shown below the control.</summary>
+    [Parameter] public string? Help { get; set; }
+
+    /// <summary>Rich helper content (takes precedence over <see cref="Help"/>) — for hints
+    /// that carry markup such as a bold currency. Renders alongside (never instead of)
+    /// <see cref="Error"/> — see <see cref="ErrorId"/>.</summary>
+    [Parameter] public RenderFragment? HelpContent { get; set; }
+
+    /// <summary>Error message — flips the field to its error state. Rendered as its own node,
+    /// in addition to (not replacing) the helper text — see <see cref="ErrorId"/>.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>Optional right-aligned slot in the label row (e.g. a character counter).</summary>
+    [Parameter] public RenderFragment? Aside { get; set; }
+
+    /// <summary>The labelled control.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string? HelpId => HtmlFor is null ? null : $"{HtmlFor}-help";
+
+    private bool HasHelp => HelpContent is not null || !string.IsNullOrEmpty(Help);
+
+    /// <summary>
+    /// The error node's id. When a help/help-content node is ALSO rendered, the error gets its own
+    /// distinct id (<c>{HelpId}-error</c>) so a control can point <c>aria-describedby</c> at both.
+    /// When no help node renders, the error reuses <see cref="HelpId"/> itself — the same id this
+    /// component has always exposed — so the ~25 existing single-message consumers are unaffected.
+    /// </summary>
+    private string? ErrorId => HtmlFor is null ? null : (HasHelp ? $"{HelpId}-error" : HelpId);
+
+    private string WrapperClass =>
+        string.Join(' ', new[] { "odc-field", string.IsNullOrEmpty(Error) ? null : "error", Class }
+            .Where(value => !string.IsNullOrEmpty(value)));
+
+    private RenderFragment Label_() => @<label class="odc-field-label" for="@HtmlFor">
+        @Label
+        @if (Required)
+        {
+            <span class="odc-field-req" aria-hidden="true">*</span>
+        }
+        @if (Optional)
+        {
+            <span class="odc-field-opt">Optional</span>
+        }
+    </label>;
+}

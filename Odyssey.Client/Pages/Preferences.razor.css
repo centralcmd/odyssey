@@ -1,0 +1,59 @@
+/* ── Preference rows ──
+   Each row is now the shared <OdsSettingRow> (icon + label + description | control);
+   its left-side scaffold lives in Components/OdsSettingRow.razor.css. What remains
+   here is Preferences-specific: the row stack, the control's unsaved-change flag, and
+   the no-match surface. */
+.pref-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pref-control {
+    flex: none;
+}
+
+/* ── Per-row unsaved-change flag ──
+   The control and its flag share a right-aligned group. The dot's slot is
+   always laid out (flag is flex:none + the group gap), and only its opacity
+   toggles — so the dot appearing never shifts the control. */
+.pref-right {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.pref-flag {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--mud-palette-warning);
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.pref-flag.on {
+    opacity: 1;
+}
+
+/* ── No-match surface (design .nomatch) ── */
+.nomatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    padding: 44px 24px;
+}
+
+.nomatch-ic {
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-text-secondary);
+}

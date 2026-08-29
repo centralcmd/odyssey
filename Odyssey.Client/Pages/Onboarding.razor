@@ -1,0 +1,91 @@
+@page "/onboarding"
+@layout OnboardingLayout
+@attribute [Authorize]
+@using Odyssey.Client.Models
+@using Odyssey.Client.Components
+@inject IProfileApiClient Profile
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Complete your profile</PageTitle>
+
+@*
+    Onboarding — the first-sign-in profile completion gate (/onboarding), issue #316 §3/§5. The blocking
+    form a signed-in user with an incomplete profile is routed to (by MainLayout) before the app body
+    renders. Rendered under OnboardingLayout (no nav shell); navigation into the app is prevented until
+    the required fields are saved. Same shared field set as the Account → Profile card.
+*@
+
+<div class="onb-shell">
+    <div class="onb-card">
+        <div class="onb-brand">
+            <OdsBrandMark Size="68" />
+        </div>
+
+        <div class="onb-head">
+            <h1 class="onb-title">Complete your profile</h1>
+            <p class="onb-sub">
+                One quick step before you get started. Tell us your name so your entries are attributed to
+                a person, not an email address. You’ll return to @RequestedLabel when you’re done.
+            </p>
+        </div>
+
+        @if (!_loading)
+        {
+            <div class="onb-progress" aria-hidden="true">
+                <span class="onb-progress-bar @(_isComplete ? "done" : null)"></span>
+                <span class="onb-progress-txt">@ProgressText</span>
+            </div>
+            @* Announce the ready-state transition to assistive tech (the visual bar above is aria-hidden). *@
+            <span class="sr-only" role="status" aria-live="polite">@ProgressText</span>
+
+            @if (_attempted && _errorCount > 0)
+            {
+                <div class="onb-alert">
+                    <OdsAlert Severity="Severity.Error">
+                        <b>Check the highlighted fields.</b>
+                        @(_errorCount == 1 ? " One field needs" : $" {_errorCount} fields need") your attention before you can continue.
+                    </OdsAlert>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_saveError))
+            {
+                <div class="onb-alert">
+                    <OdsAlert Severity="Severity.Error"><b>Couldn’t save your profile.</b> @_saveError</OdsAlert>
+                </div>
+            }
+
+            <OdsProfileFields Model="_profile" ModelChanged="OnProfileChanged"
+                              Errors="@(_attempted ? _errors : null)" IdPrefix="onb" AutoFocusFirst="true" />
+
+            <OdsProfileTransparencyNote />
+
+            <div class="onb-actions">
+                <span class="onb-required-note"><span class="odc-field-req">*</span> Required</span>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           EndIcon="@Icons.Material.Filled.ArrowForward"
+                           Disabled="_saving" OnClick="SaveAsync">
+                    @if (_saving)
+                    {
+                        <OdsSpinner Class="me-2" Decorative="true" />
+                    }
+                    Save and continue
+                </MudButton>
+            </div>
+
+            <div class="onb-foot">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />
+                <span>Your date of birth and sex are visible only to you.</span>
+            </div>
+        }
+        else
+        {
+            <div class="onb-loading" role="status">
+                <OdsSpinner Size="OdsSize.Lg" Decorative="true" />
+                <span class="sr-only">Loading your profile…</span>
+            </div>
+        }
+    </div>
+</div>

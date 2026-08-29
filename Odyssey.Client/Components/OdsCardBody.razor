@@ -1,0 +1,22 @@
+@*
+    OdsCardBody — the padded content region inside a flush OdsCard (Odyssey Design
+    System · components/CardBody): the 20px inset every card body shares. Pair with
+    OdsCardHeader for a titled card, or use alone for a simple padded surface.
+    Override the inset with Style="padding:0" for edge-to-edge content (a table or
+    media fills the card). Styled by .odc-card-body.
+*@
+
+<div class="odc-card-body @Class" style="@Style" @attributes="UserAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Style { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

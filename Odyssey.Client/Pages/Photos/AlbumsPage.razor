@@ -1,0 +1,179 @@
+@page "/albums"
+@attribute [Authorize(Policy = PermissionClaims.PhotoAlbumsRead)]
+@using Odyssey.Dtos.Finance
+@inject IAlbumsApiClient Albums
+@inject IPhotosApiClient Photos
+@inject IPhotoTagsApiClient PhotoTags
+@inject IFilesApiClient Files
+@inject AuthenticationStateProvider Auth
+@inject IPageStateService PageState
+@inject ISnackbar Snackbar
+@inject IContactsApiClient Contacts
+
+@*
+    Albums — grouped views of the library (/albums). A grid of album cards (cover + name + count)
+    drills into an album's ordered photos; the album editor handles reorder + cover + delete.
+    Design: Odyssey Design System · Photos · Albums.
+*@
+
+<PageHeader Title="Albums" Icon="@Icons.Material.Filled.PhotoAlbum"
+            SubLine="@SubFragment"
+            OverviewContent="OverviewFragment" OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+            SearchContent="SearchFragment" SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+            PrimaryActionText="@(_canCreate ? "New album" : null)" PrimaryActionIcon="@Icons.Material.Filled.Add"
+            OnPrimaryAction="() => OpenForm(null)" ShowPrimaryAction="_canCreate" />
+
+<div class="pl-page-body">
+@if (_openAlbum is { } album)
+{
+    <div class="pl-backrow">
+        <button type="button" class="pl-backrow-back" @onclick="CloseAlbum">
+            <span class="material-icons" aria-hidden="true">arrow_back</span> All albums
+        </button>
+        <span class="pl-backrow-title">@album.Name</span>
+        <span class="pl-daycount mono">@_albumPhotos.Count</span>
+        <span style="flex:1"></span>
+        @if (_albumPhotos.Count > 0)
+        {
+            <button type="button" class="pl-toolbtn @(_selecting ? "on" : null)"
+                    aria-pressed="@(_selecting ? "true" : "false")" @onclick="ToggleSelecting">
+                <span class="material-icons" aria-hidden="true">check_box</span> Select
+            </button>
+        }
+        @if (_canUpdate)
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="edit" OnClick="() => OpenForm(album.PhotoAlbumId)">Edit album</OdsButton>
+        }
+    </div>
+    @if (_selecting)
+    {
+        <div class="pl-selbar">
+            <div class="pl-selbar-l">
+                <button type="button" class="pl-selclose" aria-label="Exit selection" @onclick="ExitSelect">
+                    <span class="material-icons" aria-hidden="true">close</span>
+                </button>
+                <span class="pl-selcount"><b>@_selected.Count</b> selected</span>
+                <button type="button" class="pl-sellink" @onclick="ToggleSelectAll">
+                    @(_selected.Count >= _albumPhotos.Count ? "Clear" : $"Select all {_albumPhotos.Count}")
+                </button>
+            </div>
+            <div class="pl-selbar-r">
+                @if (_canUpdate)
+                {
+                    <button type="button" class="pl-selact" @onclick="OpenAddToAlbum" disabled="@(_selected.Count == 0)">
+                        <span class="material-icons" aria-hidden="true">photo_album</span><span>Add to album</span>
+                    </button>
+                    <button type="button" class="pl-selact" @onclick="RemoveSelectedFromAlbumAsync" disabled="@(_selected.Count == 0)">
+                        <span class="material-icons" aria-hidden="true">remove_circle_outline</span><span>Remove from album</span>
+                    </button>
+                }
+            </div>
+        </div>
+    }
+    @if (_albumPhotos.Count == 0)
+    {
+        <div class="pl-drop-hint">This album has no photos yet. Use “Add to album” from the library.</div>
+    }
+    else
+    {
+        <div class="pl-grid">
+            @foreach (var p in _albumPhotos)
+            {
+                <OdsPhotoTile Photo="TileVm(p)" Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
+                              OnOpen="OpenDetail" OnToggleSelect="ToggleSelect" OnStartSelect="StartSelectWith"
+                              OnToggleFavourite="_ => Task.CompletedTask" />
+            }
+        </div>
+    }
+
+    @if (_detailIndex is { } di)
+    {
+        <PhotoDetailDialog Photos="_albumPhotos" Index="di" IndexChanged="i => _detailIndex = i"
+                           OnClose="() => _detailIndex = null" CanUpdate="false" CanDelete="false"
+                           TagName="TagName" PersonName="PersonName" AlbumName="AlbumName" />
+    }
+}
+else
+{
+    @* A failed load leaves _albumList empty, which would otherwise render as a grid holding nothing
+       but the "New album" tile — indistinguishable from having no albums. *@
+    <OdsListStatus Loading="_loading" Error="_loadError" OnRetry="LoadAsync"
+                   IsEmpty="@(FilteredAlbums.Count == 0)"
+                   HasFilters="@(!string.IsNullOrWhiteSpace(_albumSearch))" OnClearFilters="ClearAlbumSearch"
+                   Noun="albums" EmptyIcon="photo_album"
+                   EmptyDescription="Group photos into albums to give a trip, a project or a year its own view.">
+        @* Shape-matched placeholder: skeleton cards read better here than a lone spinner. *@
+        <LoadingContent>
+            <div class="pl-albgrid">
+                @for (var i = 0; i < 3; i++)
+                {
+                    <div class="pl-skel" style="aspect-ratio: auto; height: 220px;"></div>
+                }
+            </div>
+        </LoadingContent>
+        <CreateAction>
+            @if (_canCreate)
+            {
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="() => OpenForm(null)">New album</OdsButton>
+            }
+        </CreateAction>
+        <ChildContent>
+            <div class="pl-albgrid">
+                @foreach (var a in FilteredAlbums)
+                {
+                    <div class="pl-albcard pl-albcard-manage">
+                        <div class="pl-albcover n1">
+                            <div class="pl-albcover-cell" style="@CoverStyle(a)"></div>
+                        </div>
+                        <div class="pl-albmeta">
+                            <span class="pl-albname">@a.Name</span>
+                            <span class="pl-albcount mono">@a.PhotoCount photo@(a.PhotoCount == 1 ? "" : "s")</span>
+                        </div>
+                        @* Real button covering the card = keyboard-operable open, no nested-interactive (a11y). *@
+                        <button type="button" class="pl-albcard-hit" aria-label="@($"Open album {a.Name}")"
+                                @onclick="() => OpenAlbum(a.PhotoAlbumId)"></button>
+                        @if (_canUpdate)
+                        {
+                            <button type="button" class="pl-albedit" aria-label="@($"Edit {a.Name}")"
+                                    @onclick="() => OpenForm(a.PhotoAlbumId)" @onclick:stopPropagation="true">
+                                <span class="material-icons" aria-hidden="true">edit</span>
+                            </button>
+                        }
+                    </div>
+                }
+                @if (_canCreate)
+                {
+                    <button type="button" class="pl-albnew" @onclick="() => OpenForm(null)">
+                        <span class="material-icons" aria-hidden="true">add</span><span>New album</span>
+                    </button>
+                }
+            </div>
+        </ChildContent>
+    </OdsListStatus>
+}
+</div>
+
+@* Kept mounted + toggled via Open; @key resets the form when switching target album (or new). *@
+<AlbumFormDialog @key="_formAlbumId" Open="_formOpen" OpenChanged="v => _formOpen = v"
+                 AlbumId="_formAlbumId" OnSaved="OnAlbumSaved" />
+
+<AddToAlbumDialog Open="_addToAlbumIds is not null" OpenChanged="v => { if (!v) _addToAlbumIds = null; }"
+                  PhotoIds="@(_addToAlbumIds ?? [])" OnSaved="OnAddedToAlbum" />
+
+@code {
+    // Shared Overview panel — identical to /photos (self-loading component).
+    private RenderFragment OverviewFragment => __builder =>
+    {
+        <PhotoLibraryOverview />
+    };
+
+    // Albums view has just a name search (the library filters are /photos-only). Uses the global
+    // .ph-filter-bar / .ph-search helpers like every other list page.
+    private RenderFragment SearchFragment => __builder =>
+    {
+        <div class="ph-filter-bar">
+            <OdsSearchField Class="ph-search" Value="@_albumSearch" ValueChanged="OnSearchChanged"
+                            Placeholder="Search albums…" AriaLabel="Search albums" />
+        </div>
+    };
+}

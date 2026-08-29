@@ -1,0 +1,95 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    InsurancePortfolioSummaryView — the header Overview rollup (issue #175 §7): per-currency
+    current premium & coverage subtotals with optional converted grand totals, and the "By type"
+    / "By status" breakdown tiles. Mirrors the design system's InsuranceSummary.
+*@
+
+<div class="ins-summary">
+    <div class="ins-stats">
+        <div class="ins-stat">
+            <span class="ins-stat-ov">Current premium</span>
+            <div class="ins-stat-rows">
+                @if (Summary.PremiumByCurrency.Count > 0)
+                {
+                    @foreach (var r in Summary.PremiumByCurrency)
+                    {
+                        <div class="ins-stat-row"><span>@r.CurrencyCode</span><span class="amt">@Money(r.Amount, r.CurrencyCode)</span></div>
+                    }
+                }
+                else
+                {
+                    <div class="ins-stat-row"><span class="amt">—</span></div>
+                }
+            </div>
+            @if (Summary.ConvertedTotalPremium is { } cp && Summary.BaseCurrency is { } bc)
+            {
+                <span class="ins-conv">≈ <span class="b">@Money(cp, bc)</span> total</span>
+            }
+        </div>
+
+        <div class="ins-stat">
+            <span class="ins-stat-ov">Current coverage</span>
+            <div class="ins-stat-rows">
+                @if (Summary.CoverageByCurrency.Count > 0)
+                {
+                    @foreach (var r in Summary.CoverageByCurrency)
+                    {
+                        <div class="ins-stat-row"><span>@r.CurrencyCode</span><span class="amt">@MoneyCompact(r.Amount, r.CurrencyCode)</span></div>
+                    }
+                }
+                else
+                {
+                    <div class="ins-stat-row"><span class="amt">—</span></div>
+                }
+            </div>
+            @if (Summary.ConvertedTotalCoverage is { } cc && Summary.BaseCurrency is { } bc2)
+            {
+                <span class="ins-conv">≈ <span class="b">@MoneyCompact(cc, bc2)</span> insured</span>
+            }
+            @if (Summary.UnconvertedCurrencies.Count > 0)
+            {
+                <span class="ins-conv ins-unconv"><span class="material-icons" aria-hidden="true">info</span>@string.Join(", ", Summary.UnconvertedCurrencies) excluded — no rate</span>
+            }
+        </div>
+
+        <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No active policies." />
+        <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No policies." />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public InsurancePortfolioSummary Summary { get; set; } = default!;
+
+    [Parameter, EditorRequired] public Func<decimal?, string?, string> Money { get; set; } = (v, _) => v?.ToString() ?? "—";
+    [Parameter, EditorRequired] public Func<decimal?, string?, string> MoneyCompact { get; set; } = (v, _) => v?.ToString() ?? "—";
+
+    private IReadOnlyList<OdsBreakdownRow> TypeRows => Summary.CountsByType
+        .Where(t => t.Count > 0)
+        .Select(t =>
+        {
+            var info = OdsTypeRegistries.InsurancePolicyTypeOf(t.Type);
+            return new OdsBreakdownRow { Key = t.Type, Icon = info.Icon, IconColor = info.Color, Label = info.Label, Count = t.Count };
+        })
+        .ToList();
+
+    private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsCoverageStatus.Order
+        .Select(status =>
+        {
+            var meta = OdsCoverageStatus.Meta(status);
+            return new OdsBreakdownRow { Key = status, Icon = meta.Icon, IconColor = meta.DotColor, Label = meta.Label, Count = CountFor(status) };
+        })
+        .ToList();
+
+    private int CountFor(CoverageStatus status) => status switch
+    {
+        CoverageStatus.Active => Summary.CountsByStatus.Active,
+        CoverageStatus.ExpiringSoon => Summary.CountsByStatus.ExpiringSoon,
+        CoverageStatus.Lapsed => Summary.CountsByStatus.Lapsed,
+        CoverageStatus.Upcoming => Summary.CountsByStatus.Upcoming,
+        CoverageStatus.Archived => Summary.CountsByStatus.Archived,
+        _ => Summary.CountsByStatus.NoCoverage,
+    };
+}

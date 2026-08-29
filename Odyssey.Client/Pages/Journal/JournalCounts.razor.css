@@ -1,0 +1,4 @@
+.je-counts { display: inline-flex; align-items: center; gap: 12px; }
+.je-count { display: inline-flex; align-items: center; gap: 4px; color: var(--mud-palette-text-secondary); font-size: 0.75rem; }
+.je-count .material-icons { font-size: 14px; }
+.je-count .mono { color: var(--mud-palette-text-primary); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }

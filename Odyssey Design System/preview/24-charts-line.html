@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Charts · Line" subtitle="Net worth + savings overlay · 6 months" viewport="700x320" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Charts · Line</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .wrap { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 8px; padding: 20px; }
+    .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
+    .ttl { font: 500 14px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+    .sub { font: 400 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 4px; }
+    .legend { display: flex; gap: 14px; font: 400 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+    .axis { font: 400 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
+  </style>
+  <div class="wrap">
+    <div class="head">
+      <div>
+        <div class="ttl">Net worth · last 6 months</div>
+        <div class="sub">USD · all accounts</div>
+      </div>
+      <div class="legend">
+        <div><span class="swatch" style="background:var(--chart-1)"></span>Net worth</div>
+        <div><span class="swatch" style="background:var(--chart-2)"></span>Savings only</div>
+      </div>
+    </div>
+
+    <!-- 660 × 220 SVG line chart -->
+    <svg width="660" height="220" viewBox="0 0 660 220">
+      <!-- Grid lines -->
+      <g stroke="var(--chart-grid)" stroke-width="1">
+        <line x1="40" y1="30"  x2="650" y2="30"/>
+        <line x1="40" y1="80"  x2="650" y2="80"/>
+        <line x1="40" y1="130" x2="650" y2="130"/>
+        <line x1="40" y1="180" x2="650" y2="180"/>
+      </g>
+      <!-- Y axis labels -->
+      <g class="axis">
+        <text x="32" y="34"  text-anchor="end">$100k</text>
+        <text x="32" y="84"  text-anchor="end">$ 80k</text>
+        <text x="32" y="134" text-anchor="end">$ 60k</text>
+        <text x="32" y="184" text-anchor="end">$ 40k</text>
+      </g>
+      <!-- X axis labels -->
+      <g class="axis">
+        <text x="80"  y="208" text-anchor="middle">Jun</text>
+        <text x="180" y="208" text-anchor="middle">Jul</text>
+        <text x="280" y="208" text-anchor="middle">Aug</text>
+        <text x="380" y="208" text-anchor="middle">Sep</text>
+        <text x="480" y="208" text-anchor="middle">Oct</text>
+        <text x="580" y="208" text-anchor="middle">Nov</text>
+      </g>
+      <!-- Net worth area + line (chart-1, tide) -->
+      <defs>
+        <linearGradient id="netFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"  stop-color="#4FD7CB" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="#4FD7CB" stop-opacity="0.0"/>
+        </linearGradient>
+      </defs>
+      <path d="M 80 150 L 180 140 L 280 125 L 380 110 L 480 85 L 580 65 L 580 190 L 80 190 Z" fill="url(#netFill)" />
+      <polyline points="80,150 180,140 280,125 380,110 480,85 580,65"
+                fill="none" stroke="var(--chart-1)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      <!-- Data points net -->
+      <g fill="var(--chart-1)">
+        <circle cx="80"  cy="150" r="3"/>
+        <circle cx="180" cy="140" r="3"/>
+        <circle cx="280" cy="125" r="3"/>
+        <circle cx="380" cy="110" r="3"/>
+        <circle cx="480" cy="85"  r="3"/>
+        <circle cx="580" cy="65"  r="4"/>
+      </g>
+      <!-- Savings line (chart-2, sea) -->
+      <polyline points="80,175 180,172 280,168 380,162 480,155 580,148"
+                fill="none" stroke="var(--chart-2)" stroke-width="1.8" stroke-dasharray="4 4" stroke-linejoin="round" stroke-linecap="round"/>
+      <g fill="var(--chart-2)">
+        <circle cx="80"  cy="175" r="2.5"/>
+        <circle cx="180" cy="172" r="2.5"/>
+        <circle cx="280" cy="168" r="2.5"/>
+        <circle cx="380" cy="162" r="2.5"/>
+        <circle cx="480" cy="155" r="2.5"/>
+        <circle cx="580" cy="148" r="2.5"/>
+      </g>
+      <!-- Hover indicator on last point -->
+      <line x1="580" y1="30" x2="580" y2="190" stroke="var(--chart-axis)" stroke-dasharray="2 4"/>
+    </svg>
+  </div>
+</body></html>

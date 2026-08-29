@@ -1,0 +1,179 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IContractsApiClient Contracts
+@inject ISnackbar Snackbar
+
+@*
+    CreateContractDialog — the "New contract" dialog (issue #174), reused in edit mode when a
+    Contract is supplied (design-system update: every record's Edit action opens its create dialog
+    in edit mode instead of an inline expand-to-edit panel). Fields mirror the NewContract /
+    UpdateContract DTOs: name (required, ≤256), type, description (optional, ≤1024), and the term.
+    A contract is either TERM-based — startDate (optional) + endDate (optional, ≥ startDate) — or a
+    ONE-OFF — a required completionDate point-in-time agreement with no ongoing term. Parties and
+    documents are never edited here; they are managed from the contract's detail (§6/§10).
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="handshake" Title="@(IsEdit ? "Edit contract" : "New contract")"
+               Subtitle="@(IsEdit
+                   ? "Update the agreement's name, type and dates — a term or a one-off. Parties and documents are managed from the contract."
+                   : "Record the agreement's name, type and dates — a term or a one-off — then add the parties and documents from the contract.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create contract")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    <OdsField Label="Contract name" @bind-Value="_name" Placeholder="e.g. Maple St Residence — Lease"
+              Error="@_nameError" />
+
+    <OdsFormRow>
+        <OdsContractTypeSelect Value="@_type"
+                               ValueChanged="@(v => { _type = v; _typeError = null; })"
+                               Placeholder="Choose a type…" Error="@_typeError" />
+        <OdsFieldShell Label="Term">
+            <OdsSegmentedControl Full="true" Value="@_mode" ValueChanged="OnModeChanged"
+                                 AriaLabel="Contract term" Options="_modeOptions" />
+        </OdsFieldShell>
+    </OdsFormRow>
+
+    @if (_mode == TermMode)
+    {
+        <OdsFormRow>
+            <OdsDateField Label="Starts" Optional="true" @bind-Value="_startDate"
+                          Placeholder="No start date" />
+            <OdsDateField Label="Ends" Optional="true" Value="_endDate"
+                          ValueChanged="@(v => { _endDate = v; _endError = null; })"
+                          Placeholder="Open-ended"
+                          Error="@_endError"
+                          Help="Leave empty for an open-ended agreement." />
+        </OdsFormRow>
+    }
+    else
+    {
+        <OdsFormRow>
+            <OdsDateField Label="Completion" Value="_completionDate"
+                          ValueChanged="@(v => { _completionDate = v; _completionError = null; })"
+                          Placeholder="Completion date"
+                          Error="@_completionError"
+                          Help="The one-off closing / delivery date — no ongoing term." />
+            <div></div>
+        </OdsFormRow>
+    }
+
+    <OdsNoteField Label="Description" Optional="true" MaxLength="1024" @bind-Value="_description"
+                  Placeholder="What this agreement covers, term, notice period, key conditions…" />
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>When set, the dialog edits this contract. Null = create mode.</summary>
+    [Parameter] public ExistingContract? Contract { get; set; }
+
+    private bool IsEdit => Contract is not null;
+
+    private const string TermMode = "term";
+    private const string OneOffMode = "oneoff";
+
+    private static readonly IReadOnlyList<OdsSegmentedOption> _modeOptions =
+    [
+        new() { Value = TermMode, Label = "Term" },
+        new() { Value = OneOffMode, Label = "One-off" },
+    ];
+
+    private string _mode = TermMode;
+    private string? _name;
+    private string _type = string.Empty;
+    private string? _description;
+    private DateTime? _startDate = DateTime.UtcNow.Date;
+    private DateTime? _endDate;
+    private DateTime? _completionDate;
+
+    private string? _nameError;
+    private string? _typeError;
+    private string? _endError;
+    private string? _completionError;
+
+    protected override void OnInitialized()
+    {
+        if (Contract is not { } contract)
+            return;
+
+        _name           = contract.Name;
+        _type           = contract.Type.ToString();
+        _description    = contract.Description;
+        _mode           = contract.CompletionDate is not null ? OneOffMode : TermMode;
+        _startDate      = contract.StartDate;
+        _endDate        = contract.EndDate;
+        _completionDate = contract.CompletionDate;
+    }
+
+    private void OnModeChanged(string mode)
+    {
+        _mode = mode;
+        _endError = null;
+        _completionError = null;
+    }
+
+    private async Task<bool> SaveAsync()
+    {
+        _nameError = string.IsNullOrWhiteSpace(_name) ? "Give the contract a name." : null;
+        _typeError = string.IsNullOrEmpty(_type) ? "Pick a contract type." : null;
+        _endError = null;
+        _completionError = null;
+
+        if (_mode == OneOffMode)
+        {
+            _completionError = _completionDate is null ? "Set a completion date." : null;
+        }
+        else if (_endDate is { } e && _startDate is { } s && e.Date < s.Date)
+        {
+            _endError = "“Ends” can’t be before “Starts”.";
+        }
+
+        if (_nameError is not null || _typeError is not null || _endError is not null || _completionError is not null)
+            return false;
+
+        var oneOff = _mode == OneOffMode;
+        var type = Enum.TryParse<ContractType>(_type, out var t) ? t : ContractType.Other;
+        var name = _name!.Trim();
+        var description = string.IsNullOrWhiteSpace(_description) ? null : _description!.Trim();
+        var startDate = oneOff ? null : _startDate;
+        var endDate = oneOff ? null : _endDate;
+        var completionDate = oneOff ? _completionDate : null;
+
+        if (IsEdit)
+        {
+            var update = new UpdateContract
+            {
+                Name = name,
+                Type = type,
+                Description = description,
+                StartDate = startDate,
+                EndDate = endDate,
+                CompletionDate = completionDate,
+                // Archive/restore is a separate row action — preserve whatever the record already has.
+                IsArchived = Contract!.Archived is not null,
+            };
+
+            return (await Contracts.UpdateAsync(Contract.ContractId, update)).Toast(Snackbar,
+                "Unable to update contract", "Contract updated.");
+        }
+
+        var contract = new NewContract
+        {
+            Name = name,
+            Type = type,
+            Description = description,
+            StartDate = startDate,
+            EndDate = endDate,
+            CompletionDate = completionDate,
+        };
+
+        return (await Contracts.CreateAsync(contract)).Toast(Snackbar, "Unable to create contract", "Contract created.");
+    }
+}

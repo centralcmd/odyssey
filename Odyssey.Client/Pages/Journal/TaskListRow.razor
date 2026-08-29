@@ -1,0 +1,106 @@
+@using Odyssey.Client.Components
+@*
+    TaskListRow — a task rendered as an expandable-record row (the flat List view + the Archived
+    section). A cycling status control (Backlog → Doing → Done → Archived, text-labelled + keyboard
+    operable), the title, a deadline chip, an author/completed sub-line, tag chips, and a row menu
+    (Edit / Archive / Delete). Status meaning is in text (the control's aria-label + the chip).
+*@
+
+<div class="acct-item tk-row @(_status == JournalTaskStatus.Archived ? "dimmed" : "")">
+    <div class="acct-head" style="cursor:default;" data-status="@_status">
+        <div @onclick:stopPropagation="true">
+            <button type="button" class="tk-status-btn" data-s="@_status" disabled="@(_status == JournalTaskStatus.Archived)"
+                    aria-label="@StatusButtonLabel"
+                    @onclick="@(() => { if (_status != JournalTaskStatus.Archived) OnStatus.InvokeAsync(NextStatus); })">
+                <span class="material-icons" aria-hidden="true">@StatusIcon</span>
+            </button>
+        </div>
+
+        <div class="acct-id">
+            <div class="acct-name-row">
+                <span class="acct-name">@Task.Title</span>
+                <TaskDeadlineChip Deadline="Task.Deadline" />
+            </div>
+            <div class="tk-subline">
+                <span class="je-author"><span class="material-icons" aria-hidden="true">person</span>@Task.CreatedByName</span>
+                @if (Task.CompletedAt is { } done)
+                {
+                    <span class="acct-dot">·</span>
+                    <span class="mono">Done @done.ToLocalTime().ToString("MMM d, yyyy")</span>
+                }
+            </div>
+            @if (TagNames.Any())
+            {
+                <div class="je-cardfoot"><JournalTagChips Names="TagNames" Max="4" /></div>
+            }
+        </div>
+
+        <div class="acct-controls" @onclick:stopPropagation="true">
+            @if (Task.AttachmentCount > 0)
+            {
+                <span class="tk-att-count"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">@Task.AttachmentCount</span></span>
+            }
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"
+                     AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
+                @if (CanUpdate)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OnEdit.InvokeAsync(Task))">Edit task</MudMenuItem>
+                }
+                <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="@(() => OnExport.InvokeAsync(Task))">Export as iCalendar</MudMenuItem>
+                @if (CanUpdate)
+                {
+                    <MudMenuItem Icon="@(_status == JournalTaskStatus.Archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Inventory2)"
+                                 OnClick="@(() => OnArchive.InvokeAsync(Task))">@(_status == JournalTaskStatus.Archived ? "Unarchive" : "Archive")</MudMenuItem>
+                }
+                <MudMenuItem OnClick="@(() => OnCopyId.InvokeAsync(Task.JournalTaskId))">
+                    <span class="odc-menu-item">
+                        <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
+                        <span>Copy ID</span>
+                        <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
+                    </span>
+                </MudMenuItem>
+                @if (CanDelete)
+                {
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" Style="color:var(--mud-palette-error);" OnClick="@(() => OnDelete.InvokeAsync(Task.JournalTaskId))">Delete</MudMenuItem>
+                }
+            </MudMenu>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public JournalTaskSummary Task { get; set; } = default!;
+    [Parameter] public IEnumerable<string> TagNames { get; set; } = [];
+    [Parameter] public bool CanUpdate { get; set; }
+    [Parameter] public bool CanDelete { get; set; }
+
+    [Parameter] public EventCallback<JournalTaskStatus> OnStatus { get; set; }
+    [Parameter] public EventCallback<JournalTaskSummary> OnEdit { get; set; }
+    [Parameter] public EventCallback<JournalTaskSummary> OnExport { get; set; }
+    [Parameter] public EventCallback<JournalTaskSummary> OnArchive { get; set; }
+    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+    [Parameter] public EventCallback<Guid> OnCopyId { get; set; }
+
+    private JournalTaskStatus _status => Task.Status;
+
+    private JournalTaskStatus NextStatus => _status switch
+    {
+        JournalTaskStatus.Backlog => JournalTaskStatus.Doing,
+        JournalTaskStatus.Doing => JournalTaskStatus.Done,
+        JournalTaskStatus.Done => JournalTaskStatus.Archived,
+        _ => JournalTaskStatus.Backlog,
+    };
+
+    private string StatusIcon => _status switch
+    {
+        JournalTaskStatus.Doing => "radio_button_checked",
+        JournalTaskStatus.Done => "task_alt",
+        JournalTaskStatus.Archived => "task_alt",
+        _ => "radio_button_unchecked",
+    };
+
+    private string StatusButtonLabel => _status == JournalTaskStatus.Archived
+        ? "Archived"
+        : $"Status: {_status}. Activate to set {NextStatus}.";
+}

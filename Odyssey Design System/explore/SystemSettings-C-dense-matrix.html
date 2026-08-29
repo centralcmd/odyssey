@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>System settings · C — Dense cards + round-trip matrix</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../components.css" />
+<link rel="stylesheet" href="explore.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<script src="../ui_kits/web/system-settings-data.js"></script>
+<script type="text/babel" src="settings-explore-common.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { MIcon, SearchField } = window.OdysseyDesignSystem_d5aa51;
+
+// The four import/export sections are the same shape four times over: a count
+// cap and a size cap, once per direction. Read as a matrix they are two labels
+// and four controls instead of four rows with four near-identical sentences.
+const matrixOf = (g) => {
+  if (!g.roundTrip) return null;
+  const pick = (type, dir) => g.rows.find(r => r.type === type && r.key.indexOf(dir) > -1);
+  const m = {
+    countImport: pick('capacity', 'Import'), countExport: pick('capacity', 'Export'),
+    sizeImport: pick('size', 'Import'), sizeExport: pick('size', 'Export'),
+  };
+  return Object.values(m).every(Boolean) ? m : null;
+};
+const MATRIX_LBL = {
+  'Contacts import & export': ['Contacts per file', 'vCard (.vcf) file size'],
+  'Calendars import & export': ['Events per file', 'iCalendar (.ics) file size'],
+  'Tasks import & export': ['Tasks per file', 'iCalendar (.ics) file size'],
+  'Journal import & export': ['Entries per file', 'iCalendar (.ics) file size'],
+};
+const MATRIX_SUB = 'Above ~64 MB, also raise the reverse proxy’s body-size limit.';
+
+function Row({ r, d }) {
+  const [why, setWhy] = React.useState(false);
+  return (
+    <div className={`exc-row${exWide(r) ? ' wide' : ''}`}>
+      <div className="exc-l">
+        <span className="exc-ttl" id={`ex-ttl-${r.key}`}>{r.title}</span>
+        <button type="button" className={`exc-why${why ? ' on' : ''}`} aria-expanded={why}
+          aria-label={`What “${r.title}” does`} onClick={() => setWhy(w => !w)}>
+          <span className="material-icons" aria-hidden="true">help_outline</span>
+        </button>
+        {d.dirtyRow(r) ? <span className="ex-dot" title="Unsaved change" aria-hidden="true" /> : null}
+      </div>
+      <div className="exc-ctrl"><ExControl row={r} d={d} /></div>
+      {why ? <div className="exc-desc">{r.desc}{r.meta ? ` · Last changed by ${r.meta.by} on ${r.meta.on}.` : ' · Never changed.'}</div> : null}
+    </div>
+  );
+}
+
+function Matrix({ g, m, d }) {
+  const [countLbl, sizeLbl] = MATRIX_LBL[g.group];
+  const cell = (r) => <div className="exc-mcell" key={r.key}><ExControl row={r} d={d} /></div>;
+  return (
+    <div className="exc-matrix">
+      <div className="exc-mgrid">
+        <div />
+        <div className="exc-mhead">Per import</div>
+        <div className="exc-mhead">Per export</div>
+        <div className="exc-mrule" />
+        <div className="exc-mlbl">
+          {countLbl}
+          <span>Rejected above this count. “No limit” keeps the direction unbounded.</span>
+        </div>
+        {cell(m.countImport)}{cell(m.countExport)}
+        <div className="exc-mlbl">
+          {sizeLbl}
+          <span>{MATRIX_SUB}</span>
+        </div>
+        {cell(m.sizeImport)}{cell(m.sizeExport)}
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ g, d, filtered }) {
+  const rt = d.rtFor(g);
+  const dirty = d.dirtyIn(g);
+  const m = filtered ? null : matrixOf(g);
+  return (
+    <section className="gcard" aria-labelledby={`exc-g-${g.group}`}>
+      <header className="gcard-h">
+        <span className="gcard-ic"><MIcon name={g.icon} size={17} /></span>
+        <h2 className="gcard-t" id={`exc-g-${g.group}`}>{g.group}</h2>
+        {dirty > 0
+          ? <span className="gcard-badge" style={{ marginLeft: 'auto' }}>{dirty} unsaved</span>
+          : <span className="gcard-count">{g.rows.length} settings</span>}
+      </header>
+      {g.note ? (
+        <div className="gcard-note" role="note">
+          <span className="material-icons" aria-hidden="true">{g.note.icon}</span>
+          <div>{g.note.body}</div>
+        </div>
+      ) : null}
+      {rt ? (
+        <div className="gcard-alert" id={`ex-rt-${g.group}`} role="alert" tabIndex={-1}>
+          <span className="material-icons" aria-hidden="true">error_outline</span>
+          <div>{rt}</div>
+        </div>
+      ) : null}
+      {m ? <Matrix g={g} m={m} d={d} /> : <div>{g.rows.map(r => <Row key={r.key} r={r} d={d} />)}</div>}
+    </section>
+  );
+}
+
+function App() {
+  const d = useExDraft();
+  const [q, setQ] = React.useState('');
+  const t = q.trim().toLowerCase();
+  const groups = SS_GROUPS
+    .map(g => ({ ...g, rows: t ? g.rows.filter(r => (r.title + ' ' + r.desc + ' ' + g.group).toLowerCase().includes(t)) : g.rows }))
+    .filter(g => g.rows.length);
+  return (
+    <div className="ex-wrap">
+      <div className="ex-banner">
+        <b>Direction C</b>
+        <div>Section cards, but the row sheds everything that isn’t label and control: descriptions and history move behind a “?” on each row, and the four import/export sections collapse into a two-by-two matrix — one pair of labels and four controls instead of four rows repeating the same sentence. The whole catalogue reads in about two screens.</div>
+      </div>
+      <header className="ex-head">
+        <div className="ex-head-l">
+          <span className="ex-head-ic"><MIcon name="settings" size={20} /></span>
+          <div>
+            <h1>System settings</h1>
+            <p>Instance-wide configuration for this Odyssey deployment</p>
+          </div>
+        </div>
+        <div className="ex-head-r">
+          <div className="ex-search"><SearchField placeholder="Search settings…" value={q} onChange={setQ} /></div>
+          <ExSaveBar d={d} />
+        </div>
+      </header>
+      {groups.length ? (
+        <div className="exc-stack">{groups.map(g => <SectionCard key={g.group} g={g} d={d} filtered={!!t} />)}</div>
+      ) : (
+        <div className="ex-empty">Nothing matches “{q.trim()}”.</div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

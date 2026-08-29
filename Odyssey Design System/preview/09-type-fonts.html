@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- @dsCard group="Type" name="Type · Brand fonts" subtitle="Sora (sans) + JetBrains Mono (numbers / IDs / code)" viewport="700x540" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Type · Brand fonts</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="_card.css">
+</head>
+<body>
+  <style>
+    .pair { display: grid; grid-template-columns: 120px 1fr 100px; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--mud-palette-divider-light); align-items: baseline; }
+    .pair:last-of-type { border-bottom: none; }
+    .meta { font: 500 11px/1.2 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .meta b { color: var(--mud-palette-text-primary); font-weight: 600; letter-spacing: 0.04em; text-transform: none; display: block; margin-bottom: 4px; }
+    .glyph { font-family: var(--font-sans); }
+    .glyph.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    .spec { font: 400 10px/1 var(--font-mono); color: var(--mud-palette-text-secondary); text-align: right; }
+    .head { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 4px 0 10px; }
+    .small { font: 400 11px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+  </style>
+
+  <div class="head">Roboto — sans · display, body, UI</div>
+  <div class="pair">
+    <div class="meta"><b>Roboto</b>display</div>
+    <div class="glyph" style="font-weight: 300; font-size: 44px; letter-spacing: -0.02em; line-height: 1;">From Earth to Mars</div>
+    <div class="spec">300 · 44 px</div>
+  </div>
+  <div class="pair">
+    <div class="meta"><b>Roboto</b>heading</div>
+    <div class="glyph" style="font-weight: 400; font-size: 28px; letter-spacing: -0.01em; line-height: 1.15;">Monthly summary · November</div>
+    <div class="spec">400 · 28 px</div>
+  </div>
+  <div class="pair">
+    <div class="meta"><b>Roboto</b>body</div>
+    <div class="glyph" style="font-weight: 400; font-size: 15px; line-height: 1.5;">A grocery run at Whole Foods on Saturday morning, paid by card. The chip on the right shows the matched tag.</div>
+    <div class="spec">400 · 15 px</div>
+  </div>
+  <div class="pair">
+    <div class="meta"><b>Roboto</b>button</div>
+    <div class="glyph" style="font-weight: 500; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1;">Add account · Import statement · Approve</div>
+    <div class="spec">500 · 13 px · caps</div>
+  </div>
+
+  <div class="head" style="margin-top: 22px;">Roboto Mono — code, IDs, numbers, ledgers</div>
+  <div class="pair">
+    <div class="meta"><b>Roboto Mono</b>ledger</div>
+    <div class="glyph mono" style="font-weight: 500; font-size: 18px; line-height: 1;">
+      <span class="income">+3,250.00</span>  <span class="muted">·</span>  <span class="expense">−128.40</span>  <span class="muted">·</span>  <span class="expense">−    9.99</span>
+    </div>
+    <div class="spec">500 · 18 px · tnum</div>
+  </div>
+  <div class="pair">
+    <div class="meta"><b>Roboto Mono</b>id</div>
+    <div class="glyph mono" style="font-weight: 400; font-size: 13px; color: var(--mud-palette-text-secondary);">tx · 0c3d-f81a-7e22-915b · acct ·1234 · USD</div>
+    <div class="spec">400 · 13 px</div>
+  </div>
+  <div class="pair">
+    <div class="meta"><b>Roboto Mono</b>glyph set</div>
+    <div class="glyph mono" style="font-weight: 400; font-size: 16px; letter-spacing: 0.02em;">0 1 2 3 4 5 6 7 8 9  ·  $ € £ ¥  ·  − +  ·  &gt;_  ·  { } [ ]</div>
+    <div class="spec">400 · 16 px</div>
+  </div>
+
+  <div class="small" style="margin-top: 14px;">
+    Roboto + Roboto Mono — declared in <span class="mono">colors_and_type.css</span> and matched 1:1 to the codebase's existing Google Fonts import in <span class="mono">wwwroot/index.html</span>.
+  </div>
+</body></html>

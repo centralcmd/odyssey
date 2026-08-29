@@ -1,0 +1,112 @@
+@*
+    OdsExpandableCard — THE expand-in-place record card (Odyssey Design System ·
+    ui_kits/web kit.css `.acct-list` / `.acct-item`).
+
+    The dominant list UI in the client: Accounts, Contracts, Insurance policies, Tax
+    statements, Subscriptions, Budgets, Journal entries and the analysis log all render
+    their rows through this one component. A card head of four slots —
+    Lead (type badge) · Head (name row + tag line) · Figures (right-hand headline) ·
+    Actions (the row menu) — over an expandable Detail region.
+
+    Its stylesheet is the GLOBAL `.acct-*` block in wwwroot/css/odyssey-components.css,
+    not a scoped .razor.css. Every slot below is authored by the host page, so a scoped
+    sheet would need `::deep` on nearly every selector — and, being bundled after the
+    global sheets, would out-rank the page's own overrides. One sheet, one flash
+    keyframe, one prefers-reduced-motion guard (issue #367).
+
+    Keyboard: the `.acct-expand` <button> is the trigger and carries `aria-expanded` as a
+    string (a bare bool renders nothing at all when false — issue #365). The head row's
+    click is a redundant mouse affordance only, so it adds neither a second tab stop nor a
+    nested interactive control.
+*@
+
+<div id="@Id" class="@RootClass">
+    @* Mouse affordance: the whole head row toggles. Keyboard users operate the real
+       expand <button> in the controls column. *@
+    <div class="@HeadClass" @onclick="ToggleAsync">
+        @Lead
+        <div class="acct-id">@Head</div>
+        @if (Figures is not null)
+        {
+            <div class="acct-figures">@Figures</div>
+        }
+        @* Clicks on the row menu (and anything else slotted here) must not toggle. *@
+        <div class="acct-controls" @onclick:stopPropagation="true">
+            @Actions
+            <button type="button" class="acct-expand"
+                    aria-expanded="@(Open ? "true" : "false")"
+                    aria-label="@ToggleLabel"
+                    @onclick="ToggleAsync">
+                <span class="material-icons chev @(Open ? "open" : null)" aria-hidden="true">expand_more</span>
+            </button>
+        </div>
+    </div>
+    @if (Open && Detail is not null)
+    {
+        <div class="acct-detail">@Detail</div>
+    }
+</div>
+
+@code {
+    /// <summary>DOM id for the card — the jump-to-record target of a header problem rollup.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Whether the detail region is showing. Pair with OpenChanged / OnToggle.</summary>
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Fires with the next open state on head or trigger activation.</summary>
+    [Parameter] public EventCallback<bool> OnToggle { get; set; }
+
+    /// <summary>The record has left the working set (archived / closed) — dims the type badge.</summary>
+    [Parameter] public bool Dimmed { get; set; }
+
+    /// <summary>One-shot attention ring, for when a header rollup jumps to this record.</summary>
+    [Parameter] public bool Flash { get; set; }
+
+    /// <summary>The record's name — becomes the trigger's accessible name
+    /// ("Expand Everyday checking"). Omit for a bare "Expand" / "Collapse".</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Top-align the head columns instead of centring them — for a multi-line
+    /// head (the Journal card's snippet + tag chips).</summary>
+    [Parameter] public bool AlignTop { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root (e.g. a page-specific modifier).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>The leading cell — conventionally a <c>.acct-badge</c> type icon.</summary>
+    [Parameter] public RenderFragment? Lead { get; set; }
+
+    /// <summary>The identity column: the <c>.acct-name-row</c> and the <c>.acct-tags</c> sub-line.</summary>
+    [Parameter, EditorRequired] public RenderFragment? Head { get; set; }
+
+    /// <summary>The right-hand headline figure + caption. Omit for a three-column head.</summary>
+    [Parameter] public RenderFragment? Figures { get; set; }
+
+    /// <summary>Row controls (the overflow menu), placed left of the expand trigger.
+    /// Clicks here never toggle the card.</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    /// <summary>The expanded detail region — rendered only while <see cref="Open"/>.</summary>
+    [Parameter] public RenderFragment? Detail { get; set; }
+
+    private string RootClass =>
+        $"acct-item{(Open ? " open" : null)}{(Dimmed ? " dimmed" : null)}{(Flash ? " flash" : null)}{(string.IsNullOrWhiteSpace(Class) ? null : $" {Class}")}";
+
+    private string HeadClass =>
+        $"acct-head{(Figures is null ? " no-figures" : null)}{(AlignTop ? " align-top" : null)}";
+
+    private string ToggleLabel =>
+        string.IsNullOrWhiteSpace(Label)
+            ? (Open ? "Collapse" : "Expand")
+            : $"{(Open ? "Collapse" : "Expand")} {Label}";
+
+    private async Task ToggleAsync()
+    {
+        var next = !Open;
+        await OpenChanged.InvokeAsync(next);
+        await OnToggle.InvokeAsync(next);
+    }
+}

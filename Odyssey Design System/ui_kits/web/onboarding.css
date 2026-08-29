@@ -1,0 +1,65 @@
+/* =============================================================
+   onboarding.css — first-sign-in profile completion gate (/onboarding).
+
+   The OnboardingLayout surface: a centered card on the app background, no
+   drawer / module rail / nav shell (the layout deliberately omits them until
+   the required fields are saved). Reuses the shared .pf-fields / .pf-note
+   field styles from account.css and the DS atoms; only the gate chrome lives
+   here. All tokens come from colors_and_type.css.
+   ============================================================= */
+
+.onb-shell {
+  min-height: 100vh;
+  display: grid; place-items: start center;
+  padding: 48px 16px 72px;
+  background: var(--mud-palette-background);
+  overflow-y: auto;
+}
+
+.onb-card {
+  width: 100%; max-width: 600px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--mud-elevation-8, 0 12px 40px rgba(0,0,0,0.35));
+  padding: 32px 36px 28px;
+  box-sizing: border-box;
+}
+
+.onb-brand { display: flex; justify-content: center; margin-bottom: 18px; }
+
+.onb-head { text-align: center; margin-bottom: 22px; }
+.onb-title { margin: 0; font: 400 26px/1.15 var(--font-sans); letter-spacing: -0.01em; color: var(--mud-palette-text-primary); }
+.onb-sub { margin: 10px auto 0; max-width: 460px; font: 400 14px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+
+/* Slim completeness indicator above the form. */
+.onb-progress { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+.onb-progress-bar { position: relative; flex: 1; height: 4px; border-radius: 999px; background: var(--mud-palette-divider); overflow: hidden; }
+.onb-progress-bar::after { content: ''; position: absolute; inset: 0 60% 0 0; border-radius: 999px; background: var(--mud-palette-lines-default, var(--mud-palette-text-disabled)); transition: right 240ms ease, background-color 240ms ease; }
+.onb-progress-bar.done::after { right: 0; background: var(--finance-income); }
+.onb-progress-txt { font: 500 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.onb-progress-bar.done + .onb-progress-txt { color: var(--finance-income); }
+
+.onb-alert { margin-bottom: 18px; }
+
+/* Field set stretches to the card width on the gate (wider than in the card). */
+.onb-card .pf-fields, .onb-card .pf-note { max-width: none; }
+
+.onb-actions {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--mud-palette-divider);
+  flex-wrap: wrap;
+}
+.onb-required-note { font: 400 12.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+.onb-foot { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.onb-foot .material-icons { color: var(--mud-palette-text-secondary); }
+
+/* Forced-reset gate — the "don't know your password?" escape line under the form. */
+.cpr-alt { display: flex; align-items: flex-start; gap: 8px; margin-top: 16px; font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cpr-alt .material-icons { color: var(--mud-palette-text-secondary); flex: none; margin-top: 1px; }
+
+@media (max-width: 560px) {
+  .onb-card { padding: 26px 20px 22px; }
+  .onb-title { font-size: 22px; }
+}

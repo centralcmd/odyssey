@@ -1,0 +1,323 @@
+@page "/analysis-log"
+@using System.Globalization
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.FileAnalysisAudit)]
+@using Odyssey.Dtos.Application
+@using Odyssey.Client.Services
+@inject IFileAnalysisApiClient FileAnalysis
+@inject IFileAnalysisDisclosureCache Disclosures
+@inject ISnackbar Snackbar
+
+<PageTitle>Analysis log</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+@*
+    Analysis log — the admin-only audit trail of every external-AI file-analysis
+    transfer (Odyssey Design System · Pages · Analysis log / FileAnalysisLog.jsx).
+
+    The "Analyze statement" feature sends the complete document to Anthropic's
+    Claude API, so each transfer is recorded here for ISO 27001 accountability and
+    GDPR transfer traceability: who · which file · when · result, under what lawful
+    basis, with the verbatim consent text the user affirmed. Gated by the dedicated
+    admin-only file-analysis.audit claim, listed between Roles and Settings in the nav.
+
+    Backed by GET api/file-analysis/audit (FileAnalysisController) → newest first.
+    Each record reuses the Accounts/Roles expandable list-row scaffold; the leading
+    AI-sparkle tile is toned by outcome (green completed · amber in-progress · red
+    failed). Search + outcome filter narrow the list.
+*@
+
+<MudStack Spacing="6">
+
+    <PageHeader Title="Analysis log"
+                Icon="@Icons.Material.Filled.Policy"
+                SearchOpenByDefault="true">
+        <SubLine>@HeaderSubLine</SubLine>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadAsync"
+                                Placeholder="Search by file, user, account or request ID…"
+                                Class="ph-search" />
+                <OdsMultiSelect Label="Outcome" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="_statusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="FileAnalysisAuditEntry" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Entries per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <div class="fal-note">
+        <span class="material-icons">shield</span>
+        <div>
+            File analysis sends the <b>complete document</b> to @_disclosure.Processor. Each transfer requires
+            per-document consent and is recorded here for accountability. Entries are retained per the data-retention policy.
+        </div>
+    </div>
+
+    <div class="acct-list fal-list">
+        <OdsInfiniteList TItem="FileAnalysisAuditEntry" Items="FilteredEntries" BatchSize="_batch"
+                         ItemKey="@(e => (object)e.Id)" Noun="analysis entries"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadAsync"
+                         HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                         EmptyIcon="auto_fix_high"
+                         EmptyTitle="No analysis transfers yet"
+                         EmptyDescription="No statements have been sent for analysis yet."
+                         BarClass="mb-2">
+            <RenderItem Context="e">
+                @{
+                    var st = StatusVisual(e.Status);
+                    var isOpen = _openId == e.Id;
+                }
+            <OdsExpandableCard Open="isOpen"
+                               Label="@(e.File?.Name ?? "statement.pdf")"
+                               OnToggle="@(() => Toggle(e.Id))">
+                <Lead>
+                    <span class="fal-av @st.Class"><MudIcon Icon="@Icons.Material.Filled.AutoFixHigh" /></span>
+                </Lead>
+
+                <Head>
+                        <div class="acct-name-row">
+                            <span class="acct-name fal-file">@(e.File?.Name ?? "statement.pdf")</span>
+                            <span class="fal-pill @st.Pill">@st.Label</span>
+                        </div>
+                        <div class="fal-sub">
+                            <span><span class="material-icons">person</span>@(e.User?.Name ?? "—")</span>
+                            <span class="fal-dot"></span>
+                            <span><span class="material-icons">account_balance_wallet</span>@(e.Account?.Name ?? "—")</span>
+                            <span class="fal-dot"></span>
+                            <span class="fal-prov"><span class="material-icons">auto_awesome</span>@e.Provider <span class="mono">@e.Model</span></span>
+                        </div>
+                </Head>
+
+                <Figures>
+                        <div class="fal-when mono">@FormatWhen(e.At)</div>
+                        <div class="fal-result">@ResultSummary(e)</div>
+                </Figures>
+
+                <Detail>
+                        <div class="fal-grid">
+                            <div class="fal-fact"><div class="fal-fact-label">When (UTC)</div><div class="fal-fact-value mono">@FormatWhen(e.At)</div></div>
+                            <div class="fal-fact">
+                                <div class="fal-fact-label">Initiated by</div>
+                                <div class="fal-fact-value">
+                                    @(e.User?.Name ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(e.User?.Email) && e.User.Email != e.User.Name)
+                                    {
+                                        <span class="fal-email mono"> · @e.User.Email</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="fal-fact">
+                                <div class="fal-fact-label">Account</div>
+                                <div class="fal-fact-value">
+                                    @(e.Account?.Name ?? "—")
+                                    @if (!string.IsNullOrWhiteSpace(e.Account?.Number))
+                                    {
+                                        <span class="mono fal-acctno"> @e.Account.Number</span>
+                                    }
+                                </div>
+                            </div>
+                            @* The provider actually RECORDED on this entry. It previously prefixed a hardcoded "Anthropic",
+                               which asserted a processor name the audit row never stored — and would keep asserting it
+                               after an admin changed the configured processor (issue #421 Wave 1). *@
+                            <div class="fal-fact"><div class="fal-fact-label">Processor</div><div class="fal-fact-value">@e.Provider</div></div>
+                            <div class="fal-fact"><div class="fal-fact-label">Model</div><div class="fal-fact-value mono">@(e.Model ?? "—")</div></div>
+                            <div class="fal-fact"><div class="fal-fact-label">Prompt version</div><div class="fal-fact-value mono">@(string.IsNullOrWhiteSpace(e.PromptVersion) ? "—" : $"v{e.PromptVersion}")</div></div>
+                            <div class="fal-fact"><div class="fal-fact-label">Sent</div><div class="fal-fact-value">@SentSummary(e)</div></div>
+                            <div class="fal-fact">
+                                <div class="fal-fact-label">Result</div>
+                                <div class="fal-fact-value">
+                                    @if (e.Status == FileAnalysisJobStatus.Failed)
+                                    {
+                                        <span class="fal-fail">@(string.IsNullOrWhiteSpace(e.Failure) ? "Analysis failed" : e.Failure)</span>
+                                    }
+                                    else
+                                    {
+                                        @($"{e.Candidates} found · {e.Imported} imported")
+                                    }
+                                </div>
+                            </div>
+                            <div class="fal-fact"><div class="fal-fact-label">Duration</div><div class="fal-fact-value mono">@FormatDuration(e.DurationMs)</div></div>
+                            <div class="fal-fact"><div class="fal-fact-label">Lawful basis</div><div class="fal-fact-value">@(e.LawfulBasis ?? "—")</div></div>
+                            <div class="fal-fact"><div class="fal-fact-label">Request ID</div><div class="fal-fact-value mono">@e.RequestId</div></div>
+                            <div class="fal-fact">
+                                <div class="fal-fact-label">Consent</div>
+                                <div class="fal-fact-value">
+                                    @if (e.ConsentRecorded)
+                                    {
+                                        <span class="fal-consent-ok"><span class="material-icons">check_circle</span>Recorded</span>
+                                        <span class="fal-consent-method"> · @(string.IsNullOrWhiteSpace(e.ConsentMethod) ? "Per-document checkbox" : e.ConsentMethod)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="fal-consent-method">Not recorded</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(e.ConsentText))
+                        {
+                            <div class="fal-consent-quote">
+                                <span class="material-icons">format_quote</span>
+                                <span>“@e.ConsentText”</span>
+                            </div>
+                        }
+                </Detail>
+            </OdsExpandableCard>
+            </RenderItem>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+
+@code {
+    // Live processor disclosure for the banner (issue #421 Wave 1) — previously prose literals.
+    private FileAnalysisDisclosureDto _disclosure = FileAnalysisDisclosureCache.Fallback;
+    private bool _isLoading = true;
+    private bool _refetching;
+    private string _announce = "";
+    private bool _loadError;
+
+    private List<FileAnalysisAuditEntry> _entries = [];
+    private Guid? _openId;
+
+    // Card-list windowing (OdsInfiniteList): "Load N at a time" batch size.
+    private int _batch = OdsPageSizes.Batch[0];
+
+    private string _search = string.Empty;
+    private IReadOnlyCollection<string> _statusFilter = [];
+
+    // Sort (§6.13): Date / time (default) · Outcome. This page keeps no page state, so the
+    // sort is in-memory like its search + filter — the toolbar control is the sole sort surface.
+    private static readonly OdsTableSort DefaultSort = new("at", OdsSortDirection.Desc);
+    private OdsTableSort _sort = DefaultSort;
+    private static readonly IReadOnlyList<OdsSortField<FileAnalysisAuditEntry>> _sortFields =
+    [
+        new() { Key = "at", Label = "Date / time", Type = OdsSortType.Date, SortValue = e => e.At },
+        new() { Key = "status", Label = "Outcome", Type = OdsSortType.Status, SortValue = e => (int)e.Status },
+    ];
+
+    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    [
+        new OdsOption(nameof(FileAnalysisJobStatus.Completed), "Completed"),
+        new OdsOption(nameof(FileAnalysisJobStatus.Running), "In progress"),
+        new OdsOption(nameof(FileAnalysisJobStatus.Failed), "Failed"),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!OperatingSystem.IsBrowser())
+            return;
+
+        _disclosure = await Disclosures.GetAsync();
+        await LoadAsync();
+    }
+
+    // Server-side (issue #277): outcome filter, search (incl. initiating user) and sort are applied by
+    // the API, which enriches each entry with the user before filtering.
+    private async Task LoadAsync()
+    {
+        if (!_isLoading)
+        {
+            _refetching = true;
+            StateHasChanged();
+        }
+
+        var result = await FileAnalysis.ListAuditAsync(
+            search: _search,
+            statuses: _statusFilter,
+            sortBy: _sort.Key,
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+
+        if (result.IsSuccess)
+        {
+            _entries = result.ValueOr([]);
+            _loadError = false;
+            _announce = _entries.Count == 0 ? "No log entries match your filters."
+                : $"Showing {_entries.Count} log {(_entries.Count == 1 ? "entry" : "entries")}.";
+        }
+        else
+        {
+            Snackbar.Add($"Unable to load the analysis log: {result.Error}", Severity.Error);
+            _entries = [];
+            _loadError = true;
+            _announce = "Couldn't load the analysis log.";
+        }
+
+        _isLoading = false;
+        _refetching = false;
+        StateHasChanged();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+            StateHasChanged();
+    }
+
+    private void OnSearchChanged(string value) => _search = value ?? string.Empty;
+    private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values; await LoadAsync(); }
+
+    private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter.Count > 0;
+
+    private async Task ClearFilters()
+    {
+        _search = string.Empty;
+        _statusFilter = [];
+        await LoadAsync();
+    }
+    private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; await LoadAsync(); }
+    private void Toggle(Guid id) => _openId = _openId == id ? null : id;
+
+    private void OnBatchChanged(int size) { _batch = size; StateHasChanged(); }
+
+    // Reflects the current (server-filtered) view — the audit log has no summary/count endpoint, so an
+    // unfiltered total isn't available here without an extra round-trip (issue #277 follow-up).
+    private string HeaderSubLine
+    {
+        get
+        {
+            var n = _entries.Count;
+            return $"{n} {(n == 1 ? "transfer" : "transfers")} recorded";
+        }
+    }
+
+    // Rendered in server order (issue #277) — the API applies the outcome filter, search and sort.
+    private IReadOnlyList<FileAnalysisAuditEntry> FilteredEntries => _entries;
+
+    private static (string Class, string Pill, string Label) StatusVisual(FileAnalysisJobStatus status) => status switch
+    {
+        FileAnalysisJobStatus.Completed => ("ok", "ok", "Completed"),
+        FileAnalysisJobStatus.Failed or FileAnalysisJobStatus.Cancelled => ("err", "err", "Failed"),
+        _ => ("pending", "pending", "In progress"),
+    };
+
+    private static string ResultSummary(FileAnalysisAuditEntry e) => e.Status switch
+    {
+        FileAnalysisJobStatus.Completed => $"{e.Imported}/{e.Candidates} imported",
+        FileAnalysisJobStatus.Failed or FileAnalysisJobStatus.Cancelled => "no transactions",
+        _ => "awaiting result",
+    };
+
+    private static string SentSummary(FileAnalysisAuditEntry e)
+    {
+        var basis = e.Pages is { } pages ? $"{pages} pages" : "full document";
+        return e.SizeBytes is { } bytes && bytes > 0 ? $"{basis} · {ByteSize.Format(bytes)}" : basis;
+    }
+
+    // The log is an audit record, so timestamps always render in UTC.
+    private static string FormatWhen(DateTime? at)
+    {
+        if (at is null)
+            return "—";
+        var utc = at.Value.ToUniversalTime();
+        return $"{utc.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture)} · {utc:HH:mm} UTC";
+    }
+
+    private static string FormatDuration(long? ms) =>
+        ms is null ? "—" : $"{(ms.Value / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)} s";
+
+}

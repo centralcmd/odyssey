@@ -1,0 +1,132 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Brand · size guidance" subtitle="How the compass simplifies at 16 / 24 / 32 / 48 / 96 px" viewport="700x200" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Brand · size guidance</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; align-items: end; padding: 14px 0; }
+    .cell { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .lab  { font: 500 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .sz   { font: 400 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+    .head { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 4px; }
+  </style>
+
+  <div class="head">Compass scales — render the SVG at a discrete size, not via free CSS scale</div>
+  <div class="row">
+    <!-- 16 -->
+    <div class="cell">
+      <svg viewBox="0 0 200 210" width="16" height="16">
+        <circle cx="100" cy="105" r="90" fill="none" stroke="#006B5A" stroke-width="6"/>
+        <polygon points="100,28 94,105 100,86 106,105" fill="#00F5D4"/>
+        <polygon points="100,105 94,105 100,86 106,105" fill="#006B5A"/>
+        <polygon points="100,182 94,105 100,124 106,105" fill="#707070"/>
+        <polygon points="100,105 94,105 100,124 106,105" fill="#404040"/>
+        <polygon points="182,105 100,99 119,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 119,105 100,111" fill="#404040"/>
+        <polygon points="18,105 100,99 81,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 81,105 100,111" fill="#404040"/>
+        <circle cx="100" cy="105" r="4" fill="#00F5D4"/>
+      </svg>
+      <div class="sz">16 px</div>
+      <div class="lab">favicon</div>
+    </div>
+    <!-- 24 -->
+    <div class="cell">
+      <svg viewBox="0 0 200 210" width="24" height="24">
+        <circle cx="100" cy="105" r="90" fill="none" stroke="#006B5A" stroke-width="5"/>
+        <line x1="100" y1="19"  x2="100" y2="30"  stroke="#006B5A" stroke-width="3"/>
+        <line x1="100" y1="180" x2="100" y2="191" stroke="#006B5A" stroke-width="3"/>
+        <line x1="14"  y1="105" x2="25"  y2="105" stroke="#006B5A" stroke-width="3"/>
+        <line x1="175" y1="105" x2="186" y2="105" stroke="#006B5A" stroke-width="3"/>
+        <polygon points="100,28 94,105 100,86 106,105" fill="#00F5D4"/>
+        <polygon points="100,105 94,105 100,86 106,105" fill="#006B5A"/>
+        <polygon points="100,182 94,105 100,124 106,105" fill="#707070"/>
+        <polygon points="100,105 94,105 100,124 106,105" fill="#404040"/>
+        <polygon points="182,105 100,99 119,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 119,105 100,111" fill="#404040"/>
+        <polygon points="18,105 100,99 81,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 81,105 100,111" fill="#404040"/>
+        <circle cx="100" cy="105" r="3.5" fill="#00F5D4"/>
+      </svg>
+      <div class="sz">24 px</div>
+      <div class="lab">inline · row</div>
+    </div>
+    <!-- 32 -->
+    <div class="cell">
+      <svg viewBox="0 0 200 210" width="32" height="32">
+        <circle cx="100" cy="105" r="90" fill="none" stroke="#006B5A" stroke-width="4.5"/>
+        <circle cx="100" cy="105" r="66" fill="none" stroke="#006B5A" stroke-width="1" stroke-dasharray="4 3"/>
+        <line x1="100" y1="19"  x2="100" y2="30"  stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="100" y1="180" x2="100" y2="191" stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="14"  y1="105" x2="25"  y2="105" stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="175" y1="105" x2="186" y2="105" stroke="#006B5A" stroke-width="2.5"/>
+        <polygon points="100,28 94,105 100,86 106,105" fill="#00F5D4"/>
+        <polygon points="100,105 94,105 100,86 106,105" fill="#006B5A"/>
+        <polygon points="100,182 94,105 100,124 106,105" fill="#707070"/>
+        <polygon points="100,105 94,105 100,124 106,105" fill="#404040"/>
+        <polygon points="182,105 100,99 119,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 119,105 100,111" fill="#404040"/>
+        <polygon points="18,105 100,99 81,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 81,105 100,111" fill="#404040"/>
+        <circle cx="100" cy="105" r="8" fill="none" stroke="#006B5A" stroke-width="2"/>
+        <circle cx="100" cy="105" r="3.5" fill="#00F5D4"/>
+      </svg>
+      <div class="sz">32 px</div>
+      <div class="lab">drawer · row</div>
+    </div>
+    <!-- 48 -->
+    <div class="cell">
+      <svg viewBox="0 0 200 210" width="48" height="48">
+        <circle cx="100" cy="105" r="90" fill="none" stroke="#006B5A" stroke-width="4.5"/>
+        <circle cx="100" cy="105" r="66" fill="none" stroke="#006B5A" stroke-width="1" stroke-dasharray="4 3"/>
+        <line x1="100" y1="19"  x2="100" y2="30"  stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="100" y1="180" x2="100" y2="191" stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="14"  y1="105" x2="25"  y2="105" stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="175" y1="105" x2="186" y2="105" stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="37"  y1="42"  x2="44"  y2="49"  stroke="#006B5A" stroke-width="1.5"/>
+        <line x1="163" y1="42"  x2="156" y2="49"  stroke="#006B5A" stroke-width="1.5"/>
+        <line x1="37"  y1="168" x2="44"  y2="161" stroke="#006B5A" stroke-width="1.5"/>
+        <line x1="163" y1="168" x2="156" y2="161" stroke="#006B5A" stroke-width="1.5"/>
+        <polygon points="100,28 94,105 100,86 106,105" fill="#00F5D4"/>
+        <polygon points="100,105 94,105 100,86 106,105" fill="#006B5A"/>
+        <polygon points="100,182 94,105 100,124 106,105" fill="#707070"/>
+        <polygon points="100,105 94,105 100,124 106,105" fill="#404040"/>
+        <polygon points="182,105 100,99 119,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 119,105 100,111" fill="#404040"/>
+        <polygon points="18,105 100,99 81,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 81,105 100,111" fill="#404040"/>
+        <circle cx="100" cy="105" r="8" fill="none" stroke="#006B5A" stroke-width="2"/>
+        <circle cx="100" cy="105" r="3.5" fill="#00F5D4"/>
+      </svg>
+      <div class="sz">48 px</div>
+      <div class="lab">auth · splash</div>
+    </div>
+    <!-- 96 -->
+    <div class="cell">
+      <svg viewBox="0 0 200 210" width="96" height="96">
+        <circle cx="100" cy="105" r="90" fill="none" stroke="#006B5A" stroke-width="4.5"/>
+        <circle cx="100" cy="105" r="66" fill="none" stroke="#006B5A" stroke-width="1" stroke-dasharray="4 3"/>
+        <line x1="100" y1="19"  x2="100" y2="30"  stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="100" y1="180" x2="100" y2="191" stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="14"  y1="105" x2="25"  y2="105" stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="175" y1="105" x2="186" y2="105" stroke="#006B5A" stroke-width="2.5"/>
+        <line x1="37"  y1="42"  x2="44"  y2="49"  stroke="#006B5A" stroke-width="1.5"/>
+        <line x1="163" y1="42"  x2="156" y2="49"  stroke="#006B5A" stroke-width="1.5"/>
+        <line x1="37"  y1="168" x2="44"  y2="161" stroke="#006B5A" stroke-width="1.5"/>
+        <line x1="163" y1="168" x2="156" y2="161" stroke="#006B5A" stroke-width="1.5"/>
+        <polygon points="100,28 94,105 100,86 106,105" fill="#00F5D4"/>
+        <polygon points="100,105 94,105 100,86 106,105" fill="#006B5A"/>
+        <polygon points="100,182 94,105 100,124 106,105" fill="#707070"/>
+        <polygon points="100,105 94,105 100,124 106,105" fill="#404040"/>
+        <polygon points="182,105 100,99 119,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 119,105 100,111" fill="#404040"/>
+        <polygon points="18,105 100,99 81,105 100,111" fill="#707070"/>
+        <polygon points="100,105 100,99 81,105 100,111" fill="#404040"/>
+        <circle cx="100" cy="105" r="8" fill="none" stroke="#006B5A" stroke-width="2"/>
+        <circle cx="100" cy="105" r="3.5" fill="#00F5D4"/>
+      </svg>
+      <div class="sz">96 px</div>
+      <div class="lab">hero · onboarding</div>
+    </div>
+  </div>
+</body></html>

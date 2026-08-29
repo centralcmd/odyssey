@@ -1,0 +1,10 @@
+@using Odyssey.Client.Components
+@*
+    TaskDeadlineChip — a task's deadline with a relative hint, tone-coded: overdue = expense,
+    due within 3 days = pending, else neutral outline. Meaning is in the text (date + relative),
+    never colour alone (a11y). Renders nothing when there is no deadline.
+*@
+@if (Deadline is { } d)
+{
+    <OdsChip Tone="Tone(d)" Icon="event">@d.ToString("MMM d, yyyy") · @RelativeLabel(d)</OdsChip>
+}

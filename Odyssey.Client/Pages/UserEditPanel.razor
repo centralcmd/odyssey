@@ -1,0 +1,93 @@
+@using Odyssey.Dtos.Application
+@* The in-row edit panel on /users. It owns the working copy of the editable fields and hands the
+   finished draft back to the page, which is the only thing that talks to the API. Extracted from
+   Users.razor (issue #373) with the .usr-locked-* / .usr-toggle-* / .usr-guard* rules. *@
+
+<div class="acct-detail acct-edit usr-edit">
+    <div class="acct-edit-head">
+        <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" />
+        <span>Edit user — @UserDisplay.DisplayName(User)</span>
+    </div>
+
+    @* Identity is read-only from this page — make that explicit. *@
+    <div class="usr-locked-grid">
+        <div class="usr-locked-field">
+            <span class="usr-locked-label"><MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />Username</span>
+            <span class="usr-locked-value mono">@(User.UserName ?? "—")</span>
+        </div>
+        <div class="usr-locked-field">
+            <span class="usr-locked-label"><MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" />Email</span>
+            <span class="usr-locked-value">@(User.Email ?? "—")</span>
+        </div>
+    </div>
+
+    <div class="usr-edit-section-label">Account flags</div>
+    <div class="usr-edit-toggles">
+        <div class="usr-toggle-row">
+            <span class="usr-toggle-ic"><MudIcon Icon="@Icons.Material.Filled.MarkEmailRead" Size="Size.Small" /></span>
+            <div class="usr-toggle-text">
+                <div class="usr-toggle-ttl">Email confirmed</div>
+                <div class="usr-toggle-desc">Marks the user's email address as verified.</div>
+            </div>
+            <OdsSwitch @bind-Checked="_emailConfirmed" />
+        </div>
+        <div class="usr-toggle-row">
+            <span class="usr-toggle-ic"><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" /></span>
+            <div class="usr-toggle-text">
+                <div class="usr-toggle-ttl">Account enabled</div>
+                <div class="usr-toggle-desc">Disabling applies a backend lockout and ends the user's active sessions within a minute.</div>
+            </div>
+            <OdsSwitch @bind-Checked="_enabled" />
+        </div>
+    </div>
+
+    <div class="usr-edit-section-label">Role</div>
+    <div class="usr-edit-role">
+        <MudSelect T="string" @bind-Value="_role"
+                   Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+            @foreach (var role in Roles)
+            {
+                <MudSelectItem T="string" Value="@role.Name">@role.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <div class="usr-edit-role-help">The role determines every permission this user has.</div>
+    </div>
+
+    @if (Error is not null)
+    {
+        <div class="alert error usr-guard" role="status">
+            <span class="material-icons alert-icon">error_outline</span>
+            <div class="alert-body"><strong>Couldn't apply the change.</strong> @Error</div>
+        </div>
+    }
+    else if (DisruptiveChanges.Count > 0)
+    {
+        <div class="alert warning usr-guard" role="status">
+            <span class="material-icons alert-icon">warning_amber</span>
+            <div class="alert-body">
+                <strong>Confirm these changes</strong>
+                <ul class="usr-guard-list">
+                    @foreach (var change in DisruptiveChanges)
+                    {
+                        <li>@change</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
+    <div class="acct-edit-actions">
+        <MudButton Variant="Variant.Text" Color="Color.Default" Disabled="Saving" OnClick="OnCancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="@(DisruptiveChanges.Count > 0 ? Color.Error : Color.Primary)"
+                   StartIcon="@(Saving ? null : Icons.Material.Filled.Check)"
+                   Disabled="@(Saving || !HasChanges)"
+                   OnClick="SubmitAsync">
+            @if (Saving)
+            {
+                <OdsSpinner Class="me-2" Decorative="true" />
+            }
+            @(DisruptiveChanges.Count > 0 ? "Yes, apply changes" : "Save changes")
+        </MudButton>
+    </div>
+</div>

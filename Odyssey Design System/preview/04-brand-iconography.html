@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Brand · iconography" subtitle="Every Material Icon used across the web UI kit" viewport="700x1780" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Brand · iconography</title>
+  <meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+</head>
+<body>
+  <style>
+    /* The DS ships a 12-glyph embedded 'Material Icons' subset for offline use.
+       This catalog needs the complete set, so we load the full face under a
+       distinct family name (no collision with the subset) and use it here only. */
+    @font-face {
+      font-family: 'Material Icons Full';
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url('https://cdn.jsdelivr.net/npm/material-icons@1.13.12/iconfont/material-icons.woff2') format('woff2');
+    }
+    .cell .material-icons { font-family: 'Material Icons Full', 'Material Icons'; }
+    .ico-intro { font: 400 12px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 18px; max-width: 600px; }
+    .ico-intro .mono { color: var(--mud-palette-text-primary); }
+    .sect { margin-bottom: 20px; }
+    .sect-head {
+      display: flex; align-items: baseline; gap: 8px;
+      font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+      padding-bottom: 8px; margin-bottom: 10px;
+      border-bottom: 1px solid var(--mud-palette-divider);
+    }
+    .sect-head .ct { font-variant-numeric: tabular-nums; letter-spacing: 0; opacity: 0.6; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .cell {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 9px; border-radius: 6px;
+      min-width: 0;
+    }
+    .cell:hover { background: var(--mud-palette-action-default-hover); }
+    .cell .material-icons {
+      font-size: 22px;
+      color: var(--mud-palette-text-primary);
+      flex: none;
+    }
+    .cell .nm {
+      font: 400 10.5px/1.25 var(--font-mono);
+      color: var(--mud-palette-text-secondary);
+      overflow-wrap: break-word;
+    }
+  </style>
+
+  <p class="ico-intro">
+    A single icon set — <span class="mono">Material Icons · Filled</span> — rendered through the
+    <span class="mono">&lt;MIcon&gt;</span> component. Below are all <strong>194</strong> glyphs the web
+    UI kit actually references, grouped by concept. <span class="mono">github</span> is the lone
+    exception: Material Icons ships no GitHub mark, so the shell inlines an SVG.
+  </p>
+
+  <div id="sections"></div>
+
+  <script>
+    const GROUPS = [
+      ['Navigation & sections', ['space_dashboard','account_balance_wallet','pie_chart','receipt_long','folder','local_offer','store','attach_money','currency_exchange','manage_accounts','badge','settings','tune','account_circle','home','groups','handshake','subscriptions','menu_book','book','checklist','photo_library','photo_album','policy','github']],
+      ['Actions', ['add','add_circle','edit','edit_note','delete','delete_outline','delete_forever','close','remove','content_copy','download','file_download','download_for_offline','upload','upload_file','cloud_upload','send','forward_to_inbox','save','refresh','autorenew','restart_alt','rotate_right','sync','sync_alt','open_in_new','undo','flag','group_add','link_off']],
+      ['Search & lists', ['search','search_off','manage_search','format_list_bulleted','playlist_add','playlist_add_check','unfold_more','inventory_2','category','tag','sell']],
+      ['Calendar & time', ['calendar_today','calendar_month','calendar_view_day','calendar_view_week','calendar_view_month','view_agenda','view_week','event','event_available','event_busy','event_repeat','today','schedule','history','hourglass_bottom']],
+      ['Analysis & AI', ['auto_awesome','auto_fix_high','document_scanner','query_stats','monitor','recommend','format_quote','gavel','unpublished']],
+      ['Arrows & chevrons', ['expand_more','chevron_left','chevron_right','arrow_forward','arrow_upward','arrow_downward','north_east','south_west','swap_horiz']],
+      ['Status & feedback', ['check','check_circle','task_alt','error_outline','info','info_outline','help','help_outline','warning','block','inbox','fiber_new','circle','pause_circle','play_circle','verified','price_check','paid']],
+      ['Security & auth', ['lock','lock_open','lock_reset','key','vpn_key','password','qr_code_2','visibility','visibility_off','logout','alternate_email','mail','mark_email_read','mark_email_unread','verified_user','gpp_good','gpp_bad','gpp_maybe','shield','security','how_to_reg','add_moderator','remove_moderator','fingerprint']],
+      ['Theme', ['dark_mode']],
+      ['Finance & files', ['account_balance','savings','credit_card','payments','request_quote','trending_up','trending_down','attach_file','description','insert_drive_file','article','receipt','percent','folder_open','folder_zip','sticky_note_2','fact_check','assignment','assignment_late','assignment_return','app_registration','edit_document']],
+      ['Places & documents', ['place','apartment','cottage','house','home_work','home_repair_service','work','business','corporate_fare','history_edu','auto_stories','forum']],
+      ['Category & merchant glyphs', ['storefront','shopping_cart','directions_car','local_taxi','restaurant','flight','school','bolt','elderly','person','pets','chair','favorite','health_and_safety','personal_injury','diversity_3','image','title']],
+    ];
+
+    const root = document.getElementById('sections');
+    for (const [title, names] of GROUPS) {
+      const sect = document.createElement('div');
+      sect.className = 'sect';
+      const head = document.createElement('div');
+      head.className = 'sect-head';
+      head.innerHTML = `<span>${title}</span><span class="ct">${names.length}</span>`;
+      sect.appendChild(head);
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      for (const n of names) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.innerHTML = `<span class="material-icons">${n}</span><span class="nm">${n.replace(/_/g, '_<wbr>')}</span>`;
+        grid.appendChild(cell);
+      }
+      sect.appendChild(grid);
+      root.appendChild(sect);
+    }
+  </script>
+</body></html>

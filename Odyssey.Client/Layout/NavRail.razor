@@ -1,0 +1,88 @@
+@* Icon rail — the resting navigation for the active module (design-system module-nav redesign).
+   Brand · search (⌘K) · module switcher chip · module label · the active module's page buttons ·
+   theme toggle pinned to the bottom. Plain buttons + material-icons ligatures, matching the .odn-* kit. *@
+
+<aside class="odn-rail" inert="@Inert">
+    <div class="odn-brand"><OdsBrandMark Size="30" /></div>
+
+    <button @ref="_searchBtn" type="button" class="odn-railbtn odn-tip" data-tip="Search &nbsp;⌘K"
+            aria-label="Search (Command-K)" @onclick="OnOpenPalette">
+        <span class="material-icons" aria-hidden="true">search</span>
+    </button>
+
+    <button @ref="_chipBtn" type="button" class="odn-modbtn odn-tip" data-tip="Switch module"
+            aria-label="@($"Module: {_module.Label}. Switch module")" aria-haspopup="true"
+            aria-expanded="@(SwitcherOpen ? "true" : "false")" @onclick="OnOpenSwitcher">
+        <span class="material-icons" aria-hidden="true">@_module.Icon</span>
+        <span class="odn-modchev"><span class="material-icons" aria-hidden="true">unfold_more</span></span>
+    </button>
+    <div class="odn-modlabel">@_module.Label</div>
+    <div class="odn-divider"></div>
+
+    <nav aria-label="@($"{_module.Label} pages")" style="display:contents;">
+        @for (var gi = 0; gi < _groups.Count; gi++)
+        {
+            var group = _groups[gi];
+            @if (gi > 0)
+            {
+                <div class="odn-subdiv"></div>
+            }
+            @foreach (var item in group.Items)
+            {
+                var active = NavModel.IsActive(item, Current);
+                <button type="button" class="odn-railbtn odn-tip @(active ? "active" : "")"
+                        data-tip="@item.Label" aria-label="@item.Label"
+                        aria-current="@(active ? "page" : null)"
+                        @onclick="@(() => OnNavigate.InvokeAsync(item))">
+                    @NavIcons.Icon(item.Icon)
+                </button>
+            }
+        }
+    </nav>
+
+    <div class="odn-foot">
+        <button type="button" class="odn-railbtn odn-tip"
+                data-tip="@(IsDark ? "Light mode" : "Dark mode")"
+                aria-label="@(IsDark ? "Switch to light mode" : "Switch to dark mode")"
+                @onclick="OnToggleDark">
+            <span class="material-icons" aria-hidden="true">@(IsDark ? "light_mode" : "dark_mode")</span>
+        </button>
+    </div>
+</aside>
+
+@code {
+    /// <summary>The current base-relative route (drives the active module + page highlight).</summary>
+    [Parameter, EditorRequired] public string Current { get; set; } = "";
+
+    /// <summary>Whether the signed-in user may view a page (permission gate).</summary>
+    [Parameter, EditorRequired] public Func<NavPage, bool> CanView { get; set; } = _ => true;
+
+    [Parameter] public bool SwitcherOpen { get; set; }
+    [Parameter] public bool IsDark { get; set; }
+
+    /// <summary>When true, the rail is removed from tab order + the AT tree (a modal overlay is open).</summary>
+    [Parameter] public bool Inert { get; set; }
+
+    [Parameter] public EventCallback<NavPage> OnNavigate { get; set; }
+    [Parameter] public EventCallback OnOpenSwitcher { get; set; }
+    [Parameter] public EventCallback OnOpenPalette { get; set; }
+    [Parameter] public EventCallback OnToggleDark { get; set; }
+
+    private NavModule _module = NavModel.All[0];
+    private IReadOnlyList<NavGroup> _groups = [];
+
+    private ElementReference _searchBtn;
+    private ElementReference _chipBtn;
+
+    /// <summary>Return focus to the rail Search button (after the command palette closes).</summary>
+    public ValueTask FocusSearchAsync() => _searchBtn.FocusAsync();
+
+    /// <summary>Return focus to the module-switcher chip (after the switcher popover closes).</summary>
+    public ValueTask FocusChipAsync() => _chipBtn.FocusAsync();
+
+    protected override void OnParametersSet()
+    {
+        _module = NavModel.ModuleOf(Current);
+        _groups = NavModel.VisibleGroups(_module, CanView);
+    }
+}

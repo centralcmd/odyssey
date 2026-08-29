@@ -1,0 +1,67 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="LineChart" subtitle="Axis'd trend card — gridlines, value/category axes, head figure + delta, and a cumulative running-total mode. Mounted from the DS namespace." viewport="900x760" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · LineChart</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .block { display: flex; flex-direction: column; gap: 14px; margin-bottom: 26px; }
+    .block:last-child { margin-bottom: 0; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <div class="block">
+    <div class="cap">LineChart <code>&lt;LineChart series color format showDelta cumulative /&gt;</code> — the axis'd trend card</div>
+    <div id="root" class="two"></div>
+  </div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var LineChart = (window.OdysseyDesignSystem_d5aa51 || {}).LineChart;
+      var usd = function (n) { return '$ ' + Math.round(n).toLocaleString('en-US'); };
+      var usdK = function (n) { return n >= 1000 ? '$' + Math.round(n / 1000) + 'k' : '$' + n; };
+      var nok = function (n) { return 'kr ' + Math.round(n).toLocaleString('en-US'); };
+      var nokK = function (n) { return Math.abs(n) >= 1000 ? 'kr ' + (n / 1000).toFixed(0) + 'k' : 'kr ' + n; };
+
+      var netWorth = [
+        { label: "'21", value: 14200 }, { label: "'22", value: 28800 },
+        { label: "'23", value: 41000 }, { label: "'24", value: 52600 },
+        { label: "'25", value: 61200 }, { label: "'26", value: 69549 },
+      ];
+      var assessed = [
+        { label: "'24", value: 210000 }, { label: "'25", value: 232000 },
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        e(React.Fragment, null,
+          e(LineChart, {
+            title: 'Net worth', sub: 'Since 2021 · USD', series: netWorth,
+            color: 'var(--chart-1)', format: usd, axisFormat: usdK,
+            showDelta: true, deltaSuffix: 'all-time', ariaLabel: 'Net worth over time',
+          }),
+          e(LineChart, {
+            title: 'Accumulated tax', sub: 'Assessed · all years · NOK', series: assessed,
+            color: 'var(--chart-4)', format: nok, axisFormat: nokK, cumulative: true,
+            showDelta: true, deltaSuffix: 'vs 2024', ariaLabel: 'Accumulated assessed tax',
+          })
+        )
+      );
+    })();
+  </script>
+</body>
+</html>

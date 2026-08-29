@@ -1,0 +1,172 @@
+@*
+    PageHeader — the standard scaffold every content screen opens with
+    (Odyssey Design System · Components · Page header, p.10).
+
+    A surface card (elevation-1 + divider hairline) holding a title row, plus the
+    three optional regions that nearly every page shares — Problems, Overview and
+    Search — and the page's primary action. The header owns the toggle state and
+    the button cluster; the page only supplies what each open region renders:
+
+      • Problems — pass a Problems collection (severity + text + optional View
+        action). The header draws the severity-tinted alert rows and the count
+        badge; it does NOT decide what View does — the page provides OnView.
+      • Overview / Search — pass OverviewContent / SearchContent. The toggle
+        appears only when content is supplied; the names are fixed by the design.
+      • Primary action — the page's create verb (PrimaryActionText + icon +
+        OnPrimaryAction), or a custom <PrimaryAction> fragment for non-create
+        verbs (e.g. a Save button with its own state).
+      • Overflow menu — an optional kebab (⋮) menu whose items the page supplies
+        via ActionMenu. It is always the right-most control, after the primary.
+
+    Cluster order: Problems → Overview → Search → primary → overflow menu. The
+    regions stack in the same order (Problems → Overview → Search). State lives in
+    the button (Outlined = closed, Filled = open). Extra one-off regions can be
+    appended via ChildContent (wrap each in <div class="ph-region">).
+*@
+
+<MudCard Elevation="1" Class="@(string.IsNullOrEmpty(Class) ? "ods-outline" : $"ods-outline {Class}")">
+    <MudCardContent Class="pa-4">
+        <div class="ph-root">
+            <div class="page-head">
+                <div class="ph-lead">
+                    @* Optional leading slot — e.g. a record/user avatar. The User Account page
+                       puts the signed-in person's avatar here so the header is about them.
+                       Most pages just want the standard brand-tinted icon tile, supplied
+                       via Icon (the page's identity glyph, per the design system). *@
+                    @if (Leading is not null)
+                    {
+                        <div class="ph-lead-slot">@Leading</div>
+                    }
+                    else if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <div class="ph-lead-slot">
+                            <span class="ph-icon-tile" aria-hidden="true">
+                                <MudIcon Icon="@Icon" />
+                            </span>
+                        </div>
+                    }
+                    <div class="ph-titles">
+                        <MudText Typo="Typo.h2">@Title</MudText>
+                        @if (SubLine is not null)
+                        {
+                            <div class="ph-sub">@SubLine</div>
+                        }
+                        @* Optional status chips under the title (role · email · 2FA · tenure …). *@
+                        @if (TitleChips is not null)
+                        {
+                            <div class="ph-chips">@TitleChips</div>
+                        }
+                    </div>
+                </div>
+                <div class="ph-actions">
+                    @* Severity-tinted problem rollup — always first; appears only when
+                       something needs attention. Tinted-outline ⇄ filled is its open state. *@
+                    @if (HasProblems)
+                    {
+                        <MudButton Variant="@(_showProblems ? Variant.Filled : Variant.Outlined)"
+                                   Color="@SignalColor"
+                                   StartIcon="@SignalIcon"
+                                   OnClick="ToggleProblems"
+                                   Class="ph-signal-btn">
+                            @ProblemsLabel<span class="signal-count"><span>@Problems!.Count</span></span>
+                        </MudButton>
+                    }
+                    @if (OverviewContent is not null)
+                    {
+                        <MudButton Variant="@(_showOverview ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(_showOverview ? Color.Primary : Color.Default)"
+                                   StartIcon="@Icons.Material.Filled.DonutLarge"
+                                   OnClick="ToggleOverview">Overview</MudButton>
+                    }
+                    @if (SearchContent is not null)
+                    {
+                        <MudButton Variant="@(_showSearch ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(_showSearch ? Color.Primary : Color.Default)"
+                                   StartIcon="@Icons.Material.Filled.Search"
+                                   OnClick="ToggleSearch">Search</MudButton>
+                    }
+                    @* Info — a passive reference/lookup region (e.g. the Roles page's
+                       "All claims" catalog). Carries a page-supplied label + icon. *@
+                    @if (InfoContent is not null)
+                    {
+                        <MudButton Variant="@(_showInfo ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(_showInfo ? Color.Primary : Color.Default)"
+                                   StartIcon="@InfoIcon"
+                                   OnClick="ToggleInfo">@InfoLabel</MudButton>
+                    }
+                    @if (PrimaryAction is not null)
+                    {
+                        @PrimaryAction
+                    }
+                    else if (ShowPrimaryAction && !string.IsNullOrEmpty(PrimaryActionText))
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@PrimaryActionIcon"
+                                   OnClick="OnPrimaryAction">@PrimaryActionText</MudButton>
+                    }
+                    @* Overflow menu — always the right-most control. The page supplies the
+                       items (MudMenuItems); the header owns the kebab trigger so it looks the
+                       same on every page. *@
+                    @if (ActionMenu is not null)
+                    {
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                 Color="Color.Default"
+                                 AnchorOrigin="Origin.BottomRight"
+                                 TransformOrigin="Origin.TopRight"
+                                 AriaLabel="@ActionMenuLabel"
+                                 Class="ph-action-menu">
+                            @ActionMenu
+                        </MudMenu>
+                    }
+                </div>
+            </div>
+
+            @* Open regions stack in the fixed order, each below a 1px divider + 16px. *@
+            @if (HasProblems && _showProblems)
+            {
+                <div class="ph-region">
+                    <div class="signal-panel">
+                        @foreach (var problem in Problems!)
+                        {
+                            <div class="alert @SeverityClass(problem.Severity) @(problem.HasView ? "signal-row" : null)"
+                                 role="status"
+                                 @onclick="@(() => InvokeView(problem))">
+                                <span class="material-icons alert-icon">@SeverityGlyph(problem.Severity)</span>
+                                <div class="alert-body">
+                                    @if (!string.IsNullOrEmpty(problem.Lead))
+                                    {
+                                        <strong>@problem.Lead.</strong>@(" ")
+                                    }
+                                    @problem.Message
+                                    @if (!string.IsNullOrWhiteSpace(problem.Where))
+                                    {
+                                        <span class="signal-where"> @problem.Where</span>
+                                    }
+                                </div>
+                                @if (problem.HasView)
+                                {
+                                    <button type="button" class="alert-fix"
+                                            @onclick:stopPropagation="true"
+                                            @onclick="@(() => InvokeView(problem))">@problem.ViewLabel →</button>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            @if (OverviewContent is not null && _showOverview)
+            {
+                <div class="ph-region">@OverviewContent</div>
+            }
+            @if (SearchContent is not null && _showSearch)
+            {
+                <div class="ph-region">@SearchContent</div>
+            }
+            @if (InfoContent is not null && _showInfo)
+            {
+                <div class="ph-region">@InfoContent</div>
+            }
+            @ChildContent
+        </div>
+    </MudCardContent>
+</MudCard>

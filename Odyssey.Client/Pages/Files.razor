@@ -1,0 +1,191 @@
+@page "/files"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Client.Pages.Finance
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.FilesRead)]
+@inject IFilesApiClient FilesApi
+@inject Odyssey.ApiClient.Resources.IFileExportApiClient FileExport
+@inject ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+
+<PageTitle>Files</PageTitle>
+
+@*
+    Files — the flat file-management screen at /files (Odyssey Design System ·
+    Screens · Files page · Files.jsx). Every stored file in one searchable,
+    sortable table; the page *manages* files rather than creating them (files
+    are uploaded per record from a transaction or account — so there is no
+    header primary action, mirroring the specimen).
+
+    Built from the design-system library components: a flat .odc-rec table with
+    OdsSortHeader columns + a leading kind-avatar cell (the DS Files structure),
+    OdsMenu (the row overflow actions), OdsSearchField + OdsMultiSelect (the header
+    filters), OdsAlert, OdsSpinner and OdsEmptyState. No pager — per the DS the
+    filtered list renders whole.
+
+    Backed by the flat api/files contract (FilesController):
+      • GET  api/files?search&kind&sortBy&sortDir&offset&limit → PagedResult<FileListItem>
+      • GET  api/files/{id}/content   → bytes (View / Download)
+      • PUT  api/files/{id}/metadata  → rename + description (Edit)
+      • DELETE api/files/{id}         → delete
+
+    Adapted from the specimen to the real contract:
+      • The flat FileListItem carries no owning account, so the specimen's
+        "across N accounts" sub-line and the account filter are dropped; the
+        sub-line counts files + total size instead.
+      • It carries no document type either, so the kind avatar + Type chip are
+        derived from the MIME content type (PDF · Image · File) and the type
+        filter offers those derived kinds rather than Statement/Document/etc.
+      • Analyze is omitted — it is a statement-only, account-context flow the
+        flat file has no type for.
+      • Search + type filter are live and client-side over the loaded set (the
+        specimen filters live too); the fetch is capped at the API's max page
+        size (very large libraries are truncated to that cap — there is no pager).
+
+    Files export (ZIP) lives in the page-header overflow menu (design update) —
+    "Export all files" archives every stored file; "Export filtered" archives
+    only the current search/type set, mirroring the Contacts page's scoped
+    vCard-export pattern (ExportManyAsync/ExportAsync there). Both are gated on
+    files.export-all — the same admin-only capability the Settings page's
+    "Export all files" card already uses, just narrowed by a filter the caller
+    already controls client-side.
+*@
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<MudStack Spacing="6">
+
+    <PageHeader Title="Files" Icon="@Icons.Material.Filled.Folder"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                ActionMenu="@(_filesExportAvailable ? ExportMenuFragment : null)">
+        <SubLine>@HeaderSubLine</SubLine>
+        <OverviewContent>
+            <div class="odc-summary-grid">
+                <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No files." />
+            </div>
+        </OverviewContent>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadFilesAsync"
+                                Placeholder="Search file name…" Class="ph-search" />
+                <OdsMultiSelect Label="Type" Values="_kindFilter" ValuesChanged="OnKindFilterChanged"
+                                Options="KindOptions" Class="ph-select" />
+                <OdsSortSelect TRow="OdsFilesRow" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @* The multi-kind Type filter is client-side (the API's Kind filter is single-value), so the
+       display set — and thus the pager — is paginated client-side over the filtered rows. *@
+    @{
+        // No rows while loading or after a failure — the table renders its status cell instead, and
+        // a pager over a set nobody can see would only report a stale total.
+        var rows = _isLoading || _loadError ? [] : FileRows.ToList();
+        var totalRows = rows.Count;
+        // Clamp into a LOCAL for this render — never mutate _page during render (OnPageChanged owns
+        // it). If the filtered set shrank below the current page, we display the last page; the next
+        // nav re-syncs _page.
+        var totalPages = Math.Max(1, OdsPagerMath.TotalPages(totalRows, _pageSize));
+        var page = Math.Min(_page, totalPages);
+        var pagedRows = _pageSize == OdsPageSizes.All ? rows : [.. rows.Skip((page - 1) * _pageSize).Take(_pageSize)];
+    }
+
+    <OdsFilesTable Files="@pagedRows"
+                   Sort="_sort"
+                   ServerSort="true"
+                   SortChanged="OnSortChanged"
+                   Loading="_isLoading"
+                   Error="_loadError"
+                   OnRetry="RefreshAsync"
+                   HasFilters="_hasFilters"
+                   OnClearFilters="ClearFilters"
+                   EmptyIcon="folder_off"
+                   EmptyDescription="Files are added from a transaction or an account."
+                   TypeFor="@(row => KindMeta(row.Kind))"
+                   Actions="@(row => RowMenu(FileById(row.Id)))"
+                   RenderEdit="@EditRenderer"
+                   OnSave="@SaveAction"
+                   OnDelete="@DeleteAction" />
+    @if (totalRows > 0)
+    {
+        <OdsPager Page="page" PageChanged="OnPageChanged"
+                  PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+                  TotalCount="totalRows" />
+    }
+</MudStack>
+
+@if (_preview is not null)
+{
+    <FilePreviewDialog @key="_previewKey"
+                       @bind-Open="_previewOpen"
+                       BlobUrl="@_preview.BlobUrl"
+                       ContentType="@_preview.ContentType"
+                       FileName="@_preview.FileName"
+                       SizeBytes="_preview.SizeBytes"
+                       UploadedAtUtc="_preview.UploadedAtUtc"
+                       FileType="_preview.FileType" />
+}
+
+@* Files-export confirmation (Odyssey Design System · Files.jsx). Kept mounted and toggled via Open
+   (an inline MudDialog only dismisses on a Visible=false re-render). Body uses inline styles because
+   scoped CSS does not reach the teleported dialog — mirrors the Settings page's own files-export
+   confirm modal, generalized over "all" vs "filtered" scope. *@
+<OdsModal Open="_exportScope is not null" OpenChanged="@(v => { if (!v) _exportScope = null; })"
+          Icon="folder_zip" IconTone="OdsModalTone.Warning"
+          OnClose="@(() => _exportScope = null)">
+    <Title>@(_exportScope == "filtered" ? "Export filtered files?" : "Export all files?")</Title>
+    <ChildContent>
+        <div style="font: 400 0.875rem/1.65 var(--font-sans); color: var(--mud-palette-text-primary);">
+            This downloads a ZIP containing
+            <b>@(_exportScope == "filtered" ? "the files matching your current search/type filter" : "every stored file's contents")</b>
+            plus a
+            <code style="font-family: var(--font-mono); font-size: 0.78rem; background: var(--mud-palette-action-default-hover); padding: 1px 5px; border-radius: 4px;">file-map.json</code>
+            that maps each file ID to its archived filename. No other metadata is included.
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;">
+            <span style="@ExportChipStyle"><span class="material-icons" aria-hidden="true" style="font-size: 14px; margin-right: 2px;">description</span>@ExportCount files</span>
+            <span style="@ExportChipStyle"><span class="material-icons" aria-hidden="true" style="font-size: 14px; margin-right: 2px;">folder_zip</span>@ExportSizeLabel</span>
+            <span style="@ExportChipStyle"><span class="material-icons" aria-hidden="true" style="font-size: 14px; margin-right: 2px;">schedule</span>may take several minutes</span>
+        </div>
+        <div style="display: flex; gap: 9px; margin-top: 16px; padding: 11px 13px; border-radius: 8px; background: var(--finance-pending-soft); border: 1px solid var(--finance-pending-border, var(--mud-palette-divider));">
+            <span style="color: var(--amber-500); flex: none; margin-top: 1px; display: inline-flex;"><span class="material-icons" aria-hidden="true" style="font-size: 18px;">lock</span></span>
+            <div style="font: 400 0.78rem/1.5 var(--font-sans); color: var(--mud-palette-text-secondary);">
+                Treat the archive as sensitive — it contains all uploaded file contents. The download requires your admin permission.
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => _exportScope = null)">Cancel</OdsButton>
+        <OdsButton Icon="download" Loading="_isExportingFiles" OnClick="ConfirmExport">Export</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    // ── Inline edit + delete (table-owned lifecycle) ──
+    // The flat file's mutable fields are name + description, so the page supplies a
+    // custom edit panel (FilesMetaEditPanel) rather than the default name + type
+    // one. Both Edit and the OnSave handler are gated on FilesUpdate; Delete on
+    // FilesDelete — so the table only surfaces the items the user may perform.
+    private Func<OdsFilesRow, OdsRecordEditContext, RenderFragment>? EditRenderer =>
+        _canUpdate
+            ? (row, ctx) => @<FilesMetaEditPanel File="row" OnSave="@(p => ctx.Save(p))" OnCancel="@(() => ctx.Cancel())" />
+            : null;
+
+    // <text> groups the two sibling MudMenuItems for the ActionMenu RenderFragment without adding a
+    // wrapping DOM element (which would break MudMenu's own child-item enumeration). Bound via the
+    // ActionMenu ATTRIBUTE on <PageHeader> — not the <ActionMenu> child-content tag — specifically so
+    // it can be null (no kebab button at all) rather than an empty one for a caller who lacks
+    // files.export-all; PageHeader's multi-slot child-content parsing doesn't allow an @if directly
+    // around a named tag like <ActionMenu>.
+    private RenderFragment ExportMenuFragment => @<text>
+        <MudMenuItem Icon="@Icons.Material.Filled.FolderZip" OnClick="@(() => OpenExportConfirm("all"))">Export all files as ZIP</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => OpenExportConfirm("filtered"))">Export filtered (@FilteredFiles.Count) as ZIP</MudMenuItem>
+    </text>;
+}

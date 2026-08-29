@@ -1,0 +1,81 @@
+/* Photo detail lightbox — the image stage and the editorial metadata rail
+   (.pl-ods2* / .pl-v*). Moved out of the globally-linked wwwroot/css/photos.css
+   by issue #371.
+
+   Still global (in odyssey-components.css) is `.pl-ods-wide`: that class goes to
+   OdsModal and lands on MudBlazor's own dialog paper, which this component does
+   not author, so CSS isolation never stamps it. */
+
+/* Flush, edge-to-edge two-column body: image stage + metadata rail. */
+.odc-modal-body.pl-ods2 {
+    display: grid; grid-template-columns: 1fr 264px; gap: 0; padding: 0;
+    height: 520px; max-height: none; overflow: hidden;
+}
+
+.pl-ods2-stage { position: relative; min-width: 0; min-height: 0; height: 520px; background: #0c0e13; overflow: hidden; }
+
+.pl-ods-img { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.pl-ods2-stage .pl-ods-img { position: absolute; inset: 0; }
+
+.pl-ods2-rail { width: 264px; align-self: stretch; padding: 14px 18px; overflow-y: auto; border-left: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background); }
+
+/* ---- Prev / next arrows over the stage ----
+   The hand-rolled lightbox this file used to carry (.pl-modal / .pl-modal-card /
+   .pl-mclose / .pl-mstage / .pl-mimg / .pl-mtop / .pl-mfoot* / .pl-mname / .pl-mmeta /
+   .pl-mactions / .pl-mbtn) was replaced by OdsModal; only the arrows are still rendered.
+   Their z-index is local sibling ordering inside the stage, not an app-level layer. */
+.pl-mnav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 999px; border: none; background: rgba(10,12,18,0.5); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; z-index: 3; }
+
+.pl-mnav:hover { background: rgba(10,12,18,0.82); }
+
+.pl-mnav.prev { left: 12px; }
+
+.pl-mnav.next { right: 12px; }
+
+/* ---- View rail: editorial, conditional ---- */
+.pl-vrail { display: flex; flex-direction: column; gap: 16px; min-height: 100%; }
+
+.pl-vbadge { align-self: flex-start; padding: 2px 9px; border-radius: 999px; font: 600 11px/1.5 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); border: 1px solid var(--mud-palette-divider); }
+
+.pl-vcaption { margin: 0; font: 400 15px/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+.pl-vwhen { display: flex; align-items: center; gap: 10px; color: var(--mud-palette-text-secondary); }
+
+.pl-vwhen .material-icons { color: var(--tide-400); }
+
+.pl-vwhen-txt { display: flex; flex-direction: column; line-height: 1.25; }
+
+.pl-vwhen-date { color: var(--mud-palette-text-primary); font: 600 14px/1.3 var(--font-sans); }
+
+.pl-vwhen-time { font: 400 12px/1.3 var(--font-sans); }
+
+/* The album/place/coordinate rows come from the Row() RenderFragment, which is built with
+   RenderTreeBuilder — the Razor compiler only stamps the scope attribute on markup it
+   compiles, so these need ::deep from the rail (which is authored here). */
+.pl-vrail ::deep .pl-vrow { display: flex; align-items: center; gap: 10px; color: var(--mud-palette-text-primary); font: 400 14px/1.4 var(--font-sans); }
+
+.pl-vrail ::deep .pl-vrow .material-icons { color: var(--mud-palette-text-secondary); flex: none; }
+
+.pl-vgroup { display: flex; flex-direction: column; gap: 8px; }
+
+.pl-vgroup-lab { font: 600 11px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+
+.pl-vchips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.pl-vtech { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--mud-palette-divider); font: 400 12px/1.4 var(--font-mono, ui-monospace); color: var(--mud-palette-text-secondary); }
+
+.pl-vtech > div + div { margin-top: 2px; }
+
+/* Header favourite toggle (sits beside the modal close button), styled like an icon button. */
+.pl-headheart {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; flex: none;
+    border: none; background: transparent; border-radius: var(--radius-sm, 8px);
+    color: var(--mud-palette-text-secondary); cursor: pointer;
+    transition: background var(--duration-base), color var(--duration-base);
+}
+
+.pl-headheart:hover { background: var(--mud-palette-action-default-hover, rgba(199, 208, 224, 0.08)); color: var(--mud-palette-text-primary); }
+
+.pl-headheart.on .material-icons { color: var(--rose-500, #F2557A); }

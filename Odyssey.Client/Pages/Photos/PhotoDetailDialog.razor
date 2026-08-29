@@ -1,0 +1,244 @@
+@*
+    PhotoDetailDialog — the library lightbox (Odyssey Design System · Photos · detail). Built on the
+    standard modal (OdsModal): a wide frame whose body is a two-column grid — an image stage with
+    keyboard-operable prev/next on the left and a scrolling metadata rail on the right (caption, when,
+    album(s), location + coordinates, tags, people, dimensions, provenance). The favourite toggle sits
+    in the header beside close; Edit / Download / Archive / Delete are the footer actions. Full metadata
+    is fetched per-photo; ids are hydrated to names by the page. Escape closes; ←/→ navigate.
+*@
+@inject IFilesApiClient Files
+@inject IPhotosApiClient Api
+@inject IJSRuntime Js
+
+<OdsModal Open="true" OpenChanged="OnOpenChanged" Class="pl-ods-wide" AriaLabel="@Label(Current)"
+          Icon="photo_library" OnClose="OnClose"
+          Title="@TitleFragment" Subtitle="@SubFragment"
+          HeaderActions="@HeaderActionsFragment" Footer="@FooterFragment">
+    <div class="odc-modal-body pl-ods2" tabindex="-1" @ref="_body" @onkeydown="OnKeyDown">
+        <div class="pl-ods2-stage">
+            @if (Current is { FileId: var fid })
+            {
+                <img class="pl-ods-img" style="object-fit: contain;" src="@Files.ContentUrl(fid)" alt="@Label(Current)" />
+            }
+            @if (Photos.Count > 1)
+            {
+                <button type="button" class="pl-mnav prev" aria-label="Previous photo" @onclick="() => Move(-1)">
+                    <span class="material-icons" aria-hidden="true">chevron_left</span>
+                </button>
+                <button type="button" class="pl-mnav next" aria-label="Next photo" @onclick="() => Move(1)">
+                    <span class="material-icons" aria-hidden="true">chevron_right</span>
+                </button>
+            }
+        </div>
+        <aside class="pl-ods2-rail pl-vrail">
+            @if (Current?.Archived is not null)
+            {
+                <span class="pl-vbadge">Archived</span>
+            }
+            @if (_detail is { } d)
+            {
+                @if (!string.IsNullOrWhiteSpace(d.Caption))
+                {
+                    <p class="pl-vcaption">@d.Caption</p>
+                }
+                @if (d.TakenAt is { } taken)
+                {
+                    <div class="pl-vwhen">
+                        <span class="material-icons" aria-hidden="true">event</span>
+                        <div class="pl-vwhen-txt">
+                            <span class="pl-vwhen-date">@taken.ToString("d MMM yyyy")</span>
+                            <span class="pl-vwhen-time">@taken.ToString("HH:mm")</span>
+                        </div>
+                    </div>
+                }
+                @if (d.AlbumIds.Count > 0)
+                {
+                    @Row("photo_album", string.Join(", ", d.AlbumIds.Select(AlbumName)))
+                }
+                @if (!string.IsNullOrWhiteSpace(d.LocationName))
+                {
+                    @Row("place", d.LocationName!)
+                }
+                @if (d is { CapturedLatitude: { } lat, CapturedLongitude: { } lng })
+                {
+                    @Row("my_location", $"{lat:0.0000}, {lng:0.0000}")
+                }
+                @if (d.TagIds.Count > 0)
+                {
+                    <div class="pl-vgroup">
+                        <span class="pl-vgroup-lab">Tags</span>
+                        <span class="pl-vchips">
+                            @foreach (var t in d.TagIds)
+                            {
+                                <OdsChip Tone="OdsChipTone.Outline">@TagName(t)</OdsChip>
+                            }
+                        </span>
+                    </div>
+                }
+                @if (d.PersonContactIds.Count > 0)
+                {
+                    <div class="pl-vgroup">
+                        <span class="pl-vgroup-lab">People</span>
+                        <span class="pl-vchips">
+                            @foreach (var p in d.PersonContactIds)
+                            {
+                                <OdsContactChip Name="@PersonName(p)" Type="Person" Compact="true" />
+                            }
+                        </span>
+                    </div>
+                }
+                <div class="pl-vtech">
+                    @if (d is { PixelWidth: { } w, PixelHeight: { } h })
+                    {
+                        <div>@w×@h</div>
+                    }
+                    <div class="pl-vprov">Added by @d.CreatedByName</div>
+                    @if (!string.IsNullOrWhiteSpace(d.UpdatedByName) && d.UpdatedByName != d.CreatedByName)
+                    {
+                        <div class="pl-vprov">Edited by @d.UpdatedByName</div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="pl-vprov">Loading details…</div>
+            }
+        </aside>
+    </div>
+</OdsModal>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PhotoSummary> Photos { get; set; } = [];
+    [Parameter] public int Index { get; set; }
+    [Parameter] public EventCallback<int> IndexChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Guid> OnEdit { get; set; }
+    [Parameter] public EventCallback<Guid> OnToggleFavourite { get; set; }
+    [Parameter] public EventCallback<Guid> OnToggleArchive { get; set; }
+    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+    [Parameter] public bool CanUpdate { get; set; }
+    [Parameter] public bool CanDelete { get; set; }
+    [Parameter] public Func<Guid, string> TagName { get; set; } = id => id.ToString();
+    [Parameter] public Func<Guid, string> PersonName { get; set; } = id => id.ToString();
+    [Parameter] public Func<Guid, string> AlbumName { get; set; } = id => id.ToString();
+
+    private ExistingPhoto? _detail;
+    private Guid _loadedFor;
+    private ElementReference _body;
+    private bool _focused;
+
+    private PhotoSummary? Current => Index >= 0 && Index < Photos.Count ? Photos[Index] : null;
+
+    private string Label(PhotoSummary? p) => p is null ? "Photo" : (string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!);
+
+    private RenderFragment TitleFragment => builder => builder.AddContent(0, Label(Current));
+
+    private RenderFragment SubFragment => builder =>
+    {
+        var date = _detail?.TakenAt ?? Current?.TakenAt;
+        var prefix = date is { } d ? $"{d:d MMM yyyy} · " : string.Empty;
+        builder.AddContent(0, prefix);
+        builder.OpenElement(1, "span");
+        builder.AddAttribute(2, "class", "mono");
+        builder.AddContent(3, $"{Index + 1} of {Photos.Count}");
+        builder.CloseElement();
+    };
+
+    private RenderFragment HeaderActionsFragment => __builder =>
+    {
+        var fav = Current?.Favourited is not null;
+        <button type="button" class="pl-headheart @(fav ? "on" : null)"
+                aria-label="@(fav ? "Remove from favourites" : "Add to favourites")"
+                aria-pressed="@(fav ? "true" : "false")"
+                @onclick="() => OnToggleFavourite.InvokeAsync(Current!.PhotoId)">
+            <span class="material-icons" aria-hidden="true">@(fav ? "favorite" : "favorite_border")</span>
+        </button>
+    };
+
+    private RenderFragment FooterFragment => __builder =>
+    {
+        @if (CanUpdate)
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="edit" OnClick="() => OnEdit.InvokeAsync(Current!.PhotoId)">Edit</OdsButton>
+        }
+        <OdsButton Variant="OdsButtonVariant.Text" Icon="download" OnClick="DownloadAsync">Download</OdsButton>
+        @if (CanUpdate)
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="@(Current?.Archived is not null ? "unarchive" : "inventory_2")"
+                       OnClick="() => OnToggleArchive.InvokeAsync(Current!.PhotoId)">
+                @(Current?.Archived is not null ? "Unarchive" : "Archive")
+            </OdsButton>
+        }
+        @if (CanDelete)
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="delete" OnClick="() => OnDelete.InvokeAsync(Current!.PhotoId)">Delete</OdsButton>
+        }
+    };
+
+    // OdsModal fires this on Esc / scrim / close button (Open→false); tell the host to unmount us.
+    private Task OnOpenChanged(bool open) => open ? Task.CompletedTask : OnClose.InvokeAsync();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Current is { PhotoId: var id } && id != _loadedFor)
+        {
+            _loadedFor = id;
+            _detail = await Api.GetAsync(id);
+        }
+    }
+
+    // Focus the stage once the teleported dialog body is in the DOM so ←/→ navigation works without a
+    // click first (retries across renders until the element exists; this modal has no form field for
+    // OdsModal's autofocus to land on).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focused)
+        {
+            try { await _body.FocusAsync(); _focused = true; }
+            catch { /* not teleported into the DOM yet — retry next render */ }
+        }
+    }
+
+    private async Task Move(int delta)
+    {
+        if (Photos.Count == 0)
+        {
+            return;
+        }
+
+        var next = (Index + delta + Photos.Count) % Photos.Count;
+        await IndexChanged.InvokeAsync(next);
+    }
+
+    private async Task DownloadAsync()
+    {
+        if (Current is { FileId: var fid })
+        {
+            await Js.InvokeVoidAsync("open", Files.ContentUrl(fid), "_blank", "noopener");
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowRight": await Move(1); break;
+            case "ArrowLeft": await Move(-1); break;
+        }
+    }
+
+    private static RenderFragment Row(string icon, string text) => builder =>
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "pl-vrow");
+        builder.OpenElement(2, "span");
+        builder.AddAttribute(3, "class", "material-icons");
+        builder.AddAttribute(4, "aria-hidden", "true");
+        builder.AddContent(5, icon);
+        builder.CloseElement();
+        builder.OpenElement(6, "span");
+        builder.AddContent(7, text);
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+}

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Odyssey.Client</title>
+    <base href="/" />
+    <link rel="preload" id="webassembly" />
+    <!-- Self-hosted Roboto + Material Icons (see wwwroot/fonts). Served from our own origin so
+         icons/fonts never depend on Google's CDN being reachable — which broke icons in prod
+         and leaked user IPs to Google (GDPR). Loaded first so glyphs are ready for MudBlazor. -->
+    <link rel="stylesheet" href="css/fonts.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/odyssey-components.css" />
+    <link rel="stylesheet" href="css/legal.css" />
+    <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
+    <link rel="icon" type="image/svg+xml" href="odyssey-logomark.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="odyssey-favicon-16.png" />
+    <link href="Odyssey.Client.styles.css" rel="stylesheet" />
+    <link href="manifest.webmanifest" rel="manifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+    <script type="importmap"></script>
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script>navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });</script>
+    <script>
+        window.downloadFileFromBytes = function (bytes, fileName, contentType) {
+            const blob = new Blob([new Uint8Array(bytes)], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+        window.createBlobUrl = function (bytes, contentType) {
+            const blob = new Blob([new Uint8Array(bytes)], { type: contentType });
+            return URL.createObjectURL(blob);
+        };
+        window.downloadFromUrl = function (url, fileName) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName || '';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+        window.revokeBlobUrl = function (url) {
+            URL.revokeObjectURL(url);
+        };
+        window.odsSetAttr = function (elementId, name, value) {
+            // Set (or remove, when value is empty) an attribute on an element by id. Used to wire
+            // aria-describedby onto a MudBlazor input whose own attribute rendering would otherwise
+            // clobber a splatted value (OdsCustodianSelect → the inner combobox input).
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            if (value === null || value === undefined || value === '') el.removeAttribute(name);
+            else el.setAttribute(name, value);
+        };
+        window.odsFocusById = function (elementId) {
+            // Restore focus to a control by id — used after an action unmounts the element that had
+            // focus (e.g. dismissing/applying a match-suggestion chip), so focus never falls to <body>.
+            const el = document.getElementById(elementId);
+            if (el) el.focus();
+        };
+        window.odsSetAttr = function (id, name, value) {
+            // Set/remove an attribute on an element by id — used to associate a control (e.g. a
+            // MudAutocomplete input) with a helper via aria-describedby, which the component can't
+            // render on the inner input itself.
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (value == null) el.removeAttribute(name); else el.setAttribute(name, value);
+        };
+        window.odsSetIndeterminate = function (el, value) {
+            // The checkbox "mixed" (select-all) state is a DOM property, not an attribute, so Blazor
+            // can't set it declaratively — reflect it here so assistive tech announces "mixed".
+            if (el) el.indeterminate = !!value;
+        };
+        // Focus-restore stack for OdsModal (WCAG 2.4.3): a plain array of the elements that had
+        // focus just before each currently-open dialog stole it, keyed purely by open order (LIFO),
+        // so nested dialogs unwind correctly. Lives entirely on the JS side — Blazor never needs to
+        // hold the DOM reference, only call capture on open and restore on close, in that order.
+        window.odsFocusOwnerStack = [];
+        window.odsCaptureFocusOwner = function () {
+            window.odsFocusOwnerStack.push(document.activeElement);
+        };
+        window.odsRestoreFocusOwner = function () {
+            const el = window.odsFocusOwnerStack.pop();
+            // The trigger might have been removed from the DOM since (e.g. the row it belonged to
+            // was deleted) — fall back to leaving focus wherever the dialog's own teardown left it
+            // rather than throwing.
+            if (el && document.contains(el) && typeof el.focus === 'function') el.focus();
+        };
+        window.odsFocusFirstField = function () {
+            // Autofocus the first form field when an OdsModal opens (Odyssey DS · Modal):
+            // focus the first focusable control inside the topmost dialog body, skipping
+            // the header close button. Two rAFs let MudBlazor's own focus trap run first
+            // so this override lands the focus. No-ops for bodyless viewer modals and when
+            // a field already grabbed focus.
+            const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    const bodies = document.querySelectorAll('.ods-modal-body');
+                    const body = bodies[bodies.length - 1];
+                    if (!body || body.contains(document.activeElement)) return;
+                    const el = Array.from(body.querySelectorAll(FOCUSABLE)).find(function (e) { return e.offsetParent !== null; });
+                    if (el) el.focus();
+                });
+            });
+        };
+    </script>
+</body>
+
+</html>

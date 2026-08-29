@@ -1,0 +1,141 @@
+/* Contracts — page styles for Contracts.jsx.
+   Sits on top of kit.css: the page reuses the Accounts/Insurance expandable-
+   record scaffold (.acct-list / .acct-item / .acct-head / .acct-detail / the DS
+   InfoTile + Collapsible) wholesale. Only the portfolio summary strip, the
+   status headline, and the parties list are new and live here. Tokens come from
+   colors_and_type.css. The feature accent is a warm clay/bronze (oklch hue 42)
+   — distinct from brand tide, Insurance's indigo, and Tax's magenta; it evokes
+   a signed, sealed agreement and never encodes money. */
+
+:root, [data-theme] {
+  --con-accent: oklch(0.70 0.13 42);
+  --con-accent-soft: oklch(0.70 0.13 42 / 0.16);
+  --con-accent-line: oklch(0.70 0.13 42 / 0.42);
+}
+
+/* ============================================================
+   Portfolio summary strip (header Overview region)
+   ============================================================ */
+.con-summary { display: flex; flex-direction: column; gap: 14px; }
+.con-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+
+/* ============================================================
+   Collapsed-card headline (period anchor + relative-days word)
+   ============================================================ */
+.con-headline { font: 500 18px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.con-headline.none { font-family: var(--font-sans); font-size: 15px; color: var(--mud-palette-text-secondary); }
+.con-headline-word { font: 400 12px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); text-align: right; }
+.con-headline-word.soon { color: var(--pending-text); }
+.con-headline-word.expired { color: var(--finance-expense); }
+.con-headline-word.archived { color: var(--mud-palette-text-secondary); }
+
+/* The institution chip row inside the collapsed card sub-line */
+.con-sub-inst { display: inline-flex; align-items: center; gap: 5px; }
+.con-sub-inst .material-icons { font-size: 14px; opacity: 0.8; }
+
+/* ============================================================
+   Expanded detail — tile grid (DS InfoTile) + sub-dividers
+   ============================================================ */
+.con-tiles {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
+  --odc-infotile-accent: var(--con-accent);
+  --odc-infotile-accent-soft: var(--con-accent-soft);
+}
+.con-sub { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.con-sub-label { font: 600 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.con-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light); }
+.con-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+
+/* ============================================================
+   Parties list — one row per typed link (Account / Institution /
+   Insurance policy). Each row is the minimal projection: kind icon
+   + name + kind label + target type.
+   ============================================================ */
+.con-parties { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+.con-party {
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+  background: var(--mud-palette-background); padding: 10px 12px;
+}
+.con-party-av {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 38px; height: 38px; border-radius: 9px;
+}
+.con-party-av .material-icons { font-size: 20px; }
+.con-party-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.con-party-name { font: 500 13.5px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.con-party-meta { display: inline-flex; align-items: center; gap: 7px; font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.con-party-kind {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: var(--radius-pill);
+  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface);
+  font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.02em; color: var(--mud-palette-text-secondary);
+  flex: none;
+}
+.con-party-kind .material-icons { font-size: 13px; }
+.con-party-dot { opacity: 0.5; }
+/* Detach control — a destructive ACTION, not a "broken link" status. Hidden at
+   rest so the row stays quiet; revealed on row hover (or keyboard focus within
+   the row, for a11y), where it reads as an interactive destructive control
+   (coral on hover) so link_off isn't mistaken for a status glyph. */
+.con-party-detach { flex: none; opacity: 0; transition: opacity .12s ease; }
+.con-party:hover .con-party-detach,
+.con-party:focus-within .con-party-detach { opacity: 1; }
+.con-party-detach .odc-iconbtn { color: var(--mud-palette-text-secondary); transition: color .12s ease, background-color 0s; }
+.con-party:hover .con-party-detach .odc-iconbtn { color: var(--mud-palette-text-primary); }
+.con-party-detach .odc-iconbtn:hover,
+.con-party-detach .odc-iconbtn:focus-visible { color: var(--finance-expense); }
+
+/* Empty-state for parties / documents inside a section */
+.con-empty-line {
+  display: flex; align-items: center; gap: 10px; padding: 18px 16px; margin: 0 16px 16px;
+  border: 1px dashed var(--mud-palette-divider); border-radius: 10px;
+  color: var(--mud-palette-text-secondary); font: 400 13px/1.45 var(--font-sans);
+  background: var(--mud-palette-background);
+}
+.con-empty-line .material-icons { font-size: 20px; opacity: 0.7; flex: none; }
+
+/* Documents section wrapper (FilesTable lives inside) */
+.con-files { padding: 4px 4px 8px; }
+
+/* Upload dialog — the "already attached" reference list under the dropzone */
+.con-existing-files { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.con-existing-head { font: 600 11px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 4px; }
+.con-existing-row { display: flex; align-items: center; gap: 9px; padding: 6px 4px; }
+.con-existing-ic { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; border-radius: 7px; }
+.con-existing-name { flex: 1; min-width: 0; font: 400 12.5px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.con-existing-kind { flex: none; font: 500 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* ============================================================
+   Inline edit form — Archive / Restore toggle row
+   ============================================================ */
+.con-archive-row {
+  display: flex; align-items: center; gap: 14px;
+  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+  background: var(--mud-palette-background); padding: 12px 14px; margin-top: 4px;
+}
+.con-archive-row .con-archive-ic {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 36px; height: 36px; border-radius: 9px;
+  background: var(--con-accent-soft); color: var(--con-accent);
+}
+.con-archive-row .con-archive-ic .material-icons { font-size: 20px; }
+.con-archive-text { flex: 1; min-width: 0; }
+.con-archive-ttl { font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.con-archive-desc { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+
+/* The party-kind segmented selector in the Add-party dialog */
+.con-kind-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.con-kind-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
+  padding: 14px 10px; border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+  background: var(--mud-palette-background); cursor: pointer; color: var(--mud-palette-text-secondary);
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+.con-kind-opt:hover { border-color: var(--con-accent-line); color: var(--mud-palette-text-primary); }
+.con-kind-opt.on { border-color: var(--con-accent-line); background: var(--con-accent-soft); color: var(--mud-palette-text-primary); }
+.con-kind-opt .material-icons { font-size: 24px; color: var(--con-accent); }
+.con-kind-opt.on .material-icons { color: var(--con-accent); }
+.con-kind-lab { font: 500 12px/1.2 var(--font-sans); }
+
+/* Archived card dimming uses the existing .acct-item.dimmed rule from kit.css */

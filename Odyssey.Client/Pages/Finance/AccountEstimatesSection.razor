@@ -1,0 +1,246 @@
+@using System.Globalization
+@using System.Text
+@using Odyssey.Dtos.Finance
+@inject IDialogService DialogService
+@inject IAccountsApiClient Accounts
+@inject ISnackbar Snackbar
+
+@*
+    AccountEstimatesSection — the "Estimates" section inside an expanded account record
+    (Accounts → account detail), positioned ABOVE the Terms section. Renders the
+    AccountEstimate history (GET …/estimates): a value chart over time (step line with a
+    dashed hold to Today), the current estimated value beside the quiet transaction
+    balance, and the editable history table. The current estimate REPLACES the
+    transaction balance in net worth, so it leads as the headline; the balance is kept
+    quiet. Owns the create / edit / delete flow (write-gated). Sibling of
+    AccountTermsSection.
+*@
+
+<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="monitor">
+    <Title>Estimates</Title>
+    <Count>@_estimates.Count</Count>
+    <Actions>
+        @if (CanWrite)
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="add" OnClick="OpenNew">New estimate</OdsButton>
+        }
+    </Actions>
+    <ChildContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_estimates.Count == 0)
+        {
+            @* Guided empty state — frames the value proposition and shows the balance the estimate stands beside. *@
+            <div class="est-section">
+                <div class="est-empty-guided">
+                    <div class="est-eg-head">
+                        <span class="est-glyph lg" style="background:@TypeBg;color:@TypeFg;">
+                            <span class="material-icons" style="font-size:22px;">@TypeIcon</span>
+                        </span>
+                        <div>
+                            <div class="est-eg-title">Track this asset’s worth</div>
+                            <div class="est-eg-desc">
+                                An estimate records what @Account.Name is worth, even when no transactions capture it.
+                                The current estimate becomes the account’s value in your net worth.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="est-eg-balrow">
+                        <span class="lab">Transaction balance</span>
+                        <span class="val">@FormatMoney(Account.Balance, Account.CurrencyCode)</span>
+                    </div>
+                    @if (CanWrite)
+                    {
+                        <div class="est-eg-actions">
+                            <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="OpenNew">New estimate</OdsButton>
+                            @if (_recommended)
+                            {
+                                <span class="est-eg-rec">
+                                    <span class="material-icons">recommend</span>
+                                    Recommended for @AccountTypeVisuals.Label(Account.AccountType) accounts
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="est-eg-rec">
+                                    <span class="material-icons">info</span>
+                                    Estimates suit asset accounts, but you can add one here
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="est-section">
+
+                @* HERO — current estimated value + delta + value chart *@
+                @if (_hero is not null)
+                {
+                    <div class="est-hero">
+                        <div class="est-hero-head">
+                            <span class="est-glyph lg" style="background:@TypeBg;color:@TypeFg;">
+                                <span class="material-icons" style="font-size:22px;">@TypeIcon</span>
+                            </span>
+                            <div class="est-hero-titles">
+                                <div class="est-hero-kind">
+                                    @(_hero.Scheduled ? "Upcoming estimate" : "Estimated value")
+                                    <span style="color:var(--mud-palette-text-secondary);font-weight:400;">· @(_hero.Scheduled ? "scheduled" : "history")</span>
+                                </div>
+                                <div class="est-hero-sub">@_hero.SubLine</div>
+                            </div>
+                            <div class="est-hero-figs">
+                                <div class="est-hero-value">@FormatMoney(_hero.CurrentValue, Account.CurrencyCode)</div>
+                                @if (_hero.Scheduled)
+                                {
+                                    <span class="est-scheduled">Scheduled</span>
+                                }
+                                else if (_hero.DeltaLabel is not null)
+                                {
+                                    <span class="est-delta @_hero.DeltaDir">
+                                        <span class="material-icons">@_hero.DeltaIcon</span>@_hero.DeltaLabel
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                        <div class="est-chart-wrap">
+                            <svg class="est-chart" viewBox="0 0 680 210" role="img" aria-label="Estimated value over time">
+                                @((MarkupString)_hero.Svg)
+                            </svg>
+                        </div>
+                    </div>
+                }
+
+                @* CURRENT VALUE — the headline tile + the quiet transaction-balance secondary *@
+                <div>
+                    <div class="est-sub">
+                        <span class="est-sub-label">Current value</span>
+                        <span class="est-sub-rule"></span>
+                        <span class="est-sub-meta">in force · @DateTime.Now.ToString("MMM dd, yyyy")</span>
+                    </div>
+                    @if (_current is not null)
+                    {
+                        <div class="est-now">
+                            <div class="est-now-tile est-now-primary">
+                                <span class="est-now-label">Estimated value</span>
+                                <span class="est-now-value">@FormatMoney(_current.Value, Account.CurrencyCode)</span>
+                                <div class="est-now-foot">
+                                    <span>in force since @_current.EffectiveFrom.ToString("MMM dd, yyyy")</span>
+                                    <span class="est-networth"><span class="material-icons">check</span>In net worth</span>
+                                </div>
+                            </div>
+                            <div class="est-now-tile secondary est-now-secondary">
+                                <span class="est-now-label">Transaction balance</span>
+                                <span class="est-now-value">@FormatMoney(Account.Balance, Account.CurrencyCode)</span>
+                                <div class="est-now-foot">
+                                    <span>@(Account.TransactionCount == 0 ? "No transactions" : $"{Account.TransactionCount} transaction{(Account.TransactionCount == 1 ? "" : "s")} · secondary")</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @* HISTORY — single list, newest first *@
+                <div>
+                    <div class="est-sub">
+                        <span class="est-sub-label">History</span>
+                        <span class="est-sub-rule"></span>
+                        <span class="est-sub-meta">@_estimates.Count @(_estimates.Count == 1 ? "estimate" : "estimates")</span>
+                    </div>
+                    <div class="est-history">
+                        <table class="est-tbl">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Effective from</th>
+                                    <th scope="col" class="num">Value</th>
+                                    <th scope="col" class="num">Change</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col" class="act" aria-label="Actions"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var e in _estimates)
+                                {
+                                    var isCurrent = _current is not null && e.AccountEstimateId == _current.AccountEstimateId;
+                                    <tr class="@(isCurrent ? "current" : "")">
+                                        <td>
+                                            <div class="est-cell-date">@e.EffectiveFrom.ToString("MMM dd, yyyy")</div>
+                                            @if (!string.IsNullOrWhiteSpace(e.Note))
+                                            {
+                                                <div class="est-row-note">@e.Note</div>
+                                            }
+                                        </td>
+                                        <td class="est-cell-value">@FormatMoney(e.Value, Account.CurrencyCode)</td>
+                                        <td class="num">@RenderChange(e)</td>
+                                        <td>@RenderStatus(e, isCurrent)</td>
+                                        <td class="est-cell-act">
+                                            @if (CanWrite)
+                                            {
+                                                <span class="est-rowbtns">
+                                                    <OdsIconButton Icon="@Icons.Material.Filled.Edit" Size="OdsSize.Sm"
+                                                                   AriaLabel="Edit estimate" OnClick="@(() => OpenEdit(e))" />
+                                                    <OdsIconButton Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" Danger="true"
+                                                                   AriaLabel="Delete estimate" OnClick="@(() => DeleteAsync(e))" />
+                                                </span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    </ChildContent>
+</OdsCollapsible>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <AddEstimateDialog @key="_dialogKey"
+                       @bind-Open="_dialogOpen"
+                       Account="Account"
+                       Estimate="_editingEstimate"
+                       Existing="_estimates"
+                       OnSaved="OnEstimateChanged" />
+}
+
+@code {
+    // ── Change + status cells ─────────────────────────────────────────────────
+    private RenderFragment RenderChange(ExistingAccountEstimate e) => __builder =>
+    {
+        var change = _changes.GetValueOrDefault(e.AccountEstimateId);
+        if (change is null)
+        {
+            <span class="est-change flat">— first</span>
+        }
+        else
+        {
+            var dir = change > 0 ? "up" : change < 0 ? "down" : "flat";
+            var icon = change > 0 ? "arrow_upward" : change < 0 ? "arrow_downward" : "remove";
+            <span class="est-change @dir">
+                <span class="material-icons">@icon</span>@FormatMoney(Math.Abs(change.Value), Account.CurrencyCode)
+            </span>
+        }
+    };
+
+    private RenderFragment RenderStatus(ExistingAccountEstimate e, bool isCurrent) => __builder =>
+    {
+        if (e.EffectiveFrom.Date > DateTime.UtcNow.Date)
+        {
+            <span class="est-scheduled">Scheduled</span>
+        }
+        else if (isCurrent)
+        {
+            <span class="est-inforce"><span class="material-icons">check_circle</span>In force</span>
+        }
+        else
+        {
+            <span class="est-superseded">Superseded</span>
+        }
+    };
+}

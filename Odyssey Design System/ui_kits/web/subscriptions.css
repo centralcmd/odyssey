@@ -1,0 +1,76 @@
+/* Subscriptions — /subscriptions
+   ----------------------------------------------------------------------------
+   The page reuses the Accounts / Contracts / Insurance expandable-record
+   scaffold (.acct-list / .acct-item / .acct-head / .acct-figures / .acct-detail)
+   wholesale — sibling of Contracts. Only the collapsed-row affordances specific
+   to a subscription live here: the external-id / company / cadence tag line, the
+   price caption under the figure, and the archived-row dimming (handled by the
+   shared .acct-item.dimmed, so nothing extra needed there). Everything else
+   (summary tiles, edit grid, chips) reuses kit.css / account.css. */
+
+/* Tag line under the name — external id · company · cadence. */
+.acct-tags .sub-extid-inline { color: var(--mud-palette-text-secondary); letter-spacing: 0.01em; }
+.acct-tags .sub-inst,
+.acct-tags .sub-cadence { display: inline-flex; align-items: center; gap: 5px; }
+.acct-tags .sub-inst .material-icons,
+.acct-tags .sub-cadence .material-icons { font-size: 14px; color: var(--mud-palette-text-secondary); }
+.acct-tags .sub-inst { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Price caption beneath the headline figure in the collapsed header. */
+.acct-figures .sub-figure-word { font: var(--fw-regular) 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 4px; text-align: right; }
+
+/* Price figure — a recurring expense, so it reads in the finance-expense hue. */
+.acct-figures .sub-price { color: var(--finance-expense); }
+/* Same expense hue for the expanded-detail Price tile and the create/edit inputs. */
+.meta-tile-value.sub-price-val { color: var(--finance-expense); }
+.sub-amount-expense .odc-amount-input,
+.sub-amount-expense .odc-amount-adorn { color: var(--finance-expense); }
+
+/* Inline "clear filters" link in the no-match line. */
+.acct-list .link-btn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--brand-text); font: inherit; text-decoration: underline;
+}
+
+/* Summary grid (header Overview) — same two-tile grid Contracts uses. */
+.sub-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+/* Overview stack — run-rate stat tiles, a by-currency caption, then breakdowns. */
+.sub-overview { display: flex; flex-direction: column; gap: 12px; }
+
+/* Run-rate stat tiles — the InfoTile grid (mirrors Insurance's detail tiles).
+   In the header overview the tiles sit ON the card surface, so use the inset
+   background + no elevation to match the sibling BreakdownTiles (an elevated
+   surface-colored tile would blend into the card). */
+.sub-stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.sub-stat-tiles .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
+/* Run-rate figures are recurring spend — read in the finance-expense hue. */
+.sub-stat-tiles .odc-infotile .odc-infotile-v { color: var(--finance-expense); }
+
+/* Upcoming-renewals rows in the header signal panel. */
+.sub-renewal-row {
+  display: grid; grid-template-columns: 132px 1fr auto auto; align-items: center; gap: 14px;
+  padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid transparent; transition: background 0.12s ease, border-color 0.12s ease;
+}
+.sub-renewal-row:hover { background: var(--mud-palette-action-default-hover); border-color: var(--mud-palette-divider); }
+.sub-renewal-row:focus-visible { outline: 2px solid var(--brand-text); outline-offset: 1px; }
+.sub-renewal-when { display: inline-flex; align-items: baseline; gap: 8px; }
+.sub-renewal-md { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); color: var(--mud-palette-text-primary); }
+.sub-renewal-rel { font: var(--fw-regular) 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.sub-renewal-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-renewal-name .material-icons { font-size: 16px; flex: none; }
+.sub-renewal-amt { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); color: var(--mud-palette-text-primary); }
+.sub-renewal-go { font: var(--fw-medium) 12px/1 var(--font-sans); color: var(--brand-text); white-space: nowrap; }
+@media (max-width: 720px) {
+  .sub-renewal-row { grid-template-columns: 1fr auto; row-gap: 4px; }
+  .sub-renewal-go { display: none; }
+}

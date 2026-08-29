@@ -1,0 +1,45 @@
+@*
+    OdsSpinner — the circular indeterminate indicator (Odyssey Design System · components/Spinner).
+
+    The one sanctioned continuous motion in the system (file-analysis "analyzing"
+    state, page-level loads). A MudProgressCircular Indeterminate, sized
+    sm = 16 · md = 24 (default) · lg = 40. For first-paint placeholders prefer
+    OdsSkeleton; for in-place action busy-states use OdsButton's Loading.
+
+    Announces itself as role="status" by default. Set Decorative when the
+    surrounding markup already carries the status — a button whose own label
+    says "Saving…", or a wrapper that is itself role="status" with sr-only text.
+    Without it the spinner's aria-label would be folded into the accessible name
+    of the enclosing control.
+*@
+
+<MudProgressCircular Indeterminate="true"
+                     Color="Color.Primary"
+                     Style="@SizeStyle"
+                     role="@(Decorative ? null : "status")"
+                     aria-label="@(Decorative ? null : AriaLabel)"
+                     aria-hidden="@(Decorative ? "true" : null)"
+                     Class="@Class" />
+
+@code {
+    /// <summary>sm = 16px · md = 24px (default) · lg = 40px.</summary>
+    [Parameter] public OdsSize Size { get; set; } = OdsSize.Md;
+
+    /// <summary>Accessible name for the live status. Ignored when <see cref="Decorative"/> is set.</summary>
+    [Parameter] public string AriaLabel { get; set; } = "Loading";
+
+    /// <summary>
+    /// Hide from assistive tech (<c>aria-hidden</c>, no <c>role</c>). Use only where the
+    /// surrounding markup already announces the busy state.
+    /// </summary>
+    [Parameter] public bool Decorative { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private string SizeStyle => Size switch
+    {
+        OdsSize.Sm => "width:16px;height:16px;",
+        OdsSize.Lg => "width:40px;height:40px;",
+        _ => "width:24px;height:24px;",
+    };
+}

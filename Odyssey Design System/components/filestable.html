@@ -1,0 +1,87 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · FilesTable" subtitle="THE files surface — a preset of RecordTable shared by the Accounts detail, the Transactions panels & the Files page: expand-to-detail, inline Edit (name + type), Saved flash, and the Preview / Download / Analyze menu. Live render off the DS namespace." viewport="860x660" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · FilesTable</title>
+  <!-- Tokens + Material Icons, then the kit sheets that style the files table
+       (.tbl / .file-tbl / .acct-file-table / .acct-menu live there). -->
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/admin.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary); margin: 0 0 12px;
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .surface { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; }
+    .note { margin: 14px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 86ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+  </style>
+</head>
+<body>
+  <div class="cap">FilesTable <code>&lt;FilesTable files typeFor kinds actions onSave onDelete /&gt;</code></div>
+  <div class="surface"><div id="root"></div></div>
+  <p class="note">A preset of <b>RecordTable</b> — file rows follow the standard record lifecycle: click a row (or <b>View details</b>) for the read-only detail, <b>Edit</b> swaps in the inline panel for a file's only mutable fields (name + document type — <b>kinds</b> feeds the picker), Save flashes the <b>Saved</b> chip. <b>typeFor(file)</b> resolves each kind's <b>{'{ icon, color, soft }'}</b> (the ACCOUNT_FILE_TYPES registry shape) so a Statement reads the same here as in the upload picker. <b>actions(file)</b> supplies only the file-specific items — <b>Preview</b> (the document viewer), Download, Analyze, Copy ID — slotted between Edit and Delete; host their modals <b>outside</b> the table. “Preview” opens the document; “View details” expands the record. An optional per-row <b>statusBadge</b> ({'{ text, tone?, ariaLabel? }'}) renders an <b>OdsChip</b> next to the file name — here a <b>Review pending · 12</b> hint for a file with an open, resumable analysis review (meaning carried as text; the row also gains a <b>Resume review</b> menu item).</p>
+
+  <script type="text/babel" data-presets="env,react">
+    const { FilesTable } = window.OdysseyDesignSystem_d5aa51;
+
+    const KINDS = [
+      { key: 'Statement', label: 'Statement', icon: 'description',       color: 'oklch(0.79 0.115 188)', soft: 'oklch(0.79 0.115 188 / 0.16)' },
+      { key: 'Receipt',   label: 'Receipt',   icon: 'receipt_long',      color: 'oklch(0.82 0.14 85)',   soft: 'oklch(0.82 0.14 85 / 0.16)' },
+      { key: 'Document',  label: 'Document',  icon: 'article',           color: 'oklch(0.75 0.16 330)',  soft: 'oklch(0.75 0.16 330 / 0.16)' },
+      { key: 'Other',     label: 'Other',     icon: 'insert_drive_file', color: 'oklch(0.74 0.02 250)',  soft: 'oklch(0.74 0.02 250 / 0.16)' },
+    ];
+    const KIND_BY_KEY = Object.fromEntries(KINDS.map(k => [k.key, k]));
+
+    const SEED = [
+      { id: 'af-101', name: 'statement-2026-04.pdf',   kind: 'Statement', size: '1.2 MB',  uploaded: '2026-05-02',
+        statusBadge: { text: 'Review pending · 12', tone: 'pending', ariaLabel: 'Resume analysis review for statement-2026-04.pdf — 12 candidates pending' } },
+      { id: 'af-102', name: 'whole-foods-receipt.jpg', kind: 'Receipt',   size: '420 KB',  uploaded: '2026-05-22' },
+      { id: 'af-103', name: 'lease-agreement.pdf',     kind: 'Document',  size: '3.8 MB',  uploaded: '2026-03-14' },
+      { id: 'af-104', name: 'export.csv',              kind: 'Other',     size: '88 KB',   uploaded: '2026-05-10' },
+    ];
+
+    function Demo() {
+      const [files, setFiles] = React.useState(SEED);
+      return (
+        <FilesTable
+          files={files}
+          typeFor={(f) => KIND_BY_KEY[f.kind]}
+          kinds={KINDS}
+          onSave={(id, patch) => setFiles(fs => fs.map(f => f.id === id ? { ...f, ...patch } : f))}
+          onDelete={(f) => setFiles(fs => fs.filter(x => x.id !== f.id))}
+          actions={(f) => [
+            { icon: 'visibility', label: 'Preview', onClick: () => {} },
+            { icon: 'download', label: 'Download', onClick: () => {} },
+            ...(f.statusBadge ? [{ icon: 'history', label: 'Resume review', onClick: () => {} }] : []),
+            { icon: 'auto_fix_high', label: 'Analyze', onClick: () => {} },
+            { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(f.id); } },
+          ]}
+          empty="No files match your filters."
+        />
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+    // Open a representative row so the thumbnail shows the detail layout at rest.
+    const openRow = () => {
+      const rows = [...document.querySelectorAll('.ua-tbl tbody tr')].filter(t => !t.classList.contains('ua-detail-row'));
+      const target = rows.find(t => /receipt/.test(t.textContent));
+      if (target) target.click(); else if (!rows.length) return setTimeout(openRow, 60);
+    };
+    setTimeout(openRow, 140);
+  </script>
+</body>
+</html>

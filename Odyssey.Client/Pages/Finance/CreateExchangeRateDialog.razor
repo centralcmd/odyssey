@@ -1,0 +1,182 @@
+@*
+    Create / edit dialog for an exchange rate (Odyssey Design System · Exchange rates RecordRateModal).
+    One dialog serves both modes: create records a brand-new entry, edit corrects an existing one.
+    The currency pair is the record's identity, so edit mode locks it and only Rate + As of stay editable.
+*@
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Finance
+@using System.Net.Http.Json
+@inject ISnackbar Snackbar
+@inject IReferenceDataCache ReferenceData
+@inject IExchangeRatesApiClient ExchangeRates
+
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="currency_exchange"
+               Title="@(IsEdit ? "Edit exchange rate" : "New exchange rate")"
+               Subtitle="@SubtitleText"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create rate")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    <!-- From + To — locked in edit mode -->
+    @if (IsEdit)
+    {
+        <OdsFieldShell Label="Currency pair" Help="The currency pair can't be changed after the rate is recorded.">
+            <span class="d-inline-flex align-center" style="gap:8px;">
+                <OdsChip Tone="OdsChipTone.Outline">@Rate!.FromCurrencyCode</OdsChip>
+                <span class="material-icons" aria-hidden="true" style="font-size:15px;opacity:.5;">arrow_forward</span>
+                <OdsChip Tone="OdsChipTone.Outline">@Rate!.ToCurrencyCode</OdsChip>
+            </span>
+        </OdsFieldShell>
+    }
+    else
+    {
+        <OdsFormRow>
+            <MudAutocomplete T="ExistingCurrency" Label="From currency" Variant="Variant.Outlined" Margin="Margin.Dense"
+                             @bind-Value="_from" SearchFunc="@SearchCurrencies" ToStringFunc="@CurrencyLabel"
+                             CoerceValue="false" ResetValueOnEmptyText="true" Dense="true" MaxItems="50" />
+            <MudAutocomplete T="ExistingCurrency" Label="To currency" Variant="Variant.Outlined" Margin="Margin.Dense"
+                             @bind-Value="_to" SearchFunc="@SearchCurrencies" ToStringFunc="@CurrencyLabel"
+                             CoerceValue="false" ResetValueOnEmptyText="true" Dense="true" MaxItems="50" />
+        </OdsFormRow>
+    }
+
+    <!-- Rate -->
+    <MudNumericField T="decimal" @bind-Value="_rate" Label="Rate" Variant="Variant.Outlined" Margin="Margin.Dense"
+                     Min="0" Step="0.0001M" HideSpinButtons="true"
+                     HelperText="@RateHelperText" />
+
+    <!-- As of -->
+    <OdsDatePicker @bind-Value="_asOf" Label="As of" Clearable="@(!IsEdit)"
+                   HelperText="@(IsEdit ? "When this rate takes effect." : "Optional — defaults to now when left empty.")" />
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>When set, the dialog edits this rate (currency pair locked). Null = create mode.</summary>
+    [Parameter] public ExistingExchangeRate? Rate { get; set; }
+
+    private List<ExistingCurrency> _currencies = [];
+    private ExistingCurrency? _from;
+    private ExistingCurrency? _to;
+    private decimal _rate = 1m;
+    private DateTime? _asOf;
+
+    private bool IsEdit => Rate is not null;
+
+    private string SubtitleText => IsEdit
+        ? "Correct this entry's rate or effective date. The currency pair can't be changed."
+        : "This adds a new entry and becomes the current rate for the pair — to correct an existing entry, edit it instead.";
+
+    private string? FromCode => IsEdit ? Rate!.FromCurrencyCode : _from?.CurrencyCode;
+    private string? ToCode => IsEdit ? Rate!.ToCurrencyCode : _to?.CurrencyCode;
+
+    private string RateHelperText =>
+        FromCode is not null && ToCode is not null
+            ? $"1 {FromCode} = {_rate} {ToCode}"
+            : "1 unit of From = Rate units of To.";
+
+    protected override void OnInitialized()
+    {
+        if (Rate is null)
+            return;
+
+        _rate = Rate.Rate;
+        _asOf = Rate.AsOf.Date;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Edit mode locks the pair behind chips, so the currency list is only needed to create.
+        if (!OperatingSystem.IsBrowser() || IsEdit)
+            return;
+
+        _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
+    }
+
+    private Task<IEnumerable<ExistingCurrency>> SearchCurrencies(string? value, CancellationToken token)
+    {
+        IEnumerable<ExistingCurrency> results = _currencies;
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            results = _currencies.Where(currency =>
+                currency.CurrencyCode.Contains(value, StringComparison.OrdinalIgnoreCase)
+                || currency.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return Task.FromResult(results);
+    }
+
+    private static string CurrencyLabel(ExistingCurrency? currency) =>
+        currency is null ? string.Empty : $"{currency.CurrencyCode} — {currency.Name}";
+
+    private async Task<bool> SaveAsync()
+    {
+        if (IsEdit)
+            return await UpdateAsync();
+
+        if (_from is null || _to is null)
+        {
+            Snackbar.Add("Both From and To currencies are required.", Severity.Error);
+            return false;
+        }
+
+        if (string.Equals(_from.CurrencyCode, _to.CurrencyCode, StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("From and To currencies must differ.", Severity.Error);
+            return false;
+        }
+
+        if (_rate <= 0)
+        {
+            Snackbar.Add("Rate must be greater than zero.", Severity.Error);
+            return false;
+        }
+
+        var newRate = new NewExchangeRate
+        {
+            FromCurrencyCode = _from.CurrencyCode,
+            ToCurrencyCode = _to.CurrencyCode,
+            Rate = _rate,
+            // MudDatePicker yields a local date; treat it as UTC midnight for the AsOf timestamp.
+            AsOf = _asOf.HasValue ? DateTime.SpecifyKind(_asOf.Value, DateTimeKind.Utc) : null,
+        };
+
+        return (await ExchangeRates.CreateAsync(newRate)).Toast(Snackbar, "Unable to record rate", "Exchange rate recorded.");
+    }
+
+    private async Task<bool> UpdateAsync()
+    {
+        if (_rate <= 0)
+        {
+            Snackbar.Add("Rate must be greater than zero.", Severity.Error);
+            return false;
+        }
+
+        if (_asOf is null)
+        {
+            Snackbar.Add("An effective date is required.", Severity.Error);
+            return false;
+        }
+
+        var update = new UpdateExchangeRate { Rate = _rate, AsOf = ResolveAsOf() };
+
+        return (await ExchangeRates.UpdateAsync(Rate!.ExchangeRateId, update))
+            .Toast(Snackbar, "Update failed", "Exchange rate updated.");
+    }
+
+    // AsOf ordering decides which entry is Current for a pair, so correcting only the rate must not
+    // shift the effective timestamp: an untouched date keeps the record's original time of day.
+    private DateTime ResolveAsOf()
+    {
+        var picked = DateTime.SpecifyKind(_asOf!.Value.Date, DateTimeKind.Utc);
+        return picked == Rate!.AsOf.Date ? Rate.AsOf : picked;
+    }
+}

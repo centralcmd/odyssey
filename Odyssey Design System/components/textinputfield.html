@@ -1,0 +1,96 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="TextInputField" subtitle="A labelled single-line text input on a native <input type=text> inside FieldShell — NumberField's shape, for text. Use it when the control must be labelled or described by elements it does not own (a SettingRow title, a table header, an inline edit); Field for ordinary form entry, SearchField for filter boxes." viewport="960x680" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · TextInputField</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px 40px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 860px; }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 6px; }
+    .lede { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 24px; max-width: 700px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 14px; }
+    .cap code, .pick code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 28px; align-items: start; }
+    .sep { height: 1px; background: var(--mud-palette-divider); }
+    .pick { display: grid; grid-template-columns: 130px 1fr; gap: 10px 18px; font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .pick b { font-family: var(--font-mono); font-weight: var(--fw-regular); color: var(--brand-text); }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>TextInputField — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;TextInputField value onChange&gt;</code></h1>
+  <p class="lede">The same shape as <code style="font-family:var(--font-mono);color:var(--brand-text)">NumberField</code>, for text: <code style="font-family:var(--font-mono);color:var(--brand-text)">FieldShell</code> around a native input this component renders itself — so <code style="font-family:var(--font-mono);color:var(--brand-text)">aria-labelledby</code> and <code style="font-family:var(--font-mono);color:var(--brand-text)">aria-describedby</code> land on the input rather than travelling through a wrapper's attribute splat.</p>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var FieldShell = NS.FieldShell;
+      // Prefer the compiled component; fall back to a local compose so the card
+      // renders in the turn its source was added, before the bundle recompiles.
+      var TextInputField = NS.TextInputField || function (p) {
+        var id = p.id, helpId = id + '-help';
+        var described = [p.ariaDescribedBy, p.help ? helpId : null, p.error ? helpId : null].filter(Boolean).join(' ') || undefined;
+        return e(FieldShell, { label: p.label, htmlFor: id, required: p.required, optional: p.optional,
+          help: p.help, error: p.error, className: p.className,
+          aside: (p.showCount && p.maxLength) ? e('span', { className: 'odc-field-count' }, (p.value || '').length + '/' + p.maxLength) : null },
+          e('input', { id: id, className: 'odc-input', type: 'text', value: p.value || '',
+            placeholder: p.placeholder, maxLength: p.maxLength, inputMode: p.inputMode, disabled: p.disabled,
+            'aria-invalid': p.error ? true : undefined, 'aria-labelledby': p.ariaLabelledBy,
+            'aria-describedby': described, onChange: function (ev) { p.onChange(ev.target.value); } }));
+      };
+
+      function Demo(props) {
+        var s = React.useState(props.value === undefined ? '' : props.value), v = s[0], set = s[1];
+        var p = Object.assign({}, props, { value: v, onChange: set });
+        return e(TextInputField, p);
+      }
+
+      var root = [
+        e('div', { key: 'a' },
+          e('div', { className: 'cap' }, 'Default, ', e('code', { key: 'c' }, 'help'), ', ', e('code', { key: 'c2' }, 'optional')),
+          e('div', { className: 'row' },
+            e(Demo, { key: 1, id: 'a1', label: 'Display name', value: 'Acme Holdings', placeholder: 'Legal or trading name' }),
+            e(Demo, { key: 2, id: 'a2', label: 'Privacy notice URL', optional: true, inputMode: 'url',
+              value: 'https://acme.example/ai-privacy-notice',
+              help: 'Shown to every user before their first file is sent for analysis.' }))),
+
+        e('div', { className: 'sep', key: 's1' }),
+
+        e('div', { key: 'b' },
+          e('div', { className: 'cap' }, e('code', { key: 'c' }, 'error'), ' · ', e('code', { key: 'c2' }, 'required'), ' · ', e('code', { key: 'c3' }, 'disabled'), ' · ', e('code', { key: 'c4' }, 'maxLength'), ' with ', e('code', { key: 'c5' }, 'showCount')),
+          e('div', { className: 'row' },
+            e(Demo, { key: 1, id: 'b1', label: 'Privacy notice URL', required: true, value: 'acme.example/notice',
+              error: 'Enter a full https:// URL' }),
+            e(Demo, { key: 2, id: 'b2', label: 'Processor name', value: 'Anthropic', disabled: true,
+              help: 'Set by the deployment; not editable here.' }),
+            e(Demo, { key: 3, id: 'b3', label: 'Consent prompt heading', value: 'Before we analyse your files',
+              maxLength: 60, showCount: true, help: 'Kept short — it is the first line of the consent dialog.' }),
+            e(Demo, { key: 4, id: 'b4', label: 'Support contact', placeholder: 'name@example.com', inputMode: 'email',
+              optional: true }))),
+
+        e('div', { className: 'sep', key: 's2' }),
+
+        e('div', { key: 'c' },
+          e('div', { className: 'cap' }, 'Which of the three to use'),
+          e('div', { className: 'pick' },
+            e('b', { key: 'k1' }, 'TextInputField'),
+            e('div', { key: 'v1' }, 'The control has to be labelled or described by elements it does not own — a SettingRow title and description, a table column header, an inline edit row. Native input, so the aria attributes are on the input itself. Emits a string.'),
+            e('b', { key: 'k2' }, 'Field'),
+            e('div', { key: 'v2' }, 'Ordinary labelled data entry in a form or dialog. Maps to a MudTextField and carries the leading-icon, clearable, multiline and password affordances.'),
+            e('b', { key: 'k3' }, 'SearchField'),
+            e('div', { key: 'v3' }, 'Filtering or searching a collection — leading search glyph, clear button, native search semantics. Never for data entry.')))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>

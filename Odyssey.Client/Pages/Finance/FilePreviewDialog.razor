@@ -1,0 +1,205 @@
+@using Odyssey.Dtos.Finance
+@implements IAsyncDisposable
+@inject IJSRuntime JsRuntime
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          HideHeader="true" Class="aam-modal fvm-modal" AriaLabel="@FileName">
+        @{ var kind = FileKindVisual(FileType); }
+        <div class="fvm-shell">
+
+            <!-- Header — file identity + context -->
+            <div class="fvm-head">
+                <span class="fvm-head-ic" style="background:@kind.Soft;color:@kind.Color;">
+                    <span class="material-icons" style="font-size:20px;">@kind.Icon</span>
+                </span>
+                <div class="fvm-head-main">
+                    <div class="fvm-head-name" title="@FileName">@FileName</div>
+                    <div class="fvm-head-meta">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@TypeChipColor" Class="ma-0">
+                            @FileType.ToString()
+                        </MudChip>
+                        @if (!string.IsNullOrWhiteSpace(AccountName))
+                        {
+                            <span class="fvm-dot">·</span>
+                            <span class="fvm-muted">@AccountName</span>
+                        }
+                        <span class="fvm-dot">·</span>
+                        <span class="fvm-muted mono">@FormatFileSize(SizeBytes)</span>
+                        <span class="fvm-dot">·</span>
+                        <span class="fvm-muted">@UploadedAtUtc.ToLocalTime().ToString("MMM dd, yyyy")</span>
+                    </div>
+                </div>
+                <button type="button" class="aam-x" aria-label="Close" @onclick="CloseAsync">
+                    <span class="material-icons" style="font-size:20px;">close</span>
+                </button>
+            </div>
+
+            <!-- Toolbar — controls vary by type -->
+            @if (!IsOther)
+            {
+                <div class="fvm-bar">
+                    <div class="fvm-bar-l"></div>
+
+                    <div class="fvm-bar-c">
+                        @if (IsImage)
+                        {
+                            <div class="fvm-zoom">
+                                <button type="button" class="fvm-tbtn" aria-label="Zoom out"
+                                        disabled="@(_zoom <= ZoomMin)" @onclick="ZoomOut">
+                                    <span class="material-icons" style="font-size:18px;">remove</span>
+                                </button>
+                                @* The visible text is the zoom percentage, so the button's accessible
+                                   name has to say what pressing it does; the tooltip carries the same
+                                   hint visually, on focus as well as hover (the native title did not). *@
+                                <OdsTooltip Label="Reset to fit">
+                                    <button type="button" class="fvm-zlabel" aria-label="Reset to fit"
+                                            @onclick="ResetFit">@ZoomPercent%</button>
+                                </OdsTooltip>
+                                <button type="button" class="fvm-tbtn" aria-label="Zoom in"
+                                        disabled="@(_zoom >= ZoomMax)" @onclick="ZoomIn">
+                                    <span class="material-icons" style="font-size:18px;">add</span>
+                                </button>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="fvm-bar-r">
+                        @if (IsImage)
+                        {
+                            <button type="button" class="fvm-tbtn" aria-label="Rotate" @onclick="Rotate">
+                                <span class="material-icons" style="font-size:18px;">rotate_right</span>
+                            </button>
+                        }
+                        <OdsTooltip Label="Open in new tab">
+                            <button type="button" class="fvm-tbtn" aria-label="Open in new tab" @onclick="OpenInNewTab">
+                                <span class="material-icons" style="font-size:18px;">open_in_new</span>
+                            </button>
+                        </OdsTooltip>
+                    </div>
+                </div>
+            }
+
+            <!-- Stage — recessed neutral surface -->
+            <div class="fvm-stage @(IsPdf ? "fvm-stage--fill" : "") @(IsOther ? "is-empty" : "")">
+                @if (IsImage)
+                {
+                    <div class="fvm-canvas" style="transform:@ImageTransform;">
+                        <img src="@BlobUrl" alt="@FileName" class="fvm-img" />
+                    </div>
+                }
+                else if (IsPdf)
+                {
+                    <iframe src="@BlobUrl" class="fvm-pdf" title="@FileName"></iframe>
+                }
+                else
+                {
+                    <div class="fvm-empty">
+                        <span class="fvm-empty-ic"><span class="material-icons" style="font-size:34px;">visibility_off</span></span>
+                        <div class="fvm-empty-ttl">Preview not available</div>
+                        <div class="fvm-empty-sub">
+                            This file type can't be shown in the browser. Download the file to open it in another app.
+                        </div>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Download"
+                                   OnClick="Download">Download file</MudButton>
+                    </div>
+                }
+            </div>
+
+            <!-- Footer -->
+            <div class="fvm-foot">
+                <span class="fvm-foot-note fvm-muted">
+                    <span class="material-icons" style="font-size:14px;">lock</span> Read-only preview
+                </span>
+                <div class="fvm-foot-actions">
+                    <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CloseAsync">Close</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Download"
+                               OnClick="Download">Download</MudButton>
+                </div>
+            </div>
+
+        </div>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter] public string BlobUrl { get; set; } = "";
+    [Parameter] public string ContentType { get; set; } = "";
+    [Parameter] public string FileName { get; set; } = "";
+    [Parameter] public long SizeBytes { get; set; }
+    [Parameter] public DateTime UploadedAtUtc { get; set; }
+    [Parameter] public AccountFileType FileType { get; set; }
+    [Parameter] public string? AccountName { get; set; }
+
+    private const double ZoomMin = 0.5;
+    private const double ZoomMax = 3.0;
+    private const double ZoomStep = 0.25;
+
+    private double _zoom = 1.0;
+    private int _rotation;
+
+    private bool IsImage => ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+    private bool IsPdf => string.Equals(ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase);
+    private bool IsOther => !IsImage && !IsPdf;
+
+    private int ZoomPercent => (int)Math.Round(_zoom * 100);
+
+    private string ImageTransform =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"scale({_zoom}) rotate({_rotation}deg)");
+
+    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+
+    private void ZoomIn() => _zoom = Math.Min(ZoomMax, _zoom + ZoomStep);
+    private void ZoomOut() => _zoom = Math.Max(ZoomMin, _zoom - ZoomStep);
+    private void Rotate() => _rotation = (_rotation + 90) % 360;
+
+    private void ResetFit()
+    {
+        _zoom = 1.0;
+        _rotation = 0;
+    }
+
+    private async Task OpenInNewTab()
+    {
+        try { await JsRuntime.InvokeVoidAsync("open", BlobUrl, "_blank"); }
+        catch { /* popup blocked or unavailable — non-critical */ }
+    }
+
+    private async Task Download()
+    {
+        try { await JsRuntime.InvokeVoidAsync("downloadFromUrl", BlobUrl, FileName); }
+        catch { /* ignore — Download is best-effort from the already-loaded blob */ }
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+
+    private Color TypeChipColor => FileType switch
+    {
+        AccountFileType.Statement => Color.Primary,
+        AccountFileType.Contract => Color.Secondary,
+        AccountFileType.Tax => Color.Warning,
+        AccountFileType.Message => Color.Info,
+        _ => Color.Default,
+    };
+
+    // File-kind visual (icon / color / soft) — sourced from the shared OdsTypeRegistries.
+    private static OdsTypeOption FileKindVisual(AccountFileType kind) =>
+        OdsTypeRegistries.AccountFileTypeOf(kind);
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!string.IsNullOrEmpty(BlobUrl))
+        {
+            try { await JsRuntime.InvokeVoidAsync("revokeBlobUrl", BlobUrl); }
+            catch { /* ignore disposal errors */ }
+        }
+    }
+}

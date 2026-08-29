@@ -1,0 +1,166 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Theme
+@using Odyssey.Dtos.Finance
+
+
+@inject ISnackbar Snackbar
+@inject IUserPreferenceService UserPreferences
+@inject IReferenceDataCache ReferenceData
+@inject IBudgetsApiClient Budgets
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="pie_chart" Title="@(IsEdit ? "Edit budget" : "New budget")"
+               Subtitle="@(IsEdit
+                   ? "Update this budget's name, dates, currency, or description."
+                   : "Plan income and expenses for a period, then track them against real transactions.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create budget")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    <!-- Budget name -->
+    <MudTextField @bind-Value="_name"
+                  Label="Budget name"
+                  Placeholder="e.g. January 2025"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Error="@_nameError"
+                  ErrorText="Give the budget a name."
+                  Immediate="true" />
+
+    <!-- Start + End date -->
+    <OdsFormRow>
+        <OdsDatePicker @bind-Value="_startDate"
+                       Label="Start date"
+                       HelperText="Defaults to today" />
+        <OdsDatePicker @bind-Value="_endDate"
+                       Label="End date"
+                       Error="@_dateError"
+                       ErrorText="End date can't be before the start date."
+                       HelperText="Defaults to +1 month" />
+    </OdsFormRow>
+
+    <!-- Base currency -->
+    <div class="aam-field">
+        <MudAutocomplete T="string"
+                         Label="Base currency"
+                         Variant="Variant.Outlined"
+                         Margin="Margin.Dense"
+                         Value="@_baseCurrencyCode"
+                         ValueChanged="OnBaseCurrencyChanged"
+                         SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
+                         MinCharacters="0"
+                         MaxItems="10"
+                         Dense="true"
+                         CoerceValue="true"
+                         CoerceText="false"
+                         ResetValueOnEmptyText="false"
+                         HelperText="All planned amounts use this currency."
+                         ToStringFunc="@(code => code ?? string.Empty)" />
+    </div>
+
+    <!-- Description -->
+    <MudTextField @bind-Value="_description"
+                  Label="Description"
+                  Placeholder="Optional — what's this budget for?"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense" />
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>When set, the dialog edits this budget. Null = create mode.</summary>
+    [Parameter] public ExistingBudget? Budget { get; set; }
+
+    private bool IsEdit => Budget is not null;
+
+    private string? _name;
+    private string? _description;
+    private DateTime? _startDate = DateTime.UtcNow.Date;
+    private DateTime? _endDate = DateTime.UtcNow.Date.AddMonths(1);
+    private string _baseCurrencyCode = string.Empty;
+    private List<ExistingCurrency> _currencies = [];
+
+    private bool _nameError;
+    private bool _dateError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!OperatingSystem.IsBrowser())
+            return;
+
+        if (Budget is { } budget)
+        {
+            _name = budget.Name;
+            _description = budget.Description;
+            _startDate = budget.StartDate;
+            _endDate = budget.EndDate;
+            _baseCurrencyCode = budget.BaseCurrencyCode;
+        }
+        else
+        {
+            _baseCurrencyCode = UserPreferences.DefaultCurrency ?? string.Empty;
+        }
+
+        await LoadCurrencies();
+    }
+
+    private async Task LoadCurrencies()
+    {
+        _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
+
+        // Only snap to a live currency while creating — an existing budget keeps its own
+        // base currency even if that currency has since been archived.
+        if (!IsEdit && !string.IsNullOrEmpty(_baseCurrencyCode) && _currencies.Count > 0
+            && _currencies.All(currency => !string.Equals(currency.CurrencyCode, _baseCurrencyCode, StringComparison.OrdinalIgnoreCase)))
+        {
+            _baseCurrencyCode = _currencies[0].CurrencyCode;
+        }
+    }
+
+    private Task OnBaseCurrencyChanged(string value)
+    {
+        _baseCurrencyCode = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task<bool> SaveAsync()
+    {
+        _nameError = string.IsNullOrWhiteSpace(_name);
+        _dateError = _startDate is not null && _endDate is not null && _endDate.Value.Date < _startDate.Value.Date;
+        if (_nameError || _dateError)
+            return false;
+
+        if (_startDate is null || _endDate is null)
+        {
+            Snackbar.Add("Start and end dates are required.", Severity.Error);
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_baseCurrencyCode))
+        {
+            Snackbar.Add("Base currency is required.", Severity.Error);
+            return false;
+        }
+
+        var body = new NewBudget
+        {
+            Name = _name!.Trim(),
+            Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+            StartDate = _startDate.Value,
+            EndDate = _endDate.Value,
+            BaseCurrencyCode = _baseCurrencyCode.Trim().ToUpperInvariant(),
+            // Archive/restore is a separate row action — preserve whatever the record already has.
+            Archived = IsEdit && Budget!.Archived is not null,
+        };
+
+        return IsEdit
+            ? (await Budgets.UpdateAsync(Budget!.BudgetId, body)).Toast(Snackbar, "Update failed", "Budget updated.")
+            : (await Budgets.CreateAsync(body)).Toast(Snackbar, "Unable to create budget", "Budget created.");
+    }
+}

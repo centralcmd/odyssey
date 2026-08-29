@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Utility primitives (.odc-)" subtitle="IconButton · Spinner · ProgressBar · SegmentedControl · Collapsible · DatePicker — exported on the DS namespace" viewport="820x720" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Components · Utility primitives (.odc-)</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 30px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 36px; align-items: start; }
+    .row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .block { display: flex; flex-direction: column; gap: 12px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .pbar { display: flex; flex-direction: column; gap: 7px; }
+    .pbar-top { display: flex; justify-content: space-between; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .pbar-top .amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
+    .swatch { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 4px; }
+    .analyzing { display: inline-flex; align-items: center; gap: 10px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans); }
+  </style>
+</head>
+<body>
+  <div class="grid">
+    <div class="block">
+      <div class="cap">IconButton <code>&lt;IconButton icon ariaLabel size /&gt;</code></div>
+      <div class="row">
+        <button class="odc-iconbtn sm" aria-label="More"><span class="material-icons">more_vert</span></button>
+        <button class="odc-iconbtn" aria-label="Edit"><span class="material-icons">edit</span></button>
+        <button class="odc-iconbtn lg" aria-label="Add"><span class="material-icons">add</span></button>
+        <button class="odc-iconbtn danger" aria-label="Delete"><span class="material-icons">delete</span></button>
+        <button class="odc-iconbtn" aria-label="Disabled" disabled><span class="material-icons">download</span></button>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Spinner <code>&lt;Spinner size /&gt;</code></div>
+      <div class="row">
+        <span class="odc-spinner sm"></span>
+        <span class="odc-spinner"></span>
+        <span class="odc-spinner lg"></span>
+        <span class="analyzing"><span class="odc-spinner sm"></span>Analyzing statement.pdf…</span>
+      </div>
+    </div>
+
+    <div class="block" style="grid-column:1 / -1">
+      <div class="cap">ProgressBar <code>&lt;ProgressBar value tone /&gt;</code></div>
+      <div class="row" style="gap:24px">
+        <div class="pbar" style="flex:1;min-width:200px">
+          <div class="pbar-top"><span>Groceries</span><span class="amt">$ 412 / $ 500</span></div>
+          <div class="odc-progress income"><div class="odc-progress-fill" style="width:82%"></div></div>
+        </div>
+        <div class="pbar" style="flex:1;min-width:200px">
+          <div class="pbar-top"><span>Dining — over by $ 38</span><span class="amt">$ 238 / $ 200</span></div>
+          <div class="odc-progress expense"><div class="odc-progress-fill" style="width:100%"></div></div>
+        </div>
+        <div class="pbar" style="flex:1;min-width:200px">
+          <div class="pbar-top"><span>Upload</span><span class="amt">64%</span></div>
+          <div class="odc-progress"><div class="odc-progress-fill" style="width:64%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">SegmentedControl <code>&lt;SegmentedControl options value /&gt;</code></div>
+      <div class="odc-seg" role="radiogroup" aria-label="Direction">
+        <button class="odc-seg-btn expense" role="radio" aria-checked="true"><span class="material-icons">arrow_upward</span>Money out</button>
+        <button class="odc-seg-btn income" role="radio" aria-checked="false"><span class="material-icons">arrow_downward</span>Money in</button>
+      </div>
+      <div class="odc-seg" role="radiogroup" aria-label="View" style="margin-top:4px">
+        <button class="odc-seg-btn" role="radio" aria-checked="true">List</button>
+        <button class="odc-seg-btn" role="radio" aria-checked="false">Calendar</button>
+        <button class="odc-seg-btn" role="radio" aria-checked="false">Chart</button>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">DatePicker <code>&lt;DatePicker value onChange /&gt;</code></div>
+      <div class="swatch" style="padding:0;border:none;background:none;position:relative;height:340px">
+        <button class="odc-dp-trigger" style="width:220px" aria-expanded="true">
+          <span class="material-icons">calendar_today</span><span class="odc-dp-val">2026-06-18</span>
+        </button>
+        <div class="odc-dp-pop start" role="dialog" aria-label="Choose date" style="top:48px">
+          <div class="odc-dp-head">
+            <button class="odc-iconbtn sm" aria-label="Previous month"><span class="material-icons">chevron_left</span></button>
+            <div class="odc-dp-month">June 2026</div>
+            <button class="odc-iconbtn sm" aria-label="Next month"><span class="material-icons">chevron_right</span></button>
+          </div>
+          <div class="odc-dp-grid" role="grid">
+            <div class="odc-dp-wd">Su</div><div class="odc-dp-wd">Mo</div><div class="odc-dp-wd">Tu</div><div class="odc-dp-wd">We</div><div class="odc-dp-wd">Th</div><div class="odc-dp-wd">Fr</div><div class="odc-dp-wd">Sa</div>
+            <button class="odc-dp-day muted">31</button><button class="odc-dp-day">1</button><button class="odc-dp-day">2</button><button class="odc-dp-day">3</button><button class="odc-dp-day">4</button><button class="odc-dp-day">5</button><button class="odc-dp-day">6</button>
+            <button class="odc-dp-day">7</button><button class="odc-dp-day">8</button><button class="odc-dp-day">9</button><button class="odc-dp-day">10</button><button class="odc-dp-day">11</button><button class="odc-dp-day">12</button><button class="odc-dp-day">13</button>
+            <button class="odc-dp-day">14</button><button class="odc-dp-day">15</button><button class="odc-dp-day">16</button><button class="odc-dp-day">17</button><button class="odc-dp-day selected today">18</button><button class="odc-dp-day">19</button><button class="odc-dp-day">20</button>
+            <button class="odc-dp-day">21</button><button class="odc-dp-day">22</button><button class="odc-dp-day">23</button><button class="odc-dp-day">24</button><button class="odc-dp-day">25</button><button class="odc-dp-day">26</button><button class="odc-dp-day">27</button>
+            <button class="odc-dp-day">28</button><button class="odc-dp-day">29</button><button class="odc-dp-day">30</button><button class="odc-dp-day muted">1</button><button class="odc-dp-day muted">2</button><button class="odc-dp-day muted">3</button><button class="odc-dp-day muted">4</button>
+          </div>
+          <div class="odc-dp-foot">
+            <button class="odc-btn text">Today</button>
+            <button class="odc-btn text">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="cap">Collapsible <code>&lt;Collapsible title icon count action /&gt;</code></div>
+      <div class="odc-collapsible" data-open>
+        <div class="odc-collapsible-head">
+          <button class="odc-collapsible-trigger" aria-expanded="true">
+            <span class="material-icons odc-collapsible-chev">expand_more</span>
+            <span class="material-icons odc-collapsible-lead">attach_file</span>
+            <span class="odc-collapsible-title">Files</span>
+            <span class="odc-collapsible-count">3</span>
+          </button>
+          <div class="odc-collapsible-action"><button class="odc-btn text" type="button">View all</button></div>
+        </div>
+        <div class="odc-collapsible-body">
+          <div style="padding:14px;color:var(--mud-palette-text-secondary);font:var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans)">statement-may.pdf · receipt-0421.jpg · w2-2025.pdf</div>
+        </div>
+      </div>
+      <div class="odc-collapsible">
+        <div class="odc-collapsible-head">
+          <button class="odc-collapsible-trigger" aria-expanded="false">
+            <span class="material-icons odc-collapsible-chev">expand_more</span>
+            <span class="material-icons odc-collapsible-lead">tune</span>
+            <span class="odc-collapsible-title">Status comment &amp; advanced</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="FormRow" subtitle="Equal-width column grid for paired form fields inside a dialog — the component form of .aam-row2. Two columns by default, 14px gutter, top-aligned. Mounted from the DS namespace." viewport="900x420" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · FormRow</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 620px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 22px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>FormRow — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;FormRow cols={2}&gt;…&lt;/FormRow&gt;</code></h1>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var FormRow = NS.FormRow, Field = NS.Field, Select = NS.Select;
+
+      var root = [
+        e('div', { key: 'a' }, e('div', { className: 'cap' }, ['Two columns \u00b7 ', e('code', { key: 'c' }, 'default')]),
+          e(FormRow, null,
+            e(Field, { key: 1, label: 'Policy number', value: 'HC-2026-0042', onChange: function () {} }),
+            e(Field, { key: 2, label: 'Reference', value: '', placeholder: 'Optional', onChange: function () {} }))),
+        e('div', { key: 'b' }, e('div', { className: 'cap' }, ['One field alone \u00b7 empty cell with ', e('code', { key: 'c' }, '<div/>')]),
+          e(FormRow, null,
+            e(Field, { key: 1, label: 'Currency code', value: 'USD', onChange: function () {} }),
+            e('div', { key: 2 }))),
+        e('div', { key: 'c2' }, e('div', { className: 'cap' }, ['Three columns \u00b7 ', e('code', { key: 'c' }, 'cols={3}')]),
+          e(FormRow, { cols: 3 },
+            e(Field, { key: 1, label: 'From', value: 'EUR', onChange: function () {} }),
+            e(Field, { key: 2, label: 'To', value: 'NOK', onChange: function () {} }),
+            e(Field, { key: 3, label: 'Rate', value: '11.42', onChange: function () {} })))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>

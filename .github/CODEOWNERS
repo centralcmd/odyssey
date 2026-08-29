@@ -1,0 +1,40 @@
+# Code owners for centralcmd/odyssey.
+#
+# Every path listed here requires a review from @centralcmd before it can be merged.
+# CODEOWNERS only *requests* that review on its own — it is enforced by the branch
+# protection rule on `main` having "Require review from Code Owners" enabled.
+#
+# The list is deliberately short. It covers the files where an unreviewed merge has a
+# blast radius outside the pull request itself, not the codebase at large.
+
+# LICENSE is a runtime input, not just a legal file: LicenseDocumentProvider hashes it
+# and serves it as the agreement users accept at sign-in, so any edit — including a
+# contributor adding their name to the copyright line — invalidates every existing
+# acceptance and forces all users of every deployment to re-accept. See CONTRIBUTING.md.
+/LICENSE                    @centralcmd
+/THIRD-PARTY-NOTICES.md     @centralcmd
+
+# Workflows run with repository secrets on push to main. A change here can exfiltrate
+# GIST_TOKEN, GITHUB_TOKEN or the Claude credentials, or publish a container image.
+/.github/workflows/         @centralcmd
+/.github/dependabot.yml     @centralcmd
+/.github/CODEOWNERS         @centralcmd
+
+# The disclosure contract: reporting channel, supported versions, and the scope
+# statement that says which weak defaults are deliberate.
+/SECURITY.md                @centralcmd
+
+# The Claude Code configuration is CI-executed, not just editor convenience.
+# claude.yml and claude-code-review.yml run an agent holding
+# CLAUDE_CODE_OAUTH_TOKEN — the review workflow with `pull-requests: write` and
+# `issues: write` — and the files under .claude/agents/ and .claude/skills/ are
+# that agent's system prompt. Same blast radius as /.github/workflows/, so the
+# same gate. (No permission configuration is tracked: settings.json was moved to
+# the gitignored settings.local.json, so a clone pre-approves nothing.)
+#
+# This closes the merge path, not a live hole: both workflows trigger only on
+# issue_comment / pull_request_review* / issues, so their `actions/checkout`
+# (no `ref:`) resolves to the default branch rather than a PR head, and both are
+# gated on the *commenter's* author_association. An outside PR's edit to these
+# files cannot reach the token before it is merged.
+/.claude/                   @centralcmd

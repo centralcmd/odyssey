@@ -1,0 +1,23 @@
+@*
+    OdsLiveAnnouncer — a visually-hidden ARIA live region for status messages
+    (Odyssey Design System · WCAG 2.2 §4.1.3 Status Messages).
+
+    Host it once per page and update Message after each async state change
+    (results loaded / empty / error) so assistive tech announces the outcome of a
+    server fetch that the user triggered by typing, filtering, sorting or paging —
+    changes that otherwise happen silently. Use Assertive="true" (role="alert")
+    for errors that should interrupt; the default is polite.
+*@
+
+<div role="@(Assertive ? "alert" : "status")"
+     aria-live="@(Assertive ? "assertive" : "polite")"
+     aria-atomic="true"
+     class="sr-only">@Message</div>
+
+@code {
+    /// <summary>The text announced to assistive technology. Update it to fire an announcement.</summary>
+    [Parameter] public string? Message { get; set; }
+
+    /// <summary>When true, announce as <c>role="alert"</c> (assertive) rather than polite <c>role="status"</c>.</summary>
+    [Parameter] public bool Assertive { get; set; }
+}

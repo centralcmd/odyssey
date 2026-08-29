@@ -1,0 +1,82 @@
+@*
+    JournalPhotoGallery — a responsive thumbnail grid over a journal entry's photos
+    (Odyssey Design System · components/JournalPhotoGallery). Each tile is a real
+    <button> (tab-order, Enter/Space, focus ring for free) with an accessible name
+    (the photo's filename) that opens the full-res file via the host's OnOpen handler.
+
+    v1 has no EXIF / caption / thumbnail pipeline: a tile renders the image at native
+    fidelity with loading="lazy" and a capped display size, or — when no renderable
+    Src is supplied (no files.read access, dangling reference, or not yet loaded) — a
+    striped placeholder carrying a monospace label + filename. The count is announced
+    as text in the heading, never colour/icon alone.
+*@
+
+<section class="odc-photogrid @Class" aria-label="@AriaLabel">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <div class="odc-photogrid-head">
+            <span class="material-icons" aria-hidden="true">photo_library</span>
+            <span class="odc-photogrid-title">@Title</span>
+            <span class="odc-photogrid-count">@Photos.Count</span>
+        </div>
+    }
+
+    @if (Photos.Count == 0)
+    {
+        <div class="odc-photogrid-empty">@EmptyText</div>
+    }
+    else
+    {
+        <ul class="odc-photogrid-list" style="grid-template-columns: repeat(auto-fill, minmax(@(MinTile)px, 1fr));">
+            @foreach (var p in Photos)
+            {
+                <li class="odc-photogrid-item">
+                    <button type="button" class="odc-photogrid-tile"
+                            aria-label="@($"Open photo {p.Name}")"
+                            @onclick="@(() => OnOpen.InvokeAsync(p))">
+                        @if (!string.IsNullOrEmpty(p.Src))
+                        {
+                            @* If the streamed image fails (e.g. cross-origin under a split-port dev stack),
+                               fall back to the placeholder instead of a broken-image icon. *@
+                            <img class="odc-photogrid-img" src="@p.Src" alt="@p.Name" loading="lazy"
+                                 onerror="this.classList.add('img-failed')" />
+                            <span class="odc-photogrid-ph odc-photogrid-ph-fallback" aria-hidden="true">
+                                <span class="odc-photogrid-ph-label mono">photo</span>
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="odc-photogrid-ph" aria-hidden="true">
+                                <span class="odc-photogrid-ph-label mono">@(p.Unavailable ? "no access" : "photo")</span>
+                            </span>
+                        }
+                        <span class="odc-photogrid-name mono" title="@p.Name">@p.Name</span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    /// <summary>A gallery photo: a stable id, a display filename, and an optional renderable image URL.
+    /// <c>Unavailable</c> marks a photo whose file can't be resolved (no files.read / since-deleted).</summary>
+    public sealed record Photo(string Id, string Name, string? Src, bool Unavailable = false);
+
+    [Parameter, EditorRequired] public IReadOnlyList<Photo> Photos { get; set; } = [];
+
+    /// <summary>Raised when a tile is activated — the host opens the full-res file.</summary>
+    [Parameter] public EventCallback<Photo> OnOpen { get; set; }
+
+    /// <summary>Section heading; set empty to hide the header row.</summary>
+    [Parameter] public string? Title { get; set; } = "Photos";
+
+    /// <summary>Minimum tile width in px (the grid auto-fills to fit).</summary>
+    [Parameter] public int MinTile { get; set; } = 120;
+
+    [Parameter] public string EmptyText { get; set; } = "No photos.";
+
+    [Parameter] public string? Class { get; set; }
+
+    private string? AriaLabel => string.IsNullOrEmpty(Title) ? null : $"{Title} ({Photos.Count})";
+}

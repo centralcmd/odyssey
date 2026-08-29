@@ -1,0 +1,494 @@
+/* =============================================================
+   admin.css — User administration page (admin-only)
+   Layered on top of kit.css. Reuses .tbl, .acct-detail, .meta-grid,
+   .collapsible, .chip and the Switch atom; this file only adds the
+   pieces specific to the Users admin surface.
+   ============================================================= */
+
+/* =============================================================
+   File analysis log — audit trail of external AI transfers.
+   Built on the shared .acct-item record-row scaffold (kit.css);
+   these rules add the row sub-line, status pill, and audit detail grid.
+   ============================================================= */
+.fal-note {
+  display: flex; gap: 11px; align-items: flex-start;
+  padding: 13px 15px; border-radius: 10px;
+  background: var(--finance-pending-soft); border: 1px solid var(--finance-pending-border);
+}
+.fal-note .material-icons { color: var(--amber-500); flex: none; margin-top: 1px; }
+.fal-note div { font: 400 12.5px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.fal-note b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+/* row sub-line: user · account · provider */
+.fal-sub {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  font: 400 12.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary);
+  margin-top: 3px;
+}
+.fal-sub > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.fal-sub .material-icons { color: var(--mud-palette-text-secondary); opacity: 0.8; }
+.fal-sub .fal-prov .mono { font-size: 11px; opacity: 0.75; }
+.fal-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--mud-palette-divider); flex: none; }
+
+/* status pill in the row title */
+.fal-pill {
+  font: 600 9.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 4px 8px; border-radius: 999px; white-space: nowrap;
+}
+.fal-pill.ok      { background: var(--finance-income-soft);  color: var(--finance-income); }
+.fal-pill.pending { background: var(--finance-pending-soft); color: var(--finance-pending); }
+.fal-pill.err     { background: var(--finance-expense-soft); color: var(--finance-expense); }
+
+/* right-aligned figures */
+.fal-when { font: 500 12px/1.2 var(--font-mono); color: var(--mud-palette-text-primary); white-space: nowrap; }
+.fal-result { font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); text-align: right; margin-top: 3px; }
+
+/* expanded audit detail */
+.fal-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 24px;
+}
+.fal-fact { min-width: 0; }
+.fal-fact.full { grid-column: 1 / -1; }
+.fal-fact-label {
+  font: 600 9.5px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); margin-bottom: 5px;
+}
+.fal-fact-value { font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); word-break: break-word; }
+.fal-fact-value.mono { font-family: var(--font-mono); font-size: 12px; }
+.fal-email, .fal-acctno { color: var(--mud-palette-text-secondary); }
+.fal-fail { color: var(--finance-expense); }
+/* A field that predates its column — recorded nowhere, so it reads as absent
+   rather than as a value. Never back-filled with today's setting. */
+.fal-unrec { color: var(--mud-palette-text-disabled, var(--mud-palette-text-secondary)); font-style: italic; }
+.fal-consent-ok { display: inline-flex; align-items: center; gap: 4px; color: var(--finance-income); white-space: nowrap; }
+.fal-consent-ok .material-icons { color: var(--finance-income); }
+.fal-consent-method { color: var(--mud-palette-text-secondary); }
+
+.fal-consent-quote {
+  display: flex; gap: 9px; align-items: flex-start; margin-top: 16px;
+  padding: 11px 14px; border-radius: 8px;
+  background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider);
+  font: 400 12.5px/1.5 var(--font-sans); font-style: italic; color: var(--mud-palette-text-secondary);
+}
+.fal-consent-quote .material-icons { color: var(--mud-palette-text-secondary); flex: none; opacity: 0.7; font-style: normal; }
+
+@media (max-width: 760px) {
+  .fal-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---- Permission indicator in the header sub-line ---- */
+.ua-access {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  padding: 3px 9px 3px 7px; border-radius: 999px;
+  font: 500 12px/1 var(--font-sans);
+  background: rgba(79, 215, 203, 0.12); color: var(--tide-400);
+}
+.ua-access .material-icons { font-size: 14px; }
+.ua-access.ro { background: var(--mud-palette-action-disabled-background); color: var(--mud-palette-text-secondary); }
+
+/* ---- Users table ---- */
+.ua-tbl td { vertical-align: middle; }
+
+/* Sortable column headers (mirrors MudTableSortLabel) */
+.ua-sort {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: 0; padding: 6px 0; margin: -6px 0; cursor: pointer;
+  font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit;
+  transition: color .15s ease;
+}
+.ua-sort.right { flex-direction: row-reverse; }
+.ua-sort:hover { color: var(--mud-palette-text-primary); }
+.ua-sort.active { color: var(--mud-palette-text-primary); }
+.ua-sort:focus-visible { outline: 2px solid var(--tide-400); outline-offset: 3px; border-radius: 3px; }
+.ua-sort-ic { opacity: 0; transition: opacity .15s ease, transform .18s ease; }
+.ua-sort:hover .ua-sort-ic { opacity: .45; }
+.ua-sort-ic.active { opacity: 1; color: var(--tide-400); }
+.ua-sort-ic.desc { transform: rotate(180deg); }
+.ua-user-cell { display: flex; align-items: center; gap: 12px; }
+.ua-user-name { font: 500 14px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); white-space: nowrap; }
+.ua-user-id { font: 400 11px/1.2 var(--font-mono); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+.ua-email { color: var(--mud-palette-text-secondary); }
+.ua-tbl tbody tr.expanded { background: rgba(79, 215, 203, 0.06); }
+.ua-tbl tbody tr.expanded td { border-bottom-color: transparent; }
+.ua-tbl .ua-chev { color: var(--mud-palette-text-secondary); transition: transform .18s ease; }
+.ua-tbl .ua-chev.open { transform: rotate(180deg); }
+.ua-expand-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border: none; background: transparent;
+  border-radius: var(--radius-sm); cursor: pointer; color: var(--mud-palette-text-secondary);
+}
+.ua-expand-btn:hover { background: var(--mud-palette-action-default-hover); }
+.ua-expand-btn:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+.ua-expand-btn:disabled { opacity: 0.32; cursor: not-allowed; pointer-events: none; }
+.ua-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+
+/* ---- Role pill ---- */
+.ua-role {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px 3px 8px; border-radius: 999px;
+  font: 500 12px/1 var(--font-sans); white-space: nowrap;
+  border: 1px solid var(--mud-palette-divider);
+  color: var(--mud-palette-text-secondary);
+}
+.ua-role .material-icons { font-size: 14px; }
+.ua-role.admin { background: rgba(139, 92, 246, 0.16); color: var(--violet-text); border-color: transparent; }
+.ua-role.owner { background: rgba(79, 215, 203, 0.12); color: var(--tide-400); border-color: transparent; }
+.ua-role.user  { background: rgba(56, 189, 248, 0.12); color: var(--sea-400); border-color: transparent; }
+.ua-role.elevated { background: rgba(79, 215, 203, 0.12); color: var(--tide-400); border-color: transparent; }
+
+/* ---- Status badges (enabled / email) ---- */
+.ua-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px 3px 7px; border-radius: 999px;
+  font: 500 12px/1 var(--font-sans); white-space: nowrap;
+}
+.ua-badge .material-icons { font-size: 14px; }
+.ua-badge.on        { background: var(--status-active-soft);   color: var(--status-active); }
+.ua-badge.off       { background: var(--status-closed-soft);   color: var(--status-closed); }
+.ua-badge.confirmed { background: rgba(26, 165, 224, 0.14);    color: var(--sea-400); }
+.ua-badge.unconfirmed { background: var(--status-archived-soft); color: var(--status-archived); }
+
+/* ---- Expanded detail / edit cell ---- */
+.ua-detail-cell { padding: 0 !important; background: var(--mud-palette-background); }
+.ua-detail-cell .acct-detail { border-top: 1px solid var(--mud-palette-primary); }
+.ua-detail-cell .acct-detail.acct-edit { border-top-color: var(--mud-palette-primary); }
+
+/* Claim chips (read-only permission values) — monospace, dense */
+.ua-claims { display: flex; flex-wrap: wrap; gap: 6px; }
+.ua-claim {
+  display: inline-flex; align-items: center;
+  padding: 3px 8px; border-radius: var(--radius-sm);
+  font: 500 11.5px/1.3 var(--font-mono);
+  background: var(--mud-palette-action-disabled-background);
+  color: var(--mud-palette-text-secondary);
+  white-space: nowrap;
+}
+.ua-claim.granted { background: rgba(79, 215, 203, 0.12); color: var(--tide-400); }
+
+/* Edit-mode toggle rows (Email confirmed / Enabled) */
+.ua-edit-toggles { display: flex; flex-direction: column; gap: 10px; }
+.ua-toggle-row {
+  display: flex; align-items: center; gap: 14px;
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  background: var(--mud-palette-background); padding: 12px 14px;
+}
+.ua-toggle-ic {
+  flex: 0 0 36px; height: 36px; display: grid; place-items: center;
+  border-radius: var(--radius-sm);
+  background: rgba(79, 215, 203, 0.12); color: var(--tide-400);
+}
+.ua-toggle-text { flex: 1; min-width: 0; }
+.ua-toggle-ttl { font: 500 14px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.ua-toggle-desc { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; }
+
+/* Read-only (locked) fields shown in edit mode so it's clear what can't change */
+.ua-locked-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ua-locked-field {
+  border: 1px dashed var(--mud-palette-lines-default); border-radius: var(--radius-md);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;
+  background: transparent;
+}
+.ua-locked-label {
+  display: flex; align-items: center; gap: 5px;
+  font: 500 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.ua-locked-label .material-icons { font-size: 13px; }
+.ua-locked-value { font: 400 14px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.ua-locked-value.mono { font-family: var(--font-mono); }
+
+.ua-edit-section-label {
+  font: 500 11px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); margin: 4px 0 2px;
+}
+
+/* ---- Roles & permissions reference ---- */
+/* The Roles page wraps PageHeader in its own Card. PageHeader only zeroes the
+   bare .page-head's 24px bottom margin when it self-wraps (with regions); here
+   there are none, so drop it so the header card isn't unnecessarily tall —
+   matching the tight header on the Accounts page. */
+.roles-head-card .page-head { margin-bottom: 0; }
+.ua-ref-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 14px; }
+@media (max-width: 1100px) { .ua-ref-grid { grid-template-columns: 1fr; } }
+.ua-role-card {
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  background: var(--mud-palette-surface); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ua-role-card-head { display: flex; align-items: center; gap: 10px; }
+.ua-role-card-head .ua-rc-name { font: 500 15px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.ua-role-card-head .ua-rc-count {
+  margin-left: auto; font: 500 11px/1 var(--font-mono);
+  color: var(--mud-palette-text-secondary);
+  background: var(--mud-palette-action-disabled-background);
+  padding: 4px 8px; border-radius: 999px;
+}
+.ua-role-desc { font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: -2px; }
+
+/* ---- Roles presented as expandable List-row items (Accounts scaffold) ----
+   The role list reuses .acct-item / .acct-head / .acct-detail from kit.css.
+   These rules only add the role-specific track contents: the truncating
+   description in the body and the claim-count figure in the value track. */
+/* The role list now sits directly under the page header (no card frame),
+   so it needs no inner padding — it aligns flush like .acct-list. */
+/* Role names are always short — keep them at content width and never clip
+   (override the inherited overflow/ellipsis machinery from .acct-name). */
+.role-list .acct-name {
+  flex: 0 0 auto; max-width: none;
+  overflow: visible; text-overflow: clip;
+}
+.role-row-desc {
+  font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.role-claim-figure { font: 500 18px/1 var(--font-mono); color: var(--mud-palette-text-primary); }
+.role-claim-label { font: 400 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); letter-spacing: 0.02em; }
+.role-detail-note { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+.role-detail-note b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+/* Permission catalog (grouped by category) */
+.ua-cat { padding: 4px 14px 14px; }
+.ua-cat-note { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-bottom: 14px; }
+.ua-cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.ua-cat-card {
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  padding: 12px 14px; background: var(--mud-palette-background);
+}
+.ua-cat-name {
+  font: 500 11px/1 var(--font-mono); letter-spacing: 0.04em;
+  color: var(--mud-palette-text-primary); margin-bottom: 9px;
+  display: flex; align-items: center; gap: 7px;
+}
+.ua-cat-name .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); }
+.ua-actions-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.ua-action-chip {
+  font: 500 11px/1 var(--font-mono);
+  padding: 4px 8px; border-radius: var(--radius-sm);
+  background: var(--mud-palette-action-disabled-background);
+  color: var(--mud-palette-text-secondary);
+}
+
+/* Last-admin / conflict guard inside the edit panel */
+.ua-guard { margin-top: 2px; }
+
+/* =============================================================
+   System settings — admin-only workspace configuration page.
+   Reuses the .pref-row / .pref-list setting-card scaffold from kit.css;
+   this only adds the labelled section grouping, the numeric control width,
+   the save bar, and a coral "danger" icon tile for destructive toggles.
+   Text rows use the DS .odc-setting-footer / .odc-setting-text well, so the
+   page carries no text-control CSS of its own.
+   ============================================================= */
+.set-stack { display: flex; flex-direction: column; gap: 28px; }
+.set-section { display: flex; flex-direction: column; gap: 12px; }
+.set-section-head { display: flex; align-items: center; gap: 11px; }
+.set-section-ic {
+  flex: none; width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: var(--mud-palette-action-disabled-background);
+  color: var(--mud-palette-text-secondary);
+}
+.set-section-ic .material-icons { font-size: 17px; }
+.set-section-title {
+  font: 600 12px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); white-space: nowrap;
+}
+.set-section-rule { flex: 1; height: 1px; background: var(--mud-palette-divider); }
+
+/* Text-input control sits to the right like .pref-select, just a touch wider. */
+.set-field { width: 240px; }
+.set-field .field { width: 100%; }
+
+/* Destructive toggle (maintenance mode) — coral tile instead of the tide tint. */
+.pref-ic.danger { background: rgba(255, 107, 107, 0.14); color: var(--coral-500); }
+
+/* -------------------------------------------------------------
+   System settings — runtime-settings feature states (spec v6).
+   ------------------------------------------------------------- */
+/* Section headings are real document structure now (>1 group). */
+.set-section-title { margin: 0; }
+.set-section h2.set-section-title { font-size: 12px; }
+
+/* Sticky section heads. At 11 sections the group label is the only thing that
+   says which part of the catalogue you are in, and it scrolls away within one
+   row. Pinning it keeps that answer on screen for the whole section; the
+   backdrop is opaque because outlined cards pass under it. */
+.set-section-head {
+  position: sticky; top: 0; z-index: 3;
+  padding: 10px 0 9px; margin-top: -10px;
+  background: var(--mud-palette-background);
+}
+/* A hairline under the pinned head, only once it has actually lifted off the
+   page top, so a section at rest keeps the plain rule-through-the-title look. */
+.set-section-head::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: var(--mud-palette-divider); opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.set-section-head.stuck::after { opacity: 1; }
+
+/* Page-level authorization alert — a wholesale 403. Distinct from a row error
+   because nothing the admin typed is wrong: their claims changed after sign-in,
+   and the fix is to re-authenticate. */
+.ss-authalert {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 15px 17px; border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--mud-palette-error);
+  background: rgba(255, 107, 107, 0.09);
+}
+.ss-authalert .material-icons { font-size: 20px; flex: none; color: var(--mud-palette-error); }
+.ss-authalert-ttl { font: 500 14px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
+.ss-authalert-desc { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+.ss-authalert-act { margin-top: 10px; }
+
+/* Per-row last-changed metadata line. */
+.ss-rowmeta { display: flex; align-items: center; gap: 5px; margin-top: 7px;
+  font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.ss-rowmeta .material-icons { font-size: 13px; opacity: 0.75; }
+.ss-rowmeta b { font-weight: 600; color: var(--mud-palette-text-primary); }
+.ss-rowmeta-none { opacity: 0.7; font-style: italic; }
+
+/* Last-changed-by summary line under the header. */
+.ss-lastchanged { display: flex; align-items: center; gap: 7px; margin: -8px 2px 0;
+  font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.ss-lastchanged .material-icons { font-size: 15px; opacity: 0.8; }
+.ss-lastchanged b { font-weight: 600; color: var(--mud-palette-text-primary); }
+
+/* Per-row unsaved-change dot (amber), paired with a visually-hidden label. */
+.ss-flag { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--amber-500); margin-left: 8px; vertical-align: middle;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16); }
+.odc-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0;
+  margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* A row disabled because the caller lacks its write claim. */
+.ss-row.ss-disabled { opacity: 0.55; }
+.ss-row.ss-disabled .pref-ic { filter: grayscale(0.4); }
+
+/* Save bar — the primary action plus, when Save is blocked, the ErrorSummary
+   that names the count and moves focus to the first offending control. */
+.ss-savebar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: nowrap; }
+
+/* Numeric control: pinned min-width (spec §3), right-aligned with its error. */
+.ss-numwrap { display: flex; flex-direction: column; align-items: flex-end; }
+.ss-num { width: 120px; min-width: 120px; }
+
+/* Per-group note — shown when a group mixes editable + claim-locked rows, so a
+   partially-privileged admin isn't left with greyed controls and no reason. */
+.ss-grpnote { display: flex; align-items: center; gap: 8px; margin: -2px 0 2px;
+  font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.ss-grpnote .material-icons { font-size: 16px; opacity: 0.8; }
+
+/* Group-level round-trip alert (export cap exceeds import cap). Full width so
+   the ~90-char message fits; focusable so a failed save can move focus to it. */
+.ss-rtalert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px;
+  border: 1px solid var(--mud-palette-error); border-radius: var(--radius-md, 10px);
+  background: var(--finance-expense-soft, rgba(255,107,107,0.1));
+  font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-primary); text-wrap: pretty; }
+.ss-rtalert .material-icons { color: var(--mud-palette-error); font-size: 20px; flex: none; margin-top: 1px; }
+.ss-rtalert:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+
+/* =============================================================
+   Section cards — one card per GROUP, holding a grid of SettingFields
+   ------------------------------------------------------------- */
+/* At 40+ settings, one card per setting made the page a stack of near-identical
+   shells whose visual weight said nothing about the content. The card is now the
+   GROUP: a modal-style tinted header naming the section, then a two-column grid
+   of SettingFields. The grouping does the work the 40 card borders were doing. */
+.ss-sect-stack { display: flex; flex-direction: column; gap: 20px; }
+.ss-sect {
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-lg, 12px);
+  background: var(--mud-palette-surface); overflow: hidden;
+  box-shadow: var(--mud-elevation-1, 0 1px 2px rgba(0,0,0,0.3));
+}
+/* Header: the modal-header treatment — a tint plus a bottom rule, so the section
+   name reads as a band rather than as another line of body text. */
+.ss-sect-h {
+  display: flex; align-items: center; gap: 12px; padding: 15px 20px;
+  background: var(--mud-palette-action-default-hover);
+  border-bottom: 1px solid var(--mud-palette-divider);
+}
+.ss-sect-ic {
+  flex: none; width: 30px; height: 30px; border-radius: var(--radius-md, 8px);
+  display: grid; place-items: center; background: var(--brand-soft); color: var(--brand-text);
+}
+.ss-sect-t { margin: 0; font: 600 14px/1.2 var(--font-sans); letter-spacing: 0.01em; color: var(--mud-palette-text-primary); }
+.ss-sect-count { margin-left: auto; font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.ss-sect-badge {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: var(--radius-pill, 999px);
+  font: 500 11px/1.3 var(--font-sans);
+  background: var(--finance-pending-soft); color: var(--pending-text);
+}
+/* Full-width bands inside the card, above the grid. */
+.ss-sect-band {
+  display: flex; gap: 9px; align-items: flex-start; padding: 12px 20px;
+  border-bottom: 1px solid var(--mud-palette-divider);
+  font: 400 12.5px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty;
+}
+.ss-sect-band .material-icons { font-size: 16px; opacity: 0.85; flex: none; margin-top: 1px; }
+.ss-sect-band.error {
+  background: var(--finance-expense-soft, rgba(255,107,107,0.1));
+  color: var(--mud-palette-text-primary);
+}
+.ss-sect-band.error .material-icons { color: var(--mud-palette-error); font-size: 18px; opacity: 1; }
+.ss-sect-band:focus-visible { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.ss-sect-body { padding: 18px 20px; }
+/* A claim-locked setting: the frame and its value grey out, the helper line stays
+   fully legible — the reason it is locked is the part still worth reading. */
+.ss-sect-body .odc-sfield.locked .odc-sfield-frame { opacity: 0.55; }
+/* One-shot attention ring when the problems rollup jumps to a field — the same
+   gesture as the record cards on Accounts / Contracts / Insurance. */
+@keyframes ssFlash {
+  0%   { box-shadow: 0 0 0 3px color-mix(in srgb, var(--finance-pending) 70%, transparent); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+.ss-flash { border-radius: var(--radius-md, 8px); animation: ssFlash 2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .ss-flash { animation: none } }
+
+/* Read-only note when the caller holds neither write claim (Save hidden). */
+.ss-note { display: flex; gap: 12px; align-items: flex-start; padding: 16px 18px;
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-lg, 12px);
+  background: var(--mud-palette-surface); }
+.ss-note .material-icons { color: var(--mud-palette-text-secondary); font-size: 20px; }
+.ss-note-ttl { font: 500 14px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
+.ss-note-desc { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+
+/* Inline load-failure + retry. */
+.ss-retry { display: flex; flex-direction: column; align-items: center; gap: 13px;
+  text-align: center; padding: 56px 24px; border: 1px dashed var(--mud-palette-divider);
+  border-radius: var(--radius-lg, 12px); }
+.ss-retry .material-icons { font-size: 30px; color: var(--amber-500); }
+.ss-retry-ttl { font: 500 15px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
+.ss-retry-desc { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 360px; }
+
+/* Loading skeleton — a field-shaped block matching the SettingField grid. */
+.ss-sk .odc-sfield-frame { padding: 11px 12px; }
+.ss-sk-val { display: block; height: 16px; width: 60%; border-radius: 5px;
+  background: var(--mud-palette-action-disabled-background); animation: ssPulse 1.4s ease-in-out infinite; }
+.ss-sk-line { display: block; height: 9px; width: 85%; border-radius: 5px;
+  background: var(--mud-palette-action-disabled-background); animation: ssPulse 1.4s ease-in-out infinite; }
+.ss-sk-ic { flex: none; width: 40px; height: 40px; border-radius: 9px;
+  background: var(--mud-palette-action-disabled-background); animation: ssPulse 1.4s ease-in-out infinite; }
+.ss-sk-bar { background: var(--mud-palette-action-disabled-background); border-radius: 6px;
+  animation: ssPulse 1.4s ease-in-out infinite; }
+.ss-sk-ctrl { margin-left: auto; flex: none; width: 44px; height: 24px; border-radius: 12px;
+  background: var(--mud-palette-action-disabled-background); animation: ssPulse 1.4s ease-in-out infinite; }
+@keyframes ssPulse { 0%, 100% { opacity: 0.5 } 50% { opacity: 0.9 } }
+@media (prefers-reduced-motion: reduce) { .ss-sk-ic, .ss-sk-bar, .ss-sk-ctrl, .ss-sk-val, .ss-sk-line { animation: none } }
+
+/* Design-review-only state switcher (not shipped with the page). */
+.ss-review { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 11px 14px; border: 1px dashed var(--brand-border); border-radius: 10px;
+  background: var(--brand-soft); }
+.ss-review-lbl { display: flex; align-items: center; gap: 7px;
+  font: 600 11px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); }
+.ss-review-lbl .material-icons { font-size: 15px; }
+.ss-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 8px;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); }
+.ss-seg-btn { border: 0; background: transparent; cursor: pointer; padding: 6px 11px;
+  border-radius: 6px; font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.ss-seg-btn:hover { color: var(--mud-palette-text-primary); }
+.ss-seg-btn.active { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
+.ss-seg-sep { width: 1px; align-self: stretch; background: var(--mud-palette-divider); }

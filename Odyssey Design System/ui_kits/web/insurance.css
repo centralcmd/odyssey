@@ -1,0 +1,161 @@
+/* Insurance Policies — page styles for Insurance.jsx.
+   Sits on top of kit.css: the page reuses the Accounts/Budgets/Tax-Statements
+   expandable-record scaffold (.acct-list / .acct-item / .acct-head / .acct-detail
+   / .meta-grid / collapsible) wholesale. Only the portfolio summary strip, the
+   coverage-status headline, and the Terms-style renewal history (a Current-period
+   summary + a status'd history table) are new and live here. Tokens come from
+   colors_and_type.css. The feature accent is indigo (oklch hue 282) — distinct
+   from brand tide and from Tax's magenta. */
+
+:root, [data-theme] {
+  --ins-accent: oklch(0.72 0.16 282);
+  --ins-accent-soft: oklch(0.72 0.16 282 / 0.16);
+  --ins-accent-line: oklch(0.72 0.16 282 / 0.42);
+}
+
+/* ============================================================
+   Portfolio summary strip (header Overview region)
+   ============================================================ */
+.ins-summary { display: flex; flex-direction: column; gap: 14px; }
+.ins-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.ins-stat {
+  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+  background: var(--mud-palette-background); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ins-stat-ov { font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.ins-stat-rows { display: flex; flex-direction: column; gap: 3px; }
+.ins-stat-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.ins-stat-row .amt { font: 500 13px/1.4 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); white-space: nowrap; }
+.ins-stat-row.muted .amt { color: var(--mud-palette-text-secondary); }
+
+/* Converted-total caption + unconverted note under the premium/coverage tiles */
+.ins-conv { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.ins-conv .b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.ins-unconv { display: inline-flex; align-items: center; gap: 5px; color: var(--pending-text); }
+.ins-unconv .material-icons { font-size: 14px; }
+
+/* ============================================================
+   Collapsed-card headline (coverage end date + days remaining)
+   ============================================================ */
+.ins-headline { font: 500 18px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.ins-headline.none { font-family: var(--font-sans); font-size: 15px; color: var(--mud-palette-text-secondary); }
+.ins-headline-word { font: 400 12px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.ins-headline-word.soon { color: var(--pending-text); }
+.ins-headline-word.lapsed { color: var(--finance-expense); }
+
+/* The insurer + insured-account chip row inside the collapsed card sub-line */
+.ins-sub-insurer { display: inline-flex; align-items: center; gap: 5px; }
+.ins-sub-insurer .material-icons { font-size: 14px; opacity: 0.8; }
+
+/* ============================================================
+   Expanded detail — section header + meta extras
+   ============================================================ */
+.ins-section-h {
+  display: flex; align-items: center; gap: 8px;
+  font: 500 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+  margin: 6px 0 2px;
+}
+.ins-section-h .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.ins-section-cap { margin-left: auto; font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* Insurer / insured-account read chips (minimal projection — name + type) */
+.ins-link-chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  padding: 3px 10px 3px 8px; border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-pill); background: var(--mud-palette-background);
+  font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-primary);
+}
+.ins-link-chip .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
+.ins-link-chip .ins-link-type { color: var(--mud-palette-text-secondary); font-size: 11.5px; white-space: nowrap; flex: none; }
+.ins-link-chip.empty { color: var(--mud-palette-text-secondary); border-style: dashed; }
+
+/* ============================================================
+   Renewal history — shared
+   ============================================================ */
+.ins-empty-cover {
+  display: flex; align-items: center; gap: 10px; padding: 18px 16px;
+  border: 1px dashed var(--mud-palette-divider); border-radius: 10px;
+  color: var(--mud-palette-text-secondary); font: 400 13px/1.4 var(--font-sans);
+  background: var(--mud-palette-background);
+}
+.ins-empty-cover .material-icons { font-size: 20px; opacity: 0.7; }
+
+/* ============================================================
+   Terms-style history (mirrors AccountTerms): a Current-period summary
+   + sub-dividers, then a status'd, inline-editable history table.
+   ============================================================ */
+.ins-terms { display: flex; flex-direction: column; gap: 22px; padding: 16px; }
+.ins-sub { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ins-sub-label { font: 600 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.ins-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light); }
+.ins-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+
+/* Tile grids \u2014 the tiles themselves are the DS InfoTile (.odc-infotile). The
+   grid sets the InfoTile icon-chip accent to the feature's indigo for any tile
+   without a per-tile iconColor (e.g. the Type tile keeps its own category color). */
+.ins-tiles {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+  --odc-infotile-accent: var(--ins-accent);
+  --odc-infotile-accent-soft: var(--ins-accent-soft);
+}
+
+/* Status pill (mirrors Terms In force / Scheduled / Superseded) */
+.ins-status { display: inline-flex; align-items: center; gap: 4px; font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.ins-status .material-icons { font-size: 12px; }
+.ins-status.current  { color: var(--finance-income);  background: var(--finance-income-soft); }
+.ins-status.upcoming { color: var(--pending-text);     background: var(--finance-pending-soft); }
+.ins-status.past     { color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); }
+
+/* Inline row actions — reveal on hover (like Terms) */
+.ins-rowbtns { display: inline-flex; gap: 2px; opacity: 0; transition: opacity .12s ease; }
+.ins-tbl tbody tr:hover .ins-rowbtns, .ins-tbl tbody tr:focus-within .ins-rowbtns { opacity: 1; }
+.ins-iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; cursor: pointer; color: var(--mud-palette-text-secondary); }
+.ins-iconbtn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.ins-iconbtn.danger:hover { color: var(--mud-palette-error); background: oklch(0.72 0.16 22 / 0.12); }
+.ins-iconbtn .material-icons { font-size: 18px; }
+
+/* History — TABLE (mirrors .trm-tbl) */
+.ins-tbl { width: 100%; border-collapse: collapse; }
+.ins-tbl thead th { text-align: left; font: 600 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 0 12px 9px; border-bottom: 1px solid var(--mud-palette-divider); }
+.ins-tbl thead th.num { text-align: right; }
+.ins-tbl thead th.act { width: 44px; }
+.ins-tbl tbody td { padding: 11px 12px; border-bottom: 1px solid var(--mud-palette-divider-light); font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); vertical-align: middle; }
+.ins-tbl tbody tr:last-child td { border-bottom: none; }
+.ins-tbl tbody tr.current td { background: color-mix(in srgb, var(--ins-accent) 5%, transparent); }
+.ins-row-period { display: flex; align-items: center; gap: 10px; }
+.ins-row-period > .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); flex: none; }
+.ins-row-period > .material-icons.cur { color: var(--ins-accent); }
+.ins-row-range { font: 400 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); white-space: nowrap; }
+.ins-row-note { font: 400 11.5px/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+.ins-cell-num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500; }
+.ins-cell-act { text-align: right; }
+
+/* Policy-detail tile grid \u2014 slightly wider min track (the wide Notes tile +
+   full-width wrap are handled by the DS .odc-infotile.wide rules). */
+.ins-policy-tiles { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+
+/* Current-period snapshot when lifted out of the history section to policy level */
+.ins-current { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+
+/* Per-row documents chip + expandable documents sub-row (so renewal-level files
+   are visible/manageable inline, not just counted). */
+.ins-docchip {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  padding: 4px 7px 4px 9px; border-radius: var(--radius-pill);
+  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface);
+  font: 500 12.5px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary);
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+.ins-docchip:hover { border-color: var(--ins-accent-line); color: var(--ins-accent); }
+.ins-docchip.on { border-color: var(--ins-accent-line); background: var(--ins-accent-soft); color: var(--ins-accent); }
+.ins-docchip.empty { color: var(--mud-palette-text-secondary); }
+.ins-docchip .material-icons { font-size: 15px; }
+.ins-docchip-chev { transition: transform .14s ease; opacity: 0.7; }
+.ins-docchip-chev.open { transform: rotate(180deg); }
+.ins-tbl tbody tr.docs-open > td { border-bottom-color: transparent; }
+.ins-docs-row > td { padding: 0 12px 12px !important; border-bottom: 1px solid var(--mud-palette-divider-light); }
+.ins-docs-panel { border: 1px solid var(--ins-accent-line); border-radius: 10px; background: color-mix(in srgb, var(--ins-accent) 4%, transparent); overflow: hidden; }
+.ins-docs-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--mud-palette-divider-light); }
+.ins-docs-title { font: 600 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.ins-docs-head .odc-btn { margin-left: auto; }

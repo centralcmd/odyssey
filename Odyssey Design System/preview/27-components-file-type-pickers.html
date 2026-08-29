@@ -1,0 +1,159 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="File type pickers" subtitle="AccountFileType, TransactionFileType & TaxStatementFileType selects & multi-selects — typed, registry-backed pickers with per-option icon & color. Live & interactive." viewport="1100x1500" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · File type pickers</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- compiled design-system bundle -->
+  <script src="../_ds_bundle.js"></script>
+  <!-- registry fallback so the demo renders even before the bundle carries the typed components -->
+  <script src="../ui_kits/web/data.js"></script>
+
+  <style>
+    html, body { min-height: 0; background: var(--mud-palette-background); }
+    body { width: 1100px; padding: 24px; box-sizing: border-box; font-family: var(--font-sans); color: var(--mud-palette-text-primary); }
+
+    .spec-doc { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 20px 22px; margin-bottom: 20px; }
+    .spec-doc h2 { font: 600 16px/1.3 var(--font-sans); margin: 0 0 7px; }
+    .spec-lead { font: 400 13px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 94ch; }
+    .spec-lead b { color: var(--tide-400); font-weight: 500; }
+    .spec-lead code { font: 500 12px/1 var(--font-mono); color: var(--tide-400); }
+    .spec-src { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+    .spec-src .pill { font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 6px 11px; }
+    .spec-src .pill b { color: var(--tide-400); font-weight: 600; }
+
+    .stage-label { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 4px 0 12px 2px; display: flex; align-items: center; gap: 8px; }
+    .stage-label .material-icons { font-size: 15px; color: var(--tide-400); }
+    .stage-label .ctx { font-family: var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--mud-palette-text-disabled); }
+
+    .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+    .demo-card { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 18px; min-height: 230px; }
+    .demo-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .demo-name { font: 500 13.5px/1.2 var(--font-mono); color: var(--mud-palette-text-primary); }
+    .demo-kind { font: 500 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 5px 9px; }
+    .demo-ctl { max-width: 340px; }
+    .demo-out { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--mud-palette-divider-light); display: flex; flex-direction: column; gap: 8px; }
+    .demo-out-lab { font: 500 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .demo-out-val { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 28px; }
+    .demo-out-empty { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-disabled); }
+    .demo-out-code { font: 500 11.5px/1.5 var(--font-mono); color: var(--tide-400); }
+
+    .spec-notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .spec-notes li { position: relative; padding-left: 22px; font: 400 12.5px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .spec-notes li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .spec-notes li code { font: 500 11.5px/1 var(--font-mono); color: var(--tide-400); }
+    .spec-notes li .material-icons { position: absolute; left: 0; top: 0; font-size: 16px; color: var(--tide-400); }
+  </style>
+</head>
+<body>
+  <div class="spec-doc">
+    <h2>File type pickers</h2>
+    <p class="spec-lead">Six typed, domain pickers — one pair per file-type enum. <b>AccountFileTypeSelect / …MultiSelect</b> are pre-wired to <code>ACCOUNT_FILE_TYPES</code> (files on an account); <b>TransactionFileTypeSelect / …MultiSelect</b> to <code>TRANSACTION_FILE_TYPES</code> (files on a transaction); <b>TaxStatementFileTypeSelect / …MultiSelect</b> to <code>TAX_STATEMENT_FILE_TYPES</code> (files on a tax statement). The single-selects delegate to the shared <code>TypeSelect</code>; the multis wrap <code>MultiSelect</code>. Every option shows its Material icon in its category color, with no per-call option wiring. Value is the enum key; everything the control accepts (label, help, error, disabled…) passes straight through. Pass <code>types</code> to subset.</p>
+    <div class="spec-src">
+      <span class="pill">Single → <b>TypeSelect</b> · multi → <b>MultiSelect</b></span>
+      <span class="pill">Registry <b>ACCOUNT_FILE_TYPES</b> · <b>TRANSACTION_FILE_TYPES</b> · <b>TAX_STATEMENT_FILE_TYPES</b></span>
+      <span class="pill">Used by <b>Files</b> · <b>AddTransactionModal</b> · <b>TaxStatements</b></span>
+    </div>
+  </div>
+
+  <div class="stage-label"><span class="material-icons">folder</span>Account file types<span class="ctx">— AccountFileType</span></div>
+  <div id="acct-root"></div>
+
+  <div class="stage-label"><span class="material-icons">receipt_long</span>Transaction file types<span class="ctx">— TransactionFileType</span></div>
+  <div id="txn-root"></div>
+
+  <div class="stage-label"><span class="material-icons">request_quote</span>Tax-statement file types<span class="ctx">— TaxStatementFileType</span></div>
+  <div id="tax-root"></div>
+
+  <div class="spec-doc" style="margin-top: 20px;">
+    <ul class="spec-notes">
+      <li><span class="material-icons">bolt</span><b>Zero option wiring.</b> <code>&lt;AccountFileTypeSelect value onChange /&gt;</code> — no <code>options</code> prop. The registry is the source; pass <code>types</code> only to subset or reorder.</li>
+      <li><span class="material-icons">call_split</span><b>Pick the right vocabulary for the context.</b> The Files page (account files) uses the Account pickers; transaction attachments use the Transaction pickers (Receipt · Invoice · Other).</li>
+      <li><span class="material-icons">extension</span><b>Built on the base controls</b> via the same optional per-option <code>icon</code> &amp; <code>iconColor</code> the contact pickers introduced — additive and backward-compatible.</li>
+      <li><span class="material-icons">hub</span><b>One registry per enum,</b> exported on the DS namespace; the multi-selects read them too. Recolor a type once and both its pickers, the table avatar, and the chip update together.</li>
+    </ul>
+  </div>
+
+  <script type="text/babel" data-presets="env,react">
+    const DS = window.OdysseyDesignSystem_d5aa51;
+    const D = window.OdysseyData || {};
+    const ACCT = DS.ACCOUNT_FILE_TYPES || D.accountFileTypes || [];
+    const TXN = DS.TRANSACTION_FILE_TYPES || D.transactionFileTypes || [];
+    const TAX = DS.TAX_STATEMENT_FILE_TYPES || D.taxStatementFileTypes || [];
+    const opts = (arr) => arr.map(t => ({ value: t.key, label: t.label, icon: t.icon, iconColor: t.color }));
+
+    const AccountFileTypeSelect = DS.AccountFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(ACCT)} {...p} />);
+    const AccountFileTypeMultiSelect = DS.AccountFileTypeMultiSelect || (({ types, ...p }) => <DS.MultiSelect options={opts(ACCT)} label="Any type" icon="folder" {...p} />);
+    const TransactionFileTypeSelect = DS.TransactionFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(TXN)} {...p} />);
+    const TransactionFileTypeMultiSelect = DS.TransactionFileTypeMultiSelect || (({ types, ...p }) => <DS.MultiSelect options={opts(TXN)} label="Any type" icon="receipt_long" {...p} />);
+    const TaxStatementFileTypeSelect = DS.TaxStatementFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(TAX)} {...p} />);
+    const TaxStatementFileTypeMultiSelect = DS.TaxStatementFileTypeMultiSelect || (({ types, ...p }) => <DS.MultiSelect options={opts(TAX)} label="Any type" icon="request_quote" {...p} />);
+
+    const byKey = Object.fromEntries([...ACCT, ...TXN, ...TAX].map(t => [t.key, t]));
+    const TypeChip = ({ k }) => {
+      const t = byKey[k];
+      if (!t) return null;
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 8px', border: '1px solid var(--mud-palette-divider)', borderRadius: 999, font: '500 12px/1 var(--font-sans)' }}>
+          <span className="material-icons" style={{ fontSize: 16, color: t.color }}>{t.icon}</span>{t.label}
+        </span>
+      );
+    };
+
+    function Pair({ SelectC, MultiC, single, multi, helpText, idmount }) {
+      const { useState } = React;
+      const [type, setType] = useState(single);
+      const [filter, setFilter] = useState(multi);
+      return (
+        <div className="demo-grid">
+          <div className="demo-card">
+            <div className="demo-head"><span className="demo-name">{SelectC.__name}</span><span className="demo-kind">single</span></div>
+            <div className="demo-ctl"><SelectC label="Document type" value={type} onChange={setType} help={helpText} /></div>
+            <div className="demo-out">
+              <span className="demo-out-lab">value</span>
+              <div className="demo-out-val"><TypeChip k={type} /><span className="demo-out-code">"{type}"</span></div>
+            </div>
+          </div>
+          <div className="demo-card">
+            <div className="demo-head"><span className="demo-name">{MultiC.__name}</span><span className="demo-kind">filter</span></div>
+            <div className="demo-ctl" style={{ maxWidth: 220 }}><MultiC value={filter} onChange={setFilter} /></div>
+            <div className="demo-out">
+              <span className="demo-out-lab">value</span>
+              <div className="demo-out-val">
+                {filter.length ? filter.map(k => <TypeChip key={k} k={k} />) : <span className="demo-out-empty">No types — shows all.</span>}
+              </div>
+              <span className="demo-out-code">[{filter.map(k => `"${k}"`).join(', ')}]</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    AccountFileTypeSelect.__name = 'AccountFileTypeSelect';
+    AccountFileTypeMultiSelect.__name = 'AccountFileTypeMultiSelect';
+    TransactionFileTypeSelect.__name = 'TransactionFileTypeSelect';
+    TransactionFileTypeMultiSelect.__name = 'TransactionFileTypeMultiSelect';
+    TaxStatementFileTypeSelect.__name = 'TaxStatementFileTypeSelect';
+    TaxStatementFileTypeMultiSelect.__name = 'TaxStatementFileTypeMultiSelect';
+
+    ReactDOM.createRoot(document.getElementById('acct-root')).render(
+      <Pair SelectC={AccountFileTypeSelect} MultiC={AccountFileTypeMultiSelect}
+        single="Statement" multi={['Statement', 'InsurancePolicy']} helpText="Only Statement files can be analyzed." />
+    );
+    ReactDOM.createRoot(document.getElementById('txn-root')).render(
+      <Pair SelectC={TransactionFileTypeSelect} MultiC={TransactionFileTypeMultiSelect}
+        single="Receipt" multi={['Receipt', 'Invoice']} helpText="What the attachment proves." />
+    );
+    ReactDOM.createRoot(document.getElementById('tax-root')).render(
+      <Pair SelectC={TaxStatementFileTypeSelect} MultiC={TaxStatementFileTypeMultiSelect}
+        single="TaxReturn" multi={['TaxReturn', 'TaxAssessment']} helpText="The kind of tax document." />
+    );
+  </script>
+</body>
+</html>

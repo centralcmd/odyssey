@@ -1,0 +1,140 @@
+@*
+    OdsMatchIndicator — the per-cell annotation for AI merchant/category matching
+    (Odyssey Design System · components/MatchIndicator).
+
+    States where a cell's value came from and how confident the match was, AS TEXT
+    — never colour or a meter alone. The small leading glyph only tints.
+
+      • Ai         — auto-linked LLM suggestion ≥ the auto-link threshold ("Suggested by AI · 91%").
+      • Created    — the reviewer created this contact inline ("Created here").
+      • Manual     — the reviewer picked / applied it ("You chose").
+      • None       — nothing matched, or the value was cleared ("No match"). With OnCreate + CreateName,
+                     a no-match isn't a dead end: the extracted-but-unmatched string (e.g. the raw merchant
+                     "Nopa") is offered as an inline Create "…" action.
+      • Suggestion — a SUB-threshold match: shown but NOT auto-linked. A two-row affordance — a status row
+                     ("Suggested by AI · 42%") over an action row ("+ Use ‹name›" via OnApply, label via
+                     ApplyLabel) and a dismiss (OnDismiss). Pass Name (+ optional Confidence).
+*@
+
+@if (State == OdsMatchState.Suggestion)
+{
+    <span class="@CssClass" id="@Id">
+        <span class="odc-match-sugg-head">
+            <span class="material-icons odc-match-ic" aria-hidden="true">auto_awesome</span>
+            <span class="odc-match-txt">Suggested by AI</span>
+            @if (Pct is not null)
+            {
+                <span class="odc-match-pct">· @Pct%</span>
+            }
+            @if (Band is not null)
+            {
+                <span class="sr-only"> — @Band, below the auto-link threshold</span>
+            }
+        </span>
+        @if (OnApply.HasDelegate || OnDismiss.HasDelegate)
+        {
+            <span class="odc-match-sugg-actions">
+                @if (OnApply.HasDelegate)
+                {
+                    <button type="button" class="odc-match-act" aria-label="@($"{ApplyLabel} {Name}")" @onclick="OnApply">
+                        <span class="material-icons" aria-hidden="true">add</span>
+                        <span class="odc-match-act-txt">@ApplyLabel @Name</span>
+                    </button>
+                }
+                @if (OnDismiss.HasDelegate)
+                {
+                    <button type="button" class="odc-match-x"
+                            aria-label="@(string.IsNullOrEmpty(Name) ? "Dismiss suggestion" : $"Dismiss suggestion {Name}")"
+                            @onclick="OnDismiss">
+                        <span class="material-icons" aria-hidden="true">close</span>
+                    </button>
+                }
+            </span>
+        }
+    </span>
+}
+else
+{
+    <span class="@CssClass" id="@Id">
+        <span class="material-icons odc-match-ic" aria-hidden="true">@Meta.Icon</span>
+        <span class="odc-match-txt">@Meta.Label</span>
+        @if (State == OdsMatchState.Ai && Pct is not null)
+        {
+            <span class="odc-match-pct">· @Pct%</span>
+        }
+        @if (State == OdsMatchState.Ai && Band is not null)
+        {
+            <span class="sr-only"> — @Band</span>
+        }
+        @if (OfferCreate)
+        {
+            @* 'none' + an extracted-but-unmatched string → offer to create it as a new record inline. *@
+            <span class="odc-match-createline">
+                <button type="button" class="odc-match-create" aria-label="@($"{CreateLabel} {CreateName}")" @onclick="OnCreate">
+                    <span class="material-icons" aria-hidden="true">add</span>
+                    <span class="odc-match-create-txt">@CreateLabel “@CreateName”</span>
+                </button>
+            </span>
+        }
+    </span>
+}
+
+@code {
+    [Parameter] public OdsMatchState State { get; set; } = OdsMatchState.None;
+
+    /// <summary>Match confidence 0–1; rendered as a tabular % (the textual level).</summary>
+    [Parameter] public decimal? Confidence { get; set; }
+
+    /// <summary>The suggested record's name (Suggestion state).</summary>
+    [Parameter] public string? Name { get; set; }
+
+    /// <summary>Label for the suggestion's apply action ("Use ‹name›").</summary>
+    [Parameter] public string ApplyLabel { get; set; } = "Use";
+    [Parameter] public EventCallback OnApply { get; set; }
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    /// <summary>The extracted-but-unmatched string offered as an inline create (None state).</summary>
+    [Parameter] public string? CreateName { get; set; }
+
+    /// <summary>Prefix for the no-match create action ("Create ‹name›").</summary>
+    [Parameter] public string CreateLabel { get; set; } = "Create";
+    [Parameter] public EventCallback OnCreate { get; set; }
+
+    /// <summary>Compact variant ("sm").</summary>
+    [Parameter] public bool Small { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Id { get; set; }
+
+    private int? Pct => Confidence is null ? null : (int)Math.Round(Confidence.Value * 100);
+
+    // The band word rides along in the accessible name so the level reaches a screen reader without
+    // cluttering the visible row.
+    private string? Band => Pct switch
+    {
+        null => null,
+        >= 85 => "High match",
+        >= 60 => "Good match",
+        _ => "Low match",
+    };
+
+    // A no-match cell with an extracted string + a wired create handler offers an inline "Create …".
+    private bool OfferCreate => State == OdsMatchState.None && OnCreate.HasDelegate && !string.IsNullOrEmpty(CreateName);
+
+    private string CssClass =>
+        string.Join(' ', new[]
+        {
+            "odc-match",
+            State.ToString().ToLowerInvariant(),
+            Small ? "sm" : null,
+            Class,
+        }.Where(s => !string.IsNullOrEmpty(s)));
+
+    private (string Icon, string Label) Meta => State switch
+    {
+        OdsMatchState.Ai => ("auto_awesome", "Suggested by AI"),
+        OdsMatchState.Created => ("add_circle", "Created here"),
+        OdsMatchState.Manual => ("edit", "You chose"),
+        _ => ("remove", "No match"),
+    };
+}

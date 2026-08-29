@@ -1,0 +1,202 @@
+/* =============================================================
+   Odyssey — Account problem signals  (PROPOSED design-system layer)
+   -------------------------------------------------------------
+   A small vocabulary for surfacing a problem (warning / error /
+   info) about an account, on the Accounts page. Built ENTIRELY on
+   the existing severity convention so it doesn't sprout a new
+   color system:
+
+       warning  →  --finance-pending   (amber)   recoverable
+       error    →  --finance-expense   (coral)    blocking
+       info     →  --sea-400           (sea)      neutral notice
+
+   Nothing here is a new hue — every rule reuses the finance soft-bg
+   + accent stack already used by .chip, .alert and the budget rows.
+   ============================================================= */
+
+/* ---------- 0 · Severity aliases on the existing chip ----------
+   .chip already ships income/expense/pending/info. These add the
+   semantic names a "problem" reads by, so markup says what it MEANS
+   (warning/error) rather than borrowing a finance tone (pending). */
+.chip.warning { background: var(--finance-pending-soft);  color: var(--finance-pending); }
+.chip.error   { background: var(--finance-expense-soft);  color: var(--finance-expense); }
+/* .chip.info is already defined in kit.css (sea) — reused as-is. */
+
+/* A chip carrying a leading severity glyph sizes the icon to match. */
+.chip .material-icons { font-size: 13px; margin-left: -1px; }
+
+
+/* ---------- 1 · Header signal button (rolls up into the cluster) ----------
+   A PageHeader action-cluster toggle, shaped exactly like Overview /
+   Search, but tinted by severity and carrying a count. Its filled
+   (.active) vs. tinted-outline state is its open/closed indicator —
+   same contract as the other toggles. Clicking opens a .ph-region
+   panel of .alert blocks below the title row. */
+/* The fill flips between tinted-outline (closed) and solid (open). Keep that
+   flip instant — transitioning the toggle's background/color can stick
+   mid-tween under React re-renders, stranding a solid fill behind same-tinted
+   text. The state change is binary, so no fade is needed. */
+.btn.signal { gap: 7px; transition: none; }
+.btn.signal .signal-count {
+  font: 600 11px/1 var(--font-mono);
+  padding: 2px 6px; border-radius: 999px;
+  background: currentColor;
+}
+/* Number sits in the tile; punch it out with the button's own bg. */
+.btn.signal.warning .signal-count { color: var(--finance-pending); }
+.btn.signal.error   .signal-count { color: var(--finance-expense); }
+.btn.signal.info    .signal-count { color: var(--sea-400); }
+.btn.signal .signal-count span { color: var(--mud-palette-surface); }
+
+.btn.signal.warning {
+  background: var(--finance-pending-soft); color: var(--finance-pending);
+  border-color: color-mix(in srgb, var(--finance-pending) 40%, transparent);
+}
+.btn.signal.warning:hover { background: color-mix(in srgb, var(--finance-pending) 22%, transparent); }
+.btn.signal.error {
+  background: var(--finance-expense-soft); color: var(--finance-expense);
+  border-color: color-mix(in srgb, var(--finance-expense) 40%, transparent);
+}
+.btn.signal.error:hover { background: color-mix(in srgb, var(--finance-expense) 22%, transparent); }
+.btn.signal.info {
+  background: rgba(56, 189, 248, 0.10); color: var(--sea-400);
+  border-color: rgba(56, 189, 248, 0.34);
+}
+.btn.signal.info:hover { background: rgba(56, 189, 248, 0.18); }
+
+/* Expanded (panel open): solid severity fill, ink-dark label. */
+.btn.signal.active.warning { background: var(--finance-pending); color: var(--ink-900); border-color: transparent; }
+.btn.signal.active.error   { background: var(--finance-expense); color: #2A0E0E;        border-color: transparent; }
+.btn.signal.active.info    { background: var(--sea-400);         color: var(--ink-900); border-color: transparent; }
+.btn.signal.active .signal-count { background: rgba(0,0,0,0.22); color: inherit; }
+
+
+/* ---------- 2 · Quiet title badge (option: inline by the H1) ----------
+   A compact square pill that sits beside the page title. Calmest
+   option — reads as part of the heading, matches the "quiet
+   instrument" brand. */
+.signal-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 26px; padding: 0 9px; border-radius: var(--radius-sm);
+  border: 1px solid transparent; cursor: pointer;
+  font: 600 12px/1 var(--font-mono);
+  white-space: nowrap;
+  transition: background-color 150ms ease;
+}
+.signal-pill .material-icons { font-size: 16px; }
+.signal-pill.warning { background: var(--finance-pending-soft); color: var(--finance-pending); border-color: color-mix(in srgb, var(--finance-pending) 32%, transparent); }
+.signal-pill.error   { background: var(--finance-expense-soft); color: var(--finance-expense); border-color: color-mix(in srgb, var(--finance-expense) 32%, transparent); }
+.signal-pill.info    { background: rgba(56,189,248,0.10);       color: var(--sea-400);         border-color: rgba(56,189,248,0.30); }
+.signal-pill:hover   { filter: brightness(1.12); }
+
+
+/* ---------- 3 · Notification-style icon trigger (option: bell+badge) ----------
+   A bare icon button (app-shell idiom) with a severity count badge —
+   most compact, least descriptive. */
+.signal-icon { position: relative; }
+.signal-icon .signal-dot {
+  position: absolute; top: 1px; right: 1px;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; border: 2px solid var(--mud-palette-surface);
+  display: grid; place-items: center;
+  font: 600 10px/1 var(--font-mono); color: #fff;
+}
+.signal-icon .signal-dot.warning { background: var(--finance-pending); color: var(--ink-900); }
+.signal-icon .signal-dot.error   { background: var(--finance-expense); }
+.signal-icon .signal-dot.info    { background: var(--sea-400); color: var(--ink-900); }
+
+
+/* ---------- 4 · Account card · left-edge accent (option: ambient) ----------
+   Color-codes the whole row without crowding the name. Mirrors the
+   inset-shadow rule the budget item rows already use for income /
+   expense. */
+.acct-item.has-warning { box-shadow: var(--mud-elevation-1), inset 3px 0 0 var(--finance-pending); }
+.acct-item.has-error   { box-shadow: var(--mud-elevation-1), inset 3px 0 0 var(--finance-expense); }
+.acct-item.has-warning.open,
+.acct-item.has-error.open { box-shadow: var(--mud-elevation-2), inset 3px 0 0 currentColor; }
+
+/* A round severity glyph that can sit in the figures / controls area. */
+.acct-signal {
+  width: 28px; height: 28px; border-radius: 999px; flex: none;
+  display: grid; place-items: center; border: none; cursor: pointer;
+  background: transparent;
+}
+.acct-signal .material-icons { font-size: 19px; }
+.acct-signal.warning { color: var(--finance-pending); background: var(--finance-pending-soft); }
+.acct-signal.error   { color: var(--finance-expense); background: var(--finance-expense-soft); }
+.acct-signal.info    { color: var(--sea-400);         background: rgba(56,189,248,0.12); }
+
+
+/* ---------- 5 · Account card · inline mini-alert (option: loud) ----------
+   A compact .alert variant that spans the bottom of the card head —
+   most explicit, self-describing, but heaviest if many cards carry one.
+   Reuses every .alert severity tint; just tightens the box. */
+.alert.compact { padding: 9px 12px; border-radius: var(--radius-sm); font-size: 13px; align-items: center; }
+.alert.compact .alert-icon { font-size: 18px; margin-top: 0; }
+.alert .alert-fix {
+  flex: none; align-self: center;
+  font: 600 12px/1 var(--font-sans); letter-spacing: 0.02em;
+  color: inherit; background: transparent; border: none; cursor: pointer;
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  text-decoration: underline; text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.alert .alert-fix:hover { background: rgba(255,255,255,0.06); }
+
+/* The header rollup panel: stack of alerts, each row clickable to jump
+   to the affected account. */
+.signal-panel { display: flex; flex-direction: column; gap: 10px; }
+.signal-panel .alert { cursor: default; }
+.signal-panel .alert .alert-body strong { font-weight: 600; }
+/* Where the affected row lives. The settings page scatters its secrets across
+   subject cards, so the rollup has to name the card — "SMTP password" alone does
+   not tell a reader where to look. */
+.signal-where { opacity: 0.72; font-style: italic; }
+
+/* A rollup row that jumps to its account on click. */
+.signal-row { cursor: pointer; transition: border-color 120ms ease, background-color 120ms ease; }
+.signal-row:hover { filter: brightness(1.06); }
+.signal-row:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* One-shot attention ring when the header rollup jumps to a card. */
+@keyframes acct-flash {
+  0%   { box-shadow: var(--mud-elevation-2), 0 0 0 0 color-mix(in srgb, var(--finance-pending) 70%, transparent); }
+  100% { box-shadow: var(--mud-elevation-1), 0 0 0 3px transparent; }
+}
+.acct-item.flash {
+  border-color: var(--finance-pending);
+  animation: acct-flash 2s ease-out;
+}
+/* The attention flash is decorative — skip the keyframe motion but keep the
+   pending border so the jumped-to card is still distinguishable. */
+@media (prefers-reduced-motion: reduce) {
+  .acct-item.flash { animation: none; }
+}
+
+
+/* ---------- 6 · Problem panel inside the expanded record ----------
+   The fuller explanation + the contextual fix action. Lives at the top of the
+   account detail so the "what's wrong / how to fix it" reads before metadata.
+   Layout: title row spans full width with the fix action pinned top-right; the
+   description runs the full width below, flush to the card's left edge. */
+.acct-problem { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 18px; }
+.acct-problem-head { display: flex; align-items: center; gap: 10px; }
+.acct-problem-head .alert-icon { margin-top: 0; flex: 0 0 auto; }
+.acct-problem-title { font: 600 14px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); flex: 1 1 auto; min-width: 0; }
+.acct-problem-detail { margin: 0; font: 400 13.5px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 72ch; text-wrap: pretty; }
+.alert-cta {
+  flex: 0 0 auto; align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 7px;
+  font: 600 12px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 9px 14px; border-radius: 4px; border: 1px solid transparent; cursor: pointer;
+  white-space: nowrap;
+  transition: filter 150ms ease;
+}
+.alert.warning .alert-cta { background: var(--finance-pending); color: var(--ink-900); }
+.alert.error   .alert-cta { background: var(--finance-expense); color: #2A0E0E; }
+.alert.info    .alert-cta { background: var(--sea-400);         color: var(--ink-900); }
+.alert-cta:hover { filter: brightness(1.08); }
+
+
+/* ---------- 7 · (removed) Fix-a-problem modal — reconnect/set-rate dropped from MVP;
+   missing-rate problems now route to the Currencies page instead of an inline dialog. */

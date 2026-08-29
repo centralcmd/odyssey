@@ -1,0 +1,82 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Odyssey.Dtos.Finance
+@inject IFilesApiClient FilesApi
+@inject ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@inject IClipboardService Clipboard
+@inject IDialogService DialogService
+@inject ITaxStatementsApiClient TaxStatements
+@inject IUploadLimitsCache UploadLimits
+
+@*
+    Statement documents — the tax return / assessment PDFs attached to a tax
+    statement. Mirrors the account/transaction file collapsibles (OdsCollapsible +
+    OdsFilesTable), but files arrive embedded on the statement DTO (no list
+    endpoint), so the host re-fetches the statement on change via OnChanged.
+    Tax documents carry no per-file kind — every row reads the magenta "Tax" avatar.
+*@
+
+<OdsCollapsible Open="_isOpen" OnToggle="@(_ => _isOpen = !_isOpen)" Icon="description">
+    <Title>Statement documents</Title>
+    <Count>@Files.Count</Count>
+    <ChildContent>
+        @if (CanUpload)
+        {
+            <div class="file-upload-zone">
+                <OdsTaxStatementFileTypeSelect Label="Document type" @bind-Value="_selectedFileType" Class="mb-2" />
+                <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                               FilesChanged="UploadFilesAsync"
+                               Accept=".pdf,.jpg,.jpeg,.png,.webp"
+                               MaximumFileCount="64"
+                               Disabled="@_isUploading"
+                               Class="mb-2">
+                    <CustomContent Context="fileUpload">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.CloudUpload"
+                                   Disabled="@_isUploading"
+                                   OnClick="@fileUpload.OpenFilePickerAsync">
+                            @if (_isUploading)
+                            {
+                                <OdsSpinner Class="me-2" Decorative="true" />
+                                <span>Uploading…</span>
+                            }
+                            else
+                            {
+                                <span>Upload documents</span>
+                            }
+                        </MudButton>
+                    </CustomContent>
+                </MudFileUpload>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Accepted: .pdf, .jpg, .jpeg, .png, .webp — upload the tax return / assessment PDFs.
+                </MudText>
+            </div>
+        }
+
+        <OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
+            <OdsFilesTable Files="pageRows"
+                           TypeFor="@(row => KindMeta(FileById(row.Id).FileType))"
+                           Actions="@BuildMenu"
+                           OnDelete="@DeleteAction"
+                           Empty="@_empty" />
+        </OdsInlinePager>
+    </ChildContent>
+</OdsCollapsible>
+
+@if (_preview is not null)
+{
+    <FilePreviewDialog @key="_previewKey"
+                       @bind-Open="_previewOpen"
+                       BlobUrl="@_preview.BlobUrl"
+                       ContentType="@_preview.ContentType"
+                       FileName="@_preview.FileName"
+                       SizeBytes="_preview.SizeBytes"
+                       UploadedAtUtc="_preview.UploadedAtUtc"
+                       FileType="AccountFileType.Tax"
+                       AccountName="@StatementName" />
+}
+
+@code {
+    private readonly RenderFragment _empty = @<div class="empty-line" style="padding:20px;">No documents attached yet — upload the tax return / assessment PDFs.</div>;
+}

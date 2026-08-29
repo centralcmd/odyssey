@@ -1,0 +1,22 @@
+/* ── Role pill ── moved here from Users.razor.css with the markup it styles. */
+.usr-role {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    border: 1px solid var(--mud-palette-divider);
+    color: var(--mud-palette-text-secondary);
+}
+
+.usr-role ::deep .mud-icon-root {
+    font-size: 14px;
+}
+
+.usr-role.owner { background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent); color: var(--mud-palette-primary); border-color: transparent; }
+.usr-role.admin { background: color-mix(in srgb, var(--mud-palette-tertiary) 18%, transparent); color: var(--mud-palette-tertiary); border-color: transparent; }
+.usr-role.user  { background: color-mix(in srgb, var(--mud-palette-secondary) 16%, transparent); color: var(--mud-palette-secondary); border-color: transparent; }

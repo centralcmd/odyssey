@@ -1,0 +1,276 @@
+/* Contact contact rows. */
+
+/* Contact tile cards — mirrors the Terms "tiles" summary (.trm-tile). */
+.cp-sub{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.cp-sub-label{font:600 11px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.cp-sub-meta{font:400 11.5px/1 var(--font-mono);color:var(--mud-palette-text-secondary)}
+.cp-sub-rule{flex:1;height:1px;background:var(--mud-palette-divider-light, var(--mud-palette-divider))}
+.cp-tile-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.cp-tile{position:relative;display:flex;flex-direction:column;gap:9px;padding:14px 15px;border:1px solid var(--mud-palette-divider);border-radius:10px;background:var(--mud-palette-background);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.cp-tile-top{display:flex;align-items:center;gap:9px}
+.cp-tile-ic{display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;border-radius:8px}
+.cp-tile-kind{font:500 12px/1.2 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.cp-tile-value{font:400 23px/1.1 var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em;min-width:0;word-break:break-word}
+.cp-tile-foot{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font:400 11px/1.3 var(--font-mono);color:var(--mud-palette-text-secondary)}
+.cp-tile-sep{opacity:.6}
+.cp-tile-primary{font-weight:500}
+.cp-tile-menu{position:absolute;top:6px;right:6px}
+.cp-row-menu{flex:none;align-self:flex-start}
+
+/* =============================================================
+   account.css — Self-service User Account area (/account)
+   Layered on top of kit.css + admin.css. Reuses .card, .field,
+   .btn, .chip, .alert, .meta-grid, .collapsible, the Switch atom,
+   and the admin permission-catalog classes (.ua-cat-* / .ua-claim).
+   This file only adds the account-specific surfaces: the section
+   tab bar, settings sections, the 2FA setup flow, recovery codes,
+   and the danger zone.
+   ============================================================= */
+
+/* ---- In-page section tabs (under the page header) ---- */
+.acc-tabs {
+  display: flex; gap: 2px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--mud-palette-divider);
+}
+.acc-tab {
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 11px 14px; margin-bottom: -1px;
+  background: transparent; border: none; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font: 500 13px/1 var(--font-sans); letter-spacing: 0.01em;
+  color: var(--mud-palette-text-secondary);
+  transition: color 150ms ease, border-color 150ms ease;
+}
+.acc-tab .material-icons { font-size: 18px; }
+.acc-tab:hover { color: var(--mud-palette-text-primary); }
+.acc-tab.active { color: var(--mud-palette-primary); border-bottom-color: var(--mud-palette-primary); }
+.acc-tab-badge {
+  font: 500 10px/1 var(--font-mono);
+  padding: 3px 6px; border-radius: 999px;
+  background: var(--status-closed-soft); color: var(--status-closed);
+}
+
+/* ---- Merged settings list (former tabs, now one scrolling card list) ---- */
+.acc-list { display: flex; flex-direction: column; gap: 18px; }
+.acc-list-group + .acc-list-group { padding-top: 0; }
+
+/* ---- Section card scaffold (icon badge + title + body) ---- */
+.acc-section { display: flex; flex-direction: column; gap: 18px; }
+.acc-sec-head { display: flex; align-items: flex-start; gap: 14px; }
+.acc-ic {
+  flex: 0 0 42px; height: 42px; display: grid; place-items: center;
+  border-radius: var(--radius-md);
+  background: rgba(79, 215, 203, 0.12); color: var(--tide-400);
+}
+.acc-ic.warn   { background: var(--finance-pending-soft); color: var(--finance-pending); }
+.acc-ic.danger { background: var(--finance-expense-soft); color: var(--finance-expense); }
+.acc-ic.ok     { background: var(--finance-income-soft);  color: var(--finance-income); }
+.acc-ic .material-icons { font-size: 22px; }
+.acc-sec-titles { flex: 1; min-width: 0; }
+.acc-sec-title { font: 500 16px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.acc-sec-sub { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; }
+
+/* In-header search results line */
+.acc-search-meta { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.acc-search-meta span { white-space: nowrap; }
+
+/* Forms inside sections */
+.acc-form { display: flex; flex-direction: column; gap: 16px; max-width: 460px; }
+.acc-form-actions { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+.acc-divider { height: 1px; background: var(--mud-palette-divider); margin: 4px 0; }
+
+/* ---- Overview ---- */
+.acc-overview { display: flex; flex-direction: column; gap: 18px; }
+.acc-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.acc-hero-id { flex: 1; min-width: 0; }
+.acc-hero-name { font: 400 22px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.acc-hero-mail { font: 400 14px/1.4 var(--font-mono); color: var(--mud-palette-text-secondary); margin-top: 4px; }
+.acc-hero-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.acc-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.acc-avatar-xl {
+  flex: 0 0 64px; width: 64px; height: 64px; border-radius: var(--radius-pill);
+  display: grid; place-items: center;
+  font: 400 24px/1 var(--font-sans);
+  background: rgba(79, 215, 203, 0.14); color: var(--tide-400);
+  letter-spacing: 0.02em;
+}
+
+.acc-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.acc-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.acc-card-head .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.acc-card-ttl { font: 500 13px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.acc-card-foot { margin-top: 12px; }
+
+/* ---- In-card header (icon badge + title + sub, folded into the card) ----
+   Replaces the former floating .acc-sec-head that sat above each card. The
+   colored badge gives the card its identity; a hairline divider separates the
+   header from the body below. */
+.acc-cardhead { display: flex; align-items: flex-start; gap: 14px; }
+.acc-cardhead.bordered { margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--mud-palette-divider); }
+
+.acc-kv { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--mud-palette-divider-light); }
+.acc-kv:first-of-type { border-top: none; }
+.acc-kv-label { font: 400 13px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.acc-kv-val { font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); text-align: right; white-space: nowrap; }
+.acc-kv-val.mono { font-family: var(--font-mono); font-weight: 400; }
+
+.acc-quick { display: flex; gap: 10px; flex-wrap: wrap; }
+.acc-quick-btn {
+  display: flex; align-items: center; gap: 12px;
+  flex: 1 1 220px;
+  padding: 14px 16px; cursor: pointer; text-align: left;
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  background: var(--mud-palette-background); color: var(--mud-palette-text-primary);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.acc-quick-btn:hover { border-color: var(--mud-palette-primary); background: rgba(79, 215, 203, 0.05); }
+.acc-quick-ic { flex: 0 0 36px; height: 36px; display: grid; place-items: center; border-radius: var(--radius-sm); background: rgba(79, 215, 203, 0.12); color: var(--tide-400); }
+.acc-quick-ic .material-icons { font-size: 20px; }
+.acc-quick-txt { flex: 1; min-width: 0; }
+.acc-quick-ttl { font: 500 14px/1.2 var(--font-sans); }
+.acc-quick-sub { font: 400 12px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; }
+.acc-quick-btn .acc-quick-go { color: var(--mud-palette-text-secondary); }
+
+/* ---- Read-only identity (locked) grid — reuses admin look ---- */
+.acc-locked-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.acc-locked {
+  border: 1px dashed var(--mud-palette-lines-default); border-radius: var(--radius-md);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;
+}
+.acc-locked-label { display: flex; align-items: center; gap: 5px; font: 500 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.acc-locked-label .material-icons { font-size: 13px; }
+.acc-locked-val { font: 400 14px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.acc-locked-val.mono { font-family: var(--font-mono); }
+
+/* ---- Password requirement checklist ---- */
+.acc-reqs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; max-width: 460px; }
+.acc-req { display: flex; align-items: center; gap: 8px; font: 400 12.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.acc-req .material-icons { font-size: 16px; color: var(--mud-palette-text-disabled); }
+.acc-req.met { color: var(--finance-income); }
+.acc-req.met .material-icons { color: var(--finance-income); }
+
+/* ---- Two-factor: status hero ---- */
+.acc-status {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 16px 18px; border-radius: var(--radius-md);
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-background);
+}
+.acc-status.on { border-color: color-mix(in srgb, var(--finance-income) 34%, transparent); background: var(--finance-income-soft); }
+.acc-status-ic { flex: 0 0 44px; height: 44px; display: grid; place-items: center; border-radius: var(--radius-md); background: var(--mud-palette-action-disabled-background); color: var(--mud-palette-text-secondary); }
+.acc-status.on .acc-status-ic { background: rgba(74, 222, 128, 0.18); color: var(--finance-income); }
+.acc-status-ic .material-icons { font-size: 24px; }
+.acc-status-txt { flex: 1; min-width: 160px; }
+.acc-status-ttl { font: 500 15px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.acc-status-sub { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+
+/* ---- 2FA setup wizard ---- */
+.acc-steps { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+.acc-step { display: inline-flex; align-items: center; gap: 8px; }
+.acc-step-dot {
+  width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center;
+  font: 500 12px/1 var(--font-mono);
+  border: 1px solid var(--mud-palette-lines-default); color: var(--mud-palette-text-secondary);
+  background: transparent;
+}
+.acc-step.active .acc-step-dot { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-color: transparent; }
+.acc-step.done .acc-step-dot { background: rgba(79, 215, 203, 0.14); color: var(--tide-400); border-color: transparent; }
+.acc-step.done .acc-step-dot .material-icons { font-size: 16px; }
+.acc-step-label { font: 500 12.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.acc-step.active .acc-step-label { color: var(--mud-palette-text-primary); }
+.acc-step-line { width: 28px; height: 1px; background: var(--mud-palette-divider); }
+
+.acc-setup { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+.acc-qr-wrap { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.acc-qr { width: 188px; height: 188px; padding: 12px; background: #FFFFFF; border-radius: var(--radius-md); box-shadow: var(--mud-elevation-1); }
+.acc-qr svg { display: block; width: 100%; height: 100%; }
+.acc-qr-note { font: 400 11px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.acc-setup-side { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 14px; }
+.acc-setup-step-ttl { font: 500 13px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
+.acc-setup-step-ttl b { color: var(--tide-400); font-weight: 500; }
+
+.acc-key-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acc-key {
+  display: inline-flex; align-items: center;
+  font: 500 14px/1 var(--font-mono); letter-spacing: 2px;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider);
+  color: var(--mud-palette-text-primary);
+}
+.acc-key.masked { letter-spacing: 4px; color: var(--mud-palette-text-secondary); }
+
+/* code entry boxes */
+.acc-code { display: flex; gap: 10px; }
+.acc-code input {
+  width: 46px; height: 56px; text-align: center;
+  font: 500 22px/1 var(--font-mono);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-md);
+  background: transparent; color: var(--mud-palette-text-primary);
+  caret-color: var(--mud-palette-primary);
+}
+.acc-code input:focus { outline: none; border: 2px solid var(--focus-ring, var(--mud-palette-primary)); }
+.acc-code.err input { border-color: var(--mud-palette-error); }
+
+/* ---- Recovery codes ---- */
+.acc-codes-grid { display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 8px; max-width: 380px; }
+.acc-rc {
+  font: 500 14px/1 var(--font-mono); letter-spacing: 1px; text-align: center;
+  padding: 11px 8px; border-radius: var(--radius-sm);
+  background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider);
+  color: var(--mud-palette-text-primary);
+}
+.acc-rc.used { color: var(--mud-palette-text-disabled); text-decoration: line-through; }
+
+/* ---- Danger zone ---- */
+.acc-danger {
+  border: 1px solid color-mix(in srgb, var(--finance-expense) 30%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--finance-expense) 5%, var(--mud-palette-surface));
+}
+.acc-danger-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; }
+.acc-danger-head .material-icons { color: var(--finance-expense); font-size: 18px; }
+.acc-danger-head-ttl { font: 500 13px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--finance-expense); }
+.acc-danger-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 16px; border-top: 1px solid color-mix(in srgb, var(--finance-expense) 16%, transparent);
+}
+.acc-danger-txt { min-width: 0; }
+.acc-danger-ttl { font: 500 14px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.acc-danger-sub { font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
+
+/* ---- Permissions ---- */
+.acc-perm-summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.acc-perm-figure { display: flex; align-items: baseline; gap: 8px; }
+.acc-perm-num { font: 500 28px/1 var(--font-mono); color: var(--mud-palette-text-primary); }
+.acc-perm-num-label { font: 400 13px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.acc-role-desc { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.acc-role-desc b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+/* small inline success/saved nudge */
+.acc-saved { display: inline-flex; align-items: center; gap: 6px; font: 500 12.5px/1 var(--font-sans); color: var(--finance-income); }
+.acc-saved .material-icons { font-size: 16px; }
+
+/* ---- Profile (identity) card ---- */
+/* Live preview strip: the resolved label + avatar the rest of the app shows. */
+.acc-profile-preview { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--mud-palette-divider); }
+.acc-profile-preview-id { min-width: 0; }
+.acc-profile-preview-name { font: 400 20px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.acc-profile-preview-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.acc-profile-preview-hint { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* Shared profile field grid (also used on the onboarding gate). */
+.pf-fields { display: flex; flex-direction: column; gap: 16px; max-width: 560px; }
+
+/* GDPR transparency notice (shown at collection on both surfaces). */
+.pf-note { display: flex; gap: 10px; margin-top: 18px; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background); max-width: 560px; }
+.pf-note-ic { color: var(--info-text); flex: none; margin-top: 1px; }
+.pf-note-body { min-width: 0; }
+.pf-note-body p { margin: 0; font: 400 12.5px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.pf-note-body p + p { margin-top: 5px; }
+.pf-note-body b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
+@media (max-width: 720px) {
+  .acc-locked-grid { grid-template-columns: 1fr; }
+  .acc-reqs { grid-template-columns: 1fr; }
+}

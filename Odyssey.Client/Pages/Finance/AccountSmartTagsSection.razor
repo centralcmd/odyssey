@@ -1,0 +1,133 @@
+@using System.Globalization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IClipboardService Clipboard
+@inject IReferenceDataCache ReferenceData
+@inject ITransactionsApiClient Transactions
+@inject IAccountsApiClient Accounts
+@inject ISnackbar Snackbar
+@inject IAccountLimitsCache AccountLimits
+
+@*
+    AccountSmartTagsSection — the "Smart tags" disclosure inside an expanded account
+    record (Accounts → account detail), positioned below the Transactions section.
+    Pins a curated set of existing TransactionTags to the account as a saved filter,
+    then surfaces every transaction carrying any of those tags — across all accounts,
+    not just this one — a persistent watchlist (issue #184). Mirrors the design system's
+    AccountSmartTagsSection: an OdsCollapsible whose header counts the matching
+    transactions, a tag-management bar (removable chips + an Add-tag checklist), and
+    the NoSmartTags / Loading / NoTransactions / HasTransactions / error states.
+    Add/remove fire the per-tag POST/DELETE endpoints (write-gated).
+*@
+
+<OdsCollapsible Class="odc-smarttags" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="sell" Count="@CountFragment">
+    <Title>Smart tags</Title>
+    <ChildContent>
+        @if (_hasTags)
+        {
+            <div class="odc-smarttags-bar">
+                <div class="odc-smarttags-bar-main">
+                    <span class="odc-smarttags-bar-label">Watching</span>
+                    <div class="odc-smarttags-chips">
+                        @foreach (var tag in _smartTags)
+                        {
+                            <span class="odc-chip tag odc-smarttags-chip">
+                                <span class="material-icons odc-smarttags-chip-ic" aria-hidden="true">sell</span>
+                                @tag.Name
+                                @if (CanWrite)
+                                {
+                                    <button type="button"
+                                            class="odc-smarttags-x"
+                                            aria-label="@($"Stop watching {tag.Name}")"
+                                            @onclick="@(() => RemoveTag(tag.TransactionTagId))">
+                                        <span class="material-icons" aria-hidden="true">close</span>
+                                    </button>
+                                }
+                            </span>
+                        }
+                        @if (CanWrite)
+                        {
+                            <AccountSmartTagAdder Options="_options"
+                                                  SelectedIds="_selectedIds"
+                                                  AtCap="_atCap"
+                                                  Cap="_maxTags"
+                                                  OnAdd="AddTag"
+                                                  OnRemove="RemoveTag" />
+                        }
+                    </div>
+                </div>
+                @if (ShowTotal)
+                {
+                    <div class="odc-smarttags-total @(_total < 0 ? "expense" : "income")">
+                        <span class="odc-smarttags-total-lab">@_transactions.Count @(_transactions.Count == 1 ? "transaction" : "transactions")</span>
+                        @* Naive cross-currency sum (the app has no FX) shown with a generic symbol —
+                           the watchlist can span accounts in different currencies. *@
+                        <span class="odc-smarttags-total-val">@FormatMoney(_total, null)</span>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_error is not null)
+        {
+            <div class="odc-smarttags-state error" role="alert">
+                <span class="material-icons odc-smarttags-state-ic" aria-hidden="true">error_outline</span>
+                <div class="odc-smarttags-state-txt">@_error</div>
+                <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="Reload">Try again</OdsButton>
+            </div>
+        }
+        else if (!_hasTags)
+        {
+            <div class="odc-empty odc-smarttags-empty">
+                <div class="odc-empty-ic">
+                    <span class="material-icons" aria-hidden="true">sell</span>
+                </div>
+                <div class="odc-empty-ttl">No smart tags yet</div>
+                <div class="odc-empty-desc">
+                    @(CanWrite
+                        ? "Pin a tag to watch its transactions across every account without re-filtering the ledger."
+                        : "No tags are being watched on this account.")
+                </div>
+                @if (CanWrite)
+                {
+                    <div class="odc-empty-actions">
+                        <AccountSmartTagAdder Options="_options"
+                                              SelectedIds="_selectedIds"
+                                              AtCap="_atCap"
+                                              Cap="_maxTags"
+                                              OnAdd="AddTag"
+                                              OnRemove="RemoveTag"
+                                              Label="Add a tag" />
+                    </div>
+                }
+            </div>
+        }
+        else if (_isLoadingTxns)
+        {
+            <div class="odc-smarttags-loading" role="status" aria-live="polite">
+                <div class="odc-progress indeterminate"><div class="odc-progress-fill"></div></div>
+                <div class="odc-smarttags-loading-txt">Loading transactions…</div>
+            </div>
+        }
+        else if (_transactions.Count == 0)
+        {
+            <OdsEmptyState Icon="search_off">
+                <Title>No matching transactions</Title>
+                <Description>No transactions carry the selected tags yet.</Description>
+            </OdsEmptyState>
+        }
+        else
+        {
+            <div class="odc-smarttags-table">
+                @* Account column kept (the watchlist spans every account, not just this one). *@
+                <OdsInlinePager Items="_transactions" Context="pageRows">
+                    <OdsTxnTable Rows="pageRows" Actions="BuildActions">
+                        <RenderDetail Context="t">
+                            <TransactionDetailPanel Transaction="t" CanDownloadFiles="CanDownloadFiles" />
+                        </RenderDetail>
+                    </OdsTxnTable>
+                </OdsInlinePager>
+            </div>
+        }
+    </ChildContent>
+</OdsCollapsible>

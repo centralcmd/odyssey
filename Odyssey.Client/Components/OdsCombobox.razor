@@ -1,0 +1,174 @@
+@*
+    OdsCombobox — a searchable single-select with optional inline create
+    (Odyssey Design System · components/Combobox).
+
+    The contact, custodian and tag pickers. Type to filter, pick to select;
+    provide OnCreate to offer a "Create …" row for an unmatched query. A
+    MudAutocomplete over OdsOption records, bound to the option Value via
+    @bind-Value.
+
+    Each option may carry a leading Material-icon ligature (OdsOption.Icon +
+    IconColor): it renders before the label in every dropdown row (ItemTemplate)
+    and as a leading glyph on the trigger once a value is selected (the DS
+    .odc-combo-opt / .odc-input-icon language). Options without an icon render
+    label-only, so icon-less pickers (e.g. tags) are unaffected.
+
+    CoerceValue is left at its default (true) so a typed-but-unselected value
+    isn't silently discarded.
+*@
+
+@inject IJSRuntime Js
+
+<div class="@WrapClass">
+    @* A real <label for> beats a splatted aria-label: MudAutocomplete renders unmatched attributes on
+       its root wrapper, not the inner role="combobox" input, so an aria-label there never names the
+       control. With an explicit InputId the visually-hidden label associates with the actual input. *@
+    @if (!string.IsNullOrEmpty(AriaLabel) && !string.IsNullOrEmpty(InputId))
+    {
+        <label for="@InputId" class="sr-only">@AriaLabel</label>
+    }
+    @if (SelectedIcon is not null)
+    {
+        <span class="material-icons odc-combo-lead" style="@SelectedIconStyle" aria-hidden="true">@SelectedIcon</span>
+    }
+    <MudAutocomplete T="OdsOption"
+                     Value="@Selected"
+                     ValueChanged="OnSelected"
+                     SearchFunc="Search"
+                     ToStringFunc="@(o => o?.Label ?? string.Empty)"
+                     Placeholder="@Placeholder"
+                     Variant="Variant.Outlined"
+                     Margin="Margin.Dense"
+                     Disabled="@Disabled"
+                     Clearable="@Clearable"
+                     ResetValueOnEmptyText="false"
+                     Class="@Class"
+                     InputId="@InputId"
+                     Error="@Error"
+                     @attributes="UserAttributes">
+        <ItemTemplate Context="option">
+            <span class="odc-combo-item">
+                @if (!string.IsNullOrEmpty(option.Icon))
+                {
+                    <span class="material-icons odc-combo-opt-ic" style="@OptionIconStyle(option)" aria-hidden="true">@option.Icon</span>
+                }
+                <span class="odc-combo-opt-label">@option.Label</span>
+            </span>
+        </ItemTemplate>
+        <NoItemsTemplate>
+            <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : EmptyText)</div>
+        </NoItemsTemplate>
+    </MudAutocomplete>
+</div>
+
+@code {
+    /// <summary>Selected option value. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>The options.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsOption> Options { get; set; } = [];
+
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// Enables an inline "Create …" row when the query matches no option.
+    /// Receives the typed text; return the new option (or null to skip).
+    /// </summary>
+    [Parameter] public Func<string, OdsOption?>? OnCreate { get; set; }
+
+    /// <summary>Prefix for the create row label.</summary>
+    [Parameter] public string CreateLabel { get; set; } = "Create";
+
+    /// <summary>Show a trailing clear (✕) affordance that empties the selection. Default true.</summary>
+    [Parameter] public bool Clearable { get; set; } = true;
+
+    /// <summary>Text shown in the popover when the query matches no option. Default "No matches".</summary>
+    [Parameter] public string EmptyText { get; set; } = "No matches";
+
+    /// <summary>Show an announced "Loading…" row in place of the empty text while results are being
+    /// (re)fetched by the host.</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Id applied to the inner input element, so a host's <c>&lt;label for&gt;</c> can
+    /// associate with it (a real label association, stronger than aria-labelledby).</summary>
+    [Parameter] public string? InputId { get; set; }
+
+    /// <summary>Accessible name for a label-less combobox (e.g. a dense grid cell). Rendered as a
+    /// visually-hidden <c>&lt;label for=InputId&gt;</c>, so it requires <see cref="InputId"/> to be set.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>Id of a helper/description element to associate with the input via aria-describedby
+    /// (e.g. an OdsFieldShell helper's <c>&lt;HtmlFor&gt;-help</c> id). Requires <see cref="InputId"/>.
+    /// Applied through JS because MudAutocomplete splats unmatched attributes onto its wrapper, not the
+    /// inner input.</summary>
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    /// <summary>Puts the control in the error state — MudBlazor owns the resulting
+    /// <c>aria-invalid</c> on the input and the error outline.</summary>
+    [Parameter] public bool Error { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    // Sentinel marking the synthetic "Create …" row.
+    private const string CreatePrefix = " create ";
+
+    // Wire the input's aria-describedby to the helper id once (MudAutocomplete won't put it there
+    // itself). Idempotent per (InputId, AriaDescribedBy); JS-unavailable environments no-op.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || string.IsNullOrEmpty(InputId) || string.IsNullOrEmpty(AriaDescribedBy))
+            return;
+        try { await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-describedby", AriaDescribedBy); }
+        catch { /* JS unavailable (e.g. prerender / teardown) */ }
+    }
+
+    private OdsOption? Selected => Options.FirstOrDefault(o => o.Value == Value);
+
+    // Leading glyph on the trigger once a real value is selected (mirrors the DS .odc-input-icon).
+    private string? SelectedIcon => Selected?.Icon;
+    private string? SelectedIconStyle => OptionIconStyle(Selected);
+    private string WrapClass => SelectedIcon is null ? "odc-combo-wrap" : "odc-combo-wrap has-lead";
+
+    private static string? OptionIconStyle(OdsOption? option) =>
+        string.IsNullOrEmpty(option?.IconColor) ? null : $"color:{option.IconColor};";
+
+    private Task<IEnumerable<OdsOption>> Search(string? text, CancellationToken token)
+    {
+        var query = text ?? string.Empty;
+        var matches = Options
+            .Where(o => string.IsNullOrWhiteSpace(query)
+                        || o.Label.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (OnCreate is not null
+            && !string.IsNullOrWhiteSpace(query)
+            && !Options.Any(o => string.Equals(o.Label, query, StringComparison.OrdinalIgnoreCase)))
+        {
+            matches.Add(new OdsOption($"{CreatePrefix}{query}", $"{CreateLabel} \"{query}\"") { Icon = "add" });
+        }
+
+        return Task.FromResult<IEnumerable<OdsOption>>(matches);
+    }
+
+    private async Task OnSelected(OdsOption? option)
+    {
+        if (option is not null && option.Value.StartsWith(CreatePrefix, StringComparison.Ordinal))
+        {
+            var text = option.Value[CreatePrefix.Length..];
+            var created = OnCreate?.Invoke(text);
+            Value = created?.Value;
+        }
+        else
+        {
+            Value = option?.Value;
+        }
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

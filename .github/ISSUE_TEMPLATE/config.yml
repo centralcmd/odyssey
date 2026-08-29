@@ -1,0 +1,16 @@
+# Blank issues stay off: the two forms below cover defects and feature requests, and everything
+# else is a question, which belongs in Discussions. See SUPPORT.md.
+blank_issues_enabled: false
+contact_links:
+  - name: Question or help with self-hosting
+    url: https://github.com/centralcmd/odyssey/discussions
+    about: Ask in Discussions — configuration, SMTP, deployment, "is this intended?"
+  - name: Getting help
+    url: https://github.com/centralcmd/odyssey/blob/main/SUPPORT.md
+    about: Where to go for what, and what to include so a question gets answered
+  - name: Documentation
+    url: https://github.com/centralcmd/odyssey/blob/main/README.md
+    about: Read the project README before opening an issue
+  - name: Report a security vulnerability
+    url: https://github.com/centralcmd/odyssey/security/advisories/new
+    about: Security reports go through a private advisory, never a public issue

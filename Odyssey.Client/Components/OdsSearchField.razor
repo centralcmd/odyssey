@@ -1,0 +1,104 @@
+@*
+    OdsSearchField — the canonical search / filter input
+    (Odyssey Design System · components/SearchField).
+
+    A thin, intent-typed wrapper over the text field, pre-set for one job: a
+    leading search glyph, a clear (×) button once there's a value, and a native
+    search input type. Use it for every filter-bar and page search box so the
+    affordance reads identically everywhere. For a labelled data-entry field use
+    OdsField; for a search-or-create input use OdsCombobox. Bind via @bind-Value.
+
+    Immediate (default) filters as you type — right for client-side lists. For a
+    server round-trip, keep Immediate="true" and set DebounceInterval (~300 ms) +
+    handle OnSearch: MudBlazor then debounces the input so the bound value and
+    OnSearch both fire once typing settles. Alternatively, leave DebounceInterval at
+    0 and set Immediate="false" to fire OnSearch only on submit (Enter / search
+    glyph). Issue #277's list pages use the debounced form.
+*@
+
+<MudTextField T="string"
+              Value="@Value"
+              ValueChanged="OnValueChanged"
+              Immediate="@Immediate"
+              DebounceInterval="@DebounceInterval"
+              OnDebounceIntervalElapsed="@OnDebounceElapsedAsync"
+              Placeholder="@Placeholder"
+              InputType="InputType.Search"
+              Variant="Variant.Outlined"
+              Margin="Margin.Dense"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icon"
+              OnAdornmentClick="@(_ => OnSearch.InvokeAsync())"
+              OnKeyUp="@OnKeyUpAsync"
+              Clearable="@Clearable"
+              Disabled="@Disabled"
+              aria-label="@EffectiveAriaLabel"
+              Class="@($"odc-searchfield {Class}".TrimEnd())"
+              @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Current query. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Placeholder shown when empty.</summary>
+    [Parameter] public string Placeholder { get; set; } = "Search…";
+
+    /// <summary>Leading adornment icon (SVG). Defaults to the search glyph.</summary>
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Search;
+
+    /// <summary>Whether a clear (×) button appears once there's a value.</summary>
+    [Parameter] public bool Clearable { get; set; } = true;
+
+    /// <summary>Filter as you type (default). Set false for a server round-trip, then handle <see cref="OnSearch"/>.</summary>
+    [Parameter] public bool Immediate { get; set; } = true;
+
+    /// <summary>Fires when the user submits the query — Enter, or clicking the search glyph. For deferred (non-immediate) search.</summary>
+    [Parameter] public EventCallback OnSearch { get; set; }
+
+    /// <summary>
+    /// Request-debounce interval in milliseconds (issue #277 §5.3). When &gt; 0, MudBlazor debounces the
+    /// input so both the bound <see cref="ValueChanged"/> and <see cref="OnSearch"/> fire once typing
+    /// settles for this interval — right for server-side list fetches (the fetch sees the settled term).
+    /// This is distinct from the unrelated 500 ms page-state save-debounce. 0 (default) keeps the legacy
+    /// Enter/glyph submit behaviour.
+    /// </summary>
+    [Parameter] public double DebounceInterval { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Accessible name — the field carries no visible label. When unset it falls back to
+    /// the placeholder (a placeholder alone is not an accessible name), then to "Search".</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    // Search boxes carry no visible <label>, so they MUST name themselves for assistive tech.
+    private string EffectiveAriaLabel =>
+        !string.IsNullOrWhiteSpace(AriaLabel) ? AriaLabel
+        : !string.IsNullOrWhiteSpace(Placeholder) ? Placeholder
+        : "Search";
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private Task OnValueChanged(string value)
+    {
+        Value = value;
+        return ValueChanged.InvokeAsync(value);
+    }
+
+    private async Task OnKeyUpAsync(KeyboardEventArgs args)
+    {
+        // With a debounce interval set, settle-driven OnSearch owns the fetch; don't double-fire on Enter.
+        if (args.Key == "Enter" && DebounceInterval <= 0)
+            await OnSearch.InvokeAsync();
+    }
+
+    private async Task OnDebounceElapsedAsync(string value)
+    {
+        if (DebounceInterval > 0)
+            await OnSearch.InvokeAsync();
+    }
+}

@@ -1,0 +1,228 @@
+@using System.Globalization
+@using System.Text
+@using Odyssey.Dtos.Finance
+@inject IDialogService DialogService
+@inject IAccountsApiClient Accounts
+@inject ISnackbar Snackbar
+
+@*
+    AccountTermsSection — the "Terms" section inside an expanded account record
+    (Accounts → account detail), beside Files & Transactions. Renders the AccountTerm
+    history (GET …/terms): a step-line rate chart, the current-terms summary, and the
+    grouped, editable history table. Owns the create / edit / delete flow (write-gated).
+*@
+
+<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="§">
+    <Title>Terms</Title>
+    <Count>@_terms.Count</Count>
+    <Actions>
+        @if (CanWrite)
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="add" OnClick="OpenNew">New term</OdsButton>
+        }
+    </Actions>
+    <ChildContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_terms.Count == 0)
+        {
+            <OdsEmptyState Icon="percent">
+                <Title>No rates or fees recorded yet</Title>
+                <Description>
+                    Track this account’s interest rate over time and the prices of its services.
+                    @if (CanWrite)
+                    {
+                        <text>Add the first term to start the history.</text>
+                    }
+                </Description>
+                <Action>
+                    @if (CanWrite)
+                    {
+                        <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="OpenNew">New term</OdsButton>
+                    }
+                </Action>
+            </OdsEmptyState>
+        }
+        else
+        {
+            <div class="trm-section">
+
+                @* HERO — interest-rate (or expected-return) step chart *@
+                @if (_hero is not null)
+                {
+                    <div class="trm-hero">
+                        <div class="trm-hero-head">
+                            <span class="trm-kind-ic lg" style="background:@_hero.Info.Soft;color:@_hero.Info.Color;">
+                                <span class="material-icons" style="font-size:22px;">@_hero.Info.Icon</span>
+                            </span>
+                            <div class="trm-hero-titles">
+                                <div class="trm-hero-kind">
+                                    @_hero.Info.Label
+                                    <span style="color:var(--mud-palette-text-secondary);font-weight:400;">· history</span>
+                                </div>
+                                <div class="trm-hero-sub">@_hero.SubLine</div>
+                            </div>
+                            <div class="trm-hero-figs">
+                                <div class="trm-hero-value" style="color:@_hero.Color;">@_hero.CurrentLabel</div>
+                                @if (_hero.DeltaLabel is not null)
+                                {
+                                    <span class="trm-delta flat">
+                                        <span class="material-icons">@_hero.DeltaIcon</span>@_hero.DeltaLabel
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                        <div class="trm-chart-wrap">
+                            <svg class="trm-chart" viewBox="0 0 680 210" role="img" aria-label="Rate history">
+                                @((MarkupString)_hero.Svg)
+                            </svg>
+                        </div>
+                    </div>
+                }
+
+                @* CURRENT TERMS *@
+                <div>
+                    <div class="trm-sub">
+                        <span class="trm-sub-label">Current terms</span>
+                        <span class="trm-sub-rule"></span>
+                        <span class="trm-sub-meta">in force · @DateTime.Now.ToString("MMM dd, yyyy")</span>
+                    </div>
+                    <div class="trm-summary tiles">
+                        @foreach (var t in _current)
+                        {
+                            var info = TermKindVisuals.Info(t.TermKind);
+                            var bill = TermKindVisuals.BillingInfo(t.BillingPeriod);
+                            <div class="trm-tile">
+                                <div class="trm-tile-top">
+                                    <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
+                                        <span class="material-icons" style="font-size:18px;">@info.Icon</span>
+                                    </span>
+                                    <span class="trm-tile-kind">@info.Label</span>
+                                </div>
+                                <div class="trm-tile-value" style="color:@(TermKindVisuals.CostColor(t, Account) ?? info.Color);">
+                                    @TermKindVisuals.FormatValue(t, Account, FormatMoney)
+                                </div>
+                                <div class="trm-tile-foot">
+                                    <span>since @MonthYear(t.EffectiveFrom)</span>
+                                    @if (bill is not null && t.BillingPeriod != BillingPeriod.OneTime)
+                                    {
+                                        <span class="trm-bill">@bill.Chip</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* HISTORY — grouped Rate then Fees *@
+                <div>
+                    <div class="trm-sub">
+                        <span class="trm-sub-label">History</span>
+                        <span class="trm-sub-rule"></span>
+                        <span class="trm-sub-meta">@_terms.Count @(_terms.Count == 1 ? "entry" : "entries")</span>
+                    </div>
+                    <div class="trm-history">
+                        @RenderGroup("trending_up", "Rate history", _terms.Where(t => TermKindVisuals.Info(t.TermKind).Group == TermGroup.Rate).ToList())
+                        @RenderGroup("sell", "Fees", _terms.Where(t => TermKindVisuals.Info(t.TermKind).Group == TermGroup.Fee).ToList())
+                    </div>
+                </div>
+            </div>
+        }
+    </ChildContent>
+</OdsCollapsible>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <AddTermDialog @key="_dialogKey"
+                   @bind-Open="_dialogOpen"
+                   Account="Account"
+                   Term="_editingTerm"
+                   Existing="_terms"
+                   OnSaved="OnTermChanged" />
+}
+
+@code {
+    // ── History group + row ───────────────────────────────────────────────────
+    private RenderFragment RenderGroup(string icon, string label, List<ExistingAccountTerm> rows) => __builder =>
+    {
+        if (rows.Count == 0) return;
+
+        <div>
+            <div class="trm-group-label">
+                <span class="material-icons" style="font-size:16px;color:var(--mud-palette-text-secondary);">@icon</span>
+                @label
+                <span class="trm-group-count">@rows.Count</span>
+            </div>
+            <table class="trm-tbl">
+                <thead>
+                    <tr>
+                        <th scope="col">Term</th>
+                        <th scope="col">Effective from</th>
+                        <th scope="col" class="num">Value</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="act" aria-label="Actions"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in rows)
+                    {
+                        var info = TermKindVisuals.Info(t.TermKind);
+                        var isCurrent = _currentIds.Contains(t.AccountTermId);
+                        var bill = TermKindVisuals.BillingInfo(t.BillingPeriod);
+                        <tr class="@(isCurrent ? "current" : "")">
+                            <td>
+                                <div class="trm-row-kind">
+                                    <span class="trm-kind-ic sm" style="background:@info.Soft;color:@info.Color;">
+                                        <span class="material-icons" style="font-size:15px;">@info.Icon</span>
+                                    </span>
+                                    <div>
+                                        <div class="trm-row-kind-name">@info.Label</div>
+                                        @if (!string.IsNullOrWhiteSpace(t.Note))
+                                        {
+                                            <div class="trm-row-note">@t.Note</div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="trm-cell-date">@t.EffectiveFrom.ToString("MMM dd, yyyy")</td>
+                            <td class="trm-cell-value" style="@(isCurrent ? $"color:{TermKindVisuals.CostColor(t, Account) ?? info.Color};" : "")">
+                                @TermKindVisuals.FormatValue(t, Account, FormatMoney)@if (bill is not null && !string.IsNullOrEmpty(bill.Suffix))
+                                {<span style="color:var(--mud-palette-text-secondary);font-weight:400;"> @bill.Suffix</span>}
+                            </td>
+                            <td>@RenderStatus(t, isCurrent)</td>
+                            <td class="trm-cell-act">
+                                @if (CanWrite)
+                                {
+                                    <span class="trm-rowbtns">
+                                        <OdsIconButton Icon="@Icons.Material.Filled.Edit" Size="OdsSize.Sm"
+                                                       AriaLabel="Edit term" OnClick="@(() => OpenEdit(t))" />
+                                        <OdsIconButton Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" Danger="true"
+                                                       AriaLabel="Delete term" OnClick="@(() => DeleteAsync(t))" />
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    };
+
+    private RenderFragment RenderStatus(ExistingAccountTerm t, bool isCurrent) => __builder =>
+    {
+        if (t.EffectiveFrom.Date > DateTime.UtcNow.Date)
+        {
+            <span class="trm-scheduled">Scheduled</span>
+        }
+        else if (isCurrent)
+        {
+            <span class="trm-inforce"><span class="material-icons">check_circle</span>In force</span>
+        }
+        else
+        {
+            <span class="trm-superseded">Superseded</span>
+        }
+    };
+}

@@ -1,0 +1,84 @@
+@* DS parity — no consumer yet: every single-choice field in the app is currently an
+   OdsSegmentedControl (two or three peer options, e.g. Term / One-off) or an OdsSelect
+   (longer vocabularies). Nothing in the client renders MudRadio either. *@
+@*
+    OdsRadioGroup — single choice from a small, mutually-exclusive set
+    (Odyssey Design System · components/RadioGroup).
+
+    Transaction direction (Money in / Money out), status, document type. A
+    MudRadioGroup + MudRadio. Two-way bindable via @bind-Value. Pass Row for a
+    horizontal layout. Options are OdsRadioOption records.
+*@
+
+@{
+    RenderFragment group =
+        @<MudRadioGroup T="string"
+                        Value="@Value"
+                        ValueChanged="OnValueChanged"
+                        Class="@CssClass"
+                        aria-labelledby="@(string.IsNullOrEmpty(Label) ? null : _labelId)"
+                        aria-label="@(string.IsNullOrEmpty(Label) ? AriaLabel : null)"
+                        @attributes="UserAttributes">
+            @foreach (var option in Options)
+            {
+                <MudRadio T="string"
+                          Value="@option.Value"
+                          Color="Color.Primary"
+                          Disabled="@(Disabled || option.Disabled)">@option.Label</MudRadio>
+            }
+        </MudRadioGroup>;
+}
+
+@if (!string.IsNullOrEmpty(Label))
+{
+    <div class="odc-field">
+        <span class="odc-field-label" id="@_labelId">@Label</span>
+        @group
+    </div>
+}
+else
+{
+    @group
+}
+
+@code {
+    /// <summary>Selected value. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>The options.</summary>
+    [Parameter, EditorRequired] public IEnumerable<OdsRadioOption> Options { get; set; } = [];
+
+    /// <summary>Lay options out horizontally instead of stacked.</summary>
+    [Parameter] public bool Row { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Visible group label (preferred) — renders the standard field label,
+    /// wired to the group via aria-labelledby.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Accessible name for the group when the surrounding UI already labels
+    /// it visually. Prefer <see cref="Label"/>.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private readonly string _labelId = $"rg-{Guid.NewGuid():N}";
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string CssClass => string.Join(' ', new[]
+    {
+        Row ? "d-flex flex-row" : "d-flex flex-column",
+        Class,
+    }.Where(x => !string.IsNullOrEmpty(x)));
+
+    private Task OnValueChanged(string value)
+    {
+        Value = value;
+        return ValueChanged.InvokeAsync(value);
+    }
+}

@@ -1,0 +1,80 @@
+@using Odyssey.Dtos.Finance
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+@inject IReferenceDataCache ReferenceData
+@inject IUploadLimitsCache UploadLimits
+
+@*
+    AddFileDialog — upload documents and attach them to an account. Uses the shared OdsFileUpload
+    dropzone (the same control the design's AddFileModal renders): drag-or-browse, per-file rename +
+    AccountFileType picker, and an optional per-file validity editor (Valid from/to · Issued · Issued
+    by) rendered beneath each row via OdsFileUpload's RenderFileExtra slot.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelClicked" Icon="cloud_upload">
+    <Title>Upload files</Title>
+    <Subtitle>Upload statements, receipts, or documents and attach them to this account.</Subtitle>
+    <ChildContent>
+        <div class="ods-modal-body">
+
+            <!-- Locked account context strip -->
+            <div class="efm-context">
+                <span class="efm-context-ic" style="background:var(--acct-checking-soft);color:var(--acct-checking);">
+                    <OdsMIcon Name="account_balance_wallet" Size="22" />
+                </span>
+                <div class="efm-context-meta">
+                    <div class="efm-context-acct">@AccountName</div>
+                    <div class="efm-context-facts">
+                        @(string.IsNullOrWhiteSpace(AccountNumber) ? "Files attach to this account" : AccountNumber)
+                    </div>
+                </div>
+            </div>
+
+            <OdsFileUpload Files="_files" FilesChanged="OnFilesChanged"
+                           Accept=".pdf,.jpg,.jpeg,.png"
+                           Kinds="_kinds" GuessKind="GuessKind"
+                           Error="@_error"
+                           Hint="@($"PDF, JPG, PNG · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")"
+                           RenderFileExtra="ValidityEditor" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelClicked">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="upload_file"
+                   Disabled="@(_files.Count == 0)" Loading="_isUploading" OnClick="SubmitAsync">
+            @(_files.Count > 1 ? $"Upload {_files.Count} files" : "Upload")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    // Per-file validity editor rendered beneath each row via OdsFileUpload.RenderFileExtra.
+    private RenderFragment<OdsUploadFileExtraContext> ValidityEditor => ctx =>
+    @<div>
+        <button type="button" class="afm-meta-toggle @(_metaOpen.Contains(ctx.File.Uid) ? "on" : "")"
+                @onclick="@(() => ToggleMeta(ctx.File))">
+            <OdsMIcon Name="event" Size="14" />
+            @(_metaOpen.Contains(ctx.File.Uid) ? "Hide validity" : "Add validity")
+        </button>
+        @if (_metaOpen.Contains(ctx.File.Uid))
+        {
+            <div class="afm-meta">
+                <div class="afm-meta-grid">
+                    <OdsDateField Label="Valid from" Value="ctx.File.ValidFrom" Max="ctx.File.ValidTo"
+                                  ValueChanged="@(v => Patch(ctx, f => f.ValidFrom = v))" />
+                    <OdsDateField Label="Valid to" Value="ctx.File.ValidTo" Min="ctx.File.ValidFrom"
+                                  ValueChanged="@(v => Patch(ctx, f => f.ValidTo = v))" />
+                    <OdsDateField Label="Issued" Value="ctx.File.IssuedAt"
+                                  ValueChanged="@(v => Patch(ctx, f => f.IssuedAt = v))" />
+                    <OdsSelect Label="Issued by" Value="@ctx.File.IssuedBy" Placeholder="Select issuer…"
+                               Options="_issuerOptions"
+                               ValueChanged="@(v => Patch(ctx, f => f.IssuedBy = v))" />
+                </div>
+                @if (RangeBad(ctx.File))
+                {
+                    <div class="afm-meta-err">“Valid to” can’t be before “Valid from”.</div>
+                }
+            </div>
+        }
+    </div>;
+}

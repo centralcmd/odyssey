@@ -1,0 +1,44 @@
+@*
+    OdsProgressBar — a determinate fill bar (Odyssey Design System · Spinner & ProgressBar).
+
+    Budget planned-vs-actual bars, upload progress. Value is 0–100 (clamped).
+    Tone colors the fill: default (brand) · income · expense · pending. Tall is
+    the 10px variant. For indeterminate motion use OdsSpinner instead.
+*@
+
+<div class="odc-progress @ToneClass @(Tall ? "tall" : null) @Class"
+     role="progressbar"
+     aria-valuenow="@Rounded"
+     aria-valuemin="0"
+     aria-valuemax="100"
+     aria-label="@AriaLabel">
+    <div class="odc-progress-fill" style="width:@(Clamped.ToString(System.Globalization.CultureInfo.InvariantCulture))%;"></div>
+</div>
+
+@code {
+    /// <summary>Fill percentage, 0–100 (clamped).</summary>
+    [Parameter] public double Value { get; set; }
+
+    /// <summary>Fill color — default (brand) · income · expense (muted) · pending · over (emphatic coral).</summary>
+    [Parameter] public OdsProgressTone Tone { get; set; } = OdsProgressTone.Default;
+
+    /// <summary>Taller 10px bar.</summary>
+    [Parameter] public bool Tall { get; set; }
+
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private double Clamped => Math.Max(0, Math.Min(100, Value));
+
+    private int Rounded => (int)Math.Round(Clamped);
+
+    private string ToneClass => Tone switch
+    {
+        OdsProgressTone.Income => "income",
+        OdsProgressTone.Expense => "expense",
+        OdsProgressTone.Pending => "pending",
+        OdsProgressTone.Over => "over",
+        _ => string.Empty,
+    };
+}

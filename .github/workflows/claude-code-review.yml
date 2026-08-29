@@ -1,0 +1,132 @@
+name: Claude Code Review
+
+on:
+  issue_comment:
+    types: [created]
+
+# Shares the group with the Claude Code workflow (see the comment there) so a review and
+# a general run on the same PR serialize instead of racing each other's commits. For an
+# issue_comment on a PR, `issue.number` IS the PR number, so the two agree on the key.
+concurrency:
+  group: claude-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  claude-review:
+    # Run on demand only, when someone comments `@claude review` on a PR. A bare
+    # `@claude` goes to the general Claude Code workflow instead, so the two
+    # never double-fire on the same comment.
+    #
+    # Author gate: this job holds CLAUDE_CODE_OAUTH_TOKEN and has `pull-requests: write`,
+    # so an ungated trigger on a public repo would let any GitHub user run the agent and
+    # post as the repo owner. Gated on the *commenter*, never on the PR author -- an
+    # outside contributor's PR is reviewed when a maintainer asks. Note what that gate
+    # does NOT do: it filters who can *start* the agent, not what the agent then *reads*.
+    # The diff it is pointed at is attacker-authored either way, which is why the tool
+    # allow-list below matters as much as this condition does.
+    if: |
+      github.event.issue.pull_request != null &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+      contains(github.event.comment.body, '@claude review')
+
+    runs-on: ubuntu-latest
+    permissions:
+      # No `issues: write`. The `if` above requires github.event.issue.pull_request, so this job
+      # only ever runs on a pull request, and the review comment it posts is a PR conversation
+      # comment, which `pull-requests: write` covers.
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Check PR targets main and is ready for review
+        id: pr-check
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+            const eligible = pr.data.base.ref === 'main' && !pr.data.draft;
+            core.setOutput('eligible', eligible.toString());
+            core.setOutput('pr_number', prNumber.toString());
+
+      - name: Checkout repository
+        if: steps.pr-check.outputs.eligible == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude
+        if: steps.pr-check.outputs.eligible == 'true'
+        uses: anthropics/claude-code-action@a60f3e1db3edbceed2b1e6c6a9d34c36b8a15eba # v1.0.209
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Allow auto-review on Dependabot's PRs (bots are blocked by default)
+          allowed_bots: 'dependabot[bot]'
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ steps.pr-check.outputs.pr_number }}'
+          # Read-only tools only. The author gate above is on the *commenter*, not on what is being
+          # read: the whole point of this workflow is that a maintainer asks for a review of someone
+          # else's diff, so attacker-authored text (the diff, changed files, the PR body) reaches the
+          # agent as part of its prompt while it holds CLAUDE_CODE_OAUTH_TOKEN and
+          # `pull-requests: write`. Prompt injection in that content is the exploit, and an allow-list
+          # with no bare Bash, no Write/Edit and no WebFetch leaves an injected instruction with no
+          # arbitrary-execution primitive and no egress channel.
+          #
+          # Two entries are load-bearing rather than decorative:
+          #   - `mcp__github_comment__update_claude_comment` MUST be listed. Supplying `prompt:` puts
+          #     the action in agent mode, where it installs the comment MCP server only if an
+          #     explicit mcp__github_comment tool appears here — without it the review runs and has
+          #     nowhere to post.
+          #   - Each Bash entry is a prefix pattern, so `Bash(gh pr view:*)` permits `gh pr view …`
+          #     and nothing else. `gh api` is deliberately absent: it can POST.
+          claude_args: |
+            --allowed-tools "Read,Grep,Glob,TodoWrite,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),mcp__github_comment__update_claude_comment"
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # or https://code.claude.com/docs/en/cli-reference for available options
+
+      - name: Fail if Claude review did not complete
+        # claude-code-action does not propagate the agent's own failure to the
+        # job status, so a first-turn error (e.g. an expired
+        # CLAUDE_CODE_OAUTH_TOKEN) otherwise leaves a green check with no
+        # review posted. Inspect the execution log and fail loudly instead.
+        if: steps.pr-check.outputs.eligible == 'true'
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
+            # An empty execution log has two causes. claude-code-action
+            # deliberately skips (logging nothing) when this workflow file
+            # differs from the default branch — its anti-tampering check, which
+            # always trips on PRs that edit the workflow itself. That is
+            # expected, not a failure. Any *other* empty log is a real problem
+            # (the action crashed or never ran). Distinguish the two by
+            # replicating the action's own rule: compare this workflow file
+            # against the default branch. Fail closed if we can't confirm.
+            workflow_file=".github/workflows/claude-code-review.yml"
+            git fetch --depth=1 origin "$DEFAULT_BRANCH" >/dev/null 2>&1 || true
+            if git rev-parse --verify --quiet "origin/$DEFAULT_BRANCH" >/dev/null \
+               && ! git diff --quiet "origin/$DEFAULT_BRANCH" -- "$workflow_file"; then
+              echo "::notice::Review workflow differs from $DEFAULT_BRANCH, so claude-code-action skipped it (workflow validation). This is expected on PRs that change the workflow and will run normally once merged."
+              exit 0
+            fi
+            echo "::error::Claude review produced no execution log — the action did not run as expected."
+            exit 1
+          fi
+          # Slurp (-s) so this works for both a single JSON-array log and a
+          # newline-delimited stream-json log; otherwise jq evaluates each
+          # top-level record separately and a leading non-result record yields
+          # a spurious "null" that fails the comparison below.
+          is_error=$(jq -rs '[.[] | .. | objects | select(.type == "result")] | last | .is_error' "$EXECUTION_FILE")
+          if [ "$is_error" != "false" ]; then
+            echo "::error::Claude review failed (is_error=$is_error); no review was posted. Check the CLAUDE_CODE_OAUTH_TOKEN secret and the run logs."
+            exit 1
+          fi
+          echo "Claude review completed successfully."

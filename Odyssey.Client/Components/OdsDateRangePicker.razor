@@ -1,0 +1,92 @@
+@*
+    OdsDateRangePicker — a compact, inline two-field date-range control for filter/search bars
+    (Odyssey Design System · DateRangePicker): a leading icon + short caption, a start and end
+    OdsDatePicker joined by a dash, and a clear button that appears once either end is set. Reads as
+    one pill-shaped input sitting next to OdsSelect / OdsMultiSelect in a toolbar (the "Taken From – To"
+    range in the photo library, or any "between two dates" filter).
+
+    Bind the two ends via @bind-From / @bind-To (DateTime?, the Blazor-idiomatic form of the design's
+    ISO strings — mirrors OdsDatePicker). By default the range stays ordered (start caps at To, end
+    floors at From); pass Clamp="false" for independent ends. Min / Max bound both ends.
+*@
+
+<div class="@(string.IsNullOrEmpty(Class) ? "odc-dpr" : $"odc-dpr {Class}")" role="group" aria-label="@AriaLabel">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <span class="material-icons odc-dpr-ic" aria-hidden="true">@Icon</span>
+    }
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="odc-dpr-lab">@Label</span>
+    }
+    <OdsDatePicker Value="From" ValueChanged="OnFromChanged" Placeholder="@FromPlaceholder"
+                   Min="Min" Max="FromMax" Align="Align" Full="false" />
+    <span class="odc-dpr-dash" aria-hidden="true">–</span>
+    <OdsDatePicker Value="To" ValueChanged="OnToChanged" Placeholder="@ToPlaceholder"
+                   Min="ToMin" Max="Max" Align="Align" Full="false" />
+    @if (From is not null || To is not null)
+    {
+        <button type="button" class="odc-dpr-clear" aria-label="Clear date range" @onclick="Clear">
+            <span class="material-icons" aria-hidden="true">close</span>
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>Range start, or null for open-ended. Bindable via @bind-From.</summary>
+    [Parameter] public DateTime? From { get; set; }
+
+    [Parameter] public EventCallback<DateTime?> FromChanged { get; set; }
+
+    /// <summary>Range end, or null for open-ended. Bindable via @bind-To.</summary>
+    [Parameter] public DateTime? To { get; set; }
+
+    [Parameter] public EventCallback<DateTime?> ToChanged { get; set; }
+
+    /// <summary>Short uppercase caption shown before the fields (e.g. "Taken", "Due"). Omit for none.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Leading material-icon ligature. Defaults to "event"; pass null/empty to hide.</summary>
+    [Parameter] public string? Icon { get; set; } = "event";
+
+    [Parameter] public string FromPlaceholder { get; set; } = "From";
+
+    [Parameter] public string ToPlaceholder { get; set; } = "To";
+
+    [Parameter] public DateTime? Min { get; set; }
+
+    [Parameter] public DateTime? Max { get; set; }
+
+    /// <summary>Keep the range ordered so a crossed range can't be picked. Default true.</summary>
+    [Parameter] public bool Clamp { get; set; } = true;
+
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    [Parameter] public string AriaLabel { get; set; } = "Filter by date range";
+
+    [Parameter] public string? Class { get; set; }
+
+    private DateTime? FromMax => Clamp && To is not null ? To : Max;
+
+    private DateTime? ToMin => Clamp && From is not null ? From : Min;
+
+    private Task OnFromChanged(DateTime? value)
+    {
+        From = value;
+        return FromChanged.InvokeAsync(value);
+    }
+
+    private Task OnToChanged(DateTime? value)
+    {
+        To = value;
+        return ToChanged.InvokeAsync(value);
+    }
+
+    private async Task Clear()
+    {
+        From = null;
+        To = null;
+        await FromChanged.InvokeAsync(null);
+        await ToChanged.InvokeAsync(null);
+    }
+}

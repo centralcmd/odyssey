@@ -1,0 +1,85 @@
+@using Odyssey.Dtos
+@*
+    OdsContactChip — the read display of a contact as a chip (Odyssey Design System ·
+    ContactChip): a coloured type glyph + the name, drawn from the ContactType registry
+    (OdsTypeRegistries) — never re-hardcoded. The canonical way a linked/tagged contact reads
+    anywhere it's surfaced: journal contact links, transaction merchants, and tagged People
+    (Contacts of type Person — NOT app users, so a person is a chip here, never a User/Avatar).
+
+    States: normal (type glyph in category colour + name); archived (muted + dashed + a visible
+    "(archived)" cue, never colour alone); unavailable (a since-deleted / no-access id → link_off +
+    "Unavailable", so a dangling id never errors the surrounding surface). The glyph is decorative
+    (aria-hidden); all meaning rides in text (an sr-only accessible name carries the type + state).
+    Informational, not a link — a plain <span>.
+*@
+
+@if (Unavailable)
+{
+    <span class="@ChipClass" title="This contact was deleted or you don't have access.">
+        <span class="material-icons" aria-hidden="true">link_off</span>
+        Unavailable
+    </span>
+}
+else if (!string.IsNullOrEmpty(Name))
+{
+    <span class="@ChipClass">
+        <span class="sr-only">@AccessibleName</span>
+        <span class="material-icons" aria-hidden="true" style="@IconStyle">@_meta.Icon</span>
+        <span aria-hidden="true">@Name</span>
+        @if (ShowType && !string.IsNullOrEmpty(_meta.Label))
+        {
+            <span class="odc-chip-sub" aria-hidden="true">@_meta.Label</span>
+        }
+        @if (Archived)
+        {
+            <span class="odc-chip-sub" aria-hidden="true">(archived)</span>
+        }
+    </span>
+}
+
+@code {
+    /// <summary>Contact name to display. Required for a normal chip (ignored when <see cref="Unavailable"/>).</summary>
+    [Parameter] public string? Name { get; set; }
+
+    /// <summary>ContactType key (Person | Organization). Resolves the glyph/colour via the
+    /// registry; null falls back to Organization.</summary>
+    [Parameter] public string? Type { get; set; }
+
+    /// <summary>Muted "(archived)" cue when set.</summary>
+    [Parameter] public bool Archived { get; set; }
+
+    /// <summary>Render the "Unavailable" state for a since-deleted / no-access id.</summary>
+    [Parameter] public bool Unavailable { get; set; }
+
+    /// <summary>Compact (sm) sizing.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    /// <summary>Append the type label after the name. Default false — the glyph already encodes it.</summary>
+    [Parameter] public bool ShowType { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private OdsTypeOption _meta = OdsTypeRegistries.ContactTypeOf(null);
+
+    protected override void OnParametersSet() => _meta = OdsTypeRegistries.ContactTypeOf(Type);
+
+    private string ChipClass => string.Join(' ', new[]
+    {
+        "odc-chip", "outline",
+        !Unavailable && Archived ? "archived" : null,
+        Compact ? "sm" : null,
+        Class,
+    }.Where(c => !string.IsNullOrEmpty(c)));
+
+    private string? IconStyle => Archived ? null : $"color:{_meta.Color};";
+
+    private string AccessibleName
+    {
+        get
+        {
+            var typePart = string.IsNullOrEmpty(_meta.Label) ? string.Empty : $" ({_meta.Label})";
+            var archivedPart = Archived ? ", archived" : string.Empty;
+            return $"{Name}{typePart}{archivedPart}";
+        }
+    }
+}

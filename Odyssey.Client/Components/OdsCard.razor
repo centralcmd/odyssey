@@ -1,0 +1,36 @@
+@*
+    OdsCard — the surface primitive (Odyssey Design System · components/Card).
+
+    A MudPaper themed to the Odyssey card: elevated by default (use for stat
+    tiles), or Outlined to drop the shadow and rely on the border (preferred
+    for forms, per the system). Flush removes the default 16px padding for
+    edge-to-edge content (tables, media).
+*@
+
+<MudPaper Elevation="@(Outlined ? 0 : 1)"
+          Outlined="@Outlined"
+          Class="@CssClass"
+          Style="@Style"
+          @attributes="UserAttributes">
+    @ChildContent
+</MudPaper>
+
+@code {
+    /// <summary>Drop the shadow, keep the border. Preferred for forms.</summary>
+    [Parameter] public bool Outlined { get; set; }
+
+    /// <summary>Remove the default 16px padding for edge-to-edge content.</summary>
+    [Parameter] public bool Flush { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Style { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string CssClass => string.Join(' ', new[] { Flush ? null : "pa-4", Class }
+        .Where(x => !string.IsNullOrEmpty(x)));
+}

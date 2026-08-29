@@ -1,0 +1,59 @@
+@using Odyssey.Dtos.Application
+@inject Odyssey.ApiClient.Resources.IProfileApiClient ProfileApi
+@inject ISnackbar Snackbar
+@* /account · "Your profile" (issue #316). Owns the working copy and the PUT; the page keeps the
+   canonical profile so the header, avatar and Permissions tile re-render on save with no reload. *@
+
+@if (_saved)
+{
+    <div class="alert info acc-block-alert" role="status">
+        <span class="material-icons alert-icon" aria-hidden="true">check_circle</span>
+        <div class="alert-body">
+            <strong>Profile saved.</strong> Your name updates everywhere you appear — no need to sign out.
+        </div>
+    </div>
+}
+
+<MudCard Elevation="1" Class="ods-outline">
+    <MudCardContent Class="pa-4">
+        <div class="acc-cardhead bordered">
+            <span class="acc-ic"><MudIcon Icon="@Icons.Material.Filled.Badge" /></span>
+            <div class="acc-sec-titles">
+                <div class="acc-sec-title">Your profile</div>
+                <div class="acc-sec-sub">Your name and personal details. This is how you appear to other people in this workspace.</div>
+            </div>
+        </div>
+
+        <div class="acc-profile-preview">
+            <span class="acc-avatar-xl">@ProfileValidation.Initials(_draft)</span>
+            <div class="acc-profile-preview-id">
+                <div class="acc-profile-preview-name">@PreviewName</div>
+                <div class="acc-profile-preview-meta">
+                    <OdsChip Tone="OdsChipTone.Info" Icon="visibility">Shown to others</OdsChip>
+                    <span class="acc-profile-preview-hint">@PreviewHint</span>
+                </div>
+            </div>
+        </div>
+
+        <OdsProfileFields Model="_draft" ModelChanged="OnFieldsChanged"
+                          Errors="Errors" IdPrefix="acc" />
+
+        <OdsProfileTransparencyNote />
+
+        <div class="acc-form-actions">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@(_saving ? null : Icons.Material.Filled.Save)"
+                       Disabled="@(!CanSave)" OnClick="SaveAsync">
+                @if (_saving)
+                {
+                    <OdsSpinner Class="me-2" Decorative="true" />
+                }
+                Save profile
+            </MudButton>
+            @if (_saved)
+            {
+                <span class="acc-saved"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />Saved</span>
+            }
+        </div>
+    </MudCardContent>
+</MudCard>

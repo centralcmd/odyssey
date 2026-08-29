@@ -1,0 +1,269 @@
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Theme
+
+@attribute [Authorize(Policy = PermissionClaims.AccountsRead)]
+@attribute [Authorize(Policy = PermissionClaims.TransactionTagsRead)]
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IUserPreferenceService UserPreferences
+@inject IContactsApiClient Contacts
+@inject ITransactionsApiClient Transactions
+@inject IReferenceDataCache ReferenceData
+@inject IAccountsApiClient Accounts
+@inject IUploadLimitsCache UploadLimits
+
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelClicked" Icon="receipt_long"
+          Wide="true" Class="atm-dialog">
+    <Title>@(IsEdit ? "Edit transaction" : "New transaction")</Title>
+    <Subtitle>@(IsEdit ? "Update this transaction's details, tags, or attachments." : "Record money moving in or out of an account.")</Subtitle>
+    <ChildContent>
+        <div class="ods-modal-body">
+          <div class="odc-form-grid">
+
+                <!-- Amount hero (wide): direction toggle drives the sign of the posted Amount -->
+                <div class="atm-amount-block odc-form-grid-wide">
+                    <div class="align-self-start">
+                        <OdsSegmentedControl Options="DirectionOptions"
+                                             Value="@(_isExpense ? "expense" : "income")"
+                                             ValueChanged="@(v => _isExpense = v == "expense")"
+                                             AriaLabel="Direction" />
+                    </div>
+                    <div class="atm-amount @(_isExpense ? "expense" : "income") @(_amountError ? "has-error" : "")">
+                        <span class="atm-amount-sign">@(_isExpense ? "−" : "+")</span>
+                        <span class="atm-amount-cur">@CurrencySymbol</span>
+                        <input inputmode="decimal" placeholder="0.00"
+                               value="@_amountText" @oninput="OnAmountInput" aria-label="Amount" />
+                    </div>
+                    @if (_amountError)
+                    {
+                        <div class="aam-err-text">Enter an amount greater than zero.</div>
+                    }
+                </div>
+
+                <!-- Currency + Date -->
+                <MudAutocomplete T="string"
+                                 Label="Currency"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Value="@_currencyCode"
+                                 ValueChanged="OnCurrencyChanged"
+                                 SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
+                                 MinCharacters="0"
+                                 MaxItems="10"
+                                 Dense="true"
+                                 CoerceValue="true"
+                                 CoerceText="false"
+                                 ResetValueOnEmptyText="false"
+                                 ToStringFunc="@(code => code ?? string.Empty)" />
+                <OdsDatePicker @bind-Value="_timeStamp"
+                               Label="Date"
+                               HelperText="Defaults to today" />
+
+                <!-- Description (wide) -->
+                <div class="odc-form-grid-wide">
+                    <MudTextField @bind-Value="_description"
+                                  Label="Description"
+                                  Placeholder="e.g. Whole Foods Market · Mission"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Error="@_descError"
+                                  ErrorText="Add a short description."
+                                  Immediate="true" />
+                </div>
+
+                <!-- Account -->
+                <div class="aam-field">
+                    <div class="aam-field-label">Account</div>
+                    @if (LockAccount && _selectedAccount is not null)
+                    {
+                        <div class="atm-acct-locked">
+                            <span class="aam-type-ic sm"
+                                  style="background:@AccountTypeVisuals.BgColor(_selectedAccount.AccountType);color:@AccountTypeVisuals.FgColor(_selectedAccount.AccountType);">
+                                <OdsMIcon Name="@AccountTypeVisuals.MaterialIcon(_selectedAccount.AccountType)" Size="16" />
+                            </span>
+                            <span class="atm-acct-name">@_selectedAccount.Name</span>
+                            @if (!string.IsNullOrWhiteSpace(_selectedAccount.AccountNumber))
+                            {
+                                <span class="atm-acct-num mono">@_selectedAccount.AccountNumber</span>
+                            }
+                            <span class="atm-locked-pill">
+                                <OdsMIcon Name="lock" Size="13" />From this account
+                            </span>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudMenu ActivationEvent="@MouseEvent.LeftClick"
+                                 AnchorOrigin="Origin.BottomCenter"
+                                 TransformOrigin="Origin.TopCenter"
+                                 OpenChanged="@(open => _accountMenuOpen = open)"
+                                 FullWidth="true">
+                            <ActivatorContent>
+                                <button type="button" class="aam-type-trigger @(_accountError ? "has-error" : "")"
+                                        aria-haspopup="menu" aria-expanded="@(_accountMenuOpen ? "true" : "false")"
+                                        aria-label="Account" @onclick="@context.ToggleAsync">
+                                    <span class="atm-acct-current">
+                                        @if (_selectedAccount is not null)
+                                        {
+                                            <span class="aam-type-ic sm"
+                                                  style="background:@AccountTypeVisuals.BgColor(_selectedAccount.AccountType);color:@AccountTypeVisuals.FgColor(_selectedAccount.AccountType);">
+                                                <OdsMIcon Name="@AccountTypeVisuals.MaterialIcon(_selectedAccount.AccountType)" Size="16" />
+                                            </span>
+                                            <span class="atm-acct-name">@_selectedAccount.Name</span>
+                                            @if (!string.IsNullOrWhiteSpace(_selectedAccount.AccountNumber))
+                                            {
+                                                <span class="atm-acct-num mono">@_selectedAccount.AccountNumber</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span style="color:var(--mud-palette-text-secondary);">Choose an account…</span>
+                                        }
+                                    </span>
+                                    <OdsMIcon Name="expand_more" Size="20" Style="color:var(--mud-palette-text-secondary);" />
+                                </button>
+                            </ActivatorContent>
+                            <ChildContent>
+                                @foreach (var account in _accounts)
+                                {
+                                    <MudMenuItem OnClick="@(() => SelectAccount(account))">
+                                        <div class="aam-type-item @(account.AccountId == _selectedAccount?.AccountId ? "selected" : "")">
+                                            <span class="aam-type-ic sm"
+                                                  style="background:@AccountTypeVisuals.BgColor(account.AccountType);color:@AccountTypeVisuals.FgColor(account.AccountType);">
+                                                <OdsMIcon Name="@AccountTypeVisuals.MaterialIcon(account.AccountType)" Size="16" />
+                                            </span>
+                                            <span class="atm-acct-name">@account.Name</span>
+                                            @if (!string.IsNullOrWhiteSpace(account.AccountNumber))
+                                            {
+                                                <span class="atm-acct-num mono">@account.AccountNumber</span>
+                                            }
+                                            @if (account.AccountId == _selectedAccount?.AccountId)
+                                            {
+                                                <OdsMIcon Class="aam-type-check" Name="check" Size="18" />
+                                            }
+                                        </div>
+                                    </MudMenuItem>
+                                }
+                            </ChildContent>
+                        </MudMenu>
+                    }
+                    @if (_accountError)
+                    {
+                        <div class="aam-err-text">Choose which account this belongs to.</div>
+                    }
+                </div>
+
+                <!-- Contact: DS Combobox — search existing or type a new name to add one -->
+                <OdsFieldShell Label="Contact" HtmlFor="atm-cp" Optional="true"
+                               Help="Search an existing contact, or type a new name to add one.">
+                    @* The visible OdsFieldShell label + helper own the accessible name / description,
+                       so no AriaLabel here (it would double the name); AriaDescribedBy wires the input
+                       to the helper's id. *@
+                    <OdsCombobox InputId="atm-cp" Value="@_contactId" ValueChanged="@(v => _contactId = v)"
+                                 Options="_cpOptions" Placeholder="Who is it with?"
+                                 AriaDescribedBy="atm-cp-help"
+                                 CreateLabel="Add"
+                                 OnCreate="@(_canCreateContact ? CreateContactOption : null)" />
+                </OdsFieldShell>
+
+                <!-- Tags (wide, many-to-many) -->
+                <div class="odc-form-grid-wide">
+                    <OdsTagMultiSelect Label="Tags"
+                                       Optional
+                                       @bind-Value="_selectedTagIds"
+                                       Options="_tagOptions"
+                                       Placeholder="No tags"
+                                       Help="Add as many as fit — e.g. a category plus Reimbursable." />
+                </div>
+
+                <!-- Status (wide) — the optional metadata from the DTO, shown inline -->
+                <OdsFieldShell Label="Status" Class="odc-form-grid-wide">
+                    @* Single-select, so the chips are a radio group (matching OdsSegmentedControl): the
+                       active one is conveyed by aria-checked (not colour alone), roving tabindex keeps a
+                       single tab stop, and arrow / Home / End move + select together. *@
+                    <div class="atm-status-row" role="radiogroup" aria-label="Status">
+                        @for (var i = 0; i < _statuses.Length; i++)
+                        {
+                            var index = i;
+                            var status = _statuses[index];
+                            var sv = StatusVisual(status);
+                            var on = status == _status;
+                            <button type="button" class="atm-status-chip @(on ? "on" : "")"
+                                    role="radio" aria-checked="@(on ? "true" : "false")"
+                                    tabindex="@(on ? 0 : -1)"
+                                    @ref="_statusRefs[index]"
+                                    style="@(on ? $"background:{sv.Soft};color:{sv.Color};border-color:transparent;" : "")"
+                                    @onclick="@(() => _status = status)"
+                                    @onkeydown="OnStatusKeyDown"
+                                    @onkeydown:preventDefault="false">
+                                <OdsMIcon Name="@sv.Icon" Size="15" />@status
+                            </button>
+                        }
+                    </div>
+                </OdsFieldShell>
+
+                <!-- Status comment (wide) -->
+                <div class="odc-form-grid-wide">
+                    <MudTextField @bind-Value="_statusComment"
+                                  Label="Status comment (optional)"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  MaxLength="256"
+                                  Counter="256"
+                                  Immediate="true" />
+                </div>
+
+                <!-- External ID + Internal ID -->
+                <MudTextField @bind-Value="_externalId"
+                              Label="External ID (optional)"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              MaxLength="64" />
+                <MudTextField @bind-Value="_internalId"
+                              Label="Internal ID (optional)"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              MaxLength="64" />
+
+                <!-- Extra data (wide) -->
+                <div class="odc-form-grid-wide">
+                    <OdsNoteField Label="Extra data" Optional="true" MaxLength="1024" @bind-Value="_extraData"
+                                  Placeholder="Notes or raw metadata to keep with this transaction" />
+                </div>
+
+                <!-- Attachments (wide) — last, since the file list grows downward as files are added.
+                     Edit mode manages files against the already-existing transaction directly (upload/
+                     download/delete in place, via the shared files table); create mode queues files
+                     locally since the transaction doesn't have an ID yet to attach them to. -->
+                <div class="aam-field odc-form-grid-wide">
+                    <div class="aam-field-label">Attachments <span class="atm-opt">Optional</span></div>
+                    @if (IsEdit)
+                    {
+                        <TransactionFilesSection TransactionId="Transaction!.TransactionId"
+                                                 CanUpload="CanUploadFiles"
+                                                 CanDownload="CanDownloadFiles"
+                                                 CanDelete="CanDeleteFiles" />
+                    }
+                    else
+                    {
+                        <OdsFileUpload Files="_pendingFiles" FilesChanged="OnFilesChanged"
+                                       Accept=".pdf,.jpg,.jpeg,.png"
+                                       Kinds="_txnKinds" GuessKind="GuessKind" Compact="true"
+                                       Hint="@($"PDF, JPG, PNG · up to {_uploadLimits.MaxUploadMegabytes} MB each")" />
+                    }
+                </div>
+
+          </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelClicked">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")" Loading="_isSaving" OnClick="SaveClicked">
+            @(IsEdit ? "Save changes" : "Create transaction")
+        </OdsButton>
+    </Footer>
+</OdsModal>

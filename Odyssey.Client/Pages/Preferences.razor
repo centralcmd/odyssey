@@ -1,0 +1,130 @@
+@page "/preferences"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Theme
+@using Odyssey.Dtos.Finance
+@implements IDisposable
+@attribute [Authorize(Policy = PermissionClaims.UserPreferencesRead)]
+@inject IUserPreferenceService UserPreferences
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IReferenceDataCache ReferenceData
+
+<PageTitle>Preferences</PageTitle>
+
+<MudStack Spacing="4">
+
+    <PageHeader Title="Preferences" Icon="@Icons.Material.Filled.Tune"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled">
+        <SubLine>User preferences for the Odyssey application</SubLine>
+        @* Save is the page's primary verb (not a "create"), so it uses the custom
+           PrimaryAction slot to carry its own saving / saved states. *@
+        <PrimaryAction>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@(_justSaved ? Icons.Material.Filled.Check : Icons.Material.Filled.Save)"
+                       Disabled="@(_isSaving || !HasUnsavedChanges)"
+                       OnClick="Save">
+                @if (_isSaving)
+                {
+                    <OdsSpinner Class="me-2" Decorative="true" />
+                }
+                @(_justSaved ? "Saved" : "Save changes")
+            </MudButton>
+        </PrimaryAction>
+        <SearchContent>
+            <OdsSearchField Value="@_searchText" ValueChanged="OnSearchChanged"
+                            Placeholder="Search preferences…" />
+        </SearchContent>
+    </PageHeader>
+
+    @if (_isLoading)
+    {
+        <MudCard Elevation="1" Class="ods-outline">
+            <MudCardContent Class="pa-6">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <OdsSpinner Size="OdsSize.Lg" AriaLabel="Loading preferences" />
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Loading preferences…</MudText>
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <div class="pref-stack">
+            @if (ShowDarkModeCard)
+            {
+                <OdsSettingRow Icon="dark_mode" Title="Dark mode"
+                               Desc="Toggle between dark and light theme">
+                    <div class="pref-right">
+                        <div class="pref-control">
+                            <OdsSwitch @bind-Checked="DarkModeSwitchValue" />
+                        </div>
+                        <span class="pref-flag @(DarkModeDirty ? "on" : "")" title="Unsaved change" aria-hidden="true"></span>
+                    </div>
+                </OdsSettingRow>
+            }
+
+            @if (ShowCurrencyCard)
+            {
+                <OdsSettingRow Icon="attach_money" Title="Default currency"
+                               Desc="Currency used by default for new transactions">
+                    <div class="pref-right">
+                        <div class="pref-control">
+                            <MudAutocomplete T="string"
+                                             Variant="Variant.Filled"
+                                             Style="min-width: 140px; max-width: 200px;"
+                                             Value="@_currencyCode"
+                                             ValueChanged="OnCurrencyChanged"
+                                             SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
+                                             MinCharacters="0"
+                                             MaxItems="10"
+                                             Dense="true"
+                                             CoerceValue="true"
+                                             CoerceText="false"
+                                             ResetValueOnEmptyText="false"
+                                             ToStringFunc="@(code => code ?? string.Empty)" />
+                        </div>
+                        <span class="pref-flag @(DefaultCurrencyDirty ? "on" : "")" title="Unsaved change" aria-hidden="true"></span>
+                    </div>
+                </OdsSettingRow>
+            }
+
+            @if (ShowMainCurrencyCard)
+            {
+                <OdsSettingRow Icon="account_balance" Title="Main currency"
+                               Desc="Currency used to display total net worth, assets and liabilities">
+                    <div class="pref-right">
+                        <div class="pref-control">
+                            <MudAutocomplete T="string"
+                                             Variant="Variant.Filled"
+                                             Style="min-width: 140px; max-width: 200px;"
+                                             Value="@_mainCurrencyCode"
+                                             ValueChanged="OnMainCurrencyChanged"
+                                             SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
+                                             MinCharacters="0"
+                                             MaxItems="10"
+                                             Dense="true"
+                                             CoerceValue="true"
+                                             CoerceText="false"
+                                             ResetValueOnEmptyText="false"
+                                             ToStringFunc="@(code => code ?? string.Empty)" />
+                        </div>
+                        <span class="pref-flag @(MainCurrencyDirty ? "on" : "")" title="Unsaved change" aria-hidden="true"></span>
+                    </div>
+                </OdsSettingRow>
+            }
+
+            @if (!ShowDarkModeCard && !ShowCurrencyCard && !ShowMainCurrencyCard)
+            {
+                <MudCard Elevation="1" Class="ods-outline">
+                    <MudCardContent>
+                        <div class="nomatch">
+                            <span class="nomatch-ic"><MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Inherit" /></span>
+                            <MudText Typo="Typo.subtitle1">No preferences match</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Clear the search to see every setting.</MudText>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            }
+        </div>
+    }
+</MudStack>

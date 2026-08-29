@@ -1,0 +1,177 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="File analysis — runtime settings" subtitle="The three file-analysis values an administrator can change without a redeploy: the kill switch, the model and the provider base URL. Their advisories (what turning the switch on lets happen; that the configured API key travels to whatever host is set), the base URL's blocking shape rules — absolute https, no userinfo, query, fragment or path — and the two places the change shows up elsewhere: a disabled Analyze action that says why, and the transfer record's host / processor / region in force." viewport="1040x1500" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · File analysis runtime settings</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html,body{margin:0;background:var(--mud-palette-background)}
+    body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:30px 32px 48px}
+    .stack{display:flex;flex-direction:column;gap:30px;max-width:940px}
+    h1{font:var(--fw-bold) var(--fs-h6)/1 var(--font-sans);margin:0 0 6px}
+    .lede{font:var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0 0 26px;max-width:800px}
+    .cap{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);margin-bottom:10px}
+    .note{font:var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0 0 14px;max-width:820px}
+    code{font-family:var(--font-mono);font-size:.85em;color:var(--brand-text)}
+    a{color:var(--brand-text)}a:hover{color:var(--mud-palette-primary)}
+    .card{border:1px solid var(--mud-palette-divider);border-radius:12px;background:var(--mud-palette-surface);padding:20px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px 20px}
+    .grid2 .odc-sfield.wide{grid-column:1/-1}
+    table{border-collapse:collapse;width:100%;font:var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans)}
+    th{text-align:left;font-weight:var(--fw-medium);color:var(--mud-palette-text-secondary);padding:0 12px 8px 0;border-bottom:1px solid var(--mud-palette-divider)}
+    td{padding:9px 12px 9px 0;border-bottom:1px solid var(--mud-palette-divider);vertical-align:top}
+    td.v{font-family:var(--font-mono);white-space:nowrap;color:var(--mud-palette-text-primary)}
+    .no{color:var(--finance-expense)}.yes{color:var(--finance-income)}
+    .menu-demo{position:relative;height:200px}
+    .menu-demo .odc-menu-pop{position:static;display:block;max-width:300px}
+    .facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 22px}
+    .fact-l{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);margin-bottom:5px}
+    .fact-v{font:var(--fw-regular) 13px/1.4 var(--font-sans)}
+    .fact-v.mono{font-family:var(--font-mono);font-size:12px}
+    .unrec{color:var(--mud-palette-text-disabled,var(--mud-palette-text-secondary));font-style:italic}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>File analysis — the switch, the model and the destination as settings</h1>
+  <p class="lede">Three values leave <code>appsettings.json</code> for the settings store: whether documents may be sent at all, which model reads them, and where they are sent. All three take the security write claim, all three are audited, and each one carries the sentence a reader needs at the moment of the edit — the switch says what turning it on lets happen, the destination says that the configured API key goes with it.</p>
+  <div class="stack">
+    <div>
+      <div class="cap">1 · The three rows, at the top of the File analysis section</div>
+      <p class="note">The switch and the destination frame everything below them, so they sit above the processor-disclosure rows rather than after them. Advisories are non-blocking, computed after the write commits, and never set <code>aria-invalid</code>. Only the <b>host</b> of the base URL is ever echoed — a gateway URL such as <code>https://key:secret@gateway.internal/v1</code> is the expected shape here, so the host is parsed once at the advisory boundary and the rest is unreachable from the text.</p>
+      <div class="card"><div class="grid2" id="rows"></div></div>
+    </div>
+
+    <div>
+      <div class="cap">2 · The base URL's shape — blocking, and as strict as the request builder</div>
+      <p class="note">The provider resolves a root-absolute <code>/v1/messages</code> against this value, so any path would be silently discarded. Accepting one would mean the value that is saved and the value that is used differ, with nothing in the audit trail able to show it — so a path is refused rather than dropped. Private, loopback and link-local hosts are <b>allowed</b>: an internal gateway is the main reason this setting is editable at all.</p>
+      <div class="card">
+        <table>
+          <thead><tr><th style="width:290px">Value</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td class="v">api.anthropic.com</td><td class="no">Enter an absolute address including https://</td></tr>
+            <tr><td class="v">http://api.anthropic.com</td><td class="no">Only https:// is accepted — the configured API key is sent to this host</td></tr>
+            <tr><td class="v">https://key:secret@host</td><td class="no">Remove the username and password from the address</td></tr>
+            <tr><td class="v">https://host?token=…</td><td class="no">Remove the query string and fragment — enter the host only</td></tr>
+            <tr><td class="v">https://host/v1/messages</td><td class="no">Enter the host only — the provider appends /v1/messages itself</td></tr>
+            <tr><td class="v">https://gateway.internal/proxy</td><td class="no">Enter the host only — the provider appends /v1/messages itself</td></tr>
+            <tr><td class="v">https://gateway.internal</td><td class="yes">Accepted</td></tr>
+            <tr><td class="v">https://127.0.0.1:8443</td><td class="yes">Accepted</td></tr>
+            <tr><td class="v">https://host/</td><td class="yes">Accepted — canonicalised to <code>https://host</code>, so it reads as no change and writes no audit line</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="cap">3 · With analysis off, the affordance says so — before any document is picked</div>
+      <p class="note">The switch is read live, so the file row's action menu reflects it. <b>Analyze</b> renders disabled with a one-line reason wired as its <code>aria-describedby</code>; the item keeps <code>aria-disabled</code> rather than the <code>disabled</code> attribute so it stays in the roving-focus order and a keyboard or screen-reader user reaches the reason instead of a silently skipped item. The consent gate is unreachable, so no consent is ever collected for a transfer that cannot happen. Meaning is carried as text, never by the dimmed state alone.</p>
+      <div class="card menu-demo">
+        <ul class="odc-menu-pop down" role="menu" aria-orientation="vertical">
+          <li role="none"><button type="button" role="menuitem" tabindex="-1" class="odc-menu-item"><span class="material-icons" aria-hidden="true">visibility</span><span>Preview</span></button></li>
+          <li role="none"><button type="button" role="menuitem" tabindex="-1" class="odc-menu-item"><span class="material-icons" aria-hidden="true">download</span><span>Download</span></button></li>
+          <li role="none">
+            <button type="button" role="menuitem" tabindex="-1" class="odc-menu-item" aria-disabled="true" aria-describedby="fa-off-note"><span class="material-icons" aria-hidden="true">auto_fix_high</span><span>Analyze</span></button>
+            <p class="odc-menu-note" id="fa-off-note">AI document analysis is turned off for this instance.</p>
+          </li>
+          <li role="none"><button type="button" role="menuitem" tabindex="-1" class="odc-menu-item"><span class="material-icons" aria-hidden="true">fingerprint</span><span>Copy ID</span></button></li>
+        </ul>
+      </div>
+    </div>
+
+    <div>
+      <div class="cap">4 · The transfer record — the conditions a job actually ran under</div>
+      <p class="note">Once the destination, the processor and the region are all editable, they are part of the conditions a transfer ran under, so all three are stamped on the job from one snapshot and never rewritten (GDPR Art. 30(1)(e); the region decides whether a transfer fell under Art. 44–49). The host only — never the path, query or userinfo. A job recorded before these columns existed reads <b>Not recorded</b>; back-filling it with today's setting would put a value into an audit record that was never observed.</p>
+      <div class="card" style="display:flex;flex-direction:column;gap:20px">
+        <div class="facts">
+          <div><div class="fact-l">Processor in force</div><div class="fact-v">Anthropic · Claude</div></div>
+          <div><div class="fact-l">Region in force</div><div class="fact-v">United States</div></div>
+          <div><div class="fact-l">Destination host</div><div class="fact-v mono">gateway.corp.internal</div></div>
+        </div>
+        <div class="facts">
+          <div><div class="fact-l">Processor in force</div><div class="fact-v"><span class="unrec">Not recorded · Claude</span></div></div>
+          <div><div class="fact-l">Region in force</div><div class="fact-v"><span class="unrec">Not recorded</span></div></div>
+          <div><div class="fact-l">Destination host</div><div class="fact-v mono"><span class="unrec">Not recorded</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="note" style="margin:0">The consent gate's side of this — a disclosure that changed while the gate was open, answered <code>409 disclosure_changed</code> with the affirmation cleared and re-prompted — is on the <b>Analyze file dialog</b> card, under <b>Disclosure changed</b>.</p>
+  </div>
+
+  <script>
+    (function () {
+      var e = React.createElement, useState = React.useState;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var SettingField = NS.SettingField, TextInputField = NS.TextInputField, Switch = NS.Switch;
+      var PROCESSOR = 'Anthropic', REGION = 'United States', DEFAULT_MODEL = 'claude-sonnet-5', DEFAULT_HOST = 'api.anthropic.com';
+
+      // The switch has no frame to notch a label into: it reads as one tile,
+      // label and helper left, control right, spanning the grid.
+      function Tile(p) {
+        var s = useState(!!p.init);
+        var on = s[0];
+        return e('div', { className: 'odc-sfield wide' },
+          e('div', { className: 'odc-sfield-tile' },
+            e('div', { className: 'odc-sfield-tile-main' },
+              e('span', { className: 'odc-sfield-label', id: 'fa-en-label' }, 'AI document analysis'),
+              e('div', { className: 'odc-sfield-help' },
+                e('span', null, 'When off, no document is sent for analysis and every analysis endpoint answers 503. Turning it on does not by itself transfer anything: each analysis still requires the user\u2019s per-document consent. Read live on every request rather than from the settings cache, so turning it off stops the next transfer instead of the next one after a 30-second window. '),
+                e('span', { className: 'odc-sfield-stamp' }, 'Last changed by Priya Anand, 18 Aug 2026, 08:41.'))),
+            e(Switch, { checked: on, 'aria-labelledby': 'fa-en-label', onChange: function (c) { s[1](c); } })),
+          on ? e('div', { className: 'odc-sfield-advisory', role: 'status' },
+            e('span', { className: 'material-icons', 'aria-hidden': 'true' }, 'info'),
+            e('div', null, e('b', { className: 'odc-sfield-advisory-t' }, 'Advisory'), ' Documents will be transferred to ' + PROCESSOR + ' in ' + REGION + ' on each analysis. Each transfer still requires the user\u2019s per-document consent.')) : null);
+      }
+
+      function Model() {
+        var s = useState('claude-opus-4-7');
+        var v = s[0].trim();
+        var adv = (v && v !== DEFAULT_MODEL)
+          ? 'Analyses already recorded keep the model they ran under; only future analyses use this. Per-document cost and extraction quality vary by model. The shipped default is \u201c' + DEFAULT_MODEL + '\u201d.'
+          : undefined;
+        var err = !v ? 'Enter a value' : (v.length > 128 ? 'Must be 128 characters or fewer' : undefined);
+        return e(SettingField, {
+          label: 'Model', htmlFor: 'fa-model', wide: true, dirty: true, error: err, advisory: adv,
+          help: 'The model each analysis is sent to, and the model recorded against it. Analyses already completed keep the model they ran under. A stored value that cannot be used makes analysis refuse rather than fall back to the shipped default \u2014 a job stamp must never name a model that did not run.',
+          meta: 'Last changed by Dana Whitfield, 19 Aug 2026, 11:26.',
+        }, e(TextInputField, { id: 'fa-model', value: s[0], maxLength: 128, error: err ? ' ' : undefined, onChange: function (t) { s[1](t); } }));
+      }
+
+      // Blocking shape validation, mirroring the server's StringSetting.Validator.
+      function parse(raw) {
+        var v = String(raw || '').trim();
+        if (!v) return { error: 'Enter a value' };
+        var u = null;
+        try { u = new URL(v); } catch (x) { u = null; }
+        if (!u || !u.host) return { error: 'Enter an absolute address including https:// \u2014 for example https://api.anthropic.com' };
+        if (u.protocol !== 'https:') return { error: 'Only https:// is accepted \u2014 the configured API key is sent to this host' };
+        if (u.username || u.password) return { error: 'Remove the username and password from the address \u2014 credentials in the URL are not accepted' };
+        if (u.search || u.hash) return { error: 'Remove the query string and fragment \u2014 enter the host only' };
+        if (u.pathname && u.pathname !== '/') return { error: 'Enter the host only \u2014 the provider appends /v1/messages itself' };
+        return { host: u.host };
+      }
+
+      function BaseUrl() {
+        var s = useState('https://gateway.corp.internal');
+        var p = parse(s[0]);
+        var adv = (!p.error && p.host !== DEFAULT_HOST)
+          ? 'Analysis requests, including the configured API key, are sent to ' + p.host + '. Confirm you control this host and that the disclosed processor and region below still describe it.'
+          : undefined;
+        return e(SettingField, {
+          label: 'Provider base URL', htmlFor: 'fa-url', wide: true, dirty: true, error: p.error, advisory: adv,
+          help: 'Where analysis requests are sent. Must be an absolute https:// address with no path \u2014 the provider appends /v1/messages itself \u2014 and the configured API key is sent to this host, so change it only to a host you control or trust. Redirects are not followed, so the key and the document reach only this host.',
+          meta: 'Never changed \u2014 default value.',
+        }, e(TextInputField, { id: 'fa-url', value: s[0], maxLength: 256, inputMode: 'url', placeholder: 'https://api.anthropic.com', error: p.error ? ' ' : undefined, onChange: function (t) { s[1](t); } }));
+      }
+
+      ReactDOM.createRoot(document.getElementById('rows')).render(
+        e(React.Fragment, null, e(Tile, { init: true }), e(Model, null), e(BaseUrl, null)));
+    })();
+  </script>
+</body>
+</html>

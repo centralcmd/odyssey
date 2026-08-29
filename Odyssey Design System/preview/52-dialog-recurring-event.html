@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- @dsCard group="Dialogs" name="Edit recurring event" subtitle="AddCalendarEventModal (series) — the rule builder: frequency, interval, weekly day chips, and the required Ends choice (On date / After N). Bounded-only recurrence; saving regenerates future occurrences (PUT /api/recurrence-patterns). Live." viewport="720x820" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Edit recurring event dialog</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/calendar.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="../_ds_bundle.js"></script>
+  <script src="../ui_kits/web/data.js"></script>
+  <script src="../ui_kits/web/calendar-data.js"></script>
+
+  <style>
+    html, body { height: 100%; }
+    body { margin: 0; background: var(--mud-palette-background); font-family: var(--font-sans); color: var(--mud-palette-text-primary); }
+    .aam-scrim, .odc-scrim { animation: none !important; }
+    .aam-dialog, .odc-modal { animation: none !important; opacity: 1 !important; transform: none !important; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AddCalendarEventModal.jsx"></script>
+
+  <script type="text/babel" data-presets="env,react">
+    const CD = window.OdysseyCalendarData;
+    const t = CD.todayIso;
+    const series = {
+      calendarId: 'cal-work', title: 'Design review', description: 'Weekly critique.', location: 'Studio',
+      isAllDay: false, start: `${t}T13:00`, end: `${t}T14:00`, patternId: 'rp-demo',
+      pattern: { frequency: 'Weekly', interval: 1, daysOfWeek: ['Mon'], dayOfMonth: null, monthOfYear: null, recurrenceEndDate: null, occurrenceCount: 12 },
+    };
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <window.AddCalendarEventModal mode="series" event={series} calendars={CD.calendars}
+        onClose={() => {}} onUpdate={() => {}} onDeleteSeries={() => {}} />
+    );
+  </script>
+</body>
+</html>

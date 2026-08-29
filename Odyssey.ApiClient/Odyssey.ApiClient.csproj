@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <!--
+      Deliberately free of any web/UI dependency: no MudBlazor, no
+      Microsoft.AspNetCore.Components.*, no WebAssembly package. That is what lets a console app,
+      a test fixture or a future MAUI client reference this library. System.Net.Http.Json ships
+      in-box with net10.0, so no PackageReference is needed at all.
+    -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Odyssey.Dtos\Odyssey.Dtos.csproj" />
+    </ItemGroup>
+
+</Project>

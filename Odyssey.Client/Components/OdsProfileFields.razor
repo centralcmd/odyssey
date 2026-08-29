@@ -1,0 +1,100 @@
+@*
+    OdsProfileFields — the shared UserProfile field set (issue #316 · design system
+    profile-fields.jsx). The single source of the profile inputs, consumed by BOTH the
+    Account → Profile card and the first-sign-in Onboarding gate, so the two surfaces are
+    field-for-field identical. Built from DS atoms only (OdsField / OdsSelect / OdsDateField /
+    OdsFormRow) — no new interactive widget.
+
+    Binds a ProfileDto (mutated in place; ModelChanged fires so the host re-validates). Sex maps
+    to the OdsSelect string key ("Male"/"Female") and Date of birth to the OdsDatePicker DateTime?
+    contract, both converted at the field edge. Errors are keyed by ProfileDto property name.
+*@
+@using Odyssey.Client.Models
+
+<div class="pf-fields">
+    <OdsFormRow Cols="2">
+        <OdsField Label="First name" Required Value="@Model.FirstName"
+                  ValueChanged="@(v => OnField(m => m.FirstName = v))"
+                  MaxLength="128" Placeholder="Jane" Error="@Err(nameof(ProfileDto.FirstName))"
+                  AutoFocus="@AutoFocusFirst" id="@($"{IdPrefix}-first")" autocomplete="given-name" />
+        <OdsField Label="Last name" Required Value="@Model.LastName"
+                  ValueChanged="@(v => OnField(m => m.LastName = v))"
+                  MaxLength="128" Placeholder="Sato" Error="@Err(nameof(ProfileDto.LastName))"
+                  id="@($"{IdPrefix}-last")" autocomplete="family-name" />
+    </OdsFormRow>
+
+    <OdsFormRow Cols="2">
+        <OdsField Label="Middle name" Optional Value="@Model.MiddleName"
+                  ValueChanged="@(v => OnField(m => m.MiddleName = v))"
+                  MaxLength="128" Placeholder="—" Error="@Err(nameof(ProfileDto.MiddleName))"
+                  id="@($"{IdPrefix}-middle")" autocomplete="additional-name" />
+        <OdsField Label="Title" Optional Value="@Model.Title"
+                  ValueChanged="@(v => OnField(m => m.Title = v))"
+                  MaxLength="128" Placeholder="e.g. Dr., CFO" Error="@Err(nameof(ProfileDto.Title))"
+                  Help="A free-text title. Not shown in attribution."
+                  id="@($"{IdPrefix}-title")" />
+    </OdsFormRow>
+
+    <OdsField Label="Display name" Optional Value="@Model.DisplayName"
+              ValueChanged="@(v => OnField(m => m.DisplayName = v))"
+              MaxLength="256" Placeholder="@DisplayPlaceholder" Error="@Err(nameof(ProfileDto.DisplayName))"
+              Help="How you appear to others. Leave blank to use your first name."
+              id="@($"{IdPrefix}-display")" />
+
+    <OdsFormRow Cols="2">
+        <OdsDateField Label="Date of birth" Required Value="@BirthDateTime"
+                      ValueChanged="OnBirthDateChanged" Min="MinDate" Max="MaxDate"
+                      Help="Used for financial planning. Visible only to you."
+                      Error="@Err(nameof(ProfileDto.BirthDate))" Id="@($"{IdPrefix}-dob")" />
+        <OdsSelect Label="Sex" Required Value="@SexValue" ValueChanged="OnSexChanged"
+                   Options="SexOptions" Placeholder="Select…" Error="@Err(nameof(ProfileDto.Sex))"
+                   id="@($"{IdPrefix}-sex")" />
+    </OdsFormRow>
+</div>
+
+@code {
+    /// <summary>The working profile. Mutated in place; <see cref="ModelChanged"/> fires on every edit.</summary>
+    [Parameter, EditorRequired] public ProfileDto Model { get; set; } = new();
+
+    [Parameter] public EventCallback<ProfileDto> ModelChanged { get; set; }
+
+    /// <summary>Per-field error messages keyed by <see cref="ProfileDto"/> property name.</summary>
+    [Parameter] public IReadOnlyDictionary<string, string>? Errors { get; set; }
+
+    /// <summary>Prefix for the field ids so two instances never collide.</summary>
+    [Parameter] public string IdPrefix { get; set; } = "pf";
+
+    /// <summary>Focus the first field when the component first renders (the onboarding gate).</summary>
+    [Parameter] public bool AutoFocusFirst { get; set; }
+
+    private static readonly IReadOnlyList<OdsOption> SexOptions =
+    [
+        new(nameof(Sex.Female), "Female"),
+        new(nameof(Sex.Male), "Male"),
+    ];
+
+    private static readonly DateTime MinDate = new(1900, 1, 1);
+    private static DateTime MaxDate => DateTime.Today;
+
+    private string DisplayPlaceholder =>
+        string.IsNullOrWhiteSpace(Model.FirstName) ? "How others see you" : $"Defaults to “{Model.FirstName.Trim()}”";
+
+    private DateTime? BirthDateTime =>
+        Model.BirthDate is { } d ? d.ToDateTime(TimeOnly.MinValue) : null;
+
+    private string? SexValue => Model.Sex?.ToString();
+
+    private string? Err(string field) => Errors is not null && Errors.TryGetValue(field, out var msg) ? msg : null;
+
+    private Task OnField(Action<ProfileDto> mutate)
+    {
+        mutate(Model);
+        return ModelChanged.InvokeAsync(Model);
+    }
+
+    private Task OnBirthDateChanged(DateTime? value) =>
+        OnField(m => m.BirthDate = value is { } v ? DateOnly.FromDateTime(v) : null);
+
+    private Task OnSexChanged(string? value) =>
+        OnField(m => m.Sex = Enum.TryParse<Sex>(value, out var parsed) ? parsed : null);
+}

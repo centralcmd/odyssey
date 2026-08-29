@@ -1,0 +1,102 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Client.Services
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+@inject ITaskApiClient Tasks
+@inject Odyssey.Client.Services.IUploadLimitsCache UploadLimits
+
+@*
+    CreateTaskDialog — the "New task" / "Edit task" dialog (issue #311). Mirrors the NewJournalTask /
+    UpdateJournalTask DTOs. Status is chosen only when editing (a new task starts in Backlog); the API
+    maps the chosen status to its StartedAt/CompletedAt/Archived timestamps. Newly-attached files are
+    uploaded to the Files store first; the write stores only the resulting ids.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="checklist" Title="@(_editing ? "Edit task" : "New task")"
+               Subtitle="Title, optional details, a deadline, tags, and attachments."
+               SubmitLabel="@(_editing ? "Save changes" : "Create task")" OnSubmit="SaveAsync">
+
+    <OdsField Label="Title" Value="@_draft.Title" MaxLength="200" AutoFocus="true"
+              ValueChanged="@(v => { _draft.Title = v; _draft.TitleError = null; })" Error="@_draft.TitleError" />
+
+    <OdsFormRow>
+        <OdsDateField Label="Deadline" Optional="true" Value="_draft.Deadline"
+                      ValueChanged="@(v => _draft.Deadline = v)" Placeholder="No deadline" />
+        @if (_editing)
+        {
+            <OdsSelect Label="Status" Value="@_draft.Status.ToString()" Options="_statusOptions"
+                       ValueChanged="@(v => { if (Enum.TryParse<JournalTaskStatus>(v, out var s)) _draft.Status = s; })" />
+        }
+    </OdsFormRow>
+
+    <OdsTagMultiSelect Label="Tags" Optional="true" Value="_draft.TagIds"
+                       ValueChanged="@(v => _draft.TagIds = v)" Options="TagOptions"
+                       Placeholder="No tags" AddLabel="Add tag" />
+
+    <OdsNoteField Label="Content" Optional="true" MaxLength="4096" Rows="4"
+                  Value="@_draft.Content" ValueChanged="@(v => _draft.Content = v)" Placeholder="Optional details" />
+
+    <OdsFieldShell Label="Attachments" Optional="true" Help="PDFs and documents.">
+        <OdsFileUpload ShowKinds="false" Compact="true"
+                       MaxMegabytes="@_maxUploadMb"
+                       Files="_draft.Attachments" FilesChanged="@(f => _draft.Attachments = f)" />
+    </OdsFieldShell>
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The task being edited, or null to create.</summary>
+    [Parameter] public ExistingJournalTask? Task { get; set; }
+
+    /// <summary>Prebuilt upload records for the edited task's existing attachments (host hydrates the names).</summary>
+    [Parameter] public IReadOnlyList<OdsUploadFile> AttachmentUploads { get; set; } = [];
+
+    /// <summary>Active task-tag options (id → name).</summary>
+    [Parameter] public IReadOnlyList<OdsOption> TagOptions { get; set; } = [];
+
+    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private JournalTaskDraft _draft = new();
+    private bool _editing;
+
+    /// <summary>The effective per-file upload cap, for the dropzone hint. Seeded from the cache's
+    /// fallback so the hint is never blank before the lookup resolves.</summary>
+    private int _maxUploadMb = UploadLimitsCache.Fallback.MaxUploadMegabytes;
+
+    private static readonly IReadOnlyList<OdsOption> _statusOptions = JournalTaskUi.StatusOptions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _editing = Task is not null;
+        _draft = Task is not null ? JournalTaskDraft.From(Task, AttachmentUploads) : new JournalTaskDraft();
+        _maxUploadMb = (await UploadLimits.GetAsync()).MaxUploadMegabytes;
+    }
+
+    private async Task<bool> SaveAsync()
+    {
+        if (!_draft.Validate())
+            return false;
+
+        try
+        {
+            if (_editing)
+            {
+                var update = await JournalTaskWrite.ToUpdateAsync(_draft, Files, UploadLimits);
+                return (await Tasks.UpdateAsync(Task!.JournalTaskId, update)).Toast(Snackbar, "Unable to update task", "Task updated.");
+            }
+
+            var create = await JournalTaskWrite.ToNewAsync(_draft, Files, UploadLimits);
+            return (await Tasks.CreateAsync(create)).Toast(Snackbar, "Unable to create task", "Task created.");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Couldn't upload an attached file: {ex.Message}", Severity.Error);
+            return false;
+        }
+    }
+}

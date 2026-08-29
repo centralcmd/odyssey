@@ -1,0 +1,68 @@
+@*
+    ExportCalendarEventsDialog — the bulk VEVENT export dialog (issue #340, Odyssey Design System ·
+    ExportCalendarEventsModal). Opened from the Calendar page's overflow menu ("Export filtered as
+    iCalendar…"). Export-only — no file is read. A self-contained filter form (it does not mirror
+    "what's currently on screen" beyond its initial prefill — every open reseeds from current page state,
+    but the user can then diverge freely):
+      • All events — every event across every calendar the caller can read, bounded by the server's
+        MaxVEvents cap.
+      • Filtered   — an explicit From/To window (both required together, span <= 92 days), a Calendars
+        selection, and a search term.
+    States: Idle · Submitting (button -> "Exporting…", disabled, re-entrant submits blocked) · Error
+    (inline OdsAlert, dialog stays open so the user can narrow and retry) · Success (browser downloads,
+    dialog closes).
+*@
+
+@inject ICalendarApiClient CalendarApi
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="download"
+          Title="@TitleContent" Subtitle="@SubtitleContent" Class="cal-exp-dialog">
+    <ChildContent>
+        <div class="ods-modal-body cal-exp-form">
+            <OdsFieldShell Label="What to export">
+                <OdsSegmentedControl AriaLabel="Export scope" Value="@_scope" ValueChanged="OnScopeChanged" Options="_scopeOptions" />
+            </OdsFieldShell>
+
+            @if (_scope == "all")
+            {
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>Exports every event across all @Calendars.Count @(Calendars.Count == 1 ? "calendar" : "calendars"). Large calendars are capped — narrow with a filter if you hit the limit.</span>
+                </div>
+            }
+            else
+            {
+                <div class="cal-exp-filters">
+                    <OdsFieldShell Label="Date range" HtmlFor="cal-exp-daterange" Help="@($"Both dates together · up to {MaxSpanDays} days")">
+                        <div class="cal-exp-range">
+                            <OdsDateField AriaLabel="From date" DescribedBy="cal-exp-daterange-help" Value="_from" ValueChanged="@(v => { _from = v; _error = null; })" />
+                            <span class="cal-exp-range-sep" aria-hidden="true">→</span>
+                            <OdsDateField AriaLabel="To date" DescribedBy="cal-exp-daterange-help" Value="_to" ValueChanged="@(v => { _to = v; _error = null; })" Min="_from" />
+                        </div>
+                    </OdsFieldShell>
+                    <OdsMultiSelect Label="Calendars" Values="_calendarValues" ValuesChanged="OnCalendarsChanged" Options="_calendarOptions" Icon="calendar_month" />
+                    <OdsField Label="Search" Optional="true" Value="@_search" ValueChanged="@(v => _search = v)"
+                              Placeholder="Filter by title…" Help="Matches event titles only" />
+                </div>
+            }
+
+            @if (_error is not null)
+            {
+                <div @ref="_errorAlert" tabindex="-1"><OdsAlert Severity="Severity.Error">@_error</OdsAlert></div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <div style="flex:1"></div>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="download" Loading="_busy" OnClick="SubmitAsync">@(_busy ? "Exporting…" : "Export")</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleContent => @<text>Export events</text>;
+
+    private RenderFragment SubtitleContent => @<text>Download calendar events as an iCalendar (.ics) file you can import into another calendar app.</text>;
+}

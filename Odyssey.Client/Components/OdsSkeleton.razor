@@ -1,0 +1,59 @@
+@*
+    OdsSkeleton — a shimmering loading placeholder (Odyssey Design System · components/Skeleton).
+
+    The product fetches a lot, so a screen should render its shape immediately
+    and shimmer until data lands — never a blank panel or a spinner over empty
+    space. Variant picks the shape: Text (a line; use Lines for a paragraph),
+    Circle (avatars), Block (cards / tiles / charts). The shimmer falls static
+    under prefers-reduced-motion.
+*@
+
+@if (Variant == OdsSkeletonVariant.Text && Lines > 1)
+{
+    <div class="odc-skeleton-lines" aria-hidden="true">
+        @for (var i = 0; i < Lines; i++)
+        {
+            <span class="odc-skeleton text" style="@LineStyle(i)"></span>
+        }
+    </div>
+}
+else
+{
+    <span class="odc-skeleton @VariantClass @Class" aria-hidden="true" style="@BoxStyle"></span>
+}
+
+@code {
+    /// <summary>Text (a line) · Circle (avatars) · Block (cards / tiles / charts).</summary>
+    [Parameter] public OdsSkeletonVariant Variant { get; set; } = OdsSkeletonVariant.Text;
+
+    /// <summary>CSS width (e.g. "100%", "120px").</summary>
+    [Parameter] public string? Width { get; set; }
+
+    /// <summary>CSS height — required for Circle / Block; Text derives its own height.</summary>
+    [Parameter] public string? Height { get; set; }
+
+    /// <summary>For Text: render N stacked lines (the last is shortened).</summary>
+    [Parameter] public int Lines { get; set; } = 1;
+
+    [Parameter] public string? Class { get; set; }
+
+    private string VariantClass => Variant switch
+    {
+        OdsSkeletonVariant.Circle => "circle",
+        OdsSkeletonVariant.Block => "block",
+        _ => "text",
+    };
+
+    private string? BoxStyle => Style(Width, Height);
+
+    private string? LineStyle(int index) =>
+        Style(index == Lines - 1 ? "70%" : (Width ?? "100%"), Height);
+
+    private static string? Style(string? width, string? height)
+    {
+        var parts = new List<string>(2);
+        if (!string.IsNullOrEmpty(width)) parts.Add($"width:{width};");
+        if (!string.IsNullOrEmpty(height)) parts.Add($"height:{height};");
+        return parts.Count == 0 ? null : string.Concat(parts);
+    }
+}

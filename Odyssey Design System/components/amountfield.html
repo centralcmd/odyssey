@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="AmountField" subtitle="The canonical money / numeric input — currency or unit adornment, error + helper states, md and lg sizes. Replaces the hand-rolled .trm-value / .est-value / .atm-amount inputs. Mounted from the DS namespace." viewport="900x620" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · AmountField</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 760px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; }
+    .note { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 12px; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .sep { height: 1px; background: var(--mud-palette-divider); }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 22px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>AmountField — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;AmountField prefix value onChange /&gt;</code></h1>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var AmountField = NS.AmountField;
+      var useState = React.useState;
+
+      function Field(props) {
+        var s = useState(props.init || '');
+        return e(AmountField, Object.assign({}, props, { value: s[0], onChange: function (v) { s[1](v); } }));
+      }
+
+      function Section(title, body) {
+        return e(React.Fragment, null,
+          e('div', null, e('div', { className: 'cap' }, title), body));
+      }
+
+      var root = [
+        Section(['Default · ', e('code', { key: 'c' }, 'size="md"')],
+          e('div', { className: 'row' },
+            e(Field, { key: 1, label: 'Amount', prefix: '$', init: '1,250.00', help: 'Account currency · USD' }),
+            e(Field, { key: 2, label: 'Interest rate', suffix: '%', allowNegative: true, init: '3.40', help: 'Negative allowed' }))),
+        e('div', { className: 'sep' }),
+        Section('States',
+          e('div', { className: 'row' },
+            e(Field, { key: 1, label: 'With error', prefix: '$', init: '-50', error: 'A fee amount can’t be negative.' }),
+            e(Field, { key: 2, label: 'Optional', optional: true, prefix: '€', placeholder: '0.00' }),
+            e(AmountField, { key: 3, label: 'Disabled', prefix: '$', value: '0.00', disabled: true }),
+            e(Field, { key: 4, label: 'Right-aligned', suffix: 'kr', align: 'right', init: '12 400' }))),
+        e('div', { className: 'sep' }),
+        Section(['Hero · ', e('code', { key: 'c' }, 'size="lg"')],
+          e('div', { style: { maxWidth: 360 } },
+            e(Field, { label: 'Estimated value', size: 'lg', prefix: '$', init: '485,000', help: 'Recorded in USD' })))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>

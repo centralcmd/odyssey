@@ -1,0 +1,111 @@
+/* ── Analyze-file modal (.fan-*) ────────────────────────────────────────────
+   The dialog's own chrome, rendered in the standard OdsModal frame. These were
+   global in wwwroot/css/app.css until issue #371 — the "MudDialog renders in a
+   portal" note there only ever applied to the *paper* MudBlazor itself renders,
+   not to the markup this component authors, which carries this file's scope
+   attribute wherever the portal mounts it.
+
+   Still global in app.css, because this component does not render the elements
+   they target: `.fan-modal.mud-dialog`, `.fan-consent-modal.mud-dialog` and
+   `.fan-unavailable-modal.mud-dialog` (the per-phase dialog widths — the class
+   is handed to OdsModal and lands on MudBlazor's dialog element).
+
+   `::deep` appears wherever a rule reaches into a child component's markup —
+   OdsMIcon's `.material-icons`, OdsCheckbox's `.odc-check*`, OdsMatchIndicator's
+   `.odc-match*`, the MudAutocomplete/tag-picker internals — since CSS isolation
+   only stamps this component's own elements. */
+
+/* The phase bodies bring their own layout; the wrapper just gaps the review column. */
+.fan-content.wide { display: flex; flex-direction: column; gap: 12px; }
+
+
+/* review footer split */
+.fan-foot-split { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 16px; }
+.fan-foot-summary { display: flex; align-items: baseline; gap: 12px; }
+.fan-foot-count { font-size: 0.8125rem; font-weight: 500; line-height: 1; color: var(--mud-palette-text-primary); }
+.fan-foot-net { font-size: 0.8125rem; }
+.fan-foot-net.expense { color: var(--finance-expense); }
+.fan-foot-net.income { color: var(--finance-income); }
+
+/* single-column states */
+.fan-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 26px 24px 12px; }
+.fan-state-ic {
+  width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary);
+}
+.fan-state-ic.ok   { background: var(--finance-income-soft); color: var(--finance-income); }
+.fan-state-ic.err  { background: var(--finance-expense-soft); color: var(--finance-expense); }
+.fan-state-ic.warn { background: var(--finance-pending-soft); color: var(--finance-pending); }
+.fan-state-title { font-size: 1rem; font-weight: 500; line-height: 1.3; color: var(--mud-palette-text-primary); }
+.fan-state-text { font-size: 0.84rem; line-height: 1.55; color: var(--mud-palette-text-secondary); max-width: 46ch; margin: 0; }
+.fan-state-text b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.fan-state-note { font-size: 0.75rem; line-height: 1.5; color: var(--mud-palette-text-secondary); max-width: 42ch; margin: 4px 0 0; }
+
+/* analyzing spinner + steps */
+.fan-spinner {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 3px solid var(--mud-palette-divider); border-top-color: var(--mud-palette-primary);
+  animation: fan-spin 0.8s linear infinite;
+}
+@keyframes fan-spin { to { transform: rotate(360deg); } }
+.fan-steps { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; align-items: flex-start; }
+.fan-step { display: flex; align-items: center; gap: 9px; white-space: nowrap; font-size: 0.8125rem; line-height: 1; color: var(--mud-palette-text-disabled); }
+.fan-step ::deep .material-icons { color: var(--finance-income); }
+.fan-step.done { color: var(--mud-palette-text-secondary); }
+.fan-step.active { color: var(--mud-palette-text-primary); font-weight: 500; }
+.fan-step-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; opacity: 0.55; }
+.fan-step.active .fan-step-dot { border-color: var(--mud-palette-primary); border-top-color: transparent; animation: fan-spin 0.8s linear infinite; opacity: 1; }
+
+/* WCAG 2.3.3 — the analysing state can sit on screen for minutes, so its two continuous
+   spins stop under a reduced-motion preference. The dot keeps its full ring so the active
+   step still reads as distinct from the pending ones without motion. */
+@media (prefers-reduced-motion: reduce) {
+    .fan-spinner { animation: none; }
+    .fan-step.active .fan-step-dot { animation: none; border-top-color: var(--mud-palette-primary); }
+}
+
+.fan-failures { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 420px; margin-top: 4px; }
+.fan-failure {
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  font-size: 0.78rem; line-height: 1.3; color: var(--finance-expense);
+  background: var(--finance-expense-soft); border-radius: 6px; padding: 8px 10px;
+}
+
+@media (max-width: 720px) {
+  .fan-foot-split { flex-direction: column; align-items: stretch; gap: 10px; }
+}
+
+/* Visually-hidden dialog-scoped live region (announces the async resume state). */
+.fan-live {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Re-prompt banner above the consent gate after a 409 disclosure_changed (issue #439). Focusable
+   (tabindex="-1") so focus lands on the reason rather than on the affirmation that just reset.
+   The focus ring is deliberately NOT suppressed: .fan-state-title in this same file has the identical
+   tabindex="-1" + FocusAsync() shape and keeps its default ring, as does the alert-wrapping div in
+   ExportCalendarEventsDialog. A high-contrast box is not a focus indicator — it looks the same whether
+   or not focus is on it. */
+.fan-consent-reprompt { margin: 0 2px var(--space-3); }
+
+/* ---- Reanalyze-confirm fork (resume vs. analyze again) ----
+   Ported from the design system's AnalyzeFileModal (kit.css). The fork shown when Analyze is
+   chosen on a file that already has an open, resumable review. */
+.fan-fork { display: flex; flex-direction: column; gap: 16px; padding: 6px 2px 2px; }
+.fan-fork-lead { display: flex; gap: 14px; align-items: flex-start; }
+.fan-fork-ic {
+  width: 44px; height: 44px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: rgba(79, 215, 203, 0.12); color: var(--tide-400);
+}
+.fan-fork-t { font-size: 0.9375rem; font-weight: 500; line-height: 1.3; color: var(--mud-palette-text-primary); margin-bottom: 5px; }
+.fan-fork-s { font-size: 0.84rem; line-height: 1.6; color: var(--mud-palette-text-secondary); margin: 0; text-wrap: pretty; }
+.fan-fork-s b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.fan-fork-note {
+  display: flex; gap: 9px; align-items: flex-start;
+  padding: 11px 13px; border-radius: 8px;
+  background: var(--finance-pending-soft); border: 1px solid rgba(232, 178, 86, 0.28);
+  font-size: 0.75rem; line-height: 1.5; color: var(--mud-palette-text-secondary);
+}
+.fan-fork-note ::deep .material-icons { color: var(--finance-pending); flex: none; margin-top: 1px; }

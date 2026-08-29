@@ -1,0 +1,40 @@
+@* DS parity — no consumer yet: the per-transaction attachments section lists one transaction's
+   files and offers no type filter, so there is nothing to filter across. Its single-select
+   sibling OdsTransactionFileTypeSelect is used to tag files on upload. *@
+@*
+    OdsTransactionFileTypeMultiSelect — a checkbox-list filter pre-wired to the
+    TransactionFileType vocabulary (Odyssey Design System ·
+    components/TransactionFileTypeMultiSelect).
+
+    Each row carries its Material icon in its category color, with a count badge on
+    the trigger. A thin wrapper over OdsMultiSelect — Values + Align pass straight
+    through. Defaults: trigger label "Any type", trigger glyph `receipt_long`. Bind
+    the chosen keys via @bind-Values.
+*@
+
+<OdsMultiSelect Values="@Values"
+                ValuesChanged="ValuesChanged"
+                Options="OdsTypeRegistries.TransactionFileOptions"
+                Label="@Label"
+                Icon="@Icon"
+                Align="@Align"
+                Class="@Class"
+                @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Selected enum keys. Bindable via @bind-Values.</summary>
+    [Parameter] public IReadOnlyCollection<string> Values { get; set; } = [];
+
+    [Parameter] public EventCallback<IReadOnlyCollection<string>> ValuesChanged { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Any type";
+
+    [Parameter] public string? Icon { get; set; } = "receipt_long";
+
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

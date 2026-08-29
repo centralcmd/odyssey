@@ -1,0 +1,119 @@
+<!doctype html>
+<!-- @dsCard group="Reference data" name="Insurance policy & document types" subtitle="The InsurancePolicyType and PolicyFileType vocabularies + the derived coverage-status chips. Name, Material icon, fixed oklch color per member. Driven by the OdysseyData.insurancePolicyTypes / policyFileTypes registries." viewport="1100x1320" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Insurance types</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <script src="../ui_kits/web/data.js"></script>
+  <style>
+    html, body { min-height: 0; background: var(--mud-palette-background); }
+    body { width: 1100px; padding: 24px; box-sizing: border-box; font-family: var(--font-sans); color: var(--mud-palette-text-primary); }
+
+    .spec-doc { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 20px 22px; margin-bottom: 20px; }
+    .spec-doc h2 { font: 600 16px/1.3 var(--font-sans); margin: 0 0 7px; }
+    .spec-lead { font: 400 13px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 94ch; }
+    .spec-lead b { color: var(--tide-400); font-weight: 500; }
+    .spec-src { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+    .spec-src .pill { font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 6px 11px; }
+    .spec-src .pill b { color: var(--tide-400); font-weight: 600; }
+
+    .stage-label { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 4px 0 12px 2px; display: flex; align-items: center; gap: 8px; }
+    .stage-label .material-icons { font-size: 15px; color: var(--tide-400); }
+
+    .cpt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .cpt-grid.four { grid-template-columns: repeat(3, 1fr); }
+    .cpt-card { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 11px; }
+    .cpt-top { display: flex; align-items: center; gap: 12px; }
+    .cpt-avatar { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+    .cpt-avatar .material-icons { font-size: 22px; }
+    .cpt-titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .cpt-label { font: 500 15px/1.1 var(--font-sans); }
+    .cpt-default { font: 600 9px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--tide-400); border: 1px solid color-mix(in oklch, var(--tide-400) 45%, transparent); border-radius: 999px; padding: 3px 6px; align-self: flex-start; }
+    .cpt-desc { font: 400 12px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0; }
+    .cpt-meta { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-top: 2px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider-light); }
+    .cpt-meta dt { font: 600 9px/1.5 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .cpt-meta dd { margin: 0; font: 500 11px/1.5 var(--font-mono); color: var(--mud-palette-text-primary); }
+    .cpt-meta dd .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; transform: translateY(1px); }
+
+    /* Coverage status chip row (mirrors .odc-chip) */
+    .cov-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+    .cov { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; padding: 6px 13px; font: 500 13px/1 var(--font-sans); }
+    .cov .dot { width: 8px; height: 8px; border-radius: 999px; }
+    .cov .material-icons { font-size: 15px; }
+    .cov.Active { color: var(--finance-income); background: var(--finance-income-soft); }
+    .cov.ExpiringSoon { color: var(--pending-text); background: var(--finance-pending-soft); }
+    .cov.Lapsed { color: var(--finance-expense); background: var(--finance-expense-soft); }
+    .cov.Upcoming { color: var(--info-text); background: var(--info-soft); }
+    .cov.NoCoverage { color: var(--mud-palette-text-secondary); background: transparent; border: 1px solid var(--mud-palette-divider); }
+    .cov.Archived { color: var(--mud-palette-text-secondary); background: transparent; border: 1px solid var(--mud-palette-divider); }
+    .cov .det { margin-left: 2px; padding-left: 7px; border-left: 1px solid currentColor; opacity: 0.72; font-variant-numeric: tabular-nums; }
+
+    .spec-notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .spec-notes li { position: relative; padding-left: 22px; font: 400 12.5px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .spec-notes li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .spec-notes li code { font: 500 11.5px/1 var(--font-mono); color: var(--tide-400); }
+    .spec-notes li .material-icons { position: absolute; left: 0; top: 0; font-size: 16px; color: var(--tide-400); }
+  </style>
+</head>
+<body>
+  <div class="spec-doc">
+    <h2>Insurance policy &amp; document types</h2>
+    <p class="spec-lead">Two enums power the <b>Insurance Policies</b> feature. The <b>InsurancePolicyType</b> classifies a policy (drives its avatar + the type filter); the <b>PolicyFileType</b> classifies the documents that attach to a policy <b>and</b> to a renewal. Each enum carries only a name — the <b>icon</b> and <b>color</b> are a design-system decision, defined once in the registries so the avatar, the chip and the pickers all render a type identically. Hues share the categorical band with the account / contact registries; the feature's own accent is <b>indigo</b> (oklch hue 282). <b>Other</b> is the default in each and sorts last.</p>
+    <div class="spec-src">
+      <span class="pill">Enum <b>InsurancePolicyType</b> · <b>PolicyFileType</b></span>
+      <span class="pill">Registry <b>OdysseyData.insurancePolicyTypes</b> · <b>policyFileTypes</b></span>
+      <span class="pill">Pickers <b>InsurancePolicyTypeSelect</b> · <b>PolicyFileTypeSelect</b></span>
+      <span class="pill">Consumed by <b>Insurance.jsx</b></span>
+    </div>
+  </div>
+
+  <div class="stage-label"><span class="material-icons">shield</span>Policy types · twelve members</div>
+  <div class="cpt-grid" id="types"></div>
+
+  <div class="stage-label"><span class="material-icons">folder</span>Document types · attach to a policy or a renewal</div>
+  <div class="cpt-grid" id="files"></div>
+
+  <div class="spec-doc">
+    <div class="stage-label" style="margin-top:0;"><span class="material-icons">verified_user</span>Coverage status · derived, never stored</div>
+    <div class="cov-row">
+      <span class="cov Active"><span class="dot" style="background:currentColor;"></span>Active<span class="det">189 days left</span></span>
+      <span class="cov ExpiringSoon"><span class="material-icons">hourglass_bottom</span>Expiring soon<span class="det">12 days left</span></span>
+      <span class="cov Lapsed"><span class="material-icons">event_busy</span>Expired<span class="det">ended Jun 1</span></span>
+      <span class="cov Upcoming"><span class="dot" style="background:currentColor;"></span>Upcoming<span class="det">starts in 68 days</span></span>
+      <span class="cov NoCoverage"><span class="dot" style="background:currentColor;"></span>No coverage</span>
+      <span class="cov Archived"><span class="material-icons">inventory_2</span>Archived</span>
+    </div>
+    <ul class="spec-notes" style="margin-top:14px;">
+      <li><span class="material-icons">rule</span><b>Status is computed, not stored.</b> An ordered evaluation against one request "today" (<code>NoCoverage → Active/ExpiringSoon → Upcoming → Lapsed</code>), with the current renewal resolved by latest <code>FromDate</code>, then latest <code>CreatedAtUtc</code> on overlap.</li>
+      <li><span class="material-icons">accessibility_new</span><b>Meaning lives in the text label</b> — the leading dot/icon is <code>aria-hidden</code>. Status never rides on colour alone (<code>CoverageStatusChip</code> / WCAG).</li>
+      <li><span class="material-icons">palette</span><b>On existing finance accents</b> — Active = income mint · Expiring soon = pending amber · Expired = expense coral · Upcoming = info sea · No coverage / Archived = neutral. Brand tide never encodes status. Icons for the states shared with Contracts (Active · Upcoming · the ended state · Archived) match the contract status chip.</li>
+      <li><span class="material-icons">hub</span><b>One source of truth.</b> Recolor a type in the registry and every surface updates; keep the keys in lockstep with the C# enums.</li>
+    </ul>
+  </div>
+
+  <script>
+    (function () {
+      const D = window.OdysseyData || {};
+      const card = (t, isDefault) => `
+        <div class="cpt-card">
+          <div class="cpt-top">
+            <span class="cpt-avatar" style="background:${t.soft};color:${t.color};"><span class="material-icons">${t.icon}</span></span>
+            <div class="cpt-titles">
+              <span class="cpt-label">${t.label}</span>
+              ${isDefault ? '<span class="cpt-default">Default</span>' : ''}
+            </div>
+          </div>
+          <p class="cpt-desc">${t.desc || ''}</p>
+          <dl class="cpt-meta">
+            <dt>Key</dt><dd>${t.key}</dd>
+            <dt>Icon</dt><dd>${t.icon}</dd>
+            <dt>Color</dt><dd><span class="sw" style="background:${t.color};"></span>${t.color}</dd>
+          </dl>
+        </div>`;
+      document.getElementById('types').innerHTML = (D.insurancePolicyTypes || []).map(t => card(t, t.key === 'Other')).join('');
+      document.getElementById('files').innerHTML = (D.policyFileTypes || []).map(t => card(t, t.key === 'Other')).join('');
+    })();
+  </script>
+</body>
+</html>

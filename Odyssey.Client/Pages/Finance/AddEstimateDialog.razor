@@ -1,0 +1,97 @@
+@using System.Globalization
+@using Odyssey.Dtos.Finance
+@inject IReferenceDataCache ReferenceData
+@inject ISnackbar Snackbar
+@inject IAccountsApiClient Accounts
+
+@*
+    AddEstimateDialog — New / Edit dialog for an account value estimate, built on the shared
+    OdsModal shell like every other create/edit dialog. The field set mirrors the
+    NewAccountEstimate DTO and the AccountEstimateService validation: a required money value
+    (≥ 0) in the account currency, the currency locked to the account currency (shown
+    read-only — the server rejects a differing currency with 400), an effective date (past or
+    future), and an optional note. An estimate has no kind / unit / billing dimension — it is a
+    single amount, so every account type may carry one. Rejects an exact (AccountId,
+    EffectiveFrom) duplicate client-side; the API still has the final say (400 / 409 → toast).
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="@(IsEdit ? "edit" : "monitor")"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="est-dialog">
+    <ChildContent>
+        <div class="ods-modal-body">
+
+            @* Value — the hero money input *@
+            <div class="est-value-block">
+                <OdsAmountField Label="Estimated value" Size="lg" Prefix="@CurrencySymbol"
+                                Value="@_valueStr" ValueChanged="OnValueChanged"
+                                Error="@(_errors.TryGetValue("value", out var valErr) ? valErr : null)">
+                    <HelpContent>
+                        @if (Preview is null)
+                        {
+                            <text>Amount in <b>@Account.CurrencyCode</b></text>
+                        }
+                        else
+                        {
+                            <text>Recorded as <b>@Preview</b></text>
+                        }
+                    </HelpContent>
+                </OdsAmountField>
+            </div>
+
+            @* Currency (locked to account currency) + effective date *@
+            <OdsFormRow>
+                <div class="trm-field">
+                    <div class="trm-label">Currency</div>
+                    <div class="est-currency-lock">
+                        <span class="material-icons">lock</span>
+                        <span class="code">@Account.CurrencyCode</span>
+                        <span class="note">Account currency</span>
+                    </div>
+                </div>
+                <OdsDatePicker Value="_effectiveFrom" ValueChanged="OnEffectiveFromChanged" Label="Effective from" />
+            </OdsFormRow>
+            @if (_errors.TryGetValue("effectiveFrom", out var dateErr))
+            {
+                <div class="est-err" style="margin-top:-6px;">@dateErr</div>
+            }
+
+            @* Note *@
+            <OdsNoteField Label="Note" Optional="true" MaxLength="512"
+                          Value="@_note" ValueChanged="OnNoteChanged"
+                          Placeholder="Where this came from — e.g. “Refinance appraisal” or “Comparable sales”."
+                          Error="@(_errors.TryGetValue("note", out var noteErr) ? noteErr : null)" />
+
+            @* Recommendation hint — never gates; just orients *@
+            @if (!IsEdit)
+            {
+                <div class="est-rec-hint">
+                    <span class="material-icons">@(_recommended ? "recommend" : "info")</span>
+                    @if (_recommended)
+                    {
+                        <span>Estimates suit <b>@AccountTypeVisuals.Label(Account.AccountType)</b> accounts — their worth isn’t captured by transactions. The current estimate stands in for this account’s value in your net worth.</span>
+                    }
+                    else
+                    {
+                        <span>Estimates are typically used on asset accounts like property or vehicles. You can still record one on a <b>@AccountTypeVisuals.Label(Account.AccountType)</b> account.</span>
+                    }
+                </div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")"
+                   Loading="_isSaving" OnClick="SubmitAsync">
+            @(IsEdit ? "Save changes" : "Create estimate")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit estimate" : "New estimate")</text>;
+
+    private RenderFragment SubtitleFragment => IsEdit
+        ? @<text>Correct this value entry.</text>
+        : @<text>Record what @Account.Name is worth, effective from a date.</text>;
+}

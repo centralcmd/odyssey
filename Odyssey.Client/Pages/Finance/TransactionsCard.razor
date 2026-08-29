@@ -1,0 +1,97 @@
+@page "/transactions"
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Authorization
+@attribute [Authorize(Policy = PermissionClaims.TransactionsRead)]
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IReferenceDataCache ReferenceData
+@inject ITransactionsApiClient Transactions
+@inject IAccountsApiClient Accounts
+
+<PageTitle>Transactions</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<MudStack Spacing="4">
+
+    <PageHeader Title="Transactions"
+                Icon="@Icons.Material.Filled.ReceiptLong"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New transaction"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@TotalCount transaction@(TotalCount == 1 ? "" : "s") · in @Money(TotalIn) · out @Money(TotalOut)</SubLine>
+        <OverviewContent>
+            <div class="odc-summary-grid">
+                <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No transactions." />
+                <OdsBreakdownTile Label="By type" Rows="DirectionRows" Empty="No transactions." />
+            </div>
+        </OverviewContent>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="ReloadAsync"
+                                Placeholder="Search description, contact…" Class="ph-search" />
+                <OdsMultiSelect Label="Account" Values="_accountFilter" ValuesChanged="OnAccountFilterChanged" Options="_accountOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Tag" Values="_tagFilter" ValuesChanged="OnTagFilterChanged" Options="_tagOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Direction" Values="_directionFilter" ValuesChanged="OnDirectionFilterChanged" Options="_directionOptions" Class="ph-select" />
+                <OdsSortSelect TRow="ExistingTransaction" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <MudCard Outlined="true">
+        <OdsTxnTable Rows="@_transactions"
+                     Loading="_isLoading"
+                     Refetching="_refetching"
+                     Error="_loadError"
+                     OnRetry="GetTransactions"
+                     HasFilters="_hasFilters"
+                     OnClearFilters="ClearFilters"
+                     EmptyDescription="There are no transactions to show."
+                     ServerSort="true"
+                     Sort="_sort"
+                     SortChanged="OnSortChanged"
+                     Actions="BuildActions"
+                     OnDelete="HandleDelete">
+            <RenderDetail Context="t">
+                <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" />
+            </RenderDetail>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New transaction</OdsButton>
+                }
+            </CreateAction>
+        </OdsTxnTable>
+        @if (_totalCount > 0)
+        {
+            <OdsPager Page="_page" PageChanged="OnPageChanged"
+                      PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+                      TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
+        }
+    </MudCard>
+</MudStack>
+
+@if (_createKey != Guid.Empty)
+{
+    <CreateTransactionDialog @key="_createKey"
+                             @bind-Open="_createOpen"
+                             OnSaved="RefreshAsync" />
+}
+
+@if (_editTransaction is not null)
+{
+    <CreateTransactionDialog @key="_editTransactionKey"
+                             @bind-Open="_editTransactionOpen"
+                             Transaction="_editTransaction"
+                             CanDownloadFiles="_canDownloadFiles"
+                             CanUploadFiles="_canUploadFiles"
+                             CanDeleteFiles="_canDeleteFiles"
+                             OnSaved="RefreshAsync" />
+}

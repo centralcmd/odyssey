@@ -1,0 +1,431 @@
+@page "/settings"
+@using Odyssey.ApiClient.Contracts
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Authorization
+@attribute [Authorize(Policy = PermissionClaims.SystemSettingsRead)]
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject ISystemSettingsApiClient SystemSettings
+@inject ISecretSettingsApiClient SecretSettings
+@inject Odyssey.ApiClient.Resources.IDataExportApiClient DataExport
+@inject Odyssey.Client.Services.IImportLimitsCache ImportLimits
+@inject Odyssey.Client.Services.IUploadLimitsCache UploadLimits
+@inject Odyssey.Client.Services.IAccountLimitsCache AccountLimits
+@inject Odyssey.Client.Services.IFileAnalysisDisclosureCache Disclosures
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider Auth
+
+<PageTitle>System settings</PageTitle>
+
+@*
+    System settings — the admin-only page for workspace-wide configuration
+    (Odyssey Design System · SystemSettings, issue #349). Distinct from
+    Preferences, which is per-user: these controls govern the whole Odyssey
+    instance, so the page lives in the admin nav section and is gated by
+    system-settings.read.
+
+    The card is the GROUP, not the setting: each labelled group is one section card
+    holding a grid of OdsSettingField blocks (issue #343, extended since with the
+    per-surface caps, the file-analysis runtime rows and the Subscriptions limits).
+    At 40+ settings the earlier one-card-per-setting stack of OdsSettingRows was a run
+    of near-identical shells whose visual weight said nothing about the content; the
+    grouping now does the work those card borders were doing. Sections and rows both
+    come from the Sections catalogue in the code-behind — never hand-listed here, which
+    is what kept the old count in this comment wrong.
+
+    The write claim is split by AXIS, not by group: system-settings.security.update for
+    the Security toggles AND the import/export-size (MB) caps — the availability knob —
+    and system-settings.update for everything else, enforced per row via Editable(),
+    never a single page-level flag, so a caller lacking one claim still edits the fields
+    it holds the other for. The PUT payload sends null — not the loaded value — for every
+    field the caller cannot edit; that null contract is what lets the split claim coexist
+    with a whole-resource PUT with no concurrency token (see SystemSettingsService on the
+    API side). A count cap is tri-state — a finite number or explicitly "No limit"
+    (OdsCapacityField) — and each import/export group carries a cross-field round-trip
+    rule (export cap ≤ import cap) rendered as a group-level alert, since the offending
+    row may itself be disabled (unlimited).
+*@
+
+<MudStack Spacing="6">
+
+    @* The credential signal (issue #445). An unreadable credential is an OUTAGE, not a settings
+       problem: the value is stored and its consumer is failing right now, and neither the cause nor
+       the fix is a Save. So it goes in the header's severity rollup — the same gesture Accounts,
+       Insurance and Tax statements use for a data condition needing attention — and deliberately NOT
+       into BlockingProblems, which exists to explain a disabled Save button. Merging them would make
+       Save look blocked by something Save cannot fix. *@
+    <PageHeader Title="System settings" Icon="@Icons.Material.Filled.Settings"
+                Problems="@CredentialProblems"
+                ProblemsLabel="Credentials"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled">
+        <SubLine>Instance-wide configuration for this Odyssey deployment</SubLine>
+        <PrimaryAction>
+            @if (CanSave)
+            {
+                @* The save bar: the primary action, and — when Save is blocked — the ErrorSummary
+                   that names the count and moves focus to the offending control. The catalogue runs
+                   to 40+ rows across seventeen sections, so a disabled Save with its cause two
+                   screens away is an unexplained dead end.
+
+                   Deliberately NOT a live region: ErrorFor recomputes on every keystroke, so a
+                   summary inside one would interrupt a screen-reader user once per character. The
+                   same text is announced politely on a Save ATTEMPT instead (see Save()). *@
+                <div class="ss-savebar">
+                    @if (_phase == Phase.Ready && BlockingProblems.Count > 0)
+                    {
+                        <OdsErrorSummary Problems="@BlockingProblems" OnJump="JumpToProblem" />
+                    }
+                    <OdsButton Icon="@(_justSaved ? "check" : "save")"
+                               Loading="_isSaving"
+                               Badge="@PendingBadge"
+                               BadgeLabel="unsaved changes"
+                               Disabled="@(_phase != Phase.Ready || HasErrors)"
+                               OnClick="Save">
+                        @(_justSaved ? "Saved" : "Save changes")
+                    </OdsButton>
+                </div>
+            }
+        </PrimaryAction>
+        <SearchContent>
+            <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                            Placeholder="Search settings…" />
+        </SearchContent>
+    </PageHeader>
+
+    @* Single most-recent-change summary — the store is genuinely key-value server-side, but the DTO
+       surfaces only the max UpdatedAt/UpdatedBy across every row (a deliberate v1 simplification),
+       so this renders once for the page rather than per row. *@
+    @if (_phase == Phase.Ready && _dto is { UpdatedBy: not null })
+    {
+        <div class="ss-lastchanged">
+            <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" />
+            Last changed by <b>@(_dto.UpdatedByDisplayName ?? "Unknown user")</b> on @_dto.UpdatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")
+        </div>
+    }
+
+    @if (_phase == Phase.Ready && !CanSave)
+    {
+        <div class="ss-note" role="note">
+            <MudIcon Icon="@Icons.Material.Filled.Lock" />
+            <div>
+                <div class="ss-note-ttl">You have read-only access to system settings</div>
+                <div class="ss-note-desc">These values are visible to you but can only be changed by an administrator with the matching update permission.</div>
+            </div>
+        </div>
+    }
+
+    @* The persistent, non-live record of any row not using its stored value (issue #437 Goal 12).
+
+       A PAGE-LEVEL block with its OWN condition, deliberately not nested in either neighbouring
+       banner's @if. BlockingSummary sits inside @if (CanSave), so placing this beside it would give a
+       caller holding only system-settings.read no record at all — the users least able to repair the
+       rows and most likely to be auditing them — and would also make a fault and an unsaved edit
+       mutually exclusive, since that is an if/else-if chain. ss-note is the opposite gate (!CanSave),
+       so reusing its condition produces the same hole with the sign flipped. The claim-blind neighbour
+       is ss-lastchanged, whose shape this follows.
+
+       It is also outside the VisibleSections branch: the sections container is replaced by the empty
+       state exactly when the search matches nothing, which is the case this block most needs to survive.
+
+       A page-owned element, not an Ods* wrapper carrying Class="ss-faultsummary": a scoped rule keyed
+       on a class forwarded into a child component never matches. *@
+    @if (_phase == Phase.Ready && FaultSummary is { } faultSummary)
+    {
+        <div class="ss-faults" role="note">
+            <span class="material-icons" aria-hidden="true">report_problem</span>
+            <div class="ss-faults-body">@faultSummary</div>
+            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="GoToFirstFault">
+                Go to first fault
+            </MudButton>
+        </div>
+    }
+
+    @if (_phase == Phase.Loading)
+    {
+        @* Field-shaped blocks in the same grid the loaded page uses, so nothing reflows when the
+           real rows arrive. *@
+        <div class="ss-sect-stack" aria-busy="true" aria-label="Loading settings">
+            @foreach (var sec in Sections)
+            {
+                <section class="ss-sect">
+                    <header class="ss-sect-h">
+                        <span class="ss-sect-ic"><MudIcon Icon="@sec.Icon" Size="Size.Small" /></span>
+                        <span class="ss-sect-t" style="opacity: 0.6">@sec.Group</span>
+                    </header>
+                    <div class="ss-sect-body">
+                        <div class="odc-sfield-grid">
+                            @for (var i = 0; i < sec.Items.Count; i++)
+                            {
+                                <div class="odc-sfield ss-sk" aria-hidden="true">
+                                    <div class="odc-sfield-frame">
+                                        <span class="ss-sk-val"></span>
+                                    </div>
+                                    <div class="odc-sfield-help"><span class="ss-sk-line"></span></div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </section>
+            }
+        </div>
+    }
+    else if (_phase == Phase.Error)
+    {
+        <div class="ss-retry" role="alert">
+            <MudIcon Icon="@Icons.Material.Filled.CloudOff" />
+            <div class="ss-retry-ttl">Couldn't load settings</div>
+            <div class="ss-retry-desc">Something went wrong reading the system settings. Your changes weren't affected.</div>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="LoadSettingsAsync">Retry</OdsButton>
+        </div>
+    }
+    else if (VisibleSections.Count > 0)
+    {
+        @* One card per GROUP holding a grid of OdsSettingFields — not one card per setting. At 40+
+           settings that was a stack of near-identical shells whose visual weight said nothing about
+           the content; the grouping now does the work the 40 card borders were doing. *@
+        <div class="ss-sect-stack">
+            @foreach (var sec in VisibleSections)
+            {
+                var roundTripError = RoundTripError(sec);
+                var dirtyHere = sec.Items.Count(IsDirty);
+                var secretsHere = SecretsIn(sec);
+                @* The badge counts the FIELDS the card renders, credentials included — a card showing
+                   eight fields under a "5 settings" badge reads as a broken filter. The unsaved badge
+                   above stays secrets-exempt on purpose: a credential writes on its own button and
+                   never contributes to the page's Save. *@
+                var fieldsHere = sec.Items.Count + secretsHere.Count;
+                <section class="ss-sect" aria-labelledby="@($"ss-grp-{sec.Group}")">
+                    <header class="ss-sect-h">
+                        <span class="ss-sect-ic"><MudIcon Icon="@sec.Icon" Size="Size.Small" /></span>
+                        <MudText Typo="Typo.h3" Class="ss-sect-t" id="@($"ss-grp-{sec.Group}")">@sec.Group</MudText>
+                        @if (dirtyHere > 0)
+                        {
+                            <span class="ss-sect-badge">@dirtyHere unsaved</span>
+                        }
+                        else
+                        {
+                            <span class="ss-sect-count">@fieldsHere @(fieldsHere == 1 ? "setting" : "settings")</span>
+                        }
+                    </header>
+                    @if (GroupPartial(sec))
+                    {
+                        <div class="ss-sect-band" role="note">
+                            <span class="material-icons" aria-hidden="true">info</span>
+                            <div>Some settings in this group require additional permissions.</div>
+                        </div>
+                    }
+                    @if (roundTripError is not null)
+                    {
+                        @* Group level, never on the export row: in the documented flow that row is
+                           disabled (unlimited is on) and so unfocusable. *@
+                        <div class="ss-sect-band error" id="@RoundTripAlertId(sec.Group)" role="alert" tabindex="-1">
+                            <span class="material-icons" aria-hidden="true">error_outline</span>
+                            <div>@roundTripError</div>
+                        </div>
+                    }
+                    <div class="ss-sect-body">
+                        <div class="odc-sfield-grid">
+                            @foreach (var item in sec.Items)
+                            {
+                                @SettingField(item)
+                            }
+                            @* Credentials sit in the SUBJECT card, in the same grid as the plaintext
+                               settings around them — the API key beside the destination it is sent to,
+                               the relay pair beside the from address it authenticates. They are last
+                               within the card: an administrator reads what a feature does before what
+                               authenticates it, and a write-only field is a poor thing to open on. *@
+                            @foreach (var item in secretsHere)
+                            {
+                                var status = StatusFor(item);
+                                <OdsSecretSettingField @key="item.Key"
+                                                       AnchorId="@SecretAnchorId(item.Key)"
+                                                       SecretKey="@item.Key"
+                                                       Title="@item.Title"
+                                                       Description="@item.Description"
+                                                       State="@status.State"
+                                                       UpdatedAt="@status.UpdatedAt"
+                                                       UpdatedByDisplayName="@status.UpdatedByDisplayName"
+                                                       IsDerivationKey="@item.IsDerivationKey"
+                                                       Consequence="@item.Consequence"
+                                                       Affects="@item.Affects"
+                                                       Disabled="@(_phase != Phase.Ready || _isSaving)"
+                                                       OnSave="@(value => SecretSettings.SetAsync(item.Key, value))"
+                                                       OnClear="@(() => SecretSettings.ClearAsync(item.Key))"
+                                                       OnChanged="OnSecretChangedAsync"
+                                                       OnAnnounce="Announce" />
+                            }
+                        </div>
+                    </div>
+                </section>
+            }
+
+        </div>
+    }
+    else
+    {
+        <MudCard Elevation="1" Class="ods-outline">
+            <MudCardContent>
+                <OdsEmptyState Icon="search_off" MutedIcon="true">
+                    <Title>No settings match</Title>
+                    <Description>Nothing here matches "@_search". Clear the search to see every setting.</Description>
+                </OdsEmptyState>
+            </MudCardContent>
+        </MudCard>
+    }
+
+    @* Polite live region — save success / load failure announcements (WCAG 2.2 §4.1.3). *@
+    <OdsLiveAnnouncer Message="@_announce" />
+</MudStack>
+
+@code {
+    // ── One setting as an OdsSettingField ────────────────────────────────────────────────────────
+    //
+    // A switch or an export action has no text value to notch a label into, so it takes the sibling
+    // tile shape and spans the grid; a text value is content-width and takes `Wide`; everything else
+    // is a half-width notched frame.
+    //
+    // Inside the frame the control is just its value: the frame owns the label, and the helper line
+    // owns the description, the range and the provenance — so nothing is passed for Label or Help on
+    // the control itself. The MESSAGE likewise renders once, on the field; the control is handed a
+    // non-empty placeholder error purely to flip `aria-invalid` and the error tint, since the sheet
+    // hides the control's own help/error node inside the frame.
+    private RenderFragment SettingField(SettingItem item) => item.Control switch
+    {
+        SettingControl.Toggle or SettingControl.Export => TileField(item),
+        _ => FrameField(item),
+    };
+
+    @* @key, because a filter change otherwise re-matches fields POSITIONALLY — harmless only while
+       draft state lives in the PAGE's key-indexed dictionaries (issue #444 §3). *@
+    private RenderFragment FrameField(SettingItem item) => @<OdsSettingField
+        @key="item.Key"
+        Label="@item.Title"
+        LabelId="@TitleId(item.Key)"
+        HtmlFor="@(HasFocusableControl(item) ? ControlId(item.Key) : null)"
+        HelpId="@DescId(item.Key)"
+        Help="@HelpLine(item)"
+        ErrorId="@ErrorId(item.Key)"
+        Error="@ErrorFor(item)"
+        AdvisoryId="@AdvisoryId(item.Key)"
+        Advisory="@AdvisoryFor(item)"
+        Bound="@BoundFor(item)"
+        Dirty="@IsDirty(item)"
+        Wide="@(item.Control == SettingControl.Text)"
+        Class="@FieldClass(item)"
+        data-ss-row="@item.Key">
+        @RenderControl(item)
+    </OdsSettingField>;
+
+    private RenderFragment TileField(SettingItem item) => @<OdsSettingField
+        @key="item.Key"
+        Tile="true"
+        Label="@item.Title"
+        LabelId="@TitleId(item.Key)"
+        HelpId="@DescId(item.Key)"
+        Help="@HelpLine(item)"
+        AdvisoryId="@AdvisoryId(item.Key)"
+        Advisory="@AdvisoryFor(item)"
+        Dirty="@IsDirty(item)"
+        Class="@FieldClass(item)"
+        data-ss-row="@item.Key">
+        @RenderControl(item)
+    </OdsSettingField>;
+
+    // AriaLabel, not AriaLabelledBy: OdsSwitch names itself through MudSwitch's own AriaLabel, which
+    // lands on the underlying input. A splatted aria-labelledby/aria-describedby would not — it would
+    // reach MudSwitch as an unmatched parameter and be emitted as a meaningless DOM attribute.
+    private RenderFragment ToggleControl(SettingItem item) => @<OdsSwitch
+        Checked="@GetBool(item.Key)"
+        CheckedChanged="@(v => SetBool(item.Key, v))"
+        Disabled="@IsRowDisabled(item)"
+        AriaLabel="@item.Title"
+        AriaDescribedBy="@DescribedBy(item)" />;
+
+    private RenderFragment NumberControl(SettingItem item) => @<OdsNumberField
+        Id="@ControlId(item.Key)"
+        Value="@((decimal?)GetInt(item.Key))"
+        ValueChanged="@(v => SetInt(item.Key, v))"
+        Min="@MinFor(item)" Max="@MaxFor(item)" Step="1" Align="right"
+        Unit="@item.Unit"
+        Disabled="@IsRowDisabled(item)"
+        Error="@FieldStateFor(item)"
+        AriaDescribedBy="@DescribedBy(item)" />;
+
+    // The import/export size caps, in megabytes. The unit is pinned inside the input's trailing edge
+    // rather than written as helper text (issue #343 §3 originally used Help="MB"): the helper slot
+    // is where the error message goes, so a unit living there disappears exactly when the value is
+    // wrong and the reader most needs to know what they are typing.
+    private RenderFragment SizeControl(SettingItem item) => @<OdsNumberField
+        Id="@ControlId(item.Key)"
+        Value="@((decimal?)GetInt(item.Key))"
+        ValueChanged="@(v => SetInt(item.Key, v))"
+        Min="@MinFor(item)" Max="@MaxFor(item)" Step="1" Align="right"
+        Unit="MB"
+        Disabled="@IsRowDisabled(item)"
+        Error="@FieldStateFor(item)"
+        AriaDescribedBy="@DescribedBy(item)" />;
+
+    // Inline, not stacked: there is no room inside the notched frame for a switch plus its own
+    // label, and no second line to put them on. The pill carries the inverse action instead.
+    private RenderFragment CapacityControl(SettingItem item)
+    {
+        var cap = Capacity(item.Key);
+        return @<OdsCapacityField
+            Variant="OdsCapacityFieldVariant.Inline"
+            Value="@((decimal?)cap.Value)"
+            ValueChanged="@(v => SetCapacityValue(item.Key, v))"
+            Unlimited="@cap.Unlimited"
+            UnlimitedChanged="@(on => SetCapacityUnlimited(item.Key, on, item.Title))"
+            Label="@item.Title" Min="@MinFor(item)" Max="@MaxFor(item)"
+            Disabled="@IsRowDisabled(item)"
+            Error="@FieldStateFor(item)"
+            AriaLabelledBy="@TitleId(item.Key)"
+            AriaDescribedBy="@DescribedBy(item)" />;
+    }
+
+    // A text value's width is set by its content — a privacy-notice URL is ~39 characters — so its
+    // field spans both grid columns rather than being squeezed into a half-width block.
+    private RenderFragment TextControl(SettingItem item) => @<OdsTextInputField
+        Id="@ControlId(item.Key)"
+        Value="@GetText(item.Key)"
+        ValueChanged="@(v => SetText(item.Key, v))"
+        MaxLength="@(item.Max > 0 ? item.Max : null)"
+        InputMode="@item.InputMode"
+        Placeholder="@(item.Placeholder ?? "—")"
+        Disabled="@IsRowDisabled(item)"
+        Error="@FieldStateFor(item)"
+        AriaDescribedBy="@DescribedBy(item)" />;
+
+    // OdsNumberField already emits decimal? with no cast, so no ClampToInt analogue is needed here —
+    // the #403 checked-(int) overflow simply cannot arise on this path. What a decimal row does need
+    // is decimal BOUNDS, which SettingItem carries separately from the int Min/Max.
+    private RenderFragment DecimalControl(SettingItem item) => @<OdsNumberField
+        Id="@ControlId(item.Key)"
+        Value="@GetDecimal(item.Key)"
+        ValueChanged="@(v => SetDecimal(item.Key, v))"
+        Min="@((double)item.DecimalMin)" Max="@((double)item.DecimalMax)" Step="0.01" Align="right"
+        Unit="@item.Unit"
+        Disabled="@IsRowDisabled(item)"
+        Error="@FieldStateFor(item)"
+        AriaDescribedBy="@DescribedBy(item)" />;
+
+    // A stored 0.0-1.0 fraction, entered as a WHOLE PERCENT. The unit sits inside the input's
+    // trailing edge, so it survives the helper slot being taken over by an error message.
+    private RenderFragment PercentControl(SettingItem item) => @<OdsNumberField
+        Id="@ControlId(item.Key)"
+        Value="@GetPercent(item.Key)"
+        ValueChanged="@(v => SetPercent(item.Key, v))"
+        Min="@PercentOf(item.DecimalMin)" Max="@PercentOf(item.DecimalMax)" Step="1" Align="right"
+        Unit="%"
+        Disabled="@IsRowDisabled(item)"
+        Error="@FieldStateFor(item)"
+        AriaDescribedBy="@DescribedBy(item)" />;
+
+    private RenderFragment ExportControl() => @<OdsButton
+        Icon="file_download"
+        Loading="_isExporting"
+        OnClick="ExportDatabaseJson">
+        Export database JSON
+    </OdsButton>;
+}

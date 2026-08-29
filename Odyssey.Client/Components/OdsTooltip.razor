@@ -1,0 +1,28 @@
+@*
+    OdsTooltip — a hover / focus label on an inverted bubble
+    (Odyssey Design System · components/Tooltip).
+
+    Wrap any single focusable trigger; the bubble shows on hover and on keyboard
+    focus. A MudTooltip — keep Label terse (one line). Touch is not a tooltip
+    surface; put essential info in a visible label instead.
+*@
+
+<MudTooltip Text="@Label"
+            Arrow="true"
+            Class="@Class"
+            @attributes="UserAttributes">
+    @ChildContent
+</MudTooltip>
+
+@code {
+    /// <summary>The tooltip text. Keep it short — one line.</summary>
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    /// <summary>The trigger element the tooltip describes.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

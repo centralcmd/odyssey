@@ -1,0 +1,123 @@
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Dtos.Application
+@inject ILegalApiClient Legal
+
+@*
+    OdsRegisterLegalReview — the informational License / Terms of Service review on /register
+    (issue #354 §3 state 1; Odyssey Design System · Login.jsx · RegisterLegalReview).
+
+    Deliberately NOT the authoritative acceptance: the unauthenticated registration step has no session
+    to record consent against, so the recorded event is the first-login interstitial. These checkboxes
+    are local to the form — nothing here is persisted.
+
+    Consequently a failed text load must never block Submit: the modal shows a plain "couldn't load"
+    message and the checkbox still works, because the user will be shown the real, load-bearing copy at
+    first login anyway.
+*@
+
+@* The document opener is a real <button>, and a SIBLING of the checkbox rather than a child of its
+   <label>. Nesting an interactive control inside a label makes the label forward activation to the
+   checkbox as well, so opening the document could also silently toggle the consent box — and the
+   nested control's role is ambiguous to assistive tech. Reading order is unchanged.
+
+   AriaLabel carries the WHOLE sentence, because splitting it is what makes that necessary: the visible
+   label is only the fragment before the button, so without this both boxes would announce as
+   "I have read and agree to the" — two consent controls, indistinguishable by ear. *@
+<div class="lg-reg-checks">
+    <div class="lg-reg-check">
+        <OdsCheckbox Checked="AgreeLicense" CheckedChanged="AgreeLicenseChanged"
+                     Label="I have read and agree to the"
+                     AriaLabel="I have read and agree to the software license" />
+        <button type="button" class="lg-reg-link"
+                @onclick="@(() => _openDocument = LegalDocumentType.License)">software license</button>
+    </div>
+
+    @if (_terms is not null)
+    {
+        <div class="lg-reg-check">
+            <OdsCheckbox Checked="AgreeTerms" CheckedChanged="AgreeTermsChanged"
+                         Label="I have read and agree to the"
+                         AriaLabel="I have read and agree to the Terms of Service" />
+            <button type="button" class="lg-reg-link"
+                    @onclick="@(() => _openDocument = LegalDocumentType.TermsOfService)">Terms of Service</button>
+        </div>
+    }
+    else if (_loaded)
+    {
+        <div class="lg-reg-nopub">
+            <span class="material-icons" aria-hidden="true">description</span>
+            Terms of Service has not been published yet.
+        </div>
+    }
+</div>
+
+<OdsModal Open="_openDocument is not null" Icon="@(_openDocument == LegalDocumentType.License ? "gavel" : "description")"
+          OnClose="@(() => _openDocument = null)">
+    <Title>@(_openDocument == LegalDocumentType.License ? "Software License" : "Terms of Service")</Title>
+    <Subtitle>
+        @if (_openDocument == LegalDocumentType.License)
+        {
+            <text>Repository LICENSE</text>
+        }
+        else if (_terms is { } terms)
+        {
+            <text>Version @terms.Id · Published @terms.PublishedAt.ToLocalTime().ToString("d MMM yyyy")</text>
+        }
+    </Subtitle>
+    <ChildContent>
+        <div class="lg-ver-view @(_openDocument == LegalDocumentType.License ? "mono" : null)" tabindex="0">
+            @(_openDocument == LegalDocumentType.License
+                ? _license?.Content ?? "License text unavailable right now — you can still create your account and review it at first login."
+                : _terms?.Content)
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Filled" OnClick="@(() => _openDocument = null)">Close</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    /// <summary>Whether the user has ticked the licence box. Bindable via @bind-AgreeLicense.</summary>
+    [Parameter] public bool AgreeLicense { get; set; }
+
+    [Parameter] public EventCallback<bool> AgreeLicenseChanged { get; set; }
+
+    /// <summary>Whether the user has ticked the Terms box. Bindable via @bind-AgreeTerms.</summary>
+    [Parameter] public bool AgreeTerms { get; set; }
+
+    [Parameter] public EventCallback<bool> AgreeTermsChanged { get; set; }
+
+    /// <summary>
+    /// Raised once the documents have loaded, reporting whether a ToS exists. The host form needs this
+    /// to know whether the Terms checkbox is part of its submit condition at all.
+    /// </summary>
+    [Parameter] public EventCallback<bool> TermsPublishedChanged { get; set; }
+
+    private LicenseDocument? _license;
+    private TermsOfServiceDocument? _terms;
+    private LegalDocumentType? _openDocument;
+    private bool _loaded;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!OperatingSystem.IsBrowser())
+        {
+            return;
+        }
+
+        // Both endpoints are anonymous — there is no session at this point. A failure leaves the text
+        // null, which the modal renders as an explanatory line; it never blocks the form.
+        if (await Legal.GetLicenseAsync() is { IsSuccess: true } license)
+        {
+            _license = license.Value;
+        }
+
+        if (await Legal.GetCurrentTermsOfServiceAsync() is { IsSuccess: true } terms)
+        {
+            _terms = terms.Value;
+        }
+
+        _loaded = true;
+        await TermsPublishedChanged.InvokeAsync(_terms is not null);
+    }
+}

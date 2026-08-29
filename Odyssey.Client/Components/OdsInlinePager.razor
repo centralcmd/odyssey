@@ -1,0 +1,71 @@
+@*
+    OdsInlinePager — footer pagination for EMBEDDED tables (Odyssey Design System ·
+    Components kit InlinePager).
+
+    Wraps a child-collection table rendered inside a detail page (an account's Transactions / Files
+    sections, a budget's matched transactions, a document well). These rows are already loaded, so
+    paging is purely client-side: the pager slices the set and hands the current page to the child.
+    There is no toolbar here, so no OdsPageSizeSelect mirror — the footer OdsPager is the only
+    control, shown whenever the list has any rows. Each instance owns its own page/size state so
+    embedded tables paginate independently.
+
+    Usage:
+      <OdsInlinePager Items="rows" Context="pageRows">
+          <OdsTxnTable Rows="pageRows" ... />
+      </OdsInlinePager>
+*@
+
+@typeparam TItem
+
+@ChildContent(Paged)
+
+@if (Items.Count > 0)
+{
+    <OdsPager Page="_page" PageChanged="OnPageChanged"
+              PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+              TotalCount="Items.Count" />
+}
+
+@code {
+    /// <summary>The full (already-loaded) row set to page over.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = [];
+
+    /// <summary>Renders the current page's rows; bind the page via <c>Context</c>.</summary>
+    [Parameter, EditorRequired] public RenderFragment<IReadOnlyList<TItem>> ChildContent { get; set; } = default!;
+
+    /// <summary>Initial rows per page. Default 25.</summary>
+    [Parameter] public int InitialPageSize { get; set; } = 25;
+
+    private int _page = 1;
+    private int _pageSize = 25;
+
+    protected override void OnInitialized() => _pageSize = InitialPageSize;
+
+    // Keep the page in range when the result set shrinks (e.g. a row is deleted or filtered away).
+    protected override void OnParametersSet()
+    {
+        var totalPages = _pageSize == OdsPageSizes.All
+            ? 1
+            : Math.Max(1, (int)Math.Ceiling((double)Items.Count / _pageSize));
+        if (_page > totalPages)
+            _page = totalPages;
+    }
+
+    private IReadOnlyList<TItem> Paged
+    {
+        get
+        {
+            if (_pageSize == OdsPageSizes.All)
+                return Items;
+            return [.. Items.Skip((_page - 1) * _pageSize).Take(_pageSize)];
+        }
+    }
+
+    private void OnPageChanged(int page) => _page = page;
+
+    private void OnPageSizeChanged(int size)
+    {
+        _pageSize = size;
+        _page = 1;
+    }
+}

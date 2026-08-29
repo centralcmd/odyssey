@@ -1,0 +1,64 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Delta" subtitle="One indicator for the product's three change/difference encodings — variance (reconciled/discrepancy), directional (↑↓ change), and signed amounts — so they read consistently. Mounted from the DS namespace." viewport="900x420" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · Delta</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .grid { display: grid; grid-template-columns: max-content 1fr; gap: 14px 28px; align-items: center; max-width: 720px; }
+    .mode { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    .mode code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: flex; flex-wrap: wrap; gap: 22px; align-items: center; }
+    .sep { grid-column: 1 / -1; height: 1px; background: var(--mud-palette-divider); margin: 2px 0; }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 22px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>Delta — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;Delta mode value format /&gt;</code></h1>
+  <div id="root" class="grid"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var Delta = (window.OdysseyDesignSystem_d5aa51 || {}).Delta;
+      var nok = function (n) { return 'kr ' + Math.abs(Math.round(n)).toLocaleString('en-US'); };
+      var pct = function (n) { return Math.abs(n).toFixed(2) + '%'; };
+
+      var rows = [
+        ['variance', 'Reconciliation result', [
+          e(Delta, { mode: 'variance', value: 0, format: nok }),
+          e(Delta, { mode: 'variance', value: 15000, format: nok }),
+          e(Delta, { mode: 'variance', value: -8000, format: nok }),
+          e(Delta, { mode: 'variance', value: null, format: nok }),
+        ]],
+        ['directional', 'Period-over-period change', [
+          e(Delta, { mode: 'directional', value: 0.35, format: pct }),
+          e(Delta, { mode: 'directional', value: -0.20, format: pct }),
+          e(Delta, { mode: 'directional', value: 0, format: pct }),
+          e(Delta, { mode: 'directional', value: 0.15, format: pct, neutral: true, suffix: 'rate' }),
+        ]],
+        ['signed', 'Signed amount', [
+          e(Delta, { mode: 'signed', value: 120000, format: nok, suffix: 'all-time' }),
+          e(Delta, { mode: 'signed', value: -312, format: nok, suffix: 'vs. plan' }),
+        ]],
+      ];
+
+      var children = [];
+      rows.forEach(function (r, i) {
+        children.push(e('div', { className: 'mode', key: 'm' + i },
+          e('code', null, r[0]), e('div', { style: { marginTop: '5px', fontWeight: 400, textTransform: 'none', letterSpacing: 0 } }, r[1])));
+        children.push(e('div', { className: 'row', key: 'r' + i }, r[2]));
+        if (i < rows.length - 1) children.push(e('div', { className: 'sep', key: 's' + i }));
+      });
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, children));
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+@using Odyssey.Dtos.Finance
+@inherits FilesSectionBase<ExistingTransactionFile>
+@inject ITransactionsApiClient Transactions
+
+<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="attach_file">
+    <Title>Files</Title>
+    <Count>@items.Count</Count>
+    <ChildContent>
+        @if (CanUpload)
+        {
+            <div class="file-upload-zone">
+                <OdsTransactionFileTypeSelect Label="File type" @bind-Value="_selectedFileType" Class="mb-2" />
+                <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                               FilesChanged="UploadFilesAsync"
+                               MaximumFileCount="@MaxFileCount"
+                               Accept=".pdf,.jpg,.jpeg,.png"
+                               Disabled="@isUploading"
+                               Class="mb-2">
+                    <CustomContent Context="fileUpload">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.CloudUpload"
+                                   Disabled="@isUploading"
+                                   OnClick="@fileUpload.OpenFilePickerAsync">
+                            @if (isUploading)
+                            {
+                                <OdsSpinner Class="me-2" Decorative="true" />
+                                <span>Uploading&#x2026;</span>
+                            }
+                            else
+                            {
+                                <span>Upload files</span>
+                            }
+                        </MudButton>
+                    </CustomContent>
+                </MudFileUpload>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Accepted: .pdf, .jpg, .jpeg, .png — Max @uploadLimits.MaxUploadMegabytes MB per file, @MaxFileCount files total
+                </MudText>
+            </div>
+        }
+
+        @if (isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (items.Count == 0)
+        {
+            <div class="empty-line">No files attached to this transaction yet.</div>
+        }
+        else
+        {
+            <OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
+                <OdsFilesTable Files="pageRows"
+                               TypeFor="@(row => KindMeta(FileById(row.Id).Type))"
+                               Actions="@(row => BuildMenu(FileById(row.Id)))"
+                               OnDelete="@DeleteAction" />
+            </OdsInlinePager>
+        }
+    </ChildContent>
+</OdsCollapsible>
+
+@if (_preview is not null)
+{
+    <FilePreviewDialog @key="_previewKey"
+                       @bind-Open="_previewOpen"
+                       BlobUrl="@_preview.BlobUrl"
+                       ContentType="@_preview.ContentType"
+                       FileName="@_preview.FileName" />
+}
+
+@code {
+    [Parameter] public Guid TransactionId { get; set; }
+
+    private bool _isOpen = false;
+    // Bound to OdsTransactionFileTypeSelect (the DS picker keys on the enum name).
+    private string _selectedFileType = nameof(TransactionFileType.Other);
+    private TransactionFileType SelectedFileTypeEnum =>
+        Enum.TryParse<TransactionFileType>(_selectedFileType, out var fileType) ? fileType : TransactionFileType.Other;
+
+    protected override Task<ApiResult<List<ExistingTransactionFile>>> ListFilesAsync() =>
+        Transactions.ListFilesAsync(TransactionId);
+
+    protected override Task<ApiResult> DetachFileAsync(Guid fileId) =>
+        Transactions.DetachFileAsync(TransactionId, fileId);
+    protected override string EntityNoun => "transaction";
+    protected override ExistingFileMetadata MetadataOf(ExistingTransactionFile file) => file.FileMetadata;
+    protected override Task AttachAsync(Guid fileMetadataId) =>
+        Files.AttachToTransactionAsync(TransactionId, fileMetadataId, SelectedFileTypeEnum);
+
+    protected override void ShowPreview(ExistingTransactionFile file, string blobUrl, string contentType)
+    {
+        _preview = new PreviewState(blobUrl, contentType, file.FileMetadata.FileName);
+        _previewKey = Guid.NewGuid();
+        _previewOpen = true;
+    }
+
+    private void ToggleOpen() => _isOpen = !_isOpen;
+
+    private PreviewState? _preview;
+    private Guid _previewKey;
+    private bool _previewOpen;
+
+    private sealed record PreviewState(string BlobUrl, string ContentType, string FileName);
+
+    // ── OdsFilesTable adapters ──
+    // The shared table reads denormalized rows; the TransactionFileType drives the kind
+    // chip + avatar (its registry icon/color/soft), and a row maps back to its file by
+    // id for the kind lookup and the action menu.
+    private IEnumerable<OdsFilesRow> FileRows => items.Select(f => new OdsFilesRow
+    {
+        Id = f.FileMetadata.Id.ToString(),
+        Name = f.FileMetadata.FileName,
+        Kind = OdsTypeRegistries.TransactionFileTypeOf(f.Type).Label,
+        SizeBytes = f.FileMetadata.SizeBytes,
+        UploadedAtUtc = f.FileMetadata.UploadedAtUtc,
+    });
+
+    private ExistingTransactionFile FileById(string id) =>
+        items.First(f => f.FileMetadata.Id.ToString() == id);
+
+    private static OdsFileKindMeta KindMeta(TransactionFileType type)
+    {
+        var t = OdsTypeRegistries.TransactionFileTypeOf(type);
+        return new OdsFileKindMeta(t.Icon, t.Color, t.Soft);
+    }
+
+    // View details / Delete are owned by the shared table; the host supplies only
+    // the file-specific items (Preview / Download).
+    private IReadOnlyList<OdsMenuItem> BuildMenu(ExistingTransactionFile file)
+    {
+        var id = file.FileMetadata.Id;
+        var menu = new List<OdsMenuItem>();
+
+        if (CanDownload && IsPreviewable(file.FileMetadata.ContentType))
+            menu.Add(new OdsMenuItem { Icon = "visibility", Label = "Preview", Disabled = previewingFiles.Contains(id), OnClick = EventCallback.Factory.Create(this, () => PreviewFileAsync(file)) });
+
+        if (CanDownload)
+            menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", Disabled = downloadingFiles.Contains(id), OnClick = EventCallback.Factory.Create(this, () => DownloadFileAsync(file)) });
+
+        return menu;
+    }
+
+    // The table appends Delete whenever OnDelete has a handler — gate it on permission.
+    private EventCallback<OdsFilesRow> DeleteAction =>
+        CanDelete ? EventCallback.Factory.Create<OdsFilesRow>(this, row => ConfirmDeleteAsync(FileById(row.Id))) : default;
+}

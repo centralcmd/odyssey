@@ -1,0 +1,101 @@
+@*
+    OdsButton — the primary action control (Odyssey Design System · components/Button).
+
+    A MudButton themed to the Odyssey vocabulary:
+      • Filled   — primary CTA
+      • Outlined — secondary
+      • Text     — tertiary / nav
+      • Danger   — destructive (filled error)
+
+    Verb-first labels. Pass Loading for the busy state (the label dims and a
+    spinner takes the leading slot; the button goes non-interactive). For an
+    icon-only button with no child content, set AriaLabel so it is announced.
+*@
+
+@* Icon / IconRight are Material Icons ligatures (DS convention), not MudBlazor
+   SVG constants — render them as material-icons spans rather than via MudButton's
+   StartIcon/EndIcon (which expect SVG and would silently show nothing). *@
+<MudButton Variant="@MudVariant"
+           Color="@MudColor"
+           FullWidth="@Full"
+           Disabled="@(Disabled || Loading)"
+           ButtonType="@Type"
+           OnClick="OnClick"
+           Class="@Class"
+           aria-label="@AriaLabel"
+           aria-busy="@(Loading ? "true" : null)"
+           @attributes="UserAttributes">
+    @if (Loading)
+    {
+        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+    }
+    else if (!string.IsNullOrEmpty(Icon))
+    {
+        <span class="material-icons odc-btn-icon @(ChildContent is not null ? "start" : null)" aria-hidden="true">@Icon</span>
+    }
+    @ChildContent
+    @* The pill is decorative — "Save changes, 3" tells a screen-reader user nothing — so the count
+       is repeated as a named, visually-hidden suffix. *@
+    @if (!string.IsNullOrEmpty(Badge))
+    {
+        <span class="odc-btn-badge" aria-hidden="true">@Badge</span>
+        <span class="sr-only">, @Badge @(BadgeLabel ?? "pending")</span>
+    }
+    @if (!string.IsNullOrEmpty(IconRight))
+    {
+        <span class="material-icons odc-btn-icon @(ChildContent is not null ? "end" : null)" aria-hidden="true">@IconRight</span>
+    }
+</MudButton>
+
+@code {
+    /// <summary>Visual intent — filled (default) / outlined / text / danger.</summary>
+    [Parameter] public OdsButtonVariant Variant { get; set; } = OdsButtonVariant.Filled;
+
+    /// <summary>Leading Material Icons ligature name.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Trailing Material Icons ligature name.</summary>
+    [Parameter] public string? IconRight { get; set; }
+
+    /// <summary>Stretch to the full width of the container.</summary>
+    [Parameter] public bool Full { get; set; }
+
+    /// <summary>Busy state — label dims, a spinner overlays, the button is non-interactive.</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Count pill on the button — a pending quantity this action will commit (unsaved changes, queued
+    /// uploads). Always pair it with <see cref="BadgeLabel"/>.
+    /// </summary>
+    [Parameter] public string? Badge { get; set; }
+
+    /// <summary>Names what <see cref="Badge"/> counts, for the hidden accessible suffix (e.g.
+    /// "unsaved changes"). Without it the count is announced as a bare number.</summary>
+    [Parameter] public string? BadgeLabel { get; set; }
+
+    /// <summary>Accessible name for an icon-only button (when there is no child content).</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
+
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    /// <summary>The button label.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private Variant MudVariant => Variant switch
+    {
+        OdsButtonVariant.Outlined => MudBlazor.Variant.Outlined,
+        OdsButtonVariant.Text => MudBlazor.Variant.Text,
+        _ => MudBlazor.Variant.Filled, // filled + danger are both filled surfaces
+    };
+
+    private Color MudColor => Variant == OdsButtonVariant.Danger ? Color.Error : Color.Primary;
+}

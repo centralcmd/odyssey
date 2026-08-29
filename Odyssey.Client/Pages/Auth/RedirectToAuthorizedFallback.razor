@@ -1,0 +1,19 @@
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var isAuthenticated = authenticationState.User.Identity?.IsAuthenticated == true;
+
+        if (isAuthenticated)
+        {
+            NavigationManager.NavigateTo("/not-authorized", replace: true);
+            return;
+        }
+
+        var signInUrl = Login.SignInUrlFor(NavigationManager.ToBaseRelativePath(NavigationManager.Uri));
+        NavigationManager.NavigateTo(signInUrl, replace: true);
+    }
+}

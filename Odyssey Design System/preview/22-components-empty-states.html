@@ -1,0 +1,159 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Empty states" subtitle="First-run empty states for every list page — CTA mirrors the page's primary action · plus processing & no-match states" viewport="1100x760" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Components · Empty states</title>
+  <meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+</head>
+<body>
+  <style>
+    /* The DS ships only a small embedded 'Material Icons' subset for offline use.
+       These per-page glyphs (pie_chart, store, payments, …) live outside it, so
+       load the full face under a distinct family name — same pattern as the
+       Brand · iconography card — and use it for the icons in this card only. */
+    @font-face {
+      font-family: 'Material Icons Full';
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url('https://cdn.jsdelivr.net/npm/material-icons@1.13.12/iconfont/material-icons.woff2') format('woff2');
+    }
+    .empty .material-icons { font-family: 'Material Icons Full', 'Material Icons'; }
+    body { padding: 4px 2px; }
+    .sec-label {
+      font: 500 11px/1 var(--font-sans);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+      margin: 0 0 12px;
+    }
+    .sec + .sec { margin-top: 26px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .grid.special { grid-template-columns: repeat(2, 1fr); }
+    .empty {
+      background: var(--mud-palette-surface);
+      border: 1px solid var(--mud-palette-divider);
+      border-radius: 8px;
+      padding: 26px 18px;
+      text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 9px;
+      min-height: 212px;
+      justify-content: center;
+    }
+    .ic {
+      width: 52px; height: 52px; border-radius: 999px;
+      display: grid; place-items: center;
+      background: rgba(79,215,203,0.10); color: var(--tide-400);
+    }
+    .ic .material-icons { font-size: 26px; }
+    .ic.muted { background: rgba(255,255,255,0.04); color: var(--mud-palette-text-secondary); }
+    .ic.pending {
+      background: rgba(245,158,11,0.10); color: var(--amber-500);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%      { transform: scale(1.05); opacity: 0.7; }
+    }
+    .ttl { font: 500 15px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); margin-top: 2px; white-space: nowrap; }
+    .desc { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 210px; }
+    .acts { display: flex; gap: 8px; margin-top: 2px; }
+    .btn {
+      font: 500 12px/1 var(--font-sans);
+      letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 8px 14px; border-radius: 4px;
+      border: none; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--tide-400); color: var(--ink-950);
+    }
+    .btn .material-icons { font-size: 16px; }
+    .btn.outlined { background: transparent; color: var(--ink-50); border: 1px solid rgba(199,208,224,0.28); }
+  </style>
+
+  <!-- First-run empty states — one per list page. The CTA mirrors that page's
+       PageHeader primary action verbatim (label + add icon); pages with no
+       create action (Files, Users) show no button. -->
+  <div class="sec">
+    <div class="sec-label">First-run · one per list page</div>
+    <div class="grid">
+      <div class="empty">
+        <div class="ic"><span class="material-icons">account_balance_wallet</span></div>
+        <div class="ttl">No accounts yet</div>
+        <div class="desc">Add a bank account, card, or investment to start tracking.</div>
+        <div class="acts"><button class="btn"><span class="material-icons">add</span>New account</button></div>
+      </div>
+
+      <div class="empty">
+        <div class="ic"><span class="material-icons">receipt_long</span></div>
+        <div class="ttl">No transactions yet</div>
+        <div class="desc">Snap a receipt or add one manually.</div>
+        <div class="acts"><button class="btn"><span class="material-icons">add</span>New transaction</button></div>
+      </div>
+
+      <div class="empty">
+        <div class="ic"><span class="material-icons">pie_chart</span></div>
+        <div class="ttl">No budgets yet</div>
+        <div class="desc">Plan income and expenses by tag for any date range.</div>
+        <div class="acts"><button class="btn"><span class="material-icons">add</span>New budget</button></div>
+      </div>
+
+      <div class="empty">
+        <div class="ic"><span class="material-icons">store</span></div>
+        <div class="ttl">No contacts yet</div>
+        <div class="desc">Add the merchants, people, and institutions money moves between.</div>
+        <div class="acts"><button class="btn"><span class="material-icons">add</span>New contact</button></div>
+      </div>
+
+      <div class="empty">
+        <div class="ic"><span class="material-icons">payments</span></div>
+        <div class="ttl">No currencies yet</div>
+        <div class="desc">Enable the currencies your accounts and budgets use.</div>
+        <div class="acts"><button class="btn"><span class="material-icons">add</span>New currency</button></div>
+      </div>
+
+      <div class="empty">
+        <div class="ic"><span class="material-icons">currency_exchange</span></div>
+        <div class="ttl">No exchange rates yet</div>
+        <div class="desc">Record the rates that convert foreign balances to your base currency.</div>
+        <div class="acts"><button class="btn"><span class="material-icons">add</span>New rate</button></div>
+      </div>
+
+      <div class="empty">
+        <div class="ic"><span class="material-icons">local_offer</span></div>
+        <div class="ttl">No tags yet</div>
+        <div class="desc">Create your first tag to start categorizing transactions.</div>
+        <div class="acts"><button class="btn"><span class="material-icons">add</span>New tag</button></div>
+      </div>
+
+      <div class="empty">
+        <div class="ic muted"><span class="material-icons">folder</span></div>
+        <div class="ttl">No files yet</div>
+        <div class="desc">Files you attach to accounts and transactions collect here.</div>
+      </div>
+
+      <div class="empty">
+        <div class="ic muted"><span class="material-icons">manage_accounts</span></div>
+        <div class="ttl">No users yet</div>
+        <div class="desc">People you invite to this workspace will appear here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Special states — distinct from a first-run empty list. -->
+  <div class="sec">
+    <div class="sec-label">Special states</div>
+    <div class="grid special">
+      <div class="empty">
+        <div class="ic muted"><span class="material-icons">receipt_long</span></div>
+        <div class="ttl">No transactions match</div>
+        <div class="desc">Try a different search, or clear the filters to see everything.</div>
+        <div class="acts"><button class="btn outlined"><span class="material-icons">close</span>Clear filters</button></div>
+      </div>
+
+      <div class="empty">
+        <div class="ic pending"><span class="material-icons">document_scanner</span></div>
+        <div class="ttl">Analyzing statement-nov-2024.pdf</div>
+        <div class="desc">Odyssey is extracting candidate transactions. This usually takes 20–40 seconds.</div>
+        <div class="muted mono" style="font-size: 11px;">job · fa-9c3 · gpt-4o-mini</div>
+      </div>
+    </div>
+  </div>
+</body></html>

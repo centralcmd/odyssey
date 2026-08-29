@@ -1,0 +1,50 @@
+@*
+    OdsStatTile — a headline statistic tile (Odyssey Design System · components/StatTile).
+
+    An overline label, a tabular-monospace headline figure, and an optional
+    delta line. DeltaDir tints the delta up (income green) or down (expense
+    coral). The standard Dashboard / overview figure.
+*@
+
+<div class="odc-stat">
+    @if (Overline is not null)
+    {
+        <div class="odc-stat-overline">@Overline</div>
+    }
+    <div class="odc-stat-num @ValueClassName">@Value</div>
+    @if (Delta is not null)
+    {
+        <div class="odc-stat-delta @DeltaClass">@Delta</div>
+    }
+</div>
+
+@code {
+    /// <summary>Small uppercase label above the figure.</summary>
+    [Parameter] public RenderFragment? Overline { get; set; }
+
+    /// <summary>The headline figure (rendered tabular monospace).</summary>
+    [Parameter, EditorRequired] public RenderFragment? Value { get; set; }
+
+    /// <summary>Optional change line below the figure.</summary>
+    [Parameter] public RenderFragment? Delta { get; set; }
+
+    /// <summary>Tints the delta: Up = income green, Down = expense coral.</summary>
+    [Parameter] public OdsDeltaDirection? DeltaDir { get; set; }
+
+    /// <summary>Tints the figure itself — income / expense — for a balance that flips sign.</summary>
+    [Parameter] public OdsValueTone? ValueClass { get; set; }
+
+    private string ValueClassName => ValueClass switch
+    {
+        OdsValueTone.Income => "income",
+        OdsValueTone.Expense => "expense",
+        _ => string.Empty,
+    };
+
+    private string DeltaClass => DeltaDir switch
+    {
+        OdsDeltaDirection.Up => "up",
+        OdsDeltaDirection.Down => "down",
+        _ => string.Empty,
+    };
+}

@@ -1,0 +1,58 @@
+@using Odyssey.Dtos.Application
+@* /account · "Claims & permissions" — a read-only view of what the signed-in account can do.
+   Access is granted by the role; nothing here mutates. *@
+
+<MudCard Elevation="1" Class="ods-outline">
+    <MudCardContent Class="pa-4">
+        <div class="acc-cardhead bordered">
+            <span class="acc-ic"><MudIcon Icon="@Icons.Material.Filled.Key" /></span>
+            <div class="acc-sec-titles">
+                <div class="acc-sec-title">Claims &amp; permissions</div>
+                <div class="acc-sec-sub">What your account can do in Odyssey. Access is granted by your role and is read-only here.</div>
+            </div>
+        </div>
+        <div class="meta-grid">
+            <div class="meta-tile"><div class="meta-label">Name</div><div class="meta-value">@(ProfileValidation.ResolveName(Profile) is { Length: > 0 } n ? n : "—")</div></div>
+            <div class="meta-tile"><div class="meta-label">Username</div><div class="meta-value mono">@Username</div></div>
+            <div class="meta-tile"><div class="meta-label">Email</div><div class="meta-value mono">@Email</div></div>
+            <div class="meta-tile"><div class="meta-label">Role</div><div class="meta-value">@(Role ?? "Member")</div></div>
+            <div class="meta-tile"><div class="meta-label">Permissions granted</div><div class="meta-value">@Permissions.Count granted</div></div>
+            <div class="meta-tile meta-tile-wide"><div class="meta-label">User ID</div><div class="meta-value mono">@UserId</div></div>
+        </div>
+    </MudCardContent>
+</MudCard>
+
+<MudCard Elevation="1" Class="ods-outline">
+    <MudCardContent Class="pa-4">
+        <div class="acc-cardhead bordered">
+            <span class="acc-ic"><MudIcon Icon="@Icons.Material.Filled.LockOpen" /></span>
+            <div class="acc-sec-titles">
+                <div class="acc-sec-title">Permissions by area</div>
+                <div class="acc-sec-sub">Granted actions grouped by the part of Odyssey they apply to.</div>
+            </div>
+        </div>
+        @if (GrantedByCategory.Count == 0)
+        {
+            <div class="empty-line">No permissions are granted to your account.</div>
+        }
+        else
+        {
+            <div class="ua-cat-grid">
+                @foreach (var group in GrantedByCategory)
+                {
+                    <div class="ua-cat-card">
+                        <div class="ua-cat-name">
+                            <MudIcon Icon="@group.Icon" Size="Size.Small" />@group.Label
+                        </div>
+                        <div class="ua-actions-row">
+                            @foreach (var action in group.Actions)
+                            {
+                                <span class="ua-action-chip">@action</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </MudCardContent>
+</MudCard>

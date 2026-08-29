@@ -1,0 +1,183 @@
+/* ── Page header scaffold (Odyssey Design System · p.10) ───────────── */
+
+/* Title row — title · sub on the left, action cluster on the right.
+   Buttons centre vertically against the title block; the row wraps on narrow
+   viewports rather than crushing the action cluster. */
+.page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* Leading slot (avatar) + title block sit side by side on the left of the row. */
+.ph-lead {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+}
+
+.ph-lead-slot {
+    flex: none;
+    display: flex;
+}
+
+/* Standard leading icon tile — the page's identity glyph in a square brand-tinted
+   well (Odyssey Design System · p.10). Rendered when a page supplies Icon and no
+   custom Leading slot; the tint tokens read correctly in both light and dark. */
+.ph-icon-tile {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
+    color: var(--mud-palette-primary);
+}
+
+.ph-icon-tile ::deep .mud-icon-root {
+    font-size: 1.75rem;
+}
+
+/* Title + sub stacked with a small gap (sub sits 4px under the title). */
+.ph-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+/* Status chips row under the title (role · email · 2FA · tenure). The chips
+   themselves are supplied by the page (and carry the page's CSS scope); the
+   leading avatar styling likewise lives with the page that supplies it. */
+.ph-chips {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+/* Sub-line — muted text-secondary token (NOT the blue brand Color.Secondary). */
+.ph-sub {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--mud-palette-text-secondary);
+}
+
+.ph-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+/* Overflow (⋯) trigger. The Journal VJOURNAL menu (#339) is its first real consumer, so give the
+   kebab defined styling: keep it inline-aligned with the primary action and sized like the other
+   header controls, rather than relying on MudMenu's unstyled default. */
+.ph-actions ::deep .ph-action-menu {
+    display: inline-flex;
+    align-items: center;
+}
+
+.ph-actions ::deep .ph-action-menu .mud-icon-button {
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Expandable region — opens below a 1px divider + 16px. ::deep covers both the
+   header's own regions and any supplied via ChildContent (page scope). Stacking
+   multiple open regions just repeats the divider + gap, per the design system. */
+.ph-root ::deep .ph-region {
+    border-top: 1px solid var(--mud-palette-divider);
+    padding-top: 16px;
+    margin-top: 16px;
+}
+
+/* Filter bar inside the Search region — the search field stretches, the filter
+   selects sit beside it and wrap.
+
+   This is the ONE definition (issue #371). It used to live in
+   odyssey-components.css with `align-items: center` and then be re-declared with
+   `align-items: flex-start` in eight page-scoped files whose min-widths had drifted
+   across 160/170/180/220/240px. The bar is rendered inside the header's own
+   .ph-region, so the contract belongs here; ::deep because the pages author the
+   markup they pass into SearchContent.
+
+   flex-start wins the alignment question: every control in the bar is height-matched
+   at 42px, so it is a no-op today, but when one grows (a validation line, a wrapped
+   multiselect trigger) the rest stay pinned to the label line instead of drifting.
+   The min-widths are floors, not caps — a longer filter label still widens its
+   control — so the values only set the wrap rhythm. */
+.ph-root ::deep .ph-filter-bar {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.ph-root ::deep .ph-search {
+    flex: 1;
+    min-width: 220px;
+}
+
+.ph-root ::deep .ph-select {
+    min-width: 170px;
+}
+
+/* Problem-signal toggle — count badge punched out of the MudButton's tint.
+   The badge fills with the button's own text color (currentColor: the severity
+   tint when outlined, dark ink when filled) and the number is knocked out in the
+   page surface color — the design system's signal-count treatment. */
+.ph-root ::deep .signal-count {
+    display: inline-grid;
+    place-items: center;
+    margin-left: 7px;
+    min-width: 18px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: currentColor;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.ph-root ::deep .signal-count > span {
+    color: var(--mud-palette-surface);
+}
+
+/* Problem rollup region — one alert row per problem (alert block is global). */
+/* Where the affected row lives. A rollup whose rows are scattered across a page by subject has to
+   name the card — the row's own title does not tell a reader where to look. De-emphasised, never
+   hidden: it is part of the message a screen reader reads out. */
+.signal-where {
+    opacity: 0.72;
+    font-style: italic;
+}
+
+.signal-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* A clickable rollup row (only when the problem carries a View action). */
+.signal-row {
+    align-items: center;
+    cursor: pointer;
+    transition: filter var(--duration-fast) var(--ease-standard);
+}
+
+.signal-row:hover { filter: brightness(1.06); }
+
+/* currentColor here is the row's severity tint, which is chosen for text on its own
+   soft fill and carries no 3:1 guarantee against the page surface the ring sits on
+   (WCAG 2.4.11) — use the focus-ring token like every other ring in the app. */
+.signal-row:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: var(--focus-ring-offset);
+}
