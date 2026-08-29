@@ -5,6 +5,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.1](https://github.com/centralcmd/odyssey/compare/v0.16.0...v0.16.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **config:** leave the example IMAGE_TAG empty instead of a stale pin ([2eec883](https://github.com/centralcmd/odyssey/commit/2eec883feeb7de27f99e26f3785a31caf0730770))
+
 ## 0.16.0 (2026-08-29)
 
 Initial public release.
