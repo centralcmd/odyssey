@@ -220,11 +220,86 @@ internal static class SystemSettingsRegistry
             Write = (dto, v) => dto.FileAnalysisMatchAutoLinkThreshold = v,
         },
 
-        // ── Transactional email (issue #421 Wave 2) ───────────────────────────────────────────────
-        // All four take the STRICTER claim. The sender identity is what recipients see and what the
-        // relay authorises; the throttle is a security control on the anonymous mail path. The SMTP
-        // transport fields are absent by design (Non-Goal 2) — a writable host harvests the relay
-        // credential and every reset token, because the sender connects and then authenticates.
+        // ── Transactional email (issue #421 Wave 2, extended by issue #8) ─────────────────────────
+        // Every one takes the STRICTER claim. The sender identity is what recipients see and what the
+        // relay authorises; the throttle is a security control on the anonymous mail path; and the
+        // four transport keys decide where mail goes, whether it is encrypted, and what address every
+        // reset link points at.
+        //
+        // The transport four were absent by design until issue #8 (issue #421 Non-Goal 2): a writable
+        // host harvests the relay credential and every reset token, because the sender connects and
+        // THEN authenticates. That threat is now closed STRUCTURALLY rather than by detection — see
+        // SystemSettingsService.UpdateAsync, which clears the stored credential in the same
+        // transaction as the host change. EmailClientBaseUrl has no such structural control and its
+        // residual risk is stated and accepted in issue #8 §10.2.
+        //
+        // Ordering: the transport rows come FIRST, matching the design system's Email group. They
+        // frame everything below them — whether mail leaves at all, where it goes, and whether the
+        // credential beneath them travels encrypted.
+        new StringSetting
+        {
+            Key = SystemSettingsKeys.EmailSmtpHost,
+            FieldName = nameof(SystemSettingsUpdate.EmailSmtpHost),
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            DefaultValue = SystemSettingsDefaults.EmailSmtpHost,
+            MaxLength = EmailSmtpHostRule.MaxLength,
+            // Empty is a legal, meaningful value here — "mail is not configured" — and is the only
+            // route back to it, since null already means "leave unchanged".
+            AllowEmpty = true,
+            Validator = EmailSmtpHostRule.Validate,
+            Canonicalize = EmailSmtpHostRule.Canonicalize,
+            // The audit line echoes the value being REPLACED, which the write validator never saw: a
+            // row planted by a restore can carry `user:pass@host`. Both ends go through the
+            // projection so the change stays reconstructable without the line carrying a credential.
+            AuditProjection = EmailSmtpHostRule.Host,
+            ReadValidator = EmailSmtpHostRule.Validate,
+            Read = r => r.EmailSmtpHost,
+            Write = (dto, v) => dto.EmailSmtpHost = v,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.EmailSmtpPort,
+            Min = SystemSettingsBounds.EmailSmtpPortMin,
+            Max = SystemSettingsBounds.EmailSmtpPortMax,
+            FieldName = nameof(SystemSettingsUpdate.EmailSmtpPort),
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.EmailSmtpPort),
+            Read = r => r.EmailSmtpPort,
+            Write = (dto, v) => dto.EmailSmtpPort = v,
+        },
+        new BoolSetting
+        {
+            Key = SystemSettingsKeys.EmailUseStartTls,
+            FieldName = nameof(SystemSettingsUpdate.EmailUseStartTls),
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            DefaultValue = Bool(SystemSettingsDefaults.EmailUseStartTls),
+            Read = r => r.EmailUseStartTls,
+            Write = (dto, v) => dto.EmailUseStartTls = v,
+        },
+        // The one field in this group that G4/G7 do not protect, because no credential is involved:
+        // whoever changes it receives a password-reset token for any address they know, including
+        // another administrator's. Hence the claim, the host-only audit projection, the https-only
+        // rule and — the only control that narrows this at no cost to legitimate use — the
+        // client-side origin-mismatch hint (which is client-side because AdvisoryContext carries no
+        // HttpContext and Advise runs on every GET, not after a save).
+        new StringSetting
+        {
+            Key = SystemSettingsKeys.EmailClientBaseUrl,
+            FieldName = nameof(SystemSettingsUpdate.EmailClientBaseUrl),
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            DefaultValue = SystemSettingsDefaults.EmailClientBaseUrl,
+            MaxLength = EmailClientBaseUrlRule.MaxLength,
+            AllowEmpty = true,
+            Validator = EmailClientBaseUrlRule.Validate,
+            Canonicalize = EmailClientBaseUrlRule.Canonicalize,
+            AuditProjection = EmailClientBaseUrlRule.Host,
+            // The read-path validator issue #8 §5.9 added StringSetting.ReadValidator for. Without it
+            // an http:// public host planted by a restore fails closed on send while the settings
+            // page shows the row as healthy — invisible, on the weakest field in the feature.
+            ReadValidator = EmailClientBaseUrlRule.Validate,
+            Read = r => r.EmailClientBaseUrl,
+            Write = (dto, v) => dto.EmailClientBaseUrl = v,
+        },
         new StringSetting
         {
             Key = SystemSettingsKeys.EmailFromAddress,

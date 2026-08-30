@@ -116,10 +116,43 @@ public sealed record SystemSettingsUpdate
     public decimal? FileAnalysisMatchAutoLinkThreshold { get; set; }
 
     // ---------------------------------------------------------------------------------------------
-    // Transactional email (issue #421 Wave 2). Ranges carried over from the retired EmailOptions
-    // annotations so a direct (non-HTTP) caller is bounded the same way model validation bounds a
-    // request. No [Required] on the strings — null means "leave unchanged" on this DTO.
+    // Transactional email (issue #421 Wave 2, extended by issue #8). Ranges carried over from the
+    // retired EmailOptions annotations so a direct (non-HTTP) caller is bounded the same way model
+    // validation bounds a request. No [Required] on the strings — null means "leave unchanged" on
+    // this DTO.
+    //
+    // The four transport keys are the last Email:* values that were still deploy-time only. Two of
+    // them accept the EMPTY STRING as a meaningful value ("mail is not configured", "links cannot be
+    // composed") rather than as a rejected clear — see StringSetting.AllowEmpty. That is why neither
+    // carries [Required] and why neither has a MinimumLength: null and "" mean different things here,
+    // and an attribute cannot express the difference.
     // ---------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The relay. Changing this to a different non-empty value CLEARS the stored SMTP username and
+    /// password in the same transaction (issue #8 G4) — the sender connects before it authenticates,
+    /// so a credential entered for one relay must never be presented to another.
+    /// </summary>
+    [StringLength(EmailSmtpHostRule.MaxLength)]
+    public string? EmailSmtpHost { get; set; }
+
+    [Range(SystemSettingsBounds.EmailSmtpPortMin, SystemSettingsBounds.EmailSmtpPortMax)]
+    public int? EmailSmtpPort { get; set; }
+
+    /// <summary>
+    /// Turning this OFF clears the same two secrets (issue #8 G7), for the same reason in a different
+    /// shape: a credential entered for an encrypted transport must not be replayed over a cleartext
+    /// one, where passive network position alone is enough to harvest it.
+    /// </summary>
+    public bool? EmailUseStartTls { get; set; }
+
+    /// <summary>
+    /// The public origin every confirmation and password-reset link is composed against. The
+    /// highest-consequence field in this group and the one G4/G7 do NOT protect — no credential is
+    /// involved, so there is nothing to clear. See issue #8 §10.2.
+    /// </summary>
+    [StringLength(EmailClientBaseUrlRule.MaxLength)]
+    public string? EmailClientBaseUrl { get; set; }
 
     [StringLength(256)]
     public string? EmailFromAddress { get; set; }

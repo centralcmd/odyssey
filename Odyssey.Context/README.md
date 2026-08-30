@@ -114,6 +114,17 @@ So is `SystemSetting`, whose `Key` is a natural primary key — a plain `HasData
 page's provenance line reads. `SystemSettingSecret` carries no seed at all: an absent row means *not configured*, which
 is a secret's correct initial state.
 
+Issue #8 added four such rows — `EmailSmtpHost`, `EmailSmtpPort`, `EmailUseStartTls` and
+`EmailClientBaseUrl` — in the `AddEmailTransportSettings` migration, seeded with `587` and `true` for
+the two typed keys and the **empty string** for the two string ones. The empty values are the real
+ones, not placeholders awaiting an adoption step: there is no path from configuration or the
+environment into this store, so a fresh deployment starts with mail switched off until an
+administrator sets a relay at `/settings`. A compile-time `InsertData` cannot see an operator's
+environment variable in any case, and would silently overwrite their value with the shipped default if
+it tried. `DemoDataSeeder` sets `EmailClientBaseUrl` for the Development and Testing stacks only, and
+skips a row whose `UpdatedBy` is non-null — ownership, never a value comparison, which cannot tell
+"never touched" from "deliberately set back to the default".
+
 ### One database
 
 Because this is one model with keys throughout, its halves **cannot be pointed at different

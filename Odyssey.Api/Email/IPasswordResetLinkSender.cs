@@ -37,9 +37,20 @@ public enum PasswordResetLinkDelivery
     Delivered,
 
     /// <summary>
-    /// No <c>Email:SmtpHost</c>, so the link was logged instead. The intended development behaviour, and
-    /// reported to the admin as delivered — in that environment logging <em>is</em> the delivery
-    /// mechanism. Production fails startup with an unset host, so it never reaches this state.
+    /// The message could not be sent and nothing was transmitted. Two conditions reach this state, and
+    /// issue #8 §11.1 keeps them distinct everywhere except here:
+    /// <list type="bullet">
+    /// <item><em>Unconfigured</em> — no SMTP host is set, so the link was logged instead. The intended
+    /// development behaviour, and reported to the admin as delivered: in that environment logging
+    /// <em>is</em> the delivery mechanism. Production reaches this too now — the startup gate on
+    /// <c>Email:SmtpHost</c> went away with the setting's move into the store, so a deployment sends
+    /// nothing until an administrator configures a relay at <c>/settings</c>.</item>
+    /// <item><em>Degraded</em> — a stored transport value is present and unusable, so the send fails
+    /// closed rather than substituting a default. Logged as an error, naming the keys and never the
+    /// values.</item>
+    /// </list>
+    /// They share an outcome because the caller's choice is the same either way: report that no mail
+    /// went out. The distinction that matters is on the settings page and in the log, not here.
     /// </summary>
     NotConfigured,
 

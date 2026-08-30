@@ -347,13 +347,19 @@ public class MigratedSecretConsumerTests
     /// AC 12, in its strongest available form. The configuration properties a fallback would have read
     /// are GONE — so the rule is enforced by the compiler, not by vigilance. A test is the wrong tool
     /// for "nobody will write <c>?? configured</c>"; a missing property is the right one.
+    ///
+    /// <para>
+    /// The three <c>EmailOptions</c> members this used to name went further still: issue #8 moved the
+    /// last four <c>Email:*</c> values into the settings store and deleted the whole class, so there is
+    /// no type left to reflect over. That is asserted below by name rather than dropped — a
+    /// reintroduced <c>EmailOptions</c> would be a resurrected fallback path, and the point of naming
+    /// it is that the next person to add one has to delete this line first.
+    /// </para>
     /// </summary>
     [Fact]
     public void TheRetiredConfigurationProperties_NoLongerExist()
     {
-        Assert.Null(typeof(EmailOptions).GetProperty("Username"));
-        Assert.Null(typeof(EmailOptions).GetProperty("Password"));
-        Assert.Null(typeof(EmailOptions).GetProperty("RecipientHashKey"));
+        Assert.Null(typeof(SmtpEmailSender).Assembly.GetType("Odyssey.Api.Email.EmailOptions"));
         Assert.Null(typeof(Odyssey.Core.Finance.FileAnalysisOptions).GetProperty("ApiKey"));
         Assert.Null(typeof(Odyssey.Api.Legal.LegalOptions).GetProperty("PseudonymizationSecret"));
     }

@@ -86,10 +86,9 @@ public class SwaggerProductionLockoutTests
                 {
                     ["UseInMemoryDatabase"] = "true",
                     ["Swagger:Enabled"] = "true",
-                    // Production refuses to start without a relay (issue #405); supplying it keeps that
-                    // rule from masking what this suite measures.
-                    ["Email:SmtpHost"] = "smtp.example.test",
-                    ["Email:FromAddress"] = "no-reply@odyssey.test"
+                    // Production used to refuse to start without a relay (issue #405), so one had to be
+                    // supplied here to keep that rule from masking what this suite measures. Issue #8
+                    // moved the setting into the database and removed the gate; nothing here needs mail.
                 }));
 
             builder.ConfigureTestServices(services =>

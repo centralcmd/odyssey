@@ -170,28 +170,72 @@ public class SecretSettingsInfrastructureTests
     }
 
     /// <summary>
-    /// The other half, and the reason the test above cannot simply grep for the word "Email": the
-    /// transport around the credential deliberately STAYS in configuration (issue #421 Non-Goal 2, and
-    /// #445 Non-Goal 2). A change that removed these too would be a security regression dressed as
-    /// consistency — the sender connects to the host and THEN authenticates, so an admin-editable host
-    /// harvests the relay credential and every password-reset token.
+    /// The inverse of the test above, and it now asserts the opposite of what it once did.
+    ///
+    /// <para>
+    /// It used to require that the transport around the credential <em>stayed</em> in configuration
+    /// (issue #421 Non-Goal 2, #445 Non-Goal 2), on the argument that the sender connects to the host
+    /// and THEN authenticates — so an admin-editable host harvests the relay credential and every
+    /// password-reset token. That argument was right, and issue #8 answered it a different way:
+    /// changing the host, or turning STARTTLS off, CLEARS the stored credential in the same
+    /// transaction. There is nothing left to hand to the new host, so the value became safe to move.
+    /// </para>
+    ///
+    /// <para>
+    /// So the assertion is inverted rather than deleted. Re-adding any of these to compose would be a
+    /// silent fallback path into a store whose whole point is that configuration cannot reach it —
+    /// which is the same defect the retired-keys test above guards, one layer up.
+    /// </para>
     /// </summary>
     [Theory]
     [InlineData("Email__SmtpHost")]
     [InlineData("Email__SmtpPort")]
     [InlineData("Email__UseStartTls")]
     [InlineData("Email__ClientBaseUrl")]
-    // FileAnalysis__BaseUrl is deliberately NOT here. It reads like a peer of Email__SmtpHost — the
-    // destination a credential travels to — but issue #439 made it a setting, and compose only ever
-    // carried it as an input to the config-adoption step, which is gone. Its protection is not
-    // "unreachable from the UI" but the set of mitigations on the setting itself: the security claim,
+    // FileAnalysis__BaseUrl belongs to the same class and is absent from compose for the same reason:
+    // issue #439 made it a setting. It is not listed here only because compose never carried it except
+    // as an input to the config-adoption step, so there is no removal to guard. Its protection is not
+    // "unreachable from the UI" but the mitigations on the setting itself: the security claim,
     // https-only validation with no path, query, fragment or credentials, the host-only projection
     // every echo goes through, AllowAutoRedirect = false on the outbound client, and the refusal to
-    // substitute the compiled default for an unusable stored value. FileAnalysisBaseUrlRuleTests pins
-    // the validation half.
-    public void TheRetainedKeys_AreStillPlumbedThrough(string key)
+    // substitute the compiled default for an unusable stored value.
+    public void TheMovedTransportKeys_AreNotPlumbedThroughAnyMore(string key)
     {
-        Assert.Contains($"{key}:", RepositoryRoot.ReadAllText("docker-compose.yml"), StringComparison.Ordinal);
+        Assert.DoesNotContain($"{key}:", RepositoryRoot.ReadAllText("docker-compose.yml"), StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            $"{key}:", RepositoryRoot.ReadAllText("docker-compose.prod.yml"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// AC 15's other half: the shell-shaped names go too. A compose file that no longer reads
+    /// <c>EMAIL_SMTP_HOST</c> while <c>.env.prod.example</c> still asks an operator to set it is worse
+    /// than either problem alone — it invites someone to configure a relay that is silently ignored,
+    /// and then to believe mail is configured when it is not.
+    /// </summary>
+    [Theory]
+    [InlineData("EMAIL_SMTP_HOST")]
+    [InlineData("EMAIL_SMTP_PORT")]
+    [InlineData("EMAIL_USE_STARTTLS")]
+    [InlineData("EMAIL_CLIENT_BASE_URL")]
+    public void TheMovedTransportVariables_AreGoneFromBothEnvTemplates(string shellName)
+    {
+        foreach (var file in new[] { ".env.example", ".env.prod.example" })
+        {
+            Assert.DoesNotContain($"{shellName}=", RepositoryRoot.ReadAllText(file), StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// The <c>Email</c> configuration SECTION is gone from <c>appsettings.json</c> too, so there is no
+    /// deploy-time value left for anything to bind or fall back to. Asserted as its own case because
+    /// the section is what a reader looking for mail configuration would find first, and an empty
+    /// leftover would read as "configure it here".
+    /// </summary>
+    [Fact]
+    public void TheEmailConfigurationSection_IsGoneFromAppsettings()
+    {
+        Assert.DoesNotContain(
+            "\"Email\"", RepositoryRoot.ReadAllText("Odyssey.Api/appsettings.json"), StringComparison.Ordinal);
     }
 
     /// <summary>

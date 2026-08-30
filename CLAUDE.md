@@ -319,8 +319,11 @@ Adding one:
    The accepted consequence is a defined gap
    after upgrade during which each secret reads `NotSet` and its consumer behaves as it did
    unconfigured; that gap belongs in the release notes.
-6. **Retire the configuration property, don't keep it as documentation of record.** The moved
-   *plaintext* settings keep their `FileAnalysisOptions`/`EmailOptions` property as documentation. A
+6. **Retire the configuration property, don't keep it as documentation of record.** A moved
+   *plaintext* setting may keep its bound options property as documentation — `FileAnalysisOptions`
+   still does. `EmailOptions` no longer exists at all: issue #8 moved the last four `Email:*` values
+   into the store and deleted the class and the whole `Email` configuration section with them, so
+   that half of the example is now historical. A
    secret's property is deleted, because a surviving one is a fallback waiting to be written — and the
    single rule this whole area exists to hold is that an `Unreadable` row never resolves to the
    configured value. Deleting it makes that a compile error rather than a matter of vigilance.
@@ -332,17 +335,27 @@ Rules a secret follow-up inherits:
   a nullable string would let a consumer write `?? configuredFallback` and send with the old
   configured value the administrator believed they had replaced. Whether a given consumer fails open
   or closed on `Unreadable` is that consumer's own call, in its own issue.
-- **A secret's *destination* is the dangerous half, and the default is that it stays in deploy-time
-  configuration.** An admin-editable destination plus a stored key is one-request exfiltration of the
-  credential. `Email:SmtpHost` holds that line and must keep holding it. `FileAnalysis:BaseUrl` is the
-  **deliberate exception** — issue #439 made it admin-editable because an internal corporate gateway
-  is much of why the setting exists at all — and it is an exception only because it carries the
-  compensating controls in full: its own security claim, https-only validation rejecting any path,
-  query, fragment or credentials, a host-only projection on every echo including the *old* value in an
-  audit line, `AllowAutoRedirect = false` on the outbound client, a row advisory saying where the key
-  will travel, and a read path that refuses rather than substituting the compiled default. Do not read
-  that exception as a precedent for moving another destination; read it as the bar one would have to
-  clear.
+- **A secret's *destination* is the dangerous half, and moving one requires either the compensating
+  controls in full or a structural close.** An admin-editable destination plus a stored key is
+  one-request exfiltration of the credential. Two destinations have moved, by two different routes,
+  and the difference is the point:
+  - `FileAnalysis:BaseUrl` (issue #439) moved because an internal corporate gateway is much of why
+    the setting exists, and it carries the **compensating controls in full**: its own security claim,
+    https-only validation rejecting any path, query, fragment or credentials, a host-only projection
+    on every echo including the *old* value in an audit line, `AllowAutoRedirect = false` on the
+    outbound client, a row advisory saying where the key will travel, and a read path that refuses
+    rather than substituting the compiled default. The key still travels to whatever host is set —
+    the exposure is mitigated, not removed.
+  - `Email:SmtpHost` (issue #8) moved on a **stronger** footing: **changing it clears the stored
+    credential in the same transaction**, so there is no credential left to present to the new host.
+    Turning `EmailUseStartTls` off clears the same two rows, for the same reason in a different
+    shape. That is a structural close rather than a detection, and it is what earns the move — it
+    does not depend on anyone reading an audit log. The atomicity is load-bearing: if the two writes
+    can interleave, an interruption leaves the new host live with the old credential still stored,
+    which is the exploit itself.
+
+  Read neither as a general precedent. Read them as the two bars available: carry every control, or
+  remove the thing being exfiltrated.
 - **A per-send `DelegatingHandler` must not re-attach the credential across a cross-origin redirect.**
   `.NET` strips only `Authorization`; a custom header survives.
 - **The consumer has to be able to `await` a scoped `OdysseyContext` where it needs the value.** A
@@ -416,10 +429,7 @@ uses, the advisory must go in that component's `Advisory` slot and **never `Foot
 either/or with `ChildContent`.
 
 Some things deliberately stay in deploy-time config, and the reasons are recorded in issue #421's
-Non-Goals so they are not re-litigated: connection strings and secrets; `Email:SmtpHost`/`Port`/`UseStartTls`
-(the sender connects and *then* authenticates, so a writable host harvests the relay credential and every
-reset token — the sender *identity* did move, the transport did not, and issue #445 moved the relay
-*credential* into the encrypted secret store without touching the transport); `Email:ClientBaseUrl` (it is the host of every password-reset link); `RateLimiting:*` (the
+Non-Goals so they are not re-litigated: connection strings and secrets; `RateLimiting:*` (the
 partitioner is synchronous and caches its limiter per partition key, so a changed limit never reaches a
 live partition); and `FileAnalysis:PromptVersion`/`PromptTemplatePath` (the prompt template is a deployed file, and a version
 string that can drift from the file it names is worse than one that cannot). `FileAnalysis:Model` was
@@ -441,6 +451,56 @@ Issue #434 adds one more of the same class:
 runtime value could never reach a live pipeline — and worse than inert, since the options validator
 rejects the handler unless `SamplingDuration >= 2 x AttemptTimeout`. Note the contrast with
 `FileAnalysis:Match:TimeoutSeconds`, which *is* per-call and *did* move.
+
+**Issue #8 moved the last four `Email:*` values and left the section empty.** `Email:SmtpHost`,
+`SmtpPort`, `UseStartTls` and `ClientBaseUrl` were the strongest entries on that Non-Goal list, and
+they moved on the strongest justification: the threat is closed **structurally**. Changing the host or
+the port, or turning STARTTLS off, clears the stored `EmailUsername` and `EmailPassword` **in the same
+transaction**, so there is no credential left to present to a relay it was not entered for or to put
+on a cleartext wire. `EmailOptions` and the whole `Email` configuration section were **deleted** —
+not deprecated, not left as documentation of record — along with every `EMAIL_*` variable in both
+`.env*.example` files, both compose files and `AppHost.cs`. There is no configuration path back.
+Four things about that change are easy to get wrong and are enforced in code:
+
+- **The clear and the settings write share one transaction**, wrapped in
+  `CreateExecutionStrategy().ExecuteAsync` because `EnableRetryOnFailure` is configured (a bare
+  `BeginTransactionAsync` throws). `SecretSettingsService.ClearAsync` is *not* composable — it saves
+  and audits itself — so the removal was split into `StageClearAsync`, which queues onto the caller's
+  context and returns the audit record. Every audit line in `SystemSettingsService.UpdateAsync`, the
+  settings ones included, is now emitted **after** commit. Only real MariaDB exercises any of this;
+  the EF InMemory provider honours neither transactions nor the execution strategy, so the coverage
+  lives in `Odyssey.IntegrationTests`.
+- **Two of the three triggers are directional; the third deliberately is not.** The host clears only
+  on a change to a *different, non-empty* value, and STARTTLS only on true → false — re-saving the
+  same host must not cost an administrator their credential. The **port** clears on any change,
+  because unlike the host it has no "off" value: every port is a live listener, so every change moves
+  the credential to a different one. The port trigger came from the PR security review and goes beyond
+  issue #8's G4, which named the host alone; the goal G4 states is about an *endpoint*, and a host is
+  only half of one.
+- **A save can trip several triggers at once**, and the audit line names all of them. It still stages
+  one removal per secret — the rows are the same rows. First-match reporting under-states a compound
+  change in the one record that explains why a credential vanished.
+- **The send path does not use `SystemSettingsReader`.** That reader resolves an unparseable value to
+  the compiled default by design; here that would substitute a TLS mode or a port nobody chose onto
+  the path a reset token travels. `EmailTransportSettingsReader` returns *absent* / *valid* /
+  *unusable* per key and **fails closed** on unusable — while treating an absent row as healthy
+  ("mail is not configured"), which is the distinction an empty dictionary cannot make.
+- **`Email:ClientBaseUrl` has no structural control** and is the accepted residual (issue #8 §10.2):
+  whoever can change it receives a reset token for any address they know, another administrator's
+  included. 2FA is the compensating control; the claim, the host-only audit projection, https-only
+  validation (loopback exempted so the dev stack works) and a client-side origin-mismatch hint are
+  the rest.
+- **The shape rules are applied on the client too.** They live in `Odyssey.Dtos`, which has zero
+  project references and is reachable from the WASM client, so the settings page validates a host or a
+  base URL with the *same delegate* the server's descriptor uses rather than a re-implementation
+  (`SettingItem.Rule`). A client-side *copy* of a server rule is the defect CLAUDE.md already forbids
+  for caps; sharing the delegate is what keeps the check clear of that hazard.
+
+Two mechanisms this added to the settings machinery, both reusable: `StringSetting.AllowEmpty`, for a
+key where `""` is a meaningful value rather than a rejected clear — without it, configuring mail
+would be a one-way door — and `StringSetting.ReadValidator`, which makes a semantically-invalid
+stored string report as a projection fault instead of rendering as healthy. `FileAnalysisBaseUrl` has
+that same blind spot today and the same property would close it.
 
 **Permission claims live in two places, on purpose:**
 

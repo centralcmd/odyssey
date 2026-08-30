@@ -15,6 +15,9 @@
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject AuthenticationStateProvider Auth
+@* The browser's own origin, for the client-side origin-mismatch hint on the client base URL row
+   (issue #8 §3.3) — the server cannot see it. *@
+@inject NavigationManager Nav
 
 <PageTitle>System settings</PageTitle>
 
@@ -49,15 +52,21 @@
 
 <MudStack Spacing="6">
 
-    @* The credential signal (issue #445). An unreadable credential is an OUTAGE, not a settings
-       problem: the value is stored and its consumer is failing right now, and neither the cause nor
-       the fix is a Save. So it goes in the header's severity rollup — the same gesture Accounts,
-       Insurance and Tax statements use for a data condition needing attention — and deliberately NOT
-       into BlockingProblems, which exists to explain a disabled Save button. Merging them would make
-       Save look blocked by something Save cannot fix. *@
+    @* The setup signal (issue #445, extended by #8). An unreadable credential is an OUTAGE, not a
+       settings problem: the value is stored and its consumer is failing right now, and neither the
+       cause nor the fix is a Save. So it goes in the header's severity rollup — the same gesture
+       Accounts, Insurance and Tax statements use for a data condition needing attention — and
+       deliberately NOT into BlockingProblems, which exists to explain a disabled Save button. Merging
+       them would make Save look blocked by something Save cannot fix.
+
+       Issue #8 put a second KIND of entry in the same rollup: mail that has never been configured, at
+       Information rather than Error. That is why the label is "Attention" and no longer "Credentials"
+       — a rollup headed by the wrong noun is worse than a generic one, and this now covers both a
+       credential that cannot be decrypted and a deployment that has not finished being set up. It is
+       the label TaxStatementsCard already uses for the same mixed-severity shape. *@
     <PageHeader Title="System settings" Icon="@Icons.Material.Filled.Settings"
-                Problems="@CredentialProblems"
-                ProblemsLabel="Credentials"
+                Problems="@SetupProblems"
+                ProblemsLabel="Attention"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled">
         <SubLine>Instance-wide configuration for this Odyssey deployment</SubLine>
         <PrimaryAction>
@@ -273,6 +282,28 @@
             </MudCardContent>
         </MudCard>
     }
+
+    @* The destructive gate in front of Save (issue #8 §3). It intercepts the page's single batch
+       save when the SMTP host has changed to a different non-empty value, or STARTTLS has been turned
+       off — both of which clear the stored relay credential on the server, in the same transaction as
+       the settings write.
+
+       Rendered unconditionally rather than inside an @if: the dialog owns its own visibility through
+       Open, and mounting it only when the trigger appears would move focus into a component that was
+       not in the DOM when the reader pressed Save.
+
+       Confirm submits the WHOLE batch, exactly as an unguarded Save would; Cancel and Escape discard
+       nothing at all. Focus returns to the row that caused it in every case — neither OdsModal nor
+       OdsFormDialog restores it, so the page does. *@
+    <OdsSecretClearOnSaveDialog Open="_clearDialogOpen"
+                                OpenChanged="OnClearDialogOpenChanged"
+                                Reason="_clearReason"
+                                FromHost="@SavedSmtpEndpoint"
+                                ToHost="@DraftSmtpEndpoint"
+                                Secrets="@RelayCredentialTitles"
+                                ReEnterAt="Credentials"
+                                PendingCount="DirtyCount"
+                                OnConfirm="ConfirmClearAsync" />
 
     @* Polite live region — save success / load failure announcements (WCAG 2.2 §4.1.3). *@
     <OdsLiveAnnouncer Message="@_announce" />

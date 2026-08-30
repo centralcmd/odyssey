@@ -3,7 +3,6 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using MimeKit;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
@@ -40,7 +39,6 @@ namespace Odyssey.Api.Email;
 /// short-lived scope on each call.
 /// </remarks>
 public sealed class SmtpEmailSender(
-    IOptions<EmailOptions> options,
     IServiceScopeFactory scopeFactory,
     IEmailSendThrottle throttle,
     IEmailRecipientHashKey recipientHashKey,
@@ -48,8 +46,6 @@ public sealed class SmtpEmailSender(
     ILogger<SmtpEmailSender> logger)
     : IEmailSender<ApplicationUser>, IPasswordResetLinkSender
 {
-    private readonly EmailOptions options = options.Value;
-
     public async Task SendConfirmationLinkAsync(ApplicationUser user, string email, string confirmationLink)
     {
         // Live read (issue #349) — never cached, so a toggle takes effect on the very next
@@ -63,13 +59,18 @@ public sealed class SmtpEmailSender(
             return;
         }
 
-        var link = RewriteToClient(confirmationLink, "confirm-email");
+        // One snapshot, threaded through composition AND delivery. Composing against a base URL that
+        // a concurrent admin write then changed before the send would mail a link to the old origin
+        // while the audit line named the new one.
+        var settings = await ReadSettingsAsync();
+
+        var link = RewriteToClient(confirmationLink, "confirm-email", settings.Transport);
         var body = $"""
             <p>Welcome to Odyssey. Confirm your email address to activate your account:</p>
             <p><a href="{link}">Confirm my email</a></p>
             <p>If you didn't create this account, you can ignore this message.</p>
             """;
-        await SendAsync(email, "Confirm your Odyssey account", body, link);
+        await SendAsync(email, "Confirm your Odyssey account", body, link, settings);
     }
 
     /// <summary>
@@ -87,10 +88,11 @@ public sealed class SmtpEmailSender(
     /// than a link, so — unlike confirmation, which gets a framework link to rewrite — the client URL
     /// is composed here.
     /// </summary>
-    public Task SendPasswordResetCodeAsync(ApplicationUser user, string email, string resetCode)
+    public async Task SendPasswordResetCodeAsync(ApplicationUser user, string email, string resetCode)
     {
-        var message = PasswordResetMail.Compose(resetCode, options.ClientBaseUrl);
-        return SendAsync(email, PasswordResetMail.Subject, message.Body, message.Link);
+        var settings = await ReadSettingsAsync();
+        var message = PasswordResetMail.Compose(resetCode, settings.Transport.ClientBaseUrl);
+        await SendAsync(email, PasswordResetMail.Subject, message.Body, message.Link, settings);
     }
 
     /// <summary>
@@ -99,11 +101,13 @@ public sealed class SmtpEmailSender(
     /// mutating anything — and it reports the real outcome instead of returning indistinguishably from
     /// success.
     /// </summary>
-    public Task<PasswordResetLinkDelivery> SendResetLinkAsync(
+    public async Task<PasswordResetLinkDelivery> SendResetLinkAsync(
         string email, string base64UrlCode, CancellationToken cancellationToken = default)
     {
-        var message = PasswordResetMail.Compose(base64UrlCode, options.ClientBaseUrl);
-        return DeliverAsync(email, PasswordResetMail.Subject, message.Body, message.Link, cancellationToken);
+        var settings = await ReadSettingsAsync(cancellationToken);
+        var message = PasswordResetMail.Compose(base64UrlCode, settings.Transport.ClientBaseUrl);
+        return await DeliverAsync(
+            email, PasswordResetMail.Subject, message.Body, message.Link, cancellationToken, settings);
     }
 
     /// <summary>
@@ -113,8 +117,9 @@ public sealed class SmtpEmailSender(
     /// One snapshot, not a read per field. <c>SendAsync</c> tests the host before the permit check and
     /// <c>DeliverAsync</c> tests it again, so per-field live reads would let a single send observe two
     /// different values across a concurrent admin write — consuming a recipient's permit and then
-    /// dropping the message it was consumed for. The SMTP transport fields still come from
-    /// <see cref="EmailOptions"/>: they stay in deploy-time config (issue #421 Non-Goal 2).
+    /// dropping the message it was consumed for. Since issue #8 the SMTP transport fields are read in
+    /// the same scope and the same method: <c>EmailOptions</c> is gone, and there is no configuration
+    /// left for any of them to come from.
     ///
     /// <para>
     /// <strong>No credential is a member of this record.</strong> A record prints its members, and a
@@ -130,12 +135,19 @@ public sealed class SmtpEmailSender(
         int PerRecipientLimit,
         int WindowMinutes,
         int MaxTrackedRecipients,
-        ReadOnlyMemory<byte> RecipientHashKey);
+        ReadOnlyMemory<byte> RecipientHashKey,
+        EmailTransportSettings Transport);
 
-    private async Task<EmailSettings> ReadSettingsAsync()
+    private async Task<EmailSettings> ReadSettingsAsync(CancellationToken cancellationToken = default)
     {
         using var scope = scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        // The transport four go through their OWN reader, not SystemSettingsReader's defaulting
+        // overloads (issue #8 §5.9, §11.1). That reader resolves an unparseable value to the compiled
+        // default so a display bound "degrades instead of disappearing"; here that would substitute a
+        // TLS mode or a port the administrator never chose onto the path a reset token travels.
+        var transport = await EmailTransportSettingsReader.ReadAsync(context, cancellationToken);
 
         return new EmailSettings(
             await SystemSettingsReader.GetStringAsync(
@@ -157,7 +169,8 @@ public sealed class SmtpEmailSender(
                 SystemSettingsDefaults.EmailMaxTrackedRecipients),
             // Read on the same cadence as the limits and for the same reason: the throttle's
             // compare-and-increment runs in a lock and cannot await one of its own (issue #445 Wave 3).
-            await recipientHashKey.ResolveAsync());
+            await recipientHashKey.ResolveAsync(),
+            transport);
     }
 
     // A short-lived scope per call, rather than a constructor dependency — see the class remarks.
@@ -187,7 +200,8 @@ public sealed class SmtpEmailSender(
     /// attempt the relay rejects. The mail is lost either way, and the one remaining alternative —
     /// falling back to a configured value — would send with the credential the administrator believed
     /// they had replaced. There is nothing to fall back to in any case: <c>Email:Username</c> and
-    /// <c>Email:Password</c> were removed from <see cref="EmailOptions"/> in the same change.
+    /// <c>Email:Password</c> were removed from the bound options class in the same change, and issue
+    /// #8 deleted what was left of that class along with the whole <c>Email</c> configuration section.
     /// </para>
     /// </summary>
     private async Task<SmtpCredentials> ResolveCredentialsAsync(CancellationToken cancellationToken)
@@ -270,15 +284,20 @@ public sealed class SmtpEmailSender(
     /// URL and <paramref name="clientPath"/>, keeping the original query string (<c>userId</c>,
     /// <c>code</c>, optional <c>changedEmail</c>) verbatim so the values still decode server-side.
     /// </summary>
-    private string RewriteToClient(string frameworkLink, string clientPath)
+    private static string RewriteToClient(
+        string frameworkLink, string clientPath, EmailTransportSettings transport)
     {
-        if (string.IsNullOrWhiteSpace(options.ClientBaseUrl))
+        // Empty covers BOTH the absent case (no client URL configured — degrade to the framework
+        // link, as before) and the unusable one (a stored value the rule rejects, which the reader
+        // resolves to empty rather than to the compiled default). The unusable case never reaches a
+        // recipient regardless: DeliverAsync fails the send closed before anything is transmitted.
+        if (string.IsNullOrWhiteSpace(transport.ClientBaseUrl))
         {
             return frameworkLink;
         }
 
         var query = new Uri(frameworkLink).Query;
-        return $"{options.ClientBaseUrl.TrimEnd('/')}/{clientPath}{query}";
+        return $"{transport.ClientBaseUrl.TrimEnd('/')}/{clientPath}{query}";
     }
 
     /// <summary>
@@ -319,14 +338,18 @@ public sealed class SmtpEmailSender(
     /// message — sharing one permit-acquiring body would both double-consume the recipient's budget and
     /// silently drop the mail after the caller had already committed its writes (issue #406 §5.1).
     /// </remarks>
-    private async Task SendAsync(string toEmail, string subject, string htmlBody, string? actionLink = null)
+    private async Task SendAsync(
+        string toEmail, string subject, string htmlBody, string? actionLink, EmailSettings? snapshot = null)
     {
         // Before the permit check, so an unconfigured dev stack still logs every action link — and so a
         // throttled call in that environment doesn't consume a permit for a message there was no relay to
         // send. DeliverAsync repeats the host check; it is the one that logs.
-        var settings = await ReadSettingsAsync();
+        var settings = snapshot ?? await ReadSettingsAsync();
 
-        if (!string.IsNullOrWhiteSpace(options.SmtpHost) && !TryAcquireSendPermit(toEmail, subject, settings))
+        // IsConfigured, not "the host string is non-empty": an unusable host is not a configured one,
+        // and a permit consumed for a message that is about to fail closed would count against a
+        // recipient who never received anything.
+        if (settings.Transport.IsConfigured && !TryAcquireSendPermit(toEmail, subject, settings))
         {
             return;
         }
@@ -348,8 +371,27 @@ public sealed class SmtpEmailSender(
     {
         // Reuse the caller's snapshot when there is one, so a throttled-then-delivered send sees a
         // single consistent view; read a fresh one for the entry points that do not throttle.
-        var settings = snapshot ?? await ReadSettingsAsync();
-        if (string.IsNullOrWhiteSpace(options.SmtpHost))
+        var settings = snapshot ?? await ReadSettingsAsync(cancellationToken);
+        var transport = settings.Transport;
+
+        // FAIL CLOSED, and before the unconfigured branch below (issue #8 §11.1). A stored value that
+        // is present and unusable is degraded, not absent, and the difference is the whole reason this
+        // read does not go through SystemSettingsReader: substituting a compiled default here would
+        // connect to a relay, or compose a reset link, on terms the administrator did not choose.
+        //
+        // It refuses on ANY of the four, not just the host: the port and the TLS flag decide how the
+        // credential travels, and the base URL decides where the token lands. Naming the keys and
+        // never the values — a stored value can carry `user:pass@host` planted by a restore.
+        if (transport.UnusableKeys.Count > 0)
+        {
+            logger.LogError(
+                "Email not sent to {Recipient} (subject: {Subject}): the stored mail transport settings "
+                + "{Keys} cannot be used. Correct them in System settings; no default is substituted.",
+                toEmail, subject, string.Join(", ", transport.UnusableKeys));
+            return PasswordResetLinkDelivery.NotConfigured;
+        }
+
+        if (!transport.IsConfigured)
         {
             // No SMTP configured: log loudly rather than failing the surrounding Identity request.
             // Surface the action link itself so confirmation still works in local/dev setups with
@@ -358,8 +400,14 @@ public sealed class SmtpEmailSender(
             //
             // Development/Testing only (issue #405): a password-reset link is a direct
             // account-takeover primitive, so anywhere else the log records that the mail could not be
-            // sent and stops there. Production additionally fails startup with an unset SmtpHost (see
-            // Program.cs), so it never reaches this branch at all.
+            // sent and stops there.
+            //
+            // Production DOES reach this branch now (issue #8 §11.3). The startup ValidateOnStart gate
+            // on Email:SmtpHost could not survive the move: a value entered through the UI cannot be a
+            // precondition for the UI coming up. The failure moved from startup to the first send —
+            // the identical trade issue #445 made for Legal:PseudonymizationSecret. The consequence
+            // for a fresh deployment (no self-service recovery until mail is configured) is in
+            // docs/deployment.md, and the settings page says so in its own header.
             if (actionLink is not null && IsLinkLoggingEnvironment)
             {
                 logger.LogWarning(
@@ -399,10 +447,10 @@ public sealed class SmtpEmailSender(
         try
         {
             using var client = new SmtpClient();
-            var secureSocket = options.UseStartTls
+            var secureSocket = transport.UseStartTls
                 ? SecureSocketOptions.StartTls
                 : SecureSocketOptions.SslOnConnect;
-            await client.ConnectAsync(options.SmtpHost, options.SmtpPort, secureSocket, cancellationToken);
+            await client.ConnectAsync(transport.Host, transport.Port, secureSocket, cancellationToken);
 
             if (credentials.TryGetPair(out var username, out var password))
             {

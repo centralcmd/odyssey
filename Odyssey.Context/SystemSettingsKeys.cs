@@ -67,13 +67,38 @@ public static class SystemSettingsKeys
     public const string FileAnalysisMatchAutoLinkThreshold = "FileAnalysisMatchAutoLinkThreshold";
 
     // ---------------------------------------------------------------------------------------------
-    // Transactional-email sender identity and the per-recipient throttle (issue #421 Wave 2).
+    // Transactional-email sender identity and the per-recipient throttle (issue #421 Wave 2), joined
+    // by the SMTP TRANSPORT and the public link origin (issue #8).
     //
-    // SmtpHost, SmtpPort and UseStartTls deliberately DO NOT appear here (Non-Goal 2). SmtpEmailSender
-    // connects to the host and THEN authenticates with the configured credentials, so a writable host
-    // would harvest the relay credential and every reset token in the message bodies — strictly worse
-    // than Email:ClientBaseUrl, which is excluded for the same class of reason.
+    // Issue #421 Non-Goal 2 kept SmtpHost, SmtpPort and UseStartTls out of this store, because the
+    // sender connects to the host and THEN authenticates: a writable host would harvest the relay
+    // credential and every reset token in the message bodies. Issue #8 reverses that deliberately,
+    // and closes the threat STRUCTURALLY rather than by detection — changing EmailSmtpHost, or
+    // turning EmailUseStartTls off, CLEARS the stored SMTP username and password in the same
+    // transaction, so there is no credential left to present to the new host or to put on the wire
+    // in clear. See SystemSettingsService.UpdateAsync and SecretSettingsService.StageClear.
+    //
+    // EmailClientBaseUrl carries no such structural control — no credential is involved — so it
+    // keeps the security claim, an https-only rule with a loopback exemption, a host-only audit
+    // projection and a client-side origin-mismatch hint. That residual is stated and accepted in
+    // issue #8 §10.2.
+    //
+    // All four are read LIVE and UNCACHED on every send, through a dedicated fail-closed reader
+    // (Odyssey.Api.Email.EmailTransportSettingsReader) rather than SystemSettingsReader's defaulting
+    // overloads: a "default" SMTP host is meaningless, and substituting one for a value an
+    // administrator set is exactly the substitution issue #445 forbids.
     // ---------------------------------------------------------------------------------------------
+
+    /// <summary>The relay. Empty means mail is NOT CONFIGURED — healthy, not degraded.</summary>
+    public const string EmailSmtpHost = "EmailSmtpHost";
+
+    public const string EmailSmtpPort = "EmailSmtpPort";
+
+    /// <summary>STARTTLS on connect (587). False means implicit TLS (465).</summary>
+    public const string EmailUseStartTls = "EmailUseStartTls";
+
+    /// <summary>The public origin every confirmation and password-reset link is composed against.</summary>
+    public const string EmailClientBaseUrl = "EmailClientBaseUrl";
 
     public const string EmailFromAddress = "EmailFromAddress";
     public const string EmailFromName = "EmailFromName";
@@ -200,6 +225,10 @@ public static class SystemSettingsKeys
         FileAnalysisPrivacyNoticeUrl,
         FileAnalysisMaxFutureTransactionDays,
         FileAnalysisMatchAutoLinkThreshold,
+        EmailSmtpHost,
+        EmailSmtpPort,
+        EmailUseStartTls,
+        EmailClientBaseUrl,
         EmailFromAddress,
         EmailFromName,
         EmailPerRecipientLimit,

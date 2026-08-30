@@ -221,7 +221,22 @@ public partial class Settings
         string? InputMode = null,
         // Placeholder on a Text row, for a value whose SHAPE is not obvious from the label. It shows
         // the form, never a value the reader might take for the current one.
-        string? Placeholder = null);
+        string? Placeholder = null,
+        // The SHARED shape rule for a Text row, from Odyssey.Dtos — the same delegate the server's
+        // descriptor validates with, not a re-implementation. Returns an error message, or null when
+        // the value is acceptable. Never called for an empty value: an AllowEmpty row is legal empty,
+        // and every other row reports "Enter a value" first.
+        //
+        // Without it the row round-trips to the server to learn its value is malformed, which the
+        // page already avoids for every bound it can see. It is only possible at all because the
+        // rules live in Odyssey.Dtos, which has zero project references and is reachable from WASM.
+        Func<string, string?>? Rule = null,
+        // A Text row whose EMPTY value is legal and MEANS something, rather than an unfilled field
+        // (issue #8). Mirrors StringSetting.AllowEmpty on the server, which is the authority — this
+        // flag only stops ErrorFor reporting "Enter a value" for a state the API accepts. Without it
+        // the two mail rows could never be cleared: an empty host would be a client-side error that
+        // disables Save, so configuring mail would be a one-way door.
+        bool AllowEmpty = false);
 
     internal sealed record RoundTripPair(string ExportKey, string ImportKey);
 
@@ -544,15 +559,55 @@ public partial class Settings
                 Write: (p, req) => req.FileAnalysisMatchTimeoutSeconds = p.IntRequest("fileAnalysisMatchTimeoutSeconds"),
                 Unit: "sec"),
         ]),
-        // ── Transactional email (issue #421 Wave 2) ───────────────────────────────────────────────
+        // ── Transactional email (issue #421 Wave 2, extended by issue #8) ─────────────────────────
         // Row icons are ligatures the client already renders elsewhere — see the note above the File
         // analysis section for why an unproven name is not a safe guess here.
         //
-        // The SMTP host, port and TLS mode are deliberately absent: they stay in deploy-time config,
-        // because the sender connects to the host and THEN authenticates, so a writable host would
-        // harvest the relay credential along with every reset token (issue #421 Non-Goal 2).
+        // The TRANSPORT rows come first, matching the design system's Email group: they frame
+        // everything below them — whether mail leaves at all, where it goes, and whether the
+        // credential beneath them travels encrypted. Issue #421 Non-Goal 2 kept them out of this store
+        // entirely (a writable host harvests the relay credential, because the sender connects and
+        // THEN authenticates); issue #8 moved them and closed that structurally instead — changing the
+        // host, or turning STARTTLS off, clears the stored credential in the same transaction. Save()
+        // gates on a confirmation before either lands.
         new("Email", Icons.Material.Filled.MarkEmailRead,
         [
+            new("emailSmtpHost", "send", "SMTP host",
+                "The relay every transactional mail is sent through. A hostname or IP literal only — no scheme, port, path or credentials. Empty means mail is not configured: every send is logged and skipped.",
+                SettingClaim.Security, SettingControl.Text, Max: EmailSmtpHostRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.EmailSmtpHost),
+                Load: (p, dto) => p.SetTextLoaded("emailSmtpHost", dto.EmailSmtpHost),
+                Write: (p, req) => req.EmailSmtpHost = p.TextRequest("emailSmtpHost"),
+                InputMode: "url",
+                Placeholder: "smtp.example.net",
+                // Empty is the "not configured" state and the only route back to it — see the flag.
+                AllowEmpty: true,
+                Rule: EmailSmtpHostRule.Validate),
+            new("emailSmtpPort", "format_list_numbered", "SMTP port",
+                "The port the relay is reached on. 587 for STARTTLS submission, 465 for implicit TLS, 25 for an unauthenticated internal relay.",
+                SettingClaim.Security, SettingControl.Number,
+                // Named from the shared bound pair, never a literal: the same two constants drive the
+                // server's [Range], the registry descriptor and the send path's read clamp.
+                Min: SystemSettingsBounds.EmailSmtpPortMin, Max: SystemSettingsBounds.EmailSmtpPortMax,
+                Field: nameof(SystemSettingsUpdate.EmailSmtpPort),
+                Load: (p, dto) => p.SetIntLoaded("emailSmtpPort", dto.EmailSmtpPort),
+                Write: (p, req) => req.EmailSmtpPort = p.IntRequest("emailSmtpPort")),
+            new("emailUseStartTls", "lock", "Use STARTTLS",
+                "Upgrade the connection to TLS after connecting — the right setting for port 587. Turn it off only for implicit TLS on 465, where the connection is encrypted from the start. Turning it off clears the stored SMTP credential, which must then be re-entered.",
+                SettingClaim.Security,
+                Field: nameof(SystemSettingsUpdate.EmailUseStartTls),
+                Load: (p, dto) => p.SetBoolLoaded("emailUseStartTls", dto.EmailUseStartTls),
+                Write: (p, req) => req.EmailUseStartTls = p.BoolRequest("emailUseStartTls")),
+            new("emailClientBaseUrl", "link", "Client base URL",
+                "The public origin every confirmation and password-reset link is composed against. Absolute https:// with no query, fragment or credentials; http:// is accepted for loopback addresses so the dev stack keeps working. Empty means links cannot be composed and the reset mail carries a code to paste instead.",
+                SettingClaim.Security, SettingControl.Text, Max: EmailClientBaseUrlRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.EmailClientBaseUrl),
+                Load: (p, dto) => p.SetTextLoaded("emailClientBaseUrl", dto.EmailClientBaseUrl),
+                Write: (p, req) => req.EmailClientBaseUrl = p.TextRequest("emailClientBaseUrl"),
+                InputMode: "url",
+                Placeholder: "https://odyssey.example.net",
+                AllowEmpty: true,
+                Rule: EmailClientBaseUrlRule.Validate),
             new("emailFromAddress", "mail", "From address",
                 "The envelope sender on every confirmation and password-reset email. Must remain an address your mail relay is authorised to send as, or delivery fails silently.",
                 SettingClaim.Security, SettingControl.Text, Max: 256,
@@ -1089,10 +1144,12 @@ public partial class Settings
         {
             var text = GetText(item.Key).Trim();
             if (text.Length == 0)
-                return "Enter a value";
+                return item.AllowEmpty ? null : "Enter a value";
             if (item.Max > 0 && text.Length > item.Max)
                 return $"Must be {item.Max:N0} characters or fewer";
-            return null;
+            // Length first, then shape: a 300-character URL should be told it is too long rather than
+            // handed the rule's own sentence about schemes and fragments.
+            return item.Rule?.Invoke(text);
         }
 
         if (item.Control is SettingControl.Decimal or SettingControl.Percent)
@@ -1309,6 +1366,15 @@ public partial class Settings
     {
         var faults = _dto?.ProjectionFaults ?? EmptyFaults;
         var count = CostAdvisoryCount(_dto?.Warnings ?? EmptyWarnings, faults);
+
+        // The client-authored origin hint is an advisory like any other on the page, so it counts —
+        // otherwise the spoken total disagrees with what the page renders, which is the exact defect
+        // CostAdvisoryCount exists to avoid in the other direction. It cannot double-count: it is only
+        // shown when the server left this field's advisory slot empty.
+        if (OriginMismatchHint is not null)
+        {
+            count++;
+        }
 
         var suffixed = count == 0
             ? message
@@ -1535,11 +1601,43 @@ public partial class Settings
         }
     }
 
-    private string? AdvisoryText(SettingItem item) =>
-        item.Field is { } field && _dto?.Warnings is { Count: > 0 } warnings
-        && warnings.TryGetValue(field, out var message)
-            ? message
+    private string? AdvisoryText(SettingItem item)
+    {
+        if (item.Field is { } field && _dto?.Warnings is { Count: > 0 } warnings
+            && warnings.TryGetValue(field, out var message))
+        {
+            return message;
+        }
+
+        // The CLIENT-AUTHORED advisories (issue #8 §3.3). Everything else in this channel is
+        // server-authored, and these are not exceptions made for convenience: the server cannot
+        // compute either one. AdvisoryContext is deliberately empty — no DbContext, no HttpContext,
+        // no services — and Advise delegates run on every GET rather than after a save, so a
+        // server-side version could see neither the caller's origin nor the page's unsaved draft.
+        //
+        // They fall BELOW the server channel, never above it: a projection fault on a row reports a
+        // stored value that cannot be used, which outranks either of these.
+        if (item.Key == ClientBaseUrlKey && OriginMismatchHint is { } hint)
+        {
+            return hint;
+        }
+
+        // The design system's on-row warning: while one of the three clearing rows is dirty in its
+        // clearing direction, EVERY one of them says what the save will cost. It is deliberately not
+        // limited to the row that tripped it — the credential is cleared once for the whole save, so
+        // a reader looking at any of the three should see the same answer.
+        //
+        // The dialog alone was not enough: it appears at Save, after the reader has finished editing
+        // and formed an expectation. This is the cost stated where the decision is being made.
+        return ClearingRowKeys.Contains(item.Key) && WillClearRelayCredential
+            ? "Saving this clears the stored SMTP username and password, in the same transaction as "
+              + "the change. Re-enter them under Credentials afterwards; until you do, mail is sent "
+              + "unauthenticated and any relay that requires a login will reject it."
             : null;
+    }
+
+    /// <summary>The three rows whose change takes the stored relay credential with it.</summary>
+    private static readonly string[] ClearingRowKeys = [SmtpHostKey, SmtpPortKey, StartTlsKey];
 
     private RenderFragment? AdvisoryFor(SettingItem item) =>
         AdvisoryText(item) is { } message ? builder => builder.AddContent(0, message) : null;
@@ -1743,21 +1841,28 @@ public partial class Settings
     internal static string SecretAnchorId(string key) => $"ss-cred-{key}";
 
     /// <summary>
-    /// The header's severity rollup for credentials this server cannot decrypt (issue #445).
+    /// The header's severity rollup: mail this deployment has never configured (issue #8, at
+    /// <c>Information</c>) and credentials this server cannot decrypt (issue #445, at <c>Error</c>).
     ///
     /// <para>
-    /// Built from the INTERSECTION, like the rows themselves: a key the server reports but the
-    /// catalogue does not describe has no title to name and no row to jump to. Gated on the write
-    /// claim for the same reason the group is — there is nothing a read-only caller could do about it.
+    /// The credential half is built from the INTERSECTION, like the rows themselves: a key the server
+    /// reports but the catalogue does not describe has no title to name and no row to jump to. Both
+    /// halves are gated on the write claim for the same reason the group is — there is nothing a
+    /// read-only caller could do about either.
     /// </para>
     ///
     /// <para>
     /// Deliberately separate from <see cref="BlockingProblems"/>. That list explains a disabled
-    /// <b>Save changes</b>; this one reports an outage a Save cannot fix, and folding the two together
+    /// <b>Save changes</b>; this one reports conditions a Save cannot fix, and folding the two together
     /// would misattribute both.
     /// </para>
+    ///
+    /// <para>
+    /// Named for what it collects rather than for the credential half it started as: it now carries two
+    /// kinds at two severities, and the header label says "Attention" to match.
+    /// </para>
     /// </summary>
-    private IReadOnlyCollection<PageHeaderProblem>? CredentialProblems
+    private IReadOnlyCollection<PageHeaderProblem>? SetupProblems
     {
         get
         {
@@ -1766,7 +1871,37 @@ public partial class Settings
                 return null;
             }
 
-            var problems = SecretCatalogue
+            var problems = new List<PageHeaderProblem>();
+
+            // Mail unconfigured (issue #8 G8), at INFORMATION rather than Error: a deployment that has
+            // not configured mail yet is incomplete, not broken, and this rollup's other entries are
+            // real outages. It rides on the existing mechanism rather than adding a surface — already
+            // gated on the write claim, so only an administrator who can actually fix the state sees
+            // it, and Information already has precedent elsewhere in the client.
+            //
+            // It reports what an administrator LOOKING AT THIS PAGE cannot otherwise see. It does not
+            // cover the case that actually strands a deployment — an operator who deploys, never
+            // visits /settings, and later loses the bootstrap password — which is documentation's job
+            // (docs/deployment.md) and was the reason a startup warning was considered and declined.
+            if (MailUnconfigured)
+            {
+                problems.Add(new PageHeaderProblem
+                {
+                    Severity = PageHeaderSeverity.Information,
+                    Lead = "Transactional mail is not configured",
+                    Message =
+                        "Confirmation and password-reset messages are logged and skipped, so no account "
+                        + "can be confirmed or recovered until an SMTP host is set.",
+                    // Computed from the catalogue like the credential entries below, rather than a
+                    // literal: the group a row sits in is a presentation choice that has moved once
+                    // already, and a hardcoded "In Email." would keep pointing at the old card.
+                    Where = $"In {GroupOf(SmtpHostKey)}.",
+                    ViewLabel = "Fix",
+                    OnView = EventCallback.Factory.Create(this, () => JumpToElementAsync(TitleId(SmtpHostKey))),
+                });
+            }
+
+            problems.AddRange(SecretCatalogue
                 .Where(item => _secretStatuses.TryGetValue(item.Key, out var status)
                     && status.State == SecretSettingState.Unreadable)
                 .Select(item => new PageHeaderProblem
@@ -1785,12 +1920,321 @@ public partial class Settings
                     Where = $"In {item.Group}.",
                     ViewLabel = "Fix",
                     OnView = EventCallback.Factory.Create(this, () => JumpToElementAsync(SecretAnchorId(item.Key))),
-                })
-                .ToList();
+                }));
 
             return problems.Count > 0 ? problems : null;
         }
     }
+
+    // ── The destructive save gate (issue #8 §3, G4/G7) ───────────────────────────────────────────
+    //
+    // Two rows on this page have a consequence beyond their own value: changing the SMTP host, or
+    // turning STARTTLS off, CLEARS the stored SMTP username and password on the server, in the same
+    // transaction as the settings write. That is the security control, not a side effect to be
+    // designed away — a credential entered for one relay must never be presented to another, and one
+    // entered for an encrypted transport must never be replayed over a cleartext one.
+    //
+    // It attaches to the page's BATCH Save, because there is no per-field save to hang it on: every
+    // catalogue row's Write delegate composes one SystemSettingsUpdate and one PUT. So Confirm
+    // submits the whole batch exactly as an unguarded Save would, and CANCEL DISCARDS NOTHING —
+    // splitting the batch would create partial saves this page has never had, and a Cancel that
+    // silently dropped every pending edit would be a worse surprise than the one being guarded.
+
+    /// <summary>The setting keys whose stored credential a page save is about to clear.</summary>
+    internal const string SmtpHostKey = "emailSmtpHost";
+
+    internal const string SmtpPortKey = "emailSmtpPort";
+
+    internal const string StartTlsKey = "emailUseStartTls";
+
+    /// <summary>
+    /// The credentials this save clears, named as the Credentials rows name them. Resolved from
+    /// <see cref="SecretCatalogue"/> rather than written twice, so the dialog cannot name a row by a
+    /// title the page does not use.
+    /// </summary>
+    private static IReadOnlyList<string> RelayCredentialTitles =>
+    [
+        .. SecretCatalogue
+            .Where(item => item.Key is SecretSettingKeys.EmailUsername or SecretSettingKeys.EmailPassword)
+            .Select(item => item.Title),
+    ];
+
+    private bool _clearConfirmed;
+
+    private bool _clearDialogOpen;
+
+    private OdsCredentialClearReason _clearReason = OdsCredentialClearReason.Host;
+
+    /// <summary>
+    /// The control to return focus to when the confirmation closes — by Confirm, Cancel or Escape.
+    /// Neither <c>OdsModal</c> nor <c>OdsFormDialog</c> restores focus, so without this the reader is
+    /// returned to the top of the document after a dialog they did not open deliberately (AC 20).
+    /// </summary>
+    private string? _clearReturnFocusId;
+
+    /// <summary>
+    /// Which of the two triggers this save trips, or null when it trips neither.
+    ///
+    /// <para>
+    /// <strong>Both are directional, and both directions matter.</strong> The host warns only when it
+    /// moves to a different NON-EMPTY value — clearing the host turns mail off, so there is no new
+    /// relay for the credential to reach, and re-saving the same host is not a change at all. STARTTLS
+    /// warns only on true → false; turning it back on is a strengthening. These mirror
+    /// <c>SystemSettingsService.RelayCredentialClearReason</c> exactly, and a drift in either
+    /// direction is a defect: warning without clearing teaches the reader to dismiss the dialog, and
+    /// clearing without warning destroys a credential unannounced.
+    /// </para>
+    ///
+    /// <para>
+    /// The host comparison is against the SAVED value the server last returned, which is already
+    /// canonical (trimmed, lowercased, trailing dot stripped) — the same normalisation
+    /// <c>EmailSmtpHostRule</c> applies on the way in. <c>IsDirty</c> compares the trimmed draft
+    /// against it, so a case-only edit does not read as a change here or on the server.
+    /// </para>
+    /// </summary>
+    private OdsCredentialClearReason? CredentialClearTrigger
+    {
+        get
+        {
+            // Host and port share the Host variant: both move the ENDPOINT the credential is
+            // presented to, which is the same threat and the same sentence. STARTTLS is its own
+            // variant because the threat is different — the credential going over the wire in clear.
+            if (IsClearingRow(SmtpHostKey, () => GetText(SmtpHostKey).Trim().Length > 0)
+                || IsClearingRow(SmtpPortKey, () => true))
+            {
+                return OdsCredentialClearReason.Host;
+            }
+
+            if (IsClearingRow(StartTlsKey, () => !GetBool(StartTlsKey)))
+            {
+                return OdsCredentialClearReason.StartTls;
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Whether one row is dirty IN THE CLEARING DIRECTION and the caller can actually edit it.
+    ///
+    /// <para>
+    /// The <c>Editable</c> check is not belt-and-braces: a row the caller cannot edit sends
+    /// <see langword="null"/> on save and so cannot change anything server-side, and warning about a
+    /// consequence that will not happen teaches the reader to dismiss the dialog.
+    /// </para>
+    /// </summary>
+    private bool IsClearingRow(string key, Func<bool> inClearingDirection) =>
+        AllItems.FirstOrDefault(item => item.Key == key) is { } row
+        && Editable(row.Claim)
+        && IsDirty(row)
+        && inClearingDirection();
+
+    /// <summary>
+    /// Whether ANY of the three rows is dirty in its clearing direction — the condition each of those
+    /// rows shows its own on-row advisory under, so the consequence is visible while editing rather
+    /// than only in the dialog at save time (the design system's own rationale for the row advisory).
+    /// </summary>
+    private bool WillClearRelayCredential => CredentialClearTrigger is not null;
+
+    /// <summary>
+    /// The relay ENDPOINT, as the server last returned it and as the draft would leave it — what the
+    /// dialog names as "through X instead of Y".
+    ///
+    /// <para>
+    /// The port is appended only when it is the thing that changed. Showing <c>host:587</c> on an
+    /// ordinary host change would be noise, and showing a bare host on a port-only change would name
+    /// the same value on both sides of "instead of" — which reads as a bug in the dialog rather than
+    /// as the change it is describing.
+    /// </para>
+    /// </summary>
+    private string SavedSmtpEndpoint => Endpoint(SavedSmtpHost, SavedSmtpPort);
+
+    private string DraftSmtpEndpoint => Endpoint(GetText(SmtpHostKey).Trim(), GetInt(SmtpPortKey));
+
+    private string SavedSmtpHost =>
+        _texts.TryGetValue(SmtpHostKey, out var state) ? state.Saved : string.Empty;
+
+    private int? SavedSmtpPort => _ints.TryGetValue(SmtpPortKey, out var state) ? state.Saved : null;
+
+    private string Endpoint(string host, int? port)
+    {
+        if (host.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var portChanged = AllItems.FirstOrDefault(item => item.Key == SmtpPortKey) is { } row && IsDirty(row);
+        return portChanged && port is { } value ? $"{host}:{value}" : host;
+    }
+
+    private void OpenClearConfirmation(OdsCredentialClearReason reason)
+    {
+        _clearReason = reason;
+        _clearReturnFocusId = TitleId(TriggeringRowKey(reason));
+        _clearDialogOpen = true;
+
+        // Pinned by a test, not left to the implementer (AC 19). It routes through the page's existing
+        // OdsLiveAnnouncer rather than giving the dialog a live region of its own: a region inserted
+        // into the DOM at the same moment as its content is frequently not announced at all.
+        Announce(ClearConfirmationAnnouncement(reason));
+    }
+
+    /// <summary>
+    /// What is announced when the confirmation opens. It names the consequence, not the dialog: a
+    /// reader who hears "a dialog opened" has been told nothing they cannot see, and this dialog exists
+    /// entirely to report something they did not ask for.
+    /// </summary>
+    /// <summary>
+    /// The row focus returns to. For the Host variant that is whichever of host/port is actually
+    /// dirty — returning focus to the host field after a port-only change would land the reader on a
+    /// value they did not touch.
+    /// </summary>
+    private string TriggeringRowKey(OdsCredentialClearReason reason)
+    {
+        if (reason == OdsCredentialClearReason.StartTls)
+        {
+            return StartTlsKey;
+        }
+
+        return IsClearingRow(SmtpHostKey, () => GetText(SmtpHostKey).Trim().Length > 0)
+            ? SmtpHostKey
+            : SmtpPortKey;
+    }
+
+    internal static string ClearConfirmationAnnouncement(OdsCredentialClearReason reason) =>
+        reason == OdsCredentialClearReason.StartTls
+            ? "Confirmation required: turning STARTTLS off clears the stored SMTP username and password."
+            : "Confirmation required: changing the SMTP host clears the stored SMTP username and password.";
+
+    /// <summary>
+    /// Confirm. Marks the batch approved and re-enters <see cref="Save"/>, which then runs exactly as
+    /// an unguarded save would — same request, same rows, same everything.
+    /// </summary>
+    private async Task<bool> ConfirmClearAsync()
+    {
+        _clearConfirmed = true;
+        _clearDialogOpen = false;
+
+        // Focus first, then save: Save() awaits a network round trip and a confirmation delay, and a
+        // reader left with focus on a removed dialog for that whole window has effectively lost it.
+        await RestoreFocusAfterClearDialogAsync();
+        await Save();
+
+        // Always true — OdsFormDialog closes on true, and the dialog is already closed above. A false
+        // here would reopen the gate on a save that has already been approved.
+        return true;
+    }
+
+    /// <summary>
+    /// Cancel and Escape, which are the same thing. Nothing is discarded: every pending edit stays,
+    /// the page stays dirty, and the reader can put the offending value back by hand and save the rest.
+    /// </summary>
+    private async Task OnClearDialogOpenChanged(bool open)
+    {
+        _clearDialogOpen = open;
+        if (!open)
+        {
+            _clearConfirmed = false;
+            await RestoreFocusAfterClearDialogAsync();
+        }
+    }
+
+    private async Task RestoreFocusAfterClearDialogAsync()
+    {
+        if (_clearReturnFocusId is not { } targetId)
+        {
+            return;
+        }
+
+        _clearReturnFocusId = null;
+        StateHasChanged();
+
+        try
+        {
+            await JS.InvokeVoidAsync("odsFocusById", targetId);
+        }
+        catch
+        {
+            // The row is no longer rendered (a filter changed under the dialog) — non-fatal. The page
+            // is still usable; only the focus courtesy is lost.
+        }
+    }
+
+    // ── The origin-mismatch hint (issue #8 §3.3, §10.2) ──────────────────────────────────────────
+
+    internal const string ClientBaseUrlKey = "emailClientBaseUrl";
+
+    /// <summary>
+    /// A hint when the saved client base URL points somewhere other than the origin this browser is
+    /// on. <see langword="null"/> the rest of the time.
+    ///
+    /// <para>
+    /// <strong>A hint, never a block.</strong> It does not set <c>aria-invalid</c>, does not appear in
+    /// <c>ErrorFor</c>, does not count toward <c>BlockingSummary</c> and does not disable Save. An
+    /// operator may legitimately configure a public URL from an internal hostname, or set it ahead of
+    /// a DNS cutover, and refusing either would be wrong.
+    /// </para>
+    ///
+    /// <para>
+    /// <strong>What it is actually for.</strong> This field is the weakest point in the mail feature
+    /// and the one thing clearing a credential cannot protect: no credential is involved, so anyone who
+    /// can change it receives a password-reset token for any address they know — another
+    /// administrator's included. This is the only control that narrows that at zero cost to legitimate
+    /// use. An attacker working through a hijacked session is browsing the REAL origin, so pointing
+    /// the value elsewhere trips the hint and lands in the audit log.
+    /// </para>
+    ///
+    /// <para>
+    /// Compared as ORIGINS — scheme, host and non-default port — not as hosts: a scheme or port that
+    /// differs on the same host is worth flagging too. The saved value is used rather than the draft,
+    /// so it reports what is configured rather than commenting on every keystroke.
+    /// </para>
+    /// </summary>
+    private string? OriginMismatchHint
+    {
+        get
+        {
+            if (_dto is null || !_hasSecurityUpdate)
+            {
+                return null;
+            }
+
+            if (EmailClientBaseUrlRule.Origin(_dto.EmailClientBaseUrl) is not { } saved)
+            {
+                // Empty or unparseable. Empty is the healthy unconfigured state and has its own
+                // signal; unparseable is a projection fault, which owns this slot instead.
+                return null;
+            }
+
+            if (EmailClientBaseUrlRule.Origin(Nav.BaseUri) is not { } browsing
+                || string.Equals(saved, browsing, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return $"This differs from the address you are using now ({browsing}). Confirmation and "
+                + "password-reset links will point at the value saved here.";
+        }
+    }
+
+    // ── The unconfigured-mail signal (issue #8 G8) ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Whether this deployment has no relay configured, so nothing transactional is being sent.
+    ///
+    /// <para>
+    /// Read off the SAVED value, never the draft: an administrator halfway through typing a host has
+    /// not fixed anything yet, and a signal that vanished as the first character landed would be
+    /// reporting the edit rather than the state.
+    /// </para>
+    /// </summary>
+    private bool MailUnconfigured =>
+        _dto is not null && string.IsNullOrWhiteSpace(_dto.EmailSmtpHost);
+
+    /// <summary>The section a catalogue row renders in. Falls back to the row's own key, which is a
+    /// visible oddity rather than a silent mispointing if a row is ever removed.</summary>
+    private static string GroupOf(string key) =>
+        Sections.FirstOrDefault(section => section.Items.Any(item => item.Key == key))?.Group ?? key;
 
     private SecretSettingStatusDto StatusFor(SecretItem item) =>
         _secretStatuses.TryGetValue(item.Key, out var status)
@@ -1851,6 +2295,18 @@ public partial class Settings
             await JumpToFirstError();
             return;
         }
+
+        // The destructive gate (issue #8 §3). Checked AFTER the error gate — there is no point
+        // warning about a consequence of a save that cannot proceed — and before anything is sent.
+        if (!_clearConfirmed && CredentialClearTrigger is { } trigger)
+        {
+            OpenClearConfirmation(trigger);
+            return;
+        }
+
+        // One-shot: consumed here so a later save that no longer trips a trigger is not silently
+        // pre-confirmed, and so the same confirmation cannot cover a second destructive edit.
+        _clearConfirmed = false;
 
         _isSaving = true;
         _justSaved = false;

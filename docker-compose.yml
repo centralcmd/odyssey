@@ -102,14 +102,18 @@ services:
       UseInMemoryDatabase: ${USE_IN_MEMORY_DATABASE:-false}
       Swagger__Enabled: ${SWAGGER_ENABLED:-true}
       ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
-      Email__SmtpHost: ${EMAIL_SMTP_HOST:-}
-      Email__SmtpPort: ${EMAIL_SMTP_PORT:-587}
-      Email__UseStartTls: ${EMAIL_USE_STARTTLS:-true}
-      # Email__Username / Email__Password are GONE (issue #445 Wave 2): the relay credential lives in
-      # the encrypted secret store and is entered once at /settings → Credentials. The transport around
-      # it deliberately stays here — the sender connects and THEN authenticates, so an admin-editable
-      # host would harvest the credential and every reset token.
-      Email__ClientBaseUrl: ${EMAIL_CLIENT_BASE_URL:-http://localhost:5199}
+      # There is NO Email__* here any more (issue #8). The relay credential moved to the encrypted
+      # secret store in #445; the transport around it — host, port, STARTTLS — and the public link
+      # origin followed it into the database-backed settings store in #8, so all of them are edited at
+      # /settings and none of them is readable from configuration.
+      #
+      # The #421 Non-Goal that kept the transport here (a writable host harvests the relay credential,
+      # because the sender connects and THEN authenticates) is closed structurally instead: changing
+      # the host, or turning STARTTLS off, clears the stored credential in the same transaction.
+      #
+      # The dev stack still gets working confirmation and reset links with no variable: DemoDataSeeder
+      # seeds EmailClientBaseUrl, falling back to http://localhost:5199 — the port pinned by the client
+      # service below.
       # Legal__PseudonymizationSecret and FileAnalysis__ApiKey are GONE (issue #445 Waves 1 and 4).
       # Both live in the encrypted secret store now and are entered at /settings → Credentials. There
       # is no configuration path back to them: carrying a secret across from configuration would leave

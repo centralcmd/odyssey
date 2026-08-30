@@ -101,9 +101,25 @@ public sealed record SystemSettingsDto
     public decimal FileAnalysisMatchAutoLinkThreshold { get; set; }
 
     // ---------------------------------------------------------------------------------------------
-    // Transactional-email sender identity and per-recipient throttle (issue #421 Wave 2). The SMTP
-    // transport fields are deliberately absent — see Non-Goal 2.
+    // Transactional-email transport, sender identity and per-recipient throttle (issue #421 Wave 2,
+    // extended by issue #8).
+    //
+    // These four carry INFRASTRUCTURE IDENTIFIERS — a hostname, a port, a flag and a public URL — and
+    // no credential, which is what makes them readable under the ordinary system-settings.read claim
+    // alongside everything else on this DTO. The relay credential itself is not reachable through
+    // this endpoint under any claim: it lives in the encrypted secret store, whose own endpoint
+    // reports set/not-set/unreadable and never a value.
     // ---------------------------------------------------------------------------------------------
+
+    /// <summary>The relay. Empty means mail is not configured — every send is logged and skipped.</summary>
+    public string EmailSmtpHost { get; set; } = string.Empty;
+
+    public int EmailSmtpPort { get; set; }
+
+    public bool EmailUseStartTls { get; set; }
+
+    /// <summary>The public origin confirmation and password-reset links are composed against.</summary>
+    public string EmailClientBaseUrl { get; set; } = string.Empty;
 
     /// <summary>Envelope sender. Must stay an address the relay is authorised to send as (SPF/DKIM).</summary>
     public string EmailFromAddress { get; set; } = string.Empty;

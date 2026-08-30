@@ -352,10 +352,13 @@ internal sealed class CapacitySetting : SystemSettingDescriptor
 /// </para>
 ///
 /// <para>
-/// <strong>Empty is a <c>400</c>, not a clear.</strong> On <see cref="SystemSettingsUpdate"/> null
-/// already means "leave unchanged", so <c>""</c> is the only remaining spelling of "clear" — and no
-/// string setting in this feature has a meaningful empty value. <c>[Required]</c> must NOT be used on
-/// these DTO properties: it would reject the legitimate unchanged-null.
+/// <strong>Empty is a <c>400</c>, not a clear — unless <see cref="AllowEmpty"/> is set.</strong> On
+/// <see cref="SystemSettingsUpdate"/> null already means "leave unchanged", so <c>""</c> is the only
+/// remaining spelling of "clear". For most string settings there is no meaningful empty value and a
+/// <c>400</c> is right. For the two issue #8 keys there is: an empty <c>EmailSmtpHost</c> means mail
+/// is not configured, and rejecting it would make configuring mail a one-way door. <c>[Required]</c>
+/// must NOT be used on any of these DTO properties either way: it would reject the legitimate
+/// unchanged-null.
 /// </para>
 /// </summary>
 internal sealed class StringSetting : SystemSettingDescriptor
@@ -370,8 +373,53 @@ internal sealed class StringSetting : SystemSettingDescriptor
     /// <summary>
     /// Optional semantic check, run last and only on an already-trimmed, non-empty, length-checked
     /// value. Returns an error message, or null when the value is acceptable.
+    ///
+    /// <para>
+    /// It is never called for an empty value, <see cref="AllowEmpty"/> or not — the empty case either
+    /// short-circuits as legal or has already thrown — so a rule may assume a non-empty input.
+    /// </para>
     /// </summary>
     public Func<string, string?>? Validator { get; init; }
+
+    /// <summary>
+    /// Whether <c>""</c> is a legal stored value that MEANS something, rather than a rejected attempt
+    /// to clear (issue #8 §5.5).
+    ///
+    /// <para>
+    /// Set by the two mail keys, where empty is the "not configured" state and the only way back to
+    /// it. When set and the trimmed value is empty, <see cref="Validate"/> returns immediately —
+    /// <see cref="Validator"/> is not called and <see cref="Canonicalize"/> is skipped — and
+    /// <see cref="Format"/> stores <c>""</c>, never a null row.
+    /// </para>
+    /// </summary>
+    public bool AllowEmpty { get; init; }
+
+    /// <summary>
+    /// Optional READ-path validator (issue #8 §5.9). When set, <see cref="Project"/> runs it against
+    /// the stored value and reports <see cref="ProjectionOutcome.Unparseable"/> for one the rule
+    /// rejects — writing the row through as-is, so the administrator can see and correct what is
+    /// actually stored.
+    ///
+    /// <para>
+    /// It exists because <c>StringSetting.Project</c>'s "there is nothing to parse, so no stored value
+    /// can fault here" is true of PARSING and false of SEMANTICS. Without it an <c>http://</c> public
+    /// URL planted by a restore would fail closed on the send path while the settings page rendered
+    /// the row as healthy — invisible, on the one field issue #8 §10.2 calls the weakest.
+    /// </para>
+    ///
+    /// <para>
+    /// It is <em>not</em> the same delegate as <see cref="Validator"/> by construction, even where the
+    /// two happen to name one method: an empty value is legal on the write path for an
+    /// <see cref="AllowEmpty"/> key and must stay legal here, so this is skipped for an empty stored
+    /// value rather than being asked about it.
+    /// </para>
+    ///
+    /// <para>
+    /// <c>FileAnalysisBaseUrl</c> has the same blind spot today and the same property would close it.
+    /// Out of scope for issue #8 — flagged so it is not mistaken for a gap that change introduced.
+    /// </para>
+    /// </summary>
+    public Func<string, string?>? ReadValidator { get; init; }
 
     /// <summary>
     /// Optional canonicalisation applied on the way to storage, after <see cref="Validator"/> has
@@ -395,6 +443,13 @@ internal sealed class StringSetting : SystemSettingDescriptor
 
         if (value.Length == 0)
         {
+            if (AllowEmpty)
+            {
+                // Legal and meaningful. Returning here — rather than falling through — is what lets a
+                // per-field Validator assume a non-empty input, which every one of them does.
+                return;
+            }
+
             throw Invalid("must not be empty.");
         }
 
@@ -420,14 +475,35 @@ internal sealed class StringSetting : SystemSettingDescriptor
     public override string Format(SystemSettingsUpdate request)
     {
         var trimmed = Read(request)!.Trim();
+
+        // Canonicalize is skipped for the legal-empty case, matching Validate: every canonicaliser
+        // returns null for an unusable input, and the `?? trimmed` fallback would then quietly store
+        // the raw value. For "" the two agree, but only by coincidence — stating the skip keeps them
+        // from drifting if a canonicaliser ever grows an opinion about the empty string.
+        if (trimmed.Length == 0 && AllowEmpty)
+        {
+            return string.Empty;
+        }
+
         return Canonicalize?.Invoke(trimmed) ?? trimmed;
     }
 
     public override ProjectionOutcome Project(string storedValue, SystemSettingsDto dto)
     {
-        // Always safe: there is nothing to parse, so no stored value can fault here.
+        // The row is written through AS STORED in every branch, including the faulted one. That is
+        // deliberate and is the opposite of what the parsing kinds do: there is no "default" that
+        // would be more truthful than the value in the database, and an administrator repairing a bad
+        // row needs to see what is actually there. The fault is reported alongside it instead.
         Write(dto, storedValue);
-        return ProjectionOutcome.Ok;
+
+        // An empty stored value is not asked about: for an AllowEmpty key it is the healthy
+        // not-configured state, and for every other key it cannot occur through the write path.
+        if (ReadValidator is null || storedValue.Length == 0)
+        {
+            return ProjectionOutcome.Ok;
+        }
+
+        return ReadValidator(storedValue) is null ? ProjectionOutcome.Ok : ProjectionOutcome.Unparseable;
     }
 
     private DomainValidationException Invalid(string problem) =>

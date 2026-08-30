@@ -20,6 +20,7 @@ namespace Odyssey.Client.Tests;
 /// The Credentials group on <c>/settings</c> (issue #444 §16 ACs 16, 35, 39–41), plus the source-lints
 /// that pin the two properties no render can prove.
 /// </summary>
+[Collection(SettingsPageCollection.Name)]
 public class SecretSettingsSurfaceTests : IDisposable
 {
     /// <summary>
@@ -639,7 +640,13 @@ public class SecretSettingsSurfaceTests : IDisposable
 
         var settings = new Mock<ISystemSettingsApiClient>();
         settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(new SystemSettingsDto(), HttpStatusCode.OK));
+            // A configured SMTP host, so the header rollup carries only what THIS suite is about.
+            // An empty one is a legitimate state with its own Information-severity entry (issue #8
+            // G8), and leaving it empty here would put a second, unrelated problem in every
+            // assertion below — the credential tests would then be measuring the mail signal too.
+            // MailUnconfiguredSurfacesInTheHeaderTests covers the other side.
+            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(
+                new SystemSettingsDto { EmailSmtpHost = "smtp.example.test" }, HttpStatusCode.OK));
 
         if (secretClient is null)
         {

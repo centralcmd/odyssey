@@ -4,10 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// Aspire (unlike docker compose) does not read the repo .env file. Load it and map the email /
-// registration keys onto the Aspire:* configuration the AppHost forwards to the API, so running
-// `dotnet run --project Odyssey.AppHost` picks up the same SMTP config as `docker compose`.
-LoadDotEnv(builder);
+// The repo .env is no longer read here (issue #8). It existed to map EMAIL_SMTP_HOST / _PORT /
+// _USE_STARTTLS onto Aspire:Email:* so `dotnet run --project Odyssey.AppHost` picked up the same SMTP
+// configuration as `docker compose`. Those three variables no longer exist in either place: the
+// transport is a settings row edited at /settings, so there is nothing left to map and no resource to
+// forward it to.
 
 var config = builder.Configuration;
 
@@ -68,6 +69,15 @@ var migrations = builder
     // ignores the ASPNETCORE name — without this it runs as Production and never seeds.
     .WithEnvironment("DOTNET_ENVIRONMENT", apiEnvironment)
     .WithEnvironment("Seed__DemoData", seedDemoData)
+    // The client's address, for the migrations job and NOT for the API (issue #8). DemoDataSeeder
+    // runs here and seeds EmailClientBaseUrl from it, so an Aspire stack produces working
+    // confirmation and reset links with nothing configured. Without this the seeder would read
+    // nothing and silently take its Compose fallback of http://localhost:5199, which is the wrong
+    // port whenever Aspire's client address differs.
+    //
+    // Seed data, not configuration adoption: DemoDataSeeder is gated to Development/Testing, so no
+    // Production deployment can reach it. The API reads no Email:* value at all.
+    .WithEnvironment("Email__ClientBaseUrl", clientUrls)
     .WaitFor(mariadb);
 
 var api = builder
@@ -77,8 +87,6 @@ var api = builder
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", apiEnvironment)
     .WithEnvironment("Swagger__Enabled", apiSwaggerEnabled)
-    // Confirmation links must point at the client.
-    .WithEnvironment("Email__ClientBaseUrl", clientUrls)
     .WithEnvironment("SSL_CERT_FILE", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
     .WaitFor(mariadb)
     .WithReference(migrations)
@@ -86,15 +94,15 @@ var api = builder
 
 // These settings are optional and come from AppHost user-secrets under Aspire:*. Only forward keys
 // that are actually set — emitting an empty value would override the API's appsettings defaults,
-// and an empty value for a non-nullable target (e.g. Email__SmtpPort) fails to bind.
-ForwardOptionalSetting(api, "Email__SmtpHost", "Aspire:Email:SmtpHost");
-ForwardOptionalSetting(api, "Email__SmtpPort", "Aspire:Email:SmtpPort");
-ForwardOptionalSetting(api, "Email__UseStartTls", "Aspire:Email:UseStartTls");
-// Email__Username / Email__Password are NOT forwarded (issue #445 Wave 2). The relay credential moved
-// to the encrypted secret store and is entered once at /settings → Credentials. It is deliberately not
-// adopted from configuration either — adoption would require the plaintext to still be in the
-// environment at upgrade time, which is most of what the move exists to escape — so there is no
-// resource to forward it to.
+// and an empty value for a non-nullable target fails to bind.
+//
+// No Email__* is forwarded any more (issue #8). The transport — host, port, STARTTLS — and the public
+// link origin joined the sender identity in the database-backed settings store, so the API reads none
+// of them from configuration and there is nothing to forward. The relay credential was already gone
+// (issue #445 Wave 2): it lives in the encrypted secret store, is entered once at /settings →
+// Credentials, and is deliberately not adopted from configuration either — adoption would require the
+// plaintext to still be in the environment at upgrade time, which is most of what the move exists to
+// escape.
 // The upload transport ceiling (issue #421 Wave 4). The API needs it at startup to size Kestrel and
 // the multipart reader; nothing else reads it. The cap a user is validated against is a setting, is
 // bounded by this number, and is edited in the UI.
@@ -129,57 +137,6 @@ void ForwardOptionalSetting(IResourceBuilder<ProjectResource> resource, string e
     if (!string.IsNullOrEmpty(value))
     {
         resource.WithEnvironment(envName, value);
-    }
-}
-
-static void LoadDotEnv(IDistributedApplicationBuilder appBuilder)
-{
-    var path = Path.Combine(appBuilder.AppHostDirectory, "..", ".env");
-    if (!File.Exists(path))
-    {
-        return;
-    }
-
-    // .env uses the same variable names docker compose reads; map them onto the Aspire:* keys.
-    var keyMap = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["EMAIL_SMTP_HOST"] = "Aspire:Email:SmtpHost",
-        ["EMAIL_SMTP_PORT"] = "Aspire:Email:SmtpPort",
-        ["EMAIL_USE_STARTTLS"] = "Aspire:Email:UseStartTls",
-    };
-
-    var values = new Dictionary<string, string?>(StringComparer.Ordinal);
-    foreach (var rawLine in File.ReadAllLines(path))
-    {
-        var line = rawLine.Trim();
-        if (line.Length == 0 || line[0] == '#')
-        {
-            continue;
-        }
-
-        var separator = line.IndexOf('=');
-        if (separator <= 0)
-        {
-            continue;
-        }
-
-        var name = line[..separator].Trim();
-        if (!keyMap.TryGetValue(name, out var configKey))
-        {
-            continue;
-        }
-
-        var value = line[(separator + 1)..].Trim().Trim('"', '\'');
-        if (value.Length > 0)
-        {
-            values[configKey] = value;
-        }
-    }
-
-    // Added last → takes precedence over appsettings / user-secrets for these keys.
-    if (values.Count > 0)
-    {
-        appBuilder.Configuration.AddInMemoryCollection(values);
     }
 }
 

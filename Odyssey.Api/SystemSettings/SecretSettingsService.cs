@@ -137,22 +137,126 @@ public sealed class SecretSettingsService(
     /// Removes one credential. Idempotent: clearing an absent key also succeeds, since the caller's
     /// intent ("this must not be set") is satisfied either way and distinguishing them is a needless
     /// oracle.
+    ///
+    /// <para>
+    /// This is the CONTROLLER path — a clear the administrator asked for directly — so it keeps its
+    /// self-contained shape: its own <c>SaveChanges</c>, its own audit line, immediately. The removal
+    /// itself is delegated to <see cref="StageClearAsync"/> so there is one implementation rather than
+    /// two (issue #8 §5.8).
+    /// </para>
     /// </summary>
     public async Task ClearAsync(
         ClaimsPrincipal caller, string actorUserId, string key, CancellationToken cancellationToken = default)
     {
         var descriptor = Authorize(caller, key);
 
-        var row = await context.SystemSettingSecrets
+        var staged = await StageClearAsync(context, descriptor.Key, ClearedDirectly, cancellationToken);
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        AuditStagedClear(actorUserId, staged);
+    }
+
+    /// <summary>
+    /// The composable half of a clear (issue #8 §5.8): queue the row's removal onto
+    /// <paramref name="target"/> and hand back the audit record, WITHOUT saving and WITHOUT logging.
+    ///
+    /// <para>
+    /// <strong>Why <see cref="ClearAsync"/> could not be reused as-is.</strong> It calls
+    /// <c>SaveChangesAsync</c> itself and writes its own audit line immediately, so calling it from
+    /// inside <c>SystemSettingsService.UpdateAsync</c>'s write loop would commit the credential
+    /// removal in its own earlier transaction. The two writes could then interleave — and the
+    /// dangerous direction is the one that is easy to miss: the settings write fails or is interrupted
+    /// AFTER the clear, or the clear fails after the settings write commits, leaving the attacker's
+    /// host live with the old credential still stored and readable. That is precisely the exploit G4
+    /// exists to close, reached without the attacker ever needing the credential themselves.
+    /// </para>
+    ///
+    /// <para>
+    /// <strong>It deliberately performs no authorization check</strong>, unlike every other entry
+    /// point here. A G4/G7 clear is a safety CONSEQUENCE of a change the caller was already authorized
+    /// to make, not an action they requested — so refusing it for a caller who somehow held the
+    /// setting's claim but not the secret's would leave the credential live on a host it was never
+    /// entered for, which is the opposite of the intent. Both claims are
+    /// <c>system-settings.security.update</c> today, so the branch is unreachable; it is stated
+    /// because a future split must resolve it this way and not the other.
+    /// </para>
+    ///
+    /// <para>
+    /// <strong>Idempotent, and safe to run twice.</strong> The caller runs inside a retrying execution
+    /// strategy whose delegate can be re-executed, so this must not depend on state built before it:
+    /// it reads the row it needs itself, and removing an already-absent row is a no-op.
+    /// </para>
+    /// </summary>
+    public async Task<StagedSecretClear> StageClearAsync(
+        OdysseyContext target, string key, string reason, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        var descriptor = registry.Find(key)
+            ?? throw new DomainNotFoundException($"Secret setting '{key}' is not registered.");
+
+        var row = await target.SystemSettingSecrets
             .FirstOrDefaultAsync(existing => existing.Key == descriptor.Key, cancellationToken);
 
         if (row is not null)
         {
-            context.SystemSettingSecrets.Remove(row);
-            await context.SaveChangesAsync(cancellationToken);
+            target.SystemSettingSecrets.Remove(row);
         }
 
-        Audit(actorUserId, descriptor.Key, "cleared");
+        return new StagedSecretClear(descriptor.Key, reason);
+    }
+
+    /// <summary>
+    /// Writes the audit line for a staged clear. Called by the caller AFTER its transaction commits,
+    /// so a rolled-back clear cannot leave a line claiming it happened.
+    ///
+    /// <para>
+    /// Written unconditionally, including when no row existed — matching <see cref="ClearAsync"/> and
+    /// for the reason stated on this class: the presence or absence of a line must never be a signal
+    /// about the value. Row presence is not the value, but it is reported by the status endpoint to
+    /// exactly the callers who can read this log, so suppressing the line would buy nothing and cost
+    /// the record of an attempted clear.
+    /// </para>
+    /// </summary>
+    public void AuditStagedClear(string actorUserId, StagedSecretClear staged)
+    {
+        ArgumentNullException.ThrowIfNull(staged);
+        Audit(actorUserId, staged.Key, staged.Reason);
+    }
+
+    /// <summary>The audit verb for a clear the administrator asked for directly.</summary>
+    public const string ClearedDirectly = "cleared";
+
+    // The individual triggers, as fragments rather than whole verbs. One save can trip more than one
+    // — changing the relay and turning STARTTLS off in the same edit is an ordinary thing to do — and
+    // the first draft reported only whichever fired first, so a compound change was under-reported in
+    // the one record that says why a credential vanished. ComposeClearReason names all of them.
+
+    /// <summary>G4: the relay moved, so the credential would reach a host it was not entered for.</summary>
+    public const string HostChangedTrigger = "SMTP host changed";
+
+    /// <summary>
+    /// G4 again, one level down: the endpoint moved even though the host did not. A credential is
+    /// entered for a relay, and a relay is a host AND a port — a different port is a different
+    /// listener, which the connect-then-authenticate order hands the credential to just as readily.
+    /// </summary>
+    public const string PortChangedTrigger = "SMTP port changed";
+
+    /// <summary>G7: the transport stopped being encrypted.</summary>
+    public const string StartTlsOffTrigger = "STARTTLS turned off";
+
+    /// <summary>
+    /// The audit verb for one staged clear, naming every trigger that fired. Order is the caller's,
+    /// which is registry order, so the line is stable rather than dependent on dictionary iteration.
+    /// </summary>
+    public static string ComposeClearReason(IReadOnlyList<string> triggers)
+    {
+        ArgumentNullException.ThrowIfNull(triggers);
+
+        return triggers.Count == 0
+            ? ClearedDirectly
+            : $"cleared ({string.Join(", ", triggers)})";
     }
 
     private SecretSettingDescriptor Authorize(ClaimsPrincipal caller, string key)
@@ -246,6 +350,13 @@ public sealed class SecretSettingsService(
         logger.LogInformation(
             "Secret setting {Key} {Action} by {ActorUserId}.", key, action, actorUserId);
 }
+
+/// <summary>
+/// One queued-but-uncommitted secret removal and the audit verb it will be recorded under
+/// (issue #8 §5.8). The record carries no value and never could: <see cref="StagedSecretClear"/>
+/// names the key it removed, not what was in it.
+/// </summary>
+public sealed record StagedSecretClear(string Key, string Reason);
 
 /// <summary>
 /// The key ring would not survive a restart, so a write is refused (issue #444 §11). Mapped to

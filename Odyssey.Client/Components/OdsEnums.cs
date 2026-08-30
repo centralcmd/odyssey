@@ -107,3 +107,17 @@ public enum OdsSettingBound { None, LowerOnly, RaiseOnly }
 /// "No limit" switch) · Inline (the OdsSettingField frame: one line, value then an inverse-action pill).
 /// </summary>
 public enum OdsCapacityFieldVariant { Stacked, Inline }
+
+/// <summary>
+/// Why a page save is about to clear a stored credential, and therefore which copy variant
+/// <c>OdsSecretClearOnSaveDialog</c> uses (issue #8 G4/G7).
+///
+/// <para>
+/// The two are not interchangeable phrasings of one warning. <see cref="Host"/> is about the
+/// credential reaching a relay it was not entered for — the SMTP client connects first and
+/// authenticates second. <see cref="StartTls"/> is about it going over an unencrypted connection,
+/// where passive network position alone is enough to harvest it. A reader who is told the wrong one
+/// is being warned about a threat that is not the one they just created.
+/// </para>
+/// </summary>
+public enum OdsCredentialClearReason { Host, StartTls }

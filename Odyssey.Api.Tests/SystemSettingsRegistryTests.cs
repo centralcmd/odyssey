@@ -272,7 +272,23 @@ public class SystemSettingsRegistryTests
         //     the highest-consequence value in the store, and the only descriptor carrying an
         //     AuditProjection, which reduces both the old and the new value to their host before the
         //     line is written.
-        Assert.Equal(26, audited.Count);
+        //
+        // +4 in issue #8 — the whole mail transport, and the security claim is not a judgement call on
+        // any of them:
+        //   * EmailSmtpHost — the relay the credential is presented to, and every message body with
+        //     it. It carries an AuditProjection for the same reason FileAnalysisBaseUrl does: the OLD
+        //     value the line echoes was never seen by the write validator, so a row planted by a
+        //     restore can carry `user:pass@host`.
+        //   * EmailUseStartTls — whether that credential and every reset token travel encrypted. The
+        //     one setting here an attacker can exploit with NO Odyssey privilege at all, given passive
+        //     network position.
+        //   * EmailClientBaseUrl — where every password-reset link points, so where a token lands. The
+        //     audit line is one of the few controls on it, since clearing a credential protects nothing
+        //     when no credential is involved. Host-projected for the same reason as the SMTP host.
+        //   * EmailSmtpPort — audited by construction rather than on its own merits, and correctly so:
+        //     splitting the port off onto the ordinary claim would let a caller move the transport to
+        //     a port the relay serves in the clear without the change being recorded.
+        Assert.Equal(30, audited.Count);
         Assert.All(SystemSettingsRegistry.All, descriptor =>
             Assert.Equal(
                 descriptor.RequiredClaim == PermissionClaims.SystemSettingsSecurityUpdate,

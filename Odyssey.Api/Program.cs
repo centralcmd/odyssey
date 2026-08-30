@@ -38,8 +38,6 @@ builder.Configuration.ThrowIfPlaceholderValues(builder.Environment.EnvironmentNa
 
 builder.AddDatabases();
 
-var emailSection = builder.Configuration.GetSection(EmailOptions.SectionName);
-
 builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<OdysseyContext>();
@@ -165,7 +163,13 @@ builder.Services.AddOptions<IdentityOptions>()
 // Email confirmation / password reset delivery. MapIdentityApi resolves the generic
 // IEmailSender<ApplicationUser>; without it Identity uses a no-op sender that silently
 // drops the confirmation link.
-builder.Services.AddOptions<EmailOptions>().Bind(emailSection).ValidateDataAnnotations().ValidateOnStart();
+//
+// There is NO options binding left (issue #8 G3). Every Email:* value the sender needs is a row in
+// the database-backed settings store — the sender identity and the throttle since issue #421, the
+// relay credential since #445, and the transport and public link origin since #8 — so EmailOptions
+// and the whole Email configuration section were deleted rather than trimmed. Nothing reads
+// `Email:` from configuration any more, and re-adding a binding here would re-create the fallback
+// path the moves exist to remove.
 builder.Services.AddTransient<IEmailSender<ApplicationUser>, SmtpEmailSender>();
 
 // The same sender behind a narrower, outcome-returning seam for the admin-initiated reset (issue #406
@@ -173,17 +177,16 @@ builder.Services.AddTransient<IEmailSender<ApplicationUser>, SmtpEmailSender>();
 // one. Deliberately not a second implementation: AdminPasswordResetApiTests asserts the reuse.
 builder.Services.AddTransient<IPasswordResetLinkSender, SmtpEmailSender>();
 
-// An unset SmtpHost degrades to "log the action link, send nothing" — a reasonable local-dev
-// convenience, and an unacceptable Production posture now that password-reset tokens travel this path
-// (issue #405). SmtpHost carries no [Required] because the degraded mode is the *intended* behaviour
-// outside Production, so the requirement is expressed here rather than as an annotation.
-if (builder.Environment.IsProduction())
-{
-    builder.Services.AddOptions<EmailOptions>()
-        .Validate(email => !string.IsNullOrWhiteSpace(email.SmtpHost),
-            "Email:SmtpHost must be configured in Production.")
-        .ValidateOnStart();
-}
+// The Production ValidateOnStart gate on Email:SmtpHost is GONE (issue #8 §11.3), and its removal is
+// forced rather than incidental: a value entered through the settings UI cannot be a precondition for
+// that UI coming up. The failure moves from startup to the first send, which logs and skips — the
+// identical trade issue #445 made when Legal:PseudonymizationSecret lost its own gate and moved the
+// failure into the first account deletion.
+//
+// What replaces it is a page-level signal, not a startup one: while no host is set, the System
+// settings page reports "Transactional mail is not configured" in its header rollup. That covers an
+// administrator who is looking; docs/deployment.md covers the operator who is not, and states the
+// consequence — no confirmation and no password recovery until a relay is configured.
 
 // Singleton: MapIdentityApi resolves the sender once from the root provider, so the throttle's
 // counters must outlive any scope (issue #393).
