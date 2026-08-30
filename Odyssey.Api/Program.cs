@@ -604,9 +604,9 @@ identityApi.Add(endpoint =>
 
 // ...and a far tighter one over just /forgotPassword and /resendConfirmationEmail, which put a
 // message on the wire on every call. Applied after the group policy on purpose — see the method's
-// remarks for why the ordering is what makes it take effect.
-identityApi.RequireMailEndpointRateLimiting(
-    app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(IdentityRateLimiting)));
+// remarks for why the ordering is what makes it take effect. Whether it actually landed is checked
+// at the bottom of this file, against the built endpoints.
+identityApi.RequireMailEndpointRateLimiting();
 
 // One structured line per completed password reset (issue #405) — attached to /resetPassword alone,
 // not to the group, for the reason spelled out in the method's remarks.
@@ -733,11 +733,31 @@ else
     app.MapControllers().RequireAuthorization();
 }
 
+// The startup self-checks over the built endpoint set. Last, so every Map* call and convention above
+// has been applied — and materialized once, because enumerating a data source rebuilds its endpoints
+// and re-runs every convention on them.
+//
+// All three are read from the BUILT endpoints rather than from an IEndpointConventionBuilder.Finally
+// convention. Two of them used to be, on the assumption that Finally runs after the whole group has
+// been walked; RouteEndpointDataSource in fact applies group conventions and then group finally
+// conventions per endpoint, so those reports fired against the first endpoint built and logged their
+// "route not found" error on every single boot while working correctly. See
+// IdentityRateLimiting.ValidateMailEndpointRateLimiting.
+var builtEndpoints = ((IEndpointRouteBuilder)app).DataSources
+    .SelectMany(source => source.Endpoints)
+    .ToArray();
+
+var startupCheckLoggers = app.Services.GetRequiredService<ILoggerFactory>();
+
+// Log-and-degrade: a mail-window or completion-log gap is a degradation, not a hole.
+IdentityRateLimiting.ValidateMailEndpointRateLimiting(
+    builtEndpoints, startupCheckLoggers.CreateLogger(typeof(IdentityRateLimiting)));
+PasswordResetLogging.ValidatePasswordResetLogging(
+    builtEndpoints, startupCheckLoggers.CreateLogger(typeof(PasswordResetLogging)));
+
 // Fail fast rather than boot into an unrecoverable lockout (issue #406 §5.6): a removed
 // [PasswordChangeExempt], or a renamed route on one of the five endpoints that let a gated user out of
-// the state, is not a hole — it is a user who can never change their password or sign out. Last, so
-// every Map* call and convention above has been applied.
-PasswordChangeExemptRoutes.ValidateExemptEndpoints(
-    ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints));
+// the state, is not a hole — it is a user who can never change their password or sign out.
+PasswordChangeExemptRoutes.ValidateExemptEndpoints(builtEndpoints);
 
 app.Run();
