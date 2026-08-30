@@ -20,11 +20,11 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.11" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.11" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.19" />
-    <!-- Data Protection for the encrypted secret settings (issue #444). Abstractions goes to
-         Odyssey.Context (a plain library, so IDataProtector needs a package); the full
-         package goes to Odyssey.MigrationService (a Worker host, so AddDataProtection() needs one).
-         Odyssey.Api needs neither — both are in its shared framework. -->
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection" Version="10.0.11" />
+    <!-- Data Protection for the encrypted secret settings (issue #444). Only the Abstractions, and
+         only for Odyssey.Context: a plain library needs a package to name IDataProtector.
+         Odyssey.Api needs nothing — Data Protection is in its shared framework. The full package was
+         here for Odyssey.MigrationService, a Worker host that called AddDataProtection(); that job no
+         longer holds a key ring, so nothing takes the full package now. -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
