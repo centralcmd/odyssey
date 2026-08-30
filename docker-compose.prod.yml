@@ -88,8 +88,20 @@ services:
       # file sets no Email__* at all, and the value is a settings row an administrator enters at
       # /settings. An unset one is EMPTY, which the sender handles by mailing the bare reset code
       # rather than a broken link.
-      # Persisted DataProtection keys (see Program.cs) — survives redeploys.
-      DataProtection__KeysPath: /var/odyssey/dataprotection-keys
+      # No DataProtection__KeysPath here. The base file sets it, next to the dataprotection_keys
+      # volume mount it has to agree with — one place, so the path and the mount cannot drift apart.
+      #
+      # The base file raises the identity rate limit to 300/minute for the E2E suites, which drive
+      # that stack from one address and would otherwise exhaust the 30 the shipped default allows.
+      # Compose merges environment maps, so without this reset that dev-only relaxation would land
+      # in PRODUCTION — a tenfold weaker limit on the only unauthenticated write surface in the app
+      # (/login, /register and the two mail routes), silently, as a side effect of a test fix.
+      #
+      # `!reset` rather than a literal 30: it drops the key entirely, so the value falls back to
+      # appsettings.json, which is where the production number is actually decided. Pinning 30 here
+      # would put the same number in two files that must agree — the duplication this overlay just
+      # removed for DataProtection__KeysPath.
+      RateLimiting__Identity__PermitLimit: !reset null
       # Legal__PseudonymizationSecret is GONE (issue #445 Wave 4). It lives in the encrypted secret
       # store and must be entered once at /settings → Credentials after this upgrade.
       #
@@ -98,12 +110,13 @@ services:
       # a different one leaves those rows permanently un-re-derivable, which is the property GDPR
       # Art. 7(1) attribution depends on. Export it from your current environment first.
       #
-      # Its durability now rests on the DataProtection keys volume above AS WELL AS the database
-      # backup. Back up both together; see docs/deployment.md.
+      # Its durability now rests on the dataprotection_keys volume the base file mounts AS WELL AS
+      # the database backup. Back up both together; see docs/deployment.md.
     # Internal only — reached via the client's nginx /api/ proxy, never published to the host.
     ports: !reset []
     # Runtime hardening: non-root .NET app (UID 1654) that needs no caps. Root filesystem is
-    # read-only; /tmp is a tmpfs and DataProtection keys live on the writable named volume above.
+    # read-only; /tmp is a tmpfs and DataProtection keys live on the writable named volume the
+    # base file mounts.
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -132,7 +145,11 @@ services:
       - /var/run
 
   caddy:
-    image: caddy:2-alpine
+    # Pinned to an exact patch, like the three Odyssey images above: `2-alpine` floats, so a
+    # `docker compose pull` for an app upgrade could swap the TLS terminator underneath you at the
+    # same time. Bump this deliberately. (2.11.4 is what `2-alpine` resolved to when it was pinned,
+    # so this changed nothing at the time.)
+    image: caddy:2.11.4-alpine
     container_name: odyssey-caddy
     restart: unless-stopped
     ports:

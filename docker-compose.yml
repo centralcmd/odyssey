@@ -133,6 +133,32 @@ services:
       # once a credential is stored: back it up, back it up separately from the database dump, and note
       # that `docker compose down -v` destroys it (for a derivation key, un-recoverably).
       DataProtection__KeysPath: /var/odyssey/dataprotection-keys
+      # Headroom for the E2E suites, which drive this stack from one address — one rate-limit
+      # partition key. The shipped default in appsettings.json is 30 requests per minute per IP and
+      # STAYS 30 in production — but only because the prod overlay `!reset`s this key back out.
+      # Compose MERGES environment maps, so a dev-only relaxation set here reaches production unless
+      # the overlay removes it; that reset and this line have to be read together.
+      #
+      # 30 is not sized for a browser-driven test stack. The identity policy covers the WHOLE
+      # MapIdentityApi group, /manage/* included (Program.cs), and the Blazor client calls
+      # GET manage/info to resolve auth state on sign-in and on navigation — so a browser test costs
+      # many permits, not the one its single login suggests. Measured against this stack:
+      # Odyssey.E2ETests alone spends the entire 30-permit window in a 9-second run, and
+      # Odyssey.E2ETests.Api another 6. The E2E workflow runs the two back to back inside one
+      # 60-second window, and `dotnet test Odyssey.sln` runs them at once; either way the second
+      # suite is answered with 429s — the API suite as "Login failed: RateLimited", the browser suite
+      # as a login navigation timeout, which is the least debuggable shape the failure could take.
+      #
+      # Raising it here rather than in the fixtures leaves the control itself alone. The limiter's
+      # real behaviour — that it rejects, at what count, with what body, and that the tighter mail
+      # window rides on top of it — is covered at the API tier with its own configuration, by
+      # IdentityRateLimitingTests, IdentityEmailRateLimitingTests and
+      # IdentityMailEndpointConventionTests. The E2E suites do not test the limiter; they were only
+      # ever incidentally constrained by it.
+      #
+      # RateLimiting__IdentityEmail__PermitLimit is deliberately NOT raised: no E2E test touches the
+      # two mail-sending routes, and that limit is the one whose cost is outbound mail, not CPU.
+      RateLimiting__Identity__PermitLimit: ${IDENTITY_RATE_LIMIT:-300}
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys
     ports:
