@@ -10,6 +10,22 @@
 #   - Adds Caddy for automatic TLS (Let's Encrypt) in front of the client.
 #   - Persists DataProtection keys so redeploys don't log everyone out.
 #
+# This overlay serves BOTH supported deployments. There is no separate localhost compose file:
+# a private, machine-local deployment is this same overlay with a different env file
+# (.env.localhost.example → .env.localhost), which changes exactly two things — CADDY_BIND, so
+# Caddy binds loopback instead of 0.0.0.0, and ODYSSEY_DOMAIN, set to a *.localhost name so Caddy
+# issues an internal certificate instead of going to Let's Encrypt:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.localhost up -d
+#
+# Splitting it into a second overlay was considered and rejected. Everything that actually protects
+# a deployment — Production (Secure cookies, no Swagger, the real pseudonymization secret, no demo
+# seed), the hardening blocks, the unpublished api/mariadb/client ports, the DataProtection keys
+# volume — has to be identical in both, so a second file would be a copy that drifts. Keeping TLS in
+# the localhost deployment is the point: it means CookieSecurePolicy.Always is satisfied by real
+# https rather than by the browser's http://localhost secure-context exemption, which stops applying
+# the moment anyone reaches the box by LAN IP. See docs/deployment.md, "Running Odyssey privately".
+#
 # IMAGE_TAG pins the release you are deploying (e.g. 1.4.0). Set it in .env.prod.
 # GHCR_OWNER, IMAGE_TAG and ODYSSEY_DOMAIN carry `:?` guards for the same reason the
 # credentials below do: an unset value here fails at deploy time with a message naming the
@@ -27,15 +43,15 @@ services:
       # at app startup by PlaceholderConfigurationGuard, since compose interpolation cannot inspect a
       # value. MARIADB_ROOT_PASSWORD is guarded ONLY here: no host reads it, so there is no app-side
       # check that could.
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?MARIADB_ROOT_PASSWORD must be set in .env.prod (openssl rand -base64 36)}
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?MARIADB_PASSWORD must be set in .env.prod (openssl rand -base64 36)}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?MARIADB_ROOT_PASSWORD must be set in your env file (openssl rand -base64 36)}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?MARIADB_PASSWORD must be set in your env file (openssl rand -base64 36)}
     # Block privilege escalation via setuid binaries. Caps are left intact: the mariadb
     # entrypoint needs them (CHOWN/SETUID/…) to initialise the data dir on first start.
     security_opt:
       - no-new-privileges:true
 
   migrations:
-    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in .env.prod (the GitHub user or org that owns the published images)}/odyssey-migrations:${IMAGE_TAG:?IMAGE_TAG must be set in .env.prod (the release to deploy, e.g. 1.4.0)}
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in your env file (the GitHub user or org that owns the published images)}/odyssey-migrations:${IMAGE_TAG:?IMAGE_TAG must be set in your env file (the release to deploy, e.g. 1.4.0)}
     build: !reset null
     environment:
       ASPNETCORE_ENVIRONMENT: Production
@@ -65,7 +81,7 @@ services:
       - /tmp
 
   api:
-    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in .env.prod (the GitHub user or org that owns the published images)}/odyssey-api:${IMAGE_TAG:?IMAGE_TAG must be set in .env.prod (the release to deploy, e.g. 1.4.0)}
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in your env file (the GitHub user or org that owns the published images)}/odyssey-api:${IMAGE_TAG:?IMAGE_TAG must be set in your env file (the release to deploy, e.g. 1.4.0)}
     build: !reset null
     environment:
       ASPNETCORE_ENVIRONMENT: Production
@@ -126,7 +142,7 @@ services:
       - /tmp
 
   client:
-    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in .env.prod (the GitHub user or org that owns the published images)}/odyssey-client:${IMAGE_TAG:?IMAGE_TAG must be set in .env.prod (the release to deploy, e.g. 1.4.0)}
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in your env file (the GitHub user or org that owns the published images)}/odyssey-client:${IMAGE_TAG:?IMAGE_TAG must be set in your env file (the release to deploy, e.g. 1.4.0)}
     build: !reset null
     # Internal only — Caddy terminates TLS and proxies to this container.
     ports: !reset []
@@ -153,8 +169,22 @@ services:
     container_name: odyssey-caddy
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      # CADDY_BIND is the ONE line that separates the internet-facing deployment from the
+      # localhost-only one — there is no second overlay, and deliberately so. Unset (.env.prod) it
+      # resolves to "80:80", i.e. 0.0.0.0. Set to "127.0.0.1:" (.env.localhost) it resolves to
+      # "127.0.0.1:80:80" and the stack is reachable only from the machine itself.
+      #
+      # The trailing colon belongs in the VALUE, not here: compose's port short syntax is
+      # [HOST_IP:][HOST_PORT:]CONTAINER_PORT, so a bare "${CADDY_BIND}:80:80" would leave a leading
+      # colon when the variable is empty and fail to parse. Keep the colon in .env.localhost.
+      #
+      # This is the only host-facing surface in the whole overlay — every other service resets its
+      # ports to [] — so binding it to loopback is sufficient on its own to take the deployment off
+      # the network. Do NOT also publish the client or api "just to check something": the client's
+      # nginx trusts an inbound X-Forwarded-Proto (Odyssey.Client/nginx.conf), which is safe only
+      # because Caddy is the sole path in and overwrites it.
+      - "${CADDY_BIND:-}80:80"
+      - "${CADDY_BIND:-}443:443"
     # Runtime hardening: drop all caps except the one Caddy needs to bind the privileged
     # TLS ports, and block privilege escalation. Root filesystem stays writable — Caddy
     # persists ACME state/certs under the /data and /config volumes.
@@ -171,7 +201,7 @@ services:
     environment:
       # Guarded like every credential in this file: unset, Caddy gets an empty site block and
       # serves nothing, with no error saying why.
-      ODYSSEY_DOMAIN: ${ODYSSEY_DOMAIN:?ODYSSEY_DOMAIN must be set in .env.prod (the public hostname Caddy issues a certificate for)}
+      ODYSSEY_DOMAIN: ${ODYSSEY_DOMAIN:?ODYSSEY_DOMAIN must be set in your env file (the hostname Caddy issues a certificate for — your public domain, or odyssey.localhost for a private deployment)}
     depends_on:
       - client
 

@@ -3,6 +3,20 @@
 This describes the supported production deployment: a **single Linux VPS running Docker**,
 fronted by **Caddy** for automatic TLS, deploying **pinned SemVer image tags manually**.
 
+There are **two** of them, and they share one overlay (`docker-compose.prod.yml`) and one
+`Caddyfile` — they differ only in the env file you point at:
+
+| | Reachable from | Env file | Certificate |
+|---|---|---|---|
+| **Public** | the internet | `.env.prod` | Let's Encrypt, for your domain |
+| **Private** | that machine only | `.env.localhost` | Caddy's internal CA, for `odyssey.localhost` |
+
+Read this document straight through for the public deployment; everything in it applies to the
+private one too, with the two-variable diff and the reasoning in
+[Running Odyssey privately](#running-odyssey-privately-localhost-only). Neither is the development
+stack — that is a bare `docker compose up` on the base file, with demo data and published
+credentials.
+
 The app runs as four containers behind one origin:
 
 ```
@@ -26,9 +40,10 @@ never builds.
 | File | Purpose |
 |---|---|
 | `docker-compose.yml` | Base service definitions (shared with dev). |
-| `docker-compose.prod.yml` | Production overlay: pull images, Production env, Caddy, no host ports, persisted keys. |
+| `docker-compose.prod.yml` | Production overlay: pull images, Production env, Caddy, no host ports, persisted keys. Serves **both** deployments below. |
 | `Caddyfile` | TLS termination + reverse proxy to the client. |
-| `.env.prod.example` | Template for the server-side secrets/config file. Copy to `.env.prod`. |
+| `.env.prod.example` | Template for the internet-facing deployment. Copy to `.env.prod`. |
+| `.env.localhost.example` | Template for a private, machine-local deployment. Copy to `.env.localhost`. See [Running Odyssey privately](#running-odyssey-privately-localhost-only). |
 
 ## One-time server setup
 
@@ -115,6 +130,110 @@ curl -s https://your-domain/api/healthz   # → {"status":"ok","version":"1.4.0"
 
 > **Tip:** wrap steps 2–4 in a small `deploy.sh IMAGE_TAG` on the server so a release is a
 > single command.
+
+## Running Odyssey privately (localhost only)
+
+The second supported deployment is a **private one on a single machine** — reachable from that
+machine and nowhere else. It uses the **same `docker-compose.prod.yml`**, with a different env
+file:
+
+```bash
+cp .env.localhost.example .env.localhost
+# edit: GHCR_OWNER, IMAGE_TAG, DB passwords, BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.localhost pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.localhost up -d
+```
+
+Then open **`https://odyssey.localhost`**.
+
+**Do not confuse this with the dev stack.** A bare `docker compose up` on the base file is the
+*development* stack: Development environment, demo data, four seeded accounts sharing a password
+published in this repository's README. That is the thing to run if you want a dataset to click
+around in. This deployment is the real application with no demo data and no default accounts,
+which is why it still needs DB passwords and a bootstrap administrator.
+
+### Only two values differ from `.env.prod`
+
+| Variable | `.env.prod` | `.env.localhost` |
+|---|---|---|
+| `CADDY_BIND` | unset → `0.0.0.0:80`, `0.0.0.0:443` | `127.0.0.1:` → loopback only |
+| `ODYSSEY_DOMAIN` | your public domain (Let's Encrypt) | `odyssey.localhost` (Caddy's internal CA) |
+
+Everything else is identical, deliberately. `Production`, the runtime hardening, the unpublished
+`api`/`mariadb`/`client` ports, the persisted `dataprotection_keys` volume, the bootstrap
+administrator, the mail-off first run and the whole `/settings` inventory all behave exactly as
+described elsewhere in this document.
+
+`CADDY_BIND`'s trailing colon is part of the value — Compose's port syntax is
+`[HOST_IP:][HOST_PORT:]CONTAINER_PORT`, so the variable has to supply its own separator. Caddy is
+the **only** host-facing surface in the overlay (every other service resets `ports` to `[]`), so
+that one line is enough to take the deployment off the network. The converse also holds: publishing
+`client` or `api` "just to check something" undoes it, and does so unsafely — the client's nginx
+honours an inbound `X-Forwarded-Proto` (`Odyssey.Client/nginx.conf`), which is only sound because
+Caddy is the sole path in and overwrites it.
+
+### Why keep Caddy at all, if nothing is exposed?
+
+Because `ASPNETCORE_ENVIRONMENT=Production` sets `CookieSecurePolicy.Always`
+(`Odyssey.Api/Program.cs`), so the auth cookie is marked `Secure` and needs HTTPS.
+
+Serving plain HTTP would *appear* to work: browsers treat `localhost`, `127.0.0.1/8` and `::1` as
+secure contexts and accept `Secure` cookies there. But that exemption is keyed to the **host in the
+address bar**, so it stops applying the moment anyone reaches the box as `http://192.168.1.50` —
+at which point the browser silently discards the cookie and **login fails with no error message
+anywhere**. Terminating TLS removes that failure mode instead of depending on it, and keeps the
+private deployment a faithful rehearsal of the public one.
+
+The alternative — running `Development` locally to dodge the cookie flag — is the wrong trade and
+worth naming explicitly: it also turns on Swagger, permits demo seeding, and substitutes
+`LegalOptions.DevelopmentPseudonymizationSecret` for the real pseudonymisation key
+(`Odyssey.Api/Legal/LegalPseudonymizer.cs`). Use `Production` on both deployments.
+
+### Use `odyssey.localhost`, never bare `localhost`
+
+The `Caddyfile` sends `Strict-Transport-Security: max-age=31536000; includeSubDomains`, and
+**browsers key HSTS by hostname and ignore the port.** Setting `ODYSSEY_DOMAIN=localhost` would
+therefore pin *every* `http://localhost:<port>` URL in that browser to HTTPS for a year — breaking
+the dev stack on :5199 and Swagger on :5188, recoverable only via `chrome://net-internals/#hsts`.
+
+Scoped to `odyssey.localhost` the pin is harmless, browsers resolve `*.localhost` to loopback with
+no hosts-file entry, and Caddy recognises the name as non-public and issues from its internal CA
+rather than attempting an ACME challenge it could never satisfy. This is why a private deployment
+needs **no change to the `Caddyfile`**.
+
+### Trust Caddy's local CA
+
+Otherwise every visit shows a certificate warning:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.localhost \
+  cp caddy:/data/caddy/pki/authorities/local/root.crt /tmp/caddy-root.crt
+
+sudo trust anchor /tmp/caddy-root.crt          # Fedora / RHEL
+# sudo cp /tmp/caddy-root.crt /usr/local/share/ca-certificates/caddy-root.crt \
+#   && sudo update-ca-certificates              # Debian / Ubuntu
+```
+
+Firefox uses its own trust store — either import the same file under
+*Settings → Privacy & Security → Certificates → View Certificates → Authorities*, or set
+`security.enterprise_roots.enabled` to `true` in `about:config`.
+
+The CA is generated on Caddy's first start and lives in the `caddy_data` volume. `docker compose
+down -v` destroys it, and the next start generates a different one — so re-run the steps above if
+certificates start being rejected after a volume wipe.
+
+### What is *not* relaxed
+
+- **Backups still matter.** The `dataprotection_keys` volume is secret-bearing and is destroyed by
+  `docker compose down -v`, permanently for anything derived from it. See [Backups](#backups) —
+  "it's only local" is how the legal pseudonymisation salt gets lost.
+- **The mail-off first run is sharper here, not milder.** If `BOOTSTRAP_ADMIN_PASSWORD` is lost
+  before SMTP is configured, the forgot-password flow is the very thing that cannot run, and a
+  single-user install means you are the one locked out. See
+  [Mail is configured after first sign-in](#mail-is-configured-after-first-sign-in). If you do
+  configure mail, set the client base URL to `https://odyssey.localhost`.
+- **File analysis still sends documents to Anthropic** if enabled at `/settings`. Being on loopback
+  does not make that local. It ships off.
 
 ## First-run notes
 
@@ -493,6 +612,11 @@ additive migration even when a squash would be tidier.
 - [ ] No demo data: if this host ever ran the base `docker compose up`, its `mariadb_data`
       volume was destroyed with `docker compose down -v` before the production overlay came up.
 - [ ] No host port mappings for `api`/`mariadb`/`client` — only Caddy's 80/443 are exposed.
+- [ ] **Private deployments only:** `CADDY_BIND=127.0.0.1:` (with the trailing colon) is set, and
+      `docker compose … config` shows `host_ip: 127.0.0.1` on both of Caddy's ports. Confirm from
+      another machine that the host does not answer on 443.
+- [ ] **Private deployments only:** `ODYSSEY_DOMAIN` is a `*.localhost` name, not bare `localhost`
+      — see [the HSTS note](#use-odysseylocalhost-never-bare-localhost).
 - [ ] Strong, unique `MARIADB_ROOT_PASSWORD` and `MARIADB_PASSWORD`.
 - [ ] `.env.prod` is not committed (the `.env*` gitignore rule covers it) and is `chmod 600`.
 - [ ] TLS verified — `https://your-domain` shows a valid Let's Encrypt cert.
