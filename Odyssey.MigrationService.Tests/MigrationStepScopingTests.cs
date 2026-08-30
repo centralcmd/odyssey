@@ -8,7 +8,7 @@ namespace Odyssey.MigrationService.Tests;
 /// Every <see cref="IMigrationStep"/> must open its own scope rather than take a scoped service.
 ///
 /// <para>
-/// <c>Worker</c> is a singleton <c>IHostedService</c> and depends on all six steps, so a step whose
+/// <c>Worker</c> is a singleton <c>IHostedService</c> and depends on all five steps, so a step whose
 /// constructor asks for a <see cref="DbContext"/> makes the container refuse to build:
 /// <c>Cannot consume scoped service … from singleton 'IHostedService'</c>. The migrations job then
 /// crashes on startup, before it migrates anything.
@@ -58,9 +58,9 @@ public class MigrationStepScopingTests
     [Fact]
     public void EveryStepImplementation_IsFound()
     {
-        // Six today; the assertion is a floor, so adding one does not need this number changed, but
+        // Five today; the assertion is a floor, so adding one does not need this number changed, but
         // deleting the discovery by accident does fail.
-        Assert.True(StepImplementations().Count() >= 6,
+        Assert.True(StepImplementations().Count() >= 5,
             $"Only found {StepImplementations().Count()} migration steps — the discovery is broken.");
     }
 }

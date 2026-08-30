@@ -1,10 +1,8 @@
 using Odyssey.Context;
-using Odyssey.Context.Secrets;
 using Odyssey.Core.Finance;
 using Odyssey.MigrationService;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Configuration;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -45,25 +43,16 @@ else
         options.UseMySql(odysseyConnectionString, databaseVersion, EnableRetries));
 }
 
-// The SAME Data Protection key ring the API uses (issue #444 §14). Wired up before any secret needs
-// it, because a future adoption step protecting a value under an EPHEMERAL ring here would produce a
-// row the API can never decrypt — a silent, delayed failure of exactly the kind this repo keeps
-// meeting. SetApplicationName must match Odyssey.Api's, or the two derive different keys from the
-// same files.
+// NO Data Protection key ring here, deliberately (issue #444 §14, revisited). This job briefly had
+// one, mounted from the same volume as the API's, so that a config-adoption step could protect a
+// secret under the ring the API reads — protecting under an ephemeral ring would have produced a row
+// the API could never decrypt. Adoption is gone and nothing else in this job reads or writes a
+// protected value, so the ring bought nothing while costing something real: it let a second container
+// decrypt every stored credential.
 //
-// Mounting the keys volume into a second service widens key custody: two containers can now decrypt
-// every stored secret rather than one. That cost is accepted because the alternative is worse — and
-// it is called out here so the first follow-up that considers adoption can weigh whether it needs
-// adoption at all, since carrying a secret across from configuration leaves the plaintext in the
-// environment, which is much of what the move was meant to escape.
-var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Odyssey");
-var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
-if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
-{
-    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
-}
-
-builder.Services.AddSingleton<ISecretProtector, SecretProtector>();
+// Re-adding it is the correct move IF a step here ever needs to protect a value — but then it must be
+// the same directory AND the same SetApplicationName("Odyssey") as Odyssey.Api, or the two derive
+// different keys from the same files.
 
 // Identity core (plus the shared password policy) so the seeders can create users via UserManager.
 // Shared with the test harnesses so their graph cannot drift from this one — see
@@ -75,7 +64,6 @@ builder.Services.AddMigrationServiceIdentity();
 // without subclassing a production type (see IMigrationStep).
 builder.Services.AddTransient<IOdysseyMigrationService, OdysseyMigrationService>();
 builder.Services.AddTransient<IRoleClaimSeeder, RoleClaimSeeder>();
-builder.Services.AddTransient<ISystemSettingsConfigAdoption, SystemSettingsConfigAdoption>();
 builder.Services.AddTransient<IBootstrapAdminSeeder, BootstrapAdminSeeder>();
 builder.Services.AddTransient<IDemoDataSeeder, DemoDataSeeder>();
 builder.Services.AddTransient<IAdministratorAssertion, AdministratorAssertion>();

@@ -5,15 +5,14 @@ namespace Odyssey.Dtos;
 /// canonicalisation, and the host projection every echo of the value goes through.
 ///
 /// <para>
-/// <strong>Why it lives here.</strong> Two halves of the stack have to apply the identical rule: the
-/// API's <c>PUT</c> path, and <c>SystemSettingsConfigAdoption</c> in the migrations job, which carries
-/// an operator's configured value into the store on upgrade. The migrations job does not reference
-/// <c>Odyssey.Api</c> and should not start doing so for one predicate, so the rule was originally
-/// hand-duplicated — and a duplicated rule on <em>this</em> setting is the one worth eliminating,
-/// because it decides which host receives the document and the configured API key.
-/// <c>Odyssey.Dtos</c> has zero project references and is reachable from both halves, which is
-/// the same split <c>CLAUDE.md</c> documents for <see cref="SystemSettingsDefaults"/> — so there is now
-/// one implementation and drift is impossible rather than merely detected.
+/// <strong>Why it lives here.</strong> The rule was once applied by two halves of the stack — the
+/// API's <c>PUT</c> path and the migrations job's configuration adoption — each with its own copy of
+/// the predicate, on the one setting where a duplicate is least affordable: it decides which host
+/// receives the document and the configured API key. Moving it to <c>Odyssey.Dtos</c>, which has zero
+/// project references and is reachable from both halves, made drift impossible rather than merely
+/// detected. Adoption has since been removed and the API is the only caller, but the rule stays here:
+/// it is the same split <c>CLAUDE.md</c> documents for <see cref="SystemSettingsDefaults"/>, and the
+/// client catalogue reaches it from the other side.
 /// </para>
 ///
 /// <para>

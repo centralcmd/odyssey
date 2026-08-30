@@ -62,7 +62,7 @@ public class FileAnalysisRuntimeSettingsApiTests
     /// <summary>
     /// AC 6 — the migration's seeded values equal the shared constants <em>by reference</em>. The seed
     /// writes the constant rather than a literal, so this reads the rows the seed produced and compares
-    /// them to the same symbols the DTO defaults, the client catalogue and adoption all name.
+    /// them to the same symbols the DTO defaults and the client catalogue both name.
     /// </summary>
     [Fact]
     public async Task MigrationSeed_MatchesTheSharedDefaultConstants()
@@ -80,9 +80,8 @@ public class FileAnalysisRuntimeSettingsApiTests
         Assert.Equal(SystemSettingsDefaults.FileAnalysisModel, rows[SystemSettingsKeys.FileAnalysisModel]);
         Assert.Equal(SystemSettingsDefaults.FileAnalysisBaseUrl, rows[SystemSettingsKeys.FileAnalysisBaseUrl]);
 
-        // The seed leaves UpdatedBy null, and that null is what tells SystemSettingsConfigAdoption no
-        // administrator owns the row yet — without it, an operator's configured value could never be
-        // carried across on upgrade.
+        // The seed leaves UpdatedBy null, meaning no administrator has taken ownership of the row —
+        // which is what the settings page's provenance line reads, and what a first write replaces.
         var seeded = await context.SystemSettings.AsNoTracking()
             .Where(row => row.Key == SystemSettingsKeys.FileAnalysisEnabled
                 || row.Key == SystemSettingsKeys.FileAnalysisModel

@@ -17,6 +17,16 @@ namespace Odyssey.Api.Tests;
 /// </para>
 ///
 /// <para>
+/// <strong>AC 25 was narrowed, and these tests now assert the narrowing.</strong> The ring was
+/// originally given to the migrations job as well, so a config-adoption step could protect a secret
+/// under keys the API could read. That step has been removed, the job protects nothing, and a second
+/// holder of the ring is pure exposure — any container that mounts it can decrypt every stored
+/// credential. The assertions below are therefore <em>exactly one</em> mount per file, not two: a
+/// re-added mount has to come back with a step that needs it, and changing these numbers is how that
+/// gets noticed.
+/// </para>
+///
+/// <para>
 /// The runtime halves of those criteria (a secret surviving <c>docker compose restart</c>, a
 /// cross-host unprotect) need a live stack and a real engine; they live in
 /// <c>Odyssey.IntegrationTests</c> and in manual verification. What is pinned here is the wiring those
@@ -29,47 +39,43 @@ public class SecretSettingsInfrastructureTests
     private const string EnvironmentVariable = "DataProtection__KeysPath";
 
     /// <summary>
-    /// Both services in the DEV stack carry the key ring, and they share one volume — the migrations
-    /// job must derive the same keys as the API, or a future adoption step would write rows the API
-    /// can never decrypt.
+    /// The DEV stack gives the key ring to the <c>api</c> service and to nothing else: the volume is
+    /// declared once and mounted once, and one service carries the path.
     /// </summary>
     [Fact]
-    public void TheDevComposeStack_GivesBothServicesTheSharedKeyRing()
+    public void TheDevComposeStack_GivesTheKeyRingToTheApiServiceAlone()
     {
         var compose = RepositoryRoot.ReadAllText("docker-compose.yml");
 
-        // The volume is declared once, at the bottom, and mounted by both services.
         Assert.Contains("\n  dataprotection_keys:", compose, StringComparison.Ordinal);
-        Assert.Equal(2, Occurrences(compose, $"- dataprotection_keys:{KeysPath}"));
-        Assert.Equal(2, Occurrences(compose, $"{EnvironmentVariable}: {KeysPath}"));
+        Assert.Equal(1, Occurrences(compose, $"- dataprotection_keys:{KeysPath}"));
+        Assert.Equal(1, Occurrences(compose, $"{EnvironmentVariable}: {KeysPath}"));
     }
 
     /// <summary>
-    /// The production overlay adds the path to the migrations job. The <c>api</c> service already had
-    /// it, and the volume itself now comes from the base file rather than being declared twice.
+    /// The production overlay carries the path for the <c>api</c> service only, and declares no volume
+    /// of its own — a second declaration here would be a different volume.
     /// </summary>
     [Fact]
-    public void TheProductionOverlay_GivesTheMigrationsJobTheSameKeyRing()
+    public void TheProductionOverlay_GivesTheKeyRingToTheApiServiceAlone()
     {
         var overlay = RepositoryRoot.ReadAllText("docker-compose.prod.yml");
 
-        Assert.Equal(2, Occurrences(overlay, $"{EnvironmentVariable}: {KeysPath}"));
-
-        // Declared in the base file only — a second declaration here would be a different volume.
+        Assert.Equal(1, Occurrences(overlay, $"{EnvironmentVariable}: {KeysPath}"));
         Assert.DoesNotContain("\n  dataprotection_keys:", overlay, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// Aspire gets the same treatment, and for the same reason: a developer running
+    /// Aspire gets the ring for the same reason — a developer running
     /// <c>dotnet run --project Odyssey.AppHost</c> would otherwise be refused every credential write
-    /// with a <c>503</c> and no obvious place to point.
+    /// with a <c>503</c> and no obvious place to point — and on the API resource only.
     /// </summary>
     [Fact]
-    public void TheAspireHost_GivesBothResourcesTheSameKeysDirectory()
+    public void TheAspireHost_GivesTheKeysDirectoryToTheApiResourceAlone()
     {
         var appHost = RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs"));
 
-        Assert.Equal(2, Occurrences(appHost, $"WithEnvironment(\"{EnvironmentVariable}\", dataProtectionKeysPath)"));
+        Assert.Equal(1, Occurrences(appHost, $"WithEnvironment(\"{EnvironmentVariable}\", dataProtectionKeysPath)"));
     }
 
     /// <summary>
@@ -80,8 +86,7 @@ public class SecretSettingsInfrastructureTests
     /// </summary>
     [Theory]
     [InlineData("Odyssey.Api")]
-    [InlineData("Odyssey.MigrationService")]
-    public void BothImages_CreateTheKeysDirectoryOwnedByTheRuntimeUser(string project)
+    public void TheImage_CreatesTheKeysDirectoryOwnedByTheRuntimeUser(string project)
     {
         var dockerfile = RepositoryRoot.ReadAllText(System.IO.Path.Combine(project, "Dockerfile"));
 
@@ -176,7 +181,14 @@ public class SecretSettingsInfrastructureTests
     [InlineData("Email__SmtpPort")]
     [InlineData("Email__UseStartTls")]
     [InlineData("Email__ClientBaseUrl")]
-    [InlineData("FileAnalysis__BaseUrl")]
+    // FileAnalysis__BaseUrl is deliberately NOT here. It reads like a peer of Email__SmtpHost — the
+    // destination a credential travels to — but issue #439 made it a setting, and compose only ever
+    // carried it as an input to the config-adoption step, which is gone. Its protection is not
+    // "unreachable from the UI" but the set of mitigations on the setting itself: the security claim,
+    // https-only validation with no path, query, fragment or credentials, the host-only projection
+    // every echo goes through, AllowAutoRedirect = false on the outbound client, and the refusal to
+    // substitute the compiled default for an unusable stored value. FileAnalysisBaseUrlRuleTests pins
+    // the validation half.
     public void TheRetainedKeys_AreStillPlumbedThrough(string key)
     {
         Assert.Contains($"{key}:", RepositoryRoot.ReadAllText("docker-compose.yml"), StringComparison.Ordinal);

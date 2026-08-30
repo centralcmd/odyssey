@@ -110,8 +110,8 @@ assign ids removes the problem instead of managing it.
 
 **Roles** are still seeded by `HasData`: their ids are fixed GUIDs, so they have none of this trouble.
 So is `SystemSetting`, whose `Key` is a natural primary key — a plain `HasData` insert, with a null
-`UpdatedBy` that is load-bearing (it is what tells `SystemSettingsConfigAdoption` no administrator owns
-the row yet). `SystemSettingSecret` carries no seed at all: an absent row means *not configured*, which
+`UpdatedBy` meaning no administrator has ever taken ownership of the row, which is what the settings
+page's provenance line reads. `SystemSettingSecret` carries no seed at all: an absent row means *not configured*, which
 is a secret's correct initial state.
 
 ### One database

@@ -7,7 +7,6 @@ namespace Odyssey.MigrationService;
 public sealed class Worker(
     IOdysseyMigrationService odysseyMigrationService,
     IRoleClaimSeeder roleClaimSeeder,
-    ISystemSettingsConfigAdoption systemSettingsConfigAdoption,
     IBootstrapAdminSeeder bootstrapAdminSeeder,
     IDemoDataSeeder demoDataSeeder,
     IAdministratorAssertion administratorAssertion,
@@ -41,11 +40,6 @@ public sealed class Worker(
             // user table, so running it second would find the demo users already present and silently
             // ignore credentials an operator had explicitly configured.
             activity?.AddEvent(new ActivityEvent("Seed the bootstrap administrator (only on an empty user table)."));
-            // After the migration, so the settings rows the seed creates exist,
-            // and before any seeding: nothing downstream should observe a sender identity that the
-            // deployment's own configuration is about to correct.
-            await systemSettingsConfigAdoption.ExecuteAsync(cancellationToken);
-
             await bootstrapAdminSeeder.ExecuteAsync(cancellationToken);
 
             activity?.AddEvent(new ActivityEvent("Seed demo data (Development/Testing only, idempotent)."));

@@ -211,7 +211,7 @@ public static class SystemSettingsDefaults
     //
     // All three mirror what appsettings.json shipped, so a default install is behaviourally
     // identical — analysis OFF, claude-sonnet-5, api.anthropic.com — and an operator's configured
-    // value is carried across by SystemSettingsConfigAdoption rather than replaced by these.
+    // value an administrator sets at /settings replaces these; configuration never does.
     // ─────────────────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>

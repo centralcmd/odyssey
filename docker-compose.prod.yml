@@ -45,12 +45,15 @@ services:
       # environment, so an overlay used without a matching .env.prod would otherwise run the
       # migrations job as Development in production. Same trap as the Swagger key above.
       DOTNET_ENVIRONMENT: Production
+      # Pinned for the same reason, and it is the more dangerous of the two: nothing in the app
+      # refuses the in-memory provider in Production (MigrationService/Program.cs reads the flag
+      # and believes it), so a typo'd USE_IN_MEMORY_DATABASE=true in .env.prod would migrate a
+      # throwaway database and report success while the real one was never touched.
+      UseInMemoryDatabase: "false"
       # Never seed demo data in production (explicit guard on top of the environment gate).
       Seed__DemoData: "false"
-      # Same key ring as the api service (issue #444). The volume is inherited from the base file;
-      # read_only below applies to the container's root filesystem, not to this named volume, which
-      # must stay writable — a read-only key mount falls back to an in-memory ring with only a warning.
-      DataProtection__KeysPath: /var/odyssey/dataprotection-keys
+      # No key ring here — see the base file. This job protects nothing, so mounting the API's keys
+      # would only widen who can decrypt the stored credentials.
     # Runtime hardening: non-root .NET runner that needs no Linux capabilities and writes
     # nothing outside /tmp, so drop all caps and mount the root filesystem read-only.
     security_opt:
@@ -73,6 +76,15 @@ services:
       # Kubernetes manifest got `:-true` and served Swagger UI in Production through the client's
       # nginx /api/ proxy. Program.cs now also refuses to enable Swagger in Production at all.
       Swagger__Enabled: "false"
+      # Pinned, not left to the env file, for the same class of reason: DatabaseExtension.cs reads
+      # this flag in every environment, so `true` in Production is an API serving an empty in-memory
+      # database that loses everything on restart — with no error anywhere saying so.
+      UseInMemoryDatabase: "false"
+      # The origin of every confirmation and password-reset link. Guarded rather than defaulted: the
+      # base file falls back to http://localhost:5199 for the laptop stack, and inheriting that in
+      # production produces mail whose links are dead — the one failure a user cannot report, because
+      # the mail they cannot act on is the one that would let them in.
+      Email__ClientBaseUrl: ${EMAIL_CLIENT_BASE_URL:?EMAIL_CLIENT_BASE_URL must be set in .env.prod (your public https origin, e.g. https://odyssey.example.com)}
       # Persisted DataProtection keys (see Program.cs) — survives redeploys.
       DataProtection__KeysPath: /var/odyssey/dataprotection-keys
       # Legal__PseudonymizationSecret is GONE (issue #445 Wave 4). It lives in the encrypted secret

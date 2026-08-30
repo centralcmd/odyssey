@@ -1,12 +1,12 @@
 namespace Odyssey.MigrationService;
 
 /// <summary>
-/// One step of the migrations job. <see cref="Worker"/> runs the six below in a fixed order that it
+/// One step of the migrations job. <see cref="Worker"/> runs the five below in a fixed order that it
 /// spells out explicitly, because the order carries meaning the sequence alone would not explain.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The six role interfaces exist so <see cref="Worker"/> depends on abstractions its tests can
+/// The five role interfaces exist so <see cref="Worker"/> depends on abstractions its tests can
 /// substitute. They are deliberately distinct types rather than one <c>IEnumerable&lt;IMigrationStep&gt;</c>:
 /// resolving a collection would make registration order in <c>Program.cs</c> the thing that decides
 /// execution order, which is both invisible at the call site and beyond the reach of
@@ -34,12 +34,6 @@ public interface IOdysseyMigrationService : IMigrationStep;
 /// positional <c>HasData</c> seed that made every claim addition a hand-written migration.
 /// </summary>
 public interface IRoleClaimSeeder : IMigrationStep;
-
-/// <summary>
-/// Carries an operator's existing configuration into the settings store for settings that used to be
-/// config-driven (issue #421 Wave 2). Runs in Production — see the implementation's remarks.
-/// </summary>
-public interface ISystemSettingsConfigAdoption : IMigrationStep;
 
 /// <summary>Creates the initial administrator from configuration on an empty user table (issue #290).</summary>
 public interface IBootstrapAdminSeeder : IMigrationStep;

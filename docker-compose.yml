@@ -67,48 +67,24 @@ services:
       UseInMemoryDatabase: ${USE_IN_MEMORY_DATABASE:-false}
       # Seed the deterministic demo dataset (Development/Testing only). Default on for the dev stack.
       Seed__DemoData: ${SEED_DEMO_DATA:-true}
-      # Read ONLY by SystemSettingsConfigAdoption (issue #421 Wave 2): the sender identity is
-      # database-backed now, and this is what carries a value you already had into the store on
-      # upgrade instead of silently replacing it with the shipped default. Once an administrator
-      # edits it in System Settings, that wins and these stop applying.
-      Email__FromAddress: ${EMAIL_FROM_ADDRESS:-}
-      Email__FromName: ${EMAIL_FROM_NAME:-}
-      # Also read only by SystemSettingsConfigAdoption, and it must be here rather than only on the
-      # api service: adoption runs in THIS job, so a value plumbed solely to the API would leave it
-      # reading nothing while looking correct.
-      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-67108864}
-      # Read ONLY by SystemSettingsConfigAdoption (issue #434): these three are database-backed now,
-      # and this is what carries a value you already had into the store on upgrade. They must be on
-      # THIS job rather than only on the api service — adoption runs here, so a value plumbed solely
-      # to the API would leave it reading nothing while looking correct.
-      # FileAnalysis__TimeoutSeconds is deliberately absent: it stays a startup value, consumed once
-      # by the resilience handler, so a runtime value could never reach a live pipeline.
-      FileAnalysis__MaxTokens: ${FILE_ANALYSIS_MAX_TOKENS:-}
-      FileAnalysis__Match__MaxVocabulary: ${FILE_ANALYSIS_MATCH_MAX_VOCABULARY:-}
-      FileAnalysis__Match__TimeoutSeconds: ${FILE_ANALYSIS_MATCH_TIMEOUT_SECONDS:-}
-      # The kill switch, model and destination followed them into the store (issue #439), and these
-      # three are read ONLY by SystemSettingsConfigAdoption too. The EMPTY default is deliberate: an
-      # empty value is skipped by adoption, so an operator who never set the variable never asserts
-      # ownership over the row on every restart. The API KEY is not here and not on the api service
-      # either — it moved to the encrypted secret store in issue #445 Wave 1, and a secret is
-      # deliberately never adopted from configuration.
-      FileAnalysis__Enabled: ${FILE_ANALYSIS_ENABLED:-}
-      FileAnalysis__Model: ${FILE_ANALYSIS_MODEL:-}
-      FileAnalysis__BaseUrl: ${FILE_ANALYSIS_BASE_URL:-}
+      # No Email__*, FileAnalysis__* or FileStorage__* here. Those settings are database-backed and
+      # edited at /settings; the migrations job used to read them for SystemSettingsConfigAdoption,
+      # which carried a pre-existing configured value into the store on upgrade. That step is gone —
+      # no deployment ever ran the releases it existed to upgrade from — so the job needs none of
+      # them. The API still reads the ones with a startup role (the mail transport, the upload
+      # transport ceiling); see the api service below.
+
       # The initial administrator (issue #290). Applied ONLY when the user table is completely empty;
       # ignored on every later deploy. Required on a fresh database unless demo seeding provides an
       # admin — the job exits non-zero if neither does, and the API does not start behind it.
       Bootstrap__Admin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-}
       Bootstrap__Admin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
-      # The SAME Data Protection key ring the api service uses (issue #444). It is here so a future
-      # adoption of a SECRET from configuration protects it under the ring the API can actually read —
-      # protecting under an ephemeral ring here would produce a row the API can never decrypt. The
-      # mount below must stay read-write: a read-only one does not fail loudly, it falls back to an
-      # in-memory ring with a log line.
-      DataProtection__KeysPath: /var/odyssey/dataprotection-keys
-    volumes:
-      - dataprotection_keys:/var/odyssey/dataprotection-keys
+      # No DataProtection__KeysPath and no keys volume, deliberately (issue #444 §14, revisited).
+      # Nothing in this job reads or writes a protected value, and mounting the ring here would let a
+      # second container decrypt every stored credential for nothing. If a step here ever needs to
+      # protect a value, mount the volume again AND give it the same DataProtection__KeysPath — a job
+      # that protects a row under its own ephemeral ring writes one the API can never decrypt.
     depends_on:
       mariadb:
         condition: service_healthy
@@ -135,12 +111,13 @@ services:
       # host would harvest the credential and every reset token.
       Email__ClientBaseUrl: ${EMAIL_CLIENT_BASE_URL:-http://localhost:5199}
       # Legal__PseudonymizationSecret and FileAnalysis__ApiKey are GONE (issue #445 Waves 1 and 4).
-      # Both live in the encrypted secret store now and are entered at /settings → Credentials. Neither
-      # is adopted from configuration: adoption would require the plaintext to still be present in the
-      # environment at upgrade time, which is most of what the move exists to escape.
+      # Both live in the encrypted secret store now and are entered at /settings → Credentials. There
+      # is no configuration path back to them: carrying a secret across from configuration would leave
+      # the plaintext in the environment, which is most of what the move exists to escape.
       #
       # The pseudonymization secret is a DERIVATION key — outside Production an unset one still falls
       # back to the fixed development value, so this dev stack's delete flow works out of the box.
+
       # The upload TRANSPORT ceiling (issue #421 Wave 4). The cap a user is validated against is
       # admin-editable in System Settings; this is the startup limit for Kestrel and the multipart
       # reader, and the bound the setting cannot be raised above. Keep the reverse proxy's body-size
@@ -175,7 +152,7 @@ services:
 
 volumes:
   mariadb_data:
-  # Shared by api and migrations so both derive the same keys (issue #444 §14, AC 25). That widens
-  # key custody to two containers, deliberately: the alternative is a migrations job writing rows the
-  # API can never read.
+  # Mounted by the api service alone (issue #444 §14). It was briefly shared with the migrations job,
+  # for a config-adoption step that no longer exists; one mount means one container can decrypt what
+  # is stored under it.
   dataprotection_keys:
