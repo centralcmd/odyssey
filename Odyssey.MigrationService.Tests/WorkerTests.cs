@@ -34,10 +34,6 @@ public class WorkerTests
                 // that reasons about authorization. Claims are reconciled here rather than seeded by
                 // the model, so adding one no longer needs a hand-written migration.
                 nameof(RoleClaimSeeder),
-                // After the migration, whose seed creates the settings rows it
-                // reads, and before any seeding — nothing downstream should observe a sender identity
-                // that the deployment's own configuration is about to correct.
-                nameof(SystemSettingsConfigAdoption),
                 // Before the demo seed: keyed on an empty user table, a bootstrap seeder running second
                 // would find the demo users already there and ignore configured credentials.
                 nameof(BootstrapAdminSeeder),
@@ -181,7 +177,6 @@ public class WorkerTests
         return new Worker(
             Step(nameof(OdysseyMigrationService)),
             Step(nameof(RoleClaimSeeder)),
-            Step(nameof(SystemSettingsConfigAdoption)),
             Step(nameof(BootstrapAdminSeeder)),
             Step(nameof(DemoDataSeeder)),
             Step(nameof(AdministratorAssertion)),
@@ -200,7 +195,6 @@ public class WorkerTests
     private sealed class StubStep(string name, List<string> calls, string? failAt, Exception? failWith = null)
         : IOdysseyMigrationService,
             IRoleClaimSeeder,
-            ISystemSettingsConfigAdoption,
             IBootstrapAdminSeeder,
             IDemoDataSeeder,
             IAdministratorAssertion

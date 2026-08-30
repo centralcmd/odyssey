@@ -161,7 +161,7 @@ public static class SystemSettingsKeys
     // The Subscriptions summary limits (issue #437). Two were `private const` on SubscriptionService
     // and the third did not exist at all — the summary's fetch was unbounded, unlike its Insurance
     // and Contracts siblings. None of the three ever had an appsettings.json key or environment
-    // plumbing, so none gets a SystemSettingsConfigAdoption entry (§ Non-Goal 2).
+    // plumbing, and none has any configuration surface (§ Non-Goal 2).
     //
     // All three are read-clamped at BOTH read sites against their SystemSettingsBounds pair, so a
     // hand-edited or restored row outside the [Range] is clamped rather than obeyed.

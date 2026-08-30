@@ -32,8 +32,8 @@
     <!-- Journal module now owns journal + photo + calendar (contexts merged): the seeder/services and
          the metadata extractor used when seeding library photos come from Odyssey.Journal. -->
     <ProjectReference Include="..\Odyssey.Core\Odyssey.Core.csproj" />
-    <!-- Reached transitively already, but named explicitly since SystemSettingsConfigAdoption now uses
-         FileAnalysisBaseUrlRule directly (issue #439). -->
+    <!-- Reached transitively already, but named explicitly: RoleClaimSeeder and DemoDataSeeder use
+         PermissionClaims and the Application DTOs directly. -->
     <ProjectReference Include="..\Odyssey.Dtos\Odyssey.Dtos.csproj" />
     <ProjectReference Include="..\Odyssey.TestData\Odyssey.TestData.csproj" />
   </ItemGroup>

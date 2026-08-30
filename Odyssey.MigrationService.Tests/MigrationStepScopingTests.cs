@@ -58,9 +58,9 @@ public class MigrationStepScopingTests
     [Fact]
     public void EveryStepImplementation_IsFound()
     {
-        // Six today; the assertion is a floor, so adding one does not need this number changed, but
+        // Five today; the assertion is a floor, so adding one does not need this number changed, but
         // deleting the discovery by accident does fail.
-        Assert.True(StepImplementations().Count() >= 6,
+        Assert.True(StepImplementations().Count() >= 5,
             $"Only found {StepImplementations().Count()} migration steps — the discovery is broken.");
     }
 }

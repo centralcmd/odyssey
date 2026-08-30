@@ -9,13 +9,10 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine@sha256:c4b29bf368004ad9076c1ab9
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# The Data Protection key ring lives here (issue #444). Created at BUILD TIME with the right owner
-# because a named volume mounted at a path absent from the image is created root:root 0755 by the
-# daemon, and `app` would then be unable to write it — which Data Protection meets by silently falling
-# back to an in-memory ring. Docker copies this ownership into the volume only when the volume is
-# EMPTY, so an existing deployment needs the one-line chown in docs/deployment.md; the API asserts
-# writability at startup rather than continuing silently.
-RUN mkdir -p /var/odyssey/dataprotection-keys && chown -R app:app /var/odyssey/dataprotection-keys
+# No Data Protection key directory here (issue #444 §14, revisited). This image briefly created one,
+# because the job mounted the API's key ring so a config-adoption step could protect a secret under
+# keys the API could read. That step is gone, the job protects nothing, and every extra holder of the
+# ring is a container that can decrypt every stored credential. The API's Dockerfile keeps its copy.
 
 # Run unprivileged: the aspnet base image ships a non-root "app" user (UID 1654). Set it
 # explicitly so the migration runner doesn't execute as root inside the container.

@@ -50,16 +50,18 @@ var mariadb = builder
 
 // The Data Protection key ring for the local Aspire stack (issue #444). Aspire had none at all
 // before this, so a secret written through `dotnet run --project Odyssey.AppHost` would have been
-// refused by the write-path durability check with nowhere to point the operator. Both resources get
-// the SAME directory: the migrations job must derive the same keys as the API, or a future adoption
-// step would write rows the API can never decrypt.
+// refused by the write-path durability check with nowhere to point the operator.
+//
+// The API alone gets it. The migrations job had it too, for a config-adoption step that no longer
+// exists; it protects nothing now, and a second holder of the ring is a cost with no return. If that
+// changes, give it this same directory — a job protecting a row under its own ephemeral ring writes
+// one the API can never decrypt.
 var dataProtectionKeysPath = Path.GetFullPath(
     Path.Combine(builder.AppHostDirectory, "..", ".aspire", "dataprotection-keys"));
 Directory.CreateDirectory(dataProtectionKeysPath);
 
 var migrations = builder
     .AddProject<Projects.Odyssey_MigrationService>("migrations")
-    .WithEnvironment("DataProtection__KeysPath", dataProtectionKeysPath)
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", apiEnvironment)
     // The migrations host is Host.CreateApplicationBuilder, which reads DOTNET_ENVIRONMENT and
@@ -93,40 +95,19 @@ ForwardOptionalSetting(api, "Email__UseStartTls", "Aspire:Email:UseStartTls");
 // adopted from configuration either — adoption would require the plaintext to still be in the
 // environment at upgrade time, which is most of what the move exists to escape — so there is no
 // resource to forward it to.
-// Forwarded to MIGRATIONS, not the API: the sender identity moved into the settings store (issue #421
-// Wave 2), and SystemSettingsConfigAdoption — which runs in the migrations job — is now its only
-// config-side reader. Pointing these at the API instead would leave adoption blind to a value the
-// operator had configured, and the store would keep the shipped default.
-ForwardOptionalSetting(migrations, "Email__FromAddress", "Aspire:Email:FromAddress");
-ForwardOptionalSetting(migrations, "Email__FromName", "Aspire:Email:FromName");
-
-// The upload transport ceiling (issue #421 Wave 4) goes to BOTH resources, and for two different
-// reasons: the API needs it at startup to size Kestrel and the multipart reader, while migrations
-// needs it because adoption — which carries a configured value into the store — runs there. Sending it
-// to only one of them breaks the half it was withheld from, silently in both directions.
+// The upload transport ceiling (issue #421 Wave 4). The API needs it at startup to size Kestrel and
+// the multipart reader; nothing else reads it. The cap a user is validated against is a setting, is
+// bounded by this number, and is edited in the UI.
 ForwardOptionalSetting(api, "FileStorage__MaxFileSizeBytes", "Aspire:FileStorage:MaxFileSizeBytes");
-ForwardOptionalSetting(migrations, "FileStorage__MaxFileSizeBytes", "Aspire:FileStorage:MaxFileSizeBytes");
 
-// Forwarded to MIGRATIONS only, for the same reason as the sender identity above: the three file-analysis
-// tuning values moved into the settings store (issue #434) and SystemSettingsConfigAdoption, which runs
-// in the migrations job, is their only config-side reader. FileAnalysis:TimeoutSeconds is deliberately
-// NOT here — it stays a startup value consumed once by the resilience handler, where a runtime value
-// could never reach a live pipeline.
-ForwardOptionalSetting(migrations, "FileAnalysis__MaxTokens", "Aspire:FileAnalysis:MaxTokens");
-ForwardOptionalSetting(
-    migrations, "FileAnalysis__Match__MaxVocabulary", "Aspire:FileAnalysis:Match:MaxVocabulary");
-ForwardOptionalSetting(
-    migrations, "FileAnalysis__Match__TimeoutSeconds", "Aspire:FileAnalysis:Match:TimeoutSeconds");
-
-// The kill switch, model and destination (issue #439), same destination and same reason: all three are
-// settings now, and adoption in the migrations job is their only config-side reader. FileAnalysis:ApiKey
-// is absent for the opposite reason to before: it DID move (issue #445 Wave 1), into the encrypted
-// secret store, and a secret is never adopted from configuration. Legal:PseudonymizationSecret went the
-// same way in Wave 4; outside Production an unset one still falls back to the fixed development value,
-// so the Aspire stack's delete flow works with nothing configured.
-ForwardOptionalSetting(migrations, "FileAnalysis__Enabled", "Aspire:FileAnalysis:Enabled");
-ForwardOptionalSetting(migrations, "FileAnalysis__Model", "Aspire:FileAnalysis:Model");
-ForwardOptionalSetting(migrations, "FileAnalysis__BaseUrl", "Aspire:FileAnalysis:BaseUrl");
+// Nothing is forwarded to MIGRATIONS. The sender identity (issue #421), the file-analysis tuning
+// values (#434) and the switch, model and destination (#439) are all settings edited in the UI, and
+// the migrations job's only interest in them was SystemSettingsConfigAdoption — the one-time
+// carry-over of a value an older release had configured, removed because no deployment ever ran a
+// release it could upgrade from. FileAnalysis:ApiKey and Legal:PseudonymizationSecret are absent for
+// a different reason: both live in the encrypted secret store (issue #445), which configuration never
+// feeds. Outside Production an unset pseudonymization secret still falls back to the fixed
+// development value, so the Aspire stack's delete flow works with nothing configured.
 
 // No ApiBaseAddress environment variable: the client is a WASM app running in the BROWSER, which
 // never sees this host process's environment — see the comment in Odyssey.Client/Program.cs for how
@@ -165,8 +146,6 @@ static void LoadDotEnv(IDistributedApplicationBuilder appBuilder)
         ["EMAIL_SMTP_HOST"] = "Aspire:Email:SmtpHost",
         ["EMAIL_SMTP_PORT"] = "Aspire:Email:SmtpPort",
         ["EMAIL_USE_STARTTLS"] = "Aspire:Email:UseStartTls",
-        ["EMAIL_FROM_ADDRESS"] = "Aspire:Email:FromAddress",
-        ["EMAIL_FROM_NAME"] = "Aspire:Email:FromName",
     };
 
     var values = new Dictionary<string, string?>(StringComparer.Ordinal);

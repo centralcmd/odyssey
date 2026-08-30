@@ -19,9 +19,7 @@ namespace Odyssey.IntegrationTests;
 ///
 /// <para>
 /// <c>UpdatedBy</c> is asserted null across the board. That null is load-bearing: it marks a row as
-/// never having been owned by an administrator, which is how <c>SystemSettingsConfigAdoption</c>
-/// decides whether an operator's configured value may still be carried across, and how the
-/// "last changed by" line renders.
+/// never having been owned by an administrator, which is how the "last changed by" line renders.
 /// </para>
 /// </summary>
 [Collection(MariaDbCollection.Name)]

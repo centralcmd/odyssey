@@ -12,10 +12,10 @@
     <!-- Test-only: DataExportStreamingTests checks the real streamed bytes against the client's
          completeness-sentinel reader, so the two halves of that contract cannot drift apart. -->
     <ProjectReference Include="..\Odyssey.ApiClient\Odyssey.ApiClient.csproj" />
-    <!-- For the base-URL parity test only (issue #439): the shape rule is deliberately hand-duplicated
-         in SystemSettingsConfigAdoption rather than pulling Odyssey.Api into the migrations job, so
-         something has to hold the two copies together. Odyssey.IntegrationTests already references both
-         projects, so the combination is precedented.
+    <!-- Several tests exercise the migrations job's seeders directly (RoleSeedTests, and the two
+         factories that must run RoleClaimSeeder after EnsureCreated or their principals carry a role
+         with no permissions). Odyssey.IntegrationTests already references both projects, so the
+         combination is precedented.
          Aliased because both projects expose a top-level `Program`, and an unaliased reference makes
          every `WebApplicationFactory<Program>` in this assembly ambiguous (CS0433). The alias keeps the
          migrations assembly out of the global namespace; only the one file that says

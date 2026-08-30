@@ -561,20 +561,6 @@ public class SubscriptionSystemSettingsApiTests
         Assert.DoesNotContain("const int RenewalLimit", source, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// None of the three ever had a configuration surface, so none gets a config-adoption entry:
-    /// adopting a key that never had one would let a stray environment variable start overriding an
-    /// administrator's saved setting.
-    /// </summary>
-    [Fact]
-    public void TheThreeKeys_HaveNoConfigAdoptionEntry()
-    {
-        var source = File.ReadAllText(
-            SolutionFile("Odyssey.MigrationService", "SystemSettingsConfigAdoption.cs"));
-
-        Assert.DoesNotContain("Subscription", source, StringComparison.Ordinal);
-    }
-
     // ── helpers ─────────────────────────────────────────────────────────────────────────────────
 
     // The lookup's cache keys are internal to SystemSettingsService, so they are restated here as

@@ -751,10 +751,9 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisPrivacyNoticeUrl, Value = SystemSettingsDefaults.FileAnalysisPrivacyNoticeUrl, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMaxFutureTransactionDays, Value = "90", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMatchAutoLinkThreshold, Value = "0.6", UpdatedAt = seededAt },
-            // Transactional email (issue #421 Wave 2). FromAddress/FromName had live environment
-            // plumbing, so SystemSettingsConfigAdoption carries an operator's configured value over
-            // these seeded defaults on upgrade — a compile-time seed alone would silently change the
-            // sender identity of every outgoing message.
+            // Transactional email (issue #421 Wave 2). The sender identity is set at /settings; the
+            // seeded default is deliberately unusable (odyssey.local), so a deployment that never sets
+            // it fails visibly at the relay rather than sending as a plausible-looking wrong address.
             new SystemSetting { Key = SystemSettingsKeys.EmailFromAddress, Value = SystemSettingsDefaults.EmailFromAddress, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.EmailFromName, Value = SystemSettingsDefaults.EmailFromName, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.EmailPerRecipientLimit, Value = "3", UpdatedAt = seededAt },
@@ -777,11 +776,9 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             // single deliberate exception of the two Wave 3 ICS link caps, which start being honoured
             // on the import path where a hardcoded 50 used to win.
             //
-            // Only the three FileAnalysis keys have a config-adoption entry: they are the only ones
-            // that ever had a documented configuration surface. Ten were `const` and two were POCO
-            // defaults on a section with no appsettings entry, so there was never a configured value
-            // to carry over — adopting one that never had a surface would let a stray environment
-            // variable start overriding an administrator's saved setting.
+            // Only the three FileAnalysis keys ever had a documented configuration surface; ten were
+            // `const` and two were POCO defaults on a section with no appsettings entry. None of them
+            // has one now — an administrator sets every one of these at /settings.
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMaxTokens, Value = "8096", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMatchMaxVocabulary, Value = "500", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMatchTimeoutSeconds, Value = "60", UpdatedAt = seededAt },
@@ -802,11 +799,10 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             // effective values, so a default install is behaviourally identical: analysis OFF,
             // claude-sonnet-5, api.anthropic.com.
             //
-            // UpdatedBy is left null by the seed, and that null is load-bearing: it is what tells
-            // SystemSettingsConfigAdoption no administrator owns the row yet, so an operator's
-            // configured FILE_ANALYSIS_ENABLED / _MODEL / _BASE_URL can still be carried across on
-            // upgrade. InsertData is a compile-time constant and cannot see an environment variable,
-            // which is precisely why all three need an adoption entry as well as a seed.
+            // UpdatedBy is left null by the seed, meaning no administrator has taken ownership of the
+            // row — which is what the settings page's provenance line reads. There is no environment
+            // variable behind any of the three: InsertData is a compile-time constant, and nothing
+            // carries a configured value into the store.
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisEnabled, Value = "false", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisModel, Value = SystemSettingsDefaults.FileAnalysisModel, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisBaseUrl, Value = SystemSettingsDefaults.FileAnalysisBaseUrl, UpdatedAt = seededAt },
@@ -815,10 +811,8 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             // one behaviour change — the summary's fetch was unbounded and is now capped at 1000,
             // matching InsuranceMaxSummaryPolicies and ContractMaxSummaryContracts.
             //
-            // No SystemSettingsConfigAdoption entry for any of them, unlike the three above: none ever
-            // had an appsettings.json key or environment plumbing, so there is no configured value to
-            // carry across — and adopting a key that never had a surface would let a stray environment
-            // variable start overriding an administrator's saved setting.
+            // Like every key here, they have no configuration surface at all: the seed is the only
+            // writer besides an administrator at /settings.
             new SystemSetting { Key = SystemSettingsKeys.SubscriptionRenewalWindowDays, Value = "45", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.SubscriptionMaxSummaryRenewals, Value = "6", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.SubscriptionMaxSummarySubscriptions, Value = "1000", UpdatedAt = seededAt }

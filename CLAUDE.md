@@ -224,8 +224,7 @@ Adding one is a single declaration on each side plus a migration:
 4. Both DTOs — `SystemSettingsDto` (non-nullable, compiled default) and `SystemSettingsUpdate`
    (nullable; `null` means "leave unchanged", so never use `[Required]` there).
 5. A migration on `OdysseyContext` inserting the row, seeded with **today's effective value**, plus
-   the matching `HasData` entry. If the value has environment plumbing, it also needs adoption in
-   `Odyssey.MigrationService` — a compile-time `InsertData` cannot see an operator's env var.
+   the matching `HasData` entry.
 6. `Settings.razor.cs`'s catalogue — one row with `Field`/`Load`/`Write` delegates. Group icons are
    `Icons.Material.Filled.*` constants; row icons are ligature strings.
 7. A lookup for the consuming domain, if it is read on a hot path. The interface lives in the **consuming
@@ -245,8 +244,8 @@ Two rules that are easy to get backwards:
   `[Range]` limit can never fire — a decorative ceiling. `RequestCapCeilings` exists for bounds that
   genuinely cannot live in an attribute: runtime (injected configuration) or cross-assembly ones. The
   distinction is **static vs. derived**, and the `ErrorMessage` is where the explanation goes.
-- **`[Range]` is the write-side bound and it runs on the HTTP path alone.** A row written by config
-  adoption, a hand edit or a restore bypasses it, so a setting whose bound is load-bearing also clamps
+- **`[Range]` is the write-side bound and it runs on the HTTP path alone.** A row written by a hand
+  edit or a restore bypasses it, so a setting whose bound is load-bearing also clamps
   on the **read** path (`Math.Min`/`Math.Max` against the shared default). Resolve the direction per
   setting there too.
 - **A single-direction setting is expressed by pinning one end of its range at the shipped default**,
@@ -284,7 +283,7 @@ Two rules that are easy to get backwards:
   with the watermark carrying the same TTL as the values (a watermark older than the TTL is "last known",
   not "last known good").
 
-**Adding a *secret* setting is a different recipe, and the seed/default/adoption steps do NOT apply**
+**Adding a *secret* setting is a different recipe, and the seed/default steps do NOT apply**
 (issue #444). A secret-valued setting — a credential, an API key, an HMAC key — lives in the
 `SystemSettingSecrets` table on `OdysseyContext`, encrypted with ASP.NET Core Data Protection, and
 is declared in `SecretSettingsRegistry` (`Odyssey.Api/SystemSettings/`). That registry deliberately
@@ -312,13 +311,12 @@ Adding one:
    requiring *both* claims.
 4. `Settings.razor.cs`'s `SecretCatalogue` — one row with the title, description and icon. These are
    **authored client-side**, because the status endpoint deliberately carries no presentation fields.
-5. **No migration, no `HasData`, no `SystemSettingsDefaults` entry, no `SystemSettingsConfigAdoption`
-   entry.** The table already exists and a secret has no shipped default: an absent row means *not
-   configured*, which is a healthy steady state. Seeding an empty-string row would create a fourth
-   state ("present but empty") every consumer would have to handle. Adoption from configuration is
-   **declined for every secret** (issue #445 §9) — carrying one across leaves the plaintext in the
-   environment, which is much of what the move was meant to escape, and adoption stamps no `UpdatedBy`,
-   so the row would stay owned by configuration indefinitely. The accepted consequence is a defined gap
+5. **No migration, no `HasData`, no `SystemSettingsDefaults` entry.** The table already exists and a
+   secret has no shipped default: an absent row means *not configured*, which is a healthy steady
+   state. Seeding an empty-string row would create a fourth state ("present but empty") every consumer
+   would have to handle. There is no path from configuration to a secret at all — carrying one across
+   would leave the plaintext in the environment, which is much of what the move was meant to escape.
+   The accepted consequence is a defined gap
    after upgrade during which each secret reads `NotSet` and its consumer behaves as it did
    unconfigured; that gap belongs in the release notes.
 6. **Retire the configuration property, don't keep it as documentation of record.** The moved
@@ -334,10 +332,17 @@ Rules a secret follow-up inherits:
   a nullable string would let a consumer write `?? configuredFallback` and send with the old
   configured value the administrator believed they had replaced. Whether a given consumer fails open
   or closed on `Unreadable` is that consumer's own call, in its own issue.
-- **A secret's *destination* stays in deploy-time configuration while its credential is
-  database-backed.** Same reasoning `Email:SmtpHost` already carries: an admin-editable destination
-  plus a stored key is one-request exfiltration of the credential. `FileAnalysis:BaseUrl` is env-only
-  and must stay so.
+- **A secret's *destination* is the dangerous half, and the default is that it stays in deploy-time
+  configuration.** An admin-editable destination plus a stored key is one-request exfiltration of the
+  credential. `Email:SmtpHost` holds that line and must keep holding it. `FileAnalysis:BaseUrl` is the
+  **deliberate exception** — issue #439 made it admin-editable because an internal corporate gateway
+  is much of why the setting exists at all — and it is an exception only because it carries the
+  compensating controls in full: its own security claim, https-only validation rejecting any path,
+  query, fragment or credentials, a host-only projection on every echo including the *old* value in an
+  audit line, `AllowAutoRedirect = false` on the outbound client, a row advisory saying where the key
+  will travel, and a read path that refuses rather than substituting the compiled default. Do not read
+  that exception as a precedent for moving another destination; read it as the bar one would have to
+  clear.
 - **A per-send `DelegatingHandler` must not re-attach the credential across a cross-origin redirect.**
   `.NET` strips only `Authorization`; a custom header survives.
 - **The consumer has to be able to `await` a scoped `OdysseyContext` where it needs the value.** A
@@ -377,15 +382,26 @@ with a deliberately tighter product limit keeps its own named constant and takes
 `min` is the only correct direction, since a surface may tighten but must never override a lowered
 global cap. Source-lints in `Odyssey.Client.Tests` enforce all of this.
 
-**A setting that used to have environment plumbing needs an adoption step, not just a seed.** A
-migration's `InsertData` is a compile-time constant, so on its own it replaces an operator's configured
-value with the shipped default — silently. `Odyssey.MigrationService`'s `SystemSettingsConfigAdoption`
-carries the configured value across on upgrade; add the key to its table when you migrate one. Ownership
-is decided by `UpdatedBy IS NULL`, never by comparing values: comparing cannot tell "never touched" from
-"an administrator deliberately set it back to the default", and would overwrite the second on every
-restart. It runs in Production, unlike the `DemoDataSeeder` sitting next to it — do not copy that
-environment gate. And check *which resource* the configuration reaches: adoption runs in the migrations
-job, so the plumbing has to feed that, not the API.
+**There is no path from `appsettings.json` or the environment into the settings store.** A setting that
+moves out of configuration has its environment plumbing **deleted**, not carried across: the migration
+seeds the shipped default and the administrator sets the real value at `/settings`.
+
+`SystemSettingsConfigAdoption` used to do that carrying, for the keys migrated by issues #421, #434 and
+#439. It was removed once it was established that no deployment had ever run a release it could upgrade
+*from* — every `odyssey` database in existence is a local dev or test database, the same precondition
+that licenses a migration squash. **If that stops being true, this decision is retired with it**: from
+the first real deployment onwards, moving a configured setting into the store needs a carry-over step
+again, because a compile-time `InsertData` cannot see an operator's env var and would silently replace
+their value with the shipped default. What that step must get right, recorded here so it does not have
+to be rediscovered: ownership is decided by `UpdatedBy IS NULL`, never by comparing values (comparing
+cannot tell "never touched" from "an administrator deliberately set it back to the default", and would
+overwrite the second on every restart); it runs in Production, unlike the `DemoDataSeeder` next to it;
+it validates against the same `[Range]` the `PUT` path uses, since a configured value would otherwise
+bypass every bound; and it reads the configuration of *whichever resource it runs in*, so the plumbing
+has to feed that one.
+
+**A secret is never carried across by any such step**, whatever else is (issue #445 §9) — that would
+leave the plaintext in the environment, which is much of what the move exists to escape.
 
 **Non-blocking advisories are a separate channel from errors.** `SystemSettingsDto.Warnings` carries
 per-field advisory text keyed by the `SystemSettingsUpdate` property name — the same join key

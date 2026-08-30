@@ -171,9 +171,9 @@ silently refuse.
 Both proxies currently sit at `65MB` for a `67108864`-byte (64 MB) ceiling plus 1 MB of envelope
 headroom. Lowering the cap needs no deploy-time change at all.
 
-> On upgrade, a `FileStorage:MaxFileSizeBytes` you had already configured is carried into the store as
-> whole megabytes (rounded down) and keeps applying until an administrator changes it in the UI. The
-> configuration key is **not** retired — it stays as the transport ceiling above.
+> `FileStorage:MaxFileSizeBytes` is **not** retired — it stays as the transport ceiling above, read by
+> the API at startup. The admin-editable cap is a separate value that seeds at 64 MB, so if you raise
+> the ceiling here, raise the cap at `/settings` too or users still hit the old number.
 
 ### A fourth, unrelated size limit: photo metadata reads
 
@@ -217,15 +217,12 @@ sample counts, the mail throttle's tracked-address table, and the per-account sm
 `FileAnalysis:MaxTokens`, `FileAnalysis:Match:MaxVocabulary` and `FileAnalysis:Match:TimeoutSeconds` are
 database-backed as of issue #434 and no longer read from configuration.
 
-- If you set them through the **environment** (`FILE_ANALYSIS_MAX_TOKENS`,
-  `FILE_ANALYSIS_MATCH_MAX_VOCABULARY`, `FILE_ANALYSIS_MATCH_TIMEOUT_SECONDS`, or the `Aspire:` keys),
-  the migrations job carries your value into the store on the upgrade that adds them, and it keeps
-  applying until an administrator changes it at `/settings`. An out-of-range value is logged and
-  skipped rather than written, since it would bypass the bound the API enforces.
-- **If you changed them by editing `Odyssey.Api/appsettings.json` directly, that value is lost.** No
-  mechanism can rescue it: adoption runs in the migrations job, which reads its own configuration and
-  cannot see the API's file. After the upgrade the setting reverts to the shipped default (8096 / 500 /
-  60) until an administrator re-sets it. Note the value down before upgrading.
+Their environment variables (`FILE_ANALYSIS_MAX_TOKENS`, `FILE_ANALYSIS_MATCH_MAX_VOCABULARY`,
+`FILE_ANALYSIS_MATCH_TIMEOUT_SECONDS`, and the `Aspire:` keys) are **gone**, and nothing carries a
+configured value into the store: the settings start at their shipped defaults (8096 / 500 / 60) and an
+administrator sets them at `/settings`. A carry-over step existed briefly and was removed once it was
+established that no deployment had ever run a release it could upgrade from — see CLAUDE.md, which
+records what a future one would have to get right if that changes.
 
 `FileAnalysis:TimeoutSeconds` is **not** affected — it stays in configuration, because it is consumed
 once at startup by the HTTP resilience handler and a runtime value could never reach a live pipeline.
@@ -236,19 +233,14 @@ once at startup by the HTTP resilience handler and a runtime value could never r
 #439, editable at **`/settings` → File analysis** by an administrator holding
 `system-settings.security.update`. Every change to any of the three is written to the audit log.
 
-The adoption story is the same as above, and so is its one hole:
+As above, their environment variables (`FILE_ANALYSIS_ENABLED`, `FILE_ANALYSIS_MODEL`,
+`FILE_ANALYSIS_BASE_URL`, and the `Aspire:` keys) are **gone** and nothing carries a configured value
+across. A deployment starts at the shipped defaults — **analysis off**, `claude-sonnet-5`,
+`https://api.anthropic.com` — and an administrator turns it on at `/settings`.
 
-- Set through the **environment** (`FILE_ANALYSIS_ENABLED`, `FILE_ANALYSIS_MODEL`,
-  `FILE_ANALYSIS_BASE_URL`, or the `Aspire:` keys), your value is carried into the store by the
-  migrations job on the upgrade that adds them and keeps applying until an administrator changes it in
-  the UI. An unparseable or invalid value — `FILE_ANALYSIS_ENABLED=yes`, an `http://` base URL, a base
-  URL with a path — is logged and skipped rather than written.
-- **Changed by editing `Odyssey.Api/appsettings.json` directly, the value is lost.** Adoption runs in
-  the migrations job and cannot see the API's file. Such a deployment upgrades into the shipped
-  defaults — **analysis off**, `claude-sonnet-5`, `https://api.anthropic.com` — and must re-set them in
-  System Settings after upgrade. The ordering is deliberate: a deployment that silently *starts*
-  transferring documents to a third party after an upgrade would be far worse than one that silently
-  stops.
+That default ordering is deliberate and worth keeping in mind if a carry-over step is ever
+reintroduced: a deployment that silently *starts* transferring documents to a third party would be far
+worse than one that silently stops, so the switch must fail to **off**.
 
 Four operational notes:
 
@@ -279,11 +271,11 @@ Four operational notes:
 `SystemSettingSecrets` table and are entered at **`/settings` → Credentials** by an administrator
 holding `system-settings.security.update`. Each write is audited; no value is ever shown again.
 
-**Every one of them must be entered by hand after this upgrade.** Unlike the plaintext settings above,
-a secret is deliberately **not adopted from configuration**: adoption would require the plaintext to
-still be present in the environment at upgrade time, which is most of what moving them was for, and it
-would leave the row owned by configuration with no visible owner. So there is a defined gap between
-deploying this release and an administrator entering each value.
+**Every one of them must be entered by hand.** A secret is deliberately
+**not adopted from configuration** — no mechanism reads one out of the environment and writes it to
+the store, and none should be added: that would require the plaintext to still be present in the environment, which is most
+of what moving them was for, and would leave the row owned by configuration with no visible owner. So
+there is a defined gap between deploying and an administrator entering each value.
 
 | Credential | While it is unset, after the upgrade | Kind |
 |---|---|---|
@@ -348,6 +340,11 @@ Losing the volume without losing the database leaves stored credentials readable
 Credentials rows report *"Set, but this server cannot decrypt it"*, and the features that use them
 behave as if the credential were unset.
 
+**Only the `api` container mounts it.** The migrations job did too for a while, so that a step there
+could protect a value under keys the API could read; no such step exists, so the mount was removed —
+every container holding the ring is one more that can decrypt every stored credential. If you add a
+mount, add it with the step that needs it, pointing at this same volume.
+
 **Incident response.** If the volume, or any backup of it, is suspected disclosed, treat every stored
 credential as compromised and **rotate it at the provider** — re-encrypting under a new key ring is
 not sufficient, because the plaintext is what leaked. If a derivation key was among them, run a GDPR
@@ -374,7 +371,7 @@ silently-ephemeral failure by another route.
 
 #### Upgrade note — an existing keys volume may need a one-time `chown`
 
-The images now create `/var/odyssey/dataprotection-keys` owned by `app` at build time, and the API
+The API image creates `/var/odyssey/dataprotection-keys` owned by `app` at build time, and the API
 **asserts at startup that the directory is writable**, failing to start if it is not. Docker copies
 image directory ownership into a named volume **only when the volume is empty**, so a
 `dataprotection_keys` volume created before this release may still be `root:root 0755` — in which case
