@@ -90,6 +90,18 @@ services:
       # rather than a broken link.
       # No DataProtection__KeysPath here. The base file sets it, next to the dataprotection_keys
       # volume mount it has to agree with — one place, so the path and the mount cannot drift apart.
+      #
+      # The base file raises the identity rate limit to 300/minute for the E2E suites, which drive
+      # that stack from one address and would otherwise exhaust the 30 the shipped default allows.
+      # Compose merges environment maps, so without this reset that dev-only relaxation would land
+      # in PRODUCTION — a tenfold weaker limit on the only unauthenticated write surface in the app
+      # (/login, /register and the two mail routes), silently, as a side effect of a test fix.
+      #
+      # `!reset` rather than a literal 30: it drops the key entirely, so the value falls back to
+      # appsettings.json, which is where the production number is actually decided. Pinning 30 here
+      # would put the same number in two files that must agree — the duplication this overlay just
+      # removed for DataProtection__KeysPath.
+      RateLimiting__Identity__PermitLimit: !reset null
       # Legal__PseudonymizationSecret is GONE (issue #445 Wave 4). It lives in the encrypted secret
       # store and must be entered once at /settings → Credentials after this upgrade.
       #

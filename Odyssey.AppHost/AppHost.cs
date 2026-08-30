@@ -87,6 +87,22 @@ var api = builder
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", apiEnvironment)
     .WithEnvironment("Swagger__Enabled", apiSwaggerEnabled)
+    // Headroom for the E2E suites, which drive this stack from one loopback address — one rate-limit
+    // partition key. The shipped default is 30 requests per minute per IP and stays 30 in production;
+    // it is not sized for a browser-driven test stack. The identity policy covers the WHOLE
+    // MapIdentityApi group, /manage/* included, and the Blazor client calls GET manage/info to resolve
+    // auth state on sign-in and on navigation — so a browser test costs many permits, not the one its
+    // single login suggests. Measured here: Odyssey.E2ETests alone spends the entire 30-permit window,
+    // Odyssey.E2ETests.Api another 6, and `dotnet test Odyssey.sln` runs both assemblies at once. The
+    // second suite to arrive was answered with 429s (the API suite as "Login failed: RateLimited", the
+    // browser suite as a login navigation timeout). No amount of trimming logins fits both into 30.
+    //
+    // Raising it here rather than in the fixtures leaves the control itself alone: the limiter's real
+    // behaviour — that it rejects, at what count, with what body — is covered at the API tier with its
+    // own configuration by IdentityRateLimitingTests and friends. The E2E suites never tested it; they
+    // were only ever incidentally constrained by it. IdentityEmail is deliberately NOT raised: no E2E
+    // test touches the two mail routes, and that limit's cost is outbound mail rather than CPU.
+    .WithEnvironment("RateLimiting__Identity__PermitLimit", "300")
     .WithEnvironment("SSL_CERT_FILE", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
     .WaitFor(mariadb)
     .WithReference(migrations)
