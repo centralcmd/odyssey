@@ -297,12 +297,13 @@ The transport moved into the store in issue #8; the sender identity and throttle
 credential in #445. What made the transport the last to move is worth knowing, because it shows up as
 behaviour you will meet:
 
-> **Changing the SMTP host — or turning STARTTLS off — clears the stored SMTP username and password**,
-> in the same transaction as the change itself. The SMTP client connects *first* and authenticates
-> *second*, so whatever host is set receives the stored credential; and a credential entered for an
-> encrypted transport must not be replayed over a cleartext one. Clearing it means there is nothing
-> left to hand over. You will be asked to confirm, and you will have to re-enter the credential
-> afterwards. That is the control working, not a fault.
+> **Changing the SMTP host or port — or turning STARTTLS off — clears the stored SMTP username and
+> password**, in the same transaction as the change itself. The SMTP client connects *first* and
+> authenticates *second*, so whatever relay is set receives the stored credential — and host and port
+> together are what identify a relay, so a port change moves it to a different listener just as a host
+> change does. A credential entered for an encrypted transport must likewise not be replayed over a
+> cleartext one. Clearing it means there is nothing left to hand over. You will be asked to confirm,
+> and you will have to re-enter the credential afterwards. That is the control working, not a fault.
 
 Until an SMTP host is set, no email is sent — the link is written to the API log instead, which is
 fine for local testing but means users cannot self-confirm or reset. One limit on that fallback,

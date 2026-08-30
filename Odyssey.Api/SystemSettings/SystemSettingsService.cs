@@ -263,7 +263,11 @@ public sealed class SystemSettingsService(
         // change-based — matching the pre-registry behaviour exactly. A GET→PUT round trip of
         // unchanged data therefore still calls SaveChanges, which correctly emits no UPDATE.
         var anyPresent = false;
-        var clearRelayCredential = (string?)null;
+
+        // Every trigger this save trips, in registry order. A LIST rather than a first-match: one
+        // save can change the relay and turn STARTTLS off together, and reporting only the first
+        // would under-state why the credential went in the one record that explains it.
+        var clearTriggers = new List<string>();
 
         foreach (var descriptor in SystemSettingsRegistry.All)
         {
@@ -313,17 +317,22 @@ public sealed class SystemSettingsService(
             }
 
             // G4/G7. Computed off the loop's own valueChanged rather than re-derived up front — see
-            // the remarks above the transaction. The FIRST trigger wins the audit verb; both clear
-            // the same two rows, so a save that trips both stages one removal each, not two.
-            clearRelayCredential ??= RelayCredentialClearReason(descriptor.Key, newValue, valueChanged);
+            // the remarks above the transaction. Several triggers can fire; they still stage ONE
+            // removal per secret, because the rows are the same rows.
+            if (RelayCredentialClearTrigger(descriptor.Key, newValue, valueChanged) is { } trigger)
+            {
+                clearTriggers.Add(trigger);
+            }
         }
 
         // Staged INSIDE the transaction, audited outside it. Nothing here decides whether the clear is
         // allowed — that was settled by the claim check on the triggering field in Phase 1, and a
         // clear the caller could decline would leave the credential live on a host it was never
         // entered for (see SecretSettingsService.StageClearAsync).
-        if (clearRelayCredential is { } reason)
+        if (clearTriggers.Count > 0)
         {
+            var reason = SecretSettingsService.ComposeClearReason(clearTriggers);
+
             stagedClears.Add(
                 await secrets.StageClearAsync(context, SecretSettingKeys.EmailUsername, reason, cancellationToken));
             stagedClears.Add(
@@ -339,27 +348,45 @@ public sealed class SystemSettingsService(
 
     /// <summary>
     /// Whether this key's change is one that must take the stored relay credential with it, and under
-    /// which audit verb (issue #8 G4/G7).
+    /// which audit fragment (issue #8 G4/G7).
     ///
     /// <para>
-    /// <strong>A targeted branch keyed on the two triggering keys, not a general post-write event
+    /// <strong>A targeted branch keyed on the three triggering keys, not a general post-write event
     /// bus.</strong> The same reasoning that makes registry accessors explicit delegates rather than
     /// reflection applies here: a side-effect seam wide enough to register anything on is a seam
     /// wide enough to lose a security consequence in.
     /// </para>
     ///
     /// <para>
-    /// Both triggers are DIRECTIONAL, and getting either backwards reopens what it closes.
+    /// <strong>What the three have in common</strong> is that each one changes where the credential
+    /// goes or how it travels, and the SMTP client connects before it authenticates — so the relay on
+    /// the far end receives the stored credential whatever it turns out to be.
+    /// </para>
+    ///
+    /// <para>
+    /// Two of the three are DIRECTIONAL, and getting either backwards reopens what it closes; the
+    /// third deliberately is not.
     /// </para>
     /// <list type="bullet">
-    /// <item>The host clears only when it moves to a DIFFERENT, NON-EMPTY value. Re-saving the same
-    /// host is not a change (AC 5) and must not cost the administrator their credential; clearing the
-    /// host to empty turns mail off, so there is no new relay for the credential to reach.</item>
-    /// <item>STARTTLS clears only on true → false. false → true is a strengthening, and false → false
-    /// is not a change at all (AC 3b).</item>
+    /// <item><strong>Host</strong> clears only when it moves to a DIFFERENT, NON-EMPTY value.
+    /// Re-saving the same host is not a change (AC 5) and must not cost the administrator their
+    /// credential; clearing the host to empty turns mail off, so there is no new relay to reach.</item>
+    /// <item><strong>Port</strong> clears on ANY change, with no direction to respect — unlike the
+    /// host there is no "off" port, so every value is a live endpoint and every change moves the
+    /// credential to a different listener. A port change usually rides along with a STARTTLS switch
+    /// (587 → 465), which already cleared; this covers the case where it does not, including a
+    /// listener the attacker controls on a port of a host that is otherwise legitimate.</item>
+    /// <item><strong>STARTTLS</strong> clears only on true → false. false → true is a strengthening,
+    /// and false → false is not a change at all (AC 3b).</item>
     /// </list>
+    ///
+    /// <para>
+    /// The port trigger goes beyond issue #8's G4, which named the host alone. It was added from the
+    /// PR security review: the goal G4 states — a credential is never presented to a relay it was not
+    /// entered for — is about an ENDPOINT, and the host is only half of one.
+    /// </para>
     /// </summary>
-    private static string? RelayCredentialClearReason(string key, string newValue, bool valueChanged)
+    private static string? RelayCredentialClearTrigger(string key, string newValue, bool valueChanged)
     {
         if (!valueChanged)
         {
@@ -368,12 +395,17 @@ public sealed class SystemSettingsService(
 
         if (key == SystemSettingsKeys.EmailSmtpHost)
         {
-            return newValue.Length > 0 ? SecretSettingsService.ClearedByHostChange : null;
+            return newValue.Length > 0 ? SecretSettingsService.HostChangedTrigger : null;
+        }
+
+        if (key == SystemSettingsKeys.EmailSmtpPort)
+        {
+            return SecretSettingsService.PortChangedTrigger;
         }
 
         if (key == SystemSettingsKeys.EmailUseStartTls)
         {
-            return newValue == "false" ? SecretSettingsService.ClearedByStartTlsOff : null;
+            return newValue == "false" ? SecretSettingsService.StartTlsOffTrigger : null;
         }
 
         return null;

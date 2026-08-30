@@ -20,6 +20,7 @@ namespace Odyssey.Client.Tests;
 /// The Credentials group on <c>/settings</c> (issue #444 §16 ACs 16, 35, 39–41), plus the source-lints
 /// that pin the two properties no render can prove.
 /// </summary>
+[Collection(SettingsPageCollection.Name)]
 public class SecretSettingsSurfaceTests : IDisposable
 {
     /// <summary>

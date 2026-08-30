@@ -228,11 +228,36 @@ public sealed class SecretSettingsService(
     /// <summary>The audit verb for a clear the administrator asked for directly.</summary>
     public const string ClearedDirectly = "cleared";
 
-    /// <summary>The audit verb for the G4 clear — the relay changed under a stored credential.</summary>
-    public const string ClearedByHostChange = "cleared (SMTP host changed)";
+    // The individual triggers, as fragments rather than whole verbs. One save can trip more than one
+    // — changing the relay and turning STARTTLS off in the same edit is an ordinary thing to do — and
+    // the first draft reported only whichever fired first, so a compound change was under-reported in
+    // the one record that says why a credential vanished. ComposeClearReason names all of them.
 
-    /// <summary>The audit verb for the G7 clear — the transport stopped being encrypted.</summary>
-    public const string ClearedByStartTlsOff = "cleared (STARTTLS turned off)";
+    /// <summary>G4: the relay moved, so the credential would reach a host it was not entered for.</summary>
+    public const string HostChangedTrigger = "SMTP host changed";
+
+    /// <summary>
+    /// G4 again, one level down: the endpoint moved even though the host did not. A credential is
+    /// entered for a relay, and a relay is a host AND a port — a different port is a different
+    /// listener, which the connect-then-authenticate order hands the credential to just as readily.
+    /// </summary>
+    public const string PortChangedTrigger = "SMTP port changed";
+
+    /// <summary>G7: the transport stopped being encrypted.</summary>
+    public const string StartTlsOffTrigger = "STARTTLS turned off";
+
+    /// <summary>
+    /// The audit verb for one staged clear, naming every trigger that fired. Order is the caller's,
+    /// which is registry order, so the line is stable rather than dependent on dictionary iteration.
+    /// </summary>
+    public static string ComposeClearReason(IReadOnlyList<string> triggers)
+    {
+        ArgumentNullException.ThrowIfNull(triggers);
+
+        return triggers.Count == 0
+            ? ClearedDirectly
+            : $"cleared ({string.Join(", ", triggers)})";
+    }
 
     private SecretSettingDescriptor Authorize(ClaimsPrincipal caller, string key)
     {

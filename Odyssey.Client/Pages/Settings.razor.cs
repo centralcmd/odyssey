@@ -222,6 +222,15 @@ public partial class Settings
         // Placeholder on a Text row, for a value whose SHAPE is not obvious from the label. It shows
         // the form, never a value the reader might take for the current one.
         string? Placeholder = null,
+        // The SHARED shape rule for a Text row, from Odyssey.Dtos — the same delegate the server's
+        // descriptor validates with, not a re-implementation. Returns an error message, or null when
+        // the value is acceptable. Never called for an empty value: an AllowEmpty row is legal empty,
+        // and every other row reports "Enter a value" first.
+        //
+        // Without it the row round-trips to the server to learn its value is malformed, which the
+        // page already avoids for every bound it can see. It is only possible at all because the
+        // rules live in Odyssey.Dtos, which has zero project references and is reachable from WASM.
+        Func<string, string?>? Rule = null,
         // A Text row whose EMPTY value is legal and MEANS something, rather than an unfilled field
         // (issue #8). Mirrors StringSetting.AllowEmpty on the server, which is the authority — this
         // flag only stops ErrorFor reporting "Enter a value" for a state the API accepts. Without it
@@ -572,7 +581,8 @@ public partial class Settings
                 InputMode: "url",
                 Placeholder: "smtp.example.net",
                 // Empty is the "not configured" state and the only route back to it — see the flag.
-                AllowEmpty: true),
+                AllowEmpty: true,
+                Rule: EmailSmtpHostRule.Validate),
             new("emailSmtpPort", "format_list_numbered", "SMTP port",
                 "The port the relay is reached on. 587 for STARTTLS submission, 465 for implicit TLS, 25 for an unauthenticated internal relay.",
                 SettingClaim.Security, SettingControl.Number,
@@ -596,7 +606,8 @@ public partial class Settings
                 Write: (p, req) => req.EmailClientBaseUrl = p.TextRequest("emailClientBaseUrl"),
                 InputMode: "url",
                 Placeholder: "https://odyssey.example.net",
-                AllowEmpty: true),
+                AllowEmpty: true,
+                Rule: EmailClientBaseUrlRule.Validate),
             new("emailFromAddress", "mail", "From address",
                 "The envelope sender on every confirmation and password-reset email. Must remain an address your mail relay is authorised to send as, or delivery fails silently.",
                 SettingClaim.Security, SettingControl.Text, Max: 256,
@@ -1136,7 +1147,9 @@ public partial class Settings
                 return item.AllowEmpty ? null : "Enter a value";
             if (item.Max > 0 && text.Length > item.Max)
                 return $"Must be {item.Max:N0} characters or fewer";
-            return null;
+            // Length first, then shape: a 300-character URL should be told it is too long rather than
+            // handed the rule's own sentence about schemes and fragments.
+            return item.Rule?.Invoke(text);
         }
 
         if (item.Control is SettingControl.Decimal or SettingControl.Percent)
@@ -1596,17 +1609,35 @@ public partial class Settings
             return message;
         }
 
-        // The one CLIENT-AUTHORED advisory on this page (issue #8 §3.3). Everything else in this
-        // channel is server-authored, and this is not an exception made for convenience: the server
-        // cannot compute it. AdvisoryContext is deliberately empty — no DbContext, no HttpContext, no
-        // services — and Advise delegates run on every GET rather than after a save, so a server-side
-        // version would both be unable to see the caller's origin and re-emit itself on every page
-        // load. The browser already knows its own origin.
+        // The CLIENT-AUTHORED advisories (issue #8 §3.3). Everything else in this channel is
+        // server-authored, and these are not exceptions made for convenience: the server cannot
+        // compute either one. AdvisoryContext is deliberately empty — no DbContext, no HttpContext,
+        // no services — and Advise delegates run on every GET rather than after a save, so a
+        // server-side version could see neither the caller's origin nor the page's unsaved draft.
         //
-        // It falls BELOW the server channel, never above it: a projection fault on this row reports a
-        // stored value that cannot be used, which outranks a hint about one that merely looks unusual.
-        return item.Key == ClientBaseUrlKey ? OriginMismatchHint : null;
+        // They fall BELOW the server channel, never above it: a projection fault on a row reports a
+        // stored value that cannot be used, which outranks either of these.
+        if (item.Key == ClientBaseUrlKey && OriginMismatchHint is { } hint)
+        {
+            return hint;
+        }
+
+        // The design system's on-row warning: while one of the three clearing rows is dirty in its
+        // clearing direction, EVERY one of them says what the save will cost. It is deliberately not
+        // limited to the row that tripped it — the credential is cleared once for the whole save, so
+        // a reader looking at any of the three should see the same answer.
+        //
+        // The dialog alone was not enough: it appears at Save, after the reader has finished editing
+        // and formed an expectation. This is the cost stated where the decision is being made.
+        return ClearingRowKeys.Contains(item.Key) && WillClearRelayCredential
+            ? "Saving this clears the stored SMTP username and password, in the same transaction as "
+              + "the change. Re-enter them under Credentials afterwards; until you do, mail is sent "
+              + "unauthenticated and any relay that requires a login will reject it."
+            : null;
     }
+
+    /// <summary>The three rows whose change takes the stored relay credential with it.</summary>
+    private static readonly string[] ClearingRowKeys = [SmtpHostKey, SmtpPortKey, StartTlsKey];
 
     private RenderFragment? AdvisoryFor(SettingItem item) =>
         AdvisoryText(item) is { } message ? builder => builder.AddContent(0, message) : null;
@@ -1861,7 +1892,10 @@ public partial class Settings
                     Message =
                         "Confirmation and password-reset messages are logged and skipped, so no account "
                         + "can be confirmed or recovered until an SMTP host is set.",
-                    Where = "In Email.",
+                    // Computed from the catalogue like the credential entries below, rather than a
+                    // literal: the group a row sits in is a presentation choice that has moved once
+                    // already, and a hardcoded "In Email." would keep pointing at the old card.
+                    Where = $"In {GroupOf(SmtpHostKey)}.",
                     ViewLabel = "Fix",
                     OnView = EventCallback.Factory.Create(this, () => JumpToElementAsync(TitleId(SmtpHostKey))),
                 });
@@ -1908,6 +1942,8 @@ public partial class Settings
 
     /// <summary>The setting keys whose stored credential a page save is about to clear.</summary>
     internal const string SmtpHostKey = "emailSmtpHost";
+
+    internal const string SmtpPortKey = "emailSmtpPort";
 
     internal const string StartTlsKey = "emailUseStartTls";
 
@@ -1960,18 +1996,16 @@ public partial class Settings
     {
         get
         {
-            if (AllItems.FirstOrDefault(item => item.Key == SmtpHostKey) is { } hostRow
-                && Editable(hostRow.Claim)
-                && IsDirty(hostRow)
-                && GetText(SmtpHostKey).Trim().Length > 0)
+            // Host and port share the Host variant: both move the ENDPOINT the credential is
+            // presented to, which is the same threat and the same sentence. STARTTLS is its own
+            // variant because the threat is different — the credential going over the wire in clear.
+            if (IsClearingRow(SmtpHostKey, () => GetText(SmtpHostKey).Trim().Length > 0)
+                || IsClearingRow(SmtpPortKey, () => true))
             {
                 return OdsCredentialClearReason.Host;
             }
 
-            if (AllItems.FirstOrDefault(item => item.Key == StartTlsKey) is { } tlsRow
-                && Editable(tlsRow.Claim)
-                && IsDirty(tlsRow)
-                && !GetBool(StartTlsKey))
+            if (IsClearingRow(StartTlsKey, () => !GetBool(StartTlsKey)))
             {
                 return OdsCredentialClearReason.StartTls;
             }
@@ -1980,16 +2014,63 @@ public partial class Settings
         }
     }
 
-    /// <summary>The host as the server last returned it — what the dialog names as "instead of".</summary>
+    /// <summary>
+    /// Whether one row is dirty IN THE CLEARING DIRECTION and the caller can actually edit it.
+    ///
+    /// <para>
+    /// The <c>Editable</c> check is not belt-and-braces: a row the caller cannot edit sends
+    /// <see langword="null"/> on save and so cannot change anything server-side, and warning about a
+    /// consequence that will not happen teaches the reader to dismiss the dialog.
+    /// </para>
+    /// </summary>
+    private bool IsClearingRow(string key, Func<bool> inClearingDirection) =>
+        AllItems.FirstOrDefault(item => item.Key == key) is { } row
+        && Editable(row.Claim)
+        && IsDirty(row)
+        && inClearingDirection();
+
+    /// <summary>
+    /// Whether ANY of the three rows is dirty in its clearing direction — the condition each of those
+    /// rows shows its own on-row advisory under, so the consequence is visible while editing rather
+    /// than only in the dialog at save time (the design system's own rationale for the row advisory).
+    /// </summary>
+    private bool WillClearRelayCredential => CredentialClearTrigger is not null;
+
+    /// <summary>
+    /// The relay ENDPOINT, as the server last returned it and as the draft would leave it — what the
+    /// dialog names as "through X instead of Y".
+    ///
+    /// <para>
+    /// The port is appended only when it is the thing that changed. Showing <c>host:587</c> on an
+    /// ordinary host change would be noise, and showing a bare host on a port-only change would name
+    /// the same value on both sides of "instead of" — which reads as a bug in the dialog rather than
+    /// as the change it is describing.
+    /// </para>
+    /// </summary>
+    private string SavedSmtpEndpoint => Endpoint(SavedSmtpHost, SavedSmtpPort);
+
+    private string DraftSmtpEndpoint => Endpoint(GetText(SmtpHostKey).Trim(), GetInt(SmtpPortKey));
+
     private string SavedSmtpHost =>
         _texts.TryGetValue(SmtpHostKey, out var state) ? state.Saved : string.Empty;
 
-    private string DraftSmtpHost => GetText(SmtpHostKey).Trim();
+    private int? SavedSmtpPort => _ints.TryGetValue(SmtpPortKey, out var state) ? state.Saved : null;
+
+    private string Endpoint(string host, int? port)
+    {
+        if (host.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var portChanged = AllItems.FirstOrDefault(item => item.Key == SmtpPortKey) is { } row && IsDirty(row);
+        return portChanged && port is { } value ? $"{host}:{value}" : host;
+    }
 
     private void OpenClearConfirmation(OdsCredentialClearReason reason)
     {
         _clearReason = reason;
-        _clearReturnFocusId = TitleId(reason == OdsCredentialClearReason.StartTls ? StartTlsKey : SmtpHostKey);
+        _clearReturnFocusId = TitleId(TriggeringRowKey(reason));
         _clearDialogOpen = true;
 
         // Pinned by a test, not left to the implementer (AC 19). It routes through the page's existing
@@ -2003,6 +2084,23 @@ public partial class Settings
     /// reader who hears "a dialog opened" has been told nothing they cannot see, and this dialog exists
     /// entirely to report something they did not ask for.
     /// </summary>
+    /// <summary>
+    /// The row focus returns to. For the Host variant that is whichever of host/port is actually
+    /// dirty — returning focus to the host field after a port-only change would land the reader on a
+    /// value they did not touch.
+    /// </summary>
+    private string TriggeringRowKey(OdsCredentialClearReason reason)
+    {
+        if (reason == OdsCredentialClearReason.StartTls)
+        {
+            return StartTlsKey;
+        }
+
+        return IsClearingRow(SmtpHostKey, () => GetText(SmtpHostKey).Trim().Length > 0)
+            ? SmtpHostKey
+            : SmtpPortKey;
+    }
+
     internal static string ClearConfirmationAnnouncement(OdsCredentialClearReason reason) =>
         reason == OdsCredentialClearReason.StartTls
             ? "Confirmation required: turning STARTTLS off clears the stored SMTP username and password."
@@ -2132,6 +2230,11 @@ public partial class Settings
     /// </summary>
     private bool MailUnconfigured =>
         _dto is not null && string.IsNullOrWhiteSpace(_dto.EmailSmtpHost);
+
+    /// <summary>The section a catalogue row renders in. Falls back to the row's own key, which is a
+    /// visible oddity rather than a silent mispointing if a row is ever removed.</summary>
+    private static string GroupOf(string key) =>
+        Sections.FirstOrDefault(section => section.Items.Any(item => item.Key == key))?.Group ?? key;
 
     private SecretSettingStatusDto StatusFor(SecretItem item) =>
         _secretStatuses.TryGetValue(item.Key, out var status)

@@ -333,12 +333,13 @@ its page header, at Information severity, with a Fix action jumping to the row. 
 administrator who is looking at the page; it does not cover an operator who deploys and never visits
 `/settings`, which is why this section exists.
 
-**Changing the SMTP host, or turning STARTTLS off, clears the stored SMTP username and password** —
+**Changing the SMTP host or port, or turning STARTTLS off, clears the stored SMTP username and password** —
 in the same database transaction as the change itself, so the two land together or neither does. The
 threat the old Non-Goal was protecting against is real: the sender connects and *then* authenticates,
-so whatever host is set receives the stored credential, and a credential entered for an encrypted
+so whatever relay is set receives the stored credential, and a credential entered for an encrypted
 transport must not be replayed over a cleartext one where passive network position alone is enough to
-read it. Clearing it closes both structurally rather than by detection. The UI confirms before saving
+read it. The **port** counts as part of the relay for this purpose — a different port is a different
+listener, which receives the credential just as readily as a different host would. Clearing it closes both structurally rather than by detection. The UI confirms before saving
 and names what will be cleared; re-enter the credential at **`/settings` → Credentials** afterwards.
 Until you do, mail is sent unauthenticated and any relay requiring a login will reject it.
 

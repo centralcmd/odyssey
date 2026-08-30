@@ -22,6 +22,7 @@ namespace Odyssey.Client.Tests;
 /// The four Email transport rows on <c>/settings</c>, the destructive save gate in front of them, and
 /// the two signals beside them (issue #8 — ACs 18, 19, 20, 21, 22, 23, 24, 25).
 /// </summary>
+[Collection(SettingsPageCollection.Name)]
 public class EmailTransportSurfaceTests : IDisposable
 {
     /// <summary>Restores the page's browser-check seam — it is <c>internal static</c>, so a test that moved it and did not put it back would change what every later test sees.</summary>
@@ -124,7 +125,12 @@ public class EmailTransportSurfaceTests : IDisposable
         var problem = Assert.Single(header.Instance.Problems!);
         Assert.Equal(PageHeaderSeverity.Information, problem.Severity);
         Assert.Contains("mail is not configured", problem.Lead, StringComparison.OrdinalIgnoreCase);
+        // Computed from the catalogue, not a literal — the group a row sits in is a presentation
+        // choice that has moved once already.
         Assert.Equal("In Email.", problem.Where);
+        Assert.Equal(
+            "Email",
+            Settings.Sections.Single(section => section.Items.Any(item => item.Key == "emailSmtpHost")).Group);
     }
 
     [Fact]
@@ -385,8 +391,15 @@ public class EmailTransportSurfaceTests : IDisposable
     }
 
     /// <summary>
-    /// The control for the test above: a save that trips NEITHER trigger goes straight through. Without
-    /// it, the gate could be "always open the dialog" and both tests would still pass.
+    /// The control for the test above: a save that trips NO trigger goes straight through. Without it,
+    /// the gate could be "always open the dialog" and both tests would still pass.
+    ///
+    /// <para>
+    /// It edits the FROM NAME, not the SMTP port. The port was the obvious "unrelated" row until the
+    /// PR security review pointed out that host and port together are the endpoint a credential is
+    /// entered for — so a port change clears too, and using it here would assert the opposite of the
+    /// behaviour.
+    /// </para>
     /// </summary>
     [Fact]
     public async Task EditingAnUnrelatedRowAndSaving_SubmitsImmediately()
@@ -401,7 +414,7 @@ public class EmailTransportSurfaceTests : IDisposable
         await using var ctx = NewPageContext(settings);
         var page = ctx.Render<Settings>();
 
-        page.Find("#ss-in-emailSmtpPort").Input("465");
+        page.Find("#ss-in-emailFromName").Input("Odyssey Mail");
         page.FindAll("button").Single(button =>
             button.TextContent.Contains("Save changes", StringComparison.Ordinal)).Click();
 
@@ -409,6 +422,171 @@ public class EmailTransportSurfaceTests : IDisposable
         settings.Verify(
             client => client.UpdateAsync(It.IsAny<SystemSettingsUpdate>(), It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    /// <summary>
+    /// The port trips the gate too, and gets the HOST copy variant — host and port together are the
+    /// endpoint, so it is the same threat and the same sentence. Added from the PR security review.
+    /// </summary>
+    [Fact]
+    public async Task EditingThePortAndSaving_OpensTheConfirmation_WithTheEndpointNamed()
+    {
+        var settings = new Mock<ISystemSettingsApiClient>();
+        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(Valid(), HttpStatusCode.OK));
+
+        await using var ctx = NewPageContext(settings);
+        var page = ctx.Render<Settings>();
+
+        page.Find("#ss-in-emailSmtpPort").Input("465");
+        page.FindAll("button").Single(button =>
+            button.TextContent.Contains("Save changes", StringComparison.Ordinal)).Click();
+
+        var dialog = page.FindComponent<OdsSecretClearOnSaveDialog>();
+        Assert.True(dialog.Instance.Open);
+        Assert.Equal(OdsCredentialClearReason.Host, dialog.Instance.Reason);
+
+        // The endpoint, not the bare host: naming the same host on both sides of "instead of" would
+        // read as a bug in the dialog rather than as the change it is describing.
+        Assert.Equal("smtp.old.test:587", dialog.Instance.FromHost);
+        Assert.Equal("smtp.old.test:465", dialog.Instance.ToHost);
+
+        settings.Verify(
+            client => client.UpdateAsync(It.IsAny<SystemSettingsUpdate>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    /// <summary>
+    /// The design system's on-row warning. The dialog alone was not enough: it appears at Save, after
+    /// the reader has finished editing and formed an expectation — this states the cost where the
+    /// decision is being made.
+    ///
+    /// <para>
+    /// It shows on ALL THREE clearing rows, not only the one that was edited: the credential is
+    /// cleared once for the whole save, so a reader looking at any of them should get the same answer.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task WhileAClearingEditIsPending_AllThreeRowsSayWhatTheSaveCosts()
+    {
+        var settings = new Mock<ISystemSettingsApiClient>();
+        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(Valid(), HttpStatusCode.OK));
+
+        await using var ctx = NewPageContext(settings);
+        var page = ctx.Render<Settings>();
+
+        // Clean: no row carries it.
+        foreach (var key in new[] { "emailSmtpHost", "emailSmtpPort", "emailUseStartTls" })
+        {
+            Assert.Empty(page.FindAll($"#ss-advisory-{key}"));
+        }
+
+        page.Find("#ss-in-emailSmtpHost").Input("smtp.new.test");
+
+        foreach (var key in new[] { "emailSmtpHost", "emailSmtpPort", "emailUseStartTls" })
+        {
+            Assert.Contains(
+                "clears the stored SMTP username and password",
+                page.Find($"#ss-advisory-{key}").TextContent,
+                StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// Reverting the edit withdraws the warning. Without this the advisory could be a one-way latch —
+    /// which would leave the page claiming a cost for a save that no longer carries it.
+    /// </summary>
+    [Fact]
+    public async Task RevertingTheEdit_WithdrawsTheRowWarning()
+    {
+        var settings = new Mock<ISystemSettingsApiClient>();
+        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(Valid(), HttpStatusCode.OK));
+
+        await using var ctx = NewPageContext(settings);
+        var page = ctx.Render<Settings>();
+
+        page.Find("#ss-in-emailSmtpHost").Input("smtp.new.test");
+        Assert.NotEmpty(page.FindAll("#ss-advisory-emailSmtpHost"));
+
+        page.Find("#ss-in-emailSmtpHost").Input("smtp.old.test");
+        Assert.Empty(page.FindAll("#ss-advisory-emailSmtpHost"));
+    }
+
+    /// <summary>
+    /// Clearing the host to empty turns mail off, so no credential travels anywhere and no warning is
+    /// shown. The client's direction rules must agree with the server's, or the page warns about a
+    /// consequence that will not happen — which teaches the reader to dismiss the dialog.
+    /// </summary>
+    [Fact]
+    public async Task ClearingTheHostToEmpty_ShowsNoWarning()
+    {
+        var settings = new Mock<ISystemSettingsApiClient>();
+        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(Valid(), HttpStatusCode.OK));
+
+        await using var ctx = NewPageContext(settings);
+        var page = ctx.Render<Settings>();
+
+        page.Find("#ss-in-emailSmtpHost").Input(string.Empty);
+
+        Assert.Empty(page.FindAll("#ss-advisory-emailSmtpHost"));
+    }
+
+    // ── Client-side shape validation ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The two text rows validate their SHAPE in the browser, using the same rule the server's
+    /// descriptor applies — the rules live in <c>Odyssey.Dtos</c>, which has zero project references
+    /// and is reachable from WASM, which is what makes sharing possible rather than copying.
+    /// </summary>
+    [Theory]
+    [InlineData("emailSmtpHost", "smtp.example.net:587")]
+    [InlineData("emailSmtpHost", "https://smtp.example.net")]
+    [InlineData("emailClientBaseUrl", "http://public.example.test")]
+    [InlineData("emailClientBaseUrl", "https://odyssey.example.net?code=leaky")]
+    public async Task AMalformedValue_IsRejectedInTheBrowser(string key, string value)
+    {
+        var settings = new Mock<ISystemSettingsApiClient>();
+        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(Valid(), HttpStatusCode.OK));
+
+        await using var ctx = NewPageContext(settings);
+        var page = ctx.Render<Settings>();
+
+        page.Find($"#ss-in-{key}").Input(value);
+        page.FindAll("button").Single(button =>
+            button.TextContent.Contains("Save changes", StringComparison.Ordinal)).Click();
+
+        Assert.NotEmpty(page.FindAll($"#ss-err-{key}"));
+
+        // And nothing was sent: the point of validating here is to spare the round trip.
+        settings.Verify(
+            client => client.UpdateAsync(It.IsAny<SystemSettingsUpdate>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    /// <summary>
+    /// The empty value stays legal on both rows. Without this the shape rules would make "mail is not
+    /// configured" unreachable from the UI, which is the one-way door <c>AllowEmpty</c> exists to
+    /// prevent — and a rule wired in carelessly is exactly how it would come back.
+    /// </summary>
+    [Theory]
+    [InlineData("emailSmtpHost")]
+    [InlineData("emailClientBaseUrl")]
+    public async Task TheEmptyValue_IsStillAcceptedWithARuleWiredIn(string key)
+    {
+        var settings = new Mock<ISystemSettingsApiClient>();
+        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(Valid(), HttpStatusCode.OK));
+
+        await using var ctx = NewPageContext(settings);
+        var page = ctx.Render<Settings>();
+
+        page.Find($"#ss-in-{key}").Input(string.Empty);
+
+        Assert.Empty(page.FindAll($"#ss-err-{key}"));
     }
 
     // ── Harness ─────────────────────────────────────────────────────────────────────────────────

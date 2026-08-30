@@ -106,6 +106,93 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
     }
 
     /// <summary>
+    /// The PORT is half of the endpoint a credential is entered for, so changing it clears too — added
+    /// from the PR security review, which pointed out that G4's own goal ("never presented to a relay
+    /// it was not entered for") is about an endpoint and the host is only half of one.
+    ///
+    /// <para>
+    /// Unlike the other two triggers there is no direction to respect: there is no "off" port, so
+    /// every value is a live listener and every change moves the credential to a different one.
+    /// </para>
+    /// </summary>
+    [SkippableFact]
+    public async Task ChangingTheSmtpPort_ClearsTheStoredRelayCredential()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var connectionString = await MigratedSchemaAsync();
+        await SeedAsync(connectionString, host: OriginalHost, startTls: true, withCredential: true, port: 587);
+
+        var audit = new CapturingLoggerProvider();
+        await UpdateAsync(connectionString, new SystemSettingsUpdate { EmailSmtpPort = 2525 }, auditLogs: audit);
+
+        await using var verify = new OdysseyContext(OptionsFor(connectionString));
+        Assert.Equal("2525", await ValueAsync(verify, SystemSettingsKeys.EmailSmtpPort));
+        Assert.Empty(await verify.SystemSettingSecrets.AsNoTracking().ToListAsync());
+        Assert.Equal(
+            2,
+            audit.Messages.Count(m => m.Contains("cleared (SMTP port changed)", StringComparison.Ordinal)));
+
+        await DropAsync();
+    }
+
+    [SkippableFact]
+    public async Task ResavingTheSamePort_ClearsNothing()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var connectionString = await MigratedSchemaAsync();
+        await SeedAsync(connectionString, host: OriginalHost, startTls: true, withCredential: true, port: 587);
+
+        await UpdateAsync(connectionString, new SystemSettingsUpdate { EmailSmtpPort = 587 });
+
+        await using var verify = new OdysseyContext(OptionsFor(connectionString));
+        Assert.Equal(2, await verify.SystemSettingSecrets.AsNoTracking().CountAsync());
+
+        await DropAsync();
+    }
+
+    /// <summary>
+    /// A save that trips SEVERAL triggers names all of them in the one record that says why a
+    /// credential vanished. The first draft used first-match semantics, so changing the relay and
+    /// turning STARTTLS off together reported only the host — under-stating a compound change in the
+    /// only place it is explained.
+    ///
+    /// <para>
+    /// It still stages ONE removal per secret, not one per trigger: the rows are the same rows.
+    /// </para>
+    /// </summary>
+    [SkippableFact]
+    public async Task ASaveTrippingSeveralTriggers_NamesAllOfThem_AndClearsOnce()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var connectionString = await MigratedSchemaAsync();
+        await SeedAsync(connectionString, host: OriginalHost, startTls: true, withCredential: true, port: 587);
+
+        var audit = new CapturingLoggerProvider();
+        await UpdateAsync(
+            connectionString,
+            new SystemSettingsUpdate
+            {
+                EmailSmtpHost = "smtp.newprovider.test",
+                EmailSmtpPort = 465,
+                EmailUseStartTls = false,
+            },
+            auditLogs: audit);
+
+        await using var verify = new OdysseyContext(OptionsFor(connectionString));
+        Assert.Empty(await verify.SystemSettingSecrets.AsNoTracking().ToListAsync());
+
+        // Two lines — one per secret — each naming all three triggers in registry order.
+        var clears = audit.Messages
+            .Where(m => m.Contains("cleared (", StringComparison.Ordinal))
+            .ToList();
+        Assert.Equal(2, clears.Count);
+        Assert.All(clears, line => Assert.Contains(
+            "cleared (SMTP host changed, SMTP port changed, STARTTLS turned off)", line, StringComparison.Ordinal));
+
+        await DropAsync();
+    }
+
+    /// <summary>
     /// AC 5. Re-sending the SAME host is not a change, so nothing is cleared — this is the routine
     /// whole-resource resave the client performs on every Save, and it must be free.
     /// </summary>
@@ -308,12 +395,21 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
             .Select(setting => setting.Value)
             .SingleOrDefaultAsync();
 
-    private async Task SeedAsync(string connectionString, string host, bool startTls, bool withCredential)
+    private async Task SeedAsync(
+        string connectionString, string host, bool startTls, bool withCredential, int? port = null)
     {
         await using var context = new OdysseyContext(OptionsFor(connectionString));
 
         await SetAsync(context, SystemSettingsKeys.EmailSmtpHost, host);
         await SetAsync(context, SystemSettingsKeys.EmailUseStartTls, startTls ? "true" : "false");
+
+        if (port is { } value)
+        {
+            await SetAsync(
+                context,
+                SystemSettingsKeys.EmailSmtpPort,
+                value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
 
         if (withCredential)
         {

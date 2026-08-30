@@ -454,8 +454,8 @@ rejects the handler unless `SamplingDuration >= 2 x AttemptTimeout`. Note the co
 
 **Issue #8 moved the last four `Email:*` values and left the section empty.** `Email:SmtpHost`,
 `SmtpPort`, `UseStartTls` and `ClientBaseUrl` were the strongest entries on that Non-Goal list, and
-they moved on the strongest justification: the threat is closed **structurally**. Changing the host,
-or turning STARTTLS off, clears the stored `EmailUsername` and `EmailPassword` **in the same
+they moved on the strongest justification: the threat is closed **structurally**. Changing the host or
+the port, or turning STARTTLS off, clears the stored `EmailUsername` and `EmailPassword` **in the same
 transaction**, so there is no credential left to present to a relay it was not entered for or to put
 on a cleartext wire. `EmailOptions` and the whole `Email` configuration section were **deleted** —
 not deprecated, not left as documentation of record — along with every `EMAIL_*` variable in both
@@ -470,9 +470,16 @@ Four things about that change are easy to get wrong and are enforced in code:
   settings ones included, is now emitted **after** commit. Only real MariaDB exercises any of this;
   the EF InMemory provider honours neither transactions nor the execution strategy, so the coverage
   lives in `Odyssey.IntegrationTests`.
-- **Both triggers are directional.** The host clears only on a change to a *different, non-empty*
-  value; STARTTLS clears only on true → false. Re-saving the same host must not cost an administrator
-  their credential.
+- **Two of the three triggers are directional; the third deliberately is not.** The host clears only
+  on a change to a *different, non-empty* value, and STARTTLS only on true → false — re-saving the
+  same host must not cost an administrator their credential. The **port** clears on any change,
+  because unlike the host it has no "off" value: every port is a live listener, so every change moves
+  the credential to a different one. The port trigger came from the PR security review and goes beyond
+  issue #8's G4, which named the host alone; the goal G4 states is about an *endpoint*, and a host is
+  only half of one.
+- **A save can trip several triggers at once**, and the audit line names all of them. It still stages
+  one removal per secret — the rows are the same rows. First-match reporting under-states a compound
+  change in the one record that explains why a credential vanished.
 - **The send path does not use `SystemSettingsReader`.** That reader resolves an unparseable value to
   the compiled default by design; here that would substitute a TLS mode or a port nobody chose onto
   the path a reset token travels. `EmailTransportSettingsReader` returns *absent* / *valid* /
@@ -483,6 +490,11 @@ Four things about that change are easy to get wrong and are enforced in code:
   included. 2FA is the compensating control; the claim, the host-only audit projection, https-only
   validation (loopback exempted so the dev stack works) and a client-side origin-mismatch hint are
   the rest.
+- **The shape rules are applied on the client too.** They live in `Odyssey.Dtos`, which has zero
+  project references and is reachable from the WASM client, so the settings page validates a host or a
+  base URL with the *same delegate* the server's descriptor uses rather than a re-implementation
+  (`SettingItem.Rule`). A client-side *copy* of a server rule is the defect CLAUDE.md already forbids
+  for caps; sharing the delegate is what keeps the check clear of that hazard.
 
 Two mechanisms this added to the settings machinery, both reusable: `StringSetting.AllowEmpty`, for a
 key where `""` is a meaningful value rather than a rejected clear — without it, configuring mail
