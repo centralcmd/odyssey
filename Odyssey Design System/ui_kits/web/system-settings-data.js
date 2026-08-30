@@ -40,6 +40,20 @@
    `adviseOffDefault`: the shipped default a text value is compared against — any
    other value carries an advisory saying what the change does and does not
    affect (records already written keep what they ran under).
+   `allowEmpty`: a text row whose empty value is legal and MEANS something —
+   "not configured" — rather than a missing entry. Without it an empty text row
+   is a blocking error, which would make configuring mail a one-way door.
+   `checkSmtpHost`: hostname-or-IP shape validation (no scheme, port, path,
+   userinfo, CR/LF/NUL), canonicalised to lowercase with a trailing dot stripped.
+   `checkClientBaseUrl`: absolute-URL validation for the public link origin —
+   https required except for loopback hosts, no query, fragment or userinfo, a
+   path allowed but normalised without its trailing slash. Carries a non-blocking
+   ORIGIN-MISMATCH hint, computed in the browser against the origin the admin is
+   actually on, because the server cannot see it.
+   `clearsCredential`: changing this row clears the stored SMTP username and
+   password in the same transaction — 'host' when it moves to a different
+   non-empty value, 'starttls' only in the true → false direction. The page's
+   Save opens a confirmation before submitting.
    `checkBaseUrl`: the provider base URL — blocking shape validation (absolute
    https, no userinfo, query, fragment or path) plus a host-only advisory when the
    destination is not the shipped default.
@@ -170,7 +184,38 @@ const SS_GROUPS = [
   },
   {
     group: 'Email', icon: 'mark_email_read',
+    // The transport rows come FIRST — the host, the port, the encryption flag and
+    // the public URL links are composed against. They frame everything below
+    // them: whether mail leaves at all, where it goes, and whether the
+    // credential beneath them travels encrypted. All four moved out of
+    // appsettings.json into this store, so an operator can configure mail on a
+    // fresh deployment without a redeploy — there is no environment fallback and
+    // no adoption step, so an empty host means mail is simply not configured.
     rows: [
+      { key: 'emailSmtpHost', type: 'text', claim: 'security', icon: 'send',
+        title: 'SMTP host',
+        desc: 'The relay every transactional mail is sent through. A hostname or IP literal only — no scheme, port, path or credentials. Empty means mail is not configured: every send is logged and skipped.',
+        extra: 'The client connects before it authenticates, so whatever host is set here receives the stored SMTP credential. Changing it clears that credential in the same save, and the change binds on the next send with no restart.',
+        maxLength: 255, checkSmtpHost: true, allowEmpty: true, clearsCredential: 'host',
+        placeholder: 'smtp.example.net',
+        meta: { by: 'Marcus Reyes', on: '2 Aug 2026, 09:10' } },
+      { key: 'emailSmtpPort', type: 'number', claim: 'security', icon: 'format_list_numbered',
+        title: 'SMTP port',
+        desc: 'The port the relay is reached on. 587 for STARTTLS submission, 465 for implicit TLS, 25 for an unauthenticated internal relay.',
+        min: 1, max: 65535, meta: null },
+      { key: 'emailUseStartTls', type: 'switch', claim: 'security', icon: 'lock',
+        title: 'Use STARTTLS',
+        desc: 'Upgrade the connection to TLS after connecting — the right setting for port 587. Turn it off only for implicit TLS on 465, where the connection is encrypted from the start.',
+        extra: 'Turning it off clears the stored SMTP credential in the same save: a credential entered for an encrypted transport must not be replayed over a cleartext one, where passive network position alone is enough to read it.',
+        clearsCredential: 'starttls',
+        meta: null },
+      { key: 'emailClientBaseUrl', type: 'text', claim: 'security', icon: 'link',
+        title: 'Client base URL',
+        desc: 'The public origin every confirmation and password-reset link is composed against. Absolute https:// with no query, fragment or credentials; http:// is accepted for loopback addresses so the dev stack keeps working.',
+        extra: 'Anyone who can change this receives password-reset tokens for any address they know, so the value is audited by host and checked against the origin you are browsing from. Empty means links cannot be composed and the send is skipped.',
+        maxLength: 256, checkClientBaseUrl: true, allowEmpty: true,
+        placeholder: 'https://odyssey.example.net',
+        meta: null },
       { key: 'emailFromAddress', type: 'text', claim: 'security', icon: 'alternate_email',
         title: 'From address',
         desc: 'The sender on every transactional mail. Must stay an address the relay is authorised to send as, or SPF/DKIM will fail and mail will be dropped silently.',
@@ -515,6 +560,10 @@ const SS_SAVED = {
   aiMatchMaxVocabulary: 500,
   aiMatchTimeoutSeconds: 60,
 
+  emailSmtpHost: 'smtp.example.net',
+  emailSmtpPort: 587,
+  emailUseStartTls: true,
+  emailClientBaseUrl: 'https://odyssey.example.net',
   emailFromAddress: 'no-reply@odyssey.local',
   emailFromName: 'Odyssey',
   emailPerRecipientLimit: 3,

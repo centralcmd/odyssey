@@ -4,7 +4,7 @@
    instance, so the page lives in the admin nav alongside Users and Roles and
    carries an "Admin only" pill.
 
-   The catalogue itself is declared in system-settings-data.js — 63 rows across
+   The catalogue itself is declared in system-settings-data.js — 67 rows across
    sixteen sections. Six control types: OdsSwitch (booleans), OdsNumberField
    (counts, windows, MB caps via `unit`), OdsNumberField with unit="%" (a stored
    0.0–1.0 fraction entered as a whole percent), OdsCapacityField (a finite
@@ -41,7 +41,7 @@
      • a GROUP-LEVEL round-trip alert (focusable) when an export cap exceeds its
        import cap — placed at group level because the offending export row may
        be disabled (unlimited on) and so unfocusable;
-     • STICKY section heads, because at twelve sections the group label is the
+     • STICKY section heads, because at sixteen sections the group label is the
        only thing saying where in the catalogue you are, and it scrolls away
        within one row;
      • a save bar that explains a disabled Save: an expandable ErrorSummary
@@ -172,6 +172,61 @@ const ssParseBaseUrl = (raw) => {
 // Host only, for anything that ECHOES the value (advisory, job stamp, log).
 const ssHostOf = (raw) => (ssParseBaseUrl(raw).host || null);
 
+/* The SMTP host's shape bound, blocking. A DNS hostname or an IP literal and
+   nothing else: no scheme, no port, no path, no userinfo. CR, LF and NUL are
+   rejected outright — not because MailKit would compose a command from them
+   (it does not), but because the value is written to log lines and audit
+   entries, where a newline forges a record. Empty is legal and means the
+   deployment has no mail configured; canonicalisation lowercases and strips a
+   single trailing dot so `SMTP.Example.Net.` and `smtp.example.net` are one
+   stored value and produce no spurious audit line. */
+const ssParseSmtpHost = (raw) => {
+  const v = String(raw == null ? '' : raw).trim();
+  if (!v) return { empty: true, canonical: '' };
+  if (/[\r\n\0]/.test(v)) return { error: 'Remove the line break — a host is a single line' };
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) return { error: 'Enter the host only — no https:// or smtp:// prefix' };
+  if (v.includes('@')) return { error: 'Remove the username from the address — credentials are entered below, not in the host' };
+  if (v.includes('/')) return { error: 'Enter the host only — a path is not part of an SMTP address' };
+  if (/:\d+$/.test(v)) return { error: 'Enter the host only — the port is its own setting below' };
+  if (v.length > 255) return { error: 'Must be 255 characters or fewer' };
+  const c = v.toLowerCase().replace(/\.$/, '');
+  const ipv6 = /^\[[0-9a-f:]+\]$/.test(c);
+  if (!ipv6) {
+    if (c.split('.').some(l => l.length > 63)) return { error: 'Each label of the host must be 63 characters or fewer' };
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(c)) {
+      return { error: 'Enter a hostname or IP address — letters, digits, hyphens and dots only' };
+    }
+  }
+  return { host: c, canonical: c };
+};
+
+/* The public link origin, blocking. https is required EXCEPT for loopback,
+   where http keeps the dev and Aspire stacks working without an env var — a
+   loopback link resolves on the recipient's own machine, so the exemption
+   cannot be used to intercept anything. A path is allowed (a deployment may be
+   hosted under a subpath) and normalised without its trailing slash, because
+   links are composed as {base}/{clientPath}. */
+const SS_LOOPBACK = /^(localhost|127(\.\d+){3}|\[?::1\]?)$/i;
+const ssParseClientBaseUrl = (raw) => {
+  const v = String(raw == null ? '' : raw).trim();
+  if (!v) return { empty: true, canonical: '' };
+  let u = null;
+  try { u = new URL(v); } catch (e) { u = null; }
+  if (!u || !u.host) return { error: 'Enter an absolute address including https:// — for example https://odyssey.example.net' };
+  const loopback = SS_LOOPBACK.test(u.hostname);
+  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && loopback)) {
+    return { error: 'Only https:// is accepted — every password-reset link is composed against this address' };
+  }
+  if (u.username || u.password) return { error: 'Remove the username and password from the address' };
+  if (u.search || u.hash) return { error: 'Remove the query string and fragment — enter the origin only' };
+  const path = u.pathname.replace(/\/+$/, '');
+  return { host: u.host, origin: u.origin, canonical: `${u.protocol}//${u.host}${path}` };
+};
+
+// Which stored secrets a host change or a STARTTLS switch-off clears.
+const SS_MAIL_SECRETS = ['secretEmailUsername', 'secretEmailPassword'];
+
+
 function SystemSettings() {
   const { useState, useMemo, useRef, useEffect } = React;
 
@@ -190,6 +245,9 @@ function SystemSettings() {
   const [denied, setDenied] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportName, setExportName] = useState(null);
+  const [saveGate, setSaveGate] = useState(null);
+  const [cleared, setCleared] = useState(null);
+  const confirmOpener = useRef(null);
   const alertRefs = useRef({});
 
   const publishLimits = (v) => {
@@ -272,7 +330,19 @@ function SystemSettings() {
     }
     if (TEXT_TYPES[row.type]) {
       const v = (vals[row.key] || '').trim();
-      if (!v) return 'Enter a value';
+      // An `allowEmpty` row means something when it is empty — "mail is not
+      // configured" — so empty short-circuits before the per-row rule, exactly as
+      // the server's StringSetting.AllowEmpty does. Blocking it would make
+      // configuring mail a one-way door.
+      if (!v) return row.allowEmpty ? null : 'Enter a value';
+      if (row.checkSmtpHost) {
+        const parsed = ssParseSmtpHost(v);
+        if (parsed.error) return parsed.error;
+      }
+      if (row.checkClientBaseUrl) {
+        const parsed = ssParseClientBaseUrl(v);
+        if (parsed.error) return parsed.error;
+      }
       if (row.checkBaseUrl) {
         const parsed = ssParseBaseUrl(v);
         if (parsed.error) return parsed.error;
@@ -309,7 +379,42 @@ function SystemSettings() {
   // is ever echoed — a gateway URL such as https://key:secret@gateway.internal
   // is the expected shape here, so the host is parsed once at this boundary and
   // the rest is unreachable from the text.
+  // The clearing triggers (G4, G7), computed from the SNAPSHOT rather than from
+  // a row's dirty flag, because only one direction of each clears: a host that
+  // moved to a different non-empty value, and STARTTLS moving true → false.
+  // false → false and false → true clear nothing.
+  const hostClearing = () => {
+    const next = ssParseSmtpHost(vals.emailSmtpHost).canonical;
+    const prev = ssParseSmtpHost(snapshot.emailSmtpHost).canonical;
+    return !!next && next !== prev;
+  };
+  const startTlsClearing = () => !!snapshot.emailUseStartTls && !vals.emailUseStartTls;
+  // Host first: it is the change the administrator made deliberately, and its
+  // wording names the destination the credential would otherwise reach.
+  const clearTrigger = () => (hostClearing() ? 'host' : startTlsClearing() ? 'starttls' : null);
+
   const advisoryFor = (row) => {
+    // Stated on the row before Save is pressed, so the consequence is visible
+    // while the value is being edited and not only in the dialog that gates the
+    // save. Same channel as every other advisory: non-blocking, never an error.
+    if (row.clearsCredential === 'host' && hostClearing()) {
+      return `Saving this clears the stored SMTP username and password, so a credential entered for ${ssParseSmtpHost(snapshot.emailSmtpHost).canonical || 'the previous relay'} is never presented to ${ssParseSmtpHost(vals.emailSmtpHost).canonical}. Re-enter them below afterwards.`;
+    }
+    if (row.clearsCredential === 'starttls' && startTlsClearing()) {
+      return 'Saving this sends the credential and every link over an unencrypted connection unless the relay uses implicit TLS on its port. The stored SMTP username and password are cleared with the change, so an existing credential is never put on the wire in clear.';
+    }
+    // Computed in the BROWSER, against the origin you are actually on. The
+    // server has no view of the caller's origin on the read path, and an
+    // advisory composed there would re-fire on every page load rather than on
+    // the value that differs. A hint only: an operator may legitimately set a
+    // public URL from an internal hostname, or set it ahead of a DNS cutover.
+    if (row.checkClientBaseUrl) {
+      const parsed = ssParseClientBaseUrl(vals[row.key]);
+      if (!parsed.origin) return null;
+      const here = typeof window !== 'undefined' && window.location ? window.location.origin : null;
+      if (!here || here === parsed.origin || here.startsWith('about:') || here === 'null') return null;
+      return `This differs from the address you are using now (${here}). Confirmation and password-reset links will point at ${parsed.origin} — correct if that is the public address, worth a second look if it is not.`;
+    }
     if (row.advise) {
       const v = vals[row.key];
       if (typeof v === 'number' && v > row.advise.above) return row.advise.cost;
@@ -372,6 +477,11 @@ function SystemSettings() {
     if (row.checkBaseUrl) {
       const a = ssParseBaseUrl(vals[row.key]), b = ssParseBaseUrl(snapshot[row.key]);
       if (a.canonical && b.canonical) return a.canonical !== b.canonical;
+    }
+    if (row.checkSmtpHost || row.checkClientBaseUrl) {
+      const p = row.checkSmtpHost ? ssParseSmtpHost : ssParseClientBaseUrl;
+      const a = p(vals[row.key]), b = p(snapshot[row.key]);
+      if (a.canonical != null && b.canonical != null) return a.canonical !== b.canonical;
     }
     return vals[row.key] !== snapshot[row.key];
   };
@@ -450,13 +560,30 @@ function SystemSettings() {
     setTimeout(() => { setExporting(false); ssDownloadExport(name); setExportName(name); }, 1700);
   };
 
-  const save = () => {
+  const save = (confirmed) => {
     if (!canSave || saving || phase !== 'ready') return;
     // Announce on the ATTEMPT, never from validation itself.
     if (hasErrors) {
       setAnnounce(`${problems.length} setting${problems.length === 1 ? '' : 's'} need${problems.length === 1 ? 's' : ''} fixing before this can be saved.`);
       return;
     }
+    // The gate on the page's SINGLE batch save. There is no per-field save to
+    // hang it on, so Confirm submits the whole batch exactly as an unguarded
+    // Save would, and Cancel submits nothing and discards nothing.
+    const trigger = confirmed === true ? null : clearTrigger();
+    if (trigger) {
+      confirmOpener.current = document.activeElement;
+      setSaveGate({
+        reason: trigger,
+        from: ssParseSmtpHost(snapshot.emailSmtpHost).canonical || null,
+        to: ssParseSmtpHost(vals.emailSmtpHost).canonical || null,
+      });
+      setAnnounce(trigger === 'host'
+        ? 'Confirm required. Saving clears the stored SMTP username and password because the SMTP host changed.'
+        : 'Confirm required. Saving clears the stored SMTP username and password because STARTTLS is being turned off.');
+      return;
+    }
+    const clearing2 = clearTrigger();
     setSaving(true);
     setTimeout(() => {
       setSaving(false);
@@ -469,14 +596,41 @@ function SystemSettings() {
       const committed = { ...vals };
       const parsed = ssParseBaseUrl(committed.fileAnalysisBaseUrl);
       if (parsed.canonical) committed.fileAnalysisBaseUrl = parsed.canonical;
+      const host = ssParseSmtpHost(committed.emailSmtpHost);
+      if (host.canonical != null) committed.emailSmtpHost = host.canonical;
+      const base = ssParseClientBaseUrl(committed.emailClientBaseUrl);
+      if (base.canonical != null) committed.emailClientBaseUrl = base.canonical;
       setVals(committed);
       setSnapshot(committed);
       publishLimits(committed);
       publishAnalysis(committed);
+      // The credential clear commits in the SAME transaction as the settings
+      // write — so it is applied here, on the same success, and never as a
+      // second request that could land on its own.
+      if (clearing2) {
+        setSecrets(s => {
+          const n = { ...s };
+          SS_MAIL_SECRETS.forEach(k => { n[k] = { state: 'not-set', meta: null }; });
+          return n;
+        });
+        setCleared(clearing2);
+        setAnnounce('System settings saved. The stored SMTP username and password were cleared and must be re-entered in Email.');
+      } else {
+        setAnnounce('System settings saved.');
+      }
       setJustSaved(true);
-      setAnnounce('System settings saved.');
       setTimeout(() => setJustSaved(false), 2200);
     }, 900);
+  };
+
+  // Closing the dialog by any route returns focus to the control that opened it
+  // — neither Modal nor the page's other dialogs restore it on their own.
+  const closeSaveGate = (proceed) => {
+    setSaveGate(null);
+    const opener = confirmOpener.current;
+    if (opener && opener.focus) setTimeout(() => opener.focus(), 0);
+    if (proceed) save(true);
+    else setAnnounce('Nothing was saved. Your changes are still on the page.');
   };
 
   const retry = () => {
@@ -504,11 +658,11 @@ function SystemSettings() {
       );
     }
     if (TEXT_TYPES[row.type]) {
-      const urlish = row.key === 'aiPrivacyNoticeUrl' || row.checkBaseUrl;
+      const urlish = row.key === 'aiPrivacyNoticeUrl' || row.checkBaseUrl || row.checkClientBaseUrl;
       return (
         <TextInputField id={`ss-in-${row.key}`} value={vals[row.key] || ''}
-          placeholder={row.checkBaseUrl ? 'https://api.anthropic.com' : row.key === 'aiPrivacyNoticeUrl' ? 'https://…' : undefined}
-          inputMode={urlish ? 'url' : row.key === 'emailFromAddress' ? 'email' : 'text'}
+          placeholder={row.placeholder || (row.checkBaseUrl ? 'https://api.anthropic.com' : row.key === 'aiPrivacyNoticeUrl' ? 'https://…' : undefined)}
+          inputMode={urlish ? 'url' : row.key === 'emailFromAddress' ? 'email' : row.checkSmtpHost ? 'url' : 'text'}
           maxLength={row.maxLength} disabled={!editable} error={err ? ' ' : undefined}
           onChange={(v) => setScalar(row.key, v)} />
       );
@@ -627,10 +781,17 @@ function SystemSettings() {
   // nor the fix here is a Save, so merging them would make Save look blocked by
   // something Save cannot fix.
   const unreadable = secretRows.filter(r => secrets[r.key] && secrets[r.key].state === 'unreadable');
-  const credentialSignal = unreadable.length ? {
-    severity: 'error',
-    count: unreadable.length,
-    label: 'Credentials',
+  // Mail with no host is the other page-level condition worth surfacing here: it
+  // is not a fault and not a blocked Save, it is an INCOMPLETE deployment — so
+  // it joins the same rollup at `information` severity rather than growing a
+  // second mechanism. It is only rendered for someone holding the claim that
+  // can fix it, which the rollup's own gate already gives us.
+  const mailUnconfigured = hasSecurity && !ssParseSmtpHost(snapshot.emailSmtpHost).canonical;
+  const signalCount = unreadable.length + (mailUnconfigured ? 1 : 0);
+  const pageSignal = signalCount ? {
+    severity: unreadable.length ? 'error' : 'info',
+    count: signalCount,
+    label: unreadable.length ? 'Credentials' : 'Email',
     defaultOpen: true,
     region: (
       <div className="signal-panel">
@@ -649,6 +810,21 @@ function SystemSettings() {
             <button className="alert-fix" onClick={(e) => { e.stopPropagation(); jumpTo({ targetId: `ss-in-${r.key}` }); }}>Fix →</button>
           </div>
         ))}
+        {mailUnconfigured && (
+          <div className="alert info compact signal-row"
+            role="button" tabIndex={0}
+            onClick={() => jumpTo({ targetId: 'ss-in-emailSmtpHost' })}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo({ targetId: 'ss-in-emailSmtpHost' }); } }}>
+            <SeverityIcon severity="info" size={18} className="alert-icon" />
+            <div className="alert-body">
+              <strong>Transactional mail is not configured.</strong> Confirmation and password-reset
+              messages are logged and skipped, so no account can be confirmed or recovered until an
+              SMTP host is set.
+              <span className="signal-where"> In Email.</span>
+            </div>
+            <button className="alert-fix" onClick={(e) => { e.stopPropagation(); jumpTo({ targetId: 'ss-in-emailSmtpHost' }); }}>Fix →</button>
+          </div>
+        )}
       </div>
     ),
   } : null;
@@ -698,7 +874,7 @@ function SystemSettings() {
         : null}
       <Button variant="filled" icon={justSaved ? 'check' : 'save'} loading={saving}
         badge={dirtyCount || undefined} badgeLabel="unsaved changes"
-        disabled={phase !== 'ready' || hasErrors} onClick={save}>
+        disabled={phase !== 'ready' || hasErrors} onClick={() => save()}>
         {justSaved ? 'Saved' : 'Save changes'}
       </Button>
     </div>
@@ -713,7 +889,7 @@ function SystemSettings() {
         title="System settings"
         icon="settings"
         sub="Instance-wide configuration for this Odyssey deployment"
-        signal={phase === 'ready' ? credentialSignal : null}
+        signal={phase === 'ready' ? pageSignal : null}
         searchDefaultOpen
         search={(
           <div className="row gap-3" style={{ flexWrap: 'wrap' }}>
@@ -834,6 +1010,35 @@ function SystemSettings() {
         onCancel: () => setClearing(null),
         onConfirm: confirmClear,
       })}
+
+      {saveGate && ssDS('SecretClearOnSaveDialog') && React.createElement(ssDS('SecretClearOnSaveDialog'), {
+        reason: saveGate.reason,
+        fromHost: saveGate.from,
+        toHost: saveGate.to,
+        secrets: ['SMTP username', 'SMTP password'],
+        reEnterAt: 'Email',
+        pendingCount: dirtyCount,
+        busy: saving,
+        onCancel: () => closeSaveGate(false),
+        onConfirm: () => closeSaveGate(true),
+      })}
+
+      {cleared && DSToast && (
+        <DSToastStack>
+          <DSToast key="clr" severity="warning" duration={9000} onClose={() => setCleared(null)}
+            message={(
+              <div>
+                <div>SMTP username and password cleared</div>
+                <div style={{ fontSize: 12, color: 'var(--mud-palette-text-secondary)', marginTop: 2 }}>
+                  {cleared === 'host'
+                    ? 'The credential was entered for the previous host and was cleared with the change.'
+                    : 'The credential was entered for an encrypted transport and was cleared with the change.'}
+                  {' '}Re-enter it in Email — until then, mail is sent unauthenticated.
+                </div>
+              </div>
+            )} />
+        </DSToastStack>
+      )}
 
       {exportName && DSToast && (
         <DSToastStack>

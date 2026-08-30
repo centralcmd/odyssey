@@ -496,6 +496,14 @@
         "message": "<SecretClearDialog> kind must be one of 'credential' | 'derivation'."
       },
       {
+        "selector": "JSXOpeningElement[name.name='SecretClearOnSaveDialog'] > JSXAttribute > JSXIdentifier[name!=/^(?:open|reason|fromHost|toHost|secrets|reEnterAt|pendingCount|confirmLabel|busy|onCancel|onConfirm|key|ref|className|style|children)$/]",
+        "message": "<SecretClearOnSaveDialog> doesn't accept that prop. Declared props: open, reason, fromHost, toHost, secrets, reEnterAt, pendingCount, confirmLabel, busy, onCancel, onConfirm."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SecretClearOnSaveDialog'] > JSXAttribute[name.name='reason'] > Literal[value!=/^(?:host|starttls)$/]",
+        "message": "<SecretClearOnSaveDialog> reason must be one of 'host' | 'starttls'."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='SecretSettingField'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|secretKey|kind|state|help|meta|error|consequence|affects|locked|lockNote|allowNonAscii|maskLength|placeholder|saveLabel|busy|id|className|onSave|onClear|key|ref|className|style|children)$/]",
         "message": "<SecretSettingField> doesn't accept that prop. Declared props: label, secretKey, kind, state, help, meta, error, consequence, affects, locked, lockNote, allowNonAscii, maskLength, placeholder, saveLabel, busy, id, className, onSave, onClear."
       },
@@ -941,6 +949,9 @@
         "replaces": []
       },
       "SecretClearDialog": {
+        "replaces": []
+      },
+      "SecretClearOnSaveDialog": {
         "replaces": []
       },
       "SecretSettingField": {
