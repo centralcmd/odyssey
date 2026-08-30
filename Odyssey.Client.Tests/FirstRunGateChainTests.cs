@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Odyssey.Client.Auth;
+using Odyssey.Client.Pages;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Xunit;
@@ -34,9 +35,11 @@ namespace Odyssey.Client.Tests;
 /// </remarks>
 public class FirstRunGateChainTests
 {
-    private const string PasswordGate = "/change-password-required";
-    private const string LegalGate = "/accept-terms";
-    private const string OnboardingGate = "/onboarding";
+    // Named against the route constants the production code redirects to, not literals. A rename that
+    // drifted from a hardcoded string would leave these passing against a route the app no longer has.
+    private const string PasswordGate = PasswordChangeRequiredHandler.GatePath;
+    private const string LegalGate = LegalComplianceHandler.InterstitialPath;
+    private const string OnboardingGate = Onboarding.OnboardingPath;
 
     /// <summary>The shape <c>BootstrapAdminSeeder</c> produces: a one-time password and no profile.</summary>
     private static ProfileDto FirstRunAdmin() => new() { MustChangePassword = true, IsComplete = false };
