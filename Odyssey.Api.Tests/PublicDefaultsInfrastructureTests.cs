@@ -94,6 +94,74 @@ public class PublicDefaultsInfrastructureTests
     }
 
     /// <summary>
+    /// The overlay serves both supported deployments, and <c>CADDY_BIND</c> is the single line that
+    /// separates them: unset it renders <c>80:80</c> (compose short syntax binds <c>0.0.0.0</c>), and
+    /// <c>127.0.0.1:</c> renders <c>127.0.0.1:80:80</c>. Caddy is the only service in the overlay that
+    /// publishes a host port at all — every other one carries <c>ports: !reset []</c> — so hardcoding
+    /// these two mappings back would put a deployment documented as private on every interface, with
+    /// no error anywhere saying so. That is the same silent-exposure regression
+    /// <see cref="TheDevComposeStack_PublishesEveryPortOnLoopbackOnly"/> exists to catch, one file over.
+    /// </summary>
+    /// <remarks>
+    /// The trailing colon lives in the <em>value</em>, not the mapping: compose's short syntax is
+    /// <c>[HOST_IP:][HOST_PORT:]CONTAINER_PORT</c>, so <c>"${CADDY_BIND}:80:80"</c> would leave a
+    /// leading colon and fail to parse when the variable is empty. Asserting the two env templates
+    /// here keeps the separator with the only values that supply it — and pins the other half of the
+    /// contract, that <c>.env.prod.example</c> leaves the variable unset on purpose.
+    /// </remarks>
+    [Fact]
+    public void TheProductionOverlay_BindsCaddyThroughTheVariableThatMakesADeploymentPrivate()
+    {
+        var overlay = RepositoryRoot.ReadAllText("docker-compose.prod.yml");
+
+        Assert.Contains("- \"${CADDY_BIND:-}80:80\"", overlay, StringComparison.Ordinal);
+        Assert.Contains("- \"${CADDY_BIND:-}443:443\"", overlay, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("- \"80:80\"", overlay, StringComparison.Ordinal);
+        Assert.DoesNotContain("- \"443:443\"", overlay, StringComparison.Ordinal);
+
+        // The private template supplies the host IP *and* the separator; the public one supplies
+        // neither, which is what leaves Caddy on 0.0.0.0.
+        var privateEnv = RepositoryRoot.ReadAllText(".env.localhost.example");
+        var publicEnv = RepositoryRoot.ReadAllText(".env.prod.example");
+
+        Assert.Contains("CADDY_BIND=127.0.0.1:", privateEnv, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            publicEnv.Split('\n').Select(line => line.Trim()),
+            line => line.StartsWith("CADDY_BIND=", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// <c>.gitignore</c> ignores <c>.env.*</c> wholesale so a real env file cannot be committed, and
+    /// each template is re-admitted by name. The negation is load-bearing in two ways that both fail
+    /// silently: without it the new template is simply never committed, and because git applies the
+    /// last matching pattern, moving it <em>above</em> the blanket rule ignores it again while still
+    /// looking present in a diff.
+    /// </summary>
+    [Fact]
+    public void TheLocalhostEnvTemplate_IsReadmittedAfterTheBlanketDotenvRule()
+    {
+        Assert.True(
+            File.Exists(Path.Combine(RepositoryRoot.Path, ".env.localhost.example")),
+            "The .env.localhost.example template is missing, so the .gitignore negation admits nothing.");
+
+        var lines = RepositoryRoot.ReadAllText(".gitignore")
+            .Split('\n')
+            .Select(line => line.Trim())
+            .ToList();
+
+        var blanketRule = lines.IndexOf(".env.*");
+        var negation = lines.IndexOf("!.env.localhost.example");
+
+        Assert.True(blanketRule >= 0, "The blanket `.env.*` ignore rule is gone.");
+        Assert.True(negation >= 0, "`!.env.localhost.example` is missing — the template will not be committed.");
+        Assert.True(
+            negation > blanketRule,
+            "`!.env.localhost.example` must come after `.env.*`; git applies the last matching pattern, "
+            + "so a negation above the blanket rule is inert.");
+    }
+
+    /// <summary>
     /// This init script is bind-mounted in <em>both</em> stacks — the mount is declared in the base
     /// file and the overlay inherits it — so anything it grants is granted in production. It carried
     /// <c>GRANT ALL PRIVILEGES ON `odyssey`.* TO 'admin'@'%'</c> for a user this repository never
