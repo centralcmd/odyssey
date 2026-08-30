@@ -37,6 +37,7 @@ public partial class AcceptTerms : IAsyncDisposable
     private string? _respondError;
     private string? _returnUrl;
     private string? _announce;
+    private bool _yieldedToPasswordGate;
 
     private ElementReference _scrollEnd;
     private IJSObjectReference? _js;
@@ -92,12 +93,40 @@ public partial class AcceptTerms : IAsyncDisposable
     {
         _returnUrl = ReadReturnUrl();
 
+        // This page renders under its own nav-less layout, so MainLayout — the only other subscriber —
+        // is not mounted to hear a refusal raised from here. A user who owes BOTH a password change and
+        // an acceptance is refused with 403 on GET /api/legal/status (the password gate outranks this
+        // one server-side and /api/legal/status is deliberately not exempt), and without this the
+        // interstitial simply dead-ends. Yielding to the higher-priority gate is the same order
+        // MainLayout and the API pipeline both use.
+        PasswordChangeRequired.PasswordChangeRequired += OnPasswordChangeRequired;
+
         if (!OperatingSystem.IsBrowser())
         {
             return;
         }
 
         await LoadAsync();
+    }
+
+    /// <summary>
+    /// Hand the session to the forced-reset gate, carrying the destination this page was going to send
+    /// the user to. Several calls can be refused in one render pass, so it is guarded to navigate once.
+    /// </summary>
+    private void OnPasswordChangeRequired()
+    {
+        if (_yieldedToPasswordGate)
+        {
+            return;
+        }
+
+        _yieldedToPasswordGate = true;
+
+        var target = _returnUrl is null
+            ? PasswordChangeRequiredHandler.GatePath
+            : $"{PasswordChangeRequiredHandler.GatePath}?returnUrl={Uri.EscapeDataString(_returnUrl)}";
+
+        InvokeAsync(() => NavigationManager.NavigateTo(target));
     }
 
     /// <summary>
@@ -351,6 +380,8 @@ public partial class AcceptTerms : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        PasswordChangeRequired.PasswordChangeRequired -= OnPasswordChangeRequired;
+
         if (_js is not null)
         {
             try

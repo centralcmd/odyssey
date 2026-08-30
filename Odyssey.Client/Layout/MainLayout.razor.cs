@@ -51,113 +51,56 @@ public partial class MainLayout
         _user = await AuthStateProvider.GetUserAsync();
         _canView = page => page.Claim is null || (_user?.HasPermission(page.Claim) ?? false);
 
-        // The three gates run in the same order the SERVER enforces them, which is what keeps a user who
-        // owes more than one from being bounced between them:
+        // All three gates are resolved in one place, in the order the SERVER enforces them — see
+        // FirstRunGateChain for what that order buys and what it cost when it was three chained
+        // "did I navigate?" booleans instead.
         //
-        //   1. A forced password change (issue #406) outranks everything. Its middleware refuses every
-        //      endpoint except five — POST /api/legal/respond is NOT among them — so sending a gated user
-        //      to /accept-terms first would let them read the terms and then meet a 403 on Accept.
-        //   2. Legal acceptance (issue #354 §5) outranks onboarding: a user who owes a response shouldn't
-        //      be asked to complete a profile for an account they may be about to decline terms for.
-        //   3. Profile completeness (issue #316 §5).
-        //
-        // All three run before the app body renders, so none of them flashes the shell first.
-        //
-        // The profile fetch is hoisted above the legal gate to serve gate 1. That is safe where the
-        // preference load below is not: GET /api/profile is on the legal middleware's allowlist (and is
-        // one of the five password-gate exemptions), whereas preferences are on neither — for a gated
-        // user that call would fail and a handler would redirect from an unexpected direction. So
-        // preferences stay below both gates.
+        // The profile fetch is hoisted above the chain because two of the three gates read it. That is
+        // safe where the preference load below is not: GET /api/profile is on the legal middleware's
+        // allowlist (and is one of the five password-gate exemptions), whereas preferences are on
+        // neither — for a gated user that call fails and a handler redirects from an unexpected
+        // direction. So preferences stay strictly below every gate.
         var profile = (await Profile.GetAsync()).Value;
 
-        if (profile is not null && EnforcePasswordGate(profile))
+        if (FirstRunGateChain.Owed(profile, _user) is { } gatePath)
         {
-            return;
-        }
-
-        if (EnforceLegalGate())
-        {
+            // Leave _gateChecked false — the layout is being left rather than rendered, so the app body
+            // never flashes behind a gate. That holds whether or not RedirectToGate actually navigates.
+            RedirectToGate(gatePath);
             return;
         }
 
         _isDark = await UserPreferences.GetDarkModePreferencesAsync();
-
-        EnforceOnboardingGate(profile);
+        _gateChecked = true;
     }
 
     /// <summary>
-    /// Redirect to the forced-reset gate if the user owes an admin-initiated password change (issue #406
-    /// §3). Returns true when it has navigated away.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Runs <b>before</b> the onboarding gate below: a forced credential change outranks profile
-    /// onboarding, so a user with both pending sets their password first. It reads the same profile
-    /// payload the onboarding gate already fetches, so it costs no extra round trip.
-    /// </para>
-    /// <para>
-    /// Presentation only, and it may safely fail open, because it is not what enforces anything — the
-    /// API refuses every non-exempt endpoint while the flag is set. Deleting this check would mean a
-    /// gated user meets a screen of failed requests (which
-    /// <see cref="PasswordChangeRequiredHandler"/> then turns into this same redirect) instead of a form.
-    /// </para>
-    /// </remarks>
-    private bool EnforcePasswordGate(ProfileDto profile) =>
-        profile.MustChangePassword && RedirectToGate(PasswordChangeRequiredHandler.GatePath);
-
-    /// <summary>
-    /// Redirect to the acceptance interstitial if the principal carries a pending-acceptance claim.
-    /// Returns true when it has navigated away.
-    /// </summary>
-    /// <remarks>
-    /// This handles the login-time case only — it runs once per full page load and does not re-fire on
-    /// in-app navigation, so a mid-session compliance flip is surfaced by
-    /// <see cref="LegalComplianceHandler"/> intercepting a 451 instead. Unlike the onboarding gate this
-    /// one is not merely a UX aid, but it is still not the security boundary: the server's middleware
-    /// is, and a bypass here only means the user meets a 451 instead of the interstitial.
-    /// </remarks>
-    private bool EnforceLegalGate() =>
-        _user?.HasPendingLegalAcceptance() == true && RedirectToGate(LegalComplianceHandler.InterstitialPath);
-
-    /// <summary>
     /// Navigate to a blocking gate at <paramref name="gatePath"/>, carrying the current route so the gate
-    /// can return the user to it. Returns <see langword="true"/> when it navigated — callers leave
-    /// <c>_gateChecked</c> false on that path, because the layout is being left rather than rendered.
+    /// can return the user to it. A no-op when the browser is already on that gate.
     /// </summary>
     /// <remarks>
-    /// The self-reference guard is not defensive padding. Each gate renders under its own nav-less layout,
-    /// so this should be unreachable from the gate itself — but if it ever were, the result would be a
-    /// redirect loop, which is a hard failure rather than a cosmetic one. Shared by both gates so neither
-    /// can acquire the guard without the other.
+    /// <para>
+    /// The self-reference guard is not defensive padding, and it is reachable in normal operation:
+    /// <c>AuthorizeRouteView</c> renders <c>DefaultLayout</c> — this layout — for the whole async
+    /// authorizing phase, so <c>OnInitializedAsync</c> runs on a cold load of every <c>[Authorize]</c>
+    /// gate page regardless of that page's own <c>@layout</c>. Without the guard, each gate would
+    /// redirect to itself and spin.
+    /// </para>
+    /// <para>
+    /// <b>Not navigating is not the same as the gate not applying.</b> This returns nothing so the two
+    /// cannot be confused again: whether the chain continues is <see cref="FirstRunGateChain"/>'s
+    /// answer, and it does not depend on the current route.
+    /// </para>
     /// </remarks>
-    private bool RedirectToGate(string gatePath)
+    private void RedirectToGate(string gatePath)
     {
         var requested = "/" + NavModel.NormalizePath(NavigationManager.ToBaseRelativePath(NavigationManager.Uri));
         if (requested.StartsWith(gatePath, StringComparison.OrdinalIgnoreCase))
         {
-            return false;
+            return;
         }
 
         NavigationManager.NavigateTo($"{gatePath}?returnUrl={Uri.EscapeDataString(requested)}");
-        return true;
-    }
-
-    // Resolve profile completeness before the app body renders (anti-flash). An incomplete profile is
-    // routed to /onboarding with the requested route captured; a failed fetch (a null profile) fails
-    // OPEN (the gate is a UX aid, not a security control — spec §5). Not a security boundary: a bypass
-    // degrades to the server resolver's safe fallback.
-    private void EnforceOnboardingGate(ProfileDto? profile)
-    {
-        if (profile is { IsComplete: false })
-        {
-            var requested = "/" + NavModel.NormalizePath(NavigationManager.ToBaseRelativePath(NavigationManager.Uri));
-            var returnUrl = requested == Onboarding.OnboardingPath ? "/" : requested;
-            NavigationManager.NavigateTo(
-                $"{Onboarding.OnboardingPath}?returnUrl={Uri.EscapeDataString(returnUrl)}");
-            return; // leave _gateChecked false — we're leaving this layout
-        }
-
-        _gateChecked = true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

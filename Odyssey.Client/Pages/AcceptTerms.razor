@@ -5,6 +5,7 @@
 @using Odyssey.Dtos.Application
 @using Odyssey.Client.Components
 @inject ILegalApiClient Legal
+@inject PasswordChangeRequiredNotifier PasswordChangeRequired
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
@@ -51,12 +52,18 @@
 
             <div class="lg-head">
                 <h1 class="lg-title" id="lg-title" tabindex="-1">Review and accept to continue</h1>
-                <p class="lg-sub">
-                    @(_documents.Count > 1
-                        ? "Two documents govern your account and need your acceptance before you continue."
-                        : "One document governing your account needs your acceptance before you continue.")
-                    You likely reviewed @(_documents.Count > 1 ? "these" : "this") at sign-up — this is the recorded step.
-                </p>
+                @* Only claim a document count once the status call has told us one. Asserting "one
+                   document needs your acceptance" above an empty card is how a failed status read used
+                   to read as "there is nothing to accept". *@
+                @if (_documents.Count > 0)
+                {
+                    <p class="lg-sub">
+                        @(_documents.Count > 1
+                            ? "Two documents govern your account and need your acceptance before you continue."
+                            : "One document governing your account needs your acceptance before you continue.")
+                        You likely reviewed @(_documents.Count > 1 ? "these" : "this") at sign-up — this is the recorded step.
+                    </p>
+                }
             </div>
 
             @if (_documents.Count > 0)
@@ -114,6 +121,35 @@
             @if (CurrentDocument is { } current)
             {
                 @DocumentBlock(current)
+            }
+            else if (_phase != Phase.Ready)
+            {
+                @* No current document means the status call never told us what is outstanding, so there
+                   is no step for DocumentBlock's own loading/error states to render inside. Without
+                   this branch the card is a heading and nothing else — no document, no error, no
+                   Retry, no way out. *@
+                <div class="lg-doc">
+                    @if (_phase == Phase.Loading)
+                    {
+                        <div class="lg-sk" aria-hidden="true">
+                            @foreach (var width in SkeletonWidths)
+                            {
+                                <div class="lg-sk-bar" style="width: @(width)%"></div>
+                            }
+                        </div>
+                        <span class="sr-only" role="status">Checking what needs your acceptance…</span>
+                    }
+                    else
+                    {
+                        <div class="lg-doc-error" role="alert">
+                            <span class="material-icons" aria-hidden="true">cloud_off</span>
+                            <div class="lg-doc-error-txt">
+                                We couldn’t check which documents need your acceptance. Please try again.
+                            </div>
+                            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="LoadAsync">Retry</OdsButton>
+                        </div>
+                    }
+                </div>
             }
 
             <div class="lg-foot">
