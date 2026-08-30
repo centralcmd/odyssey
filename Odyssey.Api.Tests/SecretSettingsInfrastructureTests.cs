@@ -21,9 +21,10 @@ namespace Odyssey.Api.Tests;
 /// originally given to the migrations job as well, so a config-adoption step could protect a secret
 /// under keys the API could read. That step has been removed, the job protects nothing, and a second
 /// holder of the ring is pure exposure — any container that mounts it can decrypt every stored
-/// credential. The assertions below are therefore <em>exactly one</em> mount per file, not two: a
-/// re-added mount has to come back with a step that needs it, and changing these numbers is how that
-/// gets noticed.
+/// credential. The assertions below therefore count holders, not occurrences of a string: the base
+/// file declares and mounts the ring exactly once, and the production overlay — which is always
+/// layered on top of it — adds nothing at all. A re-added mount has to come back with a step that
+/// needs it, and changing these numbers is how that gets noticed.
 /// </para>
 ///
 /// <para>
@@ -53,16 +54,35 @@ public class SecretSettingsInfrastructureTests
     }
 
     /// <summary>
-    /// The production overlay carries the path for the <c>api</c> service only, and declares no volume
-    /// of its own — a second declaration here would be a different volume.
+    /// The production overlay adds nothing to the key-ring wiring. The base file is the single source
+    /// of both the path and the mount, and the overlay is always layered on top of it
+    /// (<c>-f docker-compose.yml -f docker-compose.prod.yml</c>, per docs/deployment.md), so the
+    /// merged <c>api</c> service inherits both.
+    ///
+    /// <para>
+    /// This assertion is the inverse of what it once was, and the inversion is the point. The overlay
+    /// used to repeat <c>DataProtection__KeysPath</c>, which put the path in two files that had to
+    /// agree while the mount it has to agree with lived in only one — so an edit to one copy would
+    /// have pointed the ring at an unmounted directory and made production silently ephemeral, with
+    /// Data Protection meeting that by falling back to an in-memory ring. Re-adding it here restores
+    /// that hazard; adding it to a SECOND service is the worse form, since any container that mounts
+    /// the ring can decrypt every stored credential.
+    /// </para>
+    ///
+    /// <para>
+    /// The mount is guarded in the other direction too: an overlay that <c>!reset</c>s a service's
+    /// volumes would drop the ring without ever naming it.
+    /// </para>
     /// </summary>
     [Fact]
-    public void TheProductionOverlay_GivesTheKeyRingToTheApiServiceAlone()
+    public void TheProductionOverlay_AddsNothingToTheKeyRingWiring()
     {
         var overlay = RepositoryRoot.ReadAllText("docker-compose.prod.yml");
 
-        Assert.Equal(1, Occurrences(overlay, $"{EnvironmentVariable}: {KeysPath}"));
+        Assert.Equal(0, Occurrences(overlay, $"{EnvironmentVariable}: {KeysPath}"));
+        Assert.Equal(0, Occurrences(overlay, $"- dataprotection_keys:{KeysPath}"));
         Assert.DoesNotContain("\n  dataprotection_keys:", overlay, StringComparison.Ordinal);
+        Assert.DoesNotContain("volumes: !reset", overlay, StringComparison.Ordinal);
     }
 
     /// <summary>
