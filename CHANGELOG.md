@@ -5,6 +5,23 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0](https://github.com/centralcmd/odyssey/compare/v0.16.1...v0.17.0) (2026-08-30)
+
+
+### Features
+
+* **config:** move the SMTP transport into System settings ([e86ef35](https://github.com/centralcmd/odyssey/commit/e86ef35cf611dd6e35c69507cf2c4fd9fc8e6021))
+
+
+### Bug Fixes
+
+* harden the prod env template and drop the config adoption step ([#6](https://github.com/centralcmd/odyssey/issues/6)) ([f0be123](https://github.com/centralcmd/odyssey/commit/f0be123fbe858c39cc37dec5062f55df0ce71957))
+
+
+### Documentation
+
+* update design system ([d6225af](https://github.com/centralcmd/odyssey/commit/d6225af798efdd611e324e359c3530e82eef70d1))
+
 ## [0.16.1](https://github.com/centralcmd/odyssey/compare/v0.16.0...v0.16.1) (2026-08-29)
 
 
