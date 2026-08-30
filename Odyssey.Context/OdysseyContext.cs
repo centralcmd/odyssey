@@ -751,6 +751,19 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisPrivacyNoticeUrl, Value = SystemSettingsDefaults.FileAnalysisPrivacyNoticeUrl, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMaxFutureTransactionDays, Value = "90", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMatchAutoLinkThreshold, Value = "0.6", UpdatedAt = seededAt },
+            // The SMTP transport and the public link origin (issue #8). Seeded EMPTY for the two
+            // string keys, and that empty value is the real one: there is no configuration to adopt
+            // from and no environment fallback, so a fresh deployment starts with mail switched off
+            // until an administrator sets a relay at /settings. Documented in docs/deployment.md,
+            // because the consequence is that the forgot-password flow cannot recover the bootstrap
+            // administrator during that window.
+            //
+            // UpdatedBy is left null by the seed — the provenance line on the settings page reads it
+            // as "nobody has taken ownership of this row yet", which is exactly true here.
+            new SystemSetting { Key = SystemSettingsKeys.EmailSmtpHost, Value = SystemSettingsDefaults.EmailSmtpHost, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.EmailSmtpPort, Value = "587", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.EmailUseStartTls, Value = "true", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.EmailClientBaseUrl, Value = SystemSettingsDefaults.EmailClientBaseUrl, UpdatedAt = seededAt },
             // Transactional email (issue #421 Wave 2). The sender identity is set at /settings; the
             // seeded default is deliberately unusable (odyssey.local), so a deployment that never sets
             // it fails visibly at the relay rather than sending as a plausible-looking wrong address.

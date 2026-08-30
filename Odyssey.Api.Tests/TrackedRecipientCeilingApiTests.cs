@@ -52,7 +52,7 @@ public class TrackedRecipientCeilingApiTests
     public async Task TheSelfServicePath_ClampsAPlantedBelowFloorRowUpToTheShippedFloor()
     {
         var throttle = new RecordingThrottle();
-        using var factory = CreateSenderFactory(throttle);
+        await using var factory = await CreateSenderFactoryAsync(throttle);
         await SeedConfirmedUserAsync(factory);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.EmailMaxTrackedRecipients, PlantedBelowFloor);
@@ -72,7 +72,7 @@ public class TrackedRecipientCeilingApiTests
     public async Task TheSelfServicePath_PassesARaisedCeilingThroughUnchanged()
     {
         var throttle = new RecordingThrottle();
-        using var factory = CreateSenderFactory(throttle);
+        await using var factory = await CreateSenderFactoryAsync(throttle);
         await SeedConfirmedUserAsync(factory);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.EmailMaxTrackedRecipients, $"{RaisedCeiling}");
@@ -89,7 +89,7 @@ public class TrackedRecipientCeilingApiTests
     public async Task TheSelfServicePath_WithNoRow_PassesTheCompiledDefault()
     {
         var throttle = new RecordingThrottle();
-        using var factory = CreateSenderFactory(throttle);
+        await using var factory = await CreateSenderFactoryAsync(throttle);
         await SeedConfirmedUserAsync(factory);
         var client = factory.CreateClient();
 
@@ -108,7 +108,7 @@ public class TrackedRecipientCeilingApiTests
     public async Task TheAdminResetPath_ClampsAPlantedBelowFloorRowUpToTheShippedFloor()
     {
         var throttle = new RecordingThrottle();
-        await using var factory = CreateAdminFactory(throttle);
+        await using var factory = await CreateAdminFactoryAsync(throttle);
         await CreateTargetUserAsync(factory);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.EmailMaxTrackedRecipients, PlantedBelowFloor);
@@ -124,7 +124,7 @@ public class TrackedRecipientCeilingApiTests
     public async Task TheAdminResetPath_PassesARaisedCeilingThroughUnchanged()
     {
         var throttle = new RecordingThrottle();
-        await using var factory = CreateAdminFactory(throttle);
+        await using var factory = await CreateAdminFactoryAsync(throttle);
         await CreateTargetUserAsync(factory);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.EmailMaxTrackedRecipients, $"{RaisedCeiling}");
@@ -144,7 +144,7 @@ public class TrackedRecipientCeilingApiTests
     public async Task TheThrottleReceivesOneConsistentSnapshotOfAllThreeValues()
     {
         var throttle = new RecordingThrottle();
-        using var factory = CreateSenderFactory(throttle);
+        await using var factory = await CreateSenderFactoryAsync(throttle);
         await SeedConfirmedUserAsync(factory);
         await SystemSettingsSeed.SetAsync(
             factory.Services, SystemSettingsKeys.EmailPerRecipientLimit, "7");
@@ -164,14 +164,34 @@ public class TrackedRecipientCeilingApiTests
 
     // ── harness ──────────────────────────────────────────────────────────────────────────────────
 
+    // Async because the SMTP host is a database row now, not configuration (issue #8), and it has to be
+    // written before the first request. Without a host the sender short-circuits to its dev
+    // link-logging path before any throttle decision, so the throttle would never be consulted at all —
+    // and the old configuration key is read by nothing, so it would fail exactly that way, silently.
+
+    private static async Task<OdysseyApiFactory> CreateSenderFactoryAsync(IEmailSendThrottle throttle)
+    {
+        var factory = CreateSenderFactory(throttle);
+        await SystemSettingsSeed.SetTransportAsync(
+            factory.Services, SmtpEmailSenderTestHarness.UnreachableHost);
+        return factory;
+    }
+
+    private static async Task<OdysseyApiFactory> CreateAdminFactoryAsync(IEmailSendThrottle throttle)
+    {
+        var factory = CreateAdminFactory(throttle);
+        await SystemSettingsSeed.SetTransportAsync(
+            factory.Services,
+            SmtpEmailSenderTestHarness.UnreachableHost,
+            clientBaseUrl: SmtpEmailSenderTestHarness.ClientBaseUrl);
+        return factory;
+    }
+
     private static OdysseyApiFactory CreateSenderFactory(IEmailSendThrottle throttle) =>
         new(
             permissions: [],
             configuration: new Dictionary<string, string?>
             {
-                // Without a host the sender short-circuits to its dev link-logging path before any
-                // throttle decision, so the throttle would never be consulted at all.
-                ["Email:SmtpHost"] = "smtp.invalid.test",
                 ["Email:FromAddress"] = "no-reply@odyssey.test",
                 // Generous per-IP limits, so nothing here is refused by the other layer.
                 ["RateLimiting:Identity:PermitLimit"] = "1000",
@@ -189,9 +209,7 @@ public class TrackedRecipientCeilingApiTests
             actorUserId: AdminActorUserId,
             configuration: new Dictionary<string, string?>
             {
-                ["Email:SmtpHost"] = "smtp.invalid.test",
                 ["Email:FromAddress"] = "no-reply@odyssey.test",
-                ["Email:ClientBaseUrl"] = "https://app.example.test",
                 ["RateLimiting:AdminPasswordReset:PermitLimit"] = "1000",
             },
             configureServices: services =>

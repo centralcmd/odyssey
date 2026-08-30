@@ -59,7 +59,9 @@ public sealed class PasswordGateFactory : WebApplicationFactory<Program>
             var settings = new Dictionary<string, string?>
             {
                 ["UseInMemoryDatabase"] = "true",
-                ["Email:SmtpHost"] = string.Empty,
+                // No Email:* (issue #8). The no-relay posture this factory wants is now what an
+                // unseeded database already gives: an absent SMTP host row means "mail is not
+                // configured", so nothing is delivered and nothing has to be configured to say so.
                 ["RateLimiting:Identity:PermitLimit"] = "1000",
                 // Effectively off by default, so the lockout tests below can make as many wrong-password
                 // attempts as Identity's threshold requires without the limiter answering first — the two

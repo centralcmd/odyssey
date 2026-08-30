@@ -47,7 +47,7 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
 
             await using (var context = new OdysseyContext(OdysseyOptions()))
             {
-                migrationId = context.Database.GetMigrations().Single();
+                migrationId = SchemaMigrationId(context);
                 // The table the runner will report is whichever the migration creates first, which is
                 // decided by the model's FK graph — naming one here would break on any schema change.
                 firstTable = MigrationOperations(context).OfType<CreateTableOperation>().First().Name;
@@ -115,7 +115,7 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
 
             await using (var context = new OdysseyContext(OdysseyOptions()))
             {
-                migrationId = context.Database.GetMigrations().Single();
+                migrationId = SchemaMigrationId(context);
                 firstTable = MigrationOperations(context).OfType<CreateTableOperation>().First().Name;
                 await MigrationRunner.MigrateAsync(context, CancellationToken.None);
             }
@@ -255,15 +255,35 @@ public class MigrationDriftIntegrationTests(MariaDbFixture fixture)
         }
     }
 
+    /// <summary>
+    /// The operations of the SCHEMA-CREATING migration — the first one, <c>InitialCreate</c>.
+    ///
+    /// <para>
+    /// It was <c>.Single()</c> while the squash left exactly one migration in the folder, and issue #8
+    /// added a second: a data-only <c>InsertData</c> that creates no objects at all. <c>.First()</c>
+    /// rather than a search for the one with a <c>CreateTableOperation</c>, because the drift guard
+    /// this suite exercises is specifically about a migration replaying object creation from the top,
+    /// and that is the first one by construction — every later migration is additive.
+    /// </para>
+    /// </summary>
     private static IReadOnlyList<MigrationOperation> MigrationOperations(OdysseyContext context)
     {
         var assembly = context.GetService<IMigrationsAssembly>();
-        var migrationId = context.Database.GetMigrations().Single();
+        var migrationId = SchemaMigrationId(context);
 
         return assembly
             .CreateMigration(assembly.Migrations[migrationId], context.Database.ProviderName!)
             .UpOperations;
     }
+
+    /// <summary>
+    /// The migration whose history row these tests tamper with. It has to be the one that CREATES the
+    /// schema: the guard reports "a pending migration would create an object the database already
+    /// has", so pointing this at issue #8's data-only migration would make every assertion here
+    /// vacuous — nothing it creates could already exist.
+    /// </summary>
+    private static string SchemaMigrationId(OdysseyContext context) =>
+        context.Database.GetMigrations().First();
 
     private static async Task<bool> TableExistsAsync(OdysseyContext context, string table)
     {

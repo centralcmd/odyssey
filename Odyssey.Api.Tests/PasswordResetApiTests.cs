@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
@@ -92,11 +93,8 @@ public class PasswordResetApiTests
             throttle: throttle,
             // A refused connection rather than an unreachable name: the registered case really does
             // attempt delivery here, and this keeps that attempt fast and deterministic.
-            configuration: new Dictionary<string, string?>
-            {
-                ["Email:SmtpHost"] = "127.0.0.1",
-                ["Email:SmtpPort"] = "1",
-            });
+            smtpHost: "127.0.0.1",
+            smtpPort: 1);
         await CreateUserAsync(factory, Registered);
         await CreateUserAsync(factory, "throttled@example.com");
         await CreateUserAsync(factory, "unconfirmed@example.com", confirmed: false);
@@ -156,7 +154,7 @@ public class PasswordResetApiTests
         var sender = new RecordingEmailSender();
         await using var factory = new ApiFactory(
             emailSender: sender,
-            configuration: new Dictionary<string, string?> { ["Email:ClientBaseUrl"] = string.Empty });
+            clientBaseUrl: string.Empty);
         await CreateUserAsync(factory, Registered);
         using var client = factory.CreateClient();
 
@@ -305,11 +303,7 @@ public class PasswordResetApiTests
     [Fact]
     public async Task ExhaustingTheRecipientThrottle_ChangesNothingTheCallerSees_AndStopsSending()
     {
-        await using var factory = new ApiFactory(configuration: new Dictionary<string, string?>
-        {
-            ["Email:SmtpHost"] = "127.0.0.1",
-            ["Email:SmtpPort"] = "1",
-        });
+        await using var factory = new ApiFactory(smtpHost: "127.0.0.1", smtpPort: 1);
 
         // The per-recipient limit moved into the settings store (issue #421 Wave 2), so setting it in
         // configuration would assert against a key nothing reads — and this test would pass three
@@ -521,15 +515,47 @@ public class PasswordResetApiTests
         }
     }
 
+    /// <summary>
+    /// The mail TRANSPORT is seeded as settings rows now, not passed as configuration (issue #8), so
+    /// what used to be two dictionary entries is two constructor parameters instead.
+    ///
+    /// <para>
+    /// The defaults preserve exactly what this suite has always relied on: <strong>no SMTP host</strong>,
+    /// under which the Testing host logs the composed link rather than delivering it — which is how
+    /// every test here reads the reset code back — and a client base URL, because the link's shape is
+    /// what most of them assert on.
+    /// </para>
+    /// </summary>
     private sealed class ApiFactory(
         IEmailSender<ApplicationUser>? emailSender = null,
         IEmailSendThrottle? throttle = null,
-        IReadOnlyDictionary<string, string?>? configuration = null)
+        IReadOnlyDictionary<string, string?>? configuration = null,
+        string smtpHost = "",
+        int? smtpPort = null,
+        string clientBaseUrl = ClientBaseUrl)
         : WebApplicationFactory<Program>
     {
         private readonly string databaseName = $"PasswordResetApiTests-{Guid.NewGuid()}";
 
         public CapturingLoggerProvider Logs { get; } = new();
+
+        /// <summary>
+        /// Seeds the transport once, on the host this factory builds, before any client can issue a
+        /// request. A per-test <c>await</c> would work equally well but would have to be repeated at
+        /// every call site and silently forgotten at one — and a forgotten seed here does not fail, it
+        /// makes the send short-circuit and the test pass for the wrong reason.
+        /// </summary>
+        protected override IHost CreateHost(IHostBuilder builder)
+        {
+            var host = base.CreateHost(builder);
+
+            SystemSettingsSeed
+                .SetTransportAsync(host.Services, smtpHost, smtpPort, clientBaseUrl)
+                .GetAwaiter()
+                .GetResult();
+
+            return host;
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -539,10 +565,7 @@ public class PasswordResetApiTests
                 var settings = new Dictionary<string, string?>
                 {
                     ["UseInMemoryDatabase"] = "true",
-                    ["Email:ClientBaseUrl"] = ClientBaseUrl,
-                    // No SMTP host by default: the Testing host logs the composed link instead of
-                    // delivering it, which is how these tests read the code back.
-                    ["Email:SmtpHost"] = string.Empty,
+                    // The transport is not configuration any more (issue #8) — see CreateHost.
                     ["Email:FromAddress"] = "no-reply@odyssey.test",
                     // Generous per-IP limits — the rate limiter has its own tests, and every request
                     // here shares one partition key.

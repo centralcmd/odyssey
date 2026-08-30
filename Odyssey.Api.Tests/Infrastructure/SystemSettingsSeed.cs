@@ -30,6 +30,44 @@ namespace Odyssey.Api.Tests.Infrastructure;
 /// </summary>
 internal static class SystemSettingsSeed
 {
+    /// <summary>
+    /// Sets the mail TRANSPORT rows (issue #8): the relay host, and optionally the port and the public
+    /// link origin.
+    ///
+    /// <para>
+    /// The same migration <see cref="SetAsync"/> exists for, one release later and for four more keys.
+    /// A test that writes <c>["Email:SmtpHost"] = "smtp.invalid.test"</c> into in-memory configuration
+    /// is now setting a key nothing reads, and the failure mode is the bad one: the sender sees no host
+    /// at all, short-circuits to its link-logging path, and the test passes while exercising none of
+    /// what it names. Every such site moved here.
+    /// </para>
+    ///
+    /// <para>
+    /// <paramref name="port"/> and <paramref name="clientBaseUrl"/> are optional because leaving a row
+    /// ABSENT is a meaningful state the reader treats as healthy — it resolves to the compiled default
+    /// — and writing one where the test does not care would assert against the seed rather than the
+    /// read.
+    /// </para>
+    /// </summary>
+    internal static async Task SetTransportAsync(
+        IServiceProvider services, string host, int? port = null, string? clientBaseUrl = null)
+    {
+        await SetAsync(services, SystemSettingsKeys.EmailSmtpHost, host);
+
+        if (port is { } value)
+        {
+            await SetAsync(
+                services,
+                SystemSettingsKeys.EmailSmtpPort,
+                value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        if (clientBaseUrl is not null)
+        {
+            await SetAsync(services, SystemSettingsKeys.EmailClientBaseUrl, clientBaseUrl);
+        }
+    }
+
     /// <summary>Sets <paramref name="key"/> to <paramref name="value"/>, replacing any existing row.</summary>
     internal static async Task SetAsync(IServiceProvider services, string key, string value)
     {

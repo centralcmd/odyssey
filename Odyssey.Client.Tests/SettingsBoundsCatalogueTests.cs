@@ -46,15 +46,15 @@ public class SettingsBoundsCatalogueTests
     }
 
     /// <summary>
-    /// Scope, stated rather than implied: 41 of the catalogue's 49 numeric rows. The eight
-    /// <c>CapacityLimit?</c> rows are correctly excluded by the <c>int?</c> selector — their properties
-    /// carry no <c>[Range]</c> at all, so their <c>Min: 1, Max: 1_000_000</c> is a client-only invention
-    /// with no server end to name.
+    /// Scope, stated rather than implied: 42 of the catalogue's 50 numeric rows (41 of 49 before issue
+    /// #8 added the SMTP port). The eight <c>CapacityLimit?</c> rows are correctly excluded by the
+    /// <c>int?</c> selector — their properties carry no <c>[Range]</c> at all, so their
+    /// <c>Min: 1, Max: 1_000_000</c> is a client-only invention with no server end to name.
     /// </summary>
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(41, NumericRows.Count);
+        Assert.Equal(42, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));

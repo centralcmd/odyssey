@@ -52,9 +52,91 @@ public sealed class DemoDataSeeder(
         await SeedPhotosAsync(context, data, cancellationToken);
         await SeedJournalAsync(context, data, cancellationToken);
         await SeedCalendarAsync(context, data, cancellationToken);
+        // Last, and not part of the demo DATASET: the one settings row a dev stack cannot function
+        // without and cannot be seeded with a fixed value. See its own remarks.
+        await SeedClientBaseUrlAsync(context, cancellationToken);
 
         logger.LogInformation("Demo data seeding complete.");
     }
+
+    /// <summary>
+    /// Points <c>EmailClientBaseUrl</c> at whatever address this stack actually serves the client on,
+    /// so the dev and Aspire stacks keep producing working confirmation and reset links with no
+    /// environment variable (issue #8).
+    ///
+    /// <para>
+    /// <strong>This is the ONE place a configured value still reaches a settings row, and it is seed
+    /// data, not the adoption mechanism issue #8 N1 rules out.</strong> The distinction is the gate it
+    /// sits behind: <see cref="IsEnabled"/> confines this to Development and Testing, so no
+    /// Production deployment can reach it. Production seeds the migration's empty value and the
+    /// administrator sets the real one at <c>/settings</c>. If a general configuration-adoption step
+    /// is ever needed again — see CLAUDE.md on what would retire that decision — it is a separate
+    /// mechanism with its own ownership rule, not an un-gating of this one.
+    /// </para>
+    ///
+    /// <para>
+    /// <strong>It must not hardcode <c>http://localhost:5199</c>.</strong> Aspire assigns the client
+    /// address from <c>Aspire:Client:Urls</c> and forwards it here as <c>Email__ClientBaseUrl</c>; a
+    /// fixed literal would mail links to the wrong port whenever that value differs. The literal is
+    /// the fallback for the Compose dev stack alone, whose port is pinned in <c>docker-compose.yml</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// <strong>Idempotent on the same terms as the rest of the seeder, but keyed on ownership rather
+    /// than on value.</strong> A row an administrator has already edited carries a non-null
+    /// <c>UpdatedBy</c>, and this leaves it alone — otherwise every restart of a dev stack would
+    /// stamp over a value someone deliberately set. Comparing values instead cannot tell "never
+    /// touched" from "set back to the seeded value on purpose".
+    /// </para>
+    /// </summary>
+    private async Task SeedClientBaseUrlAsync(OdysseyContext context, CancellationToken cancellationToken)
+    {
+        var configured = configuration["Email:ClientBaseUrl"];
+        var value = string.IsNullOrWhiteSpace(configured) ? DevelopmentClientBaseUrl : configured.Trim();
+
+        // Validated against the same rule the PUT path applies, so the seeder cannot write a row the
+        // send path would then refuse. A misconfigured Aspire value is logged and skipped rather than
+        // stored: an unusable row fails every send closed, which is a worse dev experience than the
+        // empty row it would replace.
+        // Fully qualified rather than imported: a `using Odyssey.Dtos;` here would make `Sex`
+        // ambiguous against Odyssey.Dtos.Application.Sex, the one allowed shadow in the merged
+        // projects (issue #316 §6) and one this file already names.
+        if (Odyssey.Dtos.EmailClientBaseUrlRule.Canonicalize(value) is not { } canonical)
+        {
+            logger.LogWarning(
+                "Skipping the demo EmailClientBaseUrl seed: the configured client base URL is not a "
+                + "usable public origin. Set it at /settings instead.");
+            return;
+        }
+
+        var row = await context.SystemSettings
+            .FirstOrDefaultAsync(setting => setting.Key == SystemSettingsKeys.EmailClientBaseUrl, cancellationToken);
+
+        if (row is null)
+        {
+            // Should not happen post-migration; created rather than skipped so a database built by
+            // EnsureCreated (the fast test tiers) gets the row too.
+            row = new SystemSetting { Key = SystemSettingsKeys.EmailClientBaseUrl, Value = canonical };
+            context.SystemSettings.Add(row);
+        }
+        else if (row.UpdatedBy is not null)
+        {
+            return;
+        }
+        else
+        {
+            row.Value = canonical;
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Seeded the demo client base URL for confirmation and reset links.");
+    }
+
+    /// <summary>
+    /// The Compose dev stack's client address. A literal only because that stack's port is fixed in
+    /// <c>docker-compose.yml</c>; Aspire supplies its own and overrides this.
+    /// </summary>
+    private const string DevelopmentClientBaseUrl = "http://localhost:5199";
 
     /// <summary>
     /// Demo data is seeded only in Development and Testing. Every other environment name —

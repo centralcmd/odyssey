@@ -35,6 +35,7 @@ public sealed class SystemSettingsService(
     TimeProvider timeProvider,
     IUserDisplayNameResolver displayNames,
     RequestCapCeilings ceilings,
+    SecretSettingsService secrets,
     ILogger<SystemSettingsService> logger)
 {
     // Shared with SystemSettingsLookup, which reads the same two cosmetic/policy fields under this
@@ -114,9 +115,118 @@ public sealed class SystemSettingsService(
             }
         }
 
+        // Phases 1c and 2 run inside ONE transaction, unconditionally (issue #8 §5.8). The reason is
+        // G4/G7: changing the SMTP host, or turning STARTTLS off, must clear the stored relay
+        // credential, and the two writes have to land together or not at all. If they can interleave,
+        // an interruption leaves the new host live with the old credential still stored — the exploit
+        // G4 exists to close, reached without the attacker ever needing the credential themselves.
+        //
+        // UNCONDITIONALLY rather than "only when a clearing trigger is present": a pre-check would
+        // have to re-derive "is this a clearing change?" ahead of the loop that already computes
+        // valueChanged, and G7's trigger is direction-sensitive (only true → false clears), so the
+        // pre-check and the loop could drift. Wrapping always lets the staging piggyback on the loop's
+        // own computation.
+        //
+        // The CreateExecutionStrategy wrapper is mandatory, not decoration: EnableRetryOnFailure is
+        // configured on this context (DatabaseExtension), and a retrying strategy refuses a
+        // user-initiated transaction, so a bare BeginTransactionAsync throws. The whole sequence —
+        // reading the rows, applying the descriptor writes, staging the secret removals, composing
+        // the audit records — sits inside the delegate; a read of this context from outside while the
+        // transaction is open is the failure mode this shape exists to prevent.
+        //
+        // Nothing is LOGGED inside. Every audit line, the settings ones included, is emitted after the
+        // commit, so a rolled-back write cannot leave a line asserting a change that never landed.
+        // (Before issue #8 the settings line was written before commit; there was no transaction then,
+        // so it could not be wrong — under one, it could.)
+        var rows = new Dictionary<string, SystemSetting>(StringComparer.Ordinal);
+        var auditLines = new List<PendingAudit>();
+        var stagedClears = new List<StagedSecretClear>();
+        var cacheKeysToEvict = new HashSet<string>(StringComparer.Ordinal);
+        var attempt = 0;
+
+        var strategy = context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            // The delegate can run more than once. Everything it consumes is rebuilt here rather than
+            // captured from before the strategy, and the tracker is reset on a RETRY so a failed
+            // attempt's staged deletes and mutated rows cannot ride along into the next one. Only on
+            // a retry: clearing on the first pass would discard whatever the surrounding scope was
+            // legitimately tracking.
+            if (attempt++ > 0)
+            {
+                context.ChangeTracker.Clear();
+            }
+
+            rows.Clear();
+            auditLines.Clear();
+            stagedClears.Clear();
+            cacheKeysToEvict.Clear();
+
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+            await ApplyAsync(
+                request, actorUserId, rows, auditLines, stagedClears, cacheKeysToEvict, cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
+        });
+
+        // AFTER the commit, in both directions: a rolled-back settings write leaves no line claiming
+        // it changed, and a rolled-back clear leaves no line claiming a credential was removed.
+        foreach (var line in auditLines)
+        {
+            logger.LogInformation(
+                "System settings security-claim change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
+                actorUserId, line.Key, line.OldValue, line.NewValue);
+        }
+
+        foreach (var staged in stagedClears)
+        {
+            secrets.AuditStagedClear(actorUserId, staged);
+        }
+
+        // Invalidate synchronously on the writing instance the moment the PUT commits — bounds
+        // cross-instance staleness to the 30s TTL without this instance ever serving its own stale
+        // read back to the admin who just changed it.
+        foreach (var cacheKey in cacheKeysToEvict)
+        {
+            cache.Remove(cacheKey);
+        }
+
+        return await AssembleAsync(caller, rows.Values, cancellationToken);
+    }
+
+    /// <summary>
+    /// One audit line, composed inside the transaction and emitted after it commits. It carries the
+    /// PROJECTED values — the projection runs where the old and new strings are still in hand, so a
+    /// line can never be composed from an unprojected one by a later edit at the emit site.
+    /// </summary>
+    private sealed record PendingAudit(string Key, string OldValue, string NewValue);
+
+    /// <summary>
+    /// The write phase, extracted so the whole of it — not just <c>BeginTransactionAsync</c> — sits
+    /// inside the execution strategy's delegate.
+    ///
+    /// <para>
+    /// It must be safe to run more than once against a change tracker the caller has reset. It reads
+    /// the rows it needs itself and writes nothing outside the collections it is handed, all of which
+    /// the caller clears before each attempt.
+    /// </para>
+    /// </summary>
+    private async Task ApplyAsync(
+        SystemSettingsUpdate request,
+        string actorUserId,
+        Dictionary<string, SystemSetting> rows,
+        List<PendingAudit> auditLines,
+        List<StagedSecretClear> stagedClears,
+        HashSet<string> cacheKeysToEvict,
+        CancellationToken cancellationToken)
+    {
         // Rows are fetched once, ahead of both the round-trip validation (Phase 1c, which evaluates
         // post-write state) and the mutation (Phase 2) below.
-        var rows = await context.SystemSettings.ToDictionaryAsync(row => row.Key, cancellationToken);
+        foreach (var row in await context.SystemSettings.ToListAsync(cancellationToken))
+        {
+            rows[row.Key] = row;
+        }
 
         // Phase 1c — the export/import round-trip rule (issue #343 §9): for each pair, the post-write
         // export cap must not exceed the post-write import cap, with unlimited treated as +∞ on both
@@ -153,7 +263,7 @@ public sealed class SystemSettingsService(
         // change-based — matching the pre-registry behaviour exactly. A GET→PUT round trip of
         // unchanged data therefore still calls SaveChanges, which correctly emits no UPDATE.
         var anyPresent = false;
-        var cacheKeysToEvict = new HashSet<string>(StringComparer.Ordinal);
+        var clearRelayCredential = (string?)null;
 
         foreach (var descriptor in SystemSettingsRegistry.All)
         {
@@ -189,34 +299,84 @@ public sealed class SystemSettingsService(
             // doesn't spam the log.
             if (descriptor.AuditChanges && valueChanged)
             {
-                // Projected before logging, not after (issue #439 §5.3b). The OLD value here is
-                // whatever was stored — the write validator never saw it — so for the file-analysis
-                // base URL it can carry `https://key:secret@host` planted by a restore. The projection
-                // reduces both ends to their host, keeping the change reconstructable without letting
-                // the line carry a credential. Every other setting logs verbatim (null projection).
+                // Projected before the line is composed, not after (issue #439 §5.3b). The OLD value
+                // here is whatever was stored — the write validator never saw it — so for the
+                // file-analysis base URL, the SMTP host and the client base URL it can carry
+                // `https://key:secret@host` planted by a restore. The projection reduces both ends to
+                // their host, keeping the change reconstructable without letting the line carry a
+                // credential. Every other setting logs verbatim (null projection).
                 var project = descriptor.AuditProjection;
-                logger.LogInformation(
-                    "System settings security-claim change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
-                    actorUserId, descriptor.Key,
+                auditLines.Add(new PendingAudit(
+                    descriptor.Key,
                     project is null ? oldValue : project(oldValue),
-                    project is null ? newValue : project(newValue));
+                    project is null ? newValue : project(newValue)));
             }
+
+            // G4/G7. Computed off the loop's own valueChanged rather than re-derived up front — see
+            // the remarks above the transaction. The FIRST trigger wins the audit verb; both clear
+            // the same two rows, so a save that trips both stages one removal each, not two.
+            clearRelayCredential ??= RelayCredentialClearReason(descriptor.Key, newValue, valueChanged);
+        }
+
+        // Staged INSIDE the transaction, audited outside it. Nothing here decides whether the clear is
+        // allowed — that was settled by the claim check on the triggering field in Phase 1, and a
+        // clear the caller could decline would leave the credential live on a host it was never
+        // entered for (see SecretSettingsService.StageClearAsync).
+        if (clearRelayCredential is { } reason)
+        {
+            stagedClears.Add(
+                await secrets.StageClearAsync(context, SecretSettingKeys.EmailUsername, reason, cancellationToken));
+            stagedClears.Add(
+                await secrets.StageClearAsync(context, SecretSettingKeys.EmailPassword, reason, cancellationToken));
+            anyPresent = true;
         }
 
         if (anyPresent)
         {
             await context.SaveChangesAsync(cancellationToken);
         }
+    }
 
-        // Invalidate synchronously on the writing instance the moment the PUT commits — bounds
-        // cross-instance staleness to the 30s TTL without this instance ever serving its own stale
-        // read back to the admin who just changed it.
-        foreach (var cacheKey in cacheKeysToEvict)
+    /// <summary>
+    /// Whether this key's change is one that must take the stored relay credential with it, and under
+    /// which audit verb (issue #8 G4/G7).
+    ///
+    /// <para>
+    /// <strong>A targeted branch keyed on the two triggering keys, not a general post-write event
+    /// bus.</strong> The same reasoning that makes registry accessors explicit delegates rather than
+    /// reflection applies here: a side-effect seam wide enough to register anything on is a seam
+    /// wide enough to lose a security consequence in.
+    /// </para>
+    ///
+    /// <para>
+    /// Both triggers are DIRECTIONAL, and getting either backwards reopens what it closes.
+    /// </para>
+    /// <list type="bullet">
+    /// <item>The host clears only when it moves to a DIFFERENT, NON-EMPTY value. Re-saving the same
+    /// host is not a change (AC 5) and must not cost the administrator their credential; clearing the
+    /// host to empty turns mail off, so there is no new relay for the credential to reach.</item>
+    /// <item>STARTTLS clears only on true → false. false → true is a strengthening, and false → false
+    /// is not a change at all (AC 3b).</item>
+    /// </list>
+    /// </summary>
+    private static string? RelayCredentialClearReason(string key, string newValue, bool valueChanged)
+    {
+        if (!valueChanged)
         {
-            cache.Remove(cacheKey);
+            return null;
         }
 
-        return await AssembleAsync(caller, rows.Values, cancellationToken);
+        if (key == SystemSettingsKeys.EmailSmtpHost)
+        {
+            return newValue.Length > 0 ? SecretSettingsService.ClearedByHostChange : null;
+        }
+
+        if (key == SystemSettingsKeys.EmailUseStartTls)
+        {
+            return newValue == "false" ? SecretSettingsService.ClearedByStartTlsOff : null;
+        }
+
+        return null;
     }
 
     /// <summary>

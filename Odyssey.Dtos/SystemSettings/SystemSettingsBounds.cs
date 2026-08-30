@@ -81,6 +81,23 @@ public static class SystemSettingsBounds
 
     // ── Transactional email (issue #421 Wave 2) ──────────────────────────────────────────────────
 
+    /// <summary>
+    /// The SMTP port's pair (issue #8) — the whole TCP port space, because a relay may legitimately
+    /// sit anywhere. Narrowing it to the three conventional ports (25/465/587) was considered and
+    /// rejected: an internal relay on a non-standard port is a normal deployment, and a bound that
+    /// refuses one would be worked around by putting the value back into configuration, which is what
+    /// this change exists to remove.
+    ///
+    /// <para>
+    /// The read-path clamp against this pair is what a hand-edited or restored <c>0</c> resolves to.
+    /// It is a clamp, not a fail-closed condition, because a port that parses is a usable number —
+    /// unlike an unparseable one, which the send path refuses outright.
+    /// </para>
+    /// </summary>
+    public const int EmailSmtpPortMin = 1;
+
+    public const int EmailSmtpPortMax = 65535;
+
     public const int EmailPerRecipientLimitMin = 1;
     public const int EmailPerRecipientLimitMax = 1000;
 

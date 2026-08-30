@@ -31,9 +31,13 @@ Most self-hosting questions are already answered:
 
 Two things that come up often enough to answer here:
 
-- **SMTP is required in Production.** An empty `Email:SmtpHost` fails startup on purpose: the
-  no-relay fallback logs the action link instead of sending it, which for a password reset means
-  writing a working credential into the log. See *First-run notes* in `docs/deployment.md`.
+- **Mail starts switched off, and there is no mail configuration file.** Every part of it — relay
+  host, port, STARTTLS, the public link origin, the sender identity, the throttle and the relay
+  credential — is entered at `/settings` after your first sign-in. Until an SMTP host is set no
+  message is sent, and the API no longer refuses to start without one: a value entered through the
+  settings UI cannot be a precondition for that UI coming up. Configure mail before you blank
+  `BOOTSTRAP_ADMIN_PASSWORD` — while mail is off, a lost one-time password has no self-service
+  recovery. See *First-run notes* in `docs/deployment.md`.
 - **Most policy is not in `appsettings.json`.** Upload caps, retention, throttles and the
   file-analysis switch are admin-editable at `/settings` and stored in the database, so they
   change without a redeploy. If you are looking for a configuration key and cannot find one,

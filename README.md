@@ -275,68 +275,70 @@ not active.
 Registration uses ASP.NET Core Identity's built-in email-confirmation flow: a new account
 stays unconfirmed (and cannot sign in) until the user clicks the link sent to their address.
 The same SMTP setup delivers the self-service password-reset link (issue #405), so a user who
-forgets their password can get back in without an administrator. The API delivers both links
-over SMTP, so it needs SMTP to be configured. If `EMAIL_SMTP_HOST` is left empty,
-no email is sent — the link is written to the API log instead, which is fine for local testing
-but means users can't self-confirm or reset.
+forgets their password can get back in without an administrator.
 
-Two limits on that fallback, because a reset link is a working credential rather than a mere
-convenience:
+**Mail is configured entirely at runtime — there are no email environment variables.** Every part of
+it is edited at **System settings → Email** by an administrator holding
+`system-settings.security.update`, is stored in the database, and takes effect on the **next send**
+with no restart and no cache wait:
 
-- the link is only ever logged in **Development** and **Testing**; any other environment logs
-  that the mail could not be sent and nothing else;
-- in **Production** an empty `EMAIL_SMTP_HOST` fails startup rather than degrading silently.
-
-Email confirmation can be turned off entirely with `EMAIL_REQUIRE_CONFIRMATION=false`: no
-confirmation email is sent and users can sign in immediately after registering. It is **on by
-default**, so SMTP must be configured for registration to be usable unless you opt out.
-
-Configure email via the following `.env` variables (read by `docker compose`; the API binds
-them from the `Email` configuration section):
-
-| Variable | Purpose |
+| Setting | Notes |
 |---|---|
-| `EMAIL_REQUIRE_CONFIRMATION` | `true` (default) requires email confirmation before sign-in; `false` skips it (no email sent, immediate sign-in). |
-| `EMAIL_SMTP_HOST` | SMTP server host name. Leave empty to disable sending (Development/Testing only — **required in Production**, where an empty value fails startup). |
-| `EMAIL_SMTP_PORT` | SMTP port (`587` for STARTTLS, `465` for implicit TLS). Defaults to `587`. |
-| `EMAIL_USE_STARTTLS` | `true` for STARTTLS (port 587), `false` for implicit TLS (port 465). |
-| `EMAIL_FROM_ADDRESS` | Address confirmation and password-reset emails are sent from. |
-| `EMAIL_FROM_NAME` | Display name on the from address (defaults to `Odyssey`). |
-| `EMAIL_CLIENT_BASE_URL` | Public base URL of the client — confirmation and password-reset links point here (e.g. `http://localhost:5199`). Required: without it the reset email falls back to a code the user must paste by hand. |
+| SMTP host | The relay. Empty means *mail is not configured*: every send is logged and skipped. |
+| SMTP port | `587` for STARTTLS submission, `465` for implicit TLS, `25` for an unauthenticated internal relay. |
+| Use STARTTLS | On for 587; off for implicit TLS on 465. |
+| Client base URL | The public origin every confirmation and reset link is composed against. |
+| From address / From name | The envelope sender. Must be an address the relay is authorised to send as. |
+| Messages per recipient / window / tracked addresses | The anti-mailbomb throttle on the anonymous mail path. |
+| Require email confirmation | Off means users can sign in immediately after registering. **On by default.** |
+| SMTP username / SMTP password | Entered at **System settings → Credentials**, encrypted at rest. |
 
-> **The SMTP username and password are no longer environment variables** (issue #445). They live in
-> the encrypted secret store and are entered once, by an administrator, at **System settings →
-> Credentials** — so they can be rotated without a redeploy and never appear in `docker inspect`,
-> `/proc` or an `.env` file. Until both are entered the sender connects **without authenticating**,
-> which is exactly what an empty `EMAIL_USERNAME` did before; if only one of the two is stored, the
-> send is skipped rather than attempted with half a credential. Any provider offering plain SMTP with
-> username/password authentication works without code changes.
+The transport moved into the store in issue #8; the sender identity and throttle in #421; the relay
+credential in #445. What made the transport the last to move is worth knowing, because it shows up as
+behaviour you will meet:
+
+> **Changing the SMTP host — or turning STARTTLS off — clears the stored SMTP username and password**,
+> in the same transaction as the change itself. The SMTP client connects *first* and authenticates
+> *second*, so whatever host is set receives the stored credential; and a credential entered for an
+> encrypted transport must not be replayed over a cleartext one. Clearing it means there is nothing
+> left to hand over. You will be asked to confirm, and you will have to re-enter the credential
+> afterwards. That is the control working, not a fault.
+
+Until an SMTP host is set, no email is sent — the link is written to the API log instead, which is
+fine for local testing but means users cannot self-confirm or reset. One limit on that fallback,
+because a reset link is a working credential rather than a mere convenience: **the link is only ever
+logged in Development and Testing.** Any other environment logs that the mail could not be sent and
+nothing else.
+
+> **On a fresh production deployment mail starts switched off**, and the API no longer refuses to
+> start without it — a value entered through the settings UI cannot be a precondition for that UI
+> coming up. Configure SMTP immediately after your first sign-in, *before* you blank
+> `BOOTSTRAP_ADMIN_PASSWORD`: if that one-time password is lost while mail is unconfigured there is no
+> self-service recovery, because the forgot-password flow is exactly the thing that needs working
+> mail. The System settings page says so in its header while the host is empty. See
+> [`docs/deployment.md`](docs/deployment.md).
+
+Nothing proves mail actually arrives except sending some, so **send yourself a password reset after
+configuring** — that is the only check covering the whole path, relay credential included.
 
 #### Using a Gmail account
 
-Gmail works with the SMTP settings above, but **not** with your normal account password —
+Gmail works with the settings above, but **not** with your normal account password —
 Google retired password ("less secure app") access. Use a Gmail **App Password** instead:
 
 1. Enable **2-Step Verification** on the Google account (App Passwords are unavailable until
    it is on).
 2. Go to **Google Account → Security → App passwords**, generate one (e.g. named "Odyssey"),
    and copy the 16-character code.
-3. Set the `.env` values below, then enter the Gmail address as the **SMTP username** and the
-   16-character App Password as the **SMTP password** at System settings → Credentials:
-
-```dotenv
-EMAIL_SMTP_HOST=smtp.gmail.com
-EMAIL_SMTP_PORT=587
-EMAIL_USE_STARTTLS=true
-EMAIL_FROM_ADDRESS=youraddress@gmail.com
-EMAIL_FROM_NAME=Odyssey
-EMAIL_CLIENT_BASE_URL=http://localhost:5199
-```
+3. At **System settings → Email**, set the SMTP host to `smtp.gmail.com`, the port to `587` and
+   STARTTLS on, and the from address to your Gmail address. Then, at **System settings →
+   Credentials**, enter the Gmail address as the **SMTP username** and the 16-character App Password
+   as the **SMTP password**.
 
 Notes specific to Gmail:
 
 - Gmail forces the `From` address to match the authenticated account, so confirmation emails
-  will come from your Gmail address regardless of `EMAIL_FROM_ADDRESS`.
+  will come from your Gmail address regardless of the from address you set.
 - A personal Gmail account is limited to roughly 500 recipients/day and may throttle bursts —
   fine for development and low volume, but use a dedicated transactional email provider for
   production-scale sending.

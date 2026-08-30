@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
@@ -226,13 +227,11 @@ public class AdminPasswordResetApiTests
     public async Task WhenTheSendFails_TheResponseSaysSo_AndTheResetStands()
     {
         // A refused connection is a deterministic SMTP failure that resolves fast.
-        await using var factory = new ApiFactory(
-            [PermissionClaims.UsersUpdate],
-            configuration: new Dictionary<string, string?>
-            {
-                ["Email:SmtpHost"] = "127.0.0.1",
-                ["Email:SmtpPort"] = "1",
-            });
+        await using var factory = new ApiFactory([PermissionClaims.UsersUpdate])
+        {
+            SmtpHost = "127.0.0.1",
+            SmtpPort = 1,
+        };
         await CreateUserAsync(factory, TargetUserId, TargetEmail);
         var stampBefore = await SecurityStampAsync(factory, TargetUserId);
         using var client = factory.CreateClient();
@@ -577,20 +576,42 @@ public class AdminPasswordResetApiTests
     {
         public CapturingLoggerProvider Logs { get; } = new();
 
+        /// <summary>The relay this factory seeds. Empty means the link is logged, not delivered.</summary>
+        public string SmtpHost { get; init; } = string.Empty;
+
+        public int? SmtpPort { get; init; }
+
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {
             base.ConfigureWebHost(builder);
             builder.ConfigureServices(services => services.AddSingleton<ILoggerProvider>(Logs));
         }
 
+        /// <summary>
+        /// Seeds the mail transport once, before any client request (issue #8). It is settings rows
+        /// now, not configuration — and a forgotten seed does not fail loudly, it makes the send
+        /// short-circuit and the test pass for the wrong reason, so it belongs here rather than at
+        /// every call site.
+        /// </summary>
+        protected override IHost CreateHost(IHostBuilder builder)
+        {
+            var host = base.CreateHost(builder);
+
+            SystemSettingsSeed
+                .SetTransportAsync(host.Services, SmtpHost, SmtpPort, "https://app.example.test")
+                .GetAwaiter()
+                .GetResult();
+
+            return host;
+        }
+
         private static IReadOnlyDictionary<string, string?> Merge(IReadOnlyDictionary<string, string?>? overrides)
         {
             var settings = new Dictionary<string, string?>
             {
-                ["Email:ClientBaseUrl"] = "https://app.example.test",
-                // No SMTP host: the Testing host logs the composed link instead of delivering it, which is
-                // how these tests read the code back.
-                ["Email:SmtpHost"] = string.Empty,
+                // The transport is not configuration any more (issue #8) — see CreateHost. The default
+                // is NO SMTP host, under which the Testing host logs the composed link instead of
+                // delivering it, which is how these tests read the code back.
                 ["Email:FromAddress"] = "no-reply@odyssey.test",
                 ["RateLimiting:Identity:PermitLimit"] = "1000",
                 ["RateLimiting:IdentityEmail:PermitLimit"] = "1000",

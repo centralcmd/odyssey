@@ -31,9 +31,22 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
     /// Spot-checks that carry a behavioural contract beyond "a row exists": the three Subscriptions
     /// limits replace <c>private const</c>s on <c>SubscriptionService</c>, so a drifting seed silently
     /// changes what every deployment's Subscriptions page shows.
+    ///
+    /// <para>
+    /// The four mail transport rows are here for a sharper reason (issue #8, AC 17). Two of them seed
+    /// the EMPTY STRING, and that empty value is the whole contract: there is no configuration to adopt
+    /// from and no environment fallback, so an empty host is not a placeholder awaiting a carry-over
+    /// step — it IS the shipped state, and it means a fresh deployment sends no mail until an
+    /// administrator configures a relay. A seed that quietly grew a default host would reverse that
+    /// without anything else noticing.
+    /// </para>
     /// </summary>
     private static readonly (string Key, string Value)[] ExpectedRows =
     [
+        (SystemSettingsKeys.EmailSmtpHost, SystemSettingsDefaults.EmailSmtpHost),
+        (SystemSettingsKeys.EmailSmtpPort, $"{SystemSettingsDefaults.EmailSmtpPort}"),
+        (SystemSettingsKeys.EmailUseStartTls, SystemSettingsDefaults.EmailUseStartTls ? "true" : "false"),
+        (SystemSettingsKeys.EmailClientBaseUrl, SystemSettingsDefaults.EmailClientBaseUrl),
         (SystemSettingsKeys.SubscriptionRenewalWindowDays,
             $"{SystemSettingsDefaults.SubscriptionRenewalWindowDays}"),
         (SystemSettingsKeys.SubscriptionMaxSummaryRenewals,
@@ -57,7 +70,8 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         {
             var rows = await context.SystemSettings.AsNoTracking().ToDictionaryAsync(row => row.Key, row => row);
 
-            Assert.Equal(62, rows.Count);
+            // 62 before issue #8, +4 for the mail transport and the public link origin.
+            Assert.Equal(66, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)

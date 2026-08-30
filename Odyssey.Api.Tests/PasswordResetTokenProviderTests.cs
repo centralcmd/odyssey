@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Odyssey.Api.Email;
@@ -129,6 +130,29 @@ public class PasswordResetTokenProviderTests
 
         public CapturingLoggerProvider Logs { get; } = new();
 
+        /// <summary>
+        /// The client base URL is a settings row now, not configuration (issue #8), and it has to be
+        /// written before the first request: these tests read the reset CODE back out of the composed
+        /// link in the log, so an unset origin leaves nothing to match.
+        ///
+        /// <para>
+        /// The SMTP host is deliberately left unseeded. Absent means "mail is not configured", which is
+        /// exactly the no-relay path this suite depends on — the Testing host logs the link instead of
+        /// delivering it.
+        /// </para>
+        /// </summary>
+        protected override IHost CreateHost(IHostBuilder builder)
+        {
+            var host = base.CreateHost(builder);
+
+            SystemSettingsSeed
+                .SetTransportAsync(host.Services, host: string.Empty, clientBaseUrl: "https://app.example.test")
+                .GetAwaiter()
+                .GetResult();
+
+            return host;
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
@@ -136,8 +160,10 @@ public class PasswordResetTokenProviderTests
                 new Dictionary<string, string?>
                 {
                     ["UseInMemoryDatabase"] = "true",
-                    ["Email:ClientBaseUrl"] = "https://app.example.test",
-                    ["Email:SmtpHost"] = string.Empty,
+                    // No Email:* here any more (issue #8). These tests exercise the token provider, not
+                    // delivery, and the no-relay path they rely on is what an unseeded database already
+                    // gives: an absent SMTP host row means "mail is not configured", so the Testing host
+                    // logs the composed link instead of sending it.
                     ["RateLimiting:Identity:PermitLimit"] = "1000",
                     ["RateLimiting:IdentityEmail:PermitLimit"] = "1000",
                 }));

@@ -23,7 +23,7 @@ public class MailRecipientThrottleApiTests
     public async Task ASkippedSend_StillAnswersWithTheNormalSuccessResponse()
     {
         var throttle = new RecordingThrottle { Allow = false };
-        using var factory = CreateFactory(throttle);
+        await using var factory = await CreateFactoryAsync(throttle);
         var client = factory.CreateClient();
         await SeedConfirmedUserAsync(factory);
 
@@ -39,7 +39,7 @@ public class MailRecipientThrottleApiTests
         // Identity short-circuits before the sender for an unknown address, so the throttle sees
         // nothing — the response must be indistinguishable from the throttled registered case above.
         var throttle = new RecordingThrottle { Allow = false };
-        using var factory = CreateFactory(throttle);
+        await using var factory = await CreateFactoryAsync(throttle);
         var client = factory.CreateClient();
         await SeedConfirmedUserAsync(factory);
 
@@ -53,14 +53,25 @@ public class MailRecipientThrottleApiTests
         Assert.Equal([Registered], throttle.Recipients);
     }
 
+    /// <summary>
+    /// Async because the SMTP host is a database row now, not configuration (issue #8), and it has to
+    /// be written before the first request. The old in-memory configuration key would be read by
+    /// nothing: the sender would see no host, short-circuit to its dev link-logging path before any
+    /// throttle decision, and every assertion below would pass while exercising none of the throttle.
+    /// </summary>
+    private static async Task<OdysseyApiFactory> CreateFactoryAsync(IEmailSendThrottle throttle)
+    {
+        var factory = CreateFactory(throttle);
+        await SystemSettingsSeed.SetTransportAsync(
+            factory.Services, SmtpEmailSenderTestHarness.UnreachableHost);
+        return factory;
+    }
+
     private static OdysseyApiFactory CreateFactory(IEmailSendThrottle throttle) =>
         new(
             permissions: [],
             configuration: new Dictionary<string, string?>
             {
-                // Without a host the sender short-circuits to its dev link-logging path before any
-                // throttle decision, so the throttle would never be consulted.
-                ["Email:SmtpHost"] = "smtp.invalid.test",
                 ["Email:FromAddress"] = "no-reply@odyssey.test",
                 // Generous per-IP limits so nothing here is throttled by the other layer.
                 ["RateLimiting:Identity:PermitLimit"] = "1000",

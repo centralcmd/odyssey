@@ -87,6 +87,30 @@ public static class SystemSettingsDefaults
 
     // ── Transactional email (issue #421 Wave 2), mirroring today's shipped values ────────────────
 
+    // The SMTP transport and the public link origin (issue #8). These four mirror the shipped
+    // EmailOptions defaults the class carried before it was deleted — with one difference that is
+    // the whole point: there is NO configuration to fall back to any more, so an empty host is not a
+    // stand-in for "read it from the environment", it IS the value, and it means mail is not
+    // configured on this deployment. A fresh deployment therefore sends nothing until an
+    // administrator sets a host at /settings; that window is documented in docs/deployment.md and
+    // surfaced on the settings page itself.
+    //
+    // Note what these defaults do and do NOT govern. They are what a MISSING row falls back to on
+    // the GET/projection path, so the settings page can render a row for a database whose seed has
+    // not run. The SEND path never consults them: it distinguishes absent (unconfigured, skip) from
+    // unusable (degraded, fail closed) and substitutes nothing in either case.
+
+    /// <summary>Empty — mail is not configured until an administrator sets a relay.</summary>
+    public const string EmailSmtpHost = "";
+
+    public const int EmailSmtpPort = 587;
+
+    /// <summary>True: STARTTLS submission on 587 is the shipped posture.</summary>
+    public const bool EmailUseStartTls = true;
+
+    /// <summary>Empty — links cannot be composed until an administrator sets the public origin.</summary>
+    public const string EmailClientBaseUrl = "";
+
     public const string EmailFromAddress = "no-reply@odyssey.local";
     public const string EmailFromName = "Odyssey";
 

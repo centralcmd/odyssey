@@ -162,9 +162,10 @@ public class LegalPseudonymizationSecretTests
                 new Dictionary<string, string?>
                 {
                     ["UseInMemoryDatabase"] = "true",
-                    // Production's other startup requirement (issue #405): without a relay configured
-                    // that validator fails first, and this test would measure the wrong thing.
-                    ["Email:SmtpHost"] = "smtp.example.test",
+                    // Production used to have a second startup requirement — a configured relay
+                    // (issue #405) — which had to be supplied here or its validator failed first and
+                    // this test measured the wrong thing. Issue #8 removed that gate along with the
+                    // setting, so there is nothing left to satisfy.
                 }));
         }
     }

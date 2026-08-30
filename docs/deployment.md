@@ -66,19 +66,18 @@ never builds.
 4. **Create `.env.prod`** from the template and fill in real values:
    ```bash
    cp .env.prod.example .env.prod
-   # edit .env.prod: GHCR_OWNER, IMAGE_TAG, ODYSSEY_DOMAIN, DB passwords, SMTP host/port/TLS,
+   # edit .env.prod: GHCR_OWNER, IMAGE_TAG, ODYSSEY_DOMAIN, DB passwords,
    #                 BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD
    ```
    - Generate strong DB passwords (e.g. `openssl rand -base64 24`).
    - `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` create the initial administrator on a
      fresh database and are **required** there — see [First-run notes](#first-run-notes).
-   - `EMAIL_CLIENT_BASE_URL` **must** be your real `https://` domain, or confirmation and
-     password-reset links will be wrong.
-   - A real SMTP **transport** is required, and only the transport lives here:
-     `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT`, `EMAIL_USE_STARTTLS`. In Production an empty
-     `EMAIL_SMTP_HOST` **fails startup** (issue #405): the no-relay fallback logs the action link
-     instead of sending it, which for a password reset means writing a working credential into the
-     log, so a Production deployment refuses to run in that state rather than degrading into it.
+   - **Nothing about mail goes in this file** (issue #8). The relay host, port and STARTTLS mode and
+     the public link origin joined the sender identity and the relay credential in runtime settings;
+     all of it is entered at **`/settings` → Email** after your first sign-in. The API no longer
+     refuses to start without a relay, so **a fresh deployment starts with mail switched off** —
+     read [Mail is configured after first sign-in](#mail-is-configured-after-first-sign-in) before
+     you deploy, because that window has one consequence you cannot recover from yourself.
    - **No credential goes in this file.** The relay username and password, the Claude API key and
      the two derivation keys were removed from configuration entirely in issue #445 — the
      properties no longer exist, so a value set here is not read and not fallen back to. They are
@@ -304,10 +303,53 @@ Read this before upgrading:
   backup alone is no longer sufficient — see [The Data Protection keys volume](#the-data-protection-keys-volume)
   and back both up together.
 
-`Email:SmtpHost`, `Email:SmtpPort`, `Email:UseStartTls` and `Email:ClientBaseUrl` deliberately stay in
-configuration. The sender connects to the host and *then* authenticates, so an admin-editable host
-would harvest the relay credential and every password-reset token; `ClientBaseUrl` is the host of every
-reset link.
+### Mail is configured after first sign-in
+
+`Email:SmtpHost`, `Email:SmtpPort`, `Email:UseStartTls` and `Email:ClientBaseUrl` used to stay in
+configuration, and issue #8 moved all four into the settings store. They are edited at **`/settings` →
+Email**, gated on `system-settings.security.update`, and every change binds on the **next send** — no
+restart, no cache wait. Their environment variables and the whole `Email` configuration section were
+**deleted**, not deprecated: nothing reads `Email:` from configuration any more, and a value set there
+is not a fallback.
+
+**Startup validation is gone.** The Production `ValidateOnStart` gate on `Email:SmtpHost` could not
+survive the move — a value entered through the settings UI cannot be a precondition for that UI coming
+up — so the failure moved from startup to the first send, which logs and skips. This is the identical
+trade issue #445 made when `Legal:PseudonymizationSecret` lost its own gate.
+
+The consequence, and it is the part worth planning around:
+
+> A new deployment sends **no mail at all** until an administrator sets an SMTP host. You sign in with
+> the one-time `BOOTSTRAP_ADMIN_PASSWORD` and then configure SMTP. **If that password is lost during
+> that window there is no self-service recovery** — the forgot-password flow needs working mail — and
+> the account must be repaired directly in the database.
+
+So configure mail immediately after your first sign-in, before blanking
+`BOOTSTRAP_ADMIN_PASSWORD`, and then send yourself a password reset. Nothing short of a real send
+checks the whole path, relay credential included, and nothing checks it at startup any more.
+
+While no host is set, the System settings page reports **"Transactional mail is not configured"** in
+its page header, at Information severity, with a Fix action jumping to the row. That covers an
+administrator who is looking at the page; it does not cover an operator who deploys and never visits
+`/settings`, which is why this section exists.
+
+**Changing the SMTP host, or turning STARTTLS off, clears the stored SMTP username and password** —
+in the same database transaction as the change itself, so the two land together or neither does. The
+threat the old Non-Goal was protecting against is real: the sender connects and *then* authenticates,
+so whatever host is set receives the stored credential, and a credential entered for an encrypted
+transport must not be replayed over a cleartext one where passive network position alone is enough to
+read it. Clearing it closes both structurally rather than by detection. The UI confirms before saving
+and names what will be cleared; re-enter the credential at **`/settings` → Credentials** afterwards.
+Until you do, mail is sent unauthenticated and any relay requiring a login will reject it.
+
+`Email:ClientBaseUrl` carries no such structural control, because no credential is involved. Whoever
+can change it receives a password-reset token for any address they know — **including another
+administrator's**. Accounts with two-factor authentication stay protected by their second factor,
+which makes 2FA enrolment a meaningful control for administrator accounts specifically. What guards
+the rest is the security claim, an audit line recording old and new host, https-only validation (with
+a loopback exemption so the dev stack keeps working over `http://localhost`), and a hint on the field
+when the saved origin differs from the one you are browsing from. That residual is stated and
+accepted; see issue #8 §10.2.
 
 ## Backups
 

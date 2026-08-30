@@ -80,11 +80,14 @@ services:
       # this flag in every environment, so `true` in Production is an API serving an empty in-memory
       # database that loses everything on restart — with no error anywhere saying so.
       UseInMemoryDatabase: "false"
-      # The origin of every confirmation and password-reset link. Guarded rather than defaulted: the
-      # base file falls back to http://localhost:5199 for the laptop stack, and inheriting that in
-      # production produces mail whose links are dead — the one failure a user cannot report, because
-      # the mail they cannot act on is the one that would let them in.
-      Email__ClientBaseUrl: ${EMAIL_CLIENT_BASE_URL:?EMAIL_CLIENT_BASE_URL must be set in .env.prod (your public https origin, e.g. https://odyssey.example.com)}
+      # The Email__ClientBaseUrl guard is GONE (issue #8), and its removal is not a relaxation of what
+      # it was protecting. It existed because the base file defaulted the value to
+      # http://localhost:5199 for the laptop stack, and inheriting that in production produces mail
+      # whose links are dead — the one failure a user cannot report, because the mail they cannot act
+      # on is the one that would let them in. There is no such default to inherit any more: the base
+      # file sets no Email__* at all, and the value is a settings row an administrator enters at
+      # /settings. An unset one is EMPTY, which the sender handles by mailing the bare reset code
+      # rather than a broken link.
       # Persisted DataProtection keys (see Program.cs) — survives redeploys.
       DataProtection__KeysPath: /var/odyssey/dataprotection-keys
       # Legal__PseudonymizationSecret is GONE (issue #445 Wave 4). It lives in the encrypted secret
