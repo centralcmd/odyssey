@@ -340,11 +340,6 @@ Losing the volume without losing the database leaves stored credentials readable
 Credentials rows report *"Set, but this server cannot decrypt it"*, and the features that use them
 behave as if the credential were unset.
 
-**Only the `api` container mounts it.** The migrations job did too for a while, so that a step there
-could protect a value under keys the API could read; no such step exists, so the mount was removed —
-every container holding the ring is one more that can decrypt every stored credential. If you add a
-mount, add it with the step that needs it, pointing at this same volume.
-
 **Incident response.** If the volume, or any backup of it, is suspected disclosed, treat every stored
 credential as compromised and **rotate it at the provider** — re-encrypting under a new key ring is
 not sufficient, because the plaintext is what leaked. If a derivation key was among them, run a GDPR
@@ -358,16 +353,20 @@ database client. It does **not** protect against an attacker who has the applica
 that attacker has the key ring and the process memory. The access boundary is unchanged by this
 feature; the prize behind it is larger.
 
-**Both containers mount it.** `api` and `migrations` share the volume and set the same
-`DataProtection__KeysPath`, so a value protected by one is readable by the other. That widens key
-custody to two containers, deliberately: the alternative is a migrations job writing rows the API can
-never decrypt. It works because both images are `aspnet:10.0-alpine` running `USER app`, so the key
-files one writes are readable by the other — and the migrations job runs first, so it is usually the
-one that creates the ring.
+**Only the `api` container mounts it**, and that is the point: every container holding the ring is one
+more that can decrypt every stored credential. The `migrations` job mounted it too for a while, so
+that a configuration-adoption step could protect a value under keys the API could read — a value
+protected under the job's own ephemeral ring would have produced a row the API could never decrypt.
+That step no longer exists and nothing in the job protects anything, so the mount was removed along
+with it. The API creates the ring on first start.
 
-**The mount must be read-write on every service that has it.** A read-only mount does not fail loudly:
-Data Protection falls back to an in-memory key ring with a log line, which is the same
-silently-ephemeral failure by another route.
+If you ever add a mount back, add it together with the step that needs it, pointing at this same
+volume and using the same `SetApplicationName("Odyssey")` — two services deriving different keys from
+the same files is the failure this arrangement exists to avoid.
+
+**The mount must be read-write.** A read-only mount does not fail loudly: Data Protection falls back
+to an in-memory key ring with a log line, which is the same silently-ephemeral failure by another
+route.
 
 #### Upgrade note — an existing keys volume may need a one-time `chown`
 
