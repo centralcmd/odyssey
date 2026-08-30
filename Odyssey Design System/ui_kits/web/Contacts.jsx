@@ -170,7 +170,7 @@ const CP_SEED = [
     archived: null, createdAt: '2024-11-02T09:00:00Z', updatedAt: '2026-06-18T14:22:00Z',
     person: { firstName: 'Michael', lastName: 'Chen', dateOfBirth: '1990-04-12', sex: 'Male', title: 'Senior Engineer', company: 'Northwind Labs' },
     addresses: [{ id: 'a1', label: 'Home', isPrimary: true, line1: 'Thorvald Meyers gate 12', line2: 'Leil. 3B', city: 'Oslo', region: '', postalCode: '0555', countryCode: 'NO' }],
-    emails: [{ id: 'e1', label: 'Home', isPrimary: true, value: 'michael.chen@example.com' }],
+    emails: [{ id: 'e1', label: 'Home', isPrimary: true, value: 'michael.chen@fastmail.com' }],
     phones: [
       { id: 'p1', label: 'Mobile', isPrimary: true, value: '+1 415 555 0147' },
       { id: 'p2', label: 'Home', isPrimary: false, value: '+1 415 555 0912' },

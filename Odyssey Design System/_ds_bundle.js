@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"afd3f85ccf7e","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"19f81356a813","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"405e74b88332","components/ContactChip.jsx":"84820884f1d0","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"d3a9026394fa","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"8973ff96ec21","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MultiSelect.jsx":"dbb3b8710537","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordTable.jsx":"29c7ae7475e2","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretSettingField.jsx":"6be65a69ebf7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"d06cff7c43e0","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b2ef3a111060","components/TagMultiSelect.jsx":"a31e3f264d46","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","explore/settings-explore-common.js":"45bb3de9deb6","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"202b58a52958","ui_kits/web/AccountTerms.jsx":"fad2bace25fc","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"821b2bc086d0","ui_kits/web/AddAccountModal.jsx":"35d6d60bd403","ui_kits/web/AddBudgetItemModal.jsx":"8dc5d7b427ba","ui_kits/web/AddBudgetModal.jsx":"edd942d3d192","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"6ece4277723d","ui_kits/web/AddEstimateModal.jsx":"4e2dd58b032a","ui_kits/web/AddFileModal.jsx":"35a97b29e621","ui_kits/web/AddInsurancePolicyModal.jsx":"98bbff419847","ui_kits/web/AddRenewalModal.jsx":"bb6ea59154dc","ui_kits/web/AddSubscriptionModal.jsx":"29f8104f027b","ui_kits/web/AddTaxStatementModal.jsx":"054ea5a1d78a","ui_kits/web/AddTermModal.jsx":"4a9ce4542ade","ui_kits/web/AddTransactionModal.jsx":"625177041c8d","ui_kits/web/AnalyzeFileModal.jsx":"d45f26f5e580","ui_kits/web/AppShell.jsx":"a7c2544b8837","ui_kits/web/Budgets.jsx":"07e3cfaea2b0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"52fa8f7af52e","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/Contacts.jsx":"18ed07924daf","ui_kits/web/Contracts.jsx":"c50d8570216b","ui_kits/web/Currencies.jsx":"553cd39dc7ee","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"fb463beb2177","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"35e5befe22a0","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"097e927bf7a0","ui_kits/web/InsuranceUploadModal.jsx":"48bf04f26215","ui_kits/web/Journal.jsx":"f13761a94a44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7033ff0bc236","ui_kits/web/Preferences.jsx":"c56b25306430","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"ec29cfc78fdc","ui_kits/web/SystemSettings.jsx":"6db3416bd858","ui_kits/web/Tasks.jsx":"bd7a50a736b5","ui_kits/web/TaxStatements.jsx":"038bebb36b3c","ui_kits/web/TransactionTags.jsx":"a7022800c29b","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"d99919c9f05e","ui_kits/web/data.js":"1115df5493fe","ui_kits/web/insurance-data.js":"445f614ed4af","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"c98d7395c179","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"3fd41fb81514","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"afd3f85ccf7e","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"19f81356a813","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"405e74b88332","components/ContactChip.jsx":"84820884f1d0","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"d3a9026394fa","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"8973ff96ec21","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MultiSelect.jsx":"dbb3b8710537","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordTable.jsx":"29c7ae7475e2","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"d06cff7c43e0","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b2ef3a111060","components/TagMultiSelect.jsx":"a31e3f264d46","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","explore/settings-explore-common.js":"45bb3de9deb6","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"202b58a52958","ui_kits/web/AccountTerms.jsx":"fad2bace25fc","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"821b2bc086d0","ui_kits/web/AddAccountModal.jsx":"35d6d60bd403","ui_kits/web/AddBudgetItemModal.jsx":"8dc5d7b427ba","ui_kits/web/AddBudgetModal.jsx":"edd942d3d192","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"6ece4277723d","ui_kits/web/AddEstimateModal.jsx":"4e2dd58b032a","ui_kits/web/AddFileModal.jsx":"35a97b29e621","ui_kits/web/AddInsurancePolicyModal.jsx":"98bbff419847","ui_kits/web/AddRenewalModal.jsx":"bb6ea59154dc","ui_kits/web/AddSubscriptionModal.jsx":"29f8104f027b","ui_kits/web/AddTaxStatementModal.jsx":"054ea5a1d78a","ui_kits/web/AddTermModal.jsx":"4a9ce4542ade","ui_kits/web/AddTransactionModal.jsx":"625177041c8d","ui_kits/web/AnalyzeFileModal.jsx":"d45f26f5e580","ui_kits/web/AppShell.jsx":"a7c2544b8837","ui_kits/web/Budgets.jsx":"07e3cfaea2b0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"52fa8f7af52e","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/Contacts.jsx":"18ed07924daf","ui_kits/web/Contracts.jsx":"c50d8570216b","ui_kits/web/Currencies.jsx":"553cd39dc7ee","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"fb463beb2177","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"35e5befe22a0","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"097e927bf7a0","ui_kits/web/InsuranceUploadModal.jsx":"48bf04f26215","ui_kits/web/Journal.jsx":"f13761a94a44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7033ff0bc236","ui_kits/web/Preferences.jsx":"c56b25306430","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"ec29cfc78fdc","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"bd7a50a736b5","ui_kits/web/TaxStatements.jsx":"038bebb36b3c","ui_kits/web/TransactionTags.jsx":"a7022800c29b","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"d99919c9f05e","ui_kits/web/data.js":"1115df5493fe","ui_kits/web/insurance-data.js":"445f614ed4af","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"c98d7395c179","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -9390,6 +9390,76 @@ function SecretClearDialog({
 }
 Object.assign(__ds_scope, { SecretClearDialog });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/SecretClearDialog.jsx", error: String((e && e.message) || e) }); }
+
+// components/SecretClearOnSaveDialog.jsx
+try { (() => {
+/**
+ * Odyssey DS — SecretClearOnSaveDialog
+ * The gate in front of a PAGE SAVE that will clear a stored secret as a side
+ * effect. Distinct from `SecretClearDialog`, which confirms an immediate,
+ * single-field clear the user asked for directly: here the user asked to change
+ * a *different* value (the SMTP host, the STARTTLS flag) and the clear is a
+ * consequence of that change, committed in the same transaction.
+ *
+ * Two copy variants, chosen by `reason`, because the two triggers protect
+ * against different things:
+ *   `host`      a credential entered for one relay must never be presented to
+ *               another — the new host would receive it in plaintext.
+ *   `starttls`  a credential entered for an encrypted transport must never be
+ *               replayed over a cleartext one — passive network position is
+ *               then enough to harvest it.
+ *
+ * Three things the copy must say, and no dialog above it can: what is cleared,
+ * that the clear and the save commit together or not at all, and — because this
+ * gates a WHOLE-PAGE batch save — that Cancel discards nothing.
+ */
+function SecretClearOnSaveDialog({
+  open = true,
+  reason = 'host',
+  fromHost,
+  toHost,
+  secrets = [],
+  reEnterAt = 'Credentials',
+  pendingCount,
+  confirmLabel,
+  busy = false,
+  onCancel,
+  onConfirm
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    Modal,
+    Button
+  } = NS;
+  if (!Modal || !Button) return null;
+  const starttls = reason === 'starttls';
+  const list = secrets.length ? secrets.reduce((acc, s, i) => acc + (i === 0 ? '' : i === secrets.length - 1 ? ' and ' : ', ') + s, '') : 'the stored SMTP credential';
+  return /*#__PURE__*/React.createElement(Modal, {
+    open: open,
+    title: starttls ? 'Turning STARTTLS off clears the stored SMTP credential' : 'Changing the SMTP host clears the stored SMTP credential',
+    icon: starttls ? 'lock_open' : 'key_off',
+    iconTone: "error",
+    onClose: onCancel,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onCancel
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "danger",
+      loading: busy,
+      onClick: onConfirm
+    }, confirmLabel || (pendingCount ? `Save ${pendingCount} change${pendingCount === 1 ? '' : 's'} and clear` : 'Save and clear')))
+  }, starttls ? /*#__PURE__*/React.createElement("p", {
+    className: "odc-secret-dialog-p"
+  }, "The connection to ", fromHost ? /*#__PURE__*/React.createElement("b", null, fromHost) : 'the relay', " will no longer be encrypted. Anyone in a position to watch that traffic can read the credential and every message sent over it, including password-reset links.") : /*#__PURE__*/React.createElement("p", {
+    className: "odc-secret-dialog-p"
+  }, "Mail will be relayed through ", toHost ? /*#__PURE__*/React.createElement("b", null, toHost) : 'the new host', fromHost ? /*#__PURE__*/React.createElement(React.Fragment, null, " instead of ", /*#__PURE__*/React.createElement("b", null, fromHost)) : null, ". The SMTP client connects first and authenticates second, so whatever host is set here receives the stored credential."), /*#__PURE__*/React.createElement("p", {
+    className: "odc-secret-dialog-p"
+  }, /*#__PURE__*/React.createElement("b", null, list), " ", secrets.length === 1 ? 'is' : 'are', " cleared by this save, in the same transaction \u2014 either both the change and the clear land, or neither does. Re-enter the credential at ", /*#__PURE__*/React.createElement("b", null, reEnterAt), " afterwards; until you do, transactional mail is sent unauthenticated and any relay that requires a login will reject it."), /*#__PURE__*/React.createElement("p", {
+    className: "odc-secret-dialog-p"
+  }, /*#__PURE__*/React.createElement("b", null, "Cancel discards nothing."), " Every edit on this page stays exactly as you left it and nothing is saved, so you can put this one value back by hand and save the rest."));
+}
+Object.assign(__ds_scope, { SecretClearOnSaveDialog });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/SecretClearOnSaveDialog.jsx", error: String((e && e.message) || e) }); }
 
 // components/SecretSettingField.jsx
 try { (() => {
@@ -29787,7 +29857,7 @@ const CP_SEED = [{
     id: 'e1',
     label: 'Home',
     isPrimary: true,
-    value: 'michael.chen@example.com'
+    value: 'michael.chen@fastmail.com'
   }],
   phones: [{
     id: 'p1',
@@ -42670,7 +42740,7 @@ try { (() => {
    instance, so the page lives in the admin nav alongside Users and Roles and
    carries an "Admin only" pill.
 
-   The catalogue itself is declared in system-settings-data.js — 63 rows across
+   The catalogue itself is declared in system-settings-data.js — 67 rows across
    sixteen sections. Six control types: OdsSwitch (booleans), OdsNumberField
    (counts, windows, MB caps via `unit`), OdsNumberField with unit="%" (a stored
    0.0–1.0 fraction entered as a whole percent), OdsCapacityField (a finite
@@ -42707,7 +42777,7 @@ try { (() => {
      • a GROUP-LEVEL round-trip alert (focusable) when an export cap exceeds its
        import cap — placed at group level because the offending export row may
        be disabled (unlimited on) and so unfocusable;
-     • STICKY section heads, because at twelve sections the group label is the
+     • STICKY section heads, because at sixteen sections the group label is the
        only thing saying where in the catalogue you are, and it scrolls away
        within one row;
      • a save bar that explains a disabled Save: an expandable ErrorSummary
@@ -42914,6 +42984,101 @@ const ssParseBaseUrl = raw => {
 };
 // Host only, for anything that ECHOES the value (advisory, job stamp, log).
 const ssHostOf = raw => ssParseBaseUrl(raw).host || null;
+
+/* The SMTP host's shape bound, blocking. A DNS hostname or an IP literal and
+   nothing else: no scheme, no port, no path, no userinfo. CR, LF and NUL are
+   rejected outright — not because MailKit would compose a command from them
+   (it does not), but because the value is written to log lines and audit
+   entries, where a newline forges a record. Empty is legal and means the
+   deployment has no mail configured; canonicalisation lowercases and strips a
+   single trailing dot so `SMTP.Example.Net.` and `smtp.example.net` are one
+   stored value and produce no spurious audit line. */
+const ssParseSmtpHost = raw => {
+  const v = String(raw == null ? '' : raw).trim();
+  if (!v) return {
+    empty: true,
+    canonical: ''
+  };
+  if (/[\r\n\0]/.test(v)) return {
+    error: 'Remove the line break — a host is a single line'
+  };
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) return {
+    error: 'Enter the host only — no https:// or smtp:// prefix'
+  };
+  if (v.includes('@')) return {
+    error: 'Remove the username from the address — credentials are entered below, not in the host'
+  };
+  if (v.includes('/')) return {
+    error: 'Enter the host only — a path is not part of an SMTP address'
+  };
+  if (/:\d+$/.test(v)) return {
+    error: 'Enter the host only — the port is its own setting below'
+  };
+  if (v.length > 255) return {
+    error: 'Must be 255 characters or fewer'
+  };
+  const c = v.toLowerCase().replace(/\.$/, '');
+  const ipv6 = /^\[[0-9a-f:]+\]$/.test(c);
+  if (!ipv6) {
+    if (c.split('.').some(l => l.length > 63)) return {
+      error: 'Each label of the host must be 63 characters or fewer'
+    };
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(c)) {
+      return {
+        error: 'Enter a hostname or IP address — letters, digits, hyphens and dots only'
+      };
+    }
+  }
+  return {
+    host: c,
+    canonical: c
+  };
+};
+
+/* The public link origin, blocking. https is required EXCEPT for loopback,
+   where http keeps the dev and Aspire stacks working without an env var — a
+   loopback link resolves on the recipient's own machine, so the exemption
+   cannot be used to intercept anything. A path is allowed (a deployment may be
+   hosted under a subpath) and normalised without its trailing slash, because
+   links are composed as {base}/{clientPath}. */
+const SS_LOOPBACK = /^(localhost|127(\.\d+){3}|\[?::1\]?)$/i;
+const ssParseClientBaseUrl = raw => {
+  const v = String(raw == null ? '' : raw).trim();
+  if (!v) return {
+    empty: true,
+    canonical: ''
+  };
+  let u = null;
+  try {
+    u = new URL(v);
+  } catch (e) {
+    u = null;
+  }
+  if (!u || !u.host) return {
+    error: 'Enter an absolute address including https:// — for example https://odyssey.example.net'
+  };
+  const loopback = SS_LOOPBACK.test(u.hostname);
+  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && loopback)) {
+    return {
+      error: 'Only https:// is accepted — every password-reset link is composed against this address'
+    };
+  }
+  if (u.username || u.password) return {
+    error: 'Remove the username and password from the address'
+  };
+  if (u.search || u.hash) return {
+    error: 'Remove the query string and fragment — enter the origin only'
+  };
+  const path = u.pathname.replace(/\/+$/, '');
+  return {
+    host: u.host,
+    origin: u.origin,
+    canonical: `${u.protocol}//${u.host}${path}`
+  };
+};
+
+// Which stored secrets a host change or a STARTTLS switch-off clears.
+const SS_MAIL_SECRETS = ['secretEmailUsername', 'secretEmailPassword'];
 function SystemSettings() {
   const {
     useState,
@@ -42937,6 +43102,9 @@ function SystemSettings() {
   const [denied, setDenied] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportName, setExportName] = useState(null);
+  const [saveGate, setSaveGate] = useState(null);
+  const [cleared, setCleared] = useState(null);
+  const confirmOpener = useRef(null);
   const alertRefs = useRef({});
   const publishLimits = v => {
     window.__odysseyImportLimits = {
@@ -43049,7 +43217,19 @@ function SystemSettings() {
     }
     if (TEXT_TYPES[row.type]) {
       const v = (vals[row.key] || '').trim();
-      if (!v) return 'Enter a value';
+      // An `allowEmpty` row means something when it is empty — "mail is not
+      // configured" — so empty short-circuits before the per-row rule, exactly as
+      // the server's StringSetting.AllowEmpty does. Blocking it would make
+      // configuring mail a one-way door.
+      if (!v) return row.allowEmpty ? null : 'Enter a value';
+      if (row.checkSmtpHost) {
+        const parsed = ssParseSmtpHost(v);
+        if (parsed.error) return parsed.error;
+      }
+      if (row.checkClientBaseUrl) {
+        const parsed = ssParseClientBaseUrl(v);
+        if (parsed.error) return parsed.error;
+      }
       if (row.checkBaseUrl) {
         const parsed = ssParseBaseUrl(v);
         if (parsed.error) return parsed.error;
@@ -43086,7 +43266,41 @@ function SystemSettings() {
   // is ever echoed — a gateway URL such as https://key:secret@gateway.internal
   // is the expected shape here, so the host is parsed once at this boundary and
   // the rest is unreachable from the text.
+  // The clearing triggers (G4, G7), computed from the SNAPSHOT rather than from
+  // a row's dirty flag, because only one direction of each clears: a host that
+  // moved to a different non-empty value, and STARTTLS moving true → false.
+  // false → false and false → true clear nothing.
+  const hostClearing = () => {
+    const next = ssParseSmtpHost(vals.emailSmtpHost).canonical;
+    const prev = ssParseSmtpHost(snapshot.emailSmtpHost).canonical;
+    return !!next && next !== prev;
+  };
+  const startTlsClearing = () => !!snapshot.emailUseStartTls && !vals.emailUseStartTls;
+  // Host first: it is the change the administrator made deliberately, and its
+  // wording names the destination the credential would otherwise reach.
+  const clearTrigger = () => hostClearing() ? 'host' : startTlsClearing() ? 'starttls' : null;
   const advisoryFor = row => {
+    // Stated on the row before Save is pressed, so the consequence is visible
+    // while the value is being edited and not only in the dialog that gates the
+    // save. Same channel as every other advisory: non-blocking, never an error.
+    if (row.clearsCredential === 'host' && hostClearing()) {
+      return `Saving this clears the stored SMTP username and password, so a credential entered for ${ssParseSmtpHost(snapshot.emailSmtpHost).canonical || 'the previous relay'} is never presented to ${ssParseSmtpHost(vals.emailSmtpHost).canonical}. Re-enter them below afterwards.`;
+    }
+    if (row.clearsCredential === 'starttls' && startTlsClearing()) {
+      return 'Saving this sends the credential and every link over an unencrypted connection unless the relay uses implicit TLS on its port. The stored SMTP username and password are cleared with the change, so an existing credential is never put on the wire in clear.';
+    }
+    // Computed in the BROWSER, against the origin you are actually on. The
+    // server has no view of the caller's origin on the read path, and an
+    // advisory composed there would re-fire on every page load rather than on
+    // the value that differs. A hint only: an operator may legitimately set a
+    // public URL from an internal hostname, or set it ahead of a DNS cutover.
+    if (row.checkClientBaseUrl) {
+      const parsed = ssParseClientBaseUrl(vals[row.key]);
+      if (!parsed.origin) return null;
+      const here = typeof window !== 'undefined' && window.location ? window.location.origin : null;
+      if (!here || here === parsed.origin || here.startsWith('about:') || here === 'null') return null;
+      return `This differs from the address you are using now (${here}). Confirmation and password-reset links will point at ${parsed.origin} — correct if that is the public address, worth a second look if it is not.`;
+    }
     if (row.advise) {
       const v = vals[row.key];
       if (typeof v === 'number' && v > row.advise.above) return row.advise.cost;
@@ -43151,6 +43365,12 @@ function SystemSettings() {
       const a = ssParseBaseUrl(vals[row.key]),
         b = ssParseBaseUrl(snapshot[row.key]);
       if (a.canonical && b.canonical) return a.canonical !== b.canonical;
+    }
+    if (row.checkSmtpHost || row.checkClientBaseUrl) {
+      const p = row.checkSmtpHost ? ssParseSmtpHost : ssParseClientBaseUrl;
+      const a = p(vals[row.key]),
+        b = p(snapshot[row.key]);
+      if (a.canonical != null && b.canonical != null) return a.canonical !== b.canonical;
     }
     return vals[row.key] !== snapshot[row.key];
   };
@@ -43242,13 +43462,28 @@ function SystemSettings() {
       setExportName(name);
     }, 1700);
   };
-  const save = () => {
+  const save = confirmed => {
     if (!canSave || saving || phase !== 'ready') return;
     // Announce on the ATTEMPT, never from validation itself.
     if (hasErrors) {
       setAnnounce(`${problems.length} setting${problems.length === 1 ? '' : 's'} need${problems.length === 1 ? 's' : ''} fixing before this can be saved.`);
       return;
     }
+    // The gate on the page's SINGLE batch save. There is no per-field save to
+    // hang it on, so Confirm submits the whole batch exactly as an unguarded
+    // Save would, and Cancel submits nothing and discards nothing.
+    const trigger = confirmed === true ? null : clearTrigger();
+    if (trigger) {
+      confirmOpener.current = document.activeElement;
+      setSaveGate({
+        reason: trigger,
+        from: ssParseSmtpHost(snapshot.emailSmtpHost).canonical || null,
+        to: ssParseSmtpHost(vals.emailSmtpHost).canonical || null
+      });
+      setAnnounce(trigger === 'host' ? 'Confirm required. Saving clears the stored SMTP username and password because the SMTP host changed.' : 'Confirm required. Saving clears the stored SMTP username and password because STARTTLS is being turned off.');
+      return;
+    }
+    const clearing2 = clearTrigger();
     setSaving(true);
     setTimeout(() => {
       setSaving(false);
@@ -43263,14 +43498,47 @@ function SystemSettings() {
       };
       const parsed = ssParseBaseUrl(committed.fileAnalysisBaseUrl);
       if (parsed.canonical) committed.fileAnalysisBaseUrl = parsed.canonical;
+      const host = ssParseSmtpHost(committed.emailSmtpHost);
+      if (host.canonical != null) committed.emailSmtpHost = host.canonical;
+      const base = ssParseClientBaseUrl(committed.emailClientBaseUrl);
+      if (base.canonical != null) committed.emailClientBaseUrl = base.canonical;
       setVals(committed);
       setSnapshot(committed);
       publishLimits(committed);
       publishAnalysis(committed);
+      // The credential clear commits in the SAME transaction as the settings
+      // write — so it is applied here, on the same success, and never as a
+      // second request that could land on its own.
+      if (clearing2) {
+        setSecrets(s => {
+          const n = {
+            ...s
+          };
+          SS_MAIL_SECRETS.forEach(k => {
+            n[k] = {
+              state: 'not-set',
+              meta: null
+            };
+          });
+          return n;
+        });
+        setCleared(clearing2);
+        setAnnounce('System settings saved. The stored SMTP username and password were cleared and must be re-entered in Email.');
+      } else {
+        setAnnounce('System settings saved.');
+      }
       setJustSaved(true);
-      setAnnounce('System settings saved.');
       setTimeout(() => setJustSaved(false), 2200);
     }, 900);
+  };
+
+  // Closing the dialog by any route returns focus to the control that opened it
+  // — neither Modal nor the page's other dialogs restore it on their own.
+  const closeSaveGate = proceed => {
+    setSaveGate(null);
+    const opener = confirmOpener.current;
+    if (opener && opener.focus) setTimeout(() => opener.focus(), 0);
+    if (proceed) save(true);else setAnnounce('Nothing was saved. Your changes are still on the page.');
   };
   const retry = () => {
     setPhase('loading');
@@ -43305,12 +43573,12 @@ function SystemSettings() {
       });
     }
     if (TEXT_TYPES[row.type]) {
-      const urlish = row.key === 'aiPrivacyNoticeUrl' || row.checkBaseUrl;
+      const urlish = row.key === 'aiPrivacyNoticeUrl' || row.checkBaseUrl || row.checkClientBaseUrl;
       return /*#__PURE__*/React.createElement(TextInputField, {
         id: `ss-in-${row.key}`,
         value: vals[row.key] || '',
-        placeholder: row.checkBaseUrl ? 'https://api.anthropic.com' : row.key === 'aiPrivacyNoticeUrl' ? 'https://…' : undefined,
-        inputMode: urlish ? 'url' : row.key === 'emailFromAddress' ? 'email' : 'text',
+        placeholder: row.placeholder || (row.checkBaseUrl ? 'https://api.anthropic.com' : row.key === 'aiPrivacyNoticeUrl' ? 'https://…' : undefined),
+        inputMode: urlish ? 'url' : row.key === 'emailFromAddress' ? 'email' : row.checkSmtpHost ? 'url' : 'text',
         maxLength: row.maxLength,
         disabled: !editable,
         error: err ? ' ' : undefined,
@@ -43474,10 +43742,17 @@ function SystemSettings() {
   // nor the fix here is a Save, so merging them would make Save look blocked by
   // something Save cannot fix.
   const unreadable = secretRows.filter(r => secrets[r.key] && secrets[r.key].state === 'unreadable');
-  const credentialSignal = unreadable.length ? {
-    severity: 'error',
-    count: unreadable.length,
-    label: 'Credentials',
+  // Mail with no host is the other page-level condition worth surfacing here: it
+  // is not a fault and not a blocked Save, it is an INCOMPLETE deployment — so
+  // it joins the same rollup at `information` severity rather than growing a
+  // second mechanism. It is only rendered for someone holding the claim that
+  // can fix it, which the rollup's own gate already gives us.
+  const mailUnconfigured = hasSecurity && !ssParseSmtpHost(snapshot.emailSmtpHost).canonical;
+  const signalCount = unreadable.length + (mailUnconfigured ? 1 : 0);
+  const pageSignal = signalCount ? {
+    severity: unreadable.length ? 'error' : 'info',
+    count: signalCount,
+    label: unreadable.length ? 'Credentials' : 'Email',
     defaultOpen: true,
     region: /*#__PURE__*/React.createElement("div", {
       className: "signal-panel"
@@ -43513,7 +43788,38 @@ function SystemSettings() {
           targetId: `ss-in-${r.key}`
         });
       }
-    }, "Fix \u2192"))))
+    }, "Fix \u2192"))), mailUnconfigured && /*#__PURE__*/React.createElement("div", {
+      className: "alert info compact signal-row",
+      role: "button",
+      tabIndex: 0,
+      onClick: () => jumpTo({
+        targetId: 'ss-in-emailSmtpHost'
+      }),
+      onKeyDown: e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          jumpTo({
+            targetId: 'ss-in-emailSmtpHost'
+          });
+        }
+      }
+    }, /*#__PURE__*/React.createElement(SeverityIcon, {
+      severity: "info",
+      size: 18,
+      className: "alert-icon"
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "alert-body"
+    }, /*#__PURE__*/React.createElement("strong", null, "Transactional mail is not configured."), " Confirmation and password-reset messages are logged and skipped, so no account can be confirmed or recovered until an SMTP host is set.", /*#__PURE__*/React.createElement("span", {
+      className: "signal-where"
+    }, " In Email.")), /*#__PURE__*/React.createElement("button", {
+      className: "alert-fix",
+      onClick: e => {
+        e.stopPropagation();
+        jumpTo({
+          targetId: 'ss-in-emailSmtpHost'
+        });
+      }
+    }, "Fix \u2192")))
   } : null;
   const renderSecret = row => {
     const Field = ssDS('SecretSettingField');
@@ -43573,7 +43879,7 @@ function SystemSettings() {
     badge: dirtyCount || undefined,
     badgeLabel: "unsaved changes",
     disabled: phase !== 'ready' || hasErrors,
-    onClick: save
+    onClick: () => save()
   }, justSaved ? 'Saved' : 'Save changes')) : null;
   return /*#__PURE__*/React.createElement("div", {
     className: "col gap-6"
@@ -43588,7 +43894,7 @@ function SystemSettings() {
     title: "System settings",
     icon: "settings",
     sub: "Instance-wide configuration for this Odyssey deployment",
-    signal: phase === 'ready' ? credentialSignal : null,
+    signal: phase === 'ready' ? pageSignal : null,
     searchDefaultOpen: true,
     search: /*#__PURE__*/React.createElement("div", {
       className: "row gap-3",
@@ -43734,7 +44040,29 @@ function SystemSettings() {
     unreadable: (secrets[clearing.key] || {}).state === 'unreadable',
     onCancel: () => setClearing(null),
     onConfirm: confirmClear
-  }), exportName && DSToast && /*#__PURE__*/React.createElement(DSToastStack, null, /*#__PURE__*/React.createElement(DSToast, {
+  }), saveGate && ssDS('SecretClearOnSaveDialog') && React.createElement(ssDS('SecretClearOnSaveDialog'), {
+    reason: saveGate.reason,
+    fromHost: saveGate.from,
+    toHost: saveGate.to,
+    secrets: ['SMTP username', 'SMTP password'],
+    reEnterAt: 'Email',
+    pendingCount: dirtyCount,
+    busy: saving,
+    onCancel: () => closeSaveGate(false),
+    onConfirm: () => closeSaveGate(true)
+  }), cleared && DSToast && /*#__PURE__*/React.createElement(DSToastStack, null, /*#__PURE__*/React.createElement(DSToast, {
+    key: "clr",
+    severity: "warning",
+    duration: 9000,
+    onClose: () => setCleared(null),
+    message: /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", null, "SMTP username and password cleared"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: 'var(--mud-palette-text-secondary)',
+        marginTop: 2
+      }
+    }, cleared === 'host' ? 'The credential was entered for the previous host and was cleared with the change.' : 'The credential was entered for an encrypted transport and was cleared with the change.', ' ', "Re-enter it in Email \u2014 until then, mail is sent unauthenticated."))
+  })), exportName && DSToast && /*#__PURE__*/React.createElement(DSToastStack, null, /*#__PURE__*/React.createElement(DSToast, {
     key: "exp",
     severity: "success",
     duration: 4200,
@@ -55169,6 +55497,20 @@ try { (() => {
    `adviseOffDefault`: the shipped default a text value is compared against — any
    other value carries an advisory saying what the change does and does not
    affect (records already written keep what they ran under).
+   `allowEmpty`: a text row whose empty value is legal and MEANS something —
+   "not configured" — rather than a missing entry. Without it an empty text row
+   is a blocking error, which would make configuring mail a one-way door.
+   `checkSmtpHost`: hostname-or-IP shape validation (no scheme, port, path,
+   userinfo, CR/LF/NUL), canonicalised to lowercase with a trailing dot stripped.
+   `checkClientBaseUrl`: absolute-URL validation for the public link origin —
+   https required except for loopback hosts, no query, fragment or userinfo, a
+   path allowed but normalised without its trailing slash. Carries a non-blocking
+   ORIGIN-MISMATCH hint, computed in the browser against the origin the admin is
+   actually on, because the server cannot see it.
+   `clearsCredential`: changing this row clears the stored SMTP username and
+   password in the same transaction — 'host' when it moves to a different
+   non-empty value, 'starttls' only in the true → false direction. The page's
+   Save opens a confirmation before submitting.
    `checkBaseUrl`: the provider base URL — blocking shape validation (absolute
    https, no userinfo, query, fragment or path) plus a host-only advisory when the
    destination is not the shipped default.
@@ -55414,7 +55756,64 @@ const SS_GROUPS = [{
 }, {
   group: 'Email',
   icon: 'mark_email_read',
+  // The transport rows come FIRST — the host, the port, the encryption flag and
+  // the public URL links are composed against. They frame everything below
+  // them: whether mail leaves at all, where it goes, and whether the
+  // credential beneath them travels encrypted. All four moved out of
+  // appsettings.json into this store, so an operator can configure mail on a
+  // fresh deployment without a redeploy — there is no environment fallback and
+  // no adoption step, so an empty host means mail is simply not configured.
   rows: [{
+    key: 'emailSmtpHost',
+    type: 'text',
+    claim: 'security',
+    icon: 'send',
+    title: 'SMTP host',
+    desc: 'The relay every transactional mail is sent through. A hostname or IP literal only — no scheme, port, path or credentials. Empty means mail is not configured: every send is logged and skipped.',
+    extra: 'The client connects before it authenticates, so whatever host is set here receives the stored SMTP credential. Changing it clears that credential in the same save, and the change binds on the next send with no restart.',
+    maxLength: 255,
+    checkSmtpHost: true,
+    allowEmpty: true,
+    clearsCredential: 'host',
+    placeholder: 'smtp.example.net',
+    meta: {
+      by: 'Marcus Reyes',
+      on: '2 Aug 2026, 09:10'
+    }
+  }, {
+    key: 'emailSmtpPort',
+    type: 'number',
+    claim: 'security',
+    icon: 'format_list_numbered',
+    title: 'SMTP port',
+    desc: 'The port the relay is reached on. 587 for STARTTLS submission, 465 for implicit TLS, 25 for an unauthenticated internal relay.',
+    min: 1,
+    max: 65535,
+    meta: null
+  }, {
+    key: 'emailUseStartTls',
+    type: 'switch',
+    claim: 'security',
+    icon: 'lock',
+    title: 'Use STARTTLS',
+    desc: 'Upgrade the connection to TLS after connecting — the right setting for port 587. Turn it off only for implicit TLS on 465, where the connection is encrypted from the start.',
+    extra: 'Turning it off clears the stored SMTP credential in the same save: a credential entered for an encrypted transport must not be replayed over a cleartext one, where passive network position alone is enough to read it.',
+    clearsCredential: 'starttls',
+    meta: null
+  }, {
+    key: 'emailClientBaseUrl',
+    type: 'text',
+    claim: 'security',
+    icon: 'link',
+    title: 'Client base URL',
+    desc: 'The public origin every confirmation and password-reset link is composed against. Absolute https:// with no query, fragment or credentials; http:// is accepted for loopback addresses so the dev stack keeps working.',
+    extra: 'Anyone who can change this receives password-reset tokens for any address they know, so the value is audited by host and checked against the origin you are browsing from. Empty means links cannot be composed and the send is skipped.',
+    maxLength: 256,
+    checkClientBaseUrl: true,
+    allowEmpty: true,
+    placeholder: 'https://odyssey.example.net',
+    meta: null
+  }, {
     key: 'emailFromAddress',
     type: 'text',
     claim: 'security',
@@ -56099,6 +56498,10 @@ const SS_SAVED = {
   aiMaxTokens: 8096,
   aiMatchMaxVocabulary: 500,
   aiMatchTimeoutSeconds: 60,
+  emailSmtpHost: 'smtp.example.net',
+  emailSmtpPort: 587,
+  emailUseStartTls: true,
+  emailClientBaseUrl: 'https://odyssey.example.net',
   emailFromAddress: 'no-reply@odyssey.local',
   emailFromName: 'Odyssey',
   emailPerRecipientLimit: 3,
@@ -57291,6 +57694,8 @@ __ds_ns.RevealPanel = __ds_scope.RevealPanel;
 __ds_ns.SearchField = __ds_scope.SearchField;
 
 __ds_ns.SecretClearDialog = __ds_scope.SecretClearDialog;
+
+__ds_ns.SecretClearOnSaveDialog = __ds_scope.SecretClearOnSaveDialog;
 
 __ds_ns.SecretSettingField = __ds_scope.SecretSettingField;
 
