@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
@@ -59,10 +58,10 @@ public partial class ExchangeRatesCard
     private DateTime? _latestAsOf => _allRates.Count == 0 ? null : _allRates.Max(r => r.AsOf);
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _toFilter.Count > 0 || _statusFilter.Count > 0;
 
-    private static string Fmt(decimal n) => n.ToString("#,##0.00##", CultureInfo.InvariantCulture);
+    // Both figures live on ExchangeRateFigures so the zero guard and the format are testable.
+    private static string Fmt(decimal n) => ExchangeRateFigures.Format(n);
 
-    /// <summary>The reciprocal rate for the Inverse column — 0 for a zero rate rather than a throw.</summary>
-    private static decimal Inverse(decimal rate) => rate == 0 ? 0 : 1 / rate;
+    private static decimal Inverse(decimal rate) => ExchangeRateFigures.Inverse(rate);
 
     protected override async Task OnInitializedAsync()
     {

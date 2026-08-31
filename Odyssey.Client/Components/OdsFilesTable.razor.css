@@ -2,6 +2,19 @@
    Mirrors the Files page's .fls-* set; all tints come through the row's resolved kind
    meta (TypeFor), so the page reads correctly in both light and dark themes. */
 
+/* ── Horizontal-scroll region (the validity-column variant only) ──
+   The four validity columns push the table past its card, so this wrapper scrolls and carries a
+   tab stop; the focus ring has to be visible because keyboard users reach it deliberately. */
+.odc-ft-scroll {
+    overflow-x: auto;
+}
+
+.odc-ft-scroll:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
 /* ── Leading kind-avatar cell ── */
 .odc-ft-kind {
     flex: none;

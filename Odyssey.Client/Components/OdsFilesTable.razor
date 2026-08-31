@@ -26,6 +26,11 @@
       • OnDelete appends the danger Delete item after a divider.
 *@
 
+@* The validity variant is wider than its card, so it scrolls. A scrollable region has to be
+   reachable by keyboard alone (WCAG 2.2 SC 2.1.1): none of the four validity cells is focusable, so
+   without a focusable container there is no way to bring them into view except a pointer. Only the
+   wide variant gets the tab stop — a region that cannot scroll would be a dead one. *@
+<div class="@ScrollClass" tabindex="@ScrollTabIndex" role="@ScrollRole" aria-label="@ScrollLabel">
 <OdsRecordTable TRow="OdsFilesRow"
                 Rows="@Files"
                 RowKey="@(f => (object)f.Id)"
@@ -59,6 +64,7 @@
         </span>
     </Leading>
 </OdsRecordTable>
+</div>
 
 @* The Edit dialog lives OUTSIDE the table, like every other modal a row action opens. *@
 @if (_editRow is not null)

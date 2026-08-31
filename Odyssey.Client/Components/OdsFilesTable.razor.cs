@@ -201,6 +201,19 @@ public partial class OdsFilesTable
         return $"{bytes / (1024.0 * 1024.0):F1} MB";
     }
 
+    // ── Horizontal-scroll region (WCAG 2.2 SC 2.1.1) ─────────────────────────
+    // Only the validity variant can outgrow its card, so only it becomes a focusable region;
+    // every other files surface renders a bare passthrough div and gains no tab stop.
+    private bool ScrollsHorizontally => ValidityColumns;
+
+    private string? ScrollClass => ScrollsHorizontally ? "odc-ft-scroll" : null;
+
+    private int? ScrollTabIndex => ScrollsHorizontally ? 0 : null;
+
+    private string? ScrollRole => ScrollsHorizontally ? "region" : null;
+
+    private string? ScrollLabel => ScrollsHorizontally ? (AriaLabel ?? "Files") : null;
+
     /// <summary>Edit is offered only when the result can actually be persisted.</summary>
     private bool CanEdit => RenderEdit is not null || OnSave.HasDelegate;
 
@@ -211,24 +224,31 @@ public partial class OdsFilesTable
         _editOpen = true;
     }
 
-    // The dialog is unmounted on close so the next Edit starts from the chosen row's values.
-    private void OnEditOpenChanged(bool open)
-    {
-        _editOpen = open;
-        if (!open)
-            _editRow = null;
-    }
+    // Close by toggling Open only — never by clearing _editRow, which gates the mount. An inline
+    // MudDialog dismisses its teleported instance by re-rendering with Visible=false, so unmounting
+    // it in the same pass skips that render: OdsModal's closed-edge focus restore (WCAG 2.4.3) never
+    // runs and focus drops to <body> instead of the row's action menu. The dialog therefore stays
+    // mounted after the first Edit; the fresh _editKey per open is what re-initialises it.
+    private void OnEditOpenChanged(bool open) => _editOpen = open;
 
     private async Task CommitEditAsync(OdsFilesRow file, object? patch)
     {
         if (OnSave.HasDelegate)
             await OnSave.InvokeAsync(new OdsRecordSaveEventArgs(file.Id, patch));
 
-        OnEditOpenChanged(false);
-        _savedIds.Add(file.Id);
+        _editOpen = false;
+        // Deliberately not awaited: the flash outlives the save, and awaiting it would hold the
+        // dialog's submit button in its busy state for the whole confirm window.
+        _ = FlashSavedAsync(file.Id);
+    }
+
+    /// <summary>Show the transient "Saved" chip on a row, then clear it.</summary>
+    private async Task FlashSavedAsync(string id)
+    {
+        _savedIds.Add(id);
         StateHasChanged();
         await Task.Delay(OdsTiming.ConfirmFlashMs);
-        _savedIds.Remove(file.Id);
+        _savedIds.Remove(id);
         StateHasChanged();
     }
 
