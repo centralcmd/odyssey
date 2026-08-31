@@ -12,35 +12,43 @@ public partial class OdsFilesTable
 
     /// <summary>
     /// File-specific overflow-menu items — Preview / Download / Analyze / Copy ID —
-    /// slotted between the built-in Edit and Delete items. "View details" (expand) and
-    /// Delete are owned by the table; supply only the file-specific items here.
+    /// slotted between the built-in Edit and Delete items. Edit and Delete are owned by
+    /// the table; supply only the file-specific items here.
     /// </summary>
     [Parameter] public Func<OdsFilesRow, IReadOnlyList<OdsMenuItem>>? Actions { get; set; }
 
-    /// <summary>Override the read-only detail panel (default: File name · Document type · Size · Uploaded).</summary>
-    [Parameter] public RenderFragment<OdsFilesRow>? RenderDetail { get; set; }
-
-    /// <summary>Override the inline edit panel (default: name + document-type picker fed by <see cref="Kinds"/>).</summary>
-    [Parameter] public Func<OdsFilesRow, OdsRecordEditContext, RenderFragment>? RenderEdit { get; set; }
+    /// <summary>
+    /// Override the Edit-file dialog (default: <c>OdsFilesEditDialog</c> — name + document-type
+    /// picker fed by <see cref="Kinds"/>). The table hands over the per-edit key, the open state
+    /// and the commit callback; the template supplies the dialog and its fields.
+    /// </summary>
+    [Parameter] public Func<OdsFilesRow, OdsFileEditContext, RenderFragment>? RenderEdit { get; set; }
 
     /// <summary>
-    /// Persist an inline edit. The default panel raises an <see cref="OdsFileEdit"/> patch;
-    /// a custom <see cref="RenderEdit"/> raises its own shape. Enables the Edit menu item +
-    /// the inline panel. Omit for a read-only surface.
+    /// Persist an edit made in the Edit-file dialog. The default dialog raises an
+    /// <see cref="OdsFileEdit"/> patch; a custom <see cref="RenderEdit"/> raises its own shape.
+    /// Enables the Edit menu item. Omit for a read-only surface.
     /// </summary>
     [Parameter] public EventCallback<OdsRecordSaveEventArgs> OnSave { get; set; }
 
-    /// <summary>Document-type vocabulary for the default edit panel's picker. Default: the canonical account-file kinds.</summary>
+    /// <summary>Document-type vocabulary for the default dialog's picker. Default: the canonical account-file kinds.</summary>
     [Parameter] public IReadOnlyList<OdsOption>? Kinds { get; set; }
 
     /// <summary>
-    /// Issuing-contact options. When supplied the default edit panel grows the document-validity
-    /// row (Valid from / Valid to / Issued / Issued by) — account-file surfaces pass this; transaction
-    /// and tax surfaces leave it null for the name + type-only editor.
+    /// Issuing-contact options. When supplied the default Edit dialog grows the document-validity
+    /// fields (Valid from / Valid to / Issued / Issued by) — account-file surfaces pass this;
+    /// transaction and tax surfaces leave it null for the name + type-only editor.
     /// </summary>
     [Parameter] public IReadOnlyList<OdsOption>? Issuers { get; set; }
 
-    /// <summary>Resolve a row's <c>IssuedBy</c> id to a display name for the detail well. Default: the raw id.</summary>
+    /// <summary>
+    /// Append the read-only document-validity columns (Valid from · Valid to · Issued · Issued by,
+    /// the last resolved through <see cref="IssuerFor"/>). Set on surfaces that track document
+    /// validity — account files — and leave off on transaction attachments and the flat Files page.
+    /// </summary>
+    [Parameter] public bool ValidityColumns { get; set; }
+
+    /// <summary>Resolve a row's <c>IssuedBy</c> id to a display name. Default: the raw id.</summary>
     [Parameter] public Func<OdsFilesRow, string?>? IssuerFor { get; set; }
 
     /// <summary>Detach/delete a file — appends the danger Delete item after a divider.</summary>
@@ -119,12 +127,118 @@ public partial class OdsFilesTable
 
     private List<OdsRecordColumn<OdsFilesRow>> _columns = [];
 
+    // Editing runs in a dialog rather than through OdsRecordTable's row lifecycle, so the table
+    // owns the row being edited, the dialog's open state and the post-save "Saved" flash.
+    private OdsFilesRow? _editRow;
+    private Guid _editKey;
+    private bool _editOpen;
+    private readonly HashSet<string> _savedIds = [];
+
     protected override void OnInitialized() => _columns = BuildColumns();
 
-    // The edit renderer is the host's RenderEdit when given, otherwise the default
-    // name + document-type panel — but only when OnSave can persist the result.
-    private Func<OdsFilesRow, OdsRecordEditContext, RenderFragment>? EditRenderer =>
-        RenderEdit ?? (OnSave.HasDelegate ? DefaultEdit : null);
+    // Rebuild when the opt-in validity columns are toggled — the set is otherwise fixed.
+    protected override void OnParametersSet()
+    {
+        if (_columns.Count != 0 && _columns.Any(c => c.Key == "validFrom") != ValidityColumns)
+            _columns = BuildColumns();
+    }
+
+    // The DS menu convention: Edit (when editable), the host's file-specific items, then a
+    // divider + Delete. No "View details" — the row has nothing to expand into.
+    private IReadOnlyList<OdsMenuItem> BuildActions(OdsFilesRow file, OdsRecordActionContext ctx)
+    {
+        var items = new List<OdsMenuItem>();
+
+        if (CanEdit)
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit",
+                OnClick = EventCallback.Factory.Create(this, () => StartEdit(file)),
+            });
+
+        if (Actions is not null)
+            items.AddRange(Actions(file));
+
+        if (OnDelete.HasDelegate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, ctx.Remove),
+            });
+        }
+
+        return items;
+    }
+
+    // OdsRecordTable raises OnDelete with the row key (the Id string); map it back
+    // to the row so the host works with the same denormalized shape it passed in.
+    private Task HandleDelete(object key)
+    {
+        if (!OnDelete.HasDelegate)
+            return Task.CompletedTask;
+        var row = Files.FirstOrDefault(f => f.Id.Equals(key));
+        return row is null ? Task.CompletedTask : OnDelete.InvokeAsync(row);
+    }
+
+    // The host's RenderEdit when given, otherwise the default name + document-type dialog.
+    private RenderFragment EditFragment(OdsFilesRow file) =>
+        RenderEdit is not null ? RenderEdit(file, EditContext()) : DefaultEditDialog(file);
+
+    private string? IssuerName(OdsFilesRow file) =>
+        file.IssuedBy is null ? null : (IssuerFor?.Invoke(file) ?? file.IssuedBy.ToString());
+
+    private static string DefaultFormatSize(long bytes)
+    {
+        if (bytes < 1024)
+            return $"{bytes} B";
+        if (bytes < 1024 * 1024)
+            return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+
+    /// <summary>Edit is offered only when the result can actually be persisted.</summary>
+    private bool CanEdit => RenderEdit is not null || OnSave.HasDelegate;
+
+    private void StartEdit(OdsFilesRow file)
+    {
+        _editRow = file;
+        _editKey = Guid.NewGuid();
+        _editOpen = true;
+    }
+
+    // The dialog is unmounted on close so the next Edit starts from the chosen row's values.
+    private void OnEditOpenChanged(bool open)
+    {
+        _editOpen = open;
+        if (!open)
+            _editRow = null;
+    }
+
+    private async Task CommitEditAsync(OdsFilesRow file, object? patch)
+    {
+        if (OnSave.HasDelegate)
+            await OnSave.InvokeAsync(new OdsRecordSaveEventArgs(file.Id, patch));
+
+        OnEditOpenChanged(false);
+        _savedIds.Add(file.Id);
+        StateHasChanged();
+        await Task.Delay(OdsTiming.ConfirmFlashMs);
+        _savedIds.Remove(file.Id);
+        StateHasChanged();
+    }
+
+    private OdsFileEditContext EditContext() => new()
+    {
+        Key = _editKey,
+        Open = _editOpen,
+        OpenChanged = EventCallback.Factory.Create<bool>(this, OnEditOpenChanged),
+        OnSave = EventCallback.Factory.Create<object?>(this, patch => CommitEditAsync(_editRow!, patch)),
+    };
 
     private OdsFileKindMeta ResolveKind(OdsFilesRow file) => TypeFor?.Invoke(file) ?? NeutralKind;
 
@@ -133,4 +247,9 @@ public partial class OdsFilesTable
 
     private string DateText(DateTime uploadedUtc) =>
         FormatDate?.Invoke(uploadedUtc) ?? uploadedUtc.ToLocalTime().ToString("MMM dd, yyyy");
+
+    /// <summary>Compact form for the validity columns — four extra date columns can't each carry a
+    /// long-form date without overflowing the row.</summary>
+    private static string ShortDateText(DateTime? value) =>
+        value is null ? "—" : value.Value.ToLocalTime().ToString("MMM d, yy");
 }

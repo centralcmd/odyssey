@@ -1,4 +1,5 @@
 @page "/currencies"
+@using System.Globalization
 @using Odyssey.Dtos.Finance
 @using Odyssey.Client.Authorization
 @attribute [Authorize(Policy = PermissionClaims.CurrenciesRead)]
@@ -68,6 +69,13 @@
                 SortValue = c => c.MinorUnits,
                 Cell = (c, ctx) => @<text>@c.MinorUnits</text>
             },
+            @* A sample amount rendered in the currency — symbol placement and decimal precision at a
+               glance. Derived, so it is not a server sort key. *@
+            new()
+            {
+                Key = "example", HeaderText = "Example", Align = OdsAlign.End, CellClass = "odc-rec-muted",
+                Cell = (c, ctx) => @<text>@c.Symbol@((1234.5m).ToString("N" + c.MinorUnits, CultureInfo.InvariantCulture))</text>
+            },
             new()
             {
                 Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
@@ -110,9 +118,6 @@
             <Leading Context="c">
                 <OdsAvatar Initials="@c.Symbol" />
             </Leading>
-            <RenderDetail Context="c">
-                <CurrencyDetailPanel Currency="c" />
-            </RenderDetail>
             <CreateAction>
                 @if (_canCreate)
                 {

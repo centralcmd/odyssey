@@ -61,6 +61,9 @@ public partial class ExchangeRatesCard
 
     private static string Fmt(decimal n) => n.ToString("#,##0.00##", CultureInfo.InvariantCulture);
 
+    /// <summary>The reciprocal rate for the Inverse column — 0 for a zero rate rather than a throw.</summary>
+    private static decimal Inverse(decimal rate) => rate == 0 ? 0 : 1 / rate;
+
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
@@ -229,15 +232,8 @@ public partial class ExchangeRatesCard
 
     private IReadOnlyList<OdsMenuItem> BuildActions(ExistingExchangeRate r, OdsRecordActionContext ctx)
     {
-        var items = new List<OdsMenuItem>
-        {
-            new()
-            {
-                Icon = ctx.Expanded ? "close" : "expand_more",
-                Label = ctx.Expanded ? "Collapse" : "View details",
-                OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
-            },
-        };
+        // No "View details": every field a rate has is already a column, so rows don't expand.
+        var items = new List<OdsMenuItem>();
 
         if (_canUpdate)
         {

@@ -17,6 +17,12 @@
       • the loading / refetching / error / empty states, delegated to OdsListStatus
         (pass Loading + Error + HasFilters rather than assembling them per page)
 
+    EXPANSION IS OPT-IN. A table given neither RenderDetail nor RenderEdit has
+    nothing to expand into, so it renders no chevron, ignores row clicks and
+    drops the pointer cursor — a surface whose columns already show every field
+    (Currencies, Exchange rates, tag admin, Files) is a flat table, not a
+    collapsed one. Rows that DO expand are unchanged.
+
     Conceptually a MudTable with sort labels + expandable detail rows; built on
     raw table markup (like OdsCollapsible) because the accordion + inline-edit +
     saved-flash state machine is beyond MudTable's declarative model. Pairs with
@@ -38,7 +44,7 @@
 {
     <div class="sr-only" role="status" aria-live="polite">Loading @Noun…</div>
 }
-<table class="odc-rec @Class" aria-label="@AriaLabel" aria-busy="@(Loading ? "true" : "false")">
+<table class="odc-rec @(CanExpand ? null : "odc-rec-flat") @Class" aria-label="@AriaLabel" aria-busy="@(Loading ? "true" : "false")">
     <thead>
         <tr>
             @if (Leading is not null)
@@ -89,11 +95,14 @@
                         {
                             <OdsMenu Items="@Actions(row, ActionCtx(rk, expanded, editing))" AriaLabel="Row actions" />
                         }
-                        <button type="button" class="odc-rec-expand"
-                                aria-label="@(expanded ? "Collapse row" : "Expand row")" aria-expanded="@(expanded ? "true" : "false")"
-                                disabled="@editing" @onclick="@(() => ToggleRow(rk))" @onclick:stopPropagation="true">
-                            <span class="material-icons odc-rec-chev @(expanded ? "open" : null)" aria-hidden="true">expand_more</span>
-                        </button>
+                        @if (CanExpand)
+                        {
+                            <button type="button" class="odc-rec-expand"
+                                    aria-label="@(expanded ? "Collapse row" : "Expand row")" aria-expanded="@(expanded ? "true" : "false")"
+                                    disabled="@editing" @onclick="@(() => ToggleRow(rk))" @onclick:stopPropagation="true">
+                                <span class="material-icons odc-rec-chev @(expanded ? "open" : null)" aria-hidden="true">expand_more</span>
+                            </button>
+                        }
                     </div>
                 </td>
             </tr>

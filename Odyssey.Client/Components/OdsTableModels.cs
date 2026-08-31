@@ -81,7 +81,28 @@ public sealed record OdsFilesRowStatusBadge
 public sealed record OdsFileKindMeta(string Icon, string Color, string Soft);
 
 /// <summary>
-/// The patch raised by <c>OdsFilesTable</c>'s default inline-edit panel — a file's
+/// The mount contract for <c>OdsFilesTable</c>'s Edit-file dialog, handed to a host's
+/// <c>RenderEdit</c> template (Odyssey Design System · components/FilesTable → FTEditModal).
+/// The table owns which row is being edited, the dialog's open state and the post-save "Saved"
+/// flash; the template owns only the fields.
+/// </summary>
+public sealed class OdsFileEditContext
+{
+    /// <summary>Per-edit identity — put it on the dialog's <c>@@key</c> so a different row re-initialises it.</summary>
+    public required object Key { get; init; }
+
+    /// <summary>The dialog's visibility — bind to its <c>Open</c>.</summary>
+    public required bool Open { get; init; }
+
+    /// <summary>Raised when the dialog closes — bind to its <c>OpenChanged</c>.</summary>
+    public required EventCallback<bool> OpenChanged { get; init; }
+
+    /// <summary>Commit the patch — raises the table's <c>OnSave</c> and flashes "Saved" on the row.</summary>
+    public required EventCallback<object?> OnSave { get; init; }
+}
+
+/// <summary>
+/// The patch raised by <c>OdsFilesTable</c>'s default Edit-file dialog — a file's
 /// only mutable fields (display name + document-type key). Hosts read it off the
 /// <see cref="OdsRecordSaveEventArgs.Patch"/>; surfaces that edit different fields
 /// (e.g. the flat Files page edits name + description) supply their own

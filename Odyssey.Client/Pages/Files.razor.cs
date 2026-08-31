@@ -248,8 +248,8 @@ public partial class Files
               .Select(OdsOption.From)
               .ToList();
 
-    // View details / Edit / Delete are owned by the shared table (expand · inline
-    // edit panel · OnDelete); the page supplies only the file-specific items.
+    // Edit / Delete are owned by the shared table (the Edit-file dialog · OnDelete);
+    // the page supplies only the file-specific items.
     private List<OdsMenuItem> RowMenu(FileListItem file)
     {
         var busy = _busyFiles.Contains(file.Id);
@@ -283,7 +283,7 @@ public partial class Files
 
     private async Task HandleSaveAsync(OdsRecordSaveEventArgs args)
     {
-        if (args.Patch is not FilesMetaEditPanel.Patch patch || args.Key is not string key)
+        if (args.Patch is not FilesMetaEditDialog.Patch patch || args.Key is not string key)
             return;
 
         var file = _files.FirstOrDefault(f => f.Id.ToString() == key);

@@ -211,8 +211,8 @@ public partial class AccountFilesSection
         return new OdsFileKindMeta(t.Icon, t.Color, t.Soft);
     }
 
-    // View details / Edit / Delete are owned by the shared table (expand · inline
-    // edit panel · OnDelete); the host supplies only the file-specific items.
+    // Edit / Delete are owned by the shared table (the Edit-file dialog · OnDelete);
+    // the host supplies only the file-specific items.
     private IReadOnlyList<OdsMenuItem> BuildMenu(ExistingAccountFile file)
     {
         var id = file.FileMetadata.Id;

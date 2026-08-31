@@ -13,8 +13,9 @@
     journal, task and photo tags). The design system builds them from a single factory
     (ui_kits/web/TransactionTags.jsx · createTagsPage) because they carry the same
     Name / Description / Archived shape and the same page: a PageHeader with a status breakdown and a
-    search/status/sort toolbar, an OdsRecordTable with a read-only detail panel and archive/delete row
-    actions, and one AddTagModal reused for both create and row Edit.
+    search/status/sort toolbar, a flat OdsRecordTable with archive/delete row actions, and one
+    AddTagModal reused for both create and row Edit. Rows don't expand: Name / Description / Status
+    is the whole record, so a detail panel could only repeat the columns.
 
     The four route pages (/transaction-tags, /journal-tags, /task-tags, /photo-tags) instantiate it
     with their claims, copy and DTO accessors. Writes post a plain { Name, Description, Archived }
@@ -109,38 +110,6 @@
             <Leading Context="t">
                 <OdsAvatar Icon="local_offer" />
             </Leading>
-            <RenderDetail Context="t">
-                <div class="odc-meta-grid">
-                    <OdsMetaTile>
-                        <Label>Name</Label>
-                        <ChildContent>@Name(t)</ChildContent>
-                    </OdsMetaTile>
-                    <OdsMetaTile>
-                        <Label>Status</Label>
-                        <ChildContent>
-                            @if (Archived(t) is not null)
-                            {
-                                <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
-                            }
-                            else
-                            {
-                                <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
-                            }
-                        </ChildContent>
-                    </OdsMetaTile>
-                    <OdsMetaTile>
-                        <Label>Description</Label>
-                        <ChildContent>@(string.IsNullOrWhiteSpace(Description(t)) ? "—" : Description(t))</ChildContent>
-                    </OdsMetaTile>
-                    @if (Archived(t) is { } archivedAt)
-                    {
-                        <OdsMetaTile Mono="true">
-                            <Label>Archived</Label>
-                            <ChildContent>@archivedAt.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</ChildContent>
-                        </OdsMetaTile>
-                    }
-                </div>
-            </RenderDetail>
             <CreateAction>
                 @if (_canCreate)
                 {

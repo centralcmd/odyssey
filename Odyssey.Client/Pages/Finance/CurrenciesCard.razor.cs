@@ -198,15 +198,8 @@ public partial class CurrenciesCard
 
     private IReadOnlyList<OdsMenuItem> BuildActions(ExistingCurrency c, OdsRecordActionContext ctx)
     {
-        var items = new List<OdsMenuItem>
-        {
-            new()
-            {
-                Icon = ctx.Expanded ? "close" : "expand_more",
-                Label = ctx.Expanded ? "Collapse" : "View details",
-                OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
-            },
-        };
+        // No "View details": the columns are the whole record, so rows don't expand.
+        var items = new List<OdsMenuItem>();
 
         if (_canUpdate)
         {

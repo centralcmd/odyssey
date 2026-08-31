@@ -52,7 +52,8 @@ public partial class OdsRecordTable<TRow>
     /// <summary>Build the row's overflow-menu items (rendered as an OdsMenu kebab).</summary>
     [Parameter] public Func<TRow, OdsRecordActionContext, IReadOnlyList<OdsMenuItem>>? Actions { get; set; }
 
-    /// <summary>Read-only panel shown when a row is expanded.</summary>
+    /// <summary>Read-only panel shown when a row is expanded. Omit — together with
+    /// <see cref="RenderEdit"/> — for a flat table whose columns already show every field.</summary>
     [Parameter] public RenderFragment<TRow>? RenderDetail { get; set; }
 
     /// <summary>Edit panel shown when a row is in edit mode. Omit for read-only tables.</summary>
@@ -130,6 +131,13 @@ public partial class OdsRecordTable<TRow>
     private OdsTableSort? EffectiveSort => Controlled ? (Sort ?? DefaultSort) : _sort;
 
     private int ColSpan => (Leading is not null ? 1 : 0) + Columns.Count + 1;
+
+    /// <summary>
+    /// Whether rows have anywhere to expand to. With neither panel supplied the table drops the
+    /// chevron, the row-click toggle and the pointer cursor rather than opening an empty drawer —
+    /// the design system's flat record table (Currencies, Exchange rates, tag admin, Files).
+    /// </summary>
+    private bool CanExpand => RenderDetail is not null || RenderEdit is not null;
 
     /// <summary>
     /// How many placeholder rows the first fetch shows. Enough to read as a table rather than a
@@ -245,6 +253,8 @@ public partial class OdsRecordTable<TRow>
 
     private void ToggleRow(object id)
     {
+        if (!CanExpand)
+            return;
         if (_openIds.Contains(id))
             _openIds.Remove(id);
         else

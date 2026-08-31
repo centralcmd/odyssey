@@ -56,6 +56,15 @@
                 SortValue = r => r.Rate,
                 Cell = (r, ctx) => @<text>@Fmt(r.Rate)</text>
             },
+            @* The reciprocal — "1 EUR = x USD" — read straight off the same row rather than from an
+               expanded panel. Sorted server-side by the Inverse key, which orders by Rate reversed. *@
+            new()
+            {
+                Key = "inverse", HeaderText = "Inverse", Sortable = true, Align = OdsAlign.End,
+                CellClass = "odc-rec-muted", SortType = OdsSortType.Number,
+                SortValue = r => Inverse(r.Rate),
+                Cell = (r, ctx) => @<text>@Fmt(Inverse(r.Rate))</text>
+            },
             new()
             {
                 Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
@@ -73,7 +82,7 @@
             },
             new()
             {
-                Key = "asOf", HeaderText = "Effective", Sortable = true, Align = OdsAlign.End, CellClass = "odc-rec-muted", SortType = OdsSortType.Date,
+                Key = "asOf", HeaderText = "Effective from", Sortable = true, Align = OdsAlign.End, CellClass = "odc-rec-muted", SortType = OdsSortType.Date,
                 SortValue = r => r.AsOf,
                 Cell = (r, ctx) => @<text>@r.AsOf.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")</text>
             },
@@ -105,7 +114,6 @@
                         DefaultSort="@DefaultSort"
                         Sort="_sort"
                         SortChanged="OnSortChanged"
-                        MultiOpen="true"
                         KeepDirOnColumnChange="true"
                         Tiebreak="@((a, b) => b.AsOf.CompareTo(a.AsOf))"
                         Actions="BuildActions"
@@ -113,9 +121,6 @@
             <Leading Context="r">
                 <OdsAvatar Icon="currency_exchange" />
             </Leading>
-            <RenderDetail Context="r">
-                <ExchangeRateDetailPanel Rate="r" IsCurrent="@_currentIds.Contains(r.ExchangeRateId)" OnRecordNewer="AddClicked" />
-            </RenderDetail>
             <CreateAction>
                 @if (_canCreate)
                 {
