@@ -188,8 +188,10 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var created = await service.Create(NewContract(FixedToday.AddDays(-10), FixedToday.AddDays(10)));
-        Assert.Equal(ContractStatus.Active, created.Status);
+        // Archiving requires an ended term, so the contract that gets archived is a lapsed one — and
+        // the point of the test survives: Archived outranks the status the dates would derive.
+        var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)));
+        Assert.Equal(ContractStatus.Expired, created.Status);
 
         var archived = await service.Update(created.ContractId, new UpdateContract
         {
@@ -201,6 +203,83 @@ public class ContractServiceTests
         });
 
         Assert.Equal(ContractStatus.Archived, archived!.Status);
+    }
+
+    [Fact]
+    public async Task Update_Archive_RequiresAnEndedContract()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var created = await service.Create(NewContract(FixedToday.AddDays(-10), FixedToday.AddDays(10)));
+
+        UpdateContract Request(DateTime? end, DateTime? completion = null) => new()
+        {
+            Name = created.Name,
+            Type = created.Type,
+            StartDate = completion is null ? created.StartDate : null,
+            EndDate = end,
+            CompletionDate = completion,
+            IsArchived = true,
+        };
+
+        // Running: refused — the lifecycle is ordered, so Archived implies ended.
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(created.ContractId, Request(FixedToday.AddDays(10))));
+
+        // Today is not "ended" either: DeriveStatus calls a term Expired only once end < today.
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(created.ContractId, Request(FixedToday)));
+
+        // One PUT may end and archive together — the check reads the request's dates.
+        var archived = await service.Update(created.ContractId, Request(FixedToday.AddDays(-1)));
+        Assert.NotNull(archived!.Archived);
+        Assert.Equal(ContractStatus.Archived, archived.Status);
+    }
+
+    [Fact]
+    public async Task Update_Archive_AcceptsASettledOneOff()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+
+        // A delivered one-off is over, but its derived status is Active, not Expired — it is a settled
+        // record rather than a lapsed term. The gate has to accept it, which is why it checks the
+        // dates rather than comparing against ContractStatus.Expired.
+        var created = await service.Create(OneOffContract(FixedToday));
+        Assert.Equal(ContractStatus.Active, created.Status);
+
+        var archived = await service.Update(created.ContractId, new UpdateContract
+        {
+            Name = created.Name,
+            Type = created.Type,
+            CompletionDate = FixedToday,
+            IsArchived = true,
+        });
+
+        Assert.NotNull(archived!.Archived);
+    }
+
+    [Fact]
+    public async Task Update_ArchivedContract_StaysEditableAndRestorable()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)));
+        await service.Update(created.ContractId, new UpdateContract
+        {
+            Name = created.Name, Type = created.Type,
+            StartDate = created.StartDate, EndDate = created.EndDate, IsArchived = true,
+        });
+
+        // Only the TRANSITION into archived is gated. Re-saving an already-archived row must not
+        // re-validate, or a row archived before this rule existed could never be edited or restored.
+        UpdateContract Running(bool isArchived) => new()
+        {
+            Name = created.Name, Type = created.Type,
+            StartDate = FixedToday.AddDays(-10), EndDate = FixedToday.AddDays(10),
+            IsArchived = isArchived,
+        };
+
+        Assert.NotNull((await service.Update(created.ContractId, Running(isArchived: true)))!.Archived);
+        Assert.Null((await service.Update(created.ContractId, Running(isArchived: false)))!.Archived);
     }
 
     // ── One-off / term update transitions & boundaries ──────────────────────────
@@ -428,12 +507,13 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var (accountId, _, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)));
         await service.Update(contract.ContractId, new UpdateContract
         {
             Name = contract.Name,
             Type = contract.Type,
             StartDate = contract.StartDate,
+            EndDate = contract.EndDate,
             IsArchived = true,
         });
 

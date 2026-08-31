@@ -1,6 +1,14 @@
 @using System.Globalization
 @using Odyssey.Dtos.Finance
 
+@* DS parity — no consumer yet. The chip is still a design-system component with its own
+   preview (components/subscription-pickers.html), but the Subscriptions record card no
+   longer renders it: under the RecordCard rules a tile's value is a value, so the Billing
+   interval tile carries the plain cadence label with the anchor in its foot rather than a
+   nested chip. The class is NOT dead — CadenceLabel / AnchorLabel / FigureCaption /
+   EveryHelp are the page's and the create dialog's source for those strings, and they stay
+   here so the chip and the tiles can never word the same cadence differently. *@
+
 @*
     OdsBillingIntervalChip — the read display of a subscription's billing cadence
     (Odyssey Design System · components/BillingIntervalChip). Sibling of

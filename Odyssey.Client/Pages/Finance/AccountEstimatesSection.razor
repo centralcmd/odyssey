@@ -16,7 +16,7 @@
     AccountTermsSection.
 *@
 
-<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="monitor">
+<OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="monitor">
     <Title>Estimates</Title>
     <Count>@_estimates.Count</Count>
     <Actions>
@@ -115,7 +115,10 @@
                     </div>
                 }
 
-                @* CURRENT VALUE — the headline tile + the quiet transaction-balance secondary *@
+                @* CURRENT VALUE — the headline tile + the quiet transaction-balance secondary.
+                   Dropped when the host lifted it into the record card's own Current band. *@
+                @if (ShowCurrent)
+                {
                 <div>
                     <div class="est-sub">
                         <span class="est-sub-label">Current value</span>
@@ -143,14 +146,19 @@
                         </div>
                     }
                 </div>
+                }
 
-                @* HISTORY — single list, newest first *@
+                @* HISTORY — single list, newest first. The sub-divider is dropped only when the
+                   host supplied its own section divider, which would otherwise repeat it. *@
                 <div>
-                    <div class="est-sub">
-                        <span class="est-sub-label">History</span>
-                        <span class="est-sub-rule"></span>
-                        <span class="est-sub-meta">@_estimates.Count @(_estimates.Count == 1 ? "estimate" : "estimates")</span>
-                    </div>
+                    @if (Chrome || BareAction)
+                    {
+                        <div class="est-sub">
+                            <span class="est-sub-label">History</span>
+                            <span class="est-sub-rule"></span>
+                            <span class="est-sub-meta">@_estimates.Count @(_estimates.Count == 1 ? "estimate" : "estimates")</span>
+                        </div>
+                    }
                     <div class="est-history">
                         <table class="est-tbl">
                             <thead>

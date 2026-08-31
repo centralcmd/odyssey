@@ -18,9 +18,15 @@
     transactions, a tag-management bar (removable chips + an Add-tag checklist), and
     the NoSmartTags / Loading / NoTransactions / HasTransactions / error states.
     Add/remove fire the per-tag POST/DELETE endpoints (write-gated).
+
+    Chrome="false" renders the bare form — no disclosure shell, no header — for a host that
+    introduces the section itself with an OdsSectionDivider (an OdsRecordCard body, where
+    sections neither collapse nor act). This is also the only section that stays rendered at
+    zero: its adder is the sole entry point for a first smart tag, so hiding it when empty
+    would make the feature unreachable.
 *@
 
-<OdsCollapsible Class="odc-smarttags" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="sell" Count="@CountFragment">
+<OdsCollapsible Chrome="Chrome" Class="odc-smarttags" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="sell" Count="@CountFragment">
     <Title>Smart tags</Title>
     <ChildContent>
         @if (_hasTags)

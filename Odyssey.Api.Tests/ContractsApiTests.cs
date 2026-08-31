@@ -151,8 +151,10 @@ public class ContractsApiTests
         Assert.Equal(ContractStatus.Expired, (await GetAsync(client, expired)).Status);
         Assert.Equal(ContractStatus.Active, (await GetAsync(client, active)).Status);
 
-        // Archive via PUT → status becomes Archived regardless of dates.
-        await client.PutAsJsonAsync($"{Path}/{active}", UpdateContract(isArchived: true));
+        // Archive via PUT → status becomes Archived, outranking the status the dates would derive.
+        // The same request ends the term, since only an ended contract can be archived.
+        (await client.PutAsJsonAsync($"{Path}/{active}", UpdateContract(isArchived: true, endDate: Lapsed)))
+            .EnsureSuccessStatusCode();
         Assert.Equal(ContractStatus.Archived, (await GetAsync(client, active)).Status);
     }
 
@@ -172,7 +174,7 @@ public class ContractsApiTests
 
         // Archive via PUT — the contract is kept and still shown in the default list (the design
         // system no longer hides archived rows); a status filter still narrows to just Archived.
-        var archive = await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isArchived: true));
+        var archive = await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isArchived: true, endDate: Lapsed));
         Assert.Equal(HttpStatusCode.OK, archive.StatusCode);
 
         var fetched = await GetAsync(client, id);
@@ -292,7 +294,8 @@ public class ContractsApiTests
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
-        await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isArchived: true));
+        (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isArchived: true, endDate: Lapsed)))
+            .EnsureSuccessStatusCode();
 
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new AddContractPartyRequest { AccountId = accountId });
         Assert.Equal(HttpStatusCode.BadRequest, add.StatusCode);
@@ -462,7 +465,8 @@ public class ContractsApiTests
         var archived = await CreateTypedAsync(client, ContractType.Other, start: FixedToday.AddDays(-30));
         (await client.PutAsJsonAsync($"{Path}/{archived}", new UpdateContract
         {
-            Name = "Other contract", Type = ContractType.Other, StartDate = FixedToday.AddDays(-30), IsArchived = true,
+            Name = "Other contract", Type = ContractType.Other,
+            StartDate = FixedToday.AddDays(-30), EndDate = Lapsed, IsArchived = true,
         })).EnsureSuccessStatusCode();
 
         var summary = (await client.GetFromJsonAsync<ContractSummary>($"{Path}/summary"))!;
@@ -561,14 +565,20 @@ public class ContractsApiTests
 
     private static NewContract NewContract() => NewContractRequest();
 
-    private static UpdateContract UpdateContract(bool isArchived) => new()
+    /// <summary>Archiving requires an ended contract, so a caller that archives passes the lapsed
+    /// end date in the same request — one PUT may end and archive together.</summary>
+    private static UpdateContract UpdateContract(bool isArchived, DateTime? endDate = null) => new()
     {
         Name = "Employment agreement",
         Type = ContractType.Employment,
         Description = "Full-time role",
         StartDate = FixedToday.AddDays(-30),
+        EndDate = endDate,
         IsArchived = isArchived,
     };
+
+    /// <summary>An end date already lapsed against the fixed clock — the shorthand for "archivable".</summary>
+    private static DateTime Lapsed => FixedToday.AddDays(-1);
 
     private static AttachContractFileRequest AttachRequest(Guid fileId) => new()
     {

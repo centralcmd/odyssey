@@ -14,6 +14,18 @@
     ValueVariant: Mono (default — numbers/IDs/dates, tabular) · Text (proportional,
     for names/labels) · Sm (smaller, for dates). Wide makes the tile span all grid
     columns and lets its value wrap (e.g. a notes tile).
+
+    Tone tints the VALUE with a state colour (an upcoming date in info blue, a lapsed one
+    in expense coral) — distinct from the icon chip, which carries the record's accent.
+    WrapValue wraps a value that must never truncate (a record's name) instead.
+
+    Inside an OdsRecordCard the tiles live in an OdsInfoTileGrid, which maps the card's
+    --rec / --rec-soft onto the accent, so a tile there should need no IconColor at all.
+
+    A tile renders if and only if ITS OWN field has a value — never because a sibling
+    "already shows that", and a derived tile (Status) summarises without replacing the
+    tiles of the fields it is computed from. A foot caption has to earn its place; a tile
+    does not.
 *@
 
 <div class="@TileClass" style="@Style">
@@ -61,6 +73,13 @@
     /// <summary>Span all grid columns and let the value wrap (e.g. a notes tile).</summary>
     [Parameter] public bool Wide { get; set; }
 
+    /// <summary>State colour for the value — info (upcoming) · pending · income · expense · muted.
+    /// The icon chip keeps the record's accent.</summary>
+    [Parameter] public OdsInfoTileTone Tone { get; set; } = OdsInfoTileTone.Default;
+
+    /// <summary>Wrap a value that must never truncate (a record's name) instead of ellipsising it.</summary>
+    [Parameter] public bool WrapValue { get; set; }
+
     /// <summary>Drop the card elevation.</summary>
     [Parameter] public bool Elevated { get; set; } = true;
 
@@ -74,8 +93,20 @@
             "odc-infotile",
             Elevated ? "elevated" : null,
             Wide ? "wide" : null,
+            WrapValue ? "wrapvalue" : null,
+            ToneClass,
             Class,
         }.Where(c => !string.IsNullOrEmpty(c)));
+
+    private string? ToneClass => Tone switch
+    {
+        OdsInfoTileTone.Info => "tone-info",
+        OdsInfoTileTone.Pending => "tone-pending",
+        OdsInfoTileTone.Income => "tone-income",
+        OdsInfoTileTone.Expense => "tone-expense",
+        OdsInfoTileTone.Muted => "tone-muted",
+        _ => null,
+    };
 
     private string VariantClass => ValueVariant switch
     {

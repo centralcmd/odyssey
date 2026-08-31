@@ -279,7 +279,9 @@ public class SubscriptionApiTests
 
         var id = await CreateAsync(client);
 
-        await client.PutAsJsonAsync($"{Path}/{id}", UpdateSub(archived: true));
+        // Archiving requires an ended term, so the same PUT carries the lapsed end date.
+        var archive = await client.PutAsJsonAsync($"{Path}/{id}", UpdateSub(archived: true, endDate: Lapsed));
+        archive.EnsureSuccessStatusCode();
         var active = await client.GetFromJsonAsync<PagedResult<SubscriptionListItem>>($"{Path}?statuses={SubscriptionStatusFilter.Active}");
         Assert.DoesNotContain(active!.Items, s => s.SubscriptionId == id);
         var archivedList = await client.GetFromJsonAsync<PagedResult<SubscriptionListItem>>($"{Path}?statuses={SubscriptionStatusFilter.Archived}");
@@ -493,11 +495,13 @@ public class SubscriptionApiTests
         FirstBillingDate = new DateOnly(2026, 1, 15),
     };
 
-    private static UpdateSubscription UpdateSub(Guid? contactId = null, bool paused = false, bool archived = false) => new()
+    private static UpdateSubscription UpdateSub(
+        Guid? contactId = null, bool paused = false, bool archived = false, DateOnly? endDate = null) => new()
     {
         Name = "Streaming",
         ContactId = contactId,
         StartDate = new DateOnly(2026, 1, 1),
+        EndDate = endDate,
         Amount = 9.99m,
         CurrencyCode = "USD",
         Interval = BillingInterval.Monthly,
@@ -505,6 +509,11 @@ public class SubscriptionApiTests
         Paused = paused,
         Archived = archived,
     };
+
+    /// <summary>An end date safely in the past for any real "today" — the API runs on the system clock,
+    /// so a fixed 2026 date would age into the future relative to nothing; this is anchored backwards
+    /// from the actual current date instead.</summary>
+    private static DateOnly Lapsed => DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
 
     private static async Task<Guid> CreateAsync(HttpClient client, Guid? contactId = null)
     {

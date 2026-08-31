@@ -121,3 +121,16 @@ public enum OdsCapacityFieldVariant { Stacked, Inline }
 /// </para>
 /// </summary>
 public enum OdsCredentialClearReason { Host, StartTls }
+
+/// <summary>
+/// Colour role for an <see cref="OdsRecordCard"/>'s right-hand headline figure — the finance
+/// vocabulary, never the record's own accent. Neutral leaves it in the default ink.
+/// </summary>
+public enum OdsRecordFigureTone { Neutral, Income, Expense, Pending }
+
+/// <summary>
+/// Value tint for an <see cref="OdsInfoTile"/> whose value carries a state colour rather than the
+/// neutral ink — an upcoming date in info blue, a lapsed one in expense coral, a superseded fact
+/// muted. Distinct from the icon chip's accent, which follows the record's type.
+/// </summary>
+public enum OdsInfoTileTone { Default, Info, Pending, Income, Expense, Muted }

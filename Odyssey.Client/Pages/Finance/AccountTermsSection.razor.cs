@@ -14,6 +14,24 @@ public partial class AccountTermsSection
     /// <summary>Gates the New term / edit / delete affordances (accounts.terms.write).</summary>
     [Parameter] public bool CanWrite { get; set; }
 
+    /// <summary>
+    /// The disclosure shell. False renders the section bare — no OdsCollapsible, no header — for a host
+    /// that introduces it with its own OdsSectionDivider (an OdsRecordCard body).
+    /// </summary>
+    [Parameter] public bool Chrome { get; set; } = true;
+
+    /// <summary>
+    /// Render the "Current terms" block. False when the host lifted those values into the record
+    /// card's own Current band, so they are not stated twice in one body.
+    /// </summary>
+    [Parameter] public bool ShowCurrent { get; set; } = true;
+
+    /// <summary>
+    /// Render the inner "History" sub-divider. False when the host's own section divider already
+    /// labels this content and carries its count.
+    /// </summary>
+    [Parameter] public bool BareAction { get; set; } = true;
+
     /// <summary>Raised after a term is created/edited/deleted so the host can refresh the account
     /// list (the header subtitle shows the in-force rate).</summary>
     [Parameter] public EventCallback OnChanged { get; set; }

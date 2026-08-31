@@ -1,4 +1,5 @@
 @page "/contracts"
+@using System.Globalization
 @using Odyssey.Client.Authorization
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
@@ -19,7 +20,6 @@
 <OdsLiveAnnouncer Message="@_announce" />
 
 
-<div class="con-shell">
 <MudStack Spacing="4">
 
     <PageHeader Title="Contracts"
@@ -69,84 +69,53 @@
                          EmptyDescription="Add a contract to record its type and active period, link the parties it relates to, and keep every signed document in one place.">
             <RenderItem Context="c">
                 @{
-                    var isExpanded = IsExpanded(c.ContractId);
                     var archived = c.Archived is not null;
                     var typeInfo = OdsTypeRegistries.ContractTypeOf(c.Type);
                     var headline = Headline(c);
                     var detail = _details.GetValueOrDefault(c.ContractId);
+
+                    @* The meta line: type · the contact this contract is with. *@
+                    var meta = new List<RenderFragment?>
+                    {
+                        OdsRecordMeta.Text(typeInfo.Label),
+                        ContactMeta(string.IsNullOrWhiteSpace(c.InstitutionName) ? "No contact" : c.InstitutionName),
+                    };
+
+                    @* The header counts are the body's table of contents: same glyphs, same order
+                       as the sections below, kept live while the body edits them. *@
+                    var counts = new[]
+                    {
+                        new OdsRecordCount("diversity_3", c.PartyCount.ToString(CultureInfo.CurrentCulture), "Parties"),
+                        new OdsRecordCount("description", c.FileCount.ToString(CultureInfo.CurrentCulture), "Documents"),
+                    };
                 }
-                <OdsExpandableCard Id="@($"con-{c.ContractId}")"
-                                   Open="isExpanded"
-                                   Dimmed="archived"
-                                   Flash="@(_flashId == c.ContractId)"
-                                   Label="@c.Name"
-                                   OnToggle="@(() => ToggleExpand(c.ContractId))">
+                @* One accent per record, taken from the contract's TYPE — the header mark, every tile
+                   icon chip in the body and the party rows' own marks all resolve from it. *@
+                <OdsRecordCard Id="@($"con-{c.ContractId}")"
+                               Icon="@typeInfo.Icon"
+                               Accent="@typeInfo.Color"
+                               AccentSoft="@typeInfo.Soft"
+                               Name="@c.Name"
+                               Meta="meta"
+                               Counts="counts"
+                               FigureCaption="@headline.Word"
+                               FigureTone="@HeadlineTone(headline.Cls)"
+                               Dimmed="archived"
+                               Highlight="@(_flashId == c.ContractId)"
+                               Open="IsExpanded(c.ContractId)"
+                               OnToggle="@(_ => ToggleExpand(c.ContractId))">
 
-                    <Lead>
-                        <div class="acct-badge" style="background:@typeInfo.Soft;color:@typeInfo.Color;">
-                            <span class="material-icons" aria-hidden="true">@typeInfo.Icon</span>
-                        </div>
-                    </Lead>
+                    <Chips>
+                        <OdsContractStatusChip Status="c.Status" Compact="true" />
+                    </Chips>
 
-                    <Head>
-                        <div class="acct-name-row">
-                            <span class="acct-name">@c.Name</span>
-                            <OdsContractStatusChip Status="c.Status" Compact="true" />
-                        </div>
-                        <div class="acct-tags">
-                            <span>@typeInfo.Label</span>
-                            <span class="acct-dot">·</span>
-                            <span class="con-sub-inst"><span class="material-icons" aria-hidden="true">account_balance</span>@(string.IsNullOrWhiteSpace(c.InstitutionName) ? "No institution" : c.InstitutionName)</span>
-                            <span class="acct-dot">·</span>
-                            <span class="acct-counts">
-                                <span><span class="material-icons" aria-hidden="true">diversity_3</span>@c.PartyCount</span>
-                                <span><span class="material-icons" aria-hidden="true">description</span>@c.FileCount</span>
-                            </span>
-                        </div>
-                    </Head>
-
-                    <Figures>
-                        <div class="con-headline @(headline.HasValue ? "" : "none")">@headline.Value</div>
-                        <div class="con-headline-word @headline.Cls">@headline.Word</div>
-                    </Figures>
+                    <Figure>@headline.Value</Figure>
 
                     <Actions>
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                                 Size="Size.Small" Color="Color.Default"
-                                 AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
-                            @if (_canUpdate)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(c))">Edit contract</MudMenuItem>
-                                <MudMenuItem Icon="@Icons.Material.Filled.GroupAdd" OnClick="@(() => AddParty(c.ContractId))">Add party</MudMenuItem>
-                            }
-                            @if (_canUploadFiles)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="@(() => AttachDocument(c.ContractId))">Upload document</MudMenuItem>
-                            }
-                            <MudMenuItem OnClick="@(() => CopyId(c.ContractId))">
-                                <span class="odc-menu-item">
-                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
-                                    <span>Copy ID</span>
-                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
-                                </span>
-                            </MudMenuItem>
-                            @if (_canUpdate)
-                            {
-                                <MudDivider />
-                                <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Inventory2)" OnClick="@(() => ToggleArchive(c))">
-                                    @(archived ? "Restore" : "Archive")
-                                </MudMenuItem>
-                            }
-                            @if (_canDelete)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
-                                             Style="color:var(--mud-palette-error);"
-                                             OnClick="@(() => ConfirmDelete(c))">Delete</MudMenuItem>
-                            }
-                        </MudMenu>
+                        <OdsMenu Items="RowActions(c, archived)" AriaLabel="@($"Actions for {c.Name}")" />
                     </Actions>
 
-                    <Detail>
+                    <Details>
                         @if (detail is null)
                         {
                             <div role="status" aria-live="polite" aria-busy="true">
@@ -156,16 +125,104 @@
                         }
                         else
                         {
+                            @* The contract's full field set. A one-off has a completion date instead
+                               of a term, so those tiles are alternatives, not omissions. Tense and
+                               tone follow each date against today. *@
+                            var oneOff = detail.CompletionDate is not null;
+                            var startFuture = detail.StartDate is { } st && st.Date > Today;
+                            var endPast = detail.EndDate is { } en && en.Date < Today;
+                            var completionPast = detail.CompletionDate is { } cd && cd.Date <= Today;
+                            var statusMeta = OdsContractStatus.Meta(detail.Status);
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="handshake" Label="Name"
+                                             ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                                    <Value>@detail.Name</Value>
+                                </OdsInfoTile>
+
+                                @* No per-tile icon colour: the grid inherits the card's accent, which
+                                   IS this contract's type colour. *@
+                                <OdsInfoTile Icon="@typeInfo.Icon" Label="Type"
+                                             ValueVariant="OdsInfoTileVariant.Text" Foot="@Caption(oneOff ? "One-off" : "Term")">
+                                    <Value>@typeInfo.Label</Value>
+                                </OdsInfoTile>
+
+                                @if (detail.CompletionDate is { } completion)
+                                {
+                                    <OdsInfoTile Icon="event_available"
+                                                 Label="@(completionPast ? "Completed on" : "Completes on")"
+                                                 ValueVariant="OdsInfoTileVariant.Sm"
+                                                 Tone="@(completionPast ? OdsInfoTileTone.Default : OdsInfoTileTone.Info)"
+                                                 Foot="@Caption(completionPast ? "delivered on this date" : "upcoming")">
+                                        <Value>@LongDate(completion)</Value>
+                                    </OdsInfoTile>
+                                }
+                                else
+                                {
+                                    @if (detail.StartDate is { } start)
+                                    {
+                                        <OdsInfoTile Icon="play_circle"
+                                                     Label="@(startFuture ? "Starts on" : "Started on")"
+                                                     ValueVariant="OdsInfoTileVariant.Sm"
+                                                     Tone="@(startFuture ? OdsInfoTileTone.Info : OdsInfoTileTone.Default)"
+                                                     Foot="@Caption(startFuture ? "upcoming" : null)">
+                                            <Value>@LongDate(start)</Value>
+                                        </OdsInfoTile>
+                                    }
+
+                                    @* The empty case is kept deliberately: whether an agreement ever
+                                       stops is material, so "Open-ended" is a fact, not a blank. *@
+                                    <OdsInfoTile Icon="event_busy"
+                                                 Label="@(detail.EndDate is null ? "End date" : endPast ? "Ended on" : "Ends on")"
+                                                 ValueVariant="@(detail.EndDate is null ? OdsInfoTileVariant.Text : OdsInfoTileVariant.Sm)"
+                                                 Tone="@(endPast ? OdsInfoTileTone.Expense : OdsInfoTileTone.Default)"
+                                                 Foot="@Caption(detail.EndDate is null ? "runs until ended" : endPast ? "no longer in force" : "scheduled")">
+                                        <Value>@(detail.EndDate is { } end ? LongDate(end) : "Open-ended")</Value>
+                                    </OdsInfoTile>
+                                }
+
+                                @* A DERIVED summary: it carries the state and the date that state
+                                   began, while the dates it derives from keep their own tiles. *@
+                                <OdsInfoTile Icon="@statusMeta.Icon" Label="Status"
+                                             ValueVariant="OdsInfoTileVariant.Text"
+                                             Tone="@StatusTone(statusMeta.Tone)"
+                                             Foot="@Caption(StatusFoot(detail, oneOff))">
+                                    <Value>@statusMeta.Label</Value>
+                                </OdsInfoTile>
+
+                                @if (detail.Archived is { } archivedAt)
+                                {
+                                    <OdsInfoTile Icon="inventory_2" Label="Archived"
+                                                 ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Muted"
+                                                 Foot="@Caption("hidden from the default list")">
+                                        <Value>@LongDate(archivedAt)</Value>
+                                    </OdsInfoTile>
+                                }
+                            </OdsInfoTileGrid>
+                        }
+                    </Details>
+
+                    <Content>
+                        @* Prose is not a field: the description goes in one wide tile. *@
+                        @if (detail is { Description: { } description } && !string.IsNullOrWhiteSpace(description))
+                        {
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="sticky_note_2" Label="Description" Wide="true">
+                                    <Value>@description</Value>
+                                </OdsInfoTile>
+                            </OdsInfoTileGrid>
+                        }
+                    </Content>
+
+                    <Sections>
+                        @if (detail is not null)
+                        {
                             <ContractDetailView Contract="detail"
                                                 CanWrite="_canUpdate"
                                                 CanDownload="_canDownloadFiles"
-                                                CanUpload="_canUploadFiles"
-                                                OnAddParty="@(() => AddParty(c.ContractId))"
-                                                OnUpload="@(() => AttachDocument(c.ContractId))"
                                                 OnChanged="@(() => ReloadContract(c.ContractId))" />
                         }
-                    </Detail>
-                </OdsExpandableCard>
+                    </Sections>
+                </OdsRecordCard>
             </RenderItem>
             <CreateAction>
                 @if (_canCreate)
@@ -184,7 +241,6 @@
         </OdsInfiniteList>
     </div>
 </MudStack>
-</div>
 
 @if (_createKey != Guid.Empty)
 {
@@ -218,4 +274,14 @@
                           @bind-Open="_uploadOpen"
                           Contract="_uploadContract"
                           OnSaved="@(() => ReloadContract(_uploadContract.ContractId))" />
+}
+
+@code {
+    // The contact entry on the card's meta line. An inline render fragment is Razor syntax, so it
+    // cannot live in the code-behind. One span, so it becomes the .odc-record-metaitem's only child
+    // and picks up the meta line's alignment.
+    private RenderFragment ContactMeta(string name) =>
+        @<span class="con-sub-inst">
+            <span class="material-icons" aria-hidden="true">groups</span><span>@name</span>
+        </span>;
 }

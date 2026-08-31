@@ -121,10 +121,15 @@ public class InsuranceService
             {
                 InsurancePolicyId = p.InsurancePolicyId,
                 Name = p.Name,
+                PolicyNumber = p.PolicyNumber,
                 Type = p.Type.Adapt<DtoInsurancePolicyType>(),
                 Insurer = BuildInsurerReference(p.InsurerId, insurerRefs),
                 CoverageStatus = coverageStatus,
                 CurrentRenewalEndDate = current?.ToDate,
+                // The boundary dates a row headlines on when there is no current period. Free here:
+                // EvaluateCoverage already has the renewals loaded, so this adds no query.
+                LatestRenewalEndDate = p.Renewals.Count == 0 ? null : p.Renewals.Max(r => r.ToDate),
+                EarliestRenewalStartDate = p.Renewals.Count == 0 ? null : p.Renewals.Min(r => r.FromDate),
                 CurrentPremium = current?.Premium,
                 CurrentPremiumCurrencyCode = current?.PremiumCurrencyCode,
                 CurrentCoverage = current?.CoverageAmount,
@@ -166,7 +171,7 @@ public class InsuranceService
 
         var insurer = await ResolveInsurerReference(policy.InsurerId, cancellationToken);
         var window = (await systemSettingsLookup.GetInsurancePolicySettingsAsync(cancellationToken)).ExpiringSoonWindowDays;
-        return ToDto(policy, insurer, Today, window);
+        return await WithAccruedPremium(ToDto(policy, insurer, Today, window));
     }
 
     public async Task<ExistingInsurancePolicy> Create(NewInsurancePolicy request, CancellationToken cancellationToken = default)
@@ -196,7 +201,7 @@ public class InsuranceService
         var loaded = await LoadWithDetails(policy.InsurancePolicyId, cancellationToken);
         var insurer = await ResolveInsurerReference(loaded!.InsurerId, cancellationToken);
         var window = (await systemSettingsLookup.GetInsurancePolicySettingsAsync(cancellationToken)).ExpiringSoonWindowDays;
-        return ToDto(loaded, insurer, Today, window);
+        return await WithAccruedPremium(ToDto(loaded, insurer, Today, window));
     }
 
     public async Task<ExistingInsurancePolicy?> Update(Guid id, UpdateInsurancePolicy request, CancellationToken cancellationToken = default)
@@ -239,7 +244,7 @@ public class InsuranceService
         var reloaded = await LoadWithDetails(id, cancellationToken);
         var insurer = await ResolveInsurerReference(reloaded!.InsurerId, cancellationToken);
         var window = (await systemSettingsLookup.GetInsurancePolicySettingsAsync(cancellationToken)).ExpiringSoonWindowDays;
-        return ToDto(reloaded, insurer, Today, window);
+        return await WithAccruedPremium(ToDto(reloaded, insurer, Today, window));
     }
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -683,6 +688,59 @@ public class InsuranceService
                 .ThenInclude(f => f.FileMetadata)
         .Include(p => p.Files)
             .ThenInclude(f => f.FileMetadata);
+
+    /// <summary>
+    /// Fills in the accrued-premium figure: every period starting on or before the current period
+    /// ends, converted into the current period's currency.
+    ///
+    /// <para>
+    /// It is a separate async step rather than part of <c>ToDto</c> because the conversion needs
+    /// exchange rates, and <c>ToDto</c> is a pure static projection. A period whose currency has no
+    /// rate to the current one is <b>skipped</b>, not added at face value — the same posture the
+    /// portfolio summary takes with <c>UnconvertedCurrencies</c> — and the period count reports what
+    /// was actually summed, so the number and its caption cannot disagree.
+    /// </para>
+    /// </summary>
+    private async Task<ExistingInsurancePolicy> WithAccruedPremium(
+        ExistingInsurancePolicy dto, CancellationToken cancellationToken = default)
+    {
+        if (dto.CurrentRenewal is not { } current)
+        {
+            return dto;
+        }
+
+        var currency = current.PremiumCurrencyCode;
+        var accrued = dto.Renewals.Where(r => r.FromDate.Date <= current.ToDate.Date).ToList();
+
+        // One rate lookup for every currency in the set, not one per period: ConvertAsync would issue
+        // a query per renewal, which is the shape of problem the rest of this service avoids.
+        var rates = await conversion.GetLatestRatesToAsync(
+            currency, accrued.Select(r => r.PremiumCurrencyCode), cancellationToken);
+
+        var total = 0m;
+        var counted = 0;
+        foreach (var renewal in accrued)
+        {
+            decimal? converted =
+                string.Equals(renewal.PremiumCurrencyCode, currency, StringComparison.OrdinalIgnoreCase)
+                    ? renewal.Premium
+                    : rates.TryGetValue(CurrencyValidationService.Normalize(renewal.PremiumCurrencyCode), out var rate)
+                        ? renewal.Premium * rate
+                        : null;
+            if (converted is null)
+            {
+                continue;
+            }
+
+            total += converted.Value;
+            counted++;
+        }
+
+        dto.AccruedPremium = total;
+        dto.AccruedPremiumCurrencyCode = currency;
+        dto.AccruedPremiumPeriods = counted;
+        return dto;
+    }
 
     private static ExistingInsurancePolicy ToDto(InsurancePolicy policy, InsurerReference insurer, DateTime today, int windowDays)
     {

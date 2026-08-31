@@ -29,6 +29,10 @@ public class SubscriptionService
     private readonly CurrencyConversionService conversion;
     private readonly ISystemSettingsLookup systemSettingsLookup;
 
+    /// <summary>"Today" in UTC, matching every other derivation on this service (Ended, the status
+    /// partition, the renewals window) so they cannot disagree across the date boundary.</summary>
+    private DateOnly Today => DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+
     /// <summary>
     /// The look-ahead window, the renewal-row cap and the summary fetch bound are admin-editable
     /// settings (issue #437), not constants. The lookup is a <strong>required</strong> parameter,
@@ -92,7 +96,7 @@ public class SubscriptionService
         // keeps paging server-side. Empty = all (archived included, per the default list contract).
         if (query.Statuses is { Length: > 0 } statuses)
         {
-            var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+            var today = Today;
             var wantActive = statuses.Contains(SubscriptionStatusFilter.Active);
             var wantPaused = statuses.Contains(SubscriptionStatusFilter.Paused);
             var wantEnded = statuses.Contains(SubscriptionStatusFilter.Ended);
@@ -143,7 +147,7 @@ public class SubscriptionService
         }
 
         var refs = await ResolveContactRefs([subscription.ContactId], cancellationToken);
-        return ToDto(subscription, LookupRef(refs, subscription.ContactId));
+        return ToDto(subscription, LookupRef(refs, subscription.ContactId), Today);
     }
 
     public async Task<ExistingSubscription> Create(NewSubscription request, CancellationToken cancellationToken = default)
@@ -209,8 +213,13 @@ public class SubscriptionService
         subscription.FirstBillingDate = request.FirstBillingDate;
         subscription.Notes = request.Notes;
 
-        // Paused/Archived are orthogonal toggles; the service owns the timestamp. Setting true when
-        // already set preserves the original stamp; setting false clears it.
+        // The lifecycle is ORDERED, not orthogonal: archiving retires a subscription that has already
+        // stopped billing, so only an ended one can be archived. Validated against the request's
+        // EndDate, not the stored one, so a single PUT may end and archive in one go.
+        EnsureArchivable(subscription, request);
+
+        // The service owns the timestamps. Setting true when already set preserves the original stamp;
+        // setting false clears it. Pause stays orthogonal — a live subscription can be paused.
         var now = timeProvider.GetUtcNow().UtcDateTime;
         subscription.Paused = request.Paused ? subscription.Paused ?? now : null;
         subscription.Archived = request.Archived ? subscription.Archived ?? now : null;
@@ -252,7 +261,7 @@ public class SubscriptionService
     /// </summary>
     public async Task<SubscriptionSummary> GetSummary(string? baseCurrency, CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+        var today = Today;
 
         // Read once per call, not once per use: the value a summary was computed with must be the
         // value the whole summary saw, so BuildRenewals takes them as parameters rather than reading
@@ -613,6 +622,31 @@ public class SubscriptionService
         }
     }
 
+    /// <summary>
+    /// Archiving requires an ended term (<c>EndDate</c> on or before today) — the lifecycle is ordered,
+    /// so Archived implies Ended and the status is a single state rather than a stack of flags.
+    ///
+    /// <para>
+    /// Only the <b>transition</b> into archived is checked. A row archived before this rule existed
+    /// stays editable and restorable: re-validating it on every save would strand it, since the only
+    /// way out is a PUT that carries <c>Archived = true</c> right up until the one that clears it.
+    /// Restoring is always allowed.
+    /// </para>
+    /// </summary>
+    private void EnsureArchivable(Subscription subscription, UpdateSubscription request)
+    {
+        if (!request.Archived || subscription.Archived is not null)
+        {
+            return;
+        }
+
+        if (request.EndDate is not { } end || end > Today)
+        {
+            throw new DomainValidationException(
+                "A subscription can only be archived once it has ended. Set an EndDate on or before today first.");
+        }
+    }
+
     private static void ValidateIntervalCount(int intervalCount)
     {
         if (intervalCount < 1)
@@ -629,7 +663,11 @@ public class SubscriptionService
 
     // ── Mapping ─────────────────────────────────────────────────────────────────────
 
-    private static ExistingSubscription ToDto(Subscription s, ContactRef? contact) => new()
+    /// <summary>
+    /// The detail projection. <paramref name="today"/> is passed in rather than read here so the whole
+    /// response is derived against one instant — the same reason <c>GetSummary</c> passes its own down.
+    /// </summary>
+    private static ExistingSubscription ToDto(Subscription s, ContactRef? contact, DateOnly today) => new()
     {
         SubscriptionId = s.SubscriptionId,
         Name = s.Name,
@@ -645,8 +683,18 @@ public class SubscriptionService
         Notes = s.Notes,
         Paused = s.Paused,
         Archived = s.Archived,
+        // Same suppression BuildRenewals applies: a paused, ended or archived subscription has no next
+        // charge. Deriving it here — rather than leaving each client to do it — is what keeps the tile
+        // on the record card and the header's upcoming-renewals rollup from ever disagreeing.
+        NextBillingDate = HasNextBilling(s, today)
+            ? NextBilling(s.FirstBillingDate, s.Interval, s.IntervalCount, s.EndDate, today)
+            : null,
         CreatedAtUtc = s.CreatedAtUtc,
     };
+
+    /// <summary>Whether a subscription is still billing at all — the precondition for a next charge.</summary>
+    private static bool HasNextBilling(Subscription s, DateOnly today) =>
+        s.Archived is null && s.Paused is null && !(s.EndDate is { } end && end <= today);
 
     private static SubscriptionListItem ToListItem(Subscription s, ContactRef? contact) => new()
     {

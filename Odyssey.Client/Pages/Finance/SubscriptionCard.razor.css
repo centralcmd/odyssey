@@ -1,16 +1,24 @@
 /* Subscriptions — /subscriptions (issue #293)
-   Sibling of Accounts / Contracts / Insurance: the same expandable-record scaffold,
-   which is now the shared OdsExpandableCard — one global `.acct-*` copy in
-   wwwroot/css/odyssey-components.css (issue #367). What is left here is the
-   subscription-specific collapsed-row affordances (external-id / company / cadence tag
-   line, the price caption) and the detail tiles. The feature accent is a violet (oklch
-   hue 295). The expense-hue price input (.sub-amount-expense) lives global in
-   odyssey-components.css because the create dialog is a separate component. */
+   Sibling of Accounts / Contracts / Insurance. The list rows are the shared OdsRecordCard,
+   whose `.odc-record*` block lives global in wwwroot/css/odyssey-components.css. What is
+   left here is the header Overview's run-rate tiles and the three feature-specific
+   affordances on the card's meta line. The expense-hue price input (.sub-amount-expense)
+   lives global because the create dialog is a separate component.
 
-.sub-shell {
-    --sub: oklch(0.72 0.16 295);
-    --sub-soft: oklch(0.72 0.16 295 / 0.16);
-}
+   There is no page accent any more. Under the design system's one-accent-per-record rule
+   the card takes its hue from the record's TYPE — or, for subscriptions, its
+   type-equivalent: the BILLING INTERVAL, a categorical registry every subscription has
+   exactly one of. A single page-wide violet would have said "subscription", which the page
+   header already says, instead of distinguishing one row from the next.
+
+   The value tones (expense price, muted archived, amber paused) come from OdsInfoTile's
+   own Tone parameter — the `.odc-infotile.tone-*` classes the design system added
+   alongside RecordCard — rather than a feature-local `.sub-status-tile` copy that would
+   render identically and drift independently.
+
+   These rules need ::deep: the elements they target are authored here, but their ancestors
+   (`.odc-record-meta`, `.odc-infotile-v`) belong to the card and the tile, so a scoped
+   selector alone would never match. */
 
 
 /* ── Header Overview — run-rate stat tiles above the breakdown grid ── */
@@ -21,20 +29,13 @@
 .sub-stat-tiles ::deep .sub-runrate-tile { background: var(--mud-palette-background); box-shadow: none; }
 .sub-stat-tiles ::deep .sub-runrate-tile .odc-infotile-v { color: var(--finance-expense); }
 
-/* ── Collapsed-row tag line — external id · company · cadence ── */
-.sub-extid-inline { color: var(--mud-palette-text-secondary); letter-spacing: 0.01em; }
-.sub-inst, .sub-cadence { display: inline-flex; align-items: center; gap: 5px; }
-.sub-inst .material-icons, .sub-cadence .material-icons { font-size: 14px; color: var(--mud-palette-text-secondary); }
-.sub-inst { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* ── Headline figure — a recurring expense, so it reads in the finance-expense hue. ── */
-.acct-figures .sub-price { color: var(--finance-expense); }
-.acct-figures .sub-figure-word { font-size: 12px; line-height: 1; color: var(--mud-palette-text-secondary); margin-top: 4px; }
-
-/* Detail fact tiles — the OdsInfoTile grid, accented with the subscription hue. */
-.sub-tiles {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
-    --odc-infotile-accent: var(--sub);
-    --odc-infotile-accent-soft: var(--sub-soft);
-}
-.sub-tiles ::deep .sub-price-tile .odc-infotile-v { color: var(--finance-expense); }
+/* ── The card's meta line — external id · company · cadence ──
+   Alignment and the icon size come from `.odc-record-metaitem` in components.css, which
+   reaches one level down into whatever wrapper a feature passes; only the company clamp is
+   feature-specific. The card's own overflow rules keep the line to one row, so what is
+   needed here is the inner span that actually ellipsises. */
+::deep .odc-record-meta .sub-extid-inline { color: var(--mud-palette-text-secondary); letter-spacing: 0.01em; }
+::deep .odc-record-meta .sub-inst { max-width: 260px; }
+::deep .odc-record-meta .sub-inst, ::deep .odc-record-meta .sub-cadence { overflow: hidden; }
+::deep .odc-record-meta .sub-inst > span,
+::deep .odc-record-meta .sub-cadence > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

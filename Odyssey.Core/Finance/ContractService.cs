@@ -241,6 +241,11 @@ public class ContractService
         contract.StartDate = startDate;
         contract.EndDate = endDate;
         contract.CompletionDate = completionDate;
+        // The lifecycle is ORDERED, not orthogonal: archiving retires a contract that is already
+        // over, so only an ended one can be archived. Validated against the request's dates, not the
+        // stored ones, so a single PUT may end and archive in one go.
+        EnsureArchivable(contract, request.IsArchived, endDate, completionDate);
+
         // Archive (preserving the original archive stamp) or unarchive per the request.
         contract.Archived = request.IsArchived
             ? contract.Archived ?? timeProvider.GetUtcNow().UtcDateTime
@@ -411,6 +416,39 @@ public class ContractService
         context.ContractFiles.Remove(link);
         await context.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// Archiving requires a contract that is over — the lifecycle is ordered, so Archived implies
+    /// ended and the status chip renders one state rather than a stack of flags.
+    ///
+    /// <para>
+    /// "Over" is not the same as the derived <see cref="ContractStatus.Expired"/>: a one-off whose
+    /// completion date has passed stays <c>Active</c> in the status derivation (it is a settled
+    /// record, not a lapsed term), and it is archivable. Hence the two-branch check rather than a
+    /// status comparison.
+    /// </para>
+    ///
+    /// <para>
+    /// Only the <b>transition</b> into archived is checked. A row archived before this rule existed
+    /// stays editable and restorable: re-validating it on every save would strand it, since the only
+    /// way out is a PUT that carries <c>IsArchived = true</c> right up until the one that clears it.
+    /// Restoring is always allowed.
+    /// </para>
+    /// </summary>
+    private void EnsureArchivable(
+        Contract contract, bool isArchived, DateTime? endDate, DateTime? completionDate)
+    {
+        if (!isArchived || contract.Archived is not null)
+        {
+            return;
+        }
+
+        if (!ContractLifecycle.HasEnded(endDate, completionDate, Today))
+        {
+            throw new DomainValidationException(
+                "A contract can only be archived once it has ended. Set an EndDate before today, or a CompletionDate on or before today, first.");
+        }
     }
 
     // ── Derived status (deterministic, ordered — §6) ──────────────────────────────

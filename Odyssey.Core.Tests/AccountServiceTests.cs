@@ -631,6 +631,89 @@ public class AccountServiceTests
     }
 
     [Fact]
+    public async Task List_PopulatesCurrentTerms_OnePerKind_LatestInForce()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
+
+        var account = await service.Create(new NewAccount
+        {
+            Name = "Savings",
+            Description = "",
+            AccountType = DtoAccountType.SavingsAccount,
+            CurrencyCode = "USD",
+            Archived = false,
+        });
+
+        context.AccountTerms.AddRange(
+            // Superseded by the 2026 rate below — the card's Current band shows what is in force,
+            // not the history.
+            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.03m, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow },
+            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.025m, EffectiveFrom = new DateTime(2026, 1, 1), CreatedAtUtc = DateTime.UtcNow },
+            // Future-dated → not yet in force, must be left out of the band entirely.
+            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
+            // A second KIND: the widened query is what makes this reach the card at all — the old
+            // one filtered to the two rate kinds and a fee could never appear.
+            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.ServiceFee, ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", BillingPeriod = Context.BillingPeriod.Monthly, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
+        await context.SaveChangesAsync();
+
+        var dto = (await service.ListAsync(new AccountsQueryParams())).Items.Single(a => a.AccountId == account.AccountId);
+
+        // One entry per kind, never one per row.
+        Assert.Equal(2, dto.CurrentTerms.Count);
+
+        var rate = dto.CurrentTerms.Single(t => t.TermKind == FinanceDtos.TermKind.InterestRate);
+        Assert.Equal(0.025m, rate.Value);
+        Assert.Equal(new DateTime(2026, 1, 1), rate.EffectiveFrom);
+
+        // The billing period rides along: it is what separates a 5/month fee from a 5/year one.
+        var fee = dto.CurrentTerms.Single(t => t.TermKind == FinanceDtos.TermKind.ServiceFee);
+        Assert.Equal(5m, fee.Value);
+        Assert.Equal(FinanceDtos.BillingPeriod.Monthly, fee.BillingPeriod);
+        Assert.Equal("USD", fee.CurrencyCode);
+
+        // The single headline rate still resolves out of the same widened set.
+        Assert.Equal(0.025m, dto.CurrentInterestRate);
+        Assert.Equal(FinanceDtos.TermKind.InterestRate, dto.CurrentInterestRateKind);
+    }
+
+    [Fact]
+    public async Task Get_PopulatesCurrentTerms_TheSameWayTheListDoes()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
+
+        var account = await service.Create(new NewAccount
+        {
+            Name = "Loan",
+            Description = "",
+            AccountType = DtoAccountType.PersonalLoan,
+            CurrencyCode = "USD",
+            Archived = false,
+        });
+
+        context.AccountTerms.Add(new AccountTerm
+        {
+            AccountId = account.AccountId,
+            TermKind = Context.TermKind.InterestRate,
+            ValueUnit = Context.TermValueUnit.Percentage,
+            Value = 0.0649m,
+            EffectiveFrom = new DateTime(2025, 6, 1),
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        await context.SaveChangesAsync();
+
+        // The list and the detail read from one derivation, so a card cannot show one thing in the
+        // collapsed row and another once opened.
+        var fetched = await service.Get(account.AccountId);
+
+        var term = Assert.Single(fetched!.CurrentTerms);
+        Assert.Equal(FinanceDtos.TermKind.InterestRate, term.TermKind);
+        Assert.Equal(0.0649m, term.Value);
+        Assert.Equal(new DateTime(2025, 6, 1), term.EffectiveFrom);
+    }
+
+    [Fact]
     public async Task SearchFor_PopulatesCurrentInterestRate_LatestInForcePreferringInterestRate()
     {
         await using var context = TestContextFactory.Create();

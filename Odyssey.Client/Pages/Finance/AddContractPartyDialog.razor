@@ -8,7 +8,7 @@
 @*
     AddContractPartyDialog — add a party to a contract (issue #174 §3 step 3, §7 POST …/parties).
     The accessible two-step picker the spec mandates (frontend B2):
-      1. choose the party KIND — Account / Institution / Insurance policy
+      1. choose the party KIND — Account / Contact / Insurance policy
       2. pick the specific record from a type-to-filter OdsCombobox whose options are PRE-LOADED for
          the chosen kind (no in-widget async fetch). The inaccessible CreateTransactionDialog popover
          is deliberately NOT used.
@@ -19,7 +19,7 @@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
                Icon="group_add" Title="Add party"
-               Subtitle="Link the account, institution, or insurance policy this contract relates to."
+               Subtitle="Link the account, contact, or insurance policy this contract relates to."
                SubmitLabel="Add party" OnSubmit="SaveAsync">
 
     <div class="odc-field">
@@ -72,7 +72,7 @@
     /// <summary>Pre-loaded, active account options.</summary>
     [Parameter] public IReadOnlyList<OdsOption> Accounts { get; set; } = [];
 
-    /// <summary>Pre-loaded, active institution (contact) options.</summary>
+    /// <summary>Pre-loaded, active contact options (the Institution party kind).</summary>
     [Parameter] public IReadOnlyList<OdsOption> Institutions { get; set; } = [];
 
     /// <summary>Pre-loaded, active insurance-policy options.</summary>
@@ -90,7 +90,9 @@
     private static readonly IReadOnlyList<KindDef> Kinds =
     [
         new(ContractPartyKind.Account, "Account", "account_balance_wallet"),
-        new(ContractPartyKind.Institution, "Institution", "account_balance"),
+        // The enum member keeps its name — it is a serialized wire value. Only the label and
+        // glyph the reader sees were renamed.
+        new(ContractPartyKind.Institution, "Contact", "groups"),
         new(ContractPartyKind.InsurancePolicy, "Insurance policy", "shield"),
     ];
 

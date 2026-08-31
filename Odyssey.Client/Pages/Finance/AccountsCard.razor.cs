@@ -571,6 +571,165 @@ public partial class AccountsCard
     // ── Display helpers ───────────────────────────────────────────────────────
     private static string GetAccountTypeLabel(AccountType type) => AccountTypeVisuals.Label(type);
 
+    // ── Record-card presentation ──────────────────────────────────────────────────
+
+    /// <summary>The headline figure's colour role. The in-force estimate is what counts toward net
+    /// worth, so it always reads income; a plain balance follows its own sign.</summary>
+    private static OdsRecordFigureTone FigureTone(ExistingAccount a) =>
+        a.CurrentEstimatedValue is not null ? OdsRecordFigureTone.Income
+        : a.Balance < 0 ? OdsRecordFigureTone.Expense
+        : a.Balance > 0 ? OdsRecordFigureTone.Income
+        : OdsRecordFigureTone.Neutral;
+
+    private static string StatusIcon(ExistingAccount a) =>
+        a.Archived is not null ? "inventory_2" : a.Closed is not null ? "lock" : "lock_open";
+
+    /// <summary>The Status tile's value tint, from the same tone the status chip uses, so the chip in
+    /// the header and the tile in the body can never disagree.</summary>
+    private static OdsInfoTileTone StatusTone(ExistingAccount a) => GetStatusChipTone(a) switch
+    {
+        OdsChipTone.Income => OdsInfoTileTone.Income,
+        OdsChipTone.Pending => OdsInfoTileTone.Pending,
+        OdsChipTone.Expense => OdsInfoTileTone.Expense,
+        _ => OdsInfoTileTone.Muted,
+    };
+
+    /// <summary>The single in-force rate the collapsed row headlines on, rebuilt as a term so the
+    /// shared TermKindVisuals formatting (sign, cost colour, unit) applies unchanged.</summary>
+    private static ExistingAccountTerm? RateTermOf(ExistingAccount a) =>
+        a.CurrentInterestRateKind is { } kind
+            ? new ExistingAccountTerm
+            {
+                AccountTermId = Guid.Empty,
+                AccountId = a.AccountId,
+                TermKind = kind,
+                ValueUnit = TermValueUnit.Percentage,
+                Value = a.CurrentInterestRate ?? 0m,
+            }
+            : null;
+
+    /// <summary>Adapts a current-term projection to the shape TermKindVisuals formats, so the Current
+    /// band's tiles read exactly like the same term does in the Terms section.</summary>
+    private static ExistingAccountTerm ToTerm(ExistingAccount a, AccountCurrentTerm term) => new()
+    {
+        AccountTermId = Guid.Empty,
+        AccountId = a.AccountId,
+        TermKind = term.TermKind,
+        ValueUnit = term.ValueUnit,
+        Value = term.Value,
+        CurrencyCode = term.CurrencyCode,
+        BillingPeriod = term.BillingPeriod,
+        EffectiveFrom = term.EffectiveFrom,
+    };
+
+    /// <summary>How many values are in force — the estimate and its balance count as a pair, since the
+    /// balance is only shown as the estimate's secondary reading.</summary>
+    private static int InForceCount(ExistingAccount a) =>
+        a.CurrentTerms.Count + (a.CurrentEstimatedValue is not null ? 2 : 0);
+
+    private static string? EstimateFoot(ExistingAccount a) =>
+        a.CurrentEstimatedValueEffectiveFrom is { } from
+            ? $"in force since {from.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture)} · in net worth"
+            : "in net worth";
+
+    private static string BalanceFoot(ExistingAccount a) =>
+        a.TransactionCount == 0
+            ? "No transactions"
+            : $"{a.TransactionCount} transaction{(a.TransactionCount == 1 ? "" : "s")} · secondary";
+
+    /// <summary>A term's tile foot: when it took effect, plus its billing period where it has one.
+    /// The period is what separates a 695 annual fee from a 695 monthly one, so it rides along.</summary>
+    private static string TermFoot(AccountCurrentTerm term)
+    {
+        var since = $"since {term.EffectiveFrom.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture)}";
+        var period = TermKindVisuals.BillingInfo(term.BillingPeriod);
+        return period is null || term.BillingPeriod == Odyssey.Dtos.Finance.BillingPeriod.OneTime
+            ? since
+            : $"{since} · {period.Label}";
+    }
+
+    /// <summary>
+    /// The Currency tile's foot, which only has something to say when the account is NOT already in
+    /// the reporting currency. The comparison is against the user's actual main currency (from the
+    /// totals the page already loads), not a hardcoded one — an account in the reporting currency is
+    /// not "converted", and saying so would be wrong for anyone whose main currency is not the dollar.
+    /// Silent while totals are unavailable, rather than guessing.
+    /// </summary>
+    private string? CurrencyFoot(ExistingAccount a) =>
+        _totals?.MainCurrencyCode is not { } main
+            || string.Equals(a.CurrencyCode, main, StringComparison.OrdinalIgnoreCase)
+                ? null
+                : "converted for reporting";
+
+    /// <summary>The row action menu, permission-gated. "New term" leads with the § glyph, which
+    /// OdsMenu renders as a literal rather than a Material ligature.</summary>
+    private IReadOnlyList<OdsMenuItem> RowActions(ExistingAccount account)
+    {
+        var items = new List<OdsMenuItem>();
+
+        if (_canUpdateAccounts)
+        {
+            items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit account", OnClick = EventCallback.Factory.Create(this, () => EditClicked(account)) });
+        }
+
+        if (_canUploadFiles)
+        {
+            items.Add(new OdsMenuItem { Icon = "upload_file", Label = "Upload file", OnClick = EventCallback.Factory.Create(this, () => AddFile(account)) });
+        }
+
+        if (_canCreateTransactions && account.Closed is null && account.Archived is null)
+        {
+            items.Add(new OdsMenuItem { Icon = "receipt_long", Label = "New transaction", OnClick = EventCallback.Factory.Create(this, () => AddTransaction(account)) });
+        }
+
+        if (_canWriteEstimates)
+        {
+            items.Add(new OdsMenuItem { Icon = "monitor", Label = "New estimate", OnClick = EventCallback.Factory.Create(this, () => AddEstimate(account)) });
+        }
+
+        if (_canWriteTerms)
+        {
+            items.Add(new OdsMenuItem { Icon = "§", Label = "New term", OnClick = EventCallback.Factory.Create(this, () => AddTerm(account)) });
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint",
+            Label = "Copy ID",
+            TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => CopyAccountId(account.AccountId)),
+        });
+
+        if (_canUpdateAccounts)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = account.Closed != null ? "lock_open" : "lock",
+                Label = account.Closed != null ? "Reopen" : "Close",
+                OnClick = EventCallback.Factory.Create(this, () => ToggleCloseAccount(account)),
+            });
+            items.Add(new OdsMenuItem
+            {
+                Icon = account.Archived != null ? "unarchive" : "archive",
+                Label = account.Archived != null ? "Unarchive" : "Archive",
+                OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(account)),
+            });
+        }
+
+        if (_canDeleteAccounts)
+        {
+            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, () => ConfirmDeleteAccount(account)) });
+        }
+
+        return items;
+    }
+
+    /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
+    /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
+    private static RenderFragment? Caption(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
+
     private static string GetStatusLabel(ExistingAccount a)
     {
         if (a.Archived != null) return "Archived";

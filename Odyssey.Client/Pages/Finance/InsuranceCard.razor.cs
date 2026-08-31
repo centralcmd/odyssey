@@ -478,29 +478,137 @@ public partial class InsuranceCard
     }
 
     // ── Collapsed headline figure ──────────────────────────────────────────────
-    private (bool HasValue, string Value, string Word, string Cls) Headline(InsurancePolicyListItem p)
+    // ── Record-card presentation ──────────────────────────────────────────────────
+
+    /// <summary>The headline figure's colour role: lapsed cover reads expense, cover inside the
+    /// expiring window reads pending, everything else keeps the neutral ink.</summary>
+    private static OdsRecordFigureTone HeadlineTone(string cls) => cls switch
     {
-        switch (p.CoverageStatus)
+        "lapsed" => OdsRecordFigureTone.Expense,
+        "soon" => OdsRecordFigureTone.Pending,
+        _ => OdsRecordFigureTone.Neutral,
+    };
+
+    /// <summary>The Status tile's value tint, from the same registry the coverage chip reads, so the
+    /// chip in the header and the tile in the body can never disagree.</summary>
+    private static OdsInfoTileTone StatusTone(string chipTone) => chipTone switch
+    {
+        "income" => OdsInfoTileTone.Income,
+        "pending" => OdsInfoTileTone.Pending,
+        "expense" => OdsInfoTileTone.Expense,
+        "info" => OdsInfoTileTone.Info,
+        _ => OdsInfoTileTone.Muted,
+    };
+
+    /// <summary>
+    /// The Status tile's foot: the date the current state began. It names the period the STATUS
+    /// refers to, which is only the <em>current</em> one while cover is in force — a lapsed policy
+    /// points at its most recent period, an upcoming one at its earliest future period.
+    /// </summary>
+    private static string StatusFoot(ExistingInsurancePolicy p)
+    {
+        if (p.CoverageStatus == CoverageStatus.Archived)
         {
-            case CoverageStatus.Active:
-            case CoverageStatus.ExpiringSoon:
-                if (p.CurrentRenewalEndDate is { } end)
-                {
-                    var days = (end.Date - Today).Days;
-                    var word = days <= 0 ? "expires today" : $"expires in {days} day{(days == 1 ? "" : "s")}";
-                    return (true, end.ToString("MMM dd, yyyy"), word, p.CoverageStatus == CoverageStatus.ExpiringSoon ? "soon" : "");
-                }
-                return (false, "Active", "currently covered", "");
-            case CoverageStatus.Upcoming:
-                return (false, "Upcoming", "starts later", "");
-            case CoverageStatus.Lapsed:
-                return (false, "Expired", "coverage expired", "lapsed");
-            case CoverageStatus.Archived:
-                return (false, "Archived", "archived", "");
-            default:
-                return (false, "No coverage", "no coverage yet", "");
+            return p.Archived is { } a ? $"since {LongDate(a)}" : "archived";
         }
+
+        if (p.CoverageStatus is CoverageStatus.Active or CoverageStatus.ExpiringSoon && p.CurrentRenewal is { } current)
+        {
+            return $"this period ends {LongDate(current.ToDate)}";
+        }
+
+        if (p.CoverageStatus == CoverageStatus.Upcoming)
+        {
+            var next = p.Renewals.Where(r => r.FromDate.Date > Today).OrderBy(r => r.FromDate).FirstOrDefault();
+            return next is null ? "no renewal period on record" : $"starts {LongDate(next.FromDate)}";
+        }
+
+        if (p.CoverageStatus == CoverageStatus.Lapsed)
+        {
+            var last = p.Renewals.Where(r => r.ToDate.Date < Today).OrderByDescending(r => r.ToDate).FirstOrDefault();
+            return last is null ? "no renewal period on record" : $"ended {LongDate(last.ToDate)}";
+        }
+
+        return "no renewal period on record";
     }
+
+    /// <summary>The row action menu, permission-gated. Archive stays ungated here: an insurance
+    /// policy's lifecycle is not ordered the way a subscription's or a contract's is — cover can be
+    /// retired at any point, and the design system's policy menu offers it unconditionally.</summary>
+    private IReadOnlyList<OdsMenuItem> RowActions(InsurancePolicyListItem p, bool archived)
+    {
+        var items = new List<OdsMenuItem>();
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit policy",
+                OnClick = EventCallback.Factory.Create(this, () => EditClicked(p)),
+            });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "event_repeat",
+                Label = "New renewal period",
+                OnClick = EventCallback.Factory.Create(this, () => AddRenewal(p.InsurancePolicyId)),
+            });
+        }
+
+        if (_canUploadFiles)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "upload_file",
+                Label = "Attach document",
+                OnClick = EventCallback.Factory.Create(this, () => AttachDocument(p.InsurancePolicyId)),
+            });
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint",
+            Label = "Copy ID",
+            TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => CopyId(p.InsurancePolicyId)),
+        });
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = archived ? "unarchive" : "archive",
+                Label = archived ? "Unarchive" : "Archive",
+                OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(p)),
+            });
+        }
+
+        if (_canDelete)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => ConfirmDelete(p)),
+            });
+        }
+
+        return items;
+    }
+
+    /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
+    /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
+    private static RenderFragment? Caption(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
+
+    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
+
+    /// <summary>The collapsed row's headline figure — see <see cref="InsuranceHeadline"/>, which owns
+    /// the branches so they can be tested without a rendered card.</summary>
+    private static InsuranceHeadlineFigure Headline(InsurancePolicyListItem p) =>
+        InsuranceHeadline.Compute(p, Today);
 
     // ── Money ────────────────────────────────────────────────────────────────────
     private string Money(decimal? n, string? code)

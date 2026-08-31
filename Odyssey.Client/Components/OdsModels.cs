@@ -257,3 +257,39 @@ public sealed record OdsBreakdownRow
 /// <param name="TargetId">Id of the element to focus. It must belong to a RENDERED row — a
 /// search-filtered or claim-disabled row is a dead end.</param>
 public sealed record OdsErrorSummaryProblem(string Label, string? Section = null, string? TargetId = null);
+
+/// <summary>
+/// One sub-collection count on an <see cref="OdsRecordCard"/> header — the record's table of
+/// contents (mirrors the DS <c>RecordCardCount</c>). Counts appear in the same order as the
+/// body's sections, use the same glyphs, and stay live while the body edits them.
+/// </summary>
+/// <param name="Icon">Material Icons ligature ("receipt_long"), or a literal glyph such as "§".</param>
+/// <param name="Value">The count itself, already formatted.</param>
+/// <param name="Label">Accessible name / tooltip — "Transactions", "Files". The header is a
+/// dense row of numbers; without this the count is a bare digit to a screen reader.</param>
+public sealed record OdsRecordCount(string Icon, string Value, string? Label = null);
+
+/// <summary>
+/// Builders for the one meta line of an <see cref="OdsRecordCard"/> header — the DS passes an array
+/// of nodes joined with "·" separators, and these are the two shapes nearly every entry takes.
+/// A feature with a richer entry (a linked-record pill chip) passes its own fragment instead; the
+/// card aligns one wrapper level down so it keeps the meta baseline.
+/// </summary>
+public static class OdsRecordMeta
+{
+    /// <summary>A plain meta entry ("Nordea", "Car loan"). Null / blank returns null, which the
+    /// card drops — an absent fact must not leave a stray separator.</summary>
+    public static RenderFragment? Text(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : builder => builder.AddContent(0, value);
+
+    /// <summary>A tabular meta entry — an account number, a rate, a date range. Mono per the DS,
+    /// which sets the family inline rather than through a class.</summary>
+    public static RenderFragment? Mono(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : builder =>
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "style", "font-family:var(--font-mono)");
+            builder.AddContent(2, value);
+            builder.CloseElement();
+        };
+}

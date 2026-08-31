@@ -1,0 +1,54 @@
+@* DS parity — no consumer yet. The card, the grid and the divider are the Razor
+   equivalents the design system's record-card rules require "before any page migrates";
+   the pilot list (record-card-rules.html: Accounts hardest, Subscriptions fastest) is the
+   change that gives this its first consumer. *@
+
+@*
+    OdsInfoTileGrid — the auto-fitting grid the record card's Details slot is made of
+    (Odyssey Design System · components/InfoTileGrid).
+
+    Codifies the rule rather than leaving each page to re-declare a grid: tiles fit at
+    minmax(200px, 1fr), so a full-width card body gets three or four per row instead of
+    two, and an OdsInfoTile with Wide spans the row for prose.
+
+    The grid holds the record's FULL field set, including fields the collapsed header
+    already shows — at tile scale each value arrives with its own label, so a repeat
+    reads as a field rather than an echo. There is no tile ceiling.
+
+    A field with no value renders NO tile. The exception is a field whose absence is
+    itself the fact (a subscription with no end date is open-ended) — decided per field,
+    with the reason in a comment, never as the default. Tiles never condition on each
+    other: each renders on its own field, never because a sibling "already shows that".
+    A derived tile (Status, coverage, review state) summarises the record and carries the
+    date its state began; the fields it is computed from keep their own tiles, so a fact
+    cannot vanish when one state takes precedence over another.
+
+    Dense drops the icon chips and fits at minmax(152px) — an option for record types
+    whose facts are many and short (tax statements). Decided per record type, never mixed
+    inside one card.
+
+    Inside an OdsRecordCard the grid reads --rec / --rec-soft from the card and maps them
+    onto the InfoTile accent, so every tile's icon chip carries the record's type colour
+    with nothing passed per tile. A tile may still override with IconColor / IconSoft, but
+    inside a record card it should not need to.
+*@
+
+<div class="@GridClass" style="@Style">@ChildContent</div>
+
+@code {
+    /// <summary>Seven or more facts: drop the icon chips and fit tiles at minmax(152px).
+    /// Per record type, never mixed inside one card.</summary>
+    [Parameter] public bool Dense { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Style { get; set; }
+
+    /// <summary>The tiles. Six is the target, eight the ceiling; one may be Wide.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string GridClass =>
+        string.Join(' ', new[] { "odc-tilegrid", Dense ? "dense" : null, Class }
+            .Where(c => !string.IsNullOrEmpty(c)));
+}

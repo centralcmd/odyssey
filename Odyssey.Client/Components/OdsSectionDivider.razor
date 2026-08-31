@@ -1,0 +1,51 @@
+@* DS parity — no consumer yet. The card, the grid and the divider are the Razor
+   equivalents the design system's record-card rules require "before any page migrates";
+   the pilot list (record-card-rules.html: Accounts hardest, Subscriptions fastest) is the
+   change that gives this its first consumer. *@
+
+@*
+    OdsSectionDivider — the divider that introduces a band or a section inside a record
+    card body (Odyssey Design System · components/SectionDivider).
+
+    A letter-spaced uppercase label, a hairline rule that takes the remaining width,
+    and an optional mono meta note on the right ("42 · latest 28 Aug 2026"). Promoted
+    from the Insurance page's .ins-sub treatment, which is now the one section divider.
+
+    No icon by design — the label carries it, and a record's sections are already named
+    by the header's counts. A section header LABELS, it does not act: sections inside an
+    OdsRecordCard body are not collapsible and carry no action slot, because the body
+    already opens as a whole and every section-level action belongs to the row menu.
+
+    HeadingLevel puts the label in the heading outline (the client adds this over the
+    DS markup, as OdsCollapsible does) — 3 by default, under the record card's own
+    level-2 trigger heading. Pass 0 to opt out.
+*@
+
+<div class="odc-sectiondivider @Class" id="@Id">
+    <span class="odc-sectiondivider-l"
+          role="@(HeadingLevel > 0 ? "heading" : null)"
+          aria-level="@(HeadingLevel > 0 ? HeadingLevel.ToString(System.Globalization.CultureInfo.InvariantCulture) : null)">@Label</span>
+    <span class="odc-sectiondivider-rule" aria-hidden="true"></span>
+    @if (!string.IsNullOrEmpty(Meta))
+    {
+        <span class="odc-sectiondivider-meta">@Meta</span>
+    }
+</div>
+
+@code {
+    /// <summary>The section name. Rendered uppercase by the stylesheet — write it in sentence case.</summary>
+    [Parameter, EditorRequired] public string? Label { get; set; }
+
+    /// <summary>Optional right-aligned mono note: a count, a date, "in force since 12 Mar 2021".</summary>
+    [Parameter] public string? Meta { get; set; }
+
+    /// <summary>Heading level for the label, so assistive tech can navigate a record body by
+    /// section. Default 3 (under the card trigger's level 2); 0 opts out.</summary>
+    [Parameter] public int HeadingLevel { get; set; } = 3;
+
+    /// <summary>DOM id — a jump target for an in-body link.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+}

@@ -232,6 +232,78 @@ public class SubscriptionServiceTests
         Assert.Equal(request.FirstBillingDate, created.FirstBillingDate);
     }
 
+    // ── Derived next billing (the record card's Next billing tile) ──────────────
+
+    [Fact]
+    public async Task Get_NextBillingDate_IsDerivedFromTheAnchor()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+
+        // Monthly anchored on the 15th, FixedNow = 2026-06-15 → the occurrence on today itself.
+        var created = await service.Create(NewSub());
+        Assert.Equal(new DateOnly(2026, 6, 15), created.NextBillingDate);
+    }
+
+    [Fact]
+    public async Task Get_NextBillingDate_IsNull_WhenNothingIsDue()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+
+        // Paused: the emptiness IS the derivation, not a missing value — the same suppression the
+        // summary's upcoming-renewals rollup applies, so the two can never disagree.
+        var pausedSub = await service.Create(NewSub(name: "Paused"));
+        var paused = await service.Update(pausedSub.SubscriptionId, UpdateFrom(NewSub(name: "Paused"), paused: true));
+        Assert.Null(paused!.NextBillingDate);
+
+        // Ended: the term has lapsed.
+        var endedReq = NewSub(name: "Ended");
+        endedReq.EndDate = new DateOnly(2026, 5, 1);
+        Assert.Null((await service.Create(endedReq)).NextBillingDate);
+
+        // Archived (which, being ordered after Ended, carries a lapsed end date of its own).
+        var archivedReq = NewSub(name: "Archived");
+        var archivedSub = await service.Create(archivedReq);
+        archivedReq.EndDate = new DateOnly(2026, 5, 1);
+        var archived = await service.Update(archivedSub.SubscriptionId, UpdateFrom(archivedReq, archived: true));
+        Assert.Null(archived!.NextBillingDate);
+
+        // A next occurrence past the end date is no occurrence at all: monthly on the 15th with the
+        // term ending on the 20th of the current month yields the 15th, but ending on the 16th of
+        // last month leaves nothing due.
+        var boundedReq = NewSub(name: "Bounded");
+        boundedReq.EndDate = new DateOnly(2026, 6, 20);
+        Assert.Equal(new DateOnly(2026, 6, 15), (await service.Create(boundedReq)).NextBillingDate);
+    }
+
+    [Fact]
+    public async Task Get_NextBillingDate_IsNull_WhenTheNextOccurrenceFallsPastTheEndDate()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+
+        // The end-date cutoff INSIDE NextBilling, which the other null cases never reach: they are all
+        // stopped by the outer paused/ended/archived gate first. Here the term is still live (the end
+        // date is in the future, so the subscription is not Ended) but the next occurrence lands after
+        // it — the subscription simply has no further charge. FixedNow = 2026-06-15.
+        var req = NewSub(name: "Stops before its next charge");
+        req.FirstBillingDate = new DateOnly(2026, 1, 25);   // monthly on the 25th
+        req.EndDate = new DateOnly(2026, 6, 20);            // before the 25th, after today
+
+        var created = await service.Create(req);
+
+        Assert.Null(created.NextBillingDate);
+
+        // The same anchor with the term running past the 25th does bill again — proving the null above
+        // is the cutoff and not the anchor arithmetic.
+        var runs = NewSub(name: "Bills once more");
+        runs.FirstBillingDate = new DateOnly(2026, 1, 25);
+        runs.EndDate = new DateOnly(2026, 6, 30);
+
+        Assert.Equal(new DateOnly(2026, 6, 25), (await service.Create(runs)).NextBillingDate);
+    }
+
     // ── Pause / archive toggles ─────────────────────────────────────────────────
 
     [Fact]
@@ -254,19 +326,63 @@ public class SubscriptionServiceTests
     }
 
     [Fact]
-    public async Task Update_ArchiveAndPause_AreIndependent()
+    public async Task Update_Archive_RequiresAnEndedTerm()
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var created = await service.Create(NewSub());
 
-        var archived = await service.Update(created.SubscriptionId, UpdateFrom(NewSub(), archived: true));
+        // Live: archiving is refused — the lifecycle is ordered, so Archived implies Ended.
+        await Assert.ThrowsAsync<DomainValidationException>(() =>
+            service.Update(created.SubscriptionId, UpdateFrom(NewSub(), archived: true)));
+
+        // A future end date is not an ended term either.
+        var future = NewSub();
+        future.EndDate = new DateOnly(2026, 12, 31);
+        await Assert.ThrowsAsync<DomainValidationException>(() =>
+            service.Update(created.SubscriptionId, UpdateFrom(future, archived: true)));
+
+        // One PUT may end and archive together — the check reads the request's EndDate, not the
+        // stored one, so ending and archiving in a single save is not a two-step dance.
+        var lapsed = NewSub();
+        lapsed.EndDate = new DateOnly(2026, 5, 1); // FixedNow = 2026-06-15
+        var archived = await service.Update(created.SubscriptionId, UpdateFrom(lapsed, archived: true));
         Assert.NotNull(archived!.Archived);
         Assert.Null(archived.Paused);
+    }
 
-        var both = await service.Update(created.SubscriptionId, UpdateFrom(NewSub(), paused: true, archived: true));
-        Assert.NotNull(both!.Archived);
-        Assert.NotNull(both.Paused);
+    [Fact]
+    public async Task Update_ArchivedRow_StaysEditableAndRestorable()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var created = await service.Create(NewSub());
+        var lapsed = NewSub();
+        lapsed.EndDate = new DateOnly(2026, 5, 1);
+        await service.Update(created.SubscriptionId, UpdateFrom(lapsed, archived: true));
+
+        // Only the TRANSITION into archived is gated. Re-saving an already-archived row must not
+        // re-validate, or a row archived before this rule existed could never be edited or restored
+        // (every save carrying Archived = true would 400, including the one that clears it).
+        var stillLive = NewSub(); // no EndDate at all
+        var resaved = await service.Update(created.SubscriptionId, UpdateFrom(stillLive, archived: true));
+        Assert.NotNull(resaved!.Archived);
+
+        var restored = await service.Update(created.SubscriptionId, UpdateFrom(stillLive, archived: false));
+        Assert.Null(restored!.Archived);
+    }
+
+    [Fact]
+    public async Task Update_Pause_IsAllowedOnALiveSubscription()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var created = await service.Create(NewSub());
+
+        // Pause stays orthogonal — it is a temporary hold on a live subscription, not a terminal state.
+        var paused = await service.Update(created.SubscriptionId, UpdateFrom(NewSub(), paused: true));
+        Assert.NotNull(paused!.Paused);
+        Assert.Null(paused.Archived);
     }
 
     // ── List contract ───────────────────────────────────────────────────────────
@@ -303,8 +419,11 @@ public class SubscriptionServiceTests
         var intervalPage = await service.ListAsync(new SubscriptionsQueryParams { Intervals = [BillingInterval.Yearly] });
         Assert.Equal("Yearly", Assert.Single(intervalPage.Items).Name);
 
-        // Archive Monthly → it drops from the Active filter and surfaces under Archived.
-        await service.Update(monthly.SubscriptionId, UpdateFrom(NewSub(name: "Monthly"), archived: true));
+        // Archive Monthly → it drops from the Active filter and surfaces under Archived. Archiving
+        // requires an ended term, so the same PUT carries the lapsed end date.
+        var monthlyEnded = NewSub(name: "Monthly");
+        monthlyEnded.EndDate = new DateOnly(2026, 5, 1);
+        await service.Update(monthly.SubscriptionId, UpdateFrom(monthlyEnded, archived: true));
         Assert.DoesNotContain((await service.ListAsync(new SubscriptionsQueryParams { Statuses = [SubscriptionStatusFilter.Active] })).Items, s => s.Name == "Monthly");
         Assert.Contains((await service.ListAsync(new SubscriptionsQueryParams { Statuses = [SubscriptionStatusFilter.Archived] })).Items, s => s.Name == "Monthly");
 
@@ -352,6 +471,7 @@ public class SubscriptionServiceTests
         await service.Create(endedReq);
         var archivedReq = NewSub(name: "ArchivedOne");
         var archived = await service.Create(archivedReq);
+        archivedReq.EndDate = new DateOnly(2026, 5, 1); // archiving requires an ended term
         await service.Update(archived.SubscriptionId, UpdateFrom(archivedReq, archived: true));
 
         // Each single status selects exactly its one row (partitions are disjoint).

@@ -1,4 +1,5 @@
 @page "/insurance-policies"
+@using System.Globalization
 @using Odyssey.Client.Authorization
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
@@ -19,7 +20,6 @@
 <OdsLiveAnnouncer Message="@_announce" />
 
 
-<div class="ins-shell">
 <MudStack Spacing="4">
 
     <PageHeader Title="Insurance"
@@ -69,84 +69,58 @@
                          EmptyDescription="Add a policy to track its insurer, renewal periods, premium and coverage, and keep every supporting document in one place.">
             <RenderItem Context="p">
                 @{
-                    var isExpanded = IsExpanded(p.InsurancePolicyId);
                     var archived = p.Archived is not null;
                     var typeInfo = OdsTypeRegistries.InsurancePolicyTypeOf(p.Type);
                     var headline = Headline(p);
                     var detail = _details.GetValueOrDefault(p.InsurancePolicyId);
+                    var insurerMeta = OdsTypeRegistries.ContactTypeOf(p.Insurer.Type.ToString());
+
+                    @* The meta line: type · insurer · policy number. The insurer is a REFERENCE to a
+                       contact, so it keeps that contact type's own glyph. *@
+                    var meta = new List<RenderFragment?>
+                    {
+                        OdsRecordMeta.Text(typeInfo.Label),
+                        InsurerMeta(insurerMeta.Icon, p.Insurer.Name),
+                        string.IsNullOrWhiteSpace(p.PolicyNumber) ? null : PolicyNumberMeta(p.PolicyNumber),
+                    };
+
+                    @* The header counts are the body's table of contents: same glyphs, same order as
+                       the sections below. *@
+                    var counts = new[]
+                    {
+                        new OdsRecordCount("event_repeat", p.RenewalCount.ToString(CultureInfo.CurrentCulture), "Renewal periods"),
+                        new OdsRecordCount("description", p.FileCount.ToString(CultureInfo.CurrentCulture), "Documents"),
+                    };
                 }
-                <OdsExpandableCard Id="@($"ins-{p.InsurancePolicyId}")"
-                                   Open="isExpanded"
-                                   Dimmed="archived"
-                                   Flash="@(_flashId == p.InsurancePolicyId)"
-                                   Label="@p.Name"
-                                   OnToggle="@(() => ToggleExpand(p.InsurancePolicyId))">
+                @* One accent per record, from the policy's TYPE. It reaches further here than on the
+                   other pages: --rec also re-points the feature's own --ins-accent inside the body,
+                   so the current-period row tint, the document chips and the premium trend line all
+                   take this policy's hue instead of one page-wide indigo. *@
+                <OdsRecordCard Id="@($"ins-{p.InsurancePolicyId}")"
+                               Icon="@typeInfo.Icon"
+                               Accent="@typeInfo.Color"
+                               AccentSoft="@typeInfo.Soft"
+                               Name="@p.Name"
+                               Meta="meta"
+                               Counts="counts"
+                               FigureCaption="@headline.Word"
+                               FigureTone="@HeadlineTone(headline.Cls)"
+                               Dimmed="archived"
+                               Highlight="@(_flashId == p.InsurancePolicyId)"
+                               Open="IsExpanded(p.InsurancePolicyId)"
+                               OnToggle="@(_ => ToggleExpand(p.InsurancePolicyId))">
 
-                    <Lead>
-                        <div class="acct-badge" style="background:@typeInfo.Soft;color:@typeInfo.Color;">
-                            <span class="material-icons" aria-hidden="true">@typeInfo.Icon</span>
-                        </div>
-                    </Lead>
+                    <Chips>
+                        <OdsCoverageStatusChip Status="p.CoverageStatus" Compact="true" />
+                    </Chips>
 
-                    <Head>
-                        <div class="acct-name-row">
-                            <span class="acct-name">@p.Name</span>
-                            <OdsCoverageStatusChip Status="p.CoverageStatus" Compact="true" />
-                        </div>
-                        <div class="acct-tags">
-                            <span>@typeInfo.Label</span>
-                            <span class="acct-dot">·</span>
-                            <span class="ins-sub-insurer"><span class="material-icons" aria-hidden="true">apartment</span>@p.Insurer.Name</span>
-                            <span class="acct-dot">·</span>
-                            <span class="acct-counts">
-                                <span><span class="material-icons" aria-hidden="true">event_repeat</span>@p.RenewalCount</span>
-                                <span><span class="material-icons" aria-hidden="true">description</span>@p.FileCount</span>
-                            </span>
-                        </div>
-                    </Head>
-
-                    <Figures>
-                        <div class="ins-headline @(headline.HasValue ? "" : "none")">@headline.Value</div>
-                        <div class="ins-headline-word @headline.Cls">@headline.Word</div>
-                    </Figures>
+                    <Figure>@headline.Value</Figure>
 
                     <Actions>
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                                 Size="Size.Small" Color="Color.Default"
-                                 AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
-                            @if (_canUpdate)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(p))">Edit policy</MudMenuItem>
-                                <MudMenuItem Icon="@Icons.Material.Filled.EventRepeat" OnClick="@(() => AddRenewal(p.InsurancePolicyId))">New renewal period</MudMenuItem>
-                            }
-                            @if (_canUploadFiles)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="@(() => AttachDocument(p.InsurancePolicyId))">Attach document</MudMenuItem>
-                            }
-                            <MudMenuItem OnClick="@(() => CopyId(p.InsurancePolicyId))">
-                                <span class="odc-menu-item">
-                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
-                                    <span>Copy ID</span>
-                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
-                                </span>
-                            </MudMenuItem>
-                            @if (_canUpdate)
-                            {
-                                <MudDivider />
-                                <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Archive)" OnClick="@(() => ToggleArchive(p))">
-                                    @(archived ? "Unarchive" : "Archive")
-                                </MudMenuItem>
-                            }
-                            @if (_canDelete)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
-                                             Style="color:var(--mud-palette-error);"
-                                             OnClick="@(() => ConfirmDelete(p))">Delete</MudMenuItem>
-                            }
-                        </MudMenu>
+                        <OdsMenu Items="RowActions(p, archived)" AriaLabel="@($"Actions for {p.Name}")" />
                     </Actions>
 
-                    <Detail>
+                    <Details>
                         @if (detail is null)
                         {
                             <div role="status" aria-live="polite" aria-busy="true">
@@ -156,21 +130,100 @@
                         }
                         else
                         {
+                            @* The policy's full field set, each tile rendering on its own field. Empty
+                               fields drop out — except the insurer, where the absence is the fact: a
+                               policy without one is broken, so it says so rather than vanishing. *@
+                            var dInsurerMeta = OdsTypeRegistries.ContactTypeOf(detail.Insurer.Type.ToString());
+                            var statusMeta = OdsCoverageStatus.Meta(detail.CoverageStatus);
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="shield" Label="Name"
+                                             ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                                    <Value>@detail.Name</Value>
+                                </OdsInfoTile>
+
+                                @if (!string.IsNullOrWhiteSpace(detail.PolicyNumber))
+                                {
+                                    <OdsInfoTile Icon="tag" Label="Policy number"
+                                                 ValueVariant="OdsInfoTileVariant.Mono" Foot="@Caption("Insurer reference")">
+                                        <Value>@detail.PolicyNumber</Value>
+                                    </OdsInfoTile>
+                                }
+
+                                @* No per-tile icon colour: the grid inherits the card's accent, which
+                                   IS this policy's type colour. *@
+                                <OdsInfoTile Icon="@typeInfo.Icon" Label="Type" ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value>@typeInfo.Label</Value>
+                                </OdsInfoTile>
+
+                                @* Referenced records keep their own mark — they point elsewhere. *@
+                                <OdsInfoTile Icon="@dInsurerMeta.Icon" IconColor="@dInsurerMeta.Color" IconSoft="@dInsurerMeta.Soft"
+                                             Label="Insurer" ValueVariant="OdsInfoTileVariant.Text"
+                                             Foot="@Caption(dInsurerMeta.Label)">
+                                    <Value>@detail.Insurer.Name</Value>
+                                </OdsInfoTile>
+
+                                @if (detail.InsuredAccount is { } insured)
+                                {
+                                    <OdsInfoTile Icon="@AccountTypeVisuals.MaterialIcon(insured.Type)"
+                                                 IconColor="@AccountTypeVisuals.FgColor(insured.Type)"
+                                                 IconSoft="@AccountTypeVisuals.BgColor(insured.Type)"
+                                                 Label="Insured account" ValueVariant="OdsInfoTileVariant.Text"
+                                                 Foot="@Caption(AccountTypeVisuals.Label(insured.Type))">
+                                        <Value>@insured.Name</Value>
+                                    </OdsInfoTile>
+                                }
+
+                                @* A DERIVED summary: the state, plus the date that state began. The
+                                   foot names the period the STATUS refers to, which is only the
+                                   current one while cover is in force. *@
+                                <OdsInfoTile Icon="@statusMeta.Icon" Label="Status"
+                                             ValueVariant="OdsInfoTileVariant.Text"
+                                             Tone="@StatusTone(statusMeta.Tone)"
+                                             Foot="@Caption(StatusFoot(detail))">
+                                    <Value>@statusMeta.Label</Value>
+                                </OdsInfoTile>
+
+                                @* Server-derived: the conversion needs rates the client does not have,
+                                   and a period with no rate is left out rather than summed at face
+                                   value — so the count says what the figure actually includes. *@
+                                @if (detail.AccruedPremium is { } accrued)
+                                {
+                                    <OdsInfoTile Icon="savings" Label="Total premium"
+                                                 Foot="@Caption($"{detail.AccruedPremiumPeriods} period{(detail.AccruedPremiumPeriods == 1 ? "" : "s")} to date")">
+                                        <Value>@MoneyFunc(accrued, detail.AccruedPremiumCurrencyCode)</Value>
+                                    </OdsInfoTile>
+                                }
+                            </OdsInfoTileGrid>
+                        }
+                    </Details>
+
+                    <Content>
+                        @* Prose is not a field: notes go in one wide tile. *@
+                        @if (detail is { Notes: { } notes } && !string.IsNullOrWhiteSpace(notes))
+                        {
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true">
+                                    <Value>@notes</Value>
+                                </OdsInfoTile>
+                            </OdsInfoTileGrid>
+                        }
+                    </Content>
+
+                    <Sections>
+                        @if (detail is not null)
+                        {
                             <InsurancePolicyDetailView Policy="detail"
                                                        Money="@MoneyFunc"
                                                        CanWrite="_canUpdate"
                                                        CanDownload="_canDownloadFiles"
                                                        CanUpload="_canUploadFiles"
-                                                       AccountLabel="@AccountTypeLabel"
-                                                       OnAddRenewal="@(() => AddRenewal(p.InsurancePolicyId))"
                                                        OnEditRenewal="@(r => EditRenewal(p.InsurancePolicyId, r))"
                                                        OnDeleteRenewal="@(r => DeleteRenewal(p.InsurancePolicyId, r))"
-                                                       OnAttachPolicy="@(() => AttachDocument(p.InsurancePolicyId))"
                                                        OnAttachRenewal="@(rid => AttachDocument(p.InsurancePolicyId, rid))"
                                                        OnChanged="@(() => ReloadPolicy(p.InsurancePolicyId))" />
                         }
-                    </Detail>
-                </OdsExpandableCard>
+                    </Sections>
+                </OdsRecordCard>
             </RenderItem>
             <CreateAction>
                 @if (_canCreate)
@@ -189,7 +242,6 @@
         </OdsInfiniteList>
     </div>
 </MudStack>
-</div>
 
 @if (_createKey != Guid.Empty)
 {
@@ -226,4 +278,20 @@
                            Policy="_uploadPolicy"
                            InitialRenewalId="_uploadRenewalId"
                            OnSaved="@(() => ReloadPolicy(_uploadPolicy.InsurancePolicyId))" />
+}
+
+@code {
+    // The two meta-line entries that carry a glyph. Inline render fragments are Razor syntax, so they
+    // cannot live in the code-behind. One span each, so each becomes the .odc-record-metaitem's only
+    // child and picks up the meta line's alignment.
+
+    private RenderFragment InsurerMeta(string icon, string name) =>
+        @<span class="ins-sub-insurer">
+            <span class="material-icons" aria-hidden="true">@icon</span><span>@name</span>
+        </span>;
+
+    private RenderFragment PolicyNumberMeta(string policyNumber) =>
+        @<span class="ins-sub-polno">
+            <span class="material-icons" aria-hidden="true">tag</span><span class="mono">@policyNumber</span>
+        </span>;
 }

@@ -47,7 +47,16 @@
                     <span class="odc-menu-item @(item.Danger ? "danger" : null) @(string.IsNullOrEmpty(item.Description) ? null : "has-desc")">
                         @if (!string.IsNullOrEmpty(item.Icon))
                         {
-                            <span class="material-icons odc-menu-item-ic" aria-hidden="true">@item.Icon</span>
+                            @* Ligature or literal glyph, the same split the design system's ActionMenu
+                               makes — the terms "§" is a real menu icon, not a Material name. *@
+                            @if (IsLigature(item.Icon))
+                            {
+                                <span class="material-icons odc-menu-item-ic" aria-hidden="true">@item.Icon</span>
+                            }
+                            else
+                            {
+                                <span class="odc-menu-item-glyph" aria-hidden="true">@item.Icon</span>
+                            }
                         }
                         @* The description sits INSIDE the item content, so it is part of the item's
                            accessible name as well as being visible — a disabled item must not convey
@@ -86,6 +95,11 @@
     [Parameter] public string AriaLabel { get; set; } = "Actions";
 
     [Parameter] public string? Class { get; set; }
+
+    /// <summary>A Material Icons ligature is all-lowercase ASCII letters, digits and underscores
+    /// (e.g. "attach_file"); anything else (e.g. "§") renders as a literal glyph.</summary>
+    private static bool IsLigature(string value) =>
+        value.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '_');
 
     private Origin Anchor => Align == OdsAlign.Start ? Origin.BottomLeft : Origin.BottomRight;
     private Origin Transform => Align == OdsAlign.Start ? Origin.TopLeft : Origin.TopRight;

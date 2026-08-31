@@ -145,6 +145,106 @@ public class InsuranceServiceTests
         await context.SaveChangesAsync();
     }
 
+    // ── List boundary dates (the collapsed row's headline figure) ───────────────
+
+    [Fact]
+    public async Task List_CarriesTheBoundaryDates_ARowHeadlinesOn()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var lapsed = await service.Create(NewPolicy(insurerId));
+        await service.AddRenewal(lapsed.InsurancePolicyId, NewRenewal(FixedToday.AddDays(-800), FixedToday.AddDays(-450)));
+        await service.AddRenewal(lapsed.InsurancePolicyId, NewRenewal(FixedToday.AddDays(-440), FixedToday.AddDays(-100)));
+
+        var upcoming = await service.Create(NewPolicy(insurerId));
+        await service.AddRenewal(upcoming.InsurancePolicyId, NewRenewal(FixedToday.AddDays(30), FixedToday.AddDays(400)));
+        await service.AddRenewal(upcoming.InsurancePolicyId, NewRenewal(FixedToday.AddDays(410), FixedToday.AddDays(700)));
+
+        var never = await service.Create(NewPolicy(insurerId));
+
+        var page = await service.ListAsync(new InsurancePoliciesQueryParams());
+        var byId = page.Items.ToDictionary(i => i.InsurancePolicyId);
+
+        // Lapsed headlines on the LATEST period's end — the most recent cover, not the first.
+        Assert.Equal(CoverageStatus.Lapsed, byId[lapsed.InsurancePolicyId].CoverageStatus);
+        Assert.Equal(FixedToday.AddDays(-100), byId[lapsed.InsurancePolicyId].LatestRenewalEndDate);
+
+        // Upcoming headlines on the EARLIEST period's start — when cover begins.
+        Assert.Equal(CoverageStatus.Upcoming, byId[upcoming.InsurancePolicyId].CoverageStatus);
+        Assert.Equal(FixedToday.AddDays(30), byId[upcoming.InsurancePolicyId].EarliestRenewalStartDate);
+
+        // No period ever recorded: both are null, which is exactly the NoCoverage case — the one
+        // state with no date to show, so the row reads "No coverage" rather than a bare status word.
+        Assert.Equal(CoverageStatus.NoCoverage, byId[never.InsurancePolicyId].CoverageStatus);
+        Assert.Null(byId[never.InsurancePolicyId].LatestRenewalEndDate);
+        Assert.Null(byId[never.InsurancePolicyId].EarliestRenewalStartDate);
+    }
+
+    // ── Accrued premium (the record card's Total premium tile) ──────────────────
+
+    [Fact]
+    public async Task Get_AccruedPremium_SumsEveryPeriodThroughTheCurrentOne()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(NewPolicy(insurerId));
+
+        // Two past periods and the current one all count; a period starting after the current one
+        // ends does not — the figure accrues THROUGH the current period, not beyond it.
+        await service.AddRenewal(created.InsurancePolicyId, NewRenewal(FixedToday.AddDays(-800), FixedToday.AddDays(-450), premium: 100m));
+        await service.AddRenewal(created.InsurancePolicyId, NewRenewal(FixedToday.AddDays(-440), FixedToday.AddDays(-100), premium: 110m));
+        await service.AddRenewal(created.InsurancePolicyId, NewRenewal(FixedToday.AddDays(-90), FixedToday.AddDays(90), premium: 120m));
+        await service.AddRenewal(created.InsurancePolicyId, NewRenewal(FixedToday.AddDays(120), FixedToday.AddDays(400), premium: 130m));
+
+        var policy = await service.Get(created.InsurancePolicyId);
+
+        Assert.Equal(330m, policy!.AccruedPremium);
+        Assert.Equal("USD", policy.AccruedPremiumCurrencyCode);
+        Assert.Equal(3, policy.AccruedPremiumPeriods);
+    }
+
+    [Fact]
+    public async Task Get_AccruedPremium_SkipsAPeriodItCannotConvert()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(NewPolicy(insurerId));
+
+        // No exchange rate is seeded, so the EUR period cannot be expressed in the current period's
+        // USD. It is LEFT OUT rather than added at face value — a silently mixed-currency sum is
+        // worse than a smaller one — and the period count reports what was actually summed, so the
+        // figure and the tile's "N periods to date" caption can never disagree.
+        await service.AddRenewal(created.InsurancePolicyId, NewRenewal(FixedToday.AddDays(-800), FixedToday.AddDays(-450), premium: 100m, premiumCurrency: "EUR"));
+        await service.AddRenewal(created.InsurancePolicyId, NewRenewal(FixedToday.AddDays(-90), FixedToday.AddDays(90), premium: 120m));
+
+        var policy = await service.Get(created.InsurancePolicyId);
+
+        Assert.Equal(120m, policy!.AccruedPremium);
+        Assert.Equal(1, policy.AccruedPremiumPeriods);
+    }
+
+    [Fact]
+    public async Task Get_AccruedPremium_IsNull_WithoutACurrentPeriod()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(NewPolicy(insurerId));
+
+        // Nothing to accrue "through": the tile is absent rather than showing a zero that would read
+        // as a real total.
+        await service.AddRenewal(created.InsurancePolicyId, NewRenewal(FixedToday.AddDays(-800), FixedToday.AddDays(-450)));
+
+        var policy = await service.Get(created.InsurancePolicyId);
+
+        Assert.Null(policy!.AccruedPremium);
+        Assert.Null(policy.AccruedPremiumCurrencyCode);
+        Assert.Equal(0, policy.AccruedPremiumPeriods);
+    }
+
     // ── Coverage-status derivation & boundaries (§5) ─────────────────────────────
 
     [Fact]
