@@ -352,20 +352,15 @@ const ReconTiles = ({ s, recon }) => {
 
 /* ====================== Derivation tags (two roles) ====================== */
 const RoleWell = ({ icon, title, sum, cap, tags, emptyHint }) => (
-  <div className="tx-role">
-    <div className="tx-role-head">
-      <div className="tx-role-name"><MIcon name={icon} size={16} />{title}</div>
-      <div className="tx-role-figure">
-        <div className="tx-role-sum">{sum}</div>
-        <div className="tx-role-cap">{cap}</div>
-      </div>
-    </div>
-    {tags.length ? (
-      <div className="tx-chips">{tags.map(t => <Chip key={t} tone="tag">{t}</Chip>)}</div>
-    ) : (
-      <div className="tx-role-empty">{emptyHint}</div>
-    )}
-  </div>
+  <InfoTile icon={icon} label={title} value={sum} className="tx-role"
+    foot={<React.Fragment>
+      <span className="tx-role-cap">{cap}</span>
+      <span className="tx-role-tags">
+        {tags.length
+          ? <span className="tx-chips">{tags.map(t => <Chip key={t} tone="tag">{t}</Chip>)}</span>
+          : <span className="tx-role-empty">{emptyHint}</span>}
+      </span>
+    </React.Fragment>} />
 );
 
 const DerivationTags = ({ s, editing, onChangeTax, onChangeIncome }) => {
@@ -415,8 +410,12 @@ const TaxDetail = ({ s, layout, focusDocs, onNavigate, setStatement }) => {
 
   const removeFile = (f) => setStatement(prev => ({ ...prev, files: prev.files.filter(x => x.id !== f.id) }));
 
+  const statusTone = status.tone === 'income' ? 'tone-income' : status.tone === 'expense' ? 'tone-expense'
+    : status.tone === 'pending' || status.tone === 'warning' ? 'tone-pending'
+    : status.tone === 'info' ? 'tone-info' : 'tone-muted';
+  const settled = !!s.declared.settledAtUtc;
   return (
-    <div className="acct-detail">
+    <React.Fragment>
       {/* PROBLEMS — the design system's fix-it alert (same as the Accounts page) */}
       {problems.map((p, i) => (
         ProblemAlert
@@ -437,44 +436,62 @@ const TaxDetail = ({ s, layout, focusDocs, onNavigate, setStatement }) => {
             </div>
           )
       ))}
-      {/* metadata wells */}
-      <div className="meta-grid">
-        <MetaTile label="Fiscal year" value={String(s.fiscalYear)} mono />
-        <MetaTile label="Base currency" value={cur} mono />
-        <MetaTile label="Period" value={`${TS_H.dateLong(s.startDate)} → ${TS_H.dateLong(s.endDate)}`} />
-        <MetaTile label="Review status" value={status.label} />
-        <MetaTile label="Filed to authority" value={TS_H.dateLong(s.filedAtUtc)} />
-        <MetaTile label="Authority approved" value={TS_H.dateLong(s.taxOfficeApprovedAtUtc)} />
-        <MetaTile label="Settlement paid" value={s.declared.settledAtUtc ? TS_H.dateLong(s.declared.settledAtUtc) : 'Not yet'} />
-        <MetaTile label="Notes" value={s.notes || '—'} />
-      </div>
-
-      {/* review-status comment (Flagged / commented) */}
+      {/* review-status comment (Flagged / commented) — an alert, so it sits with
+          the problems above the details rather than between them. */}
       {s.statusComment && (
         <Alert severity={s.status === 'Flagged' ? 'warning' : 'info'}>
           <b>{status.label}.</b> {s.statusComment}
         </Alert>
       )}
 
-      {/* DERIVATION TAGS — shown in the main view; edited from the edit form */}
-      <DerivationTags s={s} editing={false} />
+      {/* DETAILS — the statement's full field set. Dates that have not happened
+          yet show no tile; the settlement is kept because its absence is the fact. */}
+      <InfoTileGrid>
+        <InfoTile icon="request_quote" label="Name" value={s.name} valueVariant="text" className="wrapvalue" />
+        <InfoTile icon="event_note" label="Fiscal year" value={String(s.fiscalYear)} foot={s.country || null} />
+        <InfoTile icon="payments" label="Base currency" value={cur} foot="reporting currency" />
+        <InfoTile icon="date_range" label="Period" className="wrapvalue" value={`${TS_H.dateLong(s.startDate)} → ${TS_H.dateLong(s.endDate)}`} valueVariant="sm" />
+        <InfoTile icon={status.icon || 'rule'} label="Status" value={status.label} valueVariant="text"
+          className={statusTone}
+          foot={[s.statusChangedAt ? TS_H.dateLong(s.statusChangedAt) : null, s.statusComment ? 'see note above' : null].filter(Boolean).join(' · ') || null} />
+        {s.filedAtUtc ? <InfoTile icon="outbox" label="Filed to authority" value={TS_H.dateLong(s.filedAtUtc)} valueVariant="sm" /> : null}
+        {s.taxOfficeApprovedAtUtc ? <InfoTile icon="verified" label="Authority approved" value={TS_H.dateLong(s.taxOfficeApprovedAtUtc)} valueVariant="sm" /> : null}
+        <InfoTile icon={settled ? 'task_alt' : 'schedule'} label="Settlement paid"
+          className={settled ? 'tone-income' : 'tone-pending'}
+          value={settled ? TS_H.dateLong(s.declared.settledAtUtc) : 'Not yet'}
+          valueVariant={settled ? 'sm' : 'text'} foot={settled ? null : 'outstanding'} />
+      </InfoTileGrid>
+
+      {s.notes ? (
+        <InfoTileGrid><InfoTile icon="sticky_note_2" label="Notes" value={s.notes} wide /></InfoTileGrid>
+      ) : null}
+
+      {/* DERIVATION TAGS */}
+      <div className="tax-section">
+        <SectionDivider label="Derivation tags" meta={`${s.taxTags.length + s.incomeTags.length} tag${(s.taxTags.length + s.incomeTags.length) === 1 ? '' : 's'}`} />
+        <DerivationTags s={s} editing={false} />
+      </div>
 
       {/* RECONCILIATION REPORT */}
-      {layout === 'tiles' ? <ReconTiles s={s} recon={recon} /> : <ReconTable s={s} recon={recon} />}
+      <div className="tax-section">
+        <SectionDivider label="Reconciliation" meta={`declared vs. recorded · ${cur}`} />
+        {layout === 'tiles' ? <ReconTiles s={s} recon={recon} /> : <ReconTable s={s} recon={recon} />}
+      </div>
 
-      {/* DOCUMENTS */}
-      <Collapsible key={focusDocs ? 'docs-open' : 'docs'} icon="description" title="Statement documents" count={s.files.length} defaultOpen={!!focusDocs}>
-        <InlinePager items={s.files}>
-          {(pageRows) => (
-            <FilesTable
-              files={pageRows}
-              onDelete={removeFile}
-              empty={<div className="empty-line" style={{ padding: 20 }}>No documents attached yet — upload the tax return / assessment PDFs.</div>}
-            />
+      {/* DOCUMENTS — last section. */}
+      <div className="tax-section">
+        <SectionDivider label="Statement documents" meta={`${s.files.length} file${s.files.length === 1 ? '' : 's'}`} />
+        <div className="tax-tbl-frame">
+          {s.files.length === 0 ? (
+            <div className="empty-line">No documents attached yet — upload the tax return / assessment PDFs.</div>
+          ) : (
+            <InlinePager items={s.files}>
+              {(pageRows) => <FilesTable files={pageRows} onDelete={removeFile} />}
+            </InlinePager>
           )}
-        </InlinePager>
-      </Collapsible>
-    </div>
+        </div>
+      </div>
+    </React.Fragment>
   );
 };
 
@@ -528,10 +545,12 @@ const TaxUploadModal = ({ onClose, onUpload }) => {
 };
 
 /* ====================== One statement list item ====================== */
-const TaxListItem = ({ st, layout, defaultOpen, highlight, onNavigate, onDelete }) => {
+const TaxListItem = ({ st, layout, open: openProp, onToggle, highlight, onNavigate, onDelete }) => {
   const { useState, useRef, useEffect } = React;
   const [s, setS] = useState(st);
-  const [open, setOpen] = useState(!!defaultOpen);
+  // Open state lives in the list — opening a statement closes its siblings.
+  const open = !!openProp;
+  const setOpen = (next) => onToggle(typeof next === 'function' ? next(open) : next);
   const [showEdit, setShowEdit] = useState(false);
   const [focusDocs, setFocusDocs] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -547,11 +566,10 @@ const TaxListItem = ({ st, layout, defaultOpen, highlight, onNavigate, onDelete 
   // Header figure: declared settlement, or estimated outstanding for an
   // in-progress year that hasn't declared a settlement yet.
   const settle = s.declared.settlementAmount != null ? s.declared.settlementAmount : recon.outstandingTax;
-  const settleColor = settle == null ? 'var(--mud-palette-text-secondary)'
-    : settle > 0 ? 'var(--finance-expense)' : settle < 0 ? 'var(--finance-income)' : 'var(--mud-palette-text-secondary)';
   const word = s.declared.settlementAmount != null
     ? (settle > 0 ? 'additional tax to pay' : settle < 0 ? 'refund' : 'settled')
-    : (settle != null ? 'outstanding (est.)' : 'awaiting assessment');
+    : (settle == null ? 'awaiting assessment'
+      : settle > 0 ? 'outstanding (est.)' : settle < 0 ? 'refund (est.)' : 'settled (est.)');
 
   const setStatus = (status, comment) => setS(prev => ({
     ...prev, status, statusComment: comment !== undefined ? comment : prev.statusComment,
@@ -570,7 +588,7 @@ const TaxListItem = ({ st, layout, defaultOpen, highlight, onNavigate, onDelete 
   // view (via the nearest scroll container) and flash a severity ring.
   useEffect(() => {
     if (!highlight || !cardRef.current) return;
-    setOpen(true);
+    if (!open) setOpen(true);
     const el = cardRef.current;
     let scroller = el.parentElement;
     while (scroller && scroller !== document.body) {
@@ -590,41 +608,40 @@ const TaxListItem = ({ st, layout, defaultOpen, highlight, onNavigate, onDelete 
   }, [highlight]);
 
   return (
-    <Card className={`acct-item ${open ? 'open' : ''} ${dimmed ? 'dimmed' : ''} ${highlight ? 'flash' : ''}`} ref={cardRef}>
-      <div className="acct-head" onClick={() => setOpen(o => !o)}>
-        <Avatar icon="request_quote" tone={TAX_TONE} square size="lg" />
-
-        <div className="acct-id">
-          <div className="acct-name-row">
-            <span className="acct-name">{s.name}</span>
+    <div ref={cardRef}>
+      <RecordCard
+        icon="request_quote"
+        accent={TAX_TONE.fg}
+        accentSoft={TAX_TONE.bg}
+        name={s.name}
+        chips={(
+          <React.Fragment>
             <Chip tone={status.tone} dot={status.dot}>{status.label}</Chip>
             {problems.length > 0 && (
               <Chip tone={topSev} className="problem">
                 <SeverityIcon severity={topSev} size={13} />{problems.length === 1 ? problems[0].chip : 'Attention'}
               </Chip>
             )}
-          </div>
-          <div className="acct-tags">
-            <span>{TS_H.dateLong(s.startDate)} → {TS_H.dateLong(s.endDate)}</span>
-            <span className="acct-dot">·</span>
-            <span className="mono">{cur}</span>
-            <span className="acct-dot">·</span>
-            <span className="acct-counts">
-              <span><MIcon name="local_offer" size={14} />{s.taxTags.length + s.incomeTags.length}</span>
-              <span><MIcon name="description" size={14} />{s.files.length}</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="acct-figures">
-          <div className="acct-balance mono" style={{ color: settleColor }}>
-            {settle == null ? '—' : TS_H.taxMoney(Math.abs(settle), cur)}
-          </div>
-          <div className="tx-balance-word">{word}</div>
-        </div>
-
-        <div className="acct-controls" onClick={(e) => e.stopPropagation()}>
-          <ActionMenu items={[
+          </React.Fragment>
+        )}
+        meta={[
+          <span><MIcon name="date_range" size={14} /><span>{TS_H.dateLong(s.startDate)} → {TS_H.dateLong(s.endDate)}</span></span>,
+          <span className="mono"><MIcon name="payments" size={14} /><span>{cur}</span></span>,
+        ]}
+        counts={[
+          { icon: 'local_offer', value: s.taxTags.length + s.incomeTags.length, label: 'Derivation tags' },
+          { icon: 'description', value: s.files.length, label: 'Documents' },
+        ]}
+        figure={{
+          value: settle == null ? '—' : TS_H.taxMoney(Math.abs(settle), cur),
+          caption: word,
+          tone: settle == null || settle === 0 ? undefined : settle > 0 ? 'expense' : 'income',
+        }}
+        dimmed={dimmed}
+        highlight={highlight}
+        open={open}
+        onToggle={setOpen}
+        actions={<ActionMenu items={[
             { icon: 'edit', label: 'Edit statement', onClick: () => setShowEdit(true) },
             { icon: 'upload_file', label: 'Upload file', onClick: () => setUploading(true) },
             { icon: 'check_circle', label: 'Mark approved', onClick: () => setStatus('Approved', null) },
@@ -634,23 +651,21 @@ const TaxListItem = ({ st, layout, defaultOpen, highlight, onNavigate, onDelete 
             { divider: true },
             { icon: s.archived ? 'unarchive' : 'archive', label: s.archived ? 'Unarchive' : 'Archive', onClick: toggleArchive },
             { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(s.id) },
-          ]} />
-          <button className="acct-expand" onClick={() => setOpen(o => !o)} aria-label="Expand">
-            <MIcon name="expand_more" size={22} className={`chev ${open ? 'open' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {open && <TaxDetail s={s} layout={layout} focusDocs={focusDocs} onNavigate={onNavigate} setStatement={setS} />}
+        ]} />}
+      >
+        <TaxDetail s={s} layout={layout} focusDocs={focusDocs} onNavigate={onNavigate} setStatement={setS} />
+      </RecordCard>
       {showEdit && <AddTaxStatementModal statement={s} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
       {uploading && <TaxUploadModal onClose={() => setUploading(false)} onUpload={handleUpload} />}
-    </Card>
+    </div>
   );
 };
 
 /* ====================== Page ====================== */
 const TaxStatements = ({ tweaks = {}, onNavigate }) => {
   const { useState } = React;
+  // One card open at a time — the list owns it.
+  const [openId, setOpenId] = useState('ts-2024');
   const layout = tweaks.reportLayout || 'table';
 
   const [q, setQ] = useState('');
@@ -777,7 +792,9 @@ const TaxStatements = ({ tweaks = {}, onNavigate }) => {
             revealKey={jumpId}
             renderItem={(s) => (
               <TaxListItem st={s} layout={layout}
-                defaultOpen={s.id === 'ts-2024'} highlight={jumpId === s.id}
+                open={openId === s.id}
+                onToggle={(o) => setOpenId(o ? s.id : null)}
+                highlight={jumpId === s.id}
                 onNavigate={onNavigate} onDelete={deleteStatement} />
             )}
             empty={(

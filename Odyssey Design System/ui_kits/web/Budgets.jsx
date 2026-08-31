@@ -96,37 +96,68 @@ const EditItemRow = ({ item, budget, onChange, onDelete }) => {
   );
 };
 
-/* ---- Expanded detail: breakdown + items + transactions ---- */
-const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem }) => {
-  const { useState } = React;
-  const [editMulti, setEditMulti] = useState(false);
+/* ---- Details slot · the budget's FULL field set as tiles ----------------
+   The DS RecordCard rollout: the body repeats what the header shows (period,
+   currency, status) because at tile scale each value arrives with its own
+   label, and adds the four roll-ups the header can only summarise as one
+   figure. Derived tiles (Actual*, balances) never replace the planned tiles
+   they are computed from. */
+const BudgetTiles = ({ budget }) => {
+  const DS = window.OdysseyDesignSystem_d5aa51 || {};
+  const { InfoTileGrid, InfoTile } = DS;
+  if (!InfoTileGrid || !InfoTile) return null;
   const totals = H.budgetTotals(budget);
+  const status = H.budgetStatus(budget);
+  const income = budget.items.filter(i => i.categoryType === 'Income');
+  const expense = budget.items.filter(i => i.categoryType === 'Expense');
+  const ahead = totals.actualDiff >= totals.expectedDiff;
+  const lines = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  return (
+    <InfoTileGrid>
+      <InfoTile icon={budget.icon || 'pie_chart'} label="Name" value={budget.name} valueVariant="text" className="wrapvalue" />
+      <InfoTile icon="event" label="Start date" value={H.dateLong(budget.startDate)} valueVariant="sm" foot="plan period opens" />
+      <InfoTile icon="event_busy" label="End date" value={H.dateLong(budget.endDate)} valueVariant="sm" foot="plan period closes" />
+      <InfoTile icon="payments" label="Base currency" value={budget.currency} foot="reporting currency" />
+      <InfoTile icon={budget.archived ? 'inventory_2' : 'check_circle'} label="Status" valueVariant="text"
+        className={budget.archived ? 'tone-muted' : 'tone-income'} value={status.label}
+        foot={budget.archived ? `since ${H.dateTime(budget.archived)}` : 'in the default list'} />
+      <InfoTile icon="trending_up" label="Planned income" className="tone-income"
+        value={H.money(totals.plannedIncome)} foot={lines(income.length, 'income line')} />
+      <InfoTile icon="shopping_cart" label="Planned expenses" className="tone-expense"
+        value={H.money(totals.plannedExpense)} foot={lines(expense.length, 'expense line')} />
+      <InfoTile icon="south_west" label="Actual income" className="tone-income"
+        value={H.money(totals.actualIncome)} foot="from matched transactions" />
+      <InfoTile icon="north_east" label="Actual expenses" className="tone-expense"
+        value={H.money(totals.actualExpense)} foot="from matched transactions" />
+      <InfoTile icon="balance" label="Expected balance" value={H.money(totals.expectedDiff)}
+        className={totals.expectedDiff < 0 ? 'tone-expense' : 'tone-income'} foot="planned in − planned out" />
+      <InfoTile icon="account_balance" label="Actual balance" value={H.money(totals.actualDiff)}
+        className={totals.actualDiff < 0 ? 'tone-expense' : 'tone-income'}
+        foot={ahead ? 'ahead of plan' : 'behind plan'} />
+    </InfoTileGrid>
+  );
+};
+
+/* ---- Body sections: allocation + items + transactions ---- */
+const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, editMulti, setEditMulti }) => {
+  const { useState } = React;
   const [txns, setTxns] = useState(() => H.budgetMatchedTxns(budget));
   const saveTxn = (id, patch) => setTxns(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
   const deleteTxn = (id) => setTxns(prev => prev.filter(t => t.id !== id));
-  const status = H.budgetStatus(budget);
   const income  = budget.items.filter(i => i.categoryType === 'Income');
   const expense = budget.items.filter(i => i.categoryType === 'Expense');
   // Per-budget allocation slices — this budget's own planned lines, biggest first.
   const incomeSlices  = income.map(i => ({ name: i.name, value: i.planned })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
   const expenseSlices = expense.map(i => ({ name: i.name, value: i.planned })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
-  const aheadOfPlan = totals.actualDiff >= totals.expectedDiff;
 
   const deleteItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
   const updateItem = (id, patch) => setItems(prev => prev.map(i => (i.id === id ? { ...i, ...patch } : i)));
 
   return (
-    <div className="acct-detail">
-      <div className="meta-grid">
-        <MetaTile label="Start date" value={H.dateLong(budget.startDate)} />
-        <MetaTile label="End date" value={H.dateLong(budget.endDate)} />
-        <MetaTile label="Base currency" value={budget.currency} mono />
-        <MetaTile label="Status" value={status.label} />
-        <MetaTile label="Description" value={budget.description || '—'} />
-      </div>
-
-      <div className="bgt-breakdown">
-        {budget.items.length > 0 && (
+    <React.Fragment>
+      {budget.items.length > 0 && (
+        <div className="acct-section">
+          <SectionDivider label="Allocation" meta={`planned · ${budget.currency}`} />
           <div className="bgt-donuts-row">
             <div className="bgt-donuts">
               <DonutPanel title="Planned income" centerLabel="Planned in" centerIcon="trending_up"
@@ -139,28 +170,12 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem }) =
                 colors={EXPENSE_COLORS} items={expenseSlices} />
             </div>
           </div>
-        )}
-        <div className="grid-2 bgt-balance">
-          <StatTile overline="Expected balance" value={H.money(totals.expectedDiff)}
-            valueClass={totals.expectedDiff < 0 ? 'expense' : ''} />
-          <StatTile overline="Actual balance"   value={H.money(totals.actualDiff)}
-            valueClass={totals.actualDiff < 0 ? 'expense' : ''}
-            delta={`${aheadOfPlan ? 'Ahead of' : 'Behind'} plan`} deltaDir={aheadOfPlan ? 'up' : 'down'} />
         </div>
-      </div>
+      )}
 
-      <Collapsible
-        icon="format_list_bulleted"
-        title="Budget items"
-        count={budget.items.length}
-        defaultOpen
-        action={(
-          <ActionMenu items={[
-            { icon: 'playlist_add', label: 'New item', onClick: onAddItem },
-            { icon: editMulti ? 'check' : 'edit_note', label: editMulti ? 'Done editing' : 'Edit multiple', onClick: () => setEditMulti(m => !m) },
-          ]} />
-        )}
-      >
+      <div className="acct-section">
+        <SectionDivider label="Budget items"
+          meta={`${budget.items.length} item${budget.items.length === 1 ? '' : 's'}${editMulti ? ' · editing' : ''}`} />
         {budget.items.length === 0 ? (
           <div className="empty-line">No items yet — add income and expense lines to start planning.</div>
         ) : editMulti ? (
@@ -180,8 +195,9 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem }) =
               <Button variant="text" color="primary" icon="check" onClick={() => setEditMulti(false)}>Done</Button>
             </div>
           </div>
+
         ) : (
-          <div className="bgt-items">
+          <div className="bgt-items acct-table-frame">
             <div className="bgt-item-head">
               <span>Item</span>
               <span>Actual vs planned</span>
@@ -193,12 +209,11 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem }) =
             <BudgetItemGroup kind="expense" items={expense} budget={budget} onEdit={onEditItem} onDelete={deleteItem} />
           </div>
         )}
-      </Collapsible>
+      </div>
 
-      <Collapsible icon="receipt_long" title="Transactions" count={txns.length}
-        action={<Button variant="text" color="primary" iconRight="arrow_forward" onClick={() => onNavigate && onNavigate('transactions')}>View all</Button>}
-      >
-        <div className="acct-txn-table">
+      <div className="acct-section">
+        <SectionDivider label="Transactions" meta={`${txns.length} matched · in range and tagged`} />
+        <div className="acct-txn-table acct-table-frame">
           <InlinePager items={txns}>
             {(pageRows) => (
               <TxnTable
@@ -210,18 +225,20 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem }) =
             )}
           </InlinePager>
         </div>
-      </Collapsible>
-    </div>
+      </div>
+    </React.Fragment>
   );
 };
 
-/* ---- One budget list item (collapsed header + expandable detail) ---- */
-const BudgetListItem = ({ b, onDelete, onNavigate }) => {
+/* ---- One budget record (DS RecordCard) ---- */
+const BudgetRecordCard = ({ b, open, onToggle, onDelete, onNavigate }) => {
   const { useState } = React;
+  const DS = window.OdysseyDesignSystem_d5aa51 || {};
+  const { RecordCard, InfoTileGrid, InfoTile } = DS;
   const [budget, setBudget] = useState(b);
-  const [open, setOpen] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [itemModal, setItemModal] = useState(null); // null | { item }  (item null = add)
+  const [editMulti, setEditMulti] = useState(false);
   const status = H.budgetStatus(budget);
   const totals = H.budgetTotals(budget);
   const txnCount = H.budgetMatchedTxns(budget).length;
@@ -251,58 +268,55 @@ const BudgetListItem = ({ b, onDelete, onNavigate }) => {
       : [...prev, it]);
     setItemModal(null);
   };
-  const openAddItem = () => { setOpen(true); setItemModal({ item: null }); };
-  const openEditItem = (item) => { setOpen(true); setItemModal({ item }); };
+  const openAddItem = () => { onToggle(true); setItemModal({ item: null }); };
+  const openEditItem = (item) => { onToggle(true); setItemModal({ item }); };
+
+  if (!RecordCard || !InfoTileGrid || !InfoTile) return null;
 
   return (
-    <Card className={`acct-item ${open ? 'open' : ''} ${dimmed ? 'dimmed' : ''}`}>
-      <div className="acct-head" onClick={() => setOpen(o => !o)}>
-        <Avatar icon={budget.icon} tone={tone} square size="lg" />
-
-        <div className="acct-id">
-          <div className="acct-name-row">
-            <span className="acct-name">{budget.name}</span>
-            <Chip tone={status.tone} dot>{status.label}</Chip>
-          </div>
-          <div className="acct-tags">
-            <span>{H.dateLong(budget.startDate)} → {H.dateLong(budget.endDate)}</span>
-            <span className="acct-dot">·</span>
-            <span className="mono">{budget.currency}</span>
-            <span className="acct-dot">·</span>
-            <span className="acct-counts">
-              <span><MIcon name="format_list_bulleted" size={14} />{budget.items.length}</span>
-              <span><MIcon name="receipt_long" size={14} />{txnCount}</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="acct-figures">
-          <div className="acct-balance mono"
-            style={{ color: totals.expectedDiff < 0 ? 'var(--finance-expense)' : 'var(--finance-income)' }}>
-            {H.money(totals.expectedDiff)}
-          </div>
-          <div className="acct-delta muted">expected balance</div>
-        </div>
-
-        <div className="acct-controls" onClick={(e) => e.stopPropagation()}>
-          <ActionMenu items={[
-            { icon: 'edit', label: 'Edit budget', onClick: startEdit },
-            { icon: 'playlist_add', label: 'New item', onClick: openAddItem },
-            { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(budget.id); } },
-            { divider: true },
-            { icon: budget.archived ? 'unarchive' : 'archive', label: budget.archived ? 'Unarchive' : 'Archive', onClick: toggleArchive },
-            { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(budget.id) },
-          ]} />
-          <button className="acct-expand" onClick={() => setOpen(o => !o)} aria-label="Expand">
-            <MIcon name="expand_more" size={22} className={`chev ${open ? 'open' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {open && <BudgetDetail budget={budget} setItems={setItems} onNavigate={onNavigate} onAddItem={openAddItem} onEditItem={openEditItem} />}
+    <div>
+      <RecordCard
+        icon={budget.icon || 'pie_chart'}
+        accent={tone.fg}
+        accentSoft={tone.bg}
+        name={budget.name}
+        chips={<Chip tone={status.tone} dot>{status.label}</Chip>}
+        meta={[
+          <span><MIcon name="date_range" size={14} /><span>{H.dateLong(budget.startDate)} → {H.dateLong(budget.endDate)}</span></span>,
+          <span className="mono"><MIcon name="payments" size={14} /><span>{budget.currency}</span></span>,
+        ]}
+        counts={[
+          { icon: 'format_list_bulleted', value: budget.items.length, label: 'Budget items' },
+          { icon: 'receipt_long', value: txnCount, label: 'Transactions' },
+        ]}
+        figure={{ value: H.money(totals.expectedDiff), caption: 'Expected balance', tone: totals.expectedDiff < 0 ? 'expense' : 'income' }}
+        dimmed={dimmed}
+        open={open}
+        onToggle={onToggle}
+        actions={<ActionMenu items={[
+          { icon: 'edit', label: 'Edit budget', onClick: startEdit },
+          { icon: 'playlist_add', label: 'New item', onClick: openAddItem },
+          { icon: editMulti ? 'check' : 'edit_note', label: editMulti ? 'Done editing items' : 'Edit multiple',
+            onClick: () => { onToggle(true); setEditMulti(m => !m); } },
+          { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(budget.id); } },
+          { divider: true },
+          { icon: budget.archived ? 'unarchive' : 'archive', label: budget.archived ? 'Unarchive' : 'Archive', onClick: toggleArchive },
+          { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(budget.id) },
+        ]} />}
+        details={<BudgetTiles budget={budget} />}
+        content={budget.description ? (
+          <InfoTileGrid>
+            <InfoTile icon="notes" label="Description" wide value={budget.description} />
+          </InfoTileGrid>
+        ) : null}
+      >
+        <BudgetDetail budget={budget} setItems={setItems} onNavigate={onNavigate}
+          onAddItem={openAddItem} onEditItem={openEditItem}
+          editMulti={editMulti} setEditMulti={setEditMulti} />
+      </RecordCard>
       {showEdit && <AddBudgetModal budget={budget} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
       {itemModal && <AddBudgetItemModal budget={budget} item={itemModal.item} onClose={() => setItemModal(null)} onCreate={addItem} />}
-    </Card>
+    </div>
   );
 };
 
@@ -317,6 +331,8 @@ const Budgets = ({ onNavigate }) => {
   const [sort, setSort] = useState({ key: 'startDate', dir: 'desc' });
   // Card-list server paging: "Load N at a time" batch size, fed to InfiniteList.
   const [batch, setBatch] = useState(25);
+  // The list owns ONE openId — opening a record closes its siblings.
+  const [openId, setOpenId] = useState(null);
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
   // §6.3 curated fields — one list feeds the SortSelect AND the ordering.
   const sortFields = [
@@ -392,7 +408,8 @@ const Budgets = ({ onNavigate }) => {
           itemKey={(b) => b.id}
           noun="budgets"
           renderItem={(b) => (
-            <BudgetListItem b={b} onDelete={deleteBudget} onNavigate={onNavigate} />
+            <BudgetRecordCard b={b} open={openId === b.id} onToggle={(o) => setOpenId(o ? b.id : null)}
+              onDelete={deleteBudget} onNavigate={onNavigate} />
           )}
           empty={(
             <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>
