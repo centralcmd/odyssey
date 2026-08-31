@@ -1,10 +1,13 @@
 @*
-    OdsSubscriptionStatusChip — the read display of a subscription's lifecycle states (issue #293) as
-    chips: Paused (temporarily not billing, still visible), Ended (its term has lapsed — DERIVED from
-    EndDate, never stored) and Archived (hidden/retired). Paused and Archived are orthogonal stored
-    flags; Ended is derived. This renders one chip per active state — Ended supersedes Paused (a pause
-    is moot once the term is over), Archived stacks after — and an "Active" chip when none is set (only
-    when ShowActive).
+    OdsSubscriptionStatusChip — the read display of a subscription's lifecycle state (issue #293)
+    as ONE chip: Paused (temporarily not billing, still visible), Ended (its term has lapsed —
+    DERIVED from EndDate, never stored), Archived (retired and hidden), or Active.
+
+    A subscription has exactly one lifecycle state. The states are ORDERED rather than orthogonal:
+    only an ended subscription can be archived, so Archived implies Ended, and Ended makes a pause
+    moot. Precedence is therefore Archived → Ended → Paused → Active, and this renders the first
+    that applies (Active only when ShowActive). Superseded timestamps are not lost — the record body
+    carries a tile per stored flag (paused / archived), which is where the full history lives.
 
     Sibling of OdsCoverageStatusChip / OdsContractStatusChip: the state meaning lives in the visible
     text label, never colour or glyph alone (the leading dot/icon is aria-hidden). Tone follows the
@@ -12,47 +15,40 @@
     Active = active (mint).
 *@
 
-@{
-    var ended = Ended;
-    var paused = Paused && !ended; // Ended supersedes Paused.
-}
-@if (paused || ended || Archived || ShowActive)
+@if (State is { } state)
 {
     <span class="odc-substatus">
-        @if (ended)
-        {
-            <OdsChip Tone="OdsChipTone.Expense" Icon="@(ShowIcon ? "event_busy" : null)" Dot="@(!ShowIcon)">Ended</OdsChip>
-        }
-        @if (paused)
-        {
-            <OdsChip Tone="OdsChipTone.Pending" Icon="@(ShowIcon ? "pause_circle" : null)" Dot="@(!ShowIcon)">Paused</OdsChip>
-        }
-        @if (Archived)
-        {
-            <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
-        }
-        @if (!paused && !ended && !Archived && ShowActive)
-        {
-            <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
-        }
+        <OdsChip Tone="state.Tone" Icon="@(ShowIcon ? state.Icon : null)" Dot="@(!ShowIcon)">@state.Label</OdsChip>
     </span>
 }
 
 @code {
-    /// <summary>Whether the subscription is currently paused. Ignored when <see cref="Ended"/> is set
-    /// (Ended supersedes Paused).</summary>
+    /// <summary>Whether the subscription is currently paused. Ignored when <see cref="Ended"/> or
+    /// <see cref="Archived"/> is set — both supersede it.</summary>
     [Parameter] public bool Paused { get; set; }
 
-    /// <summary>Whether the subscription's term has lapsed (derived: EndDate ≤ today). Supersedes Paused.</summary>
+    /// <summary>Whether the subscription's term has lapsed (derived: EndDate ≤ today). Supersedes
+    /// Paused; superseded by Archived.</summary>
     [Parameter] public bool Ended { get; set; }
 
-    /// <summary>Whether the subscription is archived.</summary>
+    /// <summary>Whether the subscription is archived. Only an ended subscription can be archived,
+    /// so this supersedes every other state.</summary>
     [Parameter] public bool Archived { get; set; }
 
     /// <summary>Render an "Active" chip when no state is set (default false — a plain active row
     /// shows nothing).</summary>
     [Parameter] public bool ShowActive { get; set; }
 
-    /// <summary>Lead the Paused/Ended chip with its glyph instead of a dot.</summary>
+    /// <summary>Lead the chip with its glyph instead of a dot.</summary>
     [Parameter] public bool ShowIcon { get; set; }
+
+    private sealed record SubscriptionState(string Label, OdsChipTone Tone, string Icon);
+
+    /// <summary>Exactly one state, by precedence: Archived → Ended → Paused → Active.</summary>
+    private SubscriptionState? State =>
+        Archived ? new("Archived", OdsChipTone.Outline, "inventory_2")
+        : Ended ? new("Ended", OdsChipTone.Expense, "event_busy")
+        : Paused ? new("Paused", OdsChipTone.Pending, "pause_circle")
+        : ShowActive ? new("Active", OdsChipTone.Income, "autorenew")
+        : null;
 }

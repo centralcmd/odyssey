@@ -18,11 +18,32 @@
     transactions, a tag-management bar (removable chips + an Add-tag checklist), and
     the NoSmartTags / Loading / NoTransactions / HasTransactions / error states.
     Add/remove fire the per-tag POST/DELETE endpoints (write-gated).
+
+    Chrome="false" renders the bare form — no disclosure shell, no header — for a host that
+    introduces the section itself with an OdsSectionDivider (an OdsRecordCard body, where
+    sections neither collapse nor act). This is also the only section that stays rendered at
+    zero: its adder is the sole entry point for a first smart tag, so hiding it when empty
+    would make the feature unreachable.
 *@
 
-<OdsCollapsible Class="odc-smarttags" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="sell" Count="@CountFragment">
-    <Title>Smart tags</Title>
-    <ChildContent>
+@if (Chrome)
+{
+    <OdsCollapsible Class="odc-smarttags" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="sell" Count="@CountFragment">
+        <Title>Smart tags</Title>
+        <ChildContent>@Inner</ChildContent>
+    </OdsCollapsible>
+}
+else
+{
+    @* Bare (Chrome="false"): no disclosure shell and no header — the host introduces the
+       section with its own OdsSectionDivider. Used inside an OdsRecordCard body, where
+       sections do not collapse and do not act. Nothing gates the load here, so the content
+       is whatever OnInitializedAsync already fetched. *@
+    <div class="odc-smarttags bare">@Inner</div>
+}
+
+@code {
+    private RenderFragment Inner => @<text>
         @if (_hasTags)
         {
             <div class="odc-smarttags-bar">
@@ -129,5 +150,5 @@
                 </OdsInlinePager>
             </div>
         }
-    </ChildContent>
-</OdsCollapsible>
+    </text>;
+}

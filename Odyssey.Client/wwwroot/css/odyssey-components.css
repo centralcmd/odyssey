@@ -3127,3 +3127,148 @@
 .mud-button-root:disabled .odc-btn-badge {
     background: var(--mud-palette-action-disabled); color: var(--mud-palette-surface);
 }
+
+/* ---------- RecordCard (OdsRecordCard — the expandable record list item) ----------
+   Mirrors the design system (components.css · .odc-record*). ROW HEIGHT IS ONE NUMBER
+   ACROSS EVERY RECORD LIST: the header is at least 88px, set here rather than left to
+   each page's content. Insurance is the reference — its meta line carries linked-record
+   pill chips, which are worth the height — and a list of plainer records breathes the
+   same way instead of collapsing to a tighter row. Lists scan as one product when their
+   rows share a rhythm; a page that needs more says so by wrapping, not by shrinking.
+   The header is the record's identity; the body order is fixed by the component (alert
+   then details then content then sections). ONE ACCENT PER RECORD: --rec / --rec-soft
+   are set from the record's TYPE colour and inherited by the header mark, the tile icon
+   chips and any single-series chart inside. Unset falls back to the brand accent, which
+   is the case for every record type with no type field (tax statements, journal entries). */
+.odc-record {
+    --rec: var(--brand-text);
+    --rec-soft: color-mix(in srgb, var(--brand-text) 16%, transparent);
+    border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-lg);
+    background: var(--mud-palette-surface); overflow: hidden;
+    transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+}
+.odc-record.open { border-color: var(--mud-palette-lines-default, var(--mud-palette-divider)); box-shadow: var(--mud-elevation-2); }
+.odc-record.dimmed .odc-record-head { opacity: 0.62; }
+@keyframes odc-record-flash {
+    0%   { box-shadow: 0 0 0 3px color-mix(in srgb, var(--finance-pending) 70%, transparent); }
+    100% { box-shadow: 0 0 0 3px transparent; }
+}
+.odc-record.flash { animation: odc-record-flash 2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .odc-record.flash { animation: none; } }
+
+.odc-record-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 88px; }
+.odc-record-trigger {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-4);
+    width: 100%; min-width: 0; padding: 15px var(--space-1) 15px var(--space-4);
+    border: 0; background: transparent; cursor: pointer; text-align: left; font: inherit; color: inherit;
+}
+.odc-record-head:hover { background: var(--mud-palette-action-default-hover); }
+.odc-record-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-record-mark {
+    flex: none; width: 48px; height: 48px; border-radius: var(--radius-md); display: grid; place-items: center;
+    background: var(--rec-soft); color: var(--rec);
+}
+.odc-record-mark .material-icons { font-size: 24px; }
+.odc-record-id { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.odc-record-namerow { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.odc-record-namerow > * { flex: none; }
+.odc-record-name {
+    font: var(--fw-medium) 16px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+    flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* One line, ellipsised, never wrapped: the scanning surface stays one row tall. */
+.odc-record-meta {
+    display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden;
+    font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+/* A meta entry may be a bare value or a feature's own wrapper span carrying an icon +
+   label — so the alignment reaches one level down. Without this, every feature that
+   passes its own wrapper into Meta re-breaks the baseline. */
+.odc-record-metaitem, .odc-record-metaitem > span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.odc-record-metaitem { flex: none; }
+/* Any icon a meta item carries aligns with its label by default — the meta line is a
+   flex row of flex items, never inline text with a floating glyph. */
+.odc-record-meta .material-icons { font-size: 14px; line-height: 1; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-record-dot { opacity: 0.4; flex: none; }
+.odc-record-counts { display: inline-flex; gap: var(--space-3); flex: none; }
+.odc-record-counts > span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.odc-record-counts .material-icons { font-size: 14px; opacity: 0.65; }
+.odc-record-glyph { font-size: 15px; line-height: 1; font-weight: 600; opacity: 0.65; }
+.odc-record-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.odc-record-figure { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; text-align: right; }
+.odc-record-value { font: var(--fw-medium) 22px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.odc-record-value.income  { color: var(--finance-income); }
+.odc-record-value.expense { color: var(--finance-expense); }
+.odc-record-value.pending { color: var(--finance-pending); }
+.odc-record-caption {
+    font: var(--fw-regular) 10.5px/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.odc-record-ctl { display: flex; align-items: center; gap: 2px; padding-right: 10px; }
+.odc-record-chev {
+    width: 36px; height: 36px; border-radius: var(--radius-pill); border: 0; background: transparent; cursor: pointer;
+    display: grid; place-items: center; color: var(--mud-palette-text-secondary);
+}
+.odc-record-chev:hover { background: var(--mud-palette-action-default-hover); }
+.odc-record-chev .material-icons { font-size: 22px; transition: transform var(--duration-slow) var(--ease-standard); }
+.odc-record.open .odc-record-chev .material-icons { transform: rotate(180deg); }
+
+/* Body: the four slots, in order, with nothing else allowed between them. */
+.odc-record-body {
+    border-top: 1px solid var(--mud-palette-divider-light, var(--mud-palette-divider));
+    padding: var(--space-4); display: flex; flex-direction: column; gap: 14px;
+}
+
+/* InfoTile value tone — a tile whose value carries a state colour (an upcoming date in
+   info blue, a lapsed one in expense coral) rather than the neutral ink. Grouped with
+   RecordCard because that is where the DS declares them. */
+.odc-infotile.tone-info    .odc-infotile-v { color: var(--mud-palette-info); }
+.odc-infotile.tone-pending .odc-infotile-v { color: var(--pending-text, var(--finance-pending)); }
+.odc-infotile.tone-income  .odc-infotile-v { color: var(--finance-income); }
+.odc-infotile.tone-expense .odc-infotile-v { color: var(--finance-expense); }
+.odc-infotile.tone-muted   .odc-infotile-v { color: var(--mud-palette-text-secondary); }
+
+/* A value that must never truncate (a record's name) wraps instead. */
+.odc-infotile.wrapvalue .odc-infotile-v { white-space: normal; overflow: visible; text-overflow: clip; }
+
+/* ---------- InfoTileGrid (OdsInfoTileGrid — the record body's Details slot) ----------
+   Auto-fit, so a full-width card body gets three or four tiles per row instead of two;
+   .dense drops the icon chips for records with seven or more facts. */
+.odc-tilegrid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+    --odc-infotile-accent: var(--rec, var(--brand-text));
+    --odc-infotile-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
+}
+.odc-tilegrid.dense { grid-template-columns: repeat(auto-fit, minmax(152px, 1fr)); gap: var(--space-2); }
+.odc-tilegrid.dense .odc-infotile { padding: 11px var(--space-3); gap: 7px; }
+.odc-tilegrid.dense .odc-infotile-ic { display: none; }
+.odc-tilegrid.dense .odc-infotile-v { font-size: var(--fs-body1); }
+@media (max-width: 600px) { .odc-tilegrid, .odc-tilegrid.dense { grid-template-columns: 1fr; } }
+
+/* ---------- SectionDivider (OdsSectionDivider — bands + sections inside a record body) ---------- */
+.odc-sectiondivider { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 2px; }
+.odc-sectiondivider:first-child { margin-top: 2px; }
+.odc-sectiondivider-l {
+    font: 600 11px/1 var(--font-sans); letter-spacing: var(--tracking-caps, 0.08em);
+    text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none;
+}
+.odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light, var(--mud-palette-divider)); }
+.odc-sectiondivider-meta { font: var(--fw-regular) 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
+
+/* Smart tags, bare (AccountSmartTagsSection Chrome="false") — the host supplies the
+   divider, so the section drops the disclosure body's own padding. Inside a record card
+   it reads as a card like the other section contents, and the management bar's tinted
+   background (which was the collapsible body's contrast) drops to a hairline rule, since
+   inside the card frame it reads as a grey slab. */
+.odc-smarttags.bare { padding: 0; }
+.odc-record-body .odc-smarttags.bare {
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: var(--radius-md);
+    box-shadow: var(--mud-elevation-1);
+    padding: var(--space-1) var(--space-2) var(--space-2);
+}
+.odc-record-body .odc-smarttags.bare .odc-smarttags-bar {
+    background: transparent;
+    border-bottom: 1px solid var(--mud-palette-divider-light, var(--mud-palette-divider));
+}

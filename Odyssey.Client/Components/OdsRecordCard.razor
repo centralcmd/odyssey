@@ -1,0 +1,149 @@
+@* DS parity — no consumer yet. The card, the grid and the divider are the Razor
+   equivalents the design system's record-card rules require "before any page migrates";
+   the pilot list (record-card-rules.html: Accounts hardest, Subscriptions fastest) is the
+   change that gives this its first consumer. *@
+
+@*
+    OdsRecordCard — THE expandable record card behind every record list (Odyssey Design
+    System · components/RecordCard, components/record-card-rules.html).
+
+    Accounts, Contracts, Insurance policies, Subscriptions, Tax statements, Budgets,
+    Journal entries and Exchange rates all render their rows through this one component.
+    A dense, scannable header that expands a body in place. It is the product's ONLY
+    record-detail surface — there are no record pages — so a body carries whatever the
+    record needs: charts, paged tables, inline edit, its own dialogs.
+
+    ROW HEIGHT IS ONE NUMBER ACROSS EVERY RECORD LIST — at least 88px, owned by the
+    stylesheet, never tightened or padded by a page. Insurance is the reference: its meta
+    line carries linked-record pill chips, and a list of plainer records keeps the same
+    rhythm so the product scans as one thing.
+
+    The header is the record's IDENTITY — enough to recognise, compare and rule out a
+    record without expanding it: type mark, name, state chip, one meta line (ellipsised,
+    never wrapped), the sub-collection counts, a headline figure and the row actions.
+
+    The body order is structural, not editorial: Alert → Details → Content → Sections.
+    Pass only what the record has; you cannot reorder them, which is the point.
+
+    ONE ACCENT PER RECORD, for what belongs to THIS record. Accent / AccentSoft come from
+    the record's TYPE colour — or its type-equivalent: a categorical registry the record
+    always has exactly one of (a subscription's billing interval, a budget item's
+    category). NEVER derived state (paused / ended / overdue), which stays with the status
+    chip. They are set as --rec / --rec-soft on the card, so the header mark, the
+    OdsInfoTileGrid icon chips inside Details and any single-series chart inherit the same
+    hue with nothing passed down. Omit them and the card falls back to the brand accent
+    (tax statements, journal entries, exchange rates have no type). A reference to ANOTHER
+    object — a linked account, a contact, a policy, a file type — keeps that object's own
+    icon and colour instead, so it stays recognisable as the record it points at.
+
+    ONE CARD OPEN AT A TIME. A record list holds a single open id and drives every card
+    controlled — Open="@(_openId == r.Id)", OnToggle="@(o => _openId = o ? r.Id : null)".
+    Bodies are unbounded in height, which is only tolerable because opening one record
+    closes its siblings.
+
+    Works controlled (Open + OnToggle / @bind-Open) or uncontrolled (DefaultOpen). The
+    trigger is a real <button aria-expanded> tied to the body via aria-controls; Actions
+    (an OdsMenu, usually) sits OUTSIDE the trigger so it stays independently clickable,
+    and the chevron beside it is an aria-hidden mouse affordance with no tab stop of its
+    own. Styled by the global .odc-record block in wwwroot/css/odyssey-components.css.
+    Parameters and state live in OdsRecordCard.razor.cs.
+*@
+
+<div id="@Id" class="@RootClass" style="@AccentStyle">
+    <div class="odc-record-head">
+        @* The disclosure heading wraps the trigger (the WAI-ARIA accordion pattern) so
+           screen readers can navigate a list by heading. display:contents keeps the button
+           the grid child it always was, so layout is untouched — and leaves the wrapper
+           inert when HeadingLevel is 0 (a div with no role and no box). *@
+        <div role="@HeadingRole" aria-level="@HeadingLevelAttr" style="display:contents">
+            @* aria-controls names the body only while it exists: the body is not rendered
+               when the card is closed, and an IDREF pointing at nothing is invalid. *@
+            <button type="button"
+                    class="odc-record-trigger"
+                    aria-expanded="@(IsOpen ? "true" : "false")"
+                    aria-controls="@(IsOpen ? _bodyId : null)"
+                    @onclick="ToggleAsync">
+                @if (!string.IsNullOrEmpty(Icon))
+                {
+                    <span class="odc-record-mark">
+                        <span class="material-icons" aria-hidden="true">@Icon</span>
+                    </span>
+                }
+                <span class="odc-record-id">
+                    <span class="odc-record-namerow">
+                        <span class="odc-record-name">@Name</span>
+                        @Chips
+                    </span>
+                    @if (MetaItems.Count > 0 || CountItems.Count > 0)
+                    {
+                        <span class="odc-record-meta">
+                            @for (var i = 0; i < MetaItems.Count; i++)
+                            {
+                                @if (i > 0)
+                                {
+                                    <span class="odc-record-dot" aria-hidden="true">·</span>
+                                }
+                                <span class="odc-record-metaitem">@MetaItems[i]</span>
+                            }
+                            @if (CountItems.Count > 0)
+                            {
+                                @if (MetaItems.Count > 0)
+                                {
+                                    <span class="odc-record-dot" aria-hidden="true">·</span>
+                                }
+                                <span class="odc-record-counts">
+                                    @foreach (var count in CountItems)
+                                    {
+                                        <span title="@count.Label">
+                                            @if (IsLigature(count.Icon))
+                                            {
+                                                <span class="material-icons" aria-hidden="true">@count.Icon</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="odc-record-glyph" aria-hidden="true">@count.Icon</span>
+                                            }
+                                            @count.Value
+                                            @* The glyph is decorative, so the count would otherwise
+                                               reach a screen reader as a bare number. *@
+                                            <span class="odc-record-sr">@(" " + count.Label)</span>
+                                        </span>
+                                    }
+                                </span>
+                            }
+                        </span>
+                    }
+                </span>
+                @if (Figure is not null)
+                {
+                    <span class="odc-record-figure">
+                        <span class="odc-record-value @FigureToneClass">@Figure</span>
+                        @if (!string.IsNullOrEmpty(FigureCaption))
+                        {
+                            <span class="odc-record-caption">@FigureCaption</span>
+                        }
+                    </span>
+                }
+            </button>
+        </div>
+        @* Row actions are siblings of the trigger, not nested inside it: a menu inside a
+           button is invalid, and a click on it must not toggle the card. *@
+        <div class="odc-record-ctl" @onclick:stopPropagation="true">
+            @Actions
+            @* Redundant mouse affordance only — the trigger above is the keyboard control,
+               so this adds neither a second tab stop nor a second announcement. *@
+            <button type="button" class="odc-record-chev" aria-hidden="true" tabindex="-1" @onclick="ToggleAsync">
+                <span class="material-icons">expand_more</span>
+            </button>
+        </div>
+    </div>
+    @if (IsOpen)
+    {
+        <div class="odc-record-body" id="@_bodyId">
+            @Alert
+            @Details
+            @Content
+            @Sections
+        </div>
+    }
+</div>
