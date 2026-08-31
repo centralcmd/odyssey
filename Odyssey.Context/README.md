@@ -111,9 +111,16 @@ rows and the sole basis for `Down`. It has the same three foreign keys the dropp
 `DestinationPolicyRenewalFileId` and `DestinationPolicyRenewalId` deliberately carry no key, because
 they must survive a detach or a period deletion.
 
-It is retained indefinitely. It is small, it is the reversibility mechanism, and there is no later
-phase to dispose of it. **Do not add an entity type for it** — the tables an EF model owns are the ones
-the application reads and writes, and nothing outside the migration touches this one.
+**Retention: indefinite, and deliberately so.** It is small, it is the reversibility mechanism, and
+there is no later phase that would dispose of it — a ledger deleted on a schedule stops being a basis
+for `Down` on exactly the day someone needs one. The personal data it holds is a single column,
+`AttachedByUserId`, and that is `SET NULL`-ed by `users.delete` along with every other attribution
+column (GDPR Art. 17), so the record survives erasure without the identifier. It holds no file
+content, no filenames and no file metadata — only ids — which is the data-minimisation posture
+(Art. 5(1)(c)) that made a table preferable to a log stream that may be shipped off-box.
+
+**Do not add an entity type for it** — the tables an EF model owns are the ones the application reads
+and writes, and nothing outside the migration touches this one.
 
 ### Permission claims are not seeded here
 

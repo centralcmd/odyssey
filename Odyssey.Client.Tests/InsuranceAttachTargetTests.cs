@@ -80,4 +80,40 @@ public class InsuranceAttachTargetTests
     {
         Assert.Equal(Guid.Empty, InsuranceAttachTarget.For(Policy(null)));
     }
+
+    /// <summary>
+    /// The caller's own period wins over the inference. The period panel passes its id, and that is
+    /// the user's choice — an inference that overrode it would file the document on a period they
+    /// were not looking at.
+    /// </summary>
+    [Fact]
+    public void An_explicit_period_is_used_as_given()
+    {
+        var current = Period(new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc));
+        var chosen = Period(new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal(
+            chosen.PolicyRenewalId,
+            InsuranceAttachTarget.Resolve(Policy(current, current, chosen), chosen.PolicyRenewalId));
+    }
+
+    [Fact]
+    public void With_no_explicit_period_the_inference_is_used()
+    {
+        var latest = Period(new DateTime(2023, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        var older = Period(new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        Assert.Equal(latest.PolicyRenewalId, InsuranceAttachTarget.Resolve(Policy(null, older, latest), null));
+    }
+
+    /// <summary>
+    /// The race the card guards: the row menu's gate said there was a period, and by the time the
+    /// dialog opened there was not. Resolving to Empty is what lets the caller refuse rather than
+    /// post a default Guid to a route that would 404.
+    /// </summary>
+    [Fact]
+    public void With_neither_an_explicit_period_nor_one_to_infer_it_resolves_to_empty()
+    {
+        Assert.Equal(Guid.Empty, InsuranceAttachTarget.Resolve(Policy(null), null));
+    }
 }

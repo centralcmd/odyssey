@@ -34,6 +34,20 @@ namespace Odyssey.Client.Pages.Finance;
 /// </summary>
 public static class InsuranceAttachTarget
 {
+    /// <summary>
+    /// The period an attach should target: the caller's own when it has one (the period panel), else
+    /// the inferred row-menu target. <see cref="Guid.Empty"/> when the policy has no period at all,
+    /// which the caller must treat as "there is nowhere to attach this" rather than posting a default
+    /// Guid to a route that would 404.
+    ///
+    /// <para>
+    /// The gate on the row action is <c>RenewalCount &gt; 0</c>, so an empty result is the race where
+    /// the last period was deleted underneath an open record — not the ordinary path.
+    /// </para>
+    /// </summary>
+    public static Guid Resolve(ExistingInsurancePolicy policy, Guid? explicitRenewalId) =>
+        explicitRenewalId ?? For(policy);
+
     /// <summary>The period to attach to, or <see cref="Guid.Empty"/> when the policy has none.</summary>
     public static Guid For(ExistingInsurancePolicy policy) =>
         policy.CurrentRenewal?.PolicyRenewalId

@@ -419,6 +419,98 @@ public class InsurancePolicyFileRelocationTests(MariaDbFixture fixture)
     }
 
     /// <summary>
+    /// The other half of the assertion, and the one an earlier revision left out: the destination row
+    /// must match the ledger, not merely exist for the resolved <c>(period, file)</c> pair.
+    ///
+    /// <para>
+    /// Existence alone verifies that the resolution join found the right period — it says nothing
+    /// about what step 4 actually wrote into it. A fault there (a swapped column alias, say) would
+    /// produce a destination row the ledger describes correctly and does not match, and the migration
+    /// would drop the source table on top of it.
+    /// </para>
+    ///
+    /// <para>
+    /// Reachable for the same reason as the source-side mis-copy: the ledger insert is guarded on
+    /// <c>SourceId NOT EXISTS</c> and the destination insert on the <c>(period, file)</c> pair, so
+    /// seeding both with a mismatched pair leaves the migration nothing to write and the check
+    /// something to catch.
+    /// </para>
+    /// </summary>
+    [SkippableFact]
+    public async Task A_destination_row_that_does_not_match_the_ledger_fails_the_assertion()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateAsync();
+
+        var policy = Guid.NewGuid();
+        var period = Guid.NewGuid();
+        var file = Guid.NewGuid();
+        var source = Guid.NewGuid();
+        var ledgeredDestination = Guid.NewGuid();
+        var actualDestination = Guid.NewGuid();
+
+        try
+        {
+            await using (var context = NewContext())
+            {
+                await MigrationSeam.MigrateToAsync(context, Baseline);
+                await SeedPrincipalsAsync(context, file);
+                await SeedPolicyAsync(context, policy, "Mis-written destination");
+                await AddPeriodAsync(context, period, policy, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+                await AddPolicyFileAsync(context, source, policy, file, fileType: 3);
+
+                await MigrationSeam.MigrateToAsync(context, Ledger);
+
+                // A ledger row that describes the source faithfully — the source-side half of the
+                // assertion passes — and names a destination row id.
+                await context.Database.ExecuteSqlRawAsync($"""
+                    INSERT INTO `_InsurancePolicyFileRelocation`
+                        (`SourceId`, `InsurancePolicyId`, `FileMetadataId`, `FileType`, `EffectiveDate`,
+                         `AttachedByUserId`, `AttachedAtUtc`, `DestinationPolicyRenewalId`,
+                         `DestinationPolicyRenewalFileId`, `Outcome`, `PlaceholderPeriodCreated`, `MigratedAtUtc`)
+                    VALUES ('{source}', '{policy}', '{file}', 3, NULL, '{User}', '2024-01-01 00:00:00',
+                            '{period}', '{ledgeredDestination}', 'Relocated', 0, '2025-01-01 00:00:00');
+                    """);
+
+                // …and a destination row for that (period, file) pair which is NOT the row the ledger
+                // names, and carries a different FileType. Step 4 skips the insert because the pair is
+                // taken, so this is what the assertion meets.
+                context.PolicyRenewalFiles.Add(new PolicyRenewalFile
+                {
+                    Id = actualDestination,
+                    PolicyRenewalId = period,
+                    FileMetadataId = file,
+                    FileType = PolicyFileType.ClaimDocument,
+                    AttachedByUserId = User,
+                    AttachedAtUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                });
+                await context.SaveChangesAsync();
+            }
+
+            await using (var context = NewContext())
+            {
+                var failure = await Assert.ThrowsAnyAsync<Exception>(() => context.Database.MigrateAsync());
+
+                var mysql = Assert.IsAssignableFrom<MySqlException>(
+                    Unwrap(failure).FirstOrDefault(e => e is MySqlException)
+                    ?? throw new Xunit.Sdk.XunitException($"No MySqlException in: {Flatten(failure)}"));
+                Assert.Equal(4025, mysql.Number);
+            }
+
+            await using (var context = NewContext())
+            {
+                // Non-destructive, as ever: the source table is still there to correct from.
+                Assert.True(await MigrationSeam.TableExistsAsync(context, "InsurancePolicyFiles"));
+                Assert.False(await MigrationSeam.HasRunAsync(context, Drop));
+            }
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
+    /// <summary>
     /// §16.10: replaying the relocation is a no-op. The execution strategy replays a migration in-process
     /// on a transient connection failure, so this is a real path, not a hypothetical one.
     ///

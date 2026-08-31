@@ -19,16 +19,24 @@ namespace Odyssey.Context.Migrations
     /// </para>
     ///
     /// <para>
-    /// <strong>The assertion is three-way and value-checking.</strong> An existence check could not
-    /// distinguish a correct copy from a mis-copied one, because the ledger is written by the same
-    /// statement that resolves the destination. At assertion time the originals are still there to
-    /// compare against — the last moment in the design where original and copy coexist — so for every
-    /// source row it requires a ledger row, a live <c>PolicyRenewalFiles</c> row for the resolved
-    /// <c>(period, file)</c> pair (for <c>SkippedDuplicate</c> as well as <c>Relocated</c>, or the
-    /// document is gone), and field equality. Comparisons use MariaDB's NULL-safe <c>&lt;=&gt;</c>,
-    /// never <c>=</c>: <c>EffectiveDate</c> and <c>AttachedByUserId</c> are nullable and a null
-    /// <c>EffectiveDate</c> is common, so <c>=</c> would yield <c>NULL</c> and silently pass every row
-    /// the check exists to catch.
+    /// <strong>The assertion is three-way and value-checking, in BOTH directions.</strong> An
+    /// existence check could not distinguish a correct copy from a mis-copied one, because the ledger
+    /// is written by the same statement that resolves the destination. At assertion time the originals
+    /// are still there to compare against — the last moment in the design where original and copy
+    /// coexist — so for every source row it requires a ledger row, a live <c>PolicyRenewalFiles</c>
+    /// row for the resolved <c>(period, file)</c> pair (for <c>SkippedDuplicate</c> as well as
+    /// <c>Relocated</c>, or the document is gone), <c>source == ledger</c> field equality, and — for a
+    /// <c>Relocated</c> row — <c>ledger == destination</c> field equality too.
+    /// </para>
+    ///
+    /// <para>
+    /// That second direction is easy to leave out and was: checking the destination for existence
+    /// alone verifies that the resolution join found the right period, not that step 4 wrote the right
+    /// values into it. A swapped column alias there would have produced a destination row that the
+    /// ledger described correctly and that did not match it, and nothing would have fired.
+    /// Comparisons use MariaDB's NULL-safe <c>&lt;=&gt;</c>, never <c>=</c>: <c>EffectiveDate</c> and
+    /// <c>AttachedByUserId</c> are nullable and a null <c>EffectiveDate</c> is common, so <c>=</c>
+    /// would yield <c>NULL</c> and silently pass every row the check exists to catch.
     /// </para>
     ///
     /// <para>
@@ -208,12 +216,25 @@ namespace Odyssey.Context.Migrations
                       ON d.`PolicyRenewalId` = l.`DestinationPolicyRenewalId`
                      AND d.`FileMetadataId` = l.`FileMetadataId`
                     WHERE l.`SourceId` = s.`Id`
+                      -- source <-> ledger: the copy is faithful to the original.
                       AND l.`InsurancePolicyId` <=> s.`InsurancePolicyId`
                       AND l.`FileMetadataId`   <=> s.`FileMetadataId`
                       AND l.`FileType`         <=> s.`FileType`
                       AND l.`EffectiveDate`    <=> s.`EffectiveDate`
                       AND l.`AttachedByUserId` <=> s.`AttachedByUserId`
-                      AND l.`AttachedAtUtc`    <=> s.`AttachedAtUtc`);
+                      AND l.`AttachedAtUtc`    <=> s.`AttachedAtUtc`
+                      -- ledger <-> destination: and what was actually WRITTEN is that copy. Without
+                      -- this the destination is only ever checked for existence, so a fault in the
+                      -- insert of step 4 — a swapped column alias, say — would write wrong data and
+                      -- still pass. Scoped to Relocated: a SkippedDuplicate names no destination row
+                      -- of its own, and the row that is there is the user's, whose type, effective
+                      -- date and attribution are legitimately their own.
+                      AND (l.`Outcome` <> 'Relocated' OR (
+                               d.`Id`               <=> l.`DestinationPolicyRenewalFileId`
+                           AND d.`FileType`         <=> l.`FileType`
+                           AND d.`EffectiveDate`    <=> l.`EffectiveDate`
+                           AND d.`AttachedByUserId` <=> l.`AttachedByUserId`
+                           AND d.`AttachedAtUtc`    <=> l.`AttachedAtUtc`)));
                 """);
 
             migrationBuilder.Sql("DROP TEMPORARY TABLE IF EXISTS `_assert`;");

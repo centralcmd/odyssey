@@ -483,7 +483,7 @@ public partial class InsuranceCard
         await EnsureDetail(policyId);
         if (!_details.TryGetValue(policyId, out var d)) return;
 
-        var target = renewalId ?? InsuranceAttachTarget.For(d);
+        var target = InsuranceAttachTarget.Resolve(d, renewalId);
         if (target == Guid.Empty)
         {
             // The gate on RenewalCount should have disabled the action; this is the race where the
@@ -519,8 +519,7 @@ public partial class InsuranceCard
         if (_details.TryGetValue(policyId, out var d)
             && d.Renewals.FirstOrDefault(r => r.PolicyRenewalId == renewalId) is { } period)
         {
-            var n = period.Files.Count;
-            _announce = $"{n} document{(n == 1 ? "" : "s")} on {LongDate(period.FromDate)} → {LongDate(period.ToDate)}.";
+            _announce = InsuranceAnnouncements.DocumentsOnPeriod(period);
             StateHasChanged();
         }
     }
@@ -532,15 +531,20 @@ public partial class InsuranceCard
     /// </summary>
     private async Task OnRenewalSaved(Guid policyId)
     {
-        var hadNone = _policies.FirstOrDefault(p => p.InsurancePolicyId == policyId)?.RenewalCount == 0;
+        var before = PeriodCount(policyId);
         await ReloadPolicy(policyId);
 
-        if (hadNone && _policies.FirstOrDefault(p => p.InsurancePolicyId == policyId)?.RenewalCount > 0)
+        if (InsuranceAnnouncements.PeriodsBecameAvailable(before, PeriodCount(policyId)) is { } message)
         {
-            _announce = "First renewal period added. Attach document is now available.";
+            _announce = message;
             StateHasChanged();
         }
     }
+
+    /// <summary>The LIST row's period count — the same source the row-menu gate reads, so the
+    /// announcement and the gate can never disagree about whether a policy has a period.</summary>
+    private int PeriodCount(Guid policyId) =>
+        _policies.FirstOrDefault(p => p.InsurancePolicyId == policyId)?.RenewalCount ?? 0;
 
     // ── Collapsed headline figure ──────────────────────────────────────────────
     // ── Record-card presentation ──────────────────────────────────────────────────

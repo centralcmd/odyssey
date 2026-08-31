@@ -105,6 +105,47 @@ public class OdsMenuDisabledItemTests
         Assert.Contains("odc-menu-note", note.ClassName ?? "");
     }
 
+    /// <summary>
+    /// The shell must sit in the same tab sequence as the items around it, which is what makes the
+    /// reason reachable at all.
+    ///
+    /// <para>
+    /// MudBlazor's menu is not a roving-tabindex ARIA menu: every enabled item carries
+    /// <c>tabindex="0"</c>, so Tab is how a keyboard user moves through it. The shell matches that
+    /// exactly. It also matches on <c>role</c> — MudBlazor gives its items none, and the list
+    /// container is <c>role="listbox"</c>, so a <c>role="menuitem"</c> here would be both an invalid
+    /// listbox child and the only role in the menu.
+    /// </para>
+    ///
+    /// <para>
+    /// The residual this does NOT cover, recorded so it is not mistaken for settled: MudMenu drives
+    /// its Up/Down/Home/End navigation over an internal registry of MudMenuItem instances, and a
+    /// hand-rendered shell cannot register. Arrow keys therefore skip it while Tab does not. Closing
+    /// that would need an API MudBlazor does not expose; it is a smaller gap than the one this change
+    /// fixed (an item reachable by nothing at all), and it is on the manual-AT list in the PR.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_disabled_item_with_a_note_shares_the_focus_order_of_its_enabled_siblings()
+    {
+        var cut = RenderMenu(Enabled("Edit policy"), DisabledWithNote("Attach document", Reason));
+
+        var items = cut.FindAll(".mud-menu-item");
+        var enabled = items.Single(i => i.GetAttribute("aria-disabled") != "true");
+        var noted = items.Single(i => i.GetAttribute("aria-disabled") == "true");
+
+        Assert.Equal(enabled.GetAttribute("tabindex"), noted.GetAttribute("tabindex"));
+        Assert.Equal("0", noted.GetAttribute("tabindex"));
+
+        // Same role as its siblings — which is none, because MudBlazor assigns none.
+        Assert.Equal(enabled.GetAttribute("role"), noted.GetAttribute("role"));
+        Assert.Null(noted.GetAttribute("role"));
+
+        // And the container is a listbox, which is why "no role" is parity rather than an omission:
+        // a menuitem child here would be invalid, not more correct.
+        Assert.Equal("listbox", cut.Find(".mud-menu-list").GetAttribute("role"));
+    }
+
     [Fact]
     public void A_disabled_item_with_no_note_keeps_the_ordinary_disabled_treatment()
     {

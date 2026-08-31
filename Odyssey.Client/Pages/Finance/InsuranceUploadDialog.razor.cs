@@ -64,7 +64,6 @@ public partial class InsuranceUploadDialog
     /// chosen, and there is more than one period to choose between.</summary>
     private bool _choosable;
 
-
     // OnParametersSet, not OnInitialized: the host re-keys this dialog per open, but a re-target on
     // the SAME instance would otherwise keep naming the period the dialog first mounted with.
     protected override void OnParametersSet()
