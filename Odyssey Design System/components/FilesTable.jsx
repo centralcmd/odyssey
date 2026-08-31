@@ -2,10 +2,9 @@
  * Odyssey DS — FilesTable
  * THE files surface — the attachments table rendered by the Accounts detail,
  * the Transactions detail/edit panels, and the Files page. A PRESET of
- * RecordTable: it inherits the full record-row lifecycle (sortable headers,
- * click-to-expand detail, inline Edit panel, Saved flash, overflow menu) and
- * only fixes the file-specific parts — columns, the detail grid, and the
- * Edit-file panel. Columns: kind avatar · Name · Type · Size · Uploaded ·
+ * RecordTable: it inherits the record-row lifecycle (sortable headers, Saved
+ * flash, overflow menu) and only fixes the file-specific parts — columns and
+ * the Edit-file dialog. Rows don't expand: every field is a column. Columns: kind avatar · Name · Type · Size · Uploaded ·
  * actions.
  *
  * Data-prop driven — rows are plain objects, nothing global:
@@ -30,27 +29,26 @@
  * document glyph.
  *
  * Row lifecycle (see the RecordTable anatomy card):
- *   • click a row (or "View details") → read-only MetaTile detail
- *     (File name · Document type · Size · Uploaded — plus a Valid from / Valid
- *     to / Issued / Issued by well when the file carries validity metadata)
- *   • Edit (menu) → inline edit panel for name + document type (and, when
- *     `issuers` is supplied, the validity dates + issuing contact); Save
- *     commits via `onSave(id, patch)` and flashes "Saved". Give `onSave` to
- *     enable; omit it for a read-only surface. `kinds` feeds the type picker
- *     (default: the canonical ACCOUNT_FILE_TYPES registry). `issuerFor(file)`
- *     resolves an `issuedBy` id to a display name for the detail well.
+ *   • Edit (menu) → the standard DS Modal for name + document type (plus the
+ *     validity dates + issuing contact when `issuers` is supplied); Save
+ *     commits via `onSave(id, patch)` and flashes "Saved" on the row. Give
+ *     `onSave` to enable; omit it for a read-only surface. `kinds` feeds the
+ *     type picker (default: the canonical ACCOUNT_FILE_TYPES registry).
+ *     `issuerFor(file)` resolves an `issuedBy` id to a display name.
  *   • `actions(file)` supplies the file-specific menu items — Preview /
  *     Download / Analyze / Copy ID — slotted between Edit and Delete per the
- *     menu convention. "Preview" opens the document (FileViewerModal);
- *     "View details" expands the record. Host any modals OUTSIDE the table.
+ *     menu convention. "Preview" opens the document (FileViewerModal).
+ *     Host any modals OUTSIDE the table.
  *   • `onDelete(file)` appends the danger Delete item after a divider.
  *
  * Sorting defaults to Uploaded, newest first — uncontrolled unless the host
  * binds `sort` ({key,dir}) + `onSortChange` (forwarded to RecordTable), which
  * keeps the headers in sync with a toolbar SortSelect. Column sortTypes:
- * name→text · kind→status · size→number · uploaded→date. No pagination —
- * the MVP renders the filtered list whole. Styled by the kit's `.ua-tbl` /
- * `.acct-detail` / `.meta-grid` classes — identical to every RecordTable page.
+ * name→text · kind→status · size→number · uploaded→date. `validityColumns`
+ * appends the read-only document-validity set (Valid from · Valid to · Issued ·
+ * Issued by, resolved through `issuerFor`) on surfaces that track it. No
+ * pagination — the MVP renders the filtered list whole. Styled by the kit's
+ * `.ua-tbl` classes — identical to every RecordTable page.
  *
  * Bundle components can't import each other, so this reads RecordTable and
  * the panel atoms off the DS namespace at render time (the same way the kit
@@ -64,39 +62,17 @@ const ftDate = (iso) => {
   return isNaN(d) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+/* Compact form for the validity columns — four extra date columns can't each
+   carry a long-form date without overflowing the row. */
+const ftShortDate = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(`${iso}T00:00:00`);
+  return isNaN(d) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+};
+
 const ftKindChip = (f, fi) => (
   <span className="odc-chip" style={{ background: fi.soft, color: fi.color }}>{fi.label || f.kind}</span>
 );
-
-/* ---- Expanded detail (view mode): the file record as a MetaTile grid ---- */
-function FTDetail({ f, fi, sizeText, dateText, issuerFor, formatDate }) {
-  const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
-  const MetaTile = NS.MetaTile;
-  if (!MetaTile) return null;
-  const fmt = (iso) => (iso ? (formatDate ? formatDate(iso) : iso) : '—');
-  // The validity well only appears when the file actually carries any of the
-  // optional join-entity metadata (ValidFrom / ValidTo / IssuedAt / IssuedBy).
-  const hasValidity = f.validFrom || f.validTo || f.issuedAt || f.issuedBy;
-  const issuerName = f.issuedBy && issuerFor ? issuerFor(f) : null;
-  return (
-    <div className="acct-detail">
-      <div className="meta-grid">
-        <MetaTile label="File name" value={f.name} />
-        <MetaTile label="Document type" value={ftKindChip(f, fi)} />
-        <MetaTile label="Size" value={sizeText} mono />
-        <MetaTile label="Uploaded" value={dateText} />
-      </div>
-      {hasValidity && (
-        <div className="meta-grid" style={{ marginTop: 12 }}>
-          <MetaTile label="Valid from" value={fmt(f.validFrom)} />
-          <MetaTile label="Valid to" value={fmt(f.validTo)} />
-          <MetaTile label="Issued" value={fmt(f.issuedAt)} />
-          <MetaTile label="Issued by" value={issuerName || '—'} />
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ---- A labeled DatePicker, matching the kit's `.field` shape (the DS
    DatePicker itself carries no label). Used by the file-validity editor. ---- */
@@ -112,73 +88,79 @@ function FTDateField({ label, value, onChange, min, max }) {
   );
 }
 
-/* ---- Inline edit panel: name + document type, plus the optional document
-   validity metadata (valid-from / valid-to period, issue date, and the issuing
-   contact). File bytes are immutable — you replace a file by re-uploading.
-   The validity row appears only when `issuers` (the contact options) is
-   supplied, i.e. on account-file surfaces. ---- */
-function FTEdit({ f, kinds, issuers, onSave, onCancel }) {
+/* ---- Edit dialog: file name + document type, plus the document validity
+   metadata (valid-from / valid-to period, issue date, issuing contact) on
+   surfaces that track it — i.e. when `issuers` is supplied. File bytes are
+   immutable; you replace a file by re-uploading. Uses the standard DS Modal so
+   the surface matches every other create/edit dialog in the kit. ---- */
+function FTEditModal({ f, kinds, issuers, onSave, onClose }) {
   const { useState } = React;
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
-  const { Field, Button, TypeSelect, AccountFileTypeSelect, Select } = NS;
+  const { Field, Button, Modal, TypeSelect, AccountFileTypeSelect, Select } = NS;
   const [name, setName] = useState(f.name);
   const [kind, setKind] = useState(f.kind);
   const [validFrom, setValidFrom] = useState(f.validFrom || null);
   const [validTo, setValidTo] = useState(f.validTo || null);
   const [issuedAt, setIssuedAt] = useState(f.issuedAt || null);
   const [issuedBy, setIssuedBy] = useState(f.issuedBy || '');
-  if (!Field || !Button) return null;
+  const [touched, setTouched] = useState(false);
+  if (!Field || !Button || !Modal) return null;
   const valid = name.trim().length > 0;
-  const rangeBad = validFrom && validTo && validTo < validFrom;
+  const rangeBad = !!(validFrom && validTo && validTo < validFrom);
   const showValidity = Array.isArray(issuers);
+  const submit = () => {
+    setTouched(true);
+    if (!valid || rangeBad) return;
+    onSave(showValidity
+      ? { name: name.trim(), kind,
+          validFrom: validFrom || null, validTo: validTo || null,
+          issuedAt: issuedAt || null, issuedBy: issuedBy || null }
+      : { name: name.trim(), kind });
+  };
   return (
-    <div className="acct-detail acct-edit">
-      <div className="acct-edit-head"><span className="material-icons" aria-hidden="true">edit</span><span>Edit file — {f.name}</span></div>
-      <div className="edit-grid">
-        <div className="edit-wide">
-          <Field label="File name" value={name} required
-            onChange={setName}
-            error={valid ? undefined : 'File name is required.'} />
-        </div>
-        {/* Vocabulary-driven: renders whatever `kinds` registry the surface
-            supplies (transaction / account / policy / tax file types) through
-            the same TypeSelect engine the upload picker uses, so the control is
-            identical everywhere. Falls back to the account-typed wrapper only if
-            no kinds were provided. */}
-        {TypeSelect && kinds ? (
-          <TypeSelect label="Document type" value={kind} types={kinds}
-            placeholder="Select type…" onChange={(k) => setKind(k)} />
-        ) : AccountFileTypeSelect ? (
-          <AccountFileTypeSelect label="Document type" value={kind} types={kinds}
-            onChange={(k) => setKind(k)} />
-        ) : null}
-      </div>
+    <Modal
+      title="Edit file"
+      subtitle={f.name}
+      icon="edit"
+      onClose={onClose}
+      footer={
+        <React.Fragment>
+          <Button variant="text" onClick={onClose}>Cancel</Button>
+          <Button variant="filled" color="primary" icon="check" onClick={submit}>Save changes</Button>
+        </React.Fragment>
+      }>
+      <Field label="File name" value={name} required autoFocus
+        onChange={(v) => { setName(v); setTouched(true); }}
+        error={touched && !valid ? 'File name is required.' : undefined} />
+      {/* Vocabulary-driven: renders whatever `kinds` registry the surface
+          supplies (transaction / account / policy / tax file types) through
+          the same TypeSelect engine the upload picker uses, so the control is
+          identical everywhere. Falls back to the account-typed wrapper only if
+          no kinds were provided. */}
+      {TypeSelect && kinds ? (
+        <TypeSelect label="Document type" value={kind} types={kinds}
+          placeholder="Select type…" onChange={(k) => setKind(k)} />
+      ) : AccountFileTypeSelect ? (
+        <AccountFileTypeSelect label="Document type" value={kind} types={kinds}
+          onChange={(k) => setKind(k)} />
+      ) : null}
       {showValidity && (
-        <div className="edit-grid" style={{ marginTop: 12 }}>
+        <React.Fragment>
           <FTDateField label="Valid from" value={validFrom} onChange={setValidFrom} max={validTo || undefined} />
           <FTDateField label="Valid to" value={validTo} onChange={setValidTo} min={validFrom || undefined} />
+          {rangeBad && (
+            <div className="helper" style={{ color: 'var(--mud-palette-error)' }}>
+              “Valid to” can’t be before “Valid from”.
+            </div>
+          )}
           <FTDateField label="Issued" value={issuedAt} onChange={setIssuedAt} />
           {Select && (
             <Select label="Issued by" value={issuedBy} onChange={setIssuedBy}
               placeholder="Select issuer…" options={issuers} />
           )}
-          {rangeBad && (
-            <div className="edit-wide helper" style={{ color: 'var(--mud-palette-error)' }}>
-              “Valid to” can’t be before “Valid from”.
-            </div>
-          )}
-        </div>
+        </React.Fragment>
       )}
-      <div className="acct-edit-actions">
-        <Button variant="text" onClick={onCancel}>Cancel</Button>
-        <Button variant="filled" color="primary" icon="check" disabled={!valid || rangeBad}
-          onClick={() => valid && !rangeBad && onSave({
-            name: name.trim(), kind,
-            validFrom: validFrom || null, validTo: validTo || null,
-            issuedAt: issuedAt || null, issuedBy: issuedBy || null,
-          })}>Save changes</Button>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -193,6 +175,7 @@ export function FilesTable({
   onDelete,
   formatDate = ftDate,
   formatSize,
+  validityColumns = false,
   defaultSort = { key: 'uploaded', dir: 'desc' },
   sort,
   onSortChange,
@@ -202,6 +185,11 @@ export function FilesTable({
 }) {
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
   const { RecordTable, Chip } = NS;
+  const { useState } = React;
+  // Editing runs in the standard DS Modal (name + document type only), so the
+  // table owns the open file and the post-save flash itself.
+  const [editFile, setEditFile] = useState(null);
+  const [savedId, setSavedId] = useState(null);
   if (!RecordTable) return null;
 
   const kindOf = (f) => (typeFor && typeFor(f)) || FT_FALLBACK;
@@ -214,6 +202,7 @@ export function FilesTable({
   ];
 
   return (
+    <React.Fragment>
     <RecordTable
       rows={files}
       rowKey={(f) => f.id}
@@ -243,7 +232,7 @@ export function FilesTable({
             return (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <span>{f.name}</span>
-                {ctx.justSaved && Chip && <Chip tone="income" dot>Saved</Chip>}
+                {(ctx.justSaved || savedId === f.id) && Chip && <Chip tone="income" dot>Saved</Chip>}
                 {sb && Chip && (
                   <Chip tone={sb.tone || 'pending'} icon={sb.icon} dot={!sb.icon}>
                     <span aria-label={sb.ariaLabel || undefined}>{sb.text}</span>
@@ -258,18 +247,43 @@ export function FilesTable({
           sortValue: (f) => parseFloat(f.size) || 0, cell: (f) => sizeText(f) },
         { key: 'uploaded', header: 'Uploaded', sortable: true, sortType: 'date', align: 'right', className: 'muted',
           sortValue: (f) => f.uploaded || '', cell: (f) => formatDate(f.uploaded) },
+        // Document-validity metadata (opt-in — only surfaces that track it,
+        // e.g. account files). Read-only: recorded at upload, never edited here.
+        ...(validityColumns ? [
+          { key: 'validFrom', header: 'Valid from', sortable: true, sortType: 'date', align: 'right', className: 'muted',
+            sortValue: (f) => f.validFrom || '', cell: (f) => ftShortDate(f.validFrom) },
+          { key: 'validTo', header: 'Valid to', sortable: true, sortType: 'date', align: 'right', className: 'muted',
+            sortValue: (f) => f.validTo || '', cell: (f) => ftShortDate(f.validTo) },
+          { key: 'issuedAt', header: 'Issued', sortable: true, sortType: 'date', align: 'right', className: 'muted',
+            sortValue: (f) => f.issuedAt || '', cell: (f) => ftShortDate(f.issuedAt) },
+          { key: 'issuedBy', header: 'Issued by', sortable: true, sortType: 'text', className: 'muted',
+            sortValue: (f) => ((f.issuedBy && issuerFor && issuerFor(f)) || '').toLowerCase(),
+            cell: (f) => (f.issuedBy && issuerFor && issuerFor(f)) || '—' },
+        ] : []),
       ]}
       actions={(f, ctx) => [
-        ...(ctx.editing ? [] : [{ icon: ctx.expanded ? 'close' : 'expand_more', label: ctx.expanded ? 'Collapse' : 'View details', onClick: ctx.toggle }]),
-        ...(onSave ? [{ icon: 'edit', label: 'Edit', onClick: ctx.startEdit }] : []),
+        ...(onSave ? [{ icon: 'edit', label: 'Edit', onClick: () => setEditFile(f) }] : []),
         ...((actions || defaultExtra)(f)),
         ...(onDelete ? [{ divider: true }, { icon: 'delete', label: 'Delete', danger: true, onClick: ctx.remove }] : []),
       ]}
-      renderDetail={(f) => <FTDetail f={f} fi={kindOf(f)} sizeText={sizeText(f)} dateText={formatDate(f.uploaded)} issuerFor={issuerFor} formatDate={formatDate} />}
-      renderEdit={onSave ? (f, { save, cancel }) => <FTEdit f={f} kinds={kinds} issuers={issuers} onSave={save} onCancel={cancel} /> : undefined}
       onSave={onSave}
       onDelete={onDelete ? (id) => onDelete(byId[id] || id) : undefined}
       empty={empty ? <div className="muted" style={{ textAlign: 'center', padding: 48 }}>{empty}</div> : undefined}
     />
+    {editFile && (
+      <FTEditModal
+        f={editFile}
+        kinds={kinds}
+        issuers={issuers}
+        onClose={() => setEditFile(null)}
+        onSave={(patch) => {
+          const id = editFile.id;
+          onSave && onSave(id, patch);
+          setEditFile(null);
+          setSavedId(id);
+          setTimeout(() => setSavedId((curr) => (curr === id ? null : curr)), 2200);
+        }} />
+    )}
+    </React.Fragment>
   );
 }

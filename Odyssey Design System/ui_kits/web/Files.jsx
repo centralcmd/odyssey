@@ -232,6 +232,7 @@ const Files = ({ onNavigate }) => {
             sort={sort}
             onSortChange={setSort}
             accountFor={(f) => d.accountById[f.account]}
+            showValidity={false}
             onNavigate={onNavigate}
             onDelete={(f) => setFilesByAccount(prev => ({
               ...prev,

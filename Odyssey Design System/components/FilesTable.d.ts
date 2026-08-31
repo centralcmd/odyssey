@@ -60,31 +60,37 @@ export interface FilesTableProps {
   /**
    * File-specific menu items — Preview (opens the viewer dialog) / Download /
    * Analyze / Copy ID — slotted between the built-in Edit and Delete items per
-   * the menu convention. "Preview" shows the document; "View details" (built
-   * in) expands the record. Host any modals these open OUTSIDE the table.
+   * the menu convention. "Preview" shows the document. Host any modals these
+   * open OUTSIDE the table.
    * Default: Copy ID.
    */
   actions?: (file: FilesTableRow) => ActionMenuItem[];
   /**
-   * Persist an inline edit. The patch is `{ name, kind }` on read-only-metadata
-   * surfaces; when `issuers` is supplied it also carries the validity fields
-   * `{ validFrom, validTo, issuedAt, issuedBy }` (ISO dates / contact id,
-   * each nullable). Enables the Edit menu item + the inline edit panel
-   * (RecordTable lifecycle: Save flashes "Saved", Cancel returns to the detail
-   * view). Omit for a read-only surface.
+   * Persist an edit made in the Edit-file dialog. The patch is `{ name, kind }`;
+   * when `issuers` is supplied it also carries `{ validFrom, validTo, issuedAt,
+   * issuedBy }` (ISO dates / contact id, each nullable). Enables the Edit menu
+   * item + the dialog (Save flashes "Saved" on the row). Omit for a read-only
+   * surface.
    */
   onSave?: (id: string, patch: { name: string; kind: string; validFrom?: string | null; validTo?: string | null; issuedAt?: string | null; issuedBy?: string | null }) => void;
-  /** File-kind vocabulary for the edit panel's Document type picker. Default: the canonical ACCOUNT_FILE_TYPES registry. */
+  /** File-kind vocabulary for the dialog's Document type picker. Default: the canonical ACCOUNT_FILE_TYPES registry. */
   kinds?: AccountFileType[];
   /** Resolve a row's `issuedBy` id to a display name, shown in the detail well. */
   issuerFor?: (file: FilesTableRow) => string | null | undefined;
   /**
-   * Contact options (`{ value, label }`) for the edit panel's "Issued by"
+   * Contact options (`{ value, label }`) for the Edit dialog's "Issued by"
    * picker. Supplying this array also reveals the validity-date editors
    * (Valid from / Valid to / Issued). Omit on surfaces that don't track
    * document validity (e.g. transaction attachments).
    */
   issuers?: { value: string; label: string }[];
+  /**
+   * Append the read-only document-validity columns (Valid from · Valid to ·
+   * Issued · Issued by — the last resolved through `issuerFor`). Set on
+   * surfaces that track document validity, e.g. account files; omit on
+   * transaction attachments and other surfaces that don't.
+   */
+  validityColumns?: boolean;
   /** Detach/delete a file — appends the danger Delete item after a divider. */
   onDelete?: (file: FilesTableRow) => void;
   /** Uploaded cell renderer. Default: "Apr 12, 2026". */
@@ -101,9 +107,8 @@ export interface FilesTableProps {
 
 /**
  * The files surface — a preset of RecordTable shared by Accounts, Transactions
- * & the Files page. Inherits the record-row lifecycle: sortable headers,
- * click-to-expand MetaTile detail (File name · Document type · Size ·
- * Uploaded), inline Edit panel, Saved flash, and the conventional overflow
- * menu (View details · Edit · Preview/Download/Analyze/Copy ID · — · Delete).
+ * & the Files page. Inherits the record-row lifecycle: sortable headers, the
+ * Edit-file dialog, Saved flash, and the conventional overflow
+ * menu (Edit · Preview/Download/Analyze/Copy ID · — · Delete).
  */
 export declare function FilesTable(props: FilesTableProps): JSX.Element;
