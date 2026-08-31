@@ -277,6 +277,33 @@ public class SubscriptionServiceTests
         Assert.Equal(new DateOnly(2026, 6, 15), (await service.Create(boundedReq)).NextBillingDate);
     }
 
+    [Fact]
+    public async Task Get_NextBillingDate_IsNull_WhenTheNextOccurrenceFallsPastTheEndDate()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+
+        // The end-date cutoff INSIDE NextBilling, which the other null cases never reach: they are all
+        // stopped by the outer paused/ended/archived gate first. Here the term is still live (the end
+        // date is in the future, so the subscription is not Ended) but the next occurrence lands after
+        // it — the subscription simply has no further charge. FixedNow = 2026-06-15.
+        var req = NewSub(name: "Stops before its next charge");
+        req.FirstBillingDate = new DateOnly(2026, 1, 25);   // monthly on the 25th
+        req.EndDate = new DateOnly(2026, 6, 20);            // before the 25th, after today
+
+        var created = await service.Create(req);
+
+        Assert.Null(created.NextBillingDate);
+
+        // The same anchor with the term running past the 25th does bill again — proving the null above
+        // is the cutoff and not the anchor arithmetic.
+        var runs = NewSub(name: "Bills once more");
+        runs.FirstBillingDate = new DateOnly(2026, 1, 25);
+        runs.EndDate = new DateOnly(2026, 6, 30);
+
+        Assert.Equal(new DateOnly(2026, 6, 25), (await service.Create(runs)).NextBillingDate);
+    }
+
     // ── Pause / archive toggles ─────────────────────────────────────────────────
 
     [Fact]

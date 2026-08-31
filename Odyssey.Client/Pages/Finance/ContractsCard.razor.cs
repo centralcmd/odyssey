@@ -491,13 +491,15 @@ public partial class ContractsCard
     ///
     /// <para>
     /// "Ended" is not the derived <see cref="ContractStatus.Expired"/>: a delivered one-off is over
-    /// but reads Active, so completion counts too. Same two-branch test the service applies.
+    /// but reads Active, so completion counts too. The test itself is
+    /// <see cref="ContractLifecycle.HasEnded"/>, shared with the service.
     /// </para>
     /// </summary>
     private IReadOnlyList<OdsMenuItem> RowActions(ContractListItem c, bool archived)
     {
-        var hasEnded = (c.EndDate is { } end && end.Date < Today)
-            || (c.CompletionDate is { } completion && completion.Date <= Today);
+        // The SAME predicate the service enforces, not a second copy of its boundaries — it lives in
+        // Odyssey.Dtos precisely so the disabled action and the 400 can never disagree.
+        var hasEnded = ContractLifecycle.HasEnded(c.EndDate, c.CompletionDate, Today);
         var items = new List<OdsMenuItem>();
 
         if (_canUpdate)

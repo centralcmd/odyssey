@@ -710,13 +710,23 @@ public class InsuranceService
         }
 
         var currency = current.PremiumCurrencyCode;
+        var accrued = dto.Renewals.Where(r => r.FromDate.Date <= current.ToDate.Date).ToList();
+
+        // One rate lookup for every currency in the set, not one per period: ConvertAsync would issue
+        // a query per renewal, which is the shape of problem the rest of this service avoids.
+        var rates = await conversion.GetLatestRatesToAsync(
+            currency, accrued.Select(r => r.PremiumCurrencyCode), cancellationToken);
+
         var total = 0m;
         var counted = 0;
-        foreach (var renewal in dto.Renewals.Where(r => r.FromDate.Date <= current.ToDate.Date))
+        foreach (var renewal in accrued)
         {
-            var converted = string.Equals(renewal.PremiumCurrencyCode, currency, StringComparison.OrdinalIgnoreCase)
-                ? renewal.Premium
-                : await conversion.ConvertAsync(renewal.Premium, renewal.PremiumCurrencyCode, currency);
+            decimal? converted =
+                string.Equals(renewal.PremiumCurrencyCode, currency, StringComparison.OrdinalIgnoreCase)
+                    ? renewal.Premium
+                    : rates.TryGetValue(CurrencyValidationService.Normalize(renewal.PremiumCurrencyCode), out var rate)
+                        ? renewal.Premium * rate
+                        : null;
             if (converted is null)
             {
                 continue;

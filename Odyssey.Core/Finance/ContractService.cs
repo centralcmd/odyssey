@@ -244,7 +244,7 @@ public class ContractService
         // The lifecycle is ORDERED, not orthogonal: archiving retires a contract that is already
         // over, so only an ended one can be archived. Validated against the request's dates, not the
         // stored ones, so a single PUT may end and archive in one go.
-        EnsureArchivable(contract, request.IsArchived, startDate, endDate, completionDate);
+        EnsureArchivable(contract, request.IsArchived, endDate, completionDate);
 
         // Archive (preserving the original archive stamp) or unarchive per the request.
         contract.Archived = request.IsArchived
@@ -437,29 +437,19 @@ public class ContractService
     /// </para>
     /// </summary>
     private void EnsureArchivable(
-        Contract contract, bool isArchived, DateTime? startDate, DateTime? endDate, DateTime? completionDate)
+        Contract contract, bool isArchived, DateTime? endDate, DateTime? completionDate)
     {
         if (!isArchived || contract.Archived is not null)
         {
             return;
         }
 
-        if (!HasEnded(endDate, completionDate, Today))
+        if (!ContractLifecycle.HasEnded(endDate, completionDate, Today))
         {
             throw new DomainValidationException(
                 "A contract can only be archived once it has ended. Set an EndDate before today, or a CompletionDate on or before today, first.");
         }
     }
-
-    /// <summary>
-    /// Whether a contract's term is over: its end date has passed, or its one-off completion date has
-    /// arrived. The boundaries match <see cref="DeriveStatus(DateTime?, DateTime?, DateTime?, DateTime?, DateTime)"/>
-    /// exactly — <c>end &lt; today</c> for Expired, <c>completion &lt;= today</c> for a settled
-    /// one-off — so the gate can never disagree with the status the row displays.
-    /// </summary>
-    private static bool HasEnded(DateTime? endDate, DateTime? completionDate, DateTime today) =>
-        (endDate is { } end && end.Date < today)
-        || (completionDate is { } completion && completion.Date <= today);
 
     // ── Derived status (deterministic, ordered — §6) ──────────────────────────────
 

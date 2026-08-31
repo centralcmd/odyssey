@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Odyssey.Dtos.Finance;
 
 /// <summary>
@@ -15,6 +17,7 @@ public sealed record AccountCurrentTerm
     public decimal Value { get; set; }
 
     /// <summary>Set for a money-valued term; null for a percentage.</summary>
+    [StringLength(3)]
     public string? CurrencyCode { get; set; }
 
     /// <summary>

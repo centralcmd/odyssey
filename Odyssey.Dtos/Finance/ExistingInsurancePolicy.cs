@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Odyssey.Dtos.Finance;
 
 public sealed record ExistingInsurancePolicy
@@ -42,6 +44,7 @@ public sealed record ExistingInsurancePolicy
     public decimal? AccruedPremium { get; set; }
 
     /// <summary>The currency <see cref="AccruedPremium"/> is expressed in — the current period's.</summary>
+    [StringLength(3)]
     public string? AccruedPremiumCurrencyCode { get; set; }
 
     /// <summary>How many periods <see cref="AccruedPremium"/> actually includes (unconvertible ones excluded).</summary>

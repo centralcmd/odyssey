@@ -605,64 +605,10 @@ public partial class InsuranceCard
 
     private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
-    /// <summary>
-    /// The collapsed row's headline figure — the date the record turns on, plus a word saying how far
-    /// away it is. Mirrors the design system's <c>insHeadline</c>.
-    ///
-    /// <para>
-    /// Every state that HAS a renewal period headlines on a date, not on a repeat of the status word:
-    /// the chip beside the name already says "Expired", so the figure earns its place by saying
-    /// <em>when</em>. A lapsed policy shows the end of its last period and how long ago that was; an
-    /// upcoming one shows when cover begins; an archived one shows the last period it had.
-    /// <see cref="CoverageStatus.NoCoverage"/> is the one state with no date to show, because it is
-    /// precisely the case where no period was ever recorded — so it reads "No coverage".
-    /// </para>
-    /// </summary>
-    private (string Value, string Word, string Cls) Headline(InsurancePolicyListItem p)
-    {
-        switch (p.CoverageStatus)
-        {
-            case CoverageStatus.Active:
-            case CoverageStatus.ExpiringSoon:
-                if (p.CurrentRenewalEndDate is { } end)
-                {
-                    var days = (end.Date - Today).Days;
-                    var word = days <= 0 ? "expires today" : $"expires in {days} day{(days == 1 ? "" : "s")}";
-                    return (end.ToString("MMM dd, yyyy"), word, p.CoverageStatus == CoverageStatus.ExpiringSoon ? "soon" : "");
-                }
-                return ("Active", "currently covered", "");
-
-            case CoverageStatus.Upcoming when p.EarliestRenewalStartDate is { } start:
-            {
-                var days = (start.Date - Today).Days;
-                var word = days <= 0 ? "starts today" : $"starts in {days} day{(days == 1 ? "" : "s")}";
-                return (start.ToString("MMM dd, yyyy"), word, "");
-            }
-
-            case CoverageStatus.Lapsed when p.LatestRenewalEndDate is { } lapsed:
-            {
-                var days = (Today - lapsed.Date).Days;
-                var word = days <= 0 ? "expired today" : $"expired {days} day{(days == 1 ? "" : "s")} ago";
-                return (lapsed.ToString("MMM dd, yyyy"), word, "lapsed");
-            }
-
-            // An archived policy may genuinely have no period on record, so this one keeps a fallback.
-            case CoverageStatus.Archived:
-                return p.LatestRenewalEndDate is { } archivedEnd
-                    ? (archivedEnd.ToString("MMM dd, yyyy"), "archived", "")
-                    : ("Archived", "archived", "");
-
-            // Upcoming / Lapsed without a period cannot arise — both derive from having one — but the
-            // switch stays total rather than relying on that.
-            case CoverageStatus.Upcoming:
-                return ("Upcoming", "starts later", "");
-            case CoverageStatus.Lapsed:
-                return ("Expired", "coverage expired", "lapsed");
-
-            default:
-                return ("No coverage", "no coverage yet", "");
-        }
-    }
+    /// <summary>The collapsed row's headline figure — see <see cref="InsuranceHeadline"/>, which owns
+    /// the branches so they can be tested without a rendered card.</summary>
+    private static InsuranceHeadlineFigure Headline(InsurancePolicyListItem p) =>
+        InsuranceHeadline.Compute(p, Today);
 
     // ── Money ────────────────────────────────────────────────────────────────────
     private string Money(decimal? n, string? code)
