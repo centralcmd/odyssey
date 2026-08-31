@@ -5,6 +5,18 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0](https://github.com/centralcmd/odyssey/compare/v0.17.0...v0.18.0) (2026-08-31)
+
+
+### Features
+
+* **infra:** support a private localhost-only deployment ([#12](https://github.com/centralcmd/odyssey/issues/12)) ([575908e](https://github.com/centralcmd/odyssey/commit/575908e6000eb96c6cf4ff7cf05f0096fed1a6ee))
+
+
+### Bug Fixes
+
+* SELinux Caddyfile mount, and identity startup guards that cried wolf on every boot ([#14](https://github.com/centralcmd/odyssey/issues/14)) ([f7b71b0](https://github.com/centralcmd/odyssey/commit/f7b71b0017e707979d641e0ef4107fb4ebc08a32))
+
 ## [0.17.0](https://github.com/centralcmd/odyssey/compare/v0.16.1...v0.17.0) (2026-08-30)
 
 
