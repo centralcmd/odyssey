@@ -5,6 +5,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.1](https://github.com/centralcmd/odyssey/compare/v0.18.0...v0.18.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* **client:** stop the first-run gate chain falling through ([#15](https://github.com/centralcmd/odyssey/issues/15)) ([40240df](https://github.com/centralcmd/odyssey/commit/40240df61a7701da4fe53d81ced575c9888c381b))
+
 ## [0.18.0](https://github.com/centralcmd/odyssey/compare/v0.17.0...v0.18.0) (2026-08-31)
 
 
