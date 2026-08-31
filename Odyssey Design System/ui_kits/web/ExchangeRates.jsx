@@ -1,5 +1,6 @@
 /* Exchange rates — a flat, newest-first log of every recorded rate, following
-   the Transactions table design (sortable, expandable rows → read detail).
+   the Transactions table design (sortable rows; every field is a column, so
+   rows don't expand).
 
    Records are edited through the same dialog that creates them (reused in an
    edit mode that locks the currency pair). The latest entry for each pair is
@@ -17,42 +18,18 @@ const XR_STATUS_OPTIONS = [
   { value: 'historical', label: 'Historical' },
 ];
 const xrFmtRate = (n) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+const xrInverse = (r) => (r.rate ? 1 / r.rate : 0);
 
 const xrSortVal = (r, key) => {
   switch (key) {
     case 'pair':      return `${r.from}>${r.to}`;
     case 'rate':      return r.rate;
+    case 'inverse':   return xrInverse(r);
     case 'asOf':      return r.asOf;
     case 'createdAt': return r.createdAt;
     case 'status':    return r._current ? 0 : 1;
     default:          return 0;
   }
-};
-
-/* ---------- Expanded DETAIL (read only — append-only model) ---------- */
-const XrDetail = ({ r }) => {
-  const H = window.OdysseyHelpers;
-  const inverse = r.rate ? 1 / r.rate : 0;
-  return (
-    <div className="acct-detail">
-      <div className="meta-grid">
-        <MetaTile label="From" value={r.from} mono />
-        <MetaTile label="To" value={r.to} mono />
-        <MetaTile label="Rate" value={`1 ${r.from} = ${xrFmtRate(r.rate)} ${r.to}`} mono />
-        <MetaTile label="Inverse" value={`1 ${r.to} = ${xrFmtRate(inverse)} ${r.from}`} mono />
-        <MetaTile label="Status" value={r._current
-          ? <Chip tone="info" dot>Current</Chip>
-          : <Chip tone="outline" dot>Historical</Chip>} />
-        <MetaTile label="Effective (AsOf)" value={H.dateTime(r.asOf)} mono />
-        <MetaTile label="Recorded (CreatedAt)" value={H.dateTime(r.createdAt)} mono />
-      </div>
-      {!r._current && (
-        <div className="empty-line" style={{ marginTop: 4 }}>
-          A newer rate for {r.from} → {r.to} has superseded this one. It's kept for audit history.
-        </div>
-      )}
-    </div>
-  );
 };
 
 /* ---------- Table (shared DS RecordTable — append-only log, edit via modal) ---------- */
@@ -83,18 +60,17 @@ const ExchangeRateTable = ({ rates, onDelete, onEdit, sort, onSortChange, empty 
           ),
         },
         { key: 'rate', header: 'Rate', sortable: true, sortType: 'number', align: 'right', className: 'mono', sortValue: (r) => xrSortVal(r, 'rate'), cell: (r) => xrFmtRate(r.rate) },
+        { key: 'inverse', header: 'Inverse', sortable: true, sortType: 'number', align: 'right', className: 'mono muted', sortValue: (r) => xrSortVal(r, 'inverse'), cell: (r) => xrFmtRate(xrInverse(r)) },
         { key: 'status', header: 'Status', sortable: true, sortType: 'status', sortValue: (r) => xrSortVal(r, 'status'), cell: statusChip },
-        { key: 'asOf', header: 'Effective', sortable: true, sortType: 'date', align: 'right', className: 'muted mono', sortValue: (r) => xrSortVal(r, 'asOf'), cell: (r) => H.dateTime(r.asOf) },
+        { key: 'asOf', header: 'Effective from', sortable: true, sortType: 'date', align: 'right', className: 'muted mono', sortValue: (r) => xrSortVal(r, 'asOf'), cell: (r) => H.dateTime(r.asOf) },
         { key: 'createdAt', header: 'Recorded', sortable: true, sortType: 'date', align: 'right', className: 'muted mono', sortValue: (r) => xrSortVal(r, 'createdAt'), cell: (r) => H.dateTime(r.createdAt) },
       ]}
       actions={(r, ctx) => [
-        { icon: ctx.expanded ? 'close' : 'expand_more', label: ctx.expanded ? 'Collapse' : 'View details', onClick: ctx.toggle },
         { icon: 'edit', label: 'Edit', onClick: () => onEdit(r) },
         { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(r.id); } },
         { divider: true },
         { icon: 'delete', label: 'Delete', danger: true, onClick: ctx.remove },
       ]}
-      renderDetail={(r) => <XrDetail r={r} />}
       onDelete={onDelete}
       empty={empty}
     />
