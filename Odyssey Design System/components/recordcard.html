@@ -1,0 +1,164 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · RecordCard (+ InfoTileGrid · SectionDivider)" subtitle="The expandable record card behind every record list. The header is the identity; the body order is fixed by the component — alert, details, content, sections. The body carries the record's full field set, header repeats included. One accent per record, taken from its type." viewport="1240x1260" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · RecordCard</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+html,body{min-height:0}
+body{margin:0;background:var(--mud-palette-background);font-family:var(--font-sans);color:var(--mud-palette-text-primary);width:1240px;box-sizing:border-box;padding:26px}
+.wrap{display:flex;flex-direction:column;gap:26px}
+h1{margin:0;font:600 20px/1.2 var(--font-sans)}
+h1+p{margin:8px 0 0;font:400 13px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);max-width:82ch;text-wrap:pretty}
+.cap{font:600 11px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin-bottom:10px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.stub{border:1px solid var(--mud-palette-divider);border-radius:10px;padding:14px 13px;font:400 12.5px/1.4 var(--font-mono);color:var(--mud-palette-text-secondary);background:repeating-linear-gradient(135deg,transparent 0 7px,rgba(125,140,170,.055) 7px 14px)}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.slot{border:1px dashed var(--mud-palette-divider);border-radius:10px;padding:11px 13px}
+.slot b{display:block;font:600 11px/1 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--brand-text);margin-bottom:6px}
+.slot span{font:400 12.5px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary)}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { RecordCard, InfoTileGrid, InfoTile, SectionDivider, Chip, ActionMenu, Alert } = window.OdysseyDesignSystem_d5aa51;
+const LOAN = { accent: 'oklch(0.72 0.16 282)', accentSoft: 'oklch(0.72 0.16 282 / 0.16)' };
+const menu = [
+  { icon: 'edit', label: 'Edit record' },
+  { icon: 'upload_file', label: 'Upload file' },
+  { divider: true },
+  { icon: 'delete', label: 'Delete', danger: true },
+];
+const Stub = ({ children }) => <div className="stub">{children}</div>;
+
+const loanHeader = {
+  icon: 'directions_car',
+  name: 'Ally Auto Loan',
+  chips: <Chip tone="income" dot>Open</Chip>,
+  meta: ['Ally Financial', 'Car loan', <span style={{ fontFamily: 'var(--font-mono)' }}>·1133</span>, <span style={{ fontFamily: 'var(--font-mono)' }}>4.90%</span>],
+  counts: [
+    { icon: 'receipt_long', value: 42, label: 'Transactions' },
+    { icon: 'attach_file', value: 6, label: 'Files' },
+    { icon: 'sell', value: 2, label: 'Smart tags' },
+  ],
+  figure: { value: '−18,420.55', caption: '34 payments left', tone: 'expense' },
+  actions: <ActionMenu items={menu} />,
+  ...LOAN,
+};
+
+const Demo = () => (
+  <div className="wrap">
+    <div>
+      <h1>RecordCard</h1>
+      <p>One card per record in a list. The header carries enough to recognise, compare and rule out a record without expanding it — a type mark, the name, one state chip, a single ellipsised meta line, the sub-collection counts, a headline figure and the row actions. Opening it shows the record’s full field set as small labelled tiles — including the fields the header already carries, because at tile scale a labelled value reads as a field rather than an echo.</p>
+    </div>
+
+    <div>
+      <div className="cap">Collapsed · the scanning surface</div>
+      <div className="stack">
+        <RecordCard {...loanHeader} />
+        <RecordCard
+          icon="savings"
+          accent="oklch(0.79 0.115 188)"
+          accentSoft="oklch(0.79 0.115 188 / 0.16)"
+          name="Everyday Checking"
+          chips={<Chip tone="income" dot>Open</Chip>}
+          meta={['Nordea', 'Checking', <span style={{ fontFamily: 'var(--font-mono)' }}>·4471</span>]}
+          counts={[{ icon: 'receipt_long', value: 212, label: 'Transactions' }, { icon: 'attach_file', value: 9, label: 'Files' }]}
+          figure={{ value: '38,204.10', tone: 'income' }}
+          actions={<ActionMenu items={menu} />}
+        />
+        <RecordCard
+          icon="credit_card"
+          accent="oklch(0.72 0.16 22)"
+          accentSoft="oklch(0.72 0.16 22 / 0.16)"
+          name="Travel Card"
+          chips={<React.Fragment><Chip tone="outline" dot>Closed</Chip><Chip tone="warning" icon="error_outline">Rate missing</Chip></React.Fragment>}
+          meta={['Amex', 'Credit card', <span style={{ fontFamily: 'var(--font-mono)' }}>·8802</span>]}
+          counts={[{ icon: 'receipt_long', value: 64, label: 'Transactions' }]}
+          figure={{ value: '−2,140.00', tone: 'expense' }}
+          actions={<ActionMenu items={menu} />}
+          dimmed
+        />
+      </div>
+    </div>
+
+    <div>
+      <div className="cap">Expanded · the four body slots, in the only order allowed</div>
+      <RecordCard
+        {...loanHeader}
+        defaultOpen
+        alert={<Alert severity="warning"><b>No exchange rate for USD → NOK on 31 Dec.</b> This account is left out of the 2026 tax statement until a rate is recorded.</Alert>}
+        details={(
+          <InfoTileGrid>
+            <InfoTile icon="directions_car" label="Account type" value="Car loan" valueVariant="text" foot="Liability · amortising" />
+            <InfoTile icon="tag" label="Account number" value="4024 8891 1133" foot="Ally reference" />
+            <InfoTile icon="apartment" label="Custodian" value="Ally Financial" valueVariant="text" foot="Bank · United States" />
+            <InfoTile icon="payments" label="Currency" value="USD" foot="Reported in NOK" />
+            <InfoTile icon="percent" label="Interest" value="4.90%" foot="In force since 12 Mar 2021" />
+            <InfoTile icon="event" label="Next payment" value="28 Sep 2026" valueVariant="sm" foot="512.40 · autopay" />
+            <InfoTile icon="lock_open" label="Status" value="Open" valueVariant="text" foot="opened 12 Mar 2021" />
+          </InfoTileGrid>
+        )}
+        content={(
+          <InfoTileGrid>
+            <InfoTile icon="sticky_note_2" label="Description" wide value="2021 Subaru Outback, 60-month note. Autopay from Everyday Checking on the 28th; the final payment lands in March 2029." />
+          </InfoTileGrid>
+        )}
+      >
+        <SectionDivider label="Transactions" meta="42 · latest 28 Aug 2026" />
+        <Stub>TxnTable</Stub>
+        <SectionDivider label="Term history" meta="3 · rate and fee changes" />
+        <Stub>AccountTerms</Stub>
+        <SectionDivider label="Files" meta="6 · latest 02 Jun 2026" />
+        <Stub>FilesTable</Stub>
+      </RecordCard>
+      <div className="slots" style={{ marginTop: 12 }}>
+        <div className="slot"><b>alert</b><span>Why the card was opened. Always first.</span></div>
+        <div className="slot"><b>details</b><span>The record’s full field set, as an InfoTileGrid. No ceiling.</span></div>
+        <div className="slot"><b>content</b><span>Description / notes / entry text, in one wide tile.</span></div>
+        <div className="slot"><b>children</b><span>The sections, each under a SectionDivider, in the header's count order.</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div className="cap">No type, no figure, seven-plus facts · brand accent + the dense grid</div>
+      <RecordCard
+        icon="account_balance"
+        name="Fiscal year 2025 · Norway"
+        chips={<Chip tone="pending" dot>Awaiting settlement</Chip>}
+        meta={[<span style={{ fontFamily: 'var(--font-mono)' }}>01 Jan → 31 Dec 2025</span>, <span style={{ fontFamily: 'var(--font-mono)' }}>NOK</span>, 'filed 14 Apr 2026']}
+        counts={[{ icon: 'attach_file', value: 11, label: 'Files' }, { icon: 'sell', value: 7, label: 'Derivation tags' }]}
+        figure={{ value: '−42,180', caption: 'Tax payable', tone: 'expense' }}
+        actions={<ActionMenu items={menu} />}
+        defaultOpen
+        details={(
+          <InfoTileGrid dense>
+            <InfoTile label="Fiscal year" value="2025" foot="Norway" />
+            <InfoTile label="Base currency" value="NOK" foot="3 accounts converted" />
+            <InfoTile label="Filed" value="14 Apr 2026" valueVariant="sm" foot="by Anna" />
+            <InfoTile label="Approved" value="02 Jun 2026" valueVariant="sm" foot="Skatteetaten" />
+            <InfoTile label="Settlement due" value="20 Sep 2026" valueVariant="sm" foot="in 20 days" />
+            <InfoTile label="Settlement paid" value="Not yet" valueVariant="sm" foot="−42,180 NOK" />
+            <InfoTile label="Reviewed" value="28 Mar 2026" valueVariant="sm" foot="Anna · 3 notes" />
+            <InfoTile label="Carry-forward" value="−18,900" foot="from 2024 loss" />
+          </InfoTileGrid>
+        )}
+      >
+        <SectionDivider label="Reconciliation" meta="3 open" />
+        <Stub>Reconciliation report</Stub>
+      </RecordCard>
+    </div>
+  </div>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

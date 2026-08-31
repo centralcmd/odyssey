@@ -414,7 +414,7 @@ const TermHistory = ({ terms, currentIds, historyStyle, onEdit, onDelete, accoun
    AccountTerms — composes the section + owns create/edit/delete
    ============================================================= */
 const AccountTerms = ({ account, summaryStyle = 'tiles', historyStyle = 'table', defaultOpen = false, chrome = true,
-  terms: termsProp, onNew, onEdit, onDelete: onDeleteProp }) => {
+  bareAction = true, showCurrent = true, terms: termsProp, onNew, onEdit, onDelete: onDeleteProp }) => {
   const { useState, useMemo } = React;
   const controlled = termsProp != null;
   const [internalTerms, setInternalTerms] = useState(() => H.termsForAccount(account.id));
@@ -453,22 +453,28 @@ const AccountTerms = ({ account, summaryStyle = 'tiles', historyStyle = 'table',
         <React.Fragment>
           <TermHero terms={terms} account={account} />
 
-          <div>
-            <div className="trm-sub">
-              <span className="trm-sub-label">Current terms</span>
-              <span className="trm-sub-rule" />
-              <span className="trm-sub-meta">in force · {H.dateLong(trmToday())}</span>
+          {showCurrent ? (
+            <div>
+              <div className="trm-sub">
+                <span className="trm-sub-label">Current terms</span>
+                <span className="trm-sub-rule" />
+                <span className="trm-sub-meta">in force · {H.dateLong(trmToday())}</span>
+              </div>
+              <CurrentTermsSummary current={current} style={summaryStyle} account={account} />
             </div>
-            <CurrentTermsSummary current={current} style={summaryStyle} account={account} />
-          </div>
+          ) : null}
 
           <div>
-            <div className="trm-sub">
-              <span className="trm-sub-label">History</span>
-              <span className="trm-sub-rule" />
-              <span className="trm-sub-meta">{terms.length} {terms.length === 1 ? 'entry' : 'entries'}</span>
-              {!chrome && <span style={{ marginLeft: 4 }}>{newBtn}</span>}
-            </div>
+            {/* Dropped only when the host supplied its own section divider
+                (bareAction={false}) — otherwise it would repeat it. */}
+            {(chrome || bareAction) ? (
+              <div className="trm-sub">
+                <span className="trm-sub-label">History</span>
+                <span className="trm-sub-rule" />
+                <span className="trm-sub-meta">{terms.length} {terms.length === 1 ? 'entry' : 'entries'}</span>
+                {!chrome && bareAction && <span style={{ marginLeft: 4 }}>{newBtn}</span>}
+              </div>
+            ) : null}
             <TermHistory
               terms={terms}
               currentIds={currentIds}

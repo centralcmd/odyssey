@@ -17,7 +17,6 @@
           {
             "group": [
               "components/**",
-              "explore/**",
               "ui_kits/web/**"
             ],
             "message": "Import design-system components from 'index.js', not component internals."
@@ -360,6 +359,10 @@
         "message": "<InfoTile> valueVariant must be one of 'mono' | 'text' | 'sm'."
       },
       {
+        "selector": "JSXOpeningElement[name.name='InfoTileGrid'] > JSXAttribute > JSXIdentifier[name!=/^(?:dense|className|style|children|key|ref|className|style|children)$/]",
+        "message": "<InfoTileGrid> doesn't accept that prop. Declared props: dense, className, style, children."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='InsurancePolicyType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|icon|color|soft|key|ref|className|style|children)$/]",
         "message": "<InsurancePolicyType> doesn't accept that prop. Declared props: key, label, icon, color, soft."
       },
@@ -464,6 +467,10 @@
         "message": "<RadioOption> doesn't accept that prop. Declared props: value, label, disabled."
       },
       {
+        "selector": "JSXOpeningElement[name.name='RecordCardCount'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|value|label|key|ref|className|style|children)$/]",
+        "message": "<RecordCardCount> doesn't accept that prop. Declared props: icon, value, label."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='RecordCellContext'] > JSXAttribute > JSXIdentifier[name!=/^(?:expanded|editing|justSaved|key|ref|className|style|children)$/]",
         "message": "<RecordCellContext> doesn't accept that prop. Declared props: expanded, editing, justSaved."
       },
@@ -514,6 +521,10 @@
       {
         "selector": "JSXOpeningElement[name.name='SecretSettingField'] > JSXAttribute[name.name='state'] > Literal[value!=/^(?:found|not-set|unreadable)$/]",
         "message": "<SecretSettingField> state must be one of 'found' | 'not-set' | 'unreadable'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SectionDivider'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|meta|className|id|key|ref|className|style|children)$/]",
+        "message": "<SectionDivider> doesn't accept that prop. Declared props: label, meta, className, id."
       },
       {
         "selector": "JSXOpeningElement[name.name='SegmentedOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|icon|tone|disabled|key|ref|className|style|children)$/]",
@@ -873,6 +884,9 @@
       "InfoTile": {
         "replaces": []
       },
+      "InfoTileGrid": {
+        "replaces": []
+      },
       "InsurancePolicyType": {
         "replaces": []
       },
@@ -933,6 +947,9 @@
       "RadioOption": {
         "replaces": []
       },
+      "RecordCardCount": {
+        "replaces": []
+      },
       "RecordCellContext": {
         "replaces": []
       },
@@ -955,6 +972,9 @@
         "replaces": []
       },
       "SecretSettingField": {
+        "replaces": []
+      },
+      "SectionDivider": {
         "replaces": []
       },
       "SegmentedOption": {
@@ -1185,11 +1205,15 @@
       "--mud-palette-text-primary",
       "--mud-palette-text-secondary",
       "--mud-palette-warning",
+      "--odc-infotile-accent",
+      "--odc-infotile-accent-soft",
       "--pending-text",
       "--radius-lg",
       "--radius-md",
       "--radius-pill",
       "--radius-sm",
+      "--rec",
+      "--rec-soft",
       "--row-h",
       "--row-h-dense",
       "--sea-300",
@@ -1244,6 +1268,10 @@
       "--z-tooltip"
     ],
     "tokenKinds": {
+      "--rec": "color",
+      "--rec-soft": "color",
+      "--odc-infotile-accent": "color",
+      "--odc-infotile-accent-soft": "color",
       "--ink-50": "color",
       "--ink-100": "color",
       "--ink-200": "color",

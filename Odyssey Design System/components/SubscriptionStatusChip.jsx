@@ -1,12 +1,16 @@
 /**
  * Odyssey DS — SubscriptionStatusChip
- * The read display of a subscription's lifecycle states as chips: **Paused**
+ * The read display of a subscription's lifecycle state as ONE chip: **Paused**
  * (temporarily not billing, still visible), **Ended** (its term has lapsed —
- * DERIVED from `endDate`, never stored), and **Archived** (hidden/retired).
- * Paused and Archived are orthogonal stored flags; Ended is derived. This
- * renders one chip per active state — Ended supersedes Paused (a pause is moot
- * once the term is over), Archived stacks after — and an "Active" chip when none
- * is set (only when `showActive`).
+ * DERIVED from `endDate`, never stored), **Archived** (retired and hidden), or
+ * **Active** (only when `showActive`).
+ *
+ * A subscription has exactly one lifecycle state. The states are ordered rather
+ * than orthogonal: only an ended subscription can be archived, so Archived
+ * implies Ended, and Ended makes a pause moot. Precedence is therefore
+ * Archived → Ended → Paused → Active, and the chip renders the first that
+ * applies. Superseded timestamps are not lost — the record body carries a tile
+ * per stored flag (paused / archived), which is where the full history lives.
  *
  * This mirrors CoverageStatusChip's contract: the state **meaning lives in the
  * visible text label**, never colour or glyph alone (the leading dot/icon is
@@ -49,14 +53,10 @@ export function SubscriptionStatusChip({
   className = '',
   style,
 }) {
-  const states = [];
-  if (ended) states.push(BY_KEY.Ended);
-  else if (paused) states.push(BY_KEY.Paused);
-  if (archived) states.push(BY_KEY.Archived);
-  if (!states.length) {
-    if (!showActive) return null;
-    states.push(BY_KEY.Active);
-  }
+  // Exactly one state, by precedence: Archived → Ended → Paused → Active.
+  const state = archived ? BY_KEY.Archived : ended ? BY_KEY.Ended : paused ? BY_KEY.Paused : null;
+  if (!state && !showActive) return null;
+  const states = [state || BY_KEY.Active];
   return (
     <span
       className={`odc-substatus${className ? ' ' + className : ''}`}

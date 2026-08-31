@@ -1,6 +1,6 @@
 /* AddContractPartyModal — add a party to a contract (§3 step 3, §7 POST
    …/parties). The accessible two-step picker the spec mandates (frontend B2):
-     1. choose the party KIND — Account / Institution / Insurance policy
+     1. choose the party KIND — Account / Contact / Insurance policy
      2. pick the specific record from a type-to-filter `Combobox` whose options
         are PRE-LOADED for the chosen kind (no in-widget async fetch — the
         candidate lists are handed in up front, keeping it inside Combobox's
@@ -13,7 +13,7 @@
 
 const CONTRACT_PARTY_KINDS = [
   { kind: 'account',         label: 'Account',          icon: 'account_balance_wallet', field: 'accountId' },
-  { kind: 'contact',    label: 'Institution',      icon: 'account_balance',        field: 'contactId' },
+  { kind: 'contact',    label: 'Contact',          icon: 'groups',                 field: 'contactId' },
   { kind: 'insurancePolicy', label: 'Insurance policy', icon: 'shield',                 field: 'insurancePolicyId' },
 ];
 
@@ -53,7 +53,7 @@ const AddContractPartyModal = ({ contract, onClose, onAdd }) => {
   return (
     <Modal
       title="Add party"
-      subtitle="Link the account, institution, or insurance policy this contract relates to."
+      subtitle="Link the account, contact, or insurance policy this contract relates to."
       icon="group_add"
       onClose={onClose}
       footer={

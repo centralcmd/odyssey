@@ -161,6 +161,13 @@
    HISTORY — grouped, as a table OR a vertical timeline
    ============================================================= */
 .trm-history { display: flex; flex-direction: column; gap: 20px; }
+.odc-record-body .trm-history {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: 12px 8px 8px;
+}
 .trm-group-label {
   display: flex; align-items: center; gap: 8px;
   font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-primary);

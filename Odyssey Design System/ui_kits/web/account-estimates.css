@@ -131,6 +131,13 @@
    HISTORY — single list (no groups), as a table OR a timeline
    ============================================================= */
 .est-history { display: flex; flex-direction: column; }
+.odc-record-body .est-history {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: 8px 8px 4px;
+}
 .est-tbl { width: 100%; border-collapse: collapse; }
 .est-tbl thead th {
   text-align: left;

@@ -4,7 +4,7 @@
    expandable-record scaffold (.acct-list / .acct-item), with a contract-
    specific expanded detail. Each contract is a single agreement with a name,
    a type, an active period, a description, the PARTIES it relates to (an
-   account, an institution/contact, or an insurance policy — one-of-three),
+   account, a contact, or an insurance policy — one-of-three),
    and the DOCUMENTS that evidence it (references to existing library files).
 
    Status (Upcoming / Active / Expired / Archived) is DERIVED, never stored —
@@ -59,9 +59,13 @@ const PartyRow = ({ party, onDetach }) => {
   const r = CON_H.conResolveParty(party);
   return (
     <div className="con-party">
+      {/* A referenced record is drawn in ITS OWN type icon and colour — the same
+          mark it carries on its own page — so it is recognisable as that record
+          rather than as part of this one. */}
       <span className="con-party-av" style={{ background: r.soft || 'var(--mud-palette-action-default-hover)', color: r.color || 'var(--mud-palette-text-secondary)' }}>
         <MIcon name={r.icon} size={20} />
       </span>
+      {/* One line: name, then the kind chip and target type beside it. */}
       <div className="con-party-main">
         <span className="con-party-name">{r.name}</span>
         <span className="con-party-meta">
@@ -86,24 +90,61 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
   const detachParty = (party) => setContract(prev => ({ ...prev, parties: prev.parties.filter(p => p.id !== party.id) }));
   const removeFile = (row) => setContract(prev => ({ ...prev, files: prev.files.filter(f => f.id !== row.id) }));
 
+  const oneOff = !!contract.completionDate;
+  const nowDate = today || CON_H.conToday();
+  const startFuture = !!contract.startDate && contract.startDate > nowDate;
+  const endPast = !!contract.endDate && contract.endDate < nowDate;
+  const completionPast = !!contract.completionDate && contract.completionDate <= nowDate;
+  const status = CON_H.conStatus(contract, today);
+  const statusMeta = CON_H.conStatusMeta(status);
+  const statusFoot = status === 'Archived' ? `since ${CON_H.conDate(contract.archived)}`
+    : status === 'Expired' ? (contract.endDate ? `since ${CON_H.conDate(contract.endDate)}` : null)
+    : status === 'Upcoming' ? (contract.startDate ? `starts ${CON_H.conDate(contract.startDate)}` : null)
+    : oneOff ? `completed ${CON_H.conDate(contract.completionDate)}`
+    : (contract.startDate ? `since ${CON_H.conDate(contract.startDate)}` : null);
+  const statusToneClass = statusMeta.tone === 'income' ? 'income' : statusMeta.tone === 'expense' ? 'expense'
+    : statusMeta.tone === 'info' ? 'info' : 'muted';
   return (
-    <div className="acct-detail">
-      <div className="con-tiles">
-        <InfoTile icon={typeInfo.icon} iconColor={typeInfo.color} iconSoft={typeInfo.soft} label="Type" value={typeInfo.label} valueVariant="text" />
-        {contract.completionDate ? (
-          <InfoTile icon="event_available" label="Completion" value={CON_H.conDate(contract.completionDate)} valueVariant="sm" foot="One-off" />
+    <React.Fragment>
+      {/* DETAILS — the contract's full field set. A one-off has a completion date
+          instead of a term, so those tiles are alternatives, not omissions. */}
+      <InfoTileGrid>
+        <InfoTile icon="handshake" label="Name" value={contract.name} valueVariant="text" className="wrapvalue" />
+        <InfoTile icon={typeInfo.icon} label="Type" value={typeInfo.label} valueVariant="text" foot={oneOff ? 'One-off' : 'Term'} />
+        {oneOff ? (
+          <InfoTile icon="event_available" label={completionPast ? 'Completed on' : 'Completes on'}
+            className={completionPast ? undefined : 'tone-info'}
+            value={CON_H.conDate(contract.completionDate)} valueVariant="sm"
+            foot={completionPast ? 'delivered on this date' : 'upcoming'} />
         ) : (
           <React.Fragment>
-            <InfoTile icon="play_circle" label="Starts" value={contract.startDate ? CON_H.conDate(contract.startDate) : '—'} valueVariant="sm" />
-            <InfoTile icon="event_busy" label="Ends" value={contract.endDate ? CON_H.conDate(contract.endDate) : 'Open-ended'} valueVariant="sm" foot={contract.endDate ? null : 'No end date'} />
+            {/* Tense and tone follow the date against today. */}
+            {contract.startDate ? (
+              <InfoTile icon="play_circle" label={startFuture ? 'Starts on' : 'Started on'}
+                className={startFuture ? 'tone-info' : undefined}
+                value={CON_H.conDate(contract.startDate)} valueVariant="sm"
+                foot={startFuture ? 'upcoming' : null} />
+            ) : null}
+            <InfoTile icon="event_busy" label={contract.endDate ? (endPast ? 'Ended on' : 'Ends on') : 'End date'}
+              className={contract.endDate && endPast ? 'tone-expense' : undefined}
+              value={contract.endDate ? CON_H.conDate(contract.endDate) : 'Open-ended'}
+              valueVariant={contract.endDate ? 'sm' : 'text'}
+              foot={contract.endDate ? (endPast ? 'no longer in force' : 'scheduled') : 'runs until ended'} />
           </React.Fragment>
         )}
-        {contract.description ? <InfoTile icon="sticky_note_2" label="Description" value={contract.description} wide /> : null}
-      </div>
+        <InfoTile icon={statusMeta.icon} label="Status" valueVariant="text"
+          className={`con-status-tile ${statusToneClass}`}
+          value={statusMeta.label} foot={statusFoot} />
+        {contract.archived ? <InfoTile icon="inventory_2" label="Archived" value={CON_H.conDate(contract.archived)} valueVariant="sm" foot="hidden from the default list" /> : null}
+      </InfoTileGrid>
 
-      {/* PARTIES */}
-      <Collapsible icon="diversity_3" title="Parties" count={parties.length} defaultOpen
-        action={<Button variant="text" color="primary" icon="add" onClick={(e) => { e.stopPropagation(); onAddParty(); }}>Add party</Button>}>
+      {contract.description ? (
+        <InfoTileGrid><InfoTile icon="sticky_note_2" label="Description" value={contract.description} wide /></InfoTileGrid>
+      ) : null}
+
+      {/* PARTIES — a plain section; "Add party" lives in the row action menu. */}
+      <div className="con-section">
+        <SectionDivider label="Parties" meta={`${parties.length} linked`} />
         {parties.length ? (
           <div className="con-parties">
             {parties.map(p => <PartyRow key={p.id} party={p} onDetach={detachParty} />)}
@@ -111,31 +152,33 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         ) : (
           <div className="con-empty-line">
             <MIcon name="diversity_3" size={20} />
-            <div style={{ flex: 1 }}>No parties yet — link the account, institution, or insurance policy this contract relates to.</div>
+            <div style={{ flex: 1 }}>No parties yet — link the account, contact, or insurance policy this contract relates to.</div>
           </div>
         )}
-      </Collapsible>
+      </div>
 
-      {/* DOCUMENTS */}
-      <Collapsible key={focusDocs ? 'docs-open' : 'docs'} icon="folder" title="Documents" count={files.length} defaultOpen={!!focusDocs}
-        action={<Button variant="text" icon="upload_file" onClick={(e) => { e.stopPropagation(); onAttach(); }}>Upload</Button>}>
-        <div className="con-files">
+      {/* DOCUMENTS — last section ("Upload document" is in the row menu too). */}
+      <div className="con-section">
+        <SectionDivider label="Documents" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
+        <div className="con-files con-tbl-frame">
           <ContractFilesTable
             files={fileRows}
             onDelete={removeFile}
             empty={<div className="con-empty-line"><MIcon name="folder_open" size={20} /><div style={{ flex: 1 }}>No documents yet — upload the signed agreement, an amendment, or correspondence.</div></div>}
           />
         </div>
-      </Collapsible>
-    </div>
+      </div>
+    </React.Fragment>
   );
 };
 
 /* ====================== One contract list item ====================== */
-const ContractListItem = ({ row, today, endingWindow, defaultOpen, highlight, onDelete }) => {
+const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, highlight, onDelete }) => {
   const { useState, useRef, useEffect } = React;
   const [c, setC] = useState(row);
-  const [open, setOpen] = useState(!!defaultOpen);
+  // Open state lives in the list — opening a contract closes its siblings.
+  const open = !!openProp;
+  const setOpen = (next) => onToggle(typeof next === 'function' ? next(open) : next);
   const [showEdit, setShowEdit] = useState(false);
   const [focusDocs, setFocusDocs] = useState(false);
   const [modal, setModal] = useState(null); // 'party' | 'file'
@@ -146,8 +189,11 @@ const ContractListItem = ({ row, today, endingWindow, defaultOpen, highlight, on
   const headline = CON_H.conHeadline(c, today, endingWindow);
   const parties = c.parties || [];
   const files = c.files || [];
-  const institution = parties.map(CON_H.conResolveParty).find(r => r.kind === 'contact');
+  const contact = parties.map(CON_H.conResolveParty).find(r => r.kind === 'contact');
   const dimmed = !!c.archived;
+  // "Ended" is not the same as status 'Expired': a delivered one-off stays Active
+  // in the status derivation, so completion counts too.
+  const hasEnded = status === 'Expired' || (!!c.completionDate && c.completionDate <= today);
 
   const saveEdit = (draft) => {
     setC(prev => ({
@@ -167,7 +213,7 @@ const ContractListItem = ({ row, today, endingWindow, defaultOpen, highlight, on
 
   useEffect(() => {
     if (!highlight || !cardRef.current) return;
-    setOpen(true);
+    if (!open) setOpen(true);
     const el = cardRef.current;
     let scroller = el.parentElement;
     while (scroller && scroller !== document.body) {
@@ -184,57 +230,52 @@ const ContractListItem = ({ row, today, endingWindow, defaultOpen, highlight, on
   }, [highlight]);
 
   return (
-    <Card className={`acct-item ${open ? 'open' : ''} ${dimmed ? 'dimmed' : ''} ${highlight ? 'flash' : ''}`} ref={cardRef}>
-      <div className="acct-head" onClick={() => setOpen(o => !o)}>
-        <Avatar icon={typeInfo.icon} tone={{ bg: typeInfo.soft, fg: typeInfo.color }} square size="lg" />
-
-        <div className="acct-id">
-          <div className="acct-name-row">
-            <span className="acct-name">{c.name}</span>
-            <ContractStatusChip status={status} />
-          </div>
-          <div className="acct-tags">
-            <span>{typeInfo.label}</span>
-            <span className="acct-dot">·</span>
-            <span className="con-sub-inst"><MIcon name="account_balance" size={14} />{institution ? institution.name : 'No institution'}</span>
-            <span className="acct-dot">·</span>
-            <span className="acct-counts">
-              <span><MIcon name="diversity_3" size={14} />{parties.length}</span>
-              <span><MIcon name="description" size={14} />{files.length}</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="acct-figures">
-          <div className={`con-headline ${headline.value === 'Open-ended' ? 'none' : ''}`}>{headline.value}</div>
-          <div className={`con-headline-word ${headline.cls}`}>{headline.word}</div>
-        </div>
-
-        <div className="acct-controls" onClick={(e) => e.stopPropagation()}>
-          <ActionMenu items={[
-            { icon: 'edit', label: 'Edit contract', onClick: () => setShowEdit(true) },
-            { icon: 'group_add', label: 'Add party', onClick: () => { setOpen(true); setModal('party'); } },
-            { icon: 'attach_file', label: 'Upload document', onClick: () => { setOpen(true); setModal('file'); } },
-            { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
-            { divider: true },
-            { icon: c.archived ? 'unarchive' : 'inventory_2', label: c.archived ? 'Restore' : 'Archive', onClick: toggleArchive },
-            { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(c.id) },
-          ]} />
-          <button className="acct-expand" onClick={() => setOpen(o => !o)} aria-label="Expand">
-            <MIcon name="expand_more" size={22} className={`chev ${open ? 'open' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {open && (
+    <div ref={cardRef}>
+      <RecordCard
+        icon={typeInfo.icon}
+        accent={typeInfo.color}
+        accentSoft={typeInfo.soft}
+        name={c.name}
+        chips={<ContractStatusChip status={status} />}
+        meta={[
+          typeInfo.label,
+          <span className="con-sub-inst"><MIcon name="groups" size={14} /><span>{contact ? contact.name : 'No contact'}</span></span>,
+        ]}
+        counts={[
+          { icon: 'diversity_3', value: parties.length, label: 'Parties' },
+          { icon: 'description', value: files.length, label: 'Documents' },
+        ]}
+        figure={{
+          value: headline.value,
+          caption: headline.word,
+          tone: headline.cls === 'lapsed' || headline.cls === 'expired' ? 'expense' : headline.cls === 'soon' ? 'pending' : undefined,
+        }}
+        dimmed={dimmed}
+        highlight={highlight}
+        open={open}
+        onToggle={setOpen}
+        actions={<ActionMenu items={[
+          { icon: 'edit', label: 'Edit contract', onClick: () => setShowEdit(true) },
+          { icon: 'group_add', label: 'Add party', onClick: () => { setOpen(true); setModal('party'); } },
+          { icon: 'attach_file', label: 'Upload document', onClick: () => { setOpen(true); setModal('file'); } },
+          { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
+          { divider: true },
+          // Only an ended contract can be archived — the lifecycle is ordered, so
+          // the action is offered with its reason rather than hidden.
+          (hasEnded || c.archived)
+            ? { icon: c.archived ? 'unarchive' : 'inventory_2', label: c.archived ? 'Restore' : 'Archive', onClick: toggleArchive }
+            : { icon: 'inventory_2', label: 'Archive', disabled: true, note: 'The contract has to end first.' },
+          { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(c.id) },
+        ]} />}
+      >
         <ContractDetail contract={c} today={today} focusDocs={focusDocs} setContract={setC}
           onAddParty={() => setModal('party')} onAttach={() => setModal('file')} />
-      )}
+      </RecordCard>
       {showEdit && <AddContractModal contract={c} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
 
       {modal === 'party' && <AddContractPartyModal contract={c} onClose={() => setModal(null)} onAdd={addParty} />}
       {modal === 'file' && <AddContractFileModal contract={c} onClose={() => setModal(null)} onAttach={attachFile} />}
-    </Card>
+    </div>
   );
 };
 
@@ -263,6 +304,8 @@ const ContractsSummary = ({ contracts, today }) => {
 /* ====================== Page ====================== */
 const Contracts = ({ tweaks = {}, onNavigate }) => {
   const { useState } = React;
+  // One card open at a time — the list owns it.
+  const [openId, setOpenId] = useState('ct-lease');
   const today = CON_H.conToday();
   const endingWindow = tweaks.endingWindowDays != null ? tweaks.endingWindowDays : CON_D.CONTRACTS_ENDING_WINDOW_DAYS;
 
@@ -388,7 +431,9 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
             revealKey={jumpId}
             renderItem={(c) => (
               <ContractListItem row={c} today={today} endingWindow={endingWindow}
-                defaultOpen={c.id === 'ct-lease'} highlight={jumpId === c.id}
+                open={openId === c.id}
+                onToggle={(o) => setOpenId(o ? c.id : null)}
+                highlight={jumpId === c.id}
                 onDelete={deleteContract} />
             )}
             empty={(

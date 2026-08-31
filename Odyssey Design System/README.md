@@ -143,6 +143,7 @@ Consumable, typed components in `/components` (`.jsx` + `.d.ts`), exported on `w
 | `Modal` | The one dialog shell — scrim, tinted head + lead icon, scrollable body, footer, focus trap, Esc/click-out | `preview/37` |
 | `Tabs` · `Tooltip` · `Menu` | Tab strip · hover tip · `more_vert` overflow dropdown (a disabled item's `note` says why) | `components/data.html` · `components/file-analysis-runtime.html` |
 | `Collapsible` | Header row + count pill + optional lead icon + action slot — every record disclosure section | `preview/28` |
+| `RecordCard` · `InfoTileGrid` · `SectionDivider` | **The expandable record card** every record list is built from — dense identity header + a body whose order is fixed by the component (alert → details → content → sections) · the auto-fitting `InfoTile` grid the `details` slot is made of (the record's full field set; `dense` for many-short-fact record types) · the uppercase-label + rule + mono-meta divider that introduces each band/section | `components/recordcard.html` · `components/record-card-rules.html` |
 
 **Form controls**
 

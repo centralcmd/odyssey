@@ -399,7 +399,7 @@ const SMART_TAG_SEED = {
    for one account, filters this account's transactions down to the matches,
    and feeds the DS section. Add/remove flips a brief loading state to mirror
    the re-fetch the live section does on every change. */
-const AccountSmartTags = ({ a, txns, onNavigate, tagIds, setTagIds }) => {
+const AccountSmartTags = ({ a, txns, onNavigate, tagIds, setTagIds, bare = false }) => {
   const { useState, useEffect, useRef } = React;
   const DSSection = (window.OdysseyDesignSystem_d5aa51 || {}).AccountSmartTagsSection;
   const allTags = window.OdysseyData.tags.filter(t => !t.archived);
@@ -433,6 +433,7 @@ const AccountSmartTags = ({ a, txns, onNavigate, tagIds, setTagIds }) => {
 
   return (
     <DSSection
+      chrome={!bare}
       tags={configured}
       tagOptions={options}
       transactions={matches}
@@ -457,8 +458,15 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
   const files = H.filesForAccount(a.id);
   const status = H.accountStatus(a);
   const lifecycle = accountLifecycle(a);
+  const ti = typeInfo(a.type);
+  const cust = window.OdysseyData.custodianForAccount(a);
+  // The custodian is a REFERENCE to a contact — its own type mark, not this
+  // record's accent.
+  const custMeta = (cust && window.OdysseyData.contactTypeByKey[cust.type]) || {};
+  const statusToneClass = status.tone === 'income' ? 'income' : status.tone === 'expense' ? 'expense'
+    : status.tone === 'pending' ? 'pending' : 'muted';
   return (
-    <div className="acct-detail">
+    <React.Fragment>
       {problem && (
         <div className={`alert ${problem.severity} acct-problem`} role={problem.severity === 'error' ? 'alert' : 'status'}>
           <div className="acct-problem-head">
@@ -473,64 +481,120 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
         </div>
       )}
 
-      <div className="meta-grid">
-        <MetaTile label="Account type" value={<AccountTypeChip type={a.type} />} />
-        <MetaTile label="Account number" value={a.accountNumber || '—'} mono />
-        <MetaTile label="Custodian" value={<CustodianChip custodian={window.OdysseyData.custodianForAccount(a)} />} />
-        <MetaTile label="Currency" value={a.currency} mono />
-        <MetaTile label="Status" value={(
-          <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-            <Chip tone={status.tone} dot>{status.label}</Chip>
-            {lifecycle && (
-              <span style={{ color: 'var(--mud-palette-text-secondary)', font: 'var(--fw-regular) var(--fs-caption)/1.35 var(--font-sans)' }}>{lifecycle}</span>
-            )}
-          </span>
-        )} />
-        <MetaTile label="Description" value={a.description} />
+      {/* DETAILS — the account's full field set. Empty fields show no tile; the
+          custodian keeps its own type colour as a reference. */}
+      <InfoTileGrid>
+        <InfoTile icon="account_balance_wallet" label="Name" value={a.name} valueVariant="text" className="wrapvalue" />
+        <InfoTile icon={ti.icon} label="Account type" value={ti.label} valueVariant="text" />
+        {a.accountNumber ? <InfoTile icon="tag" label="Account number" value={a.accountNumber} valueVariant="mono" foot="Custodian reference" /> : null}
+        {cust ? <InfoTile icon={custMeta.icon || 'groups'} iconColor={custMeta.color} iconSoft={custMeta.soft}
+          label="Custodian" value={cust.name} valueVariant="text" foot={custMeta.label || 'Contact'} /> : null}
+        <InfoTile icon="payments" label="Currency" value={a.currency} foot={a.currency === 'USD' ? null : 'converted for reporting'} />
+        <InfoTile icon={a.archived ? 'inventory_2' : a.closed ? 'lock' : 'lock_open'} label="Status"
+          className={`acct-status-tile ${statusToneClass}`}
+          value={status.label} valueVariant="text" foot={lifecycle || null} />
+      </InfoTileGrid>
+
+      {a.description ? (
+        <InfoTileGrid><InfoTile icon="sticky_note_2" label="Description" value={a.description} wide /></InfoTileGrid>
+      ) : null}
+
+      {(() => {
+        // CURRENT — the account's in-force values, as the same InfoTiles the
+        // details use. Each keeps its own semantic colour: term kinds their
+        // registry hue, the estimate mint, the transaction balance muted.
+        const curTerms = terms.length > 0 ? window.trmCurrentFromList(terms) : [];
+        const curEst = estimates.length > 0 ? window.estCurrentFromList(estimates) : null;
+        const txnSum = txns.reduce((s, t) => s + t.amount, 0);
+        const inForce = curTerms.length + (curEst ? 2 : 0);
+        if (!inForce) return null;
+        return (
+          <div className="acct-section">
+            <SectionDivider label="Current" meta={`${inForce} ${inForce === 1 ? 'value' : 'values'} in force`} />
+            <InfoTileGrid>
+              {curEst ? (
+                <React.Fragment>
+                  <InfoTile icon="trending_up" label="Estimated value"
+                    value={<span style={{ color: 'var(--finance-income)' }}>{H.money(curEst.value, a.currency)}</span>}
+                    foot={`in force since ${H.dateLong(curEst.effectiveFrom)} · in net worth`} />
+                  <InfoTile icon="swap_horiz" label="Transaction balance"
+                    value={H.money(txnSum, a.currency)}
+                    foot={txns.length === 0 ? 'No transactions' : `${txns.length} transaction${txns.length === 1 ? '' : 's'} · secondary`} />
+                </React.Fragment>
+              ) : null}
+              {curTerms.map((t) => {
+                const info = window.trmKindInfo(t.kind);
+                // The billing period is what separates a $695 annual fee from a
+                // $695 monthly one, so it rides in the foot beside the date.
+                const bill = t.billingPeriod ? H.billingInfo(t.billingPeriod) : null;
+                const period = bill && bill.key !== 'OneTime' ? bill.label : null;
+                return (
+                  <InfoTile key={t.kind} icon={info.icon} iconColor={info.color} iconSoft={info.soft}
+                    label={info.label}
+                    value={<span style={{ color: H.costColor(t, a) || info.color }}>{H.fmtTermValueFor(t, a)}</span>}
+                    foot={`since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`} />
+                );
+              })}
+            </InfoTileGrid>
+          </div>
+        );
+      })()}
+
+      {estimates.length > 0 ? (
+        <div className="acct-section">
+          <SectionDivider label="Estimates" meta={`${estimates.length} ${estimates.length === 1 ? 'estimate' : 'estimates'}`} />
+          <AccountEstimates account={a} estimates={estimates} txns={txns} chrome={false} bareAction={false} showCurrent={false}
+            onNew={onNewEstimate} onEdit={onEditEstimate} onDelete={onDeleteEstimate} />
+        </div>
+      ) : null}
+
+      {terms.length > 0 ? (
+        <div className="acct-section">
+          <SectionDivider label="Terms" meta={`${terms.length} ${terms.length === 1 ? 'entry' : 'entries'}`} />
+          <AccountTerms account={a} terms={terms} chrome={false} bareAction={false} showCurrent={false}
+            onNew={onNewTerm} onEdit={onEditTerm} onDelete={onDeleteTerm} />
+        </div>
+      ) : null}
+
+      <div className="acct-section">
+        <SectionDivider label="Files" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
+        <div className="acct-table-frame">
+          {files.length === 0 ? (
+            <div className="empty-line">No files attached to this account yet.</div>
+          ) : (
+            <InlinePager items={files}>
+              {(pageRows) => <FilesTable files={pageRows} account={a} onNavigate={onNavigate} />}
+            </InlinePager>
+          )}
+        </div>
       </div>
 
-      <AccountEstimates account={a} estimates={estimates} txns={txns} onNew={onNewEstimate} onEdit={onEditEstimate} onDelete={onDeleteEstimate} />
-
-      <AccountTerms account={a} terms={terms} onNew={onNewTerm} onEdit={onEditTerm} onDelete={onDeleteTerm} />
-
-      <Collapsible
-        icon="attach_file"
-        title="Files"
-        count={files.length}
-        action={<Button variant="text" color="primary" iconRight="arrow_forward" onClick={() => onNavigate && onNavigate('files')}>View all</Button>}
-      >
-        {files.length === 0 ? (
-          <div className="empty-line">No files attached to this account yet.</div>
-        ) : (
-          <InlinePager items={files}>
-            {(pageRows) => <FilesTable files={pageRows} account={a} onNavigate={onNavigate} />}
-          </InlinePager>
-        )}
-      </Collapsible>
-
-      <Collapsible
-        icon="receipt_long"
-        title="Transactions"
-        count={txns.length}
-        action={<Button variant="text" color="primary" iconRight="arrow_forward" onClick={() => onNavigate && onNavigate('transactions')}>View all</Button>}
-      >
-        <div className="acct-txn-table">
-          <InlinePager items={txns}>
-            {(pageRows) => (
-              <TxnTable
-                txns={pageRows}
-                hideAccount
-                onSave={onSaveTxn}
-                onDelete={onDeleteTxn}
-                empty={<div className="empty-line" style={{ padding: 20 }}>No transactions recorded for this account.</div>}
-              />
-            )}
-          </InlinePager>
+      <div className="acct-section">
+        <SectionDivider label="Transactions" meta={`${txns.length} transaction${txns.length === 1 ? '' : 's'}`} />
+        <div className="acct-txn-table acct-table-frame">
+          {txns.length === 0 ? (
+            <div className="empty-line">No transactions recorded for this account yet.</div>
+          ) : (
+            <InlinePager items={txns}>
+              {(pageRows) => (
+                <TxnTable
+                  txns={pageRows}
+                  hideAccount
+                  onSave={onSaveTxn}
+                  onDelete={onDeleteTxn}
+                />
+              )}
+            </InlinePager>
+          )}
         </div>
-      </Collapsible>
+      </div>
 
-      <AccountSmartTags a={a} txns={txns} onNavigate={onNavigate} tagIds={smartTagIds} setTagIds={setSmartTagIds} />
-    </div>
+      {/* Always rendered: this section is the only place a first smart tag can be
+          added, so it is an entry point rather than an optional collection. */}
+      <div className="acct-section">
+        <SectionDivider label="Smart tags" meta={smartTagIds.length ? `${smartTagIds.length} watched` : 'none watched'} />
+        <AccountSmartTags a={a} txns={txns} onNavigate={onNavigate} tagIds={smartTagIds} setTagIds={setSmartTagIds} bare />
+      </div>    </React.Fragment>
   );
 };
 
@@ -538,10 +602,12 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
 const TYPE_OPTIONS = ACCOUNT_TYPES.map(({ key, label }) => ({ value: key, label }));
 
 /* ---- One account list item (collapsed header + expandable detail) ---- */
-const AccountListItem = ({ a, problem, highlight, onJump, onNavigate, onDelete }) => {
+const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJump, onNavigate, onDelete }) => {
   const { useState, useEffect, useRef } = React;
   const [acct, setAcct] = useState(problem && problem.currency ? { ...a, currency: problem.currency } : a);
-  const [open, setOpen] = useState(false);
+  // Open state lives in the list — opening an account closes its siblings.
+  const open = !!openProp;
+  const setOpen = (next) => onToggle(typeof next === 'function' ? next(open) : next);
   const [showEdit, setShowEdit] = useState(false);
   const [addingFile, setAddingFile] = useState(false);
   const [addingTxn, setAddingTxn] = useState(false);
@@ -660,68 +726,50 @@ const AccountListItem = ({ a, problem, highlight, onJump, onNavigate, onDelete }
     setShowEdit(false);
   };
 
+  const custMetaHdr = (cust && window.OdysseyData.contactTypeByKey[cust.type]) || {};
   return (
-    <Card className={`acct-item ${open ? 'open' : ''} ${dimmed ? 'dimmed' : ''} ${highlight ? 'flash' : ''}`} ref={cardRef}>
-      <div className="acct-head" onClick={() => setOpen(o => !o)}>
-        <Avatar icon={ti.icon} tone={{ bg: ti.soft, fg: ti.color }} square size="lg" />
-
-        <div className="acct-id">
-          <div className="acct-name-row">
-            <span className="acct-name">{acct.name}</span>
+    <div ref={cardRef}>
+      <RecordCard
+        icon={ti.icon}
+        accent={ti.color}
+        accentSoft={ti.soft}
+        name={acct.name}
+        chips={(
+          <React.Fragment>
             <Chip tone={status.tone} dot>{status.label}</Chip>
             {problem && (
               <Chip tone={problem.severity} className="problem">
                 <SeverityIcon severity={problem.severity} size={13} />{problem.chip}
               </Chip>
             )}
-          </div>
-          <div className="acct-tags">
-            {cust && <span className="acct-meta">{cust.name}</span>}
-            {cust && <span className="acct-dot">·</span>}
-            <span className="acct-meta">{ti.label}</span>
-            <span className="mono">{acct.number}</span>
-            {rateTerm && (
-              <React.Fragment>
-                <span className="acct-dot">·</span>
-                <span className="acct-rate mono" title={window.trmKindInfo(rateTerm.kind).label}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: H.costColor(rateTerm, acct) || window.trmKindInfo(rateTerm.kind).color, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-                  {H.fmtTermValueFor(rateTerm, acct)}
-                </span>
-              </React.Fragment>
-            )}
-            <span className="acct-dot">·</span>
-            <span className="acct-counts">
-              <span title="Transactions"><MIcon name="receipt_long" size={14} />{txns.length}</span>
-              <span title="Files"><MIcon name="attach_file" size={14} />{files.length}</span>
-              {estimates.length > 0 && <span title="Estimates"><MIcon name="monitor" size={14} />{estimates.length}</span>}
-              {terms.length > 0 && <span title="Terms"><span className="acct-count-glyph" aria-hidden="true">§</span>{terms.length}</span>}
-              {smartTagIds.length > 0 && <span title="Smart tags"><MIcon name="sell" size={14} />{smartTagIds.length}</span>}
+          </React.Fragment>
+        )}
+        meta={[
+          cust ? <span className="acct-cust-inline"><MIcon name={custMetaHdr.icon || 'groups'} size={14} /><span>{cust.name}</span></span> : null,
+          ti.label,
+          acct.accountNumber ? <span className="mono"><MIcon name="tag" size={14} /><span>{acct.accountNumber}</span></span> : null,
+          rateTerm ? (
+            <span className="acct-rate mono" title={window.trmKindInfo(rateTerm.kind).label}
+              style={{ color: H.costColor(rateTerm, acct) || window.trmKindInfo(rateTerm.kind).color, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+              {H.fmtTermValueFor(rateTerm, acct)}
             </span>
-          </div>
-        </div>
-
-        <div className="acct-figures">
-          {curEstimate ? (
-            <React.Fragment>
-              <div className="acct-balance mono" style={{ color: 'var(--finance-income)' }} title="Estimated value">
-                {H.money(curEstimate.value, acct.currency)}
-              </div>
-              <div className="mono" style={{ fontSize: 10.5, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--mud-palette-text-secondary)', textAlign: 'right', marginTop: 3 }}>
-                Est. value
-              </div>
-            </React.Fragment>
-          ) : (
-            <div
-              className="acct-balance mono"
-              style={{ color: acct.balance < 0 ? 'var(--finance-expense)' : 'var(--finance-income)' }}
-            >
-              {H.money(acct.balance)}
-            </div>
-          )}
-        </div>
-
-        <div className="acct-controls" onClick={(e) => e.stopPropagation()}>
-          <ActionMenu items={[
+          ) : null,
+        ]}
+        counts={[
+          { icon: 'receipt_long', value: txns.length, label: 'Transactions' },
+          { icon: 'attach_file', value: files.length, label: 'Files' },
+          ...(estimates.length > 0 ? [{ icon: 'monitor', value: estimates.length, label: 'Estimates' }] : []),
+          ...(terms.length > 0 ? [{ icon: '§', value: terms.length, label: 'Terms' }] : []),
+          ...(smartTagIds.length > 0 ? [{ icon: 'sell', value: smartTagIds.length, label: 'Smart tags' }] : []),
+        ]}
+        figure={curEstimate
+          ? { value: H.money(curEstimate.value, acct.currency), caption: 'Est. value', tone: 'income' }
+          : { value: H.money(acct.balance), tone: acct.balance < 0 ? 'expense' : 'income' }}
+        dimmed={dimmed}
+        highlight={highlight}
+        open={open}
+        onToggle={setOpen}
+        actions={<ActionMenu items={[
             { icon: 'edit', label: 'Edit account', onClick: startEdit },
             { icon: 'upload_file', label: 'Upload file', onClick: () => setAddingFile(true) },
             { icon: 'receipt_long', label: 'New transaction', onClick: () => setAddingTxn(true) },
@@ -734,17 +782,13 @@ const AccountListItem = ({ a, problem, highlight, onJump, onNavigate, onDelete }
             { icon: acct.archived ? 'unarchive' : 'archive', label: acct.archived ? 'Unarchive' : 'Archive',
               onClick: () => setAcct(prev => ({ ...prev, archived: prev.archived ? null : new Date().toISOString() })) },
             { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(acct.id) },
-          ]} />
-          <button className="acct-expand" onClick={() => setOpen(o => !o)} aria-label="Expand">
-            <MIcon name="expand_more" size={22} className={`chev ${open ? 'open' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {open && <AccountDetail a={acct} problem={problem} onFix={handleFix} onNavigate={onNavigate} txns={txns} onSaveTxn={saveTxn} onDeleteTxn={deleteTxn}
-        terms={terms} onNewTerm={newTerm} onEditTerm={(t) => setTermModal({ mode: 'edit', term: t })} onDeleteTerm={deleteTerm}
-        estimates={estimates} onNewEstimate={newEstimate} onEditEstimate={(e) => setEstModal({ mode: 'edit', estimate: e })} onDeleteEstimate={deleteEstimate}
-        smartTagIds={smartTagIds} setSmartTagIds={setSmartTagIds} />}
+        ]} />}
+      >
+        <AccountDetail a={acct} problem={problem} onFix={handleFix} onNavigate={onNavigate} txns={txns} onSaveTxn={saveTxn} onDeleteTxn={deleteTxn}
+          terms={terms} onNewTerm={newTerm} onEditTerm={(t) => setTermModal({ mode: 'edit', term: t })} onDeleteTerm={deleteTerm}
+          estimates={estimates} onNewEstimate={newEstimate} onEditEstimate={(e) => setEstModal({ mode: 'edit', estimate: e })} onDeleteEstimate={deleteEstimate}
+          smartTagIds={smartTagIds} setSmartTagIds={setSmartTagIds} />
+      </RecordCard>
       {showEdit && <AddAccountModal account={acct} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
       {addingFile && (
         <AddFileModal
@@ -779,12 +823,14 @@ const AccountListItem = ({ a, problem, highlight, onJump, onNavigate, onDelete }
           onSave={upsertEstimate}
         />
       )}
-    </Card>
+    </div>
   );
 };
 
 const Accounts = ({ onNavigate }) => {
   const d = window.OdysseyData;
+  // One card open at a time — the list owns it.
+  const [openId, setOpenId] = React.useState(null);
   const [q, setQ] = React.useState('');
   const [typeFilter, setTypeFilter] = React.useState([]);
   const [statusFilter, setStatusFilter] = React.useState([]);
@@ -947,6 +993,8 @@ const Accounts = ({ onNavigate }) => {
             <AccountListItem a={a}
               problem={problemFor(a)}
               highlight={jumpId === a.id}
+              open={openId === a.id}
+              onToggle={(o) => setOpenId(o ? a.id : null)}
               onJump={jumpTo}
               onDelete={deleteAccount}
               onNavigate={onNavigate} />
