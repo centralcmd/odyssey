@@ -53,205 +53,204 @@
                          EmptyDescription="Plan a period's income and expenses, then track against transactions.">
             <RenderItem Context="budget">
                 @{
-                    var index = _budgets.IndexOf(budget);
                     var isExpanded = _expandedId == budget.BudgetId;
-                    var accent = OdsDonutPalette.Default[index % OdsDonutPalette.Default.Count];
                     var archived = budget.Archived is not null;
                     var report = _reports.GetValueOrDefault(budget.BudgetId);
+                    var hasReport = report is not null;
                     var actualByTag = ActualByTag(budget.BudgetId);
-                }
-                <OdsExpandableCard Open="isExpanded"
-                                   Dimmed="archived"
-                                   Label="@budget.Name"
-                                   OnToggle="@(() => ToggleExpand(budget.BudgetId))">
-
-            <Lead>
-                <div class="acct-badge"
-                     style="background:color-mix(in srgb, @accent 16%, transparent);color:@accent;">
-                    <span class="material-icons" aria-hidden="true">pie_chart</span>
-                </div>
-            </Lead>
-
-            <Head>
-                    <div class="acct-name-row">
-                        <span class="acct-name">@budget.Name</span>
-                        <OdsChip Tone="@(archived ? OdsChipTone.Outline : OdsChipTone.Income)" Dot="true">@(archived ? "Archived" : "Active")</OdsChip>
-                    </div>
-                    <div class="acct-tags">
-                        <span class="mono">@budget.StartDate.ToString("MMM dd, yyyy") → @budget.EndDate.ToString("MMM dd, yyyy")</span>
-                        <span class="acct-dot">·</span>
-                        <span class="mono">@budget.BaseCurrencyCode</span>
-                        <span class="acct-dot">·</span>
-                        <span class="acct-counts">
-                            <span>
-                                <span class="material-icons" aria-hidden="true">list_alt</span>
-                                @budget.BudgetItems.Count
-                            </span>
-                            <span>
-                                <span class="material-icons" aria-hidden="true">receipt_long</span>
-                                @budget.TransactionCount
-                            </span>
-                        </span>
-                    </div>
-            </Head>
-
-            <Figures>
-                    <div class="acct-balance" style="color:@BalanceColor(budget.ExpectedDifference);">@FormatMoney(budget.ExpectedDifference, budget.BaseCurrencyCode)</div>
-                    <div class="bdg-balance-lab">expected balance</div>
-            </Figures>
-
-            <Actions>
-                    <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                             Size="Size.Small"
-                             Color="Color.Default"
-                             AnchorOrigin="Origin.TopRight"
-                             TransformOrigin="Origin.TopRight">
-                        @if (_canUpdate)
-                        {
-                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                                         OnClick="@(() => EditClicked(budget))">
-                                Edit budget
-                            </MudMenuItem>
-                        }
-                        @if (_canCreate)
-                        {
-                            <MudMenuItem Icon="@Icons.Material.Filled.PlaylistAdd"
-                                         OnClick="@(() => AddItemClicked(budget))">
-                                New item
-                            </MudMenuItem>
-                        }
-                        @* Copy ID — fingerprint lead + content_copy affordance on hover/focus
-                           (Odyssey Design System · ActionMenu trailingIcon). *@
-                        <MudMenuItem OnClick="@(() => CopyBudgetId(budget.BudgetId))">
-                            <span class="odc-menu-item">
-                                <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
-                                <span>Copy ID</span>
-                                <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
-                            </span>
-                        </MudMenuItem>
-                        @if (_canUpdate)
-                        {
-                            <MudDivider />
-                            <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Archive)"
-                                         OnClick="@(() => ToggleArchive(budget))">
-                                @(archived ? "Unarchive" : "Archive")
-                            </MudMenuItem>
-                        }
-                        @if (_canDelete)
-                        {
-                            <MudMenuItem Icon="@Icons.Material.Filled.Delete"
-                                         Style="color:var(--mud-palette-error);"
-                                         OnClick="@(() => ConfirmDelete(budget))">
-                                Delete
-                            </MudMenuItem>
-                        }
-                    </MudMenu>
-            </Actions>
-
-            <!-- Expanded body -->
-            <Detail>
-                @{
                     var actualIncome = ActualIncome(budget, actualByTag);
                     var actualExpenses = ActualExpenses(budget, actualByTag);
                     var actualBalance = actualIncome - actualExpenses;
-                    var hasReport = report is not null;
-                }
+                    var incomeItemCount = budget.BudgetItems.Count(i => i.CategoryType == BudgetCategoryType.Income);
+                    var expenseItemCount = budget.BudgetItems.Count(i => i.CategoryType == BudgetCategoryType.Expense);
+                    var itemCount = budget.BudgetItems.Count;
+                    var editingItems = _editingItemsId == budget.BudgetId;
+                    var period = $"{budget.StartDate:MMM dd, yyyy} → {budget.EndDate:MMM dd, yyyy}";
 
-                    <!-- Field cards -->
-                    <div class="meta-grid">
-                        <div class="meta-tile">
-                            <div class="meta-tile-label">Start date</div>
-                            <div class="meta-tile-value">@budget.StartDate.ToString("MMM dd, yyyy")</div>
-                        </div>
-                        <div class="meta-tile">
-                            <div class="meta-tile-label">End date</div>
-                            <div class="meta-tile-value">@budget.EndDate.ToString("MMM dd, yyyy")</div>
-                        </div>
-                        <div class="meta-tile">
-                            <div class="meta-tile-label">Base currency</div>
-                            <div class="meta-tile-value mono">@budget.BaseCurrencyCode</div>
-                        </div>
-                        <div class="meta-tile">
-                            <div class="meta-tile-label">Status</div>
-                            <div class="meta-tile-value">@(archived ? "Archived" : "Active")</div>
-                        </div>
-                        <div class="meta-tile wide">
-                            <div class="meta-tile-label">Description</div>
-                            <div class="meta-tile-value">@(string.IsNullOrWhiteSpace(budget.Description) ? "—" : budget.Description)</div>
-                        </div>
-                    </div>
+                    @* The single meta line: period · base currency. *@
+                    var meta = new List<RenderFragment?> { PeriodMeta(period), CurrencyMeta(budget.BaseCurrencyCode) };
 
-                    @{
-                        var incomeItemCount = budget.BudgetItems.Count(i => i.CategoryType == BudgetCategoryType.Income);
-                        var expenseItemCount = budget.BudgetItems.Count(i => i.CategoryType == BudgetCategoryType.Expense);
-                        var incomeSub = $"{incomeItemCount} item{(incomeItemCount == 1 ? "" : "s")}";
-                        var expenseSub = $"{expenseItemCount} item{(expenseItemCount == 1 ? "" : "s")}";
-                    }
-
-                    <!-- Planned income / expense donuts — amounts in the budget's base
-                         currency; the total row uses the budget's expected in/out. -->
-                    <MudCard Elevation="1" Class="ods-outline" Style="background:var(--mud-palette-background);">
-                        <MudCardContent Class="pa-4">
-                            <BudgetDonutPair IncomeSlices="BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Income))"
-                                             ExpenseSlices="BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Expense))"
-                                             IncomeSub="@incomeSub"
-                                             ExpenseSub="@expenseSub"
-                                             IncomeFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedIncomes, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))"
-                                             ExpenseFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedExpenses, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))" />
-                        </MudCardContent>
-                    </MudCard>
-
-                    @* Balance stat tiles — OdsStatTile keeps the figure neutral and
-                       carries the up/down tint on the delta (Ahead of / Behind plan). *@
-                    <div class="stat-grid duo">
-                        <OdsStatTile>
-                            <Overline>Expected balance</Overline>
-                            <Value>@FormatMoney(budget.ExpectedDifference, budget.BaseCurrencyCode)</Value>
-                        </OdsStatTile>
-                        @if (hasReport)
-                        {
-                            <OdsStatTile DeltaDir="@(actualBalance >= budget.ExpectedDifference ? OdsDeltaDirection.Up : OdsDeltaDirection.Down)">
-                                <Overline>Actual balance</Overline>
-                                <Value>@FormatMoney(actualBalance, budget.BaseCurrencyCode)</Value>
-                                <Delta>@(actualBalance >= budget.ExpectedDifference ? "Ahead of plan" : "Behind plan")</Delta>
-                            </OdsStatTile>
-                        }
-                        else
-                        {
-                            <OdsStatTile>
-                                <Overline>Actual balance</Overline>
-                                <Value>—</Value>
-                            </OdsStatTile>
-                        }
-                    </div>
-
-                    <!-- Budget items -->
-                    <BudgetItemsSection @key="@($"items:{budget.BudgetId}")"
-                                        BudgetId="@budget.BudgetId"
-                                        BudgetName="@budget.Name"
-                                        Items="@budget.BudgetItems"
-                                        ActualByTag="@actualByTag"
-                                        HasReport="@hasReport"
-                                        TransactionTags="@_transactionTags"
-                                        Format="@FormatMoney"
-                                        CurrencyCode="@budget.BaseCurrencyCode"
-                                        CanCreate="@_canCreate"
-                                        CanUpdate="@_canUpdate"
-                                        CanDelete="@_canDelete"
-                                        OnChanged="@(() => OnBudgetChanged(budget.BudgetId))" />
-
-                    <!-- Transactions -->
-                    @if (_canReadTransactions)
+                    @* The header counts are the body's table of contents: same glyphs, same order as
+                       the sections below, kept live while the body edits them. *@
+                    var counts = new[]
                     {
-                        <BudgetTransactionsSection @key="@($"txns:{budget.BudgetId}")"
-                                                   BudgetId="@budget.BudgetId"
-                                                   StartDate="@budget.StartDate"
-                                                   EndDate="@budget.EndDate"
-                                                   TagIds="@BudgetTagIds(budget)"
-                                                   CanDownloadFiles="@_canDownloadFiles" />
-                    }
-            </Detail>
-                </OdsExpandableCard>
+                        new OdsRecordCount("format_list_bulleted", itemCount.ToString(CultureInfo.CurrentCulture), "Budget items"),
+                        new OdsRecordCount("receipt_long", budget.TransactionCount.ToString(CultureInfo.CurrentCulture), "Transactions"),
+                    };
+                }
+                @* A budget has no TYPE field and no type-equivalent registry, so it takes the brand
+                   accent rather than a hue picked out of the chart palette by list position — that
+                   would re-colour the whole body on every re-sort. Archived is derived state and
+                   stays with the status chip. *@
+                <OdsRecordCard Id="@($"bdg-{budget.BudgetId}")"
+                               Icon="pie_chart"
+                               Name="@budget.Name"
+                               Meta="meta"
+                               Counts="counts"
+                               FigureCaption="Expected balance"
+                               FigureTone="@BalanceFigureTone(budget.ExpectedDifference)"
+                               Dimmed="archived"
+                               Open="isExpanded"
+                               OnToggle="@(_ => ToggleExpand(budget.BudgetId))">
+
+                    <Chips>
+                        <OdsChip Tone="@(archived ? OdsChipTone.Outline : OdsChipTone.Income)" Dot="true">@(archived ? "Archived" : "Active")</OdsChip>
+                    </Chips>
+
+                    <Figure>@FormatMoney(budget.ExpectedDifference, budget.BaseCurrencyCode)</Figure>
+
+                    <Actions>
+                        <OdsMenu Items="RowActions(budget, archived, editingItems)" AriaLabel="@($"Actions for {budget.Name}")" />
+                    </Actions>
+
+                    <Details>
+                        @* The budget's FULL field set, including what the collapsed header already
+                           shows: at tile scale a value arrives with its own label, so the body reads
+                           as the record rather than the remainder of one. The derived roll-ups never
+                           replace the planned tiles they are computed from. *@
+                        <OdsInfoTileGrid>
+                            <OdsInfoTile Icon="pie_chart" Label="Name"
+                                         ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                                <Value>@budget.Name</Value>
+                            </OdsInfoTile>
+
+                            <OdsInfoTile Icon="event" Label="Start date" ValueVariant="OdsInfoTileVariant.Sm"
+                                         Foot="@Caption("plan period opens")">
+                                <Value>@LongDate(budget.StartDate)</Value>
+                            </OdsInfoTile>
+
+                            <OdsInfoTile Icon="event_busy" Label="End date" ValueVariant="OdsInfoTileVariant.Sm"
+                                         Foot="@Caption("plan period closes")">
+                                <Value>@LongDate(budget.EndDate)</Value>
+                            </OdsInfoTile>
+
+                            <OdsInfoTile Icon="payments" Label="Base currency" Foot="@Caption("reporting currency")">
+                                <Value>@budget.BaseCurrencyCode</Value>
+                            </OdsInfoTile>
+
+                            <OdsInfoTile Icon="@(archived ? "inventory_2" : "check_circle")" Label="Status"
+                                         ValueVariant="OdsInfoTileVariant.Text"
+                                         Tone="@(archived ? OdsInfoTileTone.Muted : OdsInfoTileTone.Income)"
+                                         Foot="@Caption(budget.Archived is { } archivedAt ? $"since {LongDate(archivedAt)}" : "in the default list")">
+                                <Value>@(archived ? "Archived" : "Active")</Value>
+                            </OdsInfoTile>
+
+                            <OdsInfoTile Icon="trending_up" Label="Planned income" Tone="OdsInfoTileTone.Income"
+                                         Foot="@Caption(Lines(incomeItemCount, "income line"))">
+                                <Value>@FormatMoney(budget.ExpectedIncomes, budget.BaseCurrencyCode)</Value>
+                            </OdsInfoTile>
+
+                            <OdsInfoTile Icon="shopping_cart" Label="Planned expenses" Tone="OdsInfoTileTone.Expense"
+                                         Foot="@Caption(Lines(expenseItemCount, "expense line"))">
+                                <Value>@FormatMoney(budget.ExpectedExpenses, budget.BaseCurrencyCode)</Value>
+                            </OdsInfoTile>
+
+                            @* The four derived tiles need the budget's transaction report, which is
+                               fetched when the record opens — until it lands they have no value, so
+                               they render no tile rather than an empty one. *@
+                            @if (hasReport)
+                            {
+                                <OdsInfoTile Icon="south_west" Label="Actual income" Tone="OdsInfoTileTone.Income"
+                                             Foot="@Caption("from matched transactions")">
+                                    <Value>@FormatMoney(actualIncome, budget.BaseCurrencyCode)</Value>
+                                </OdsInfoTile>
+
+                                <OdsInfoTile Icon="north_east" Label="Actual expenses" Tone="OdsInfoTileTone.Expense"
+                                             Foot="@Caption("from matched transactions")">
+                                    <Value>@FormatMoney(actualExpenses, budget.BaseCurrencyCode)</Value>
+                                </OdsInfoTile>
+                            }
+
+                            <OdsInfoTile Icon="balance" Label="Expected balance"
+                                         Tone="@BalanceTileTone(budget.ExpectedDifference)"
+                                         Foot="@Caption("planned in − planned out")">
+                                <Value>@FormatMoney(budget.ExpectedDifference, budget.BaseCurrencyCode)</Value>
+                            </OdsInfoTile>
+
+                            @if (hasReport)
+                            {
+                                <OdsInfoTile Icon="account_balance" Label="Actual balance"
+                                             Tone="@BalanceTileTone(actualBalance)"
+                                             Foot="@Caption(actualBalance >= budget.ExpectedDifference ? "ahead of plan" : "behind plan")">
+                                    <Value>@FormatMoney(actualBalance, budget.BaseCurrencyCode)</Value>
+                                </OdsInfoTile>
+                            }
+                        </OdsInfoTileGrid>
+                    </Details>
+
+                    <Content>
+                        @* Prose is not a field: the description goes in one wide tile. *@
+                        @if (!string.IsNullOrWhiteSpace(budget.Description))
+                        {
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="notes" Label="Description" Wide="true">
+                                    <Value>@budget.Description</Value>
+                                </OdsInfoTile>
+                            </OdsInfoTileGrid>
+                        }
+                    </Content>
+
+                    <Sections>
+                        @* Planned income / expense donuts — amounts in the budget's base currency;
+                           the total row uses the budget's expected in/out. Planned, not actual. *@
+                        @if (itemCount > 0)
+                        {
+                            <div class="acct-section">
+                                <OdsSectionDivider Label="Allocation" Meta="@($"planned · {budget.BaseCurrencyCode}")" />
+                                <MudCard Elevation="1" Class="ods-outline" Style="background:var(--mud-palette-background);">
+                                    <MudCardContent Class="pa-4">
+                                        <BudgetDonutPair IncomeSlices="BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Income))"
+                                                         ExpenseSlices="BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Expense))"
+                                                         IncomeSub="@Lines(incomeItemCount, "item")"
+                                                         ExpenseSub="@Lines(expenseItemCount, "item")"
+                                                         IncomeFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedIncomes, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))"
+                                                         ExpenseFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedExpenses, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))" />
+                                    </MudCardContent>
+                                </MudCard>
+                            </div>
+                        }
+
+                        @* Budget items — the planned-vs-actual table. "New item" and "Edit multiple"
+                           live in the row menu: a section header labels, it does not act. *@
+                        <div class="acct-section">
+                            <OdsSectionDivider Label="Budget items"
+                                               Meta="@($"{itemCount} item{(itemCount == 1 ? "" : "s")}{(editingItems ? " · editing" : "")}")" />
+                            <BudgetItemsSection @key="@($"items:{budget.BudgetId}")"
+                                                BudgetId="@budget.BudgetId"
+                                                BudgetName="@budget.Name"
+                                                Items="@budget.BudgetItems"
+                                                ActualByTag="@actualByTag"
+                                                HasReport="@hasReport"
+                                                TransactionTags="@_transactionTags"
+                                                Format="@FormatMoney"
+                                                CurrencyCode="@budget.BaseCurrencyCode"
+                                                Chrome="false"
+                                                Editing="@editingItems"
+                                                EditingChanged="@(on => SetItemsEditing(budget.BudgetId, on))"
+                                                CanCreate="@_canCreate"
+                                                CanUpdate="@_canUpdate"
+                                                CanDelete="@_canDelete"
+                                                OnChanged="@(() => OnBudgetChanged(budget.BudgetId))" />
+                        </div>
+
+                        @if (_canReadTransactions)
+                        {
+                            <div class="acct-section">
+                                <OdsSectionDivider Label="Transactions"
+                                                   Meta="@($"{budget.TransactionCount} matched · in range and tagged")" />
+                                <div class="acct-txn-table acct-table-frame">
+                                    <BudgetTransactionsSection @key="@($"txns:{budget.BudgetId}")"
+                                                               BudgetId="@budget.BudgetId"
+                                                               StartDate="@budget.StartDate"
+                                                               EndDate="@budget.EndDate"
+                                                               TagIds="@BudgetTagIds(budget)"
+                                                               Chrome="false"
+                                                               CanDownloadFiles="@_canDownloadFiles" />
+                                </div>
+                            </div>
+                        }
+                    </Sections>
+                </OdsRecordCard>
             </RenderItem>
             <CreateAction>
                 @if (_canCreate)
@@ -262,15 +261,9 @@
             <Trailing>
                 @if (_canCreate)
                 {
-                    <button class="bdg-add" @onclick="AddClicked">
-                        <div class="bdg-badge" style="background:var(--mud-palette-action-disabled-background);color:var(--mud-palette-text-secondary);">
-                            <span class="material-icons" style="font-size:20px;">add</span>
-                        </div>
-                        <div>
-                            <div class="bdg-add-title">New budget</div>
-                            <div class="bdg-add-sub">Plan a period's income and expenses, then track against transactions.</div>
-                        </div>
-                    </button>
+                    <OdsAddRow Title="New budget"
+                               Sub="Plan a period's income and expenses, then track against transactions."
+                               OnClick="AddClicked" />
                 }
             </Trailing>
         </OdsInfiniteList>
@@ -303,3 +296,20 @@
                             OnSaved="OnItemSaved" />
 }
 
+@code {
+    // The two meta-line entries. An inline render fragment is Razor syntax, so it cannot live in the
+    // code-behind. One span each, so it becomes the .odc-record-metaitem's only child and picks up the
+    // meta line's alignment.
+
+    private RenderFragment PeriodMeta(string range) =>
+        @<span>
+            <span class="material-icons" aria-hidden="true">date_range</span><span>@range</span>
+        </span>;
+
+    // `currency`, not `code`: `@code` at the start of a line is the directive, so a parameter of that
+    // name breaks the parse.
+    private RenderFragment CurrencyMeta(string currency) =>
+        @<span class="mono">
+            <span class="material-icons" aria-hidden="true">payments</span><span>@currency</span>
+        </span>;
+}

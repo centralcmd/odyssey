@@ -444,6 +444,89 @@ public partial class TaxStatementsCard
 
     private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tax statement ID copied.");
 
+    /// <summary>The row action menu. Every section-level action lives here — a section header inside a
+    /// record body labels, it does not act — so "Upload file" is the documents section's only entry
+    /// point.</summary>
+    private IReadOnlyList<OdsMenuItem> RowActions(ExistingTaxStatement s, bool archived)
+    {
+        var items = new List<OdsMenuItem>();
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit statement",
+                OnClick = EventCallback.Factory.Create(this, () => EditClicked(s)),
+            });
+        }
+
+        if (_canUploadFiles)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "upload_file",
+                Label = "Upload file",
+                OnClick = EventCallback.Factory.Create(this, () => AddFile(s)),
+            });
+        }
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "check_circle",
+                Label = "Mark approved",
+                OnClick = EventCallback.Factory.Create(this, () => SetStatus(s, TaxStatementStatus.Approved, null)),
+            });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "flag",
+                Label = "Flag for review",
+                OnClick = EventCallback.Factory.Create(this,
+                    () => SetStatus(s, TaxStatementStatus.Flagged, s.StatusComment ?? "Flagged for review.")),
+            });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "fiber_new",
+                Label = "Mark as new",
+                OnClick = EventCallback.Factory.Create(this, () => SetStatus(s, TaxStatementStatus.New, null)),
+            });
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint",
+            Label = "Copy ID",
+            TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId)),
+        });
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = archived ? "unarchive" : "archive",
+                Label = archived ? "Unarchive" : "Archive",
+                OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(s)),
+            });
+        }
+
+        if (_canDelete)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => ConfirmDelete(s)),
+            });
+        }
+
+        return items;
+    }
+
     // Builds the full update payload from a statement, overriding only the archived flag.
     private static UpdateTaxStatement ToUpdate(ExistingTaxStatement s, bool archived) => new()
     {
@@ -485,6 +568,46 @@ public partial class TaxStatementsCard
         };
 
     private static bool StatusDot(ExistingTaxStatement s) => s.Archived is null;
+
+    /// <summary>The Status tile's glyph — the same lifecycle the chip shows, at tile scale.</summary>
+    private static string StatusIcon(ExistingTaxStatement s) => s.Archived is not null
+        ? "inventory_2"
+        : s.Status switch
+        {
+            TaxStatementStatus.Approved => "check_circle",
+            TaxStatementStatus.Flagged => "flag",
+            _ => "fiber_new",
+        };
+
+    private static OdsInfoTileTone StatusTileTone(ExistingTaxStatement s) => s.Archived is not null
+        ? OdsInfoTileTone.Muted
+        : s.Status switch
+        {
+            TaxStatementStatus.Approved => OdsInfoTileTone.Income,
+            TaxStatementStatus.Flagged => OdsInfoTileTone.Expense,
+            _ => OdsInfoTileTone.Info,
+        };
+
+    /// <summary>When the state began, and a pointer to the note above when there is one — the derived
+    /// tile carries its own date rather than borrowing one from the fields it summarises.</summary>
+    private static string? StatusFoot(ExistingTaxStatement s)
+    {
+        var parts = new List<string>();
+        if (s.Archived is { } archivedAt)
+            parts.Add(LongDate(archivedAt));
+        else if (s.StatusChangedAt != default)
+            parts.Add(LongDate(s.StatusChangedAt));
+        if (!string.IsNullOrWhiteSpace(s.StatusComment))
+            parts.Add("see note above");
+        return parts.Count == 0 ? null : string.Join(" · ", parts);
+    }
+
+    /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
+    /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
+    private static RenderFragment? Caption(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
+
+    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Money ────────────────────────────────────────────────────────────────
     // Mirrors the design system's taxMoney: symbol-prefixed whole units with an
@@ -529,18 +652,28 @@ public partial class TaxStatementsCard
     private decimal? SettlementFigure(ExistingTaxStatement s) =>
         s.SettlementAmount ?? (_reports.TryGetValue(s.TaxStatementId, out var r) ? r.Reconciliation.OutstandingTax : null);
 
-    private static string SettlementColor(decimal? settle) => settle switch
+    // The headline figure takes the finance vocabulary, never the record's accent: tax still to pay
+    // is an expense, a refund is income, and a settled (or unassessed) year is neutral.
+    private static OdsRecordFigureTone SettlementTone(decimal? settle) => settle switch
     {
-        > 0 => "var(--finance-expense)",
-        < 0 => "var(--finance-income)",
-        _ => "var(--mud-palette-text-secondary)",
+        > 0 => OdsRecordFigureTone.Expense,
+        < 0 => OdsRecordFigureTone.Income,
+        _ => OdsRecordFigureTone.Neutral,
     };
 
     private static string SettlementWord(ExistingTaxStatement s, decimal? settle)
     {
         if (s.SettlementAmount is { } declared)
             return declared > 0 ? "additional tax to pay" : declared < 0 ? "refund" : "settled";
-        return settle is null ? "awaiting assessment" : "outstanding (est.)";
+        // Estimated from the reconciliation: an unassessed year says so, and the estimate reads with
+        // the same three words its declared counterpart would, marked "(est.)".
+        return settle switch
+        {
+            null => "awaiting assessment",
+            > 0 => "outstanding (est.)",
+            < 0 => "refund (est.)",
+            _ => "settled (est.)",
+        };
     }
 
     // Tag id lists → display names (dropping ids no longer in the catalog).

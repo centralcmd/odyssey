@@ -1,4 +1,5 @@
 @page "/tax-statements"
+@using System.Globalization
 @using Odyssey.Client.Authorization
 @using Odyssey.Dtos.Finance
 @attribute [Authorize(Policy = PermissionClaims.TaxesRead)]
@@ -93,188 +94,221 @@
                     var report = _reports.GetValueOrDefault(s.TaxStatementId);
                     var problems = _problems.GetValueOrDefault(s.TaxStatementId) ?? [];
                     var settle = SettlementFigure(s);
+                    var tagCount = s.TaxTagIds.Count + s.IncomeTagIds.Count;
+                    var period = $"{s.StartDate:MMM dd, yyyy} → {s.EndDate:MMM dd, yyyy}";
+                    var settled = s.SettledAtUtc is not null;
+
+                    @* The single meta line: period · base currency. *@
+                    var meta = new List<RenderFragment?> { PeriodMeta(period), CurrencyMeta(s.BaseCurrencyCode) };
+
+                    @* The header counts are the body's table of contents: same glyphs, same order as
+                       the sections below. *@
+                    var counts = new[]
+                    {
+                        new OdsRecordCount("local_offer", tagCount.ToString(CultureInfo.CurrentCulture), "Derivation tags"),
+                        new OdsRecordCount("description", s.Files.Count.ToString(CultureInfo.CurrentCulture), "Documents"),
+                    };
                 }
-                <OdsExpandableCard Id="@($"tax-{s.TaxStatementId}")"
-                                   Open="isExpanded"
-                                   Dimmed="archived"
-                                   Flash="@(_flashId == s.TaxStatementId)"
-                                   Label="@s.Name"
-                                   OnToggle="@(() => ToggleExpand(s.TaxStatementId))">
+                @* A tax statement has no TYPE field, so the accent is the page's own magenta hue —
+                   the same mark the Tax file-type avatar carries — rather than derived state, which
+                   stays with the status chip. *@
+                <OdsRecordCard Id="@($"tax-{s.TaxStatementId}")"
+                               Icon="request_quote"
+                               Accent="var(--tax)"
+                               AccentSoft="var(--tax-soft)"
+                               Name="@s.Name"
+                               Meta="meta"
+                               Counts="counts"
+                               FigureCaption="@SettlementWord(s, settle)"
+                               FigureTone="@SettlementTone(settle)"
+                               Dimmed="archived"
+                               Highlight="@(_flashId == s.TaxStatementId)"
+                               Open="isExpanded"
+                               OnToggle="@(_ => ToggleExpand(s.TaxStatementId))">
 
-                    <Lead>
-                        <div class="acct-badge" style="background:var(--tax-soft);color:var(--tax);">
-                            <span class="material-icons" aria-hidden="true">request_quote</span>
-                        </div>
-                    </Lead>
-
-                    <Head>
-                        <div class="acct-name-row">
-                            <span class="acct-name">@s.Name</span>
-                            <OdsChip Tone="@StatusTone(s)" Dot="@StatusDot(s)">@StatusLabel(s)</OdsChip>
-                            @if (problems.Count > 0)
-                            {
-                                var top = problems.MaxBy(p => (int)p.Severity)!;
-                                <span class="acct-flag @FlagClass(top.Severity)">
-                                    <span class="material-icons" aria-hidden="true">@FlagGlyph(top.Severity)</span>@(problems.Count == 1 ? problems[0].Chip : "Attention")
-                                </span>
-                            }
-                        </div>
-                        <div class="acct-tags">
-                            <span>@s.StartDate.ToString("MMM dd, yyyy") → @s.EndDate.ToString("MMM dd, yyyy")</span>
-                            <span class="acct-dot">·</span>
-                            <span class="mono">@s.BaseCurrencyCode</span>
-                            <span class="acct-dot">·</span>
-                            <span class="acct-counts">
-                                <span><span class="material-icons" aria-hidden="true">local_offer</span>@(s.TaxTagIds.Count + s.IncomeTagIds.Count)</span>
-                                <span><span class="material-icons" aria-hidden="true">description</span>@s.Files.Count</span>
+                    <Chips>
+                        <OdsChip Tone="@StatusTone(s)" Dot="@StatusDot(s)">@StatusLabel(s)</OdsChip>
+                        @if (problems.Count > 0)
+                        {
+                            var top = problems.MaxBy(p => (int)p.Severity)!;
+                            <span class="acct-flag @FlagClass(top.Severity)">
+                                <span class="material-icons" aria-hidden="true">@FlagGlyph(top.Severity)</span>@(problems.Count == 1 ? problems[0].Chip : "Attention")
                             </span>
-                        </div>
-                    </Head>
+                        }
+                    </Chips>
 
-                    <Figures>
-                        <div class="acct-balance" style="color:@SettlementColor(settle);">
-                            @(settle is null ? "—" : TaxMoney(Math.Abs(settle.Value), s.BaseCurrencyCode))
-                        </div>
-                        <div class="tx-balance-word">@SettlementWord(s, settle)</div>
-                    </Figures>
+                    <Figure>@(settle is null ? "—" : TaxMoney(Math.Abs(settle.Value), s.BaseCurrencyCode))</Figure>
 
                     <Actions>
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                                 Size="Size.Small"
-                                 Color="Color.Default"
-                                 AnchorOrigin="Origin.TopRight"
-                                 TransformOrigin="Origin.TopRight">
-                            @if (_canUpdate)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(s))">Edit statement</MudMenuItem>
-                            }
-                            @if (_canUploadFiles)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="@(() => AddFile(s))">Upload file</MudMenuItem>
-                            }
-                            @if (_canUpdate)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="@(() => SetStatus(s, TaxStatementStatus.Approved, null))">Mark approved</MudMenuItem>
-                                <MudMenuItem Icon="@Icons.Material.Filled.Flag" OnClick="@(() => SetStatus(s, TaxStatementStatus.Flagged, s.StatusComment ?? "Flagged for review."))">Flag for review</MudMenuItem>
-                                <MudMenuItem Icon="@Icons.Material.Filled.FiberNew" OnClick="@(() => SetStatus(s, TaxStatementStatus.New, null))">Mark as new</MudMenuItem>
-                            }
-                            <MudMenuItem OnClick="@(() => CopyId(s.TaxStatementId))">
-                                <span class="odc-menu-item">
-                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
-                                    <span>Copy ID</span>
-                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
-                                </span>
-                            </MudMenuItem>
-                            @if (_canUpdate)
-                            {
-                                <MudDivider />
-                                <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Archive)" OnClick="@(() => ToggleArchive(s))">
-                                    @(archived ? "Unarchive" : "Archive")
-                                </MudMenuItem>
-                            }
-                            @if (_canDelete)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
-                                             Style="color:var(--mud-palette-error);"
-                                             OnClick="@(() => ConfirmDelete(s))">Delete</MudMenuItem>
-                            }
-                        </MudMenu>
+                        <OdsMenu Items="RowActions(s, archived)" AriaLabel="@($"Actions for {s.Name}")" />
                     </Actions>
 
-                    <!-- Expanded body -->
-                    <Detail>
-                            @* Problems — the design-system fix-it alert. *@
-                            @foreach (var p in problems)
+                    <Alert>
+                        @* Problems first — they are why the card was opened. The review-status note is
+                           an alert too, so it sits with them above the details rather than between. *@
+                        @foreach (var p in problems)
+                        {
+                            <OdsProblemAlert Severity="p.Severity" Title="@p.Title" Detail="@p.Detail"
+                                             ActionLabel="@p.FixLabel" OnAction="@(() => GoTo(p.FixTarget))" />
+                        }
+                        @if (!string.IsNullOrWhiteSpace(s.StatusComment))
+                        {
+                            <OdsAlert Severity="@(s.Status == TaxStatementStatus.Flagged ? Severity.Warning : Severity.Info)">
+                                <b>@StatusLabel(s).</b> @s.StatusComment
+                            </OdsAlert>
+                        }
+                    </Alert>
+
+                    <Details>
+                        @* The statement's FULL field set, including the fields the collapsed header
+                           already shows: at tile scale a value arrives with its own label, so the body
+                           reads as the record rather than the remainder of one. A date that has not
+                           happened yet renders no tile — except the settlement, whose absence is the
+                           fact ("Not yet"). *@
+                        <OdsInfoTileGrid>
+                            <OdsInfoTile Icon="request_quote" Label="Name"
+                                         ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                                <Value>@s.Name</Value>
+                            </OdsInfoTile>
+
+                            <OdsInfoTile Icon="event_note" Label="Fiscal year">
+                                <Value>@s.FiscalYear</Value>
+                            </OdsInfoTile>
+
+                            <OdsInfoTile Icon="payments" Label="Base currency" Foot="@Caption("reporting currency")">
+                                <Value>@s.BaseCurrencyCode</Value>
+                            </OdsInfoTile>
+
+                            <OdsInfoTile Icon="date_range" Label="Period"
+                                         ValueVariant="OdsInfoTileVariant.Sm" WrapValue="true">
+                                <Value>@period</Value>
+                            </OdsInfoTile>
+
+                            @* A DERIVED summary of the review state: it carries the state and the date
+                               it began, while the dates it derives from keep their own tiles. *@
+                            <OdsInfoTile Icon="@StatusIcon(s)" Label="Status"
+                                         ValueVariant="OdsInfoTileVariant.Text"
+                                         Tone="@StatusTileTone(s)"
+                                         Foot="@Caption(StatusFoot(s))">
+                                <Value>@StatusLabel(s)</Value>
+                            </OdsInfoTile>
+
+                            @if (s.FiledAtUtc is { } filed)
                             {
-                                <OdsProblemAlert Severity="p.Severity" Title="@p.Title" Detail="@p.Detail"
-                                                 ActionLabel="@p.FixLabel" OnAction="@(() => GoTo(p.FixTarget))" />
+                                <OdsInfoTile Icon="outbox" Label="Filed to authority" ValueVariant="OdsInfoTileVariant.Sm">
+                                    <Value>@LongDate(filed)</Value>
+                                </OdsInfoTile>
                             }
 
-                            <div class="odc-meta-grid">
-                                <OdsMetaTile Mono><Label>Fiscal year</Label><ChildContent>@s.FiscalYear</ChildContent></OdsMetaTile>
-                                <OdsMetaTile Mono><Label>Base currency</Label><ChildContent>@s.BaseCurrencyCode</ChildContent></OdsMetaTile>
-                                <OdsMetaTile><Label>Period</Label><ChildContent>@s.StartDate.ToString("MMM dd, yyyy") → @s.EndDate.ToString("MMM dd, yyyy")</ChildContent></OdsMetaTile>
-                                <OdsMetaTile><Label>Review status</Label><ChildContent>@StatusLabel(s)</ChildContent></OdsMetaTile>
-                                <OdsMetaTile><Label>Filed to authority</Label><ChildContent>@(s.FiledAtUtc?.ToString("MMM dd, yyyy") ?? "—")</ChildContent></OdsMetaTile>
-                                <OdsMetaTile><Label>Authority approved</Label><ChildContent>@(s.TaxOfficeApprovedAtUtc?.ToString("MMM dd, yyyy") ?? "—")</ChildContent></OdsMetaTile>
-                                <OdsMetaTile><Label>Settlement paid</Label><ChildContent>@(s.SettledAtUtc?.ToString("MMM dd, yyyy") ?? "Not yet")</ChildContent></OdsMetaTile>
-                                <OdsMetaTile><Label>Notes</Label><ChildContent>@(string.IsNullOrWhiteSpace(s.Notes) ? "—" : s.Notes)</ChildContent></OdsMetaTile>
-                            </div>
-
-                            @if (!string.IsNullOrWhiteSpace(s.StatusComment))
+                            @if (s.TaxOfficeApprovedAtUtc is { } approved)
                             {
-                                <OdsAlert Severity="@(s.Status == TaxStatementStatus.Flagged ? Severity.Warning : Severity.Info)">
-                                    <b>@StatusLabel(s).</b> @s.StatusComment
-                                </OdsAlert>
+                                <OdsInfoTile Icon="verified" Label="Authority approved" ValueVariant="OdsInfoTileVariant.Sm">
+                                    <Value>@LongDate(approved)</Value>
+                                </OdsInfoTile>
                             }
 
-                            @* Derivation tags — the two role wells (read-only view). *@
+                            @* Kept when empty on purpose: whether the year has been settled is the
+                               question the page exists to answer, so "Not yet" is a fact, not a blank. *@
+                            <OdsInfoTile Icon="@(settled ? "task_alt" : "schedule")" Label="Settlement paid"
+                                         ValueVariant="@(settled ? OdsInfoTileVariant.Sm : OdsInfoTileVariant.Text)"
+                                         Tone="@(settled ? OdsInfoTileTone.Income : OdsInfoTileTone.Pending)"
+                                         Foot="@Caption(settled ? null : "outstanding")">
+                                <Value>@(s.SettledAtUtc is { } paid ? LongDate(paid) : "Not yet")</Value>
+                            </OdsInfoTile>
+                        </OdsInfoTileGrid>
+                    </Details>
+
+                    <Content>
+                        @* Prose is not a field: notes go in one wide tile, never a tile column. *@
+                        @if (!string.IsNullOrWhiteSpace(s.Notes))
+                        {
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true">
+                                    <Value>@s.Notes</Value>
+                                </OdsInfoTile>
+                            </OdsInfoTileGrid>
+                        }
+                    </Content>
+
+                    <Sections>
+                        @* Derivation tags — the two role wells, now InfoTiles whose foot carries the
+                           caption and the tag chips. *@
+                        <div class="tax-section">
+                            <OdsSectionDivider Label="Derivation tags" Meta="@($"{tagCount} tag{(tagCount == 1 ? "" : "s")}")" />
                             <div class="tx-roles">
-                                <div class="tx-role">
-                                    <div class="tx-role-head">
-                                        <div class="tx-role-name"><span class="material-icons">request_quote</span><span>Tax-payment tags</span></div>
-                                        <div class="tx-role-figure">
-                                            <div class="tx-role-sum">@TaxMoney(report?.Derived.PaidTax ?? 0, s.BaseCurrencyCode)</div>
-                                            <div class="tx-role-cap">Advance tax paid</div>
-                                        </div>
-                                    </div>
-                                    @if (s.TaxTagIds.Count > 0)
-                                    {
-                                        <div class="tx-chips">
-                                            @foreach (var name in TagNames(s.TaxTagIds))
+                                <OdsInfoTile Icon="request_quote" Label="Tax-payment tags" Class="tx-role">
+                                    <Value>@TaxMoney(report?.Derived.PaidTax ?? 0, s.BaseCurrencyCode)</Value>
+                                    <Foot>
+                                        <span class="tx-role-cap">Advance tax paid</span>
+                                        <span class="tx-role-tags">
+                                            @if (s.TaxTagIds.Count > 0)
                                             {
-                                                <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
+                                                <span class="tx-chips">
+                                                    @foreach (var name in TagNames(s.TaxTagIds))
+                                                    {
+                                                        <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
+                                                    }
+                                                </span>
                                             }
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="tx-role-empty">No tax-payment tags selected — derived advance tax is @TaxMoney(0, s.BaseCurrencyCode).</div>
-                                    }
-                                </div>
-                                <div class="tx-role">
-                                    <div class="tx-role-head">
-                                        <div class="tx-role-name"><span class="material-icons">payments</span><span>Income tags</span></div>
-                                        <div class="tx-role-figure">
-                                            <div class="tx-role-sum">@TaxMoney(report?.Derived.ActualIncome ?? 0, s.BaseCurrencyCode)</div>
-                                            <div class="tx-role-cap">Actual income</div>
-                                        </div>
-                                    </div>
-                                    @if (s.IncomeTagIds.Count > 0)
-                                    {
-                                        <div class="tx-chips">
-                                            @foreach (var name in TagNames(s.IncomeTagIds))
+                                            else
                                             {
-                                                <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
+                                                <span class="tx-role-empty">No tax-payment tags selected — derived advance tax is @TaxMoney(0, s.BaseCurrencyCode).</span>
                                             }
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="tx-role-empty">No income tags selected — derived income is @TaxMoney(0, s.BaseCurrencyCode).</div>
-                                    }
-                                </div>
+                                        </span>
+                                    </Foot>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="payments" Label="Income tags" Class="tx-role">
+                                    <Value>@TaxMoney(report?.Derived.ActualIncome ?? 0, s.BaseCurrencyCode)</Value>
+                                    <Foot>
+                                        <span class="tx-role-cap">Actual income</span>
+                                        <span class="tx-role-tags">
+                                            @if (s.IncomeTagIds.Count > 0)
+                                            {
+                                                <span class="tx-chips">
+                                                    @foreach (var name in TagNames(s.IncomeTagIds))
+                                                    {
+                                                        <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
+                                                    }
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tx-role-empty">No income tags selected — derived income is @TaxMoney(0, s.BaseCurrencyCode).</span>
+                                            }
+                                        </span>
+                                    </Foot>
+                                </OdsInfoTile>
                             </div>
+                        </div>
 
-                            @* Reconciliation report — declared vs. derived vs. variance. *@
-                            @if (report is not null)
-                            {
+                        @* Reconciliation report — declared vs. derived vs. variance. *@
+                        @if (report is not null)
+                        {
+                            <div class="tax-section">
+                                <OdsSectionDivider Label="Reconciliation" Meta="@($"declared vs. recorded · {s.BaseCurrencyCode}")" />
                                 <TaxReconciliation Statement="s" Report="report" Money="@(n => TaxMoney(n, s.BaseCurrencyCode))" />
-                            }
+                            </div>
+                        }
 
-                            @* Statement documents. *@
-                            @* Upload is via the row's "Upload file" action (TaxUploadFileDialog),
-                               so the section itself is display-only — matching the design system. *@
-                            <TaxStatementFilesSection @key="@($"files:{s.TaxStatementId}:{_filesRefreshToken}")"
-                                                      StatementId="s.TaxStatementId"
-                                                      StatementName="@s.Name"
-                                                      Files="s.Files"
-                                                      CanUpload="false"
-                                                      CanDownload="_canDownloadFiles"
-                                                      CanDelete="_canUpdate"
-                                                      OnChanged="OnFilesChanged" />
-                    </Detail>
-                </OdsExpandableCard>
+                        @* Statement documents — last section. Upload is the row's "Upload file"
+                           action (TaxUploadFileDialog): a section header labels, it does not act. *@
+                        <div class="tax-section">
+                            <OdsSectionDivider Label="Statement documents"
+                                               Meta="@($"{s.Files.Count} file{(s.Files.Count == 1 ? "" : "s")}")" />
+                            <div class="tax-tbl-frame">
+                                <TaxStatementFilesSection @key="@($"files:{s.TaxStatementId}:{_filesRefreshToken}")"
+                                                          StatementId="s.TaxStatementId"
+                                                          StatementName="@s.Name"
+                                                          Files="s.Files"
+                                                          Chrome="false"
+                                                          CanUpload="false"
+                                                          CanDownload="_canDownloadFiles"
+                                                          CanDelete="_canUpdate"
+                                                          OnChanged="OnFilesChanged" />
+                            </div>
+                        </div>
+                    </Sections>
+                </OdsRecordCard>
             </RenderItem>
             <CreateAction>
                 @if (_canCreate)
@@ -317,4 +351,22 @@
                          StatementId="_uploadStatement.TaxStatementId"
                          StatementName="@_uploadStatement.Name"
                          OnSaved="OnFilesChanged" />
+}
+
+@code {
+    // The two meta-line entries. An inline render fragment is Razor syntax, so it cannot live in the
+    // code-behind. One span each, so it becomes the .odc-record-metaitem's only child and picks up the
+    // meta line's alignment.
+
+    private RenderFragment PeriodMeta(string range) =>
+        @<span>
+            <span class="material-icons" aria-hidden="true">date_range</span><span>@range</span>
+        </span>;
+
+    // `currency`, not `code`: `@code` at the start of a line is the directive, so a parameter of
+    // that name breaks the parse.
+    private RenderFragment CurrencyMeta(string currency) =>
+        @<span class="mono">
+            <span class="material-icons" aria-hidden="true">payments</span><span>@currency</span>
+        </span>;
 }

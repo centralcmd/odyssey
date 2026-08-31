@@ -4,42 +4,23 @@
 @inject IClipboardService Clipboard
 @inject IBudgetItemsApiClient BudgetItems
 
-@* Budget items collapsible — grouped income/expense rows with an actual-vs-planned
-   bar, plus an inline "edit multiple" mode (name · category · tag · planned).
-   Actuals come from the parent's per-tag report sums; the parent reloads on change. *@
-<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="list_alt">
+@* Budget items — grouped income/expense rows with an actual-vs-planned bar, plus an
+   inline "edit multiple" mode (name · category · tag · planned). Actuals come from the
+   parent's per-tag report sums; the parent reloads on change.
+
+   Inside an OdsRecordCard the host passes Chrome="false" and introduces the section with
+   its own OdsSectionDivider, and both section-level actions ("New item", "Edit multiple")
+   live on the record's row menu — which is why Editing is a host-owned parameter here
+   rather than local state. *@
+<OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="format_list_bulleted">
     <Title>Budget items</Title>
     <Count>@Items.Count</Count>
-    <Actions>
-        @if (CanCreate || CanUpdate || CanDelete)
-        {
-            @if (_isEditing)
-            {
-                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
-                           StartIcon="@Icons.Material.Filled.Check" OnClick="StopEditing">Done</MudButton>
-            }
-            else
-            {
-                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"
-                         AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
-                    @if (CanCreate)
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Filled.Add" OnClick="AddItem">New item</MudMenuItem>
-                    }
-                    @if (CanUpdate)
-                    {
-                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="StartEditing">Edit items</MudMenuItem>
-                    }
-                </MudMenu>
-            }
-        }
-    </Actions>
     <ChildContent>
             @if (Items.Count == 0)
             {
                 <div class="empty-line">No budget items yet. Add income and expense items to plan this period.</div>
             }
-            else if (_isEditing)
+            else if (Editing)
             {
                 <!-- ── Edit multiple ─────────────────────────────────────── -->
                 <div class="bi-edit-grid">
@@ -89,6 +70,10 @@
                             <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
                                        StartIcon="@Icons.Material.Filled.Add" OnClick="AddItem">New item</MudButton>
                         }
+                        @* The way out of the batch grid. The row menu's "Done editing items" is the
+                           other, and both go through the host's Editing parameter. *@
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Check" OnClick="StopEditing">Done</MudButton>
                     </div>
                 </div>
             }
@@ -97,7 +82,7 @@
                 <!-- ── View ──────────────────────────────────────────────── -->
                 @* Rows are color-coded by kind (income mint / expense coral) via a left
                    accent — no header band; the row color marks the split. *@
-                <div class="bi-table">
+                <div class="bi-table acct-table-frame">
                     <div class="bi-colhead">
                         <span>Item</span>
                         <span>Actual vs planned</span>

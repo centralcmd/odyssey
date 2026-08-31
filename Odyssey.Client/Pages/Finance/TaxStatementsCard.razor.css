@@ -1,10 +1,10 @@
 /* Tax Statements — /tax-statements
-   Sister screen to Accounts/Budgets: the same expandable-record scaffold, which is now
-   the shared OdsExpandableCard — one global `.acct-*` copy in
-   wwwroot/css/odyssey-components.css (issue #367). What is left here is the tax-specific
-   derivation wells, the settlement caption and the overview grid. The reconciliation
-   report lives in TaxReconciliation.razor; the year-over-year charts use the global
-   OdsLineChart. */
+   Sister screen to Accounts/Budgets: the same record list, now the shared OdsRecordCard —
+   one global `.odc-record*` copy in wwwroot/css/odyssey-components.css. The header figure,
+   its caption and the body's four slots all come from there. What is left here is the
+   tax-specific derivation wells, the body's section wrappers and the overview grid. The
+   reconciliation report lives in TaxReconciliation.razor; the year-over-year charts use the
+   global OdsLineChart. */
 
 /* Tax statements carry the magenta "Tax" hue (matches the Tax file-type avatar). */
 .tax-shell {
@@ -16,32 +16,30 @@
 /* ── Year-over-year overview charts ── */
 .tx-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 
-/* ── Settlement caption under the headline figure ── */
-.tx-balance-word { font-size: 0.75rem; color: var(--mud-palette-text-secondary); }
-
-/* ── Derivation tags — two role wells (tax-payment / income) ── */
-.tx-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* ── Derivation tags — two role wells (tax-payment / income) ──
+   The wells are OdsInfoTiles now, so the well's own frame, label and figure come from
+   .odc-infotile; what is left here is the two-up grid and the extra row the foot carries. */
+.tx-roles {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    --odc-infotile-accent: var(--rec, var(--brand-text));
+    --odc-infotile-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
+}
 @media (max-width: 720px) { .tx-roles { grid-template-columns: 1fr; } }
-.tx-role {
-    border: 1px solid var(--mud-palette-divider); border-radius: 10px;
-    background: var(--mud-palette-background); padding: 14px 16px;
-    display: flex; flex-direction: column; gap: 11px;
-}
-.tx-role-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.tx-role-name {
-    font-size: 0.75rem; font-weight: 500; line-height: 1.2;
-    color: var(--mud-palette-text-primary);
-    display: flex; align-items: center; gap: 8px; min-width: 0;
-}
-.tx-role-name .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
-.tx-role-figure { text-align: right; flex: none; }
-.tx-role-sum {
-    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
-    font-size: 1rem; font-weight: 600; color: var(--mud-palette-text-primary); white-space: nowrap;
-}
-.tx-role-cap {
-    font-size: 0.65625rem; line-height: 1; color: var(--mud-palette-text-secondary);
-    margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
-}
+/* The tile itself is rendered by OdsInfoTile, so it carries no scope id of this page — the
+   foot is reached through ::deep from the grid, which is ours. */
+.tx-roles ::deep .tx-role .odc-infotile-foot { display: flex; flex-direction: column; gap: 10px; }
+.tx-role-cap { text-transform: uppercase; letter-spacing: 0.05em; }
+.tx-role-tags { border-top: 1px dashed var(--mud-palette-divider-light, var(--mud-palette-divider)); padding-top: 10px; }
 .tx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.tx-role-empty { font-size: 0.78125rem; line-height: 1.4; color: var(--mud-palette-text-secondary); }
+.tx-role-empty { font-size: 0.75rem; line-height: 1.4; color: var(--mud-palette-text-secondary); }
+
+/* ── Record-card body sections: divider + content, flush with the divider label;
+      tables read as cards like the other pages. ── */
+.tax-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.tax-tbl-frame {
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: var(--radius-md);
+    box-shadow: var(--mud-elevation-1);
+    padding: 8px 8px 4px;
+}

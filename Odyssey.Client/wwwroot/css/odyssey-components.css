@@ -3181,7 +3181,10 @@
     transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
 }
 .odc-record.open { border-color: var(--mud-palette-lines-default, var(--mud-palette-divider)); box-shadow: var(--mud-elevation-2); }
-.odc-record.dimmed .odc-record-head { opacity: 0.62; }
+/* Dim the record's IDENTITY, not its controls: the fade belongs to the trigger, so an
+   archived row's action menu stays at full contrast (an opacity'd ancestor also fades
+   anything rendered inside it). */
+.odc-record.dimmed .odc-record-trigger { opacity: 0.62; }
 @keyframes odc-record-flash {
     0%   { box-shadow: 0 0 0 3px color-mix(in srgb, var(--finance-pending) 70%, transparent); }
     100% { box-shadow: 0 0 0 3px transparent; }
