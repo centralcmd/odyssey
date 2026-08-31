@@ -26,24 +26,9 @@
     would make the feature unreachable.
 *@
 
-@if (Chrome)
-{
-    <OdsCollapsible Class="odc-smarttags" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="sell" Count="@CountFragment">
-        <Title>Smart tags</Title>
-        <ChildContent>@Inner</ChildContent>
-    </OdsCollapsible>
-}
-else
-{
-    @* Bare (Chrome="false"): no disclosure shell and no header — the host introduces the
-       section with its own OdsSectionDivider. Used inside an OdsRecordCard body, where
-       sections do not collapse and do not act. Nothing gates the load here, so the content
-       is whatever OnInitializedAsync already fetched. *@
-    <div class="odc-smarttags bare">@Inner</div>
-}
-
-@code {
-    private RenderFragment Inner => @<text>
+<OdsCollapsible Chrome="Chrome" Class="odc-smarttags" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="sell" Count="@CountFragment">
+    <Title>Smart tags</Title>
+    <ChildContent>
         @if (_hasTags)
         {
             <div class="odc-smarttags-bar">
@@ -150,5 +135,5 @@ else
                 </OdsInlinePager>
             </div>
         }
-    </text>;
-}
+    </ChildContent>
+</OdsCollapsible>

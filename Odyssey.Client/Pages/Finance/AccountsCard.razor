@@ -70,307 +70,292 @@
                          EmptyDescription="Add the cash, checking, savings, investment and loan accounts you want Odyssey to track.">
             <RenderItem Context="account">
                 @{
-                    var isExpanded = _expandedId == account.AccountId;
+                    var typeIcon = AccountTypeVisuals.MaterialIcon(account.AccountType);
+                    var typeLabel = AccountTypeVisuals.Label(account.AccountType);
+                    var problem = _problems.GetValueOrDefault(account.AccountId);
+
+                    @* The meta line: custodian · type · number · in-force rate. The custodian is a
+                       REFERENCE to a contact, so it keeps that contact type's own glyph. *@
+                    var meta = new List<RenderFragment?>();
+                    if (account.Custodian is { } cust)
+                    {
+                        meta.Add(CustodianMeta(OdsTypeRegistries.ContactTypeOf(cust.Type.ToString()).Icon, cust.Name));
+                    }
+                    meta.Add(OdsRecordMeta.Text(typeLabel));
+                    if (!string.IsNullOrWhiteSpace(account.AccountNumber))
+                    {
+                        meta.Add(AccountNumberMeta(account.AccountNumber));
+                    }
+                    if (RateTermOf(account) is { } headerRate)
+                    {
+                        var rateInfo = TermKindVisuals.Info(headerRate.TermKind);
+                        meta.Add(RateMeta(
+                            TermKindVisuals.CostColor(headerRate, account) ?? rateInfo.Color,
+                            rateInfo.Label,
+                            TermKindVisuals.FormatValue(headerRate, account, FormatMoney)));
+                    }
+
+                    @* The header counts are the body's table of contents: same glyphs, same order as
+                       the sections below. The optional collections are counted only when non-zero. *@
+                    var counts = new List<OdsRecordCount>
+                    {
+                        new("receipt_long", account.TransactionCount.ToString(CultureInfo.CurrentCulture), "Transactions"),
+                        new("attach_file", account.FileCount.ToString(CultureInfo.CurrentCulture), "Files"),
+                    };
+                    if (account.EstimateCount > 0)
+                    {
+                        counts.Add(new OdsRecordCount("monitor", account.EstimateCount.ToString(CultureInfo.CurrentCulture), "Estimates"));
+                    }
+                    if (account.TermCount > 0)
+                    {
+                        counts.Add(new OdsRecordCount("§", account.TermCount.ToString(CultureInfo.CurrentCulture), "Terms"));
+                    }
+                    if (account.SmartTagCount > 0)
+                    {
+                        counts.Add(new OdsRecordCount("sell", account.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"));
+                    }
                 }
-                <OdsExpandableCard Id="@($"acct-{account.AccountId}")"
-                                   Open="isExpanded"
-                                   Dimmed="@(account.Closed != null || account.Archived != null)"
-                                   Flash="@(_flashId == account.AccountId)"
-                                   Label="@account.Name"
-                                   OnToggle="@(() => ToggleExpand(account.AccountId))">
+                @* One accent per record, from the account's TYPE — the header mark and every tile icon
+                   chip in the body resolve from it, while a custodian row keeps its contact's own. *@
+                <OdsRecordCard Id="@($"acct-{account.AccountId}")"
+                               Icon="@typeIcon"
+                               Accent="@AccountTypeVisuals.FgColor(account.AccountType)"
+                               AccentSoft="@AccountTypeVisuals.BgColor(account.AccountType)"
+                               Name="@account.Name"
+                               Meta="meta"
+                               Counts="counts"
+                               FigureCaption="@(account.CurrentEstimatedValue is null ? null : "Est. value")"
+                               FigureTone="@FigureTone(account)"
+                               Dimmed="@(account.Closed != null || account.Archived != null)"
+                               Highlight="@(_flashId == account.AccountId)"
+                               Open="@(_expandedId == account.AccountId)"
+                               OnToggle="@(_ => ToggleExpand(account.AccountId))">
 
-            <!-- [1] Type icon badge -->
-            <Lead>
-                <div class="acct-badge"
-                     style="background:@GetTypeBgColor(account.AccountType);color:@GetTypeFgColor(account.AccountType);">
-                    <span class="material-icons" aria-hidden="true">@GetTypeMaterialIcon(account.AccountType)</span>
-                </div>
-            </Lead>
-
-            <!-- [2] Name + tags -->
-            <Head>
-                    <div class="acct-name-row">
-                        <span class="acct-name">@account.Name</span>
+                    <Chips>
                         <OdsAccountStatusChip Label="@GetStatusLabel(account)" Tone="@GetStatusChipTone(account)" Compact="true" />
-                        @* Per-account problem chip (design-system list-row signal). *@
-                        @if (_problems.TryGetValue(account.AccountId, out var rowProblem))
+                        @if (problem is not null)
                         {
-                            <span class="acct-flag @rowProblem.Severity">
-                                <span class="material-icons" aria-hidden="true">warning_amber</span>@rowProblem.Chip
+                            <span class="acct-flag @problem.Severity">
+                                <span class="material-icons" aria-hidden="true">warning_amber</span>@problem.Chip
                             </span>
                         }
-                    </div>
-                    <div class="acct-tags">
-                        @* Custodian + type now read as plain muted meta text (not chips) — the
-                           design system reserves chips for status/problem signals on the row. *@
-                        @if (account.Custodian is not null)
-                        {
-                            <span class="acct-meta">@account.Custodian.Name</span>
-                            <span class="acct-dot">·</span>
-                        }
-                        <span class="acct-meta">@AccountTypeVisuals.Label(account.AccountType)</span>
-                        @if (!string.IsNullOrWhiteSpace(account.AccountNumber))
-                        {
-                            <span class="acct-dot">·</span>
-                            <span class="mono">@account.AccountNumber</span>
-                        }
-                        @if (account.CurrentInterestRateKind is { } rateKind)
-                        {
-                            @* In-force interest rate / expected return — signed + colored for a
-                               liability's cost-rate, per the design system header spec. *@
-                            var rateTerm = new ExistingAccountTerm
-                            {
-                                AccountTermId = Guid.Empty,
-                                AccountId = account.AccountId,
-                                TermKind = rateKind,
-                                ValueUnit = TermValueUnit.Percentage,
-                                Value = account.CurrentInterestRate ?? 0m,
-                            };
-                            var rateInfo = TermKindVisuals.Info(rateKind);
-                            <span class="acct-dot">·</span>
-                            <span class="acct-rate mono" title="@rateInfo.Label"
-                                  style="color:@(TermKindVisuals.CostColor(rateTerm, account) ?? rateInfo.Color);">
-                                @TermKindVisuals.FormatValue(rateTerm, account, FormatMoney)
-                            </span>
-                        }
-                        <span class="acct-dot">·</span>
-                        <span class="acct-counts">
-                            <span title="Transactions">
-                                <span class="material-icons" aria-hidden="true">receipt_long</span>
-                                @account.TransactionCount
-                            </span>
-                            <span title="Files">
-                                <span class="material-icons" aria-hidden="true">attach_file</span>
-                                @account.FileCount
-                            </span>
-                            @if (account.EstimateCount > 0)
-                            {
-                                <span title="Estimates">
-                                    <span class="material-icons" aria-hidden="true">monitor</span>
-                                    @account.EstimateCount
-                                </span>
-                            }
-                            @if (account.TermCount > 0)
-                            {
-                                <span title="Terms">
-                                    <span class="acct-count-glyph" aria-hidden="true">§</span>
-                                    @account.TermCount
-                                </span>
-                            }
-                            @if (account.SmartTagCount > 0)
-                            {
-                                <span title="Smart tags">
-                                    <span class="material-icons" aria-hidden="true">sell</span>
-                                    @account.SmartTagCount
-                                </span>
-                            }
-                        </span>
-                    </div>
-            </Head>
+                    </Chips>
 
-            <!-- [3] Balance — the in-force estimate leads as the headline for an asset account -->
-            <Figures>
-                    @if (account.CurrentEstimatedValue is { } estValue)
-                    {
-                        <div class="acct-balance" style="color:var(--finance-income);" title="Estimated value">@FormatMoney(estValue, account.CurrentEstimatedValueCurrencyCode ?? account.CurrencyCode)</div>
-                        <div class="acct-est-label">Est. value</div>
-                    }
-                    else
-                    {
-                        <div class="acct-balance" style="color:@BalanceColor(account.Balance);">@FormatMoney(account.Balance, account.CurrencyCode)</div>
-                    }
-            </Figures>
+                    @* The in-force estimate leads for an asset whose worth transactions do not
+                       capture; otherwise the transaction balance is the figure. *@
+                    <Figure>
+                        @if (account.CurrentEstimatedValue is { } estValue)
+                        {
+                            @FormatMoney(estValue, account.CurrentEstimatedValueCurrencyCode ?? account.CurrencyCode)
+                        }
+                        else
+                        {
+                            @FormatMoney(account.Balance, account.CurrencyCode)
+                        }
+                    </Figure>
 
-            <!-- [4] Controls -->
-            <Actions>
-                    <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                             Size="Size.Small"
-                             Color="Color.Default"
-                             AnchorOrigin="Origin.TopRight"
-                             TransformOrigin="Origin.TopRight">
-                        @if (_canUpdateAccounts)
-                        {
-                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                                         OnClick="@(() => EditClicked(account))">
-                                Edit account
-                            </MudMenuItem>
-                        }
-                        @if (_canUploadFiles)
-                        {
-                            <MudMenuItem Icon="@Icons.Material.Filled.UploadFile"
-                                         OnClick="@(() => AddFile(account))">
-                                Upload file
-                            </MudMenuItem>
-                        }
-                        @if (_canCreateTransactions && account.Closed is null && account.Archived is null)
-                        {
-                            <MudMenuItem Icon="@Icons.Material.Filled.ReceiptLong"
-                                         OnClick="@(() => AddTransaction(account))">
-                                New transaction
-                            </MudMenuItem>
-                        }
-                        @if (_canWriteEstimates)
-                        {
-                            <MudMenuItem Icon="@Icons.Material.Filled.Monitor"
-                                         OnClick="@(() => AddEstimate(account))">
-                                New estimate
-                            </MudMenuItem>
-                        }
-                        @if (_canWriteTerms)
-                        {
-                            @* "New term" uses the § terms glyph (a non-ligature DS glyph, not an
-                               SVG icon) — rendered as inline content like the row terms count. *@
-                            <MudMenuItem OnClick="@(() => AddTerm(account))">
-                                <span class="odc-menu-item">
-                                    <span class="odc-menu-item-glyph" aria-hidden="true">§</span>
-                                    <span>New term</span>
-                                </span>
-                            </MudMenuItem>
-                        }
-                        @* "Copy ID" — fingerprint lead + a content_copy affordance revealed on
-                           hover/focus (Odyssey Design System · ActionMenu trailingIcon). *@
-                        <MudMenuItem OnClick="@(() => CopyAccountId(account.AccountId))">
-                            <span class="odc-menu-item">
-                                <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
-                                <span>Copy ID</span>
-                                <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
-                            </span>
-                        </MudMenuItem>
-                        @if (_canUpdateAccounts)
-                        {
-                            <MudDivider />
-                            <MudMenuItem Icon="@(account.Closed != null ? Icons.Material.Filled.LockOpen : Icons.Material.Filled.Lock)"
-                                         OnClick="@(() => ToggleCloseAccount(account))">
-                                @(account.Closed != null ? "Reopen" : "Close")
-                            </MudMenuItem>
-                            <MudMenuItem Icon="@Icons.Material.Filled.Archive"
-                                         OnClick="@(() => ToggleArchive(account))">
-                                @(account.Archived != null ? "Unarchive" : "Archive")
-                            </MudMenuItem>
-                        }
-                        @if (_canDeleteAccounts)
-                        {
-                            <MudMenuItem Icon="@Icons.Material.Filled.Delete"
-                                         Style="color:var(--mud-palette-error);"
-                                         OnClick="@(() => ConfirmDeleteAccount(account))">
-                                Delete
-                            </MudMenuItem>
-                        }
-                    </MudMenu>
-            </Actions>
+                    <Actions>
+                        <OdsMenu Items="RowActions(account)" AriaLabel="@($"Actions for {account.Name}")" />
+                    </Actions>
 
-            <!-- Expandable body -->
-            <Detail>
-
-                        @* Problem record (design-system expanded-record alert): what's wrong +
-                           the contextual fix, read before the metadata. *@
-                        @if (_problems.TryGetValue(account.AccountId, out var detailProblem))
+                    <Alert>
+                        @* The problem and its contextual fix — read before anything else, because it
+                           is why the card was opened. *@
+                        @if (problem is not null)
                         {
-                            <div class="alert @detailProblem.Severity acct-problem" role="status">
+                            <div class="alert @problem.Severity acct-problem" role="status">
                                 <div class="acct-problem-head">
                                     <span class="material-icons alert-icon">warning_amber</span>
-                                    <div class="acct-problem-title">@detailProblem.Title</div>
+                                    <div class="acct-problem-title">@problem.Title</div>
                                     <button type="button" class="alert-cta" @onclick="GoToExchangeRates">
                                         Set exchange rate
                                         <span class="material-icons" style="font-size:16px;">arrow_forward</span>
                                     </button>
                                 </div>
-                                <p class="acct-problem-detail">@detailProblem.Detail</p>
+                                <p class="acct-problem-detail">@problem.Detail</p>
+                            </div>
+                        }
+                    </Alert>
+
+                    <Details>
+                        @* The account's full field set. Empty fields show no tile; the custodian keeps
+                           its own type colour, because it points at a contact record. *@
+                        <OdsInfoTileGrid>
+                            <OdsInfoTile Icon="account_balance_wallet" Label="Name"
+                                         ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                                <Value>@account.Name</Value>
+                            </OdsInfoTile>
+
+                            @* No per-tile icon colour: the grid inherits the card's accent, which IS
+                               this account's type colour. *@
+                            <OdsInfoTile Icon="@typeIcon" Label="Account type" ValueVariant="OdsInfoTileVariant.Text">
+                                <Value>@typeLabel</Value>
+                            </OdsInfoTile>
+
+                            @if (!string.IsNullOrWhiteSpace(account.AccountNumber))
+                            {
+                                <OdsInfoTile Icon="tag" Label="Account number"
+                                             ValueVariant="OdsInfoTileVariant.Mono" Foot="@Caption("Custodian reference")">
+                                    <Value>@account.AccountNumber</Value>
+                                </OdsInfoTile>
+                            }
+
+                            @if (account.Custodian is { } custodian)
+                            {
+                                var custMeta = OdsTypeRegistries.ContactTypeOf(custodian.Type.ToString());
+                                <OdsInfoTile Icon="@custMeta.Icon" IconColor="@custMeta.Color" IconSoft="@custMeta.Soft"
+                                             Label="Custodian" ValueVariant="OdsInfoTileVariant.Text"
+                                             Foot="@Caption(custMeta.Label)">
+                                    <Value>@custodian.Name</Value>
+                                </OdsInfoTile>
+                            }
+
+                            <OdsInfoTile Icon="payments" Label="Currency" Foot="@Caption(CurrencyFoot(account))">
+                                <Value>@account.CurrencyCode</Value>
+                            </OdsInfoTile>
+
+                            @* A DERIVED summary: the state, with the full lifecycle line as its foot. *@
+                            <OdsInfoTile Icon="@StatusIcon(account)" Label="Status"
+                                         ValueVariant="OdsInfoTileVariant.Text"
+                                         Tone="@StatusTone(account)"
+                                         Foot="@Caption(GetLifecycle(account))">
+                                <Value>@GetStatusLabel(account)</Value>
+                            </OdsInfoTile>
+                        </OdsInfoTileGrid>
+                    </Details>
+
+                    <Content>
+                        @* Prose is not a field: the description goes in one wide tile. *@
+                        @if (!string.IsNullOrWhiteSpace(account.Description))
+                        {
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="sticky_note_2" Label="Description" Wide="true">
+                                    <Value>@account.Description</Value>
+                                </OdsInfoTile>
+                            </OdsInfoTileGrid>
+                        }
+                    </Content>
+
+                    <Sections>
+                        @* CURRENT — the account's in-force values, as the same tiles the details use.
+                           A record with a current state puts that band first, above the collections. *@
+                        @if (InForceCount(account) is > 0 and var inForce)
+                        {
+                            <div class="acct-section">
+                                <OdsSectionDivider Label="Current"
+                                                   Meta="@($"{inForce} {(inForce == 1 ? "value" : "values")} in force")" />
+                                <OdsInfoTileGrid>
+                                    @if (account.CurrentEstimatedValue is { } currentEstimate)
+                                    {
+                                        <OdsInfoTile Icon="trending_up" Label="Estimated value" Tone="OdsInfoTileTone.Income"
+                                                     Foot="@Caption(EstimateFoot(account))">
+                                            <Value>@FormatMoney(currentEstimate, account.CurrentEstimatedValueCurrencyCode ?? account.CurrencyCode)</Value>
+                                        </OdsInfoTile>
+                                        @* The balance stays quiet: the estimate is what counts toward
+                                           net worth, so this is the secondary reading. *@
+                                        <OdsInfoTile Icon="swap_horiz" Label="Transaction balance"
+                                                     Foot="@Caption(BalanceFoot(account))">
+                                            <Value>@FormatMoney(account.Balance, account.CurrencyCode)</Value>
+                                        </OdsInfoTile>
+                                    }
+                                    @foreach (var term in account.CurrentTerms)
+                                    {
+                                        var info = TermKindVisuals.Info(term.TermKind);
+                                        var asTerm = ToTerm(account, term);
+                                        <OdsInfoTile Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
+                                                     Label="@info.Label" Foot="@Caption(TermFoot(term))">
+                                            <Value>
+                                                <span style="color:@(TermKindVisuals.CostColor(asTerm, account) ?? info.Color);">
+                                                    @TermKindVisuals.FormatValue(asTerm, account, FormatMoney)
+                                                </span>
+                                            </Value>
+                                        </OdsInfoTile>
+                                    }
+                                </OdsInfoTileGrid>
                             </div>
                         }
 
-                        <div class="meta-grid">
-                            <div class="meta-tile">
-                                <div class="meta-tile-label">Account type</div>
-                                <div class="meta-tile-value">
-                                    <OdsAccountTypeChip Type="account.AccountType" />
-                                </div>
+                        @* An OPTIONAL sub-collection is omitted entirely when empty, matching the
+                           empty-field rule — the header only counts these when non-zero. *@
+                        @if (_canReadEstimates && account.EstimateCount > 0)
+                        {
+                            <div class="acct-section">
+                                <OdsSectionDivider Label="Estimates"
+                                                   Meta="@($"{account.EstimateCount} {(account.EstimateCount == 1 ? "estimate" : "estimates")}")" />
+                                <AccountEstimatesSection @key="@($"estimates:{account.AccountId}:{_estimatesRefreshToken}")"
+                                                         Account="account"
+                                                         CanWrite="@_canWriteEstimates"
+                                                         Chrome="false" ShowCurrent="false" BareAction="false"
+                                                         FormatMoney="FormatMoney"
+                                                         CurrencySymbol="@CurrencySymbol(account.CurrencyCode)"
+                                                         OnChanged="GetAccounts" />
                             </div>
-                            <div class="meta-tile">
-                                <div class="meta-tile-label">Account number</div>
-                                <div class="meta-tile-value mono">@(string.IsNullOrWhiteSpace(account.AccountNumber) ? "—" : account.AccountNumber)</div>
+                        }
+
+                        @if (_canReadTerms && account.TermCount > 0)
+                        {
+                            <div class="acct-section">
+                                <OdsSectionDivider Label="Terms"
+                                                   Meta="@($"{account.TermCount} {(account.TermCount == 1 ? "entry" : "entries")}")" />
+                                <AccountTermsSection @key="@($"terms:{account.AccountId}:{_termsRefreshToken}")"
+                                                     Account="account"
+                                                     CanWrite="@_canWriteTerms"
+                                                     Chrome="false" ShowCurrent="false" BareAction="false"
+                                                     FormatMoney="FormatMoney"
+                                                     OnChanged="GetAccounts" />
                             </div>
-                            <div class="meta-tile">
-                                <div class="meta-tile-label">Custodian</div>
-                                <div class="meta-tile-value">
-                                    <OdsCustodianChip Custodian="account.Custodian" />
-                                </div>
+                        }
+
+                        @* Files and Transactions are INTRINSIC to an account, so they stay at zero:
+                           the absence is a fact worth stating. *@
+                        <div class="acct-section">
+                            <OdsSectionDivider Label="Files"
+                                               Meta="@($"{account.FileCount} file{(account.FileCount == 1 ? "" : "s")}")" />
+                            <div class="acct-table-frame">
+                                <AccountFilesSection @key="@($"{account.AccountId}:{_filesRefreshToken}")"
+                                                     AccountId="@account.AccountId"
+                                                     AccountName="@account.Name"
+                                                     Chrome="false"
+                                                     CanUpload="false"
+                                                     CanDownload="@_canDownloadFiles"
+                                                     CanDelete="@_canDeleteFiles"
+                                                     CanEdit="@_canEditFiles"
+                                                     CanAnalyze="@_canAnalyzeFiles" />
                             </div>
-                            <div class="meta-tile">
-                                <div class="meta-tile-label">Currency</div>
-                                <div class="meta-tile-value mono">@account.CurrencyCode</div>
-                            </div>
-                            @* Status chip + the consolidated lifecycle line (opened · closed ·
-                               archived) — replaces the separate Opened / Closed tiles. *@
-                            <div class="meta-tile">
-                                <div class="meta-tile-label">Status</div>
-                                <div class="meta-tile-value">
-                                    <span class="acct-status-stack">
-                                        <OdsAccountStatusChip Label="@GetStatusLabel(account)" Tone="@GetStatusChipTone(account)" />
-                                        <span class="acct-lifecycle">@GetLifecycle(account)</span>
-                                    </span>
-                                </div>
-                            </div>
-                            @if (!string.IsNullOrWhiteSpace(account.Description))
-                            {
-                                <div class="meta-tile wide">
-                                    <div class="meta-tile-label">Description</div>
-                                    <div class="meta-tile-value">@account.Description</div>
-                                </div>
-                            }
                         </div>
 
-                        <!-- Value estimates (user-supplied worth for non-transactional assets) — above Terms -->
-                        @if (_canReadEstimates)
-                        {
-                            <AccountEstimatesSection @key="@($"estimates:{account.AccountId}:{_estimatesRefreshToken}")"
-                                                     Account="account"
-                                                     CanWrite="@_canWriteEstimates"
-                                                     FormatMoney="FormatMoney"
-                                                     CurrencySymbol="@CurrencySymbol(account.CurrencyCode)"
-                                                     OnChanged="GetAccounts" />
-                        }
-
-                        <!-- Rate & fee history (interest rates, expected return, fee prices) -->
-                        @if (_canReadTerms)
-                        {
-                            <AccountTermsSection @key="@($"terms:{account.AccountId}:{_termsRefreshToken}")"
-                                                 Account="account"
-                                                 CanWrite="@_canWriteTerms"
-                                                 FormatMoney="FormatMoney"
-                                                 OnChanged="GetAccounts" />
-                        }
-
-                        <!-- Files collapsible (uploads go through the Add file modal) -->
-                        <AccountFilesSection @key="@($"{account.AccountId}:{_filesRefreshToken}")"
-                                             AccountId="@account.AccountId"
-                                             AccountName="@account.Name"
-                                             CanUpload="false"
-                                             CanDownload="@_canDownloadFiles"
-                                             CanDelete="@_canDeleteFiles"
-                                             CanEdit="@_canEditFiles"
-                                             CanAnalyze="@_canAnalyzeFiles" />
-
-                        <!-- Transactions collapsible (read-only list scoped to this account) -->
                         @if (_canReadTransactions)
                         {
-                            <AccountTransactionsSection @key="@($"txns:{account.AccountId}")"
-                                                        AccountId="@account.AccountId"
-                                                        CanDownloadFiles="@_canDownloadFiles" />
+                            <div class="acct-section">
+                                <OdsSectionDivider Label="Transactions"
+                                                   Meta="@($"{account.TransactionCount} transaction{(account.TransactionCount == 1 ? "" : "s")}")" />
+                                <div class="acct-txn-table acct-table-frame">
+                                    <AccountTransactionsSection @key="@($"txns:{account.AccountId}")"
+                                                                AccountId="@account.AccountId"
+                                                                Chrome="false"
+                                                                CanDownloadFiles="@_canDownloadFiles" />
+                                </div>
+                            </div>
                         }
 
-                        <!-- Smart tags collapsible (saved per-account tag watchlist) -->
+                        @* Always rendered: this section is the only place a first smart tag can be
+                           added, so it is an entry point rather than an optional collection. *@
                         @if (_canReadTransactions)
                         {
-                            <AccountSmartTagsSection @key="@($"smart-tags:{account.AccountId}")"
-                                                     Account="account"
-                                                     CanWrite="@_canUpdateAccounts"
-                                                     CanDownloadFiles="@_canDownloadFiles"
-                                                     FormatMoney="FormatMoney"
-                                                     OnCountChanged="@(count => { account.SmartTagCount = count; })" />
+                            <div class="acct-section">
+                                <OdsSectionDivider Label="Smart tags"
+                                                   Meta="@(account.SmartTagCount > 0 ? $"{account.SmartTagCount} watched" : "none watched")" />
+                                <AccountSmartTagsSection @key="@($"smart-tags:{account.AccountId}")"
+                                                         Account="account"
+                                                         Chrome="false"
+                                                         CanWrite="@_canUpdateAccounts"
+                                                         CanDownloadFiles="@_canDownloadFiles"
+                                                         FormatMoney="FormatMoney"
+                                                         OnCountChanged="@(count => { account.SmartTagCount = count; })" />
+                            </div>
                         }
-            </Detail>
-                </OdsExpandableCard>
+                    </Sections>
+                </OdsRecordCard>
             </RenderItem>
             <CreateAction>
                 @if (_canCreateAccounts)
@@ -440,3 +425,21 @@
                        OnSaved="OnEstimateCreated" />
 }
 
+@code {
+    // The meta-line entries that carry a glyph. Inline render fragments are Razor syntax, so they
+    // cannot live in the code-behind. One span each, so each becomes the .odc-record-metaitem's only
+    // child and picks up the meta line's alignment.
+
+    private RenderFragment CustodianMeta(string icon, string name) =>
+        @<span class="acct-cust-inline">
+            <span class="material-icons" aria-hidden="true">@icon</span><span>@name</span>
+        </span>;
+
+    private RenderFragment AccountNumberMeta(string number) =>
+        @<span class="acct-number-inline">
+            <span class="material-icons" aria-hidden="true">tag</span><span class="mono">@number</span>
+        </span>;
+
+    private RenderFragment RateMeta(string color, string title, string value) =>
+        @<span class="acct-rate mono" title="@title" style="color:@color;">@value</span>;
+}

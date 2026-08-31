@@ -11,6 +11,8 @@ using ContextTermKind = Odyssey.Context.TermKind;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoAccountFileType = Odyssey.Dtos.Finance.AccountFileType;
 using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
+using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
+using DtoBillingPeriod = Odyssey.Dtos.Finance.BillingPeriod;
 
 namespace Odyssey.Core.Finance;
 
@@ -251,7 +253,7 @@ public class AccountService
 
         // Resolve the in-force rate (interest rate, else expected return) per account with one
         // query over the term composite index, for the account-header subtitle.
-        var rateByAccount = await GetCurrentRateTerms(accountIds, cancellationToken);
+        var currentTermsByAccount = await GetCurrentTerms(accountIds, cancellationToken);
 
         // Resolve the in-force estimated value per account with one query over the estimate
         // composite index, for the account-header headline value (no per-account follow-up call).
@@ -291,16 +293,21 @@ public class AccountService
             dto.TermCount = termCounts.GetValueOrDefault(dto.AccountId);
             dto.SmartTagCount = smartTagCounts.GetValueOrDefault(dto.AccountId);
 
-            if (rateByAccount.TryGetValue(dto.AccountId, out var rateTerm))
+            if (currentTermsByAccount.TryGetValue(dto.AccountId, out var currentTerms))
             {
-                dto.CurrentInterestRate = rateTerm.Value;
-                dto.CurrentInterestRateKind = rateTerm.TermKind.Adapt<DtoTermKind>();
+                dto.CurrentTerms = [.. currentTerms.Select(ToCurrentTerm)];
+                if (RateTermOf(currentTerms) is { } rateTerm)
+                {
+                    dto.CurrentInterestRate = rateTerm.Value;
+                    dto.CurrentInterestRateKind = rateTerm.TermKind.Adapt<DtoTermKind>();
+                }
             }
 
             if (estimateByAccount.TryGetValue(dto.AccountId, out var estimate))
             {
                 dto.CurrentEstimatedValue = estimate.Value;
                 dto.CurrentEstimatedValueCurrencyCode = estimate.CurrencyCode;
+                dto.CurrentEstimatedValueEffectiveFrom = estimate.EffectiveFrom;
             }
         }
     }
@@ -336,11 +343,15 @@ public class AccountService
         dto.TermCount = projection.TermCount;
         dto.SmartTagCount = projection.SmartTagCount;
 
-        var rateByAccount = await GetCurrentRateTerms([accountId], cancellationToken);
-        if (rateByAccount.TryGetValue(accountId, out var rateTerm))
+        var currentTermsByAccount = await GetCurrentTerms([accountId], cancellationToken);
+        if (currentTermsByAccount.TryGetValue(accountId, out var currentTerms))
         {
-            dto.CurrentInterestRate = rateTerm.Value;
-            dto.CurrentInterestRateKind = rateTerm.TermKind.Adapt<DtoTermKind>();
+            dto.CurrentTerms = [.. currentTerms.Select(ToCurrentTerm)];
+            if (RateTermOf(currentTerms) is { } rateTerm)
+            {
+                dto.CurrentInterestRate = rateTerm.Value;
+                dto.CurrentInterestRateKind = rateTerm.TermKind.Adapt<DtoTermKind>();
+            }
         }
 
         var estimateByAccount = await GetCurrentEstimates([accountId], cancellationToken);
@@ -348,6 +359,7 @@ public class AccountService
         {
             dto.CurrentEstimatedValue = estimate.Value;
             dto.CurrentEstimatedValueCurrencyCode = estimate.CurrencyCode;
+            dto.CurrentEstimatedValueEffectiveFrom = estimate.EffectiveFrom;
         }
 
         dto.Custodian = await ResolveCustodian(account.CustodianId, cancellationToken);
@@ -396,32 +408,57 @@ public class AccountService
     /// <see cref="ContextTermKind.ExpectedReturn"/> if there is no interest rate. Returns only
     /// accounts that have a rate in force. Backs the account-header rate subtitle.
     /// </summary>
-    private async Task<Dictionary<Guid, AccountTerm>> GetCurrentRateTerms(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The in-force terms per account — one per <see cref="ContextTermKind"/>, ordered by the registry's
+    /// own kind order so the card's Current band reads the same way on every account.
+    ///
+    /// <para>
+    /// This is the query that used to fetch the rate terms alone. Widening it from two kinds to all of
+    /// them is what feeds the record card's Current band, and it stays <b>one</b> query over the term
+    /// composite index across every account on the page — the alternative, a per-account follow-up, is
+    /// the N+1 the whole enrichment exists to avoid.
+    /// </para>
+    /// </summary>
+    private async Task<Dictionary<Guid, List<AccountTerm>>> GetCurrentTerms(
+        IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
     {
         if (accountIds.Count == 0)
             return [];
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var rateTerms = await context.AccountTerms
+        var terms = await context.AccountTerms
             .AsNoTracking()
-            .Where(t => accountIds.Contains(t.AccountId)
-                && (t.TermKind == ContextTermKind.InterestRate || t.TermKind == ContextTermKind.ExpectedReturn)
-                && t.EffectiveFrom <= now)
+            .Where(t => accountIds.Contains(t.AccountId) && t.EffectiveFrom <= now)
             .ToListAsync(cancellationToken);
 
-        return rateTerms
+        return terms
             .GroupBy(t => t.AccountId)
-            .Select(group =>
-            {
-                AccountTerm? InForce(ContextTermKind kind) =>
-                    group.Where(t => t.TermKind == kind).MostEffective();
-
-                // Interest rate wins over expected return when both are in force (registry order).
-                return InForce(ContextTermKind.InterestRate) ?? InForce(ContextTermKind.ExpectedReturn);
-            })
-            .Where(term => term is not null)
-            .ToDictionary(term => term!.AccountId, term => term!);
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .GroupBy(t => t.TermKind)
+                    .Select(byKind => byKind.MostEffective()!)
+                    .OrderBy(t => t.TermKind)
+                    .ToList());
     }
+
+    /// <summary>
+    /// The single rate the collapsed row headlines on, picked out of the in-force set: interest rate
+    /// wins over expected return when both apply (registry order).
+    /// </summary>
+    private static AccountTerm? RateTermOf(IReadOnlyList<AccountTerm> currentTerms) =>
+        currentTerms.FirstOrDefault(t => t.TermKind == ContextTermKind.InterestRate)
+        ?? currentTerms.FirstOrDefault(t => t.TermKind == ContextTermKind.ExpectedReturn);
+
+    private static AccountCurrentTerm ToCurrentTerm(AccountTerm term) => new()
+    {
+        TermKind = term.TermKind.Adapt<DtoTermKind>(),
+        ValueUnit = term.ValueUnit.Adapt<DtoTermValueUnit>(),
+        Value = term.Value,
+        CurrencyCode = term.CurrencyCode,
+        BillingPeriod = term.BillingPeriod?.Adapt<DtoBillingPeriod>(),
+        EffectiveFrom = term.EffectiveFrom,
+    };
 
     /// <summary>
     /// Resolves the currently-effective estimate for each of the given accounts: the latest entry on

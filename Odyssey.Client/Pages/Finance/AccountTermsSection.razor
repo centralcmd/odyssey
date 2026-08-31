@@ -12,14 +12,14 @@
     grouped, editable history table. Owns the create / edit / delete flow (write-gated).
 *@
 
-<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="§">
+<OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="§">
     <Title>Terms</Title>
     <Count>@_terms.Count</Count>
     <Actions>
-        @if (CanWrite)
-        {
-            <OdsButton Variant="OdsButtonVariant.Text" Icon="add" OnClick="OpenNew">New term</OdsButton>
-        }
+    @if (CanWrite)
+    {
+        <OdsButton Variant="OdsButtonVariant.Text" Icon="add" OnClick="OpenNew">New term</OdsButton>
+    }
     </Actions>
     <ChildContent>
         @if (_isLoading)
@@ -83,6 +83,10 @@
                 }
 
                 @* CURRENT TERMS *@
+                @* Dropped when the host lifted these values into the record card's own
+                   Current band, so they are not stated twice in one body. *@
+                @if (ShowCurrent)
+                {
                 <div>
                     <div class="trm-sub">
                         <span class="trm-sub-label">Current terms</span>
@@ -115,14 +119,20 @@
                         }
                     </div>
                 </div>
+                }
 
                 @* HISTORY — grouped Rate then Fees *@
                 <div>
-                    <div class="trm-sub">
-                        <span class="trm-sub-label">History</span>
-                        <span class="trm-sub-rule"></span>
-                        <span class="trm-sub-meta">@_terms.Count @(_terms.Count == 1 ? "entry" : "entries")</span>
-                    </div>
+                    @* The sub-divider is dropped only when the host supplied its own section
+                       divider, which would otherwise repeat it. *@
+                    @if (Chrome || BareAction)
+                    {
+                        <div class="trm-sub">
+                            <span class="trm-sub-label">History</span>
+                            <span class="trm-sub-rule"></span>
+                            <span class="trm-sub-meta">@_terms.Count @(_terms.Count == 1 ? "entry" : "entries")</span>
+                        </div>
+                    }
                     <div class="trm-history">
                         @RenderGroup("trending_up", "Rate history", _terms.Where(t => TermKindVisuals.Info(t.TermKind).Group == TermGroup.Rate).ToList())
                         @RenderGroup("sell", "Fees", _terms.Where(t => TermKindVisuals.Info(t.TermKind).Group == TermGroup.Fee).ToList())

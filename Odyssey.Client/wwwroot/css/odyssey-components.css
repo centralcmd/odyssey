@@ -3305,3 +3305,52 @@
     background: transparent;
     border-bottom: 1px solid var(--mud-palette-divider-light, var(--mud-palette-divider));
 }
+
+/* ---------- Accounts inside a RecordCard body (OdsRecordCard migration) ----------
+   Mirrors the design system (ui_kits/web/kit.css). Accounts is the record type with the
+   most sections, so this is where the shared body treatments get their workout: a section
+   is a divider plus its content, its content sits flush with the divider label, and a
+   table or chart inside a section reads as a card like the tiles above it. */
+
+/* A body section: divider + its content, no disclosure and no action slot. */
+.acct-section { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-1); }
+
+/* The custodian clamps on the meta line — the card's own overflow rules keep the line to
+   one row, so what is needed here is the inner span that actually ellipsises. */
+.odc-record-meta .acct-cust-inline { max-width: 240px; overflow: hidden; }
+.odc-record-meta .acct-cust-inline > span:not(.material-icons) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odc-record-meta .acct-number-inline { overflow: hidden; }
+
+/* The 18px/16px insets were the old disclosure body's padding; a section's content sits
+   flush with its divider label. */
+.odc-record-body .trm-section, .odc-record-body .est-section { padding: 0; }
+
+/* Section tables read as cards, the same frame as the charts beside them. */
+.odc-record-body .acct-table-frame,
+.odc-record-body .est-history,
+.odc-record-body .trm-history {
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: var(--radius-md);
+    box-shadow: var(--mud-elevation-1);
+    padding: var(--space-2) var(--space-2) var(--space-1);
+}
+.odc-record-body .trm-history { padding: var(--space-3) var(--space-2) var(--space-2); }
+
+/* The section heroes lose their standalone framing and read as cards in the band. */
+.odc-record-body .trm-hero, .odc-record-body .est-hero {
+    border-radius: var(--radius-md); box-shadow: var(--mud-elevation-1);
+}
+.odc-record-body .trm-hero-head, .odc-record-body .est-hero-head { padding: 20px 20px 14px; gap: var(--space-4); }
+.odc-record-body .trm-hero-kind, .odc-record-body .est-hero-kind {
+    font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans);
+}
+.odc-record-body .trm-hero-sub, .odc-record-body .est-hero-sub {
+    font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); margin-top: 5px;
+}
+.odc-record-body .trm-hero-value, .odc-record-body .est-hero-value {
+    font: var(--fw-medium) var(--fs-h6)/1 var(--font-mono); letter-spacing: normal;
+}
+.odc-record-body .trm-delta, .odc-record-body .est-delta {
+    font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono);
+}

@@ -11,6 +11,12 @@ namespace Odyssey.Client.Pages.Finance;
 public partial class AccountFilesSection
 {
     [Parameter] public Guid AccountId { get; set; }
+
+    /// <summary>
+    /// The disclosure shell. False renders the section bare — no OdsCollapsible, no header — for a host
+    /// that introduces it with its own OdsSectionDivider (an OdsRecordCard body).
+    /// </summary>
+    [Parameter] public bool Chrome { get; set; } = true;
     [Parameter] public bool CanAnalyze { get; set; }
     [Parameter] public bool CanEdit { get; set; }
     [Parameter] public string? AccountName { get; set; }

@@ -5,7 +5,7 @@
 @inject IAccountsApiClient Accounts
 @inject IFileAnalysisDisclosureCache Disclosures
 
-<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="attach_file">
+<OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="attach_file">
     <Title>Files</Title>
     <Count>@items.Count</Count>
     <Actions>

@@ -11,6 +11,16 @@
     Flush drops the border + horizontal inset to embed inside another surface.
 *@
 
+@if (!Chrome)
+{
+    @* Bare: no disclosure shell and no header — the host introduces the section with its own
+       OdsSectionDivider (an OdsRecordCard body), where sections neither collapse nor act. The
+       wrapper keeps the caller's Class so a feature's own styling still lands, and adds `bare`
+       for the rules that only apply outside the shell. *@
+    <div class="@($"{Class} bare".Trim())">@ChildContent</div>
+}
+else
+{
 <div class="odc-collapsible @(Flush ? "flush" : null) @Class" data-open="@(IsOpen ? "" : null)">
     @* Header actions (when supplied) sit beside the toggle as a sibling — not nested
        inside the button — so interactive controls (menus, links) stay valid and a
@@ -40,6 +50,7 @@
         <div class="odc-collapsible-body">@ChildContent</div>
     }
 </div>
+}
 
 @code {
     /// <summary>Header label.</summary>
@@ -72,6 +83,21 @@
 
     /// <summary>Drop the border and horizontal padding (embed inside another surface).</summary>
     [Parameter] public bool Flush { get; set; }
+
+    /// <summary>
+    /// The disclosure chrome. False drops the shell entirely — no header, no toggle, no collapse —
+    /// leaving only the body, for a host that introduces the section with its own
+    /// <see cref="OdsSectionDivider"/> inside an <see cref="OdsRecordCard"/>.
+    ///
+    /// <para>
+    /// The design system puts this switch on each feature section rather than on Collapsible. It
+    /// lives here instead because in Razor the alternative is an inline <c>RenderFragment</c> holding
+    /// the whole body, which pushes a section's <c>@code</c> block past the size the source lint
+    /// allows — or duplicating the body across both branches. One parameter here keeps every section's
+    /// markup where it belongs and renders exactly the same DOM.
+    /// </para>
+    /// </summary>
+    [Parameter] public bool Chrome { get; set; } = true;
 
     /// <summary>Extra CSS class(es) appended to the root (e.g. a section-specific modifier).</summary>
     [Parameter] public string? Class { get; set; }

@@ -55,6 +55,22 @@ public sealed record ExistingAccount
     [StringLength(3)]
     public string? CurrentEstimatedValueCurrencyCode { get; set; }
 
+    /// <summary>When the current estimate took effect — the "in force since" on the card's Current band.</summary>
+    public DateTime? CurrentEstimatedValueEffectiveFrom { get; set; }
+
+    /// <summary>
+    /// Every in-force term, one per kind, for the record card's "Current" band.
+    /// <see cref="CurrentInterestRate"/> / <see cref="CurrentInterestRateKind"/> stay as the single
+    /// rate the collapsed row headlines on; this is the full set the expanded body shows.
+    ///
+    /// <para>
+    /// It costs no extra query: the enrichment already runs one pass over the term composite index for
+    /// every account on the page, and this widens that pass from two rate kinds to all of them rather
+    /// than adding a per-account follow-up.
+    /// </para>
+    /// </summary>
+    public List<AccountCurrentTerm> CurrentTerms { get; set; } = new();
+
     /// <summary>The raw link to the contact that holds this account (its custodian), or
     /// <c>null</c> when there is no custodian.</summary>
     public Guid? CustodianId { get; set; }
