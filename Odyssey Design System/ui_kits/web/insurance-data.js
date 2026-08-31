@@ -2,11 +2,14 @@
    ----------------------------------------------------------------------------
    Shapes mirror the spec's Odyssey.Finance.Context entities:
      • InsurancePolicy  { name, policyNumber?, type, insurerId, insuredAccountId?,
-                          notes?, archived?, createdAtUtc, renewals[], files[] }
+                          notes?, archived?, createdAtUtc, renewals[] }
+                          (NO policy-level files[] — a document's only home is a
+                          renewal PERIOD, so it inherits that period's validity
+                          window instead of floating on the policy.)
      • PolicyRenewal    { fromDate, toDate, premium + premiumCurrencyCode,
                           coverageAmount + coverageCurrencyCode, notes?,
                           createdAtUtc, files[] }
-     • InsurancePolicyFile / PolicyRenewalFile  { fileType, effectiveDate?, … }
+     • PolicyRenewalFile  { fileType, effectiveDate?, … }
                           (rendered with the file shape the kit FilesTable wants:
                           { id, name, kind, size, uploaded } — `kind` is a
                           PolicyFileType key from data.js.)
@@ -35,36 +38,35 @@
       id: 'ip-home', name: 'Home & Contents 2026', policyNumber: 'HC-2026-99182', type: 'Contents',
       insurerId: 'c12', insuredAccountId: '7', notes: 'Buildings + contents on the Maple St residence. Accidental-damage rider included.',
       archived: null, createdAtUtc: '2024-12-18T10:00:00Z',
-      files: [
-        { id: 'ipf-home-1', name: 'home_policy_certificate_2026.pdf', kind: 'PolicyDocument', size: '410 KB', uploaded: '2025-12-18', effectiveDate: '2026-01-01' },
-        { id: 'ipf-home-2', name: 'policy_wording_v4.pdf', kind: 'TermsAndConditions', size: '1.2 MB', uploaded: '2025-12-18' },
-      ],
       renewals: [
         { id: 'rn-home-26', fromDate: '2026-01-01', toDate: '2026-12-31', premium: 1840.00, premiumCurrencyCode: 'USD', coverageAmount: 1500000.00, coverageCurrencyCode: 'USD', notes: 'Premium up 4% on prior year; coverage unchanged.', createdAtUtc: '2025-12-18T10:00:00Z', files: [
           { id: 'rnf-home-26-1', name: 'renewal_invoice_2026.pdf', kind: 'Invoice', size: '88 KB', uploaded: '2025-12-18', effectiveDate: '2026-01-01' },
         ] },
-        { id: 'rn-home-25', fromDate: '2025-01-01', toDate: '2025-12-31', premium: 1768.00, premiumCurrencyCode: 'USD', coverageAmount: 1500000.00, coverageCurrencyCode: 'USD', notes: null, createdAtUtc: '2024-12-18T10:00:00Z', files: [] },
+        { id: 'rn-home-25', fromDate: '2025-01-01', toDate: '2025-12-31', premium: 1768.00, premiumCurrencyCode: 'USD', coverageAmount: 1500000.00, coverageCurrencyCode: 'USD', notes: null, createdAtUtc: '2024-12-18T10:00:00Z', files: [
+          /* Relocated from the policy onto its FIRST period (earliest FromDate) —
+             attribution and dates carried across verbatim, never restamped. */
+          { id: 'rnf-home-25-1', name: 'home_policy_certificate_2026.pdf', kind: 'PolicyDocument', size: '410 KB', uploaded: '2025-12-18', effectiveDate: '2026-01-01' },
+          { id: 'rnf-home-25-2', name: 'policy_wording_v4.pdf', kind: 'TermsAndConditions', size: '1.2 MB', uploaded: '2025-12-18' },
+        ] },
       ],
     },
     {
       id: 'ip-auto', name: 'Honda Civic — Comprehensive', policyNumber: 'MV-55-220714', type: 'Vehicle',
       insurerId: 'c20', insuredAccountId: '5', notes: 'Comprehensive motor cover, €500 excess. Named drivers: 2.',
       archived: null, createdAtUtc: '2024-07-10T09:00:00Z',
-      files: [
-        { id: 'ipf-auto-1', name: 'motor_certificate.pdf', kind: 'PolicyDocument', size: '256 KB', uploaded: '2025-07-12', effectiveDate: '2025-07-16' },
-      ],
       renewals: [
         { id: 'rn-auto-25', fromDate: '2025-07-16', toDate: '2026-07-15', premium: 1260.00, premiumCurrencyCode: 'USD', coverageAmount: 24500.00, coverageCurrencyCode: 'USD', notes: 'No-claims discount applied (40%).', createdAtUtc: '2025-07-12T09:00:00Z', files: [
           { id: 'rnf-auto-25-1', name: 'schedule_of_cover_2025.pdf', kind: 'Contract', size: '180 KB', uploaded: '2025-07-12' },
         ] },
-        { id: 'rn-auto-24', fromDate: '2024-07-16', toDate: '2025-07-15', premium: 1340.00, premiumCurrencyCode: 'USD', coverageAmount: 26000.00, coverageCurrencyCode: 'USD', notes: null, createdAtUtc: '2024-07-10T09:00:00Z', files: [] },
+        { id: 'rn-auto-24', fromDate: '2024-07-16', toDate: '2025-07-15', premium: 1340.00, premiumCurrencyCode: 'USD', coverageAmount: 26000.00, coverageCurrencyCode: 'USD', notes: null, createdAtUtc: '2024-07-10T09:00:00Z', files: [
+          { id: 'rnf-auto-24-1', name: 'motor_certificate.pdf', kind: 'PolicyDocument', size: '256 KB', uploaded: '2025-07-12', effectiveDate: '2025-07-16' },
+        ] },
       ],
     },
     {
       id: 'ip-travel', name: 'Annual Multi-Trip Travel', policyNumber: 'TRV-EU-7741', type: 'Travel',
       insurerId: 'c22', insuredAccountId: null, notes: 'Worldwide ex-US. Winter-sports add-on. Renew before the next trip.',
       archived: null, createdAtUtc: '2025-05-20T09:00:00Z',
-      files: [],
       renewals: [
         { id: 'rn-travel-25', fromDate: '2025-06-01', toDate: '2026-05-31', premium: 340.00, premiumCurrencyCode: 'EUR', coverageAmount: 150000.00, coverageCurrencyCode: 'EUR', notes: 'Covered the Lofoten + Lisbon trips.', createdAtUtc: '2025-05-20T09:00:00Z', files: [
           { id: 'rnf-travel-25-1', name: 'travel_policy_2025.pdf', kind: 'PolicyDocument', size: '120 KB', uploaded: '2025-05-20' },
@@ -75,50 +77,62 @@
       id: 'ip-life', name: 'Term Life — 20 Year', policyNumber: 'LIFE-20Y-33180', type: 'Life',
       insurerId: 'c21', insuredAccountId: null, notes: 'Level term, 20-year. Beneficiary on file. Cover starts at the next anniversary.',
       archived: null, createdAtUtc: '2026-06-02T09:00:00Z',
-      files: [
-        { id: 'ipf-life-1', name: 'term_life_contract.pdf', kind: 'Contract', size: '320 KB', uploaded: '2026-06-02', effectiveDate: '2026-09-01' },
-      ],
       renewals: [
-        { id: 'rn-life-26', fromDate: '2026-09-01', toDate: '2027-08-31', premium: 540.00, premiumCurrencyCode: 'USD', coverageAmount: 750000.00, coverageCurrencyCode: 'USD', notes: 'First annual term — cover begins Sep 1.', createdAtUtc: '2026-06-02T09:00:00Z', files: [] },
+        { id: 'rn-life-26', fromDate: '2026-09-01', toDate: '2027-08-31', premium: 540.00, premiumCurrencyCode: 'USD', coverageAmount: 750000.00, coverageCurrencyCode: 'USD', notes: 'First annual term — cover begins Sep 1.', createdAtUtc: '2026-06-02T09:00:00Z', files: [
+          { id: 'rnf-life-26-1', name: 'term_life_contract.pdf', kind: 'Contract', size: '320 KB', uploaded: '2026-06-02', effectiveDate: '2026-09-01' },
+        ] },
       ],
     },
     {
       id: 'ip-health', name: 'Family Health Plan', policyNumber: 'HLT-FAM-90021', type: 'Health',
       insurerId: 'c24', insuredAccountId: null, notes: 'Family of four. Outpatient + dental module.',
       archived: null, createdAtUtc: '2024-12-22T09:00:00Z',
-      files: [
-        { id: 'ipf-health-1', name: 'membership_handbook.pdf', kind: 'TermsAndConditions', size: '2.1 MB', uploaded: '2025-12-20' },
-      ],
       renewals: [
         { id: 'rn-health-26', fromDate: '2026-01-01', toDate: '2026-12-31', premium: 6240.00, premiumCurrencyCode: 'USD', coverageAmount: 1000000.00, coverageCurrencyCode: 'USD', notes: 'Annual limit raised to $1M.', createdAtUtc: '2025-12-20T09:00:00Z', files: [
           { id: 'rnf-health-26-1', name: 'health_invoice_2026.pdf', kind: 'Invoice', size: '64 KB', uploaded: '2025-12-20', effectiveDate: '2026-01-01' },
         ] },
-        { id: 'rn-health-25', fromDate: '2025-01-01', toDate: '2025-12-31', premium: 5880.00, premiumCurrencyCode: 'USD', coverageAmount: 750000.00, coverageCurrencyCode: 'USD', notes: null, createdAtUtc: '2024-12-22T09:00:00Z', files: [] },
+        { id: 'rn-health-25', fromDate: '2025-01-01', toDate: '2025-12-31', premium: 5880.00, premiumCurrencyCode: 'USD', coverageAmount: 750000.00, coverageCurrencyCode: 'USD', notes: null, createdAtUtc: '2024-12-22T09:00:00Z', files: [
+          { id: 'rnf-health-25-1', name: 'membership_handbook.pdf', kind: 'TermsAndConditions', size: '2.1 MB', uploaded: '2025-12-20' },
+        ] },
       ],
     },
     {
       id: 'ip-pet', name: 'Bella — Pet Cover', policyNumber: null, type: 'Pet',
       insurerId: 'c24', insuredAccountId: null, notes: 'Quote received — no cover purchased yet.',
       archived: null, createdAtUtc: '2026-06-15T09:00:00Z',
-      files: [],
       renewals: [],
+    },
+    /* A policy whose documents were relocated onto a PLACEHOLDER period created by
+       the migration: it held documents but no period, so one was auto-created with
+       zero premium / coverage and a Notes line that says so. Its dates are the
+       migration's pinned literal, so it reads as Lapsed until someone corrects it. */
+    {
+      id: 'ip-liability', name: 'Personal Liability', policyNumber: 'PL-2019-6640', type: 'Liability',
+      insurerId: 'c20', insuredAccountId: null, notes: 'Legacy record — imported before renewal periods were tracked.',
+      archived: null, createdAtUtc: '2019-04-02T09:00:00Z',
+      renewals: [
+        { id: 'rn-liability-mig', fromDate: '2026-08-31', toDate: '2026-08-31', premium: 0, premiumCurrencyCode: 'USD', coverageAmount: 0, coverageCurrencyCode: 'USD',
+          notes: 'Auto-created during migration to preserve 2 document(s) that were attached to the policy rather than to a period. The dates, premium (0) and coverage (0) are placeholders — please correct them or move the documents to a real period.',
+          createdAtUtc: '2026-08-31T00:00:00Z', files: [
+            { id: 'rnf-liability-mig-1', name: 'liability_certificate.pdf', kind: 'PolicyDocument', size: '204 KB', uploaded: '2019-04-02' },
+            { id: 'rnf-liability-mig-2', name: 'liability_terms.pdf', kind: 'TermsAndConditions', size: '760 KB', uploaded: '2019-04-02' },
+          ] },
+      ],
     },
     {
       id: 'ip-cabin', name: 'Hytte — Cabin (Norway)', policyNumber: 'NO-HYT-44120', type: 'Property',
       insurerId: 'c23', insuredAccountId: null, notes: 'Mountain cabin, Hemsedal. Building + contents.',
       archived: null, createdAtUtc: '2025-12-10T09:00:00Z',
-      files: [
-        { id: 'ipf-cabin-1', name: 'forsikringsbevis_2026.pdf', kind: 'PolicyDocument', size: '300 KB', uploaded: '2025-12-12', effectiveDate: '2026-01-01' },
-      ],
       renewals: [
-        { id: 'rn-cabin-26', fromDate: '2026-01-01', toDate: '2026-12-31', premium: 8400.00, premiumCurrencyCode: 'NOK', coverageAmount: 3100000.00, coverageCurrencyCode: 'NOK', notes: null, createdAtUtc: '2025-12-12T09:00:00Z', files: [] },
+        { id: 'rn-cabin-26', fromDate: '2026-01-01', toDate: '2026-12-31', premium: 8400.00, premiumCurrencyCode: 'NOK', coverageAmount: 3100000.00, coverageCurrencyCode: 'NOK', notes: null, createdAtUtc: '2025-12-12T09:00:00Z', files: [
+          { id: 'rnf-cabin-26-1', name: 'forsikringsbevis_2026.pdf', kind: 'PolicyDocument', size: '300 KB', uploaded: '2025-12-12', effectiveDate: '2026-01-01' },
+        ] },
       ],
     },
     {
       id: 'ip-art', name: 'Fine Art & Valuables Rider', policyNumber: 'CH-ART-2010', type: 'Contents',
       insurerId: 'c23', insuredAccountId: null, notes: 'Scheduled valuables — worldwide cover. Premium billed in CHF.',
       archived: null, createdAtUtc: '2026-01-20T09:00:00Z',
-      files: [],
       renewals: [
         { id: 'rn-art-26', fromDate: '2026-02-01', toDate: '2027-01-31', premium: 980.00, premiumCurrencyCode: 'CHF', coverageAmount: 220000.00, coverageCurrencyCode: 'CHF', notes: 'No CHF→USD rate on file — excluded from converted totals.', createdAtUtc: '2026-01-20T09:00:00Z', files: [] },
       ],
@@ -243,9 +257,25 @@
     // Non-archived policies — the set the summary aggregates over.
     insActivePolicies(policies) { return (policies || D.insurancePolicies).filter(p => !p.archived); },
 
-    // File count across policy-level + all renewal-level attachments.
+    // File count across the policy's periods — a period is a document's only
+    // home, so this is the sum over renewals and nothing else.
     insFileCount(policy) {
-      return (policy.files || []).length + (policy.renewals || []).reduce((s, r) => s + (r.files || []).length, 0);
+      return (policy.renewals || []).reduce((s, r) => s + (r.files || []).length, 0);
+    },
+
+    // The period a policy-level attach action targets when the user had no panel
+    // open to imply one: the CURRENT period, else the period with the latest
+    // ToDate (ties broken by latest CreatedAtUtc) — which is the path every
+    // lapsed and every upcoming policy takes. Null when the policy has none.
+    insAttachTargetRenewal(policy, today) {
+      const current = H.insCurrentRenewal(policy, today);
+      if (current) return current;
+      const renewals = (policy.renewals || []).slice();
+      if (!renewals.length) return null;
+      return renewals.sort((a, b) => {
+        if (a.toDate !== b.toDate) return a.toDate < b.toDate ? 1 : -1;
+        return (a.createdAtUtc || '') < (b.createdAtUtc || '') ? 1 : -1;
+      })[0];
     },
 
     // Latest directed exchange rate for a (from,to) pair, or null.

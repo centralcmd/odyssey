@@ -91,6 +91,23 @@
   background: var(--mud-palette-background);
 }
 .ins-empty-cover .material-icons { font-size: 20px; opacity: 0.7; }
+/* The empty state carries the action that unblocks documents, so it needs room
+   for a button beside the sentence. */
+.ins-empty-cover { flex-wrap: wrap; }
+.ins-empty-cover .odc-btn .material-icons { opacity: 1; }
+
+/* "Attaching to" — the inferred period, named in the upload dialog's body. */
+.ins-attach-target {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background);
+}
+.ins-attach-target .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
+.ins-attach-target-label {
+  font: 500 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
+}
+.ins-attach-target-value { font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 
 /* ============================================================
    Terms-style history (mirrors AccountTerms): a Current-period summary

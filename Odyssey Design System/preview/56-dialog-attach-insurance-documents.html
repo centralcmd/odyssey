@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Dialogs" name="Attach insurance documents" subtitle="InsuranceUploadModal — FileUpload (PolicyFileType picker) with an 'attach to' target: the whole policy or a specific renewal period. Live." viewport="800x720" -->
+<!-- @dsCard group="Dialogs" name="Attach insurance documents" subtitle="InsuranceUploadModal — FileUpload (PolicyFileType picker) scoped to one renewal period: a picker defaulted to the period in force when opened from the row menu, a fixed 'Attaching to' line when opened from a period's own panel. Live." viewport="800x720" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -42,8 +42,9 @@
     const InsuranceUploadModal = window.InsuranceUploadModal;
     const D = window.OdysseyData;
     const policy = (D.insurancePolicies || [])[0] || { name: 'Home & Contents 2026', renewals: [] };
+    const target = window.OdysseyHelpers.insAttachTargetRenewal(policy, window.OdysseyHelpers.insToday());
     ReactDOM.createRoot(document.getElementById('root')).render(
-      <InsuranceUploadModal policy={policy} initialTarget="policy" onClose={() => {}} onUpload={() => {}} />
+      <InsuranceUploadModal policy={policy} renewalId={target && target.id} onClose={() => {}} onUpload={() => {}} />
     );
   </script>
 </body>
