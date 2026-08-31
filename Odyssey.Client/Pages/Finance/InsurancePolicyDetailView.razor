@@ -2,99 +2,68 @@
 @using Odyssey.Dtos.Finance
 
 @*
-    InsurancePolicyDetailView — the read view inside an expanded policy (issue #175):
-    the policy fact tiles, the current-period snapshot, the renewal history (chart +
-    table) and the policy-level documents. Mirrors the design system's PolicyDetail.
+    InsurancePolicyDetailView — the SECTIONS of an expanded policy record (issue #175): the
+    current-period snapshot, the renewal history (chart + table) and the policy-level documents.
+    Mirrors the design system's PolicyDetail.
+
+    The policy's fact tiles and notes are NOT here: they belong to the record card's Details and
+    Content slots, whose order the card fixes, and InsuranceCard renders them there. What is left is
+    what the body's last slot is for — the sections, each introduced by an OdsSectionDivider, in the
+    same order as the header's counts, with the record's current state band first.
+
+    Sections do not collapse and carry no action slot: the body already opens as a whole, and every
+    section-level action ("New renewal period", "Attach document") lives in the row action menu.
 *@
 
-@{
-    var typeInfo = OdsTypeRegistries.InsurancePolicyTypeOf(Policy.Type);
-    var current = Policy.CurrentRenewal;
-}
-
-<div class="ins-tiles ins-policy-tiles">
-    <OdsInfoTile Icon="tag" Label="Policy number" ValueVariant="OdsInfoTileVariant.Mono" Foot="@(InfoFoot("Insurer reference"))">
-        <Value>@(string.IsNullOrWhiteSpace(Policy.PolicyNumber) ? "—" : Policy.PolicyNumber)</Value>
-    </OdsInfoTile>
-    <OdsInfoTile Icon="@typeInfo.Icon" IconColor="@typeInfo.Color" IconSoft="@typeInfo.Soft" Label="Type" ValueVariant="OdsInfoTileVariant.Text">
-        <Value>@typeInfo.Label</Value>
-    </OdsInfoTile>
-    <OdsInfoTile Icon="apartment" Label="Insurer" ValueVariant="OdsInfoTileVariant.Text" Foot="@(InfoFoot(Policy.Insurer.Type.ToString()))">
-        <Value>@Policy.Insurer.Name</Value>
-    </OdsInfoTile>
-    <OdsInfoTile Icon="account_balance_wallet" Label="Insured account" ValueVariant="OdsInfoTileVariant.Text"
-                 Foot="@(InfoFoot(Policy.InsuredAccount is { } a ? AccountLabel(a.Type) : "Optional"))">
-        <Value>@(Policy.InsuredAccount?.Name ?? "Not linked")</Value>
-    </OdsInfoTile>
-    @if (!string.IsNullOrWhiteSpace(Policy.Notes))
-    {
-        <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true" ValueVariant="OdsInfoTileVariant.Text">
-            <Value>@Policy.Notes</Value>
-        </OdsInfoTile>
-    }
-</div>
-
-@if (current is not null)
+@if (Policy.CurrentRenewal is { } current)
 {
+    @* The current-state band comes first, above the sub-collections. *@
     <div class="ins-current">
-        <div class="ins-sub">
-            <span class="ins-sub-label">Current period</span>
-            <span class="ins-sub-rule"></span>
-            <span class="ins-sub-meta">in force · @DateTime.UtcNow.ToString("MMM dd, yyyy")</span>
-        </div>
+        <OdsSectionDivider Label="Current period" Meta="@($"in force · {LongDate(DateTime.UtcNow)}")" />
         <div class="ins-tiles">
-            <OdsInfoTile Icon="payments" Label="Premium" Foot="@(InfoFoot("for this period"))">
+            @* The premium is money going out, so it reads in the expense hue. *@
+            <OdsInfoTile Icon="payments" Label="Premium" Tone="OdsInfoTileTone.Expense" Foot="@Caption("for this period")">
                 <Value>@Money(current.Premium, current.PremiumCurrencyCode)</Value>
             </OdsInfoTile>
-            <OdsInfoTile Icon="shield" Label="Coverage" Foot="@(InfoFoot("insured sum"))">
+            <OdsInfoTile Icon="shield" Label="Coverage" Foot="@Caption("insured sum")">
                 <Value>@Money(current.CoverageAmount, current.CoverageCurrencyCode)</Value>
             </OdsInfoTile>
-            <OdsInfoTile Icon="event" Label="Renews" ValueVariant="OdsInfoTileVariant.Sm" Foot="@(InfoFoot($"since {current.FromDate:MMM dd, yyyy}"))">
-                <Value>@current.ToDate.ToString("MMM dd, yyyy")</Value>
+            @* We know only when this period ENDS — whether it renews depends on terms we do not
+               record, so the label never promises a renewal. *@
+            <OdsInfoTile Icon="event"
+                         Label="@(Lapsed(current) ? "Period ended" : "Period ends")"
+                         ValueVariant="OdsInfoTileVariant.Sm"
+                         Tone="@(Lapsed(current) ? OdsInfoTileTone.Expense : OdsInfoTileTone.Default)"
+                         Foot="@Caption($"{(current.FromDate.Date > Today ? "starts" : "since")} {LongDate(current.FromDate)}")">
+                <Value>@LongDate(current.ToDate)</Value>
             </OdsInfoTile>
         </div>
     </div>
 }
 
-<OdsCollapsible Icon="event_repeat" DefaultOpen="true">
-    <Title>Renewal history</Title>
-    <Count>@Policy.Renewals.Count</Count>
-    <Actions>
-        @if (CanWrite)
-        {
-            <OdsButton Variant="OdsButtonVariant.Text" Icon="add" OnClick="OnAddRenewal">New period</OdsButton>
-        }
-    </Actions>
-    <ChildContent>
-        <InsuranceRenewalHistory Policy="Policy"
-                                 Money="Money"
-                                 CanWrite="CanWrite"
-                                 CanDownload="CanDownload"
-                                 CanUpload="CanUpload"
-                                 OnEditRenewal="OnEditRenewal"
-                                 OnDeleteRenewal="OnDeleteRenewal"
-                                 OnAttachRenewal="OnAttachRenewal"
-                                 OnChanged="OnChanged" />
-    </ChildContent>
-</OdsCollapsible>
+<div class="ins-section">
+    <OdsSectionDivider Label="Renewal history" Meta="@($"{Policy.Renewals.Count} period{(Policy.Renewals.Count == 1 ? "" : "s")}")" />
+    <InsuranceRenewalHistory Policy="Policy"
+                             Money="Money"
+                             CanWrite="CanWrite"
+                             CanDownload="CanDownload"
+                             CanUpload="CanUpload"
+                             OnEditRenewal="OnEditRenewal"
+                             OnDeleteRenewal="OnDeleteRenewal"
+                             OnAttachRenewal="OnAttachRenewal"
+                             OnChanged="OnChanged" />
+</div>
 
-<OdsCollapsible Icon="folder" DefaultOpen="true">
-    <Title>Policy documents</Title>
-    <Count>@Policy.Files.Count</Count>
-    <Actions>
-        @if (CanUpload)
-        {
-            <OdsButton Variant="OdsButtonVariant.Text" Icon="upload_file" OnClick="OnAttachPolicy">Attach</OdsButton>
-        }
-    </Actions>
-    <ChildContent>
+<div class="ins-section">
+    <OdsSectionDivider Label="Policy documents" Meta="@($"{Policy.Files.Count} file{(Policy.Files.Count == 1 ? "" : "s")}")" />
+    <div class="ins-tbl-frame">
         <InsuranceFilesTable PolicyId="Policy.InsurancePolicyId"
                              Files="@PolicyFiles"
                              CanDownload="CanDownload" CanDelete="CanWrite"
                              OnChanged="OnChanged"
                              Empty="_emptyPolicyDocs" />
-    </ChildContent>
-</OdsCollapsible>
+    </div>
+</div>
 
 @code {
     [Parameter, EditorRequired] public ExistingInsurancePolicy Policy { get; set; } = default!;
@@ -105,13 +74,8 @@
     [Parameter] public bool CanDownload { get; set; }
     [Parameter] public bool CanUpload { get; set; }
 
-    /// <summary>Maps an insured account's type to its display label.</summary>
-    [Parameter, EditorRequired] public Func<AccountType, string> AccountLabel { get; set; } = t => t.ToString();
-
-    [Parameter] public EventCallback OnAddRenewal { get; set; }
     [Parameter] public EventCallback<ExistingPolicyRenewal> OnEditRenewal { get; set; }
     [Parameter] public EventCallback<ExistingPolicyRenewal> OnDeleteRenewal { get; set; }
-    [Parameter] public EventCallback OnAttachPolicy { get; set; }
     [Parameter] public EventCallback<Guid> OnAttachRenewal { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
 
@@ -120,5 +84,14 @@
     private readonly RenderFragment _emptyPolicyDocs =
         @<div class="empty-line" style="padding:20px;">No policy-level documents yet — attach the certificate, policy wording, or schedule.</div>;
 
-    private static RenderFragment InfoFoot(string text) => @<text>@text</text>;
+    private static DateTime Today => DateTime.UtcNow.Date;
+
+    /// <summary>Tense and tone follow the period's end against today.</summary>
+    private static bool Lapsed(ExistingPolicyRenewal r) => r.ToDate.Date < Today;
+
+    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>An optional tile foot — null renders no foot element at all.</summary>
+    private static RenderFragment? Caption(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
 }

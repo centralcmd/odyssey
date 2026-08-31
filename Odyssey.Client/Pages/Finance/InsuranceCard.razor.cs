@@ -478,7 +478,147 @@ public partial class InsuranceCard
     }
 
     // ── Collapsed headline figure ──────────────────────────────────────────────
-    private (bool HasValue, string Value, string Word, string Cls) Headline(InsurancePolicyListItem p)
+    // ── Record-card presentation ──────────────────────────────────────────────────
+
+    /// <summary>The headline figure's colour role: lapsed cover reads expense, cover inside the
+    /// expiring window reads pending, everything else keeps the neutral ink.</summary>
+    private static OdsRecordFigureTone HeadlineTone(string cls) => cls switch
+    {
+        "lapsed" => OdsRecordFigureTone.Expense,
+        "soon" => OdsRecordFigureTone.Pending,
+        _ => OdsRecordFigureTone.Neutral,
+    };
+
+    /// <summary>The Status tile's value tint, from the same registry the coverage chip reads, so the
+    /// chip in the header and the tile in the body can never disagree.</summary>
+    private static OdsInfoTileTone StatusTone(string chipTone) => chipTone switch
+    {
+        "income" => OdsInfoTileTone.Income,
+        "pending" => OdsInfoTileTone.Pending,
+        "expense" => OdsInfoTileTone.Expense,
+        "info" => OdsInfoTileTone.Info,
+        _ => OdsInfoTileTone.Muted,
+    };
+
+    /// <summary>
+    /// The Status tile's foot: the date the current state began. It names the period the STATUS
+    /// refers to, which is only the <em>current</em> one while cover is in force — a lapsed policy
+    /// points at its most recent period, an upcoming one at its earliest future period.
+    /// </summary>
+    private static string StatusFoot(ExistingInsurancePolicy p)
+    {
+        if (p.CoverageStatus == CoverageStatus.Archived)
+        {
+            return p.Archived is { } a ? $"since {LongDate(a)}" : "archived";
+        }
+
+        if (p.CoverageStatus is CoverageStatus.Active or CoverageStatus.ExpiringSoon && p.CurrentRenewal is { } current)
+        {
+            return $"this period ends {LongDate(current.ToDate)}";
+        }
+
+        if (p.CoverageStatus == CoverageStatus.Upcoming)
+        {
+            var next = p.Renewals.Where(r => r.FromDate.Date > Today).OrderBy(r => r.FromDate).FirstOrDefault();
+            return next is null ? "no renewal period on record" : $"starts {LongDate(next.FromDate)}";
+        }
+
+        if (p.CoverageStatus == CoverageStatus.Lapsed)
+        {
+            var last = p.Renewals.Where(r => r.ToDate.Date < Today).OrderByDescending(r => r.ToDate).FirstOrDefault();
+            return last is null ? "no renewal period on record" : $"ended {LongDate(last.ToDate)}";
+        }
+
+        return "no renewal period on record";
+    }
+
+    /// <summary>The row action menu, permission-gated. Archive stays ungated here: an insurance
+    /// policy's lifecycle is not ordered the way a subscription's or a contract's is — cover can be
+    /// retired at any point, and the design system's policy menu offers it unconditionally.</summary>
+    private IReadOnlyList<OdsMenuItem> RowActions(InsurancePolicyListItem p, bool archived)
+    {
+        var items = new List<OdsMenuItem>();
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit policy",
+                OnClick = EventCallback.Factory.Create(this, () => EditClicked(p)),
+            });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "event_repeat",
+                Label = "New renewal period",
+                OnClick = EventCallback.Factory.Create(this, () => AddRenewal(p.InsurancePolicyId)),
+            });
+        }
+
+        if (_canUploadFiles)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "upload_file",
+                Label = "Attach document",
+                OnClick = EventCallback.Factory.Create(this, () => AttachDocument(p.InsurancePolicyId)),
+            });
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint",
+            Label = "Copy ID",
+            TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => CopyId(p.InsurancePolicyId)),
+        });
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = archived ? "unarchive" : "archive",
+                Label = archived ? "Unarchive" : "Archive",
+                OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(p)),
+            });
+        }
+
+        if (_canDelete)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => ConfirmDelete(p)),
+            });
+        }
+
+        return items;
+    }
+
+    /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
+    /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
+    private static RenderFragment? Caption(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
+
+    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// The collapsed row's headline figure — the date the record turns on, plus a word saying how far
+    /// away it is. Mirrors the design system's <c>insHeadline</c>.
+    ///
+    /// <para>
+    /// Every state that HAS a renewal period headlines on a date, not on a repeat of the status word:
+    /// the chip beside the name already says "Expired", so the figure earns its place by saying
+    /// <em>when</em>. A lapsed policy shows the end of its last period and how long ago that was; an
+    /// upcoming one shows when cover begins; an archived one shows the last period it had.
+    /// <see cref="CoverageStatus.NoCoverage"/> is the one state with no date to show, because it is
+    /// precisely the case where no period was ever recorded — so it reads "No coverage".
+    /// </para>
+    /// </summary>
+    private (string Value, string Word, string Cls) Headline(InsurancePolicyListItem p)
     {
         switch (p.CoverageStatus)
         {
@@ -488,17 +628,39 @@ public partial class InsuranceCard
                 {
                     var days = (end.Date - Today).Days;
                     var word = days <= 0 ? "expires today" : $"expires in {days} day{(days == 1 ? "" : "s")}";
-                    return (true, end.ToString("MMM dd, yyyy"), word, p.CoverageStatus == CoverageStatus.ExpiringSoon ? "soon" : "");
+                    return (end.ToString("MMM dd, yyyy"), word, p.CoverageStatus == CoverageStatus.ExpiringSoon ? "soon" : "");
                 }
-                return (false, "Active", "currently covered", "");
-            case CoverageStatus.Upcoming:
-                return (false, "Upcoming", "starts later", "");
-            case CoverageStatus.Lapsed:
-                return (false, "Expired", "coverage expired", "lapsed");
+                return ("Active", "currently covered", "");
+
+            case CoverageStatus.Upcoming when p.EarliestRenewalStartDate is { } start:
+            {
+                var days = (start.Date - Today).Days;
+                var word = days <= 0 ? "starts today" : $"starts in {days} day{(days == 1 ? "" : "s")}";
+                return (start.ToString("MMM dd, yyyy"), word, "");
+            }
+
+            case CoverageStatus.Lapsed when p.LatestRenewalEndDate is { } lapsed:
+            {
+                var days = (Today - lapsed.Date).Days;
+                var word = days <= 0 ? "expired today" : $"expired {days} day{(days == 1 ? "" : "s")} ago";
+                return (lapsed.ToString("MMM dd, yyyy"), word, "lapsed");
+            }
+
+            // An archived policy may genuinely have no period on record, so this one keeps a fallback.
             case CoverageStatus.Archived:
-                return (false, "Archived", "archived", "");
+                return p.LatestRenewalEndDate is { } archivedEnd
+                    ? (archivedEnd.ToString("MMM dd, yyyy"), "archived", "")
+                    : ("Archived", "archived", "");
+
+            // Upcoming / Lapsed without a period cannot arise — both derive from having one — but the
+            // switch stays total rather than relying on that.
+            case CoverageStatus.Upcoming:
+                return ("Upcoming", "starts later", "");
+            case CoverageStatus.Lapsed:
+                return ("Expired", "coverage expired", "lapsed");
+
             default:
-                return (false, "No coverage", "no coverage yet", "");
+                return ("No coverage", "no coverage yet", "");
         }
     }
 

@@ -635,10 +635,10 @@ public partial class SubscriptionCard
         string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
 
     // ── Date formatting ───────────────────────────────────────────────────────────
-    private static string LongDate(DateOnly date) => date.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+    private static string LongDate(DateOnly date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     private static string LongDateTime(DateTime utc) =>
-        utc.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+        utc.ToLocalTime().ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Lifecycle-action draft ────────────────────────────────────────────────────
     // The pause / end / archive row actions PUT the whole record, so they round-trip the

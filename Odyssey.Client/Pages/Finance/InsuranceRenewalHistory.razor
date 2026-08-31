@@ -22,19 +22,13 @@ else
         @if (_premiumSeries.Count >= 2)
         {
             <OdsLineChart Title="Premium" Sub="@($"By renewal period · {_premiumCurrency}")"
-                          Series="_premiumSeries" Color="var(--chart-4)"
+                          Series="_premiumSeries" Color="var(--rec, var(--chart-4))"
                           Format="@(n => Money(n, _premiumCurrency))" AxisFormat="@(n => Money(n, _premiumCurrency))"
                           ShowDelta DeltaSuffix="@($"vs {_premiumSeries[0].Label}")"
                           AriaLabel="Premium by renewal period" />
         }
 
-        <div>
-            <div class="ins-sub">
-                <span class="ins-sub-label">History</span>
-                <span class="ins-sub-rule"></span>
-                <span class="ins-sub-meta">@Renewals.Count @(Renewals.Count == 1 ? "period" : "periods")</span>
-            </div>
-
+        <div class="ins-tbl-frame">
             <OdsInlinePager Items="_sorted" Context="pageRows">
             <table class="ins-tbl">
                 <thead>

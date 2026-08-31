@@ -572,7 +572,7 @@ public partial class ContractsCard
     private static RenderFragment? Caption(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
 
-    private static string LongDate(DateTime date) => date.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Collapsed headline figure (mirrors the design's conHeadline) ──────────────
     private (bool HasValue, string Value, string Word, string Cls) Headline(ContractListItem c)

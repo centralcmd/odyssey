@@ -1688,16 +1688,27 @@
 .ins-unconv { display: inline-flex; align-items: center; gap: 5px; color: var(--pending-text); }
 .ins-unconv .material-icons { font-size: 14px; }
 
-/* Collapsed-card headline (coverage end date + days remaining) */
-.ins-headline { font: 500 18px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
-.ins-headline.none { font-family: var(--font-sans); font-size: 15px; color: var(--mud-palette-text-secondary); }
-.ins-headline-word { font: 400 12px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.ins-headline-word.soon { color: var(--pending-text); }
-.ins-headline-word.lapsed { color: var(--finance-expense); }
+/* ONE ACCENT PER RECORD (the RecordCard accent rule). Inside an open card every accented
+   piece resolves to the record's own type colour, which RecordCard publishes as --rec /
+   --rec-soft; the feature indigo stays the fallback for anything drawn outside a card
+   (the portfolio summary strip, page chrome). Re-pointing the three feature vars here
+   fixes every consumer at once — the current-period row tint, the per-row document chips,
+   the documents panel and the premium trend line. */
+.odc-record-body {
+  --ins-accent: var(--rec);
+  --ins-accent-soft: var(--rec-soft);
+  --ins-accent-line: color-mix(in srgb, var(--rec) 42%, transparent);
+}
 
-/* Insurer chip row inside the collapsed card sub-line */
-.ins-sub-insurer { display: inline-flex; align-items: center; gap: 5px; }
-.ins-sub-insurer .material-icons { font-size: 14px; opacity: 0.8; }
+/* The collapsed headline figure is the record card's own `.odc-record-value` /
+   `.odc-record-caption` now, tinted through RecordCard's FigureTone — one figure treatment
+   across every record list rather than a per-feature copy. */
+
+/* Insurer + policy-number entries inside the record card's meta line */
+.ins-sub-insurer, .ins-sub-polno { display: inline-flex; align-items: center; gap: 5px; }
+.ins-sub-insurer .material-icons, .ins-sub-polno .material-icons { font-size: 14px; opacity: 0.8; }
+.ins-sub-insurer { max-width: 260px; overflow: hidden; }
+.ins-sub-insurer > span:not(.material-icons) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Renewal history — shared */
 .ins-empty-cover {
@@ -1709,11 +1720,13 @@
 .ins-empty-cover .material-icons { font-size: 20px; opacity: 0.7; }
 
 /* Terms-style history (mirrors AccountTerms) */
+/* The 16px was the old disclosure body's inner padding; a section's content sits flush
+   with its divider label, so it only applies standalone. */
 .ins-terms { display: flex; flex-direction: column; gap: 22px; padding: 16px; }
-.ins-sub { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.ins-sub-label { font: 600 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
-.ins-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light); }
-.ins-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.ins-section .ins-terms, .odc-record-body .ins-terms { padding: 0; }
+
+/* The old `.ins-sub` sub-divider was promoted to the design system as SectionDivider
+   (OdsSectionDivider, `.odc-sectiondivider`) — one divider across every record body. */
 
 /* Tile grids — the tiles are OdsInfoTile (.odc-infotile). The grid sets the
    InfoTile icon-chip accent to the feature's indigo unless a tile sets its own. */
@@ -1722,8 +1735,21 @@
   --odc-infotile-accent: var(--ins-accent);
   --odc-infotile-accent-soft: var(--ins-accent-soft);
 }
-.ins-policy-tiles { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+/* The renewal and document tables framed like the trend chart beside them — same surface,
+   border, radius and elevation; each table keeps its own cell padding, so the frame only
+   adds the inset. */
+.ins-terms .ins-tbl-frame, .ins-section > .ins-tbl-frame {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
+
+/* Current-period snapshot, and a body section: divider + its content, no disclosure and
+   no action slot. */
 .ins-current { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.ins-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 
 /* Status pill in the renewal table (In force / Upcoming / Past) */
 .ins-status { display: inline-flex; align-items: center; gap: 4px; font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
