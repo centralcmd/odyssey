@@ -192,6 +192,9 @@ export function AccountSmartTagsSection({
   open,
   defaultOpen = false,
   onToggle,
+  /** false = bare: no disclosure shell, no header. The host introduces the
+      section with its own SectionDivider (RecordCard bodies). */
+  chrome = true,
   className = '',
 }) {
   const { useState } = React;
@@ -295,6 +298,23 @@ export function AccountSmartTagsSection({
     );
   }
 
+  const inner = (
+    <SmartTagsInner hasTags={hasTags} cfg={cfg} cfgIds={cfgIds} canWrite={canWrite} opts={opts} atCap={atCap}
+      onAddTag={onAddTag} onRemoveTag={onRemoveTag} showTotal={showTotal} total={total}
+      matchCount={matchCount} fmtAmount={fmtAmount} body={body} />
+  );
+
+  // Bare form (chrome={false}): no disclosure shell and no header — the host
+  // introduces the section with its own SectionDivider. Used inside RecordCard
+  // bodies, where sections do not collapse and do not act.
+  if (chrome === false) {
+    return (
+      <div className={`odc-smarttags bare${className ? ' ' + className : ''}`}>
+        {inner}
+      </div>
+    );
+  }
+
   return (
     <div className={`odc-collapsible odc-smarttags${className ? ' ' + className : ''}`} data-open={isOpen ? '' : undefined}>
       <div className="odc-collapsible-head">
@@ -314,6 +334,16 @@ export function AccountSmartTagsSection({
 
       {isOpen ? (
         <div className="odc-collapsible-body" id={bodyId}>
+          {inner}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SmartTagsInner({ hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag, onRemoveTag, showTotal, total, matchCount, fmtAmount, body }) {
+  return (
+    <React.Fragment>
           {/* Tag-management bar — shown whenever tags exist (or a writer can add
               the first from the empty state below). Chips remove inline; the
               adder opens the full checklist. */}
@@ -359,8 +389,6 @@ export function AccountSmartTagsSection({
           ) : null}
 
           {body}
-        </div>
-      ) : null}
-    </div>
+    </React.Fragment>
   );
 }

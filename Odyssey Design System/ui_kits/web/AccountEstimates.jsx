@@ -196,7 +196,7 @@ const EstimateHero = ({ estimates, account, chartMode }) => {
   const series = estSeriesFromList(estimates);
   if (!series.length) return null;
   const ti = estTypeInfo(account);
-  const color = 'var(--finance-income)';
+  const color = 'var(--rec, var(--finance-income))';
   const current = series[series.length - 1];
   const prev = series.length > 1 ? series[series.length - 2] : null;
   const diff = prev ? current.value - prev.value : 0;
@@ -399,7 +399,8 @@ const EstimateEmpty = ({ account, txns, emptyStyle, onNew }) => {
    AccountEstimates — composes the section + owns create/edit/delete
    ============================================================= */
 const AccountEstimates = ({ account, historyStyle = 'table', chartMode = 'step', emptyStyle = 'standard',
-  defaultOpen = false, chrome = true, estimates: estProp, txns: txnsProp, onNew, onEdit, onDelete: onDeleteProp }) => {
+  defaultOpen = false, chrome = true, bareAction = true, showCurrent = true,
+  estimates: estProp, txns: txnsProp, onNew, onEdit, onDelete: onDeleteProp }) => {
   const { useState, useMemo } = React;
   const controlled = estProp != null;
   const [internal, setInternal] = useState(() => EST_H.estimatesForAccount(account.id));
@@ -434,6 +435,7 @@ const AccountEstimates = ({ account, historyStyle = 'table', chartMode = 'step',
         <React.Fragment>
           <EstimateHero estimates={estimates} account={account} chartMode={chartMode} />
 
+          {showCurrent ? (
           <div>
             <div className="est-sub">
               <span className="est-sub-label">Current value</span>
@@ -442,14 +444,19 @@ const AccountEstimates = ({ account, historyStyle = 'table', chartMode = 'step',
             </div>
             <CurrentValueBlock current={current} account={account} txns={txns} />
           </div>
+          ) : null}
 
           <div>
-            <div className="est-sub">
-              <span className="est-sub-label">History</span>
-              <span className="est-sub-rule" />
-              <span className="est-sub-meta">{estimates.length} {estimates.length === 1 ? 'estimate' : 'estimates'}</span>
-              {!chrome && <span style={{ marginLeft: 4 }}>{newBtn}</span>}
-            </div>
+            {/* Dropped only when the host supplied its own section divider
+                (bareAction={false}) — otherwise it would repeat it. */}
+            {(chrome || bareAction) ? (
+              <div className="est-sub">
+                <span className="est-sub-label">History</span>
+                <span className="est-sub-rule" />
+                <span className="est-sub-meta">{estimates.length} {estimates.length === 1 ? 'estimate' : 'estimates'}</span>
+                {!chrome && bareAction && <span style={{ marginLeft: 4 }}>{newBtn}</span>}
+              </div>
+            ) : null}
             <div className="est-history">
               <View rows={rows} currentId={currentId} changes={changes} account={account} onEdit={openEdit} onDelete={remove} />
             </div>

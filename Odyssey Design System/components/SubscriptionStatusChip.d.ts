@@ -17,7 +17,7 @@ export interface SubscriptionStatusChipProps {
   paused?: boolean | string | null;
   /** Ended = its term has lapsed (derived: endDate ≤ today). Supersedes Paused. Boolean or a timestamp. */
   ended?: boolean | string | null;
-  /** Archived = hidden/retired. Boolean or a timestamp. */
+  /** Archived = retired and hidden. Only an ended subscription can be archived, so this supersedes Ended. Boolean or a timestamp. */
   archived?: boolean | string | null;
   /** Render the Active chip when neither state is set. Default false. */
   showActive?: boolean;
@@ -30,9 +30,10 @@ export interface SubscriptionStatusChipProps {
 }
 
 /**
- * A subscription's lifecycle states (Paused / Ended / Archived) as chips — one
- * per active state, meaning conveyed as visible text; Ended supersedes Paused.
- * Renders nothing for a plain active row unless `showActive` is set.
+ * A subscription's lifecycle state as ONE chip, meaning conveyed as visible
+ * text. A subscription has exactly one state; precedence is Archived → Ended →
+ * Paused → Active (only an ended subscription can be archived). Renders nothing
+ * for a plain active row unless `showActive` is set.
  * Subscriptions' sibling of CoverageStatusChip.
  */
 export declare function SubscriptionStatusChip(props: SubscriptionStatusChipProps): JSX.Element;

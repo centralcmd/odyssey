@@ -42,6 +42,19 @@ const MetaTile    = DS.MetaTile;
 // InfoTile — labeled fact/stat tile. Aliased from the bundle, with a fallback
 // that renders the same shipped .odc-infotile markup (so the kit holds even if
 // the compiled bundle lags a turn behind a freshly-added component).
+// RecordCard / InfoTileGrid / SectionDivider — the record-card pattern, aliased
+// straight from the bundle (no kit fallbacks: the pattern IS the DS component).
+const RecordCard = DS.RecordCard;
+const InfoTileGrid = DS.InfoTileGrid || (({ dense = false, className = '', style, children }) => (
+  <div className={['odc-tilegrid', dense ? 'dense' : '', className].filter(Boolean).join(' ')} style={style}>{children}</div>
+));
+const SectionDivider = DS.SectionDivider || (({ label, meta, className = '', id }) => (
+  <div className={`odc-sectiondivider ${className}`.trim()} id={id}>
+    <span className="odc-sectiondivider-l">{label}</span>
+    <span className="odc-sectiondivider-rule" aria-hidden="true" />
+    {meta != null ? <span className="odc-sectiondivider-meta">{meta}</span> : null}
+  </div>
+));
 const InfoTile = DS.InfoTile || (({ icon, iconColor, iconSoft, label, value, foot, valueVariant = 'mono', wide = false, elevated = true, className = '', style }) => {
   const cls = ['odc-infotile', elevated ? 'elevated' : '', wide ? 'wide' : '', className].filter(Boolean).join(' ');
   return (
@@ -503,11 +516,10 @@ const BillingIntervalChip = DS.BillingIntervalChip || (({ interval = 'Monthly', 
 });
 const SUB_STATE_META = { Paused: { label: 'Paused', tone: 'pending' }, Ended: { label: 'Ended', tone: 'expense' }, Archived: { label: 'Archived', tone: 'outline' }, Active: { label: 'Active', tone: 'income' } };
 const SubscriptionStatusChip = DS.SubscriptionStatusChip || (({ paused, ended, archived, showActive = false, size, className = '', style }) => {
-  const keys = [];
-  if (ended) keys.push('Ended');
-  else if (paused) keys.push('Paused');
-  if (archived) keys.push('Archived');
-  if (!keys.length) { if (!showActive) return null; keys.push('Active'); }
+  // One state, by precedence: Archived → Ended → Paused → Active.
+  const key = archived ? 'Archived' : ended ? 'Ended' : paused ? 'Paused' : null;
+  if (!key && !showActive) return null;
+  const keys = [key || 'Active'];
   return (
     <span className={`odc-substatus ${className}`.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', ...style }}>
       {keys.map((k) => { const m = SUB_STATE_META[k]; return <span key={k} className={`odc-chip ${m.tone}${size === 'sm' ? ' sm' : ''}`}>{m.label}</span>; })}
@@ -1315,7 +1327,7 @@ Object.assign(window, {
   ContractTypeSelect,
   BudgetCategoryTypeSelect,
   AddRow,
-  ActionMenu, SortHeader, MetaTile, InfoTile, RecordTable, SortSelect, SortHelpers, Collapsible, LineChart, Delta, ProblemAlert,
+  ActionMenu, SortHeader, MetaTile, InfoTile, RecordCard, InfoTileGrid, SectionDivider, RecordTable, SortSelect, SortHelpers, Collapsible, LineChart, Delta, ProblemAlert,
   BreakdownTile,
   FileUpload,
   Pager, PageSizeSelect, InlinePager, InfiniteList,

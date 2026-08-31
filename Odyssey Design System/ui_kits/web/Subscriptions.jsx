@@ -34,45 +34,21 @@ const subFigureCaption = (s) => {
   return n > 1 ? `every ${n} ${SUB_UNIT_NOUN[s.interval] || 'cycle'}s` : (SUB_PER_WORD[s.interval] || 'recurring');
 };
 
-/* ---------- Expanded DETAIL ---------- */
-const SubDetail = ({ s }) => {
-  const cp = SUB_H.subContact(s);
-  const cpMeta = cp && (SUB_D.contactTypeByKey[cp.type] || {});
-  const nextBilling = SUB_H.subNextBilling(s);
-  const ended = SUB_H.subEnded(s);
-  const nextBillingValue = s.archived ? 'Archived'
-    : ended ? 'Ended'
-    : s.paused ? 'Paused'
-    : nextBilling
-      ? `${SUB_H.dateLong(nextBilling)} · ${SUB_H.subRelDays(SUB_H.subDaysUntil(nextBilling))}`
-      : 'No further billing';
-  return (
-    <div className="acct-detail">
-      <div className="meta-grid">
-        <MetaTile label="Name" value={s.name} />
-        <MetaTile label="External id" value={s.externalId || '—'} mono />
-        <MetaTile label="Company" value={cp
-          ? <Chip tone="outline" icon={cpMeta.icon}>{cp.name}</Chip>
-          : '—'} />
-        <MetaTile label="Price" value={SUB_H.subMoney(s.amount, s.currencyCode)} mono valueClass="sub-price-val" />
-        <MetaTile label="Billing interval" value={<BillingIntervalChip interval={s.interval} count={SUB_H.subIntervalCount(s)} firstBillingDate={s.firstBillingDate} />} />
-        <MetaTile label="First billing date" value={SUB_H.dateLong(s.firstBillingDate)} mono />
-        <MetaTile label="Next billing" value={nextBillingValue} mono={!s.archived && !s.paused && !ended} />
-        <MetaTile label="Start date" value={SUB_H.dateLong(s.startDate)} mono />
-        <MetaTile label={ended ? 'Ended on' : 'End date'} value={s.endDate ? SUB_H.dateLong(s.endDate) : '—'} mono />
-        <MetaTile label="Status" value={<SubscriptionStatusChip paused={s.paused} ended={ended} archived={s.archived} showActive />} />
-        {s.notes ? <MetaTile label="Notes" value={s.notes} /> : null}
-        {s.paused ? <MetaTile label="Paused since" value={SUB_H.dateTime(s.paused)} mono /> : null}
-        {s.archived ? <MetaTile label="Archived" value={SUB_H.dateTime(s.archived)} mono /> : null}
-      </div>
-    </div>
-  );
-};
-
-/* ---------- One subscription list item (Contracts-style record card) ---------- */
-const SubscriptionListItem = ({ row, defaultOpen, highlight, onSave, onDelete }) => {
+/* ---------- Expanded DETAIL · DS RecordCard direction (tile-based) ----------
+   The Subscriptions rollout of the DS pattern. The body carries the
+   record's FULL field set — including the fields the collapsed header already
+   shows. Repetition is deliberate: at tile scale each value arrives with its own
+   label, so "Monthly · day 1" in the header and a labelled Billing interval
+   tile read as two different things, and the body stays a complete record
+   rather than a remainder of one. Foot captions carry the extra precision where
+   there is any; they are not a toll a field has to pay to appear. Tiles never
+   condition on each other: each renders on its own field, so no timestamp can
+   disappear when a derived state takes precedence. Nothing is invented — spend
+   rollups stay a non-goal, so there is no "paid to date". */
+const SubRecordCard = ({ row, open, onToggle, highlight, onSave, onDelete }) => {
   const { useState, useRef, useEffect } = React;
-  const [open, setOpen] = useState(!!defaultOpen);
+  const DS = window.OdysseyDesignSystem_d5aa51 || {};
+  const { RecordCard, InfoTileGrid, InfoTile } = DS;
   const [showEdit, setShowEdit] = useState(false);
   const cardRef = useRef(null);
 
@@ -81,8 +57,11 @@ const SubscriptionListItem = ({ row, defaultOpen, highlight, onSave, onDelete })
   const cp = SUB_H.subContact(s);
   const cpMeta = cp && (SUB_D.contactTypeByKey[cp.type] || {});
   const anchor = SUB_H.subBillingAnchor(s);
-  const dimmed = !!s.archived;
   const ended = SUB_H.subEnded(s);
+  const nextBilling = SUB_H.subNextBilling(s);
+  const paused = !!s.paused;
+  const startFuture = !!s.startDate && s.startDate > SUB_H.subToday();
+  const archived = !!s.archived;
 
   const saveEdit = (patch) => { onSave(s.id, patch); setShowEdit(false); };
   const togglePaused = () => onSave(s.id, { paused: s.paused ? null : new Date().toISOString() });
@@ -91,7 +70,7 @@ const SubscriptionListItem = ({ row, defaultOpen, highlight, onSave, onDelete })
 
   useEffect(() => {
     if (!highlight || !cardRef.current) return;
-    setOpen(true);
+    if (!open) onToggle(true);
     const el = cardRef.current;
     let scroller = el.parentElement;
     while (scroller && scroller !== document.body) {
@@ -107,48 +86,114 @@ const SubscriptionListItem = ({ row, defaultOpen, highlight, onSave, onDelete })
     });
   }, [highlight]);
 
+  // Next billing is a DERIVED field, and its derivation is what makes it empty:
+  // a paused, ended or archived subscription has no next billing date. The tile
+  // renders on its own value only — it never consults the Status tile.
+  const nextDue = (!paused && !ended && !archived) ? nextBilling : null;
+  const nextFoot = nextDue
+    ? `${SUB_H.subMoney(s.amount, s.currencyCode)} · ${SUB_H.subRelDays(SUB_H.subDaysUntil(nextDue))}`
+    : null;
+
+  if (!RecordCard || !InfoTileGrid || !InfoTile) return null;
+
   return (
-    <Card className={`acct-item ${open ? 'open' : ''} ${dimmed ? 'dimmed' : ''} ${highlight ? 'flash' : ''}`} ref={cardRef}>
-      <div className="acct-head" onClick={() => setOpen((o) => !o)}>
-        <Avatar icon={info.icon} tone={{ bg: info.soft, fg: info.color }} square size="lg" />
-
-        <div className="acct-id">
-          <div className="acct-name-row">
-            <span className="acct-name">{s.name}</span>
-            <SubscriptionStatusChip paused={s.paused} ended={ended} archived={s.archived} showActive size="sm" />
-          </div>
-          <div className="acct-tags">
-            {s.externalId ? <React.Fragment><span className="mono sub-extid-inline">{s.externalId}</span><span className="acct-dot">·</span></React.Fragment> : null}
-            <span className="sub-inst"><MIcon name={cp ? (cpMeta.icon || 'store') : 'store'} size={14} />{cp ? cp.name : 'No company'}</span>
-            <span className="acct-dot">·</span>
-            <span className="sub-cadence"><MIcon name={info.icon} size={14} />{SUB_H.subIntervalLabel(s)}{anchor ? ` · ${anchor}` : ''}</span>
-          </div>
-        </div>
-
-        <div className="acct-figures">
-          <div className="acct-balance mono sub-price">{SUB_H.subMoney(s.amount, s.currencyCode)}</div>
-          <div className="sub-figure-word">{subFigureCaption(s)}</div>
-        </div>
-
-        <div className="acct-controls" onClick={(e) => e.stopPropagation()}>
-          <ActionMenu items={[
-            { icon: 'edit', label: 'Edit subscription', onClick: () => setShowEdit(true) },
-            ...(ended ? [] : [{ icon: s.paused ? 'play_circle' : 'pause_circle', label: s.paused ? 'Resume' : 'Pause', onClick: togglePaused }]),
-            ...(ended ? [] : [{ icon: 'event_busy', label: 'End subscription', onClick: endNow }]),
-            { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(s.id); } },
-            { divider: true },
-            { icon: s.archived ? 'unarchive' : 'inventory_2', label: s.archived ? 'Restore' : 'Archive', onClick: toggleArchive },
-            { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(s.id) },
-          ]} />
-          <button className="acct-expand" onClick={() => setOpen((o) => !o)} aria-label="Expand">
-            <MIcon name="expand_more" size={22} className={`chev ${open ? 'open' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {open && <SubDetail s={s} />}
+    <div ref={cardRef}>
+      <RecordCard
+        icon={info.icon}
+        accent={info.color}
+        accentSoft={info.soft}
+        name={s.name}
+        chips={<SubscriptionStatusChip paused={s.paused} ended={ended} archived={s.archived} showActive size="sm" />}
+        meta={[
+          s.externalId ? <span className="sub-extid-inline"><MIcon name="tag" size={14} /><span className="mono">{s.externalId}</span></span> : null,
+          <span className="sub-inst"><MIcon name={cp ? (cpMeta.icon || 'store') : 'store'} size={14} /><span>{cp ? cp.name : 'No company'}</span></span>,
+          <span className="sub-cadence"><MIcon name={info.icon} size={14} /><span>{SUB_H.subIntervalLabel(s)}{anchor ? ` · ${anchor}` : ''}</span></span>,
+        ]}
+        figure={{ value: SUB_H.subMoney(s.amount, s.currencyCode), caption: subFigureCaption(s), tone: 'expense' }}
+        dimmed={archived}
+        highlight={highlight}
+        open={open}
+        onToggle={onToggle}
+        actions={<ActionMenu items={[
+          { icon: 'edit', label: 'Edit subscription', onClick: () => setShowEdit(true) },
+          ...(ended ? [] : [{ icon: s.paused ? 'play_circle' : 'pause_circle', label: s.paused ? 'Resume' : 'Pause', onClick: togglePaused }]),
+          ...(ended ? [] : [{ icon: 'event_busy', label: 'End subscription', onClick: endNow }]),
+          { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(s.id); } },
+          { divider: true },
+          // Only an ended subscription can be archived — the lifecycle is ordered,
+          // so the action is offered with its reason rather than hidden.
+          (ended || s.archived)
+            ? { icon: s.archived ? 'unarchive' : 'inventory_2', label: s.archived ? 'Restore' : 'Archive', onClick: toggleArchive }
+            : { icon: 'inventory_2', label: 'Archive', disabled: true, note: 'End the subscription first.' },
+          { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(s.id) },
+        ]} />}
+        details={(
+          <InfoTileGrid>
+            <InfoTile icon="subscriptions" label="Name" value={s.name} valueVariant="text" className="wrapvalue" />
+            {s.externalId ? (
+              <InfoTile icon="tag" label="External id" value={s.externalId} valueVariant="mono" foot="Provider reference" />
+            ) : null}
+            {/* The company is a REFERENCE to a contact — its own type icon and
+                colour, so it reads as that contact record. */}
+            {cp ? (
+              <InfoTile icon={cpMeta.icon || 'store'} iconColor={cpMeta.color} iconSoft={cpMeta.soft}
+                label="Company" valueVariant="text"
+                value={cp.name} foot={cpMeta.label || 'Contact'} />
+            ) : null}
+            <InfoTile icon="payments" label="Price" value={SUB_H.subMoney(s.amount, s.currencyCode)}
+              className="sub-price-tile" foot={subFigureCaption(s)} />
+            <InfoTile icon={info.icon} label="Billing interval" value={SUB_H.subIntervalLabel(s)} valueVariant="text"
+              foot={anchor || undefined} />
+            <InfoTile icon="event_available" label="First billing date" value={SUB_H.dateLong(s.firstBillingDate)}
+              valueVariant="sm" foot="cadence anchor" />
+            {nextDue ? (
+              <InfoTile icon="event_repeat" label="Next billing" value={SUB_H.dateLong(nextDue)}
+                className="sub-status-tile income" valueVariant="sm" foot={nextFoot} />
+            ) : null}
+            {/* Tense follows the date: not yet reached reads "Starts on" in info
+                blue; already reached reads "Started on" in neutral ink. */}
+            <InfoTile icon="play_arrow" label={startFuture ? 'Starts on' : 'Started on'}
+              className={startFuture ? 'tone-info' : undefined}
+              value={SUB_H.dateLong(s.startDate)} valueVariant="sm"
+              foot={startFuture ? 'upcoming' : null} />
+            {/* Renders on its own field, never on what the Status tile happens to
+               be showing. The empty case is kept deliberately: whether a
+               recurring charge ever stops is material. */}
+            <InfoTile icon="flag" label={s.endDate ? (ended ? 'Ended on' : 'Ends on') : 'End date'}
+              className={ended ? 'tone-expense' : undefined}
+              value={s.endDate ? SUB_H.dateLong(s.endDate) : 'No end date'}
+              valueVariant={s.endDate ? 'sm' : 'text'}
+              foot={s.endDate ? (ended ? 'no longer billing' : 'scheduled') : 'open-ended'} />
+            {/* Status is a DERIVED summary of endDate / paused / archived. It
+               carries the state and the date that state began — and the fields it
+               derives from still render their own tiles below, so no timestamp can
+               go missing when one state takes precedence over another. */}
+            <InfoTile icon={archived ? 'inventory_2' : ended ? 'event_busy' : paused ? 'pause_circle' : 'autorenew'}
+              label="Status" valueVariant="text"
+              className={`sub-status-tile ${archived ? 'muted' : ended ? 'expense' : paused ? 'pending' : 'income'}`}
+              value={archived ? 'Archived' : ended ? 'Ended' : paused ? 'Paused' : 'Active'}
+              foot={archived ? `since ${SUB_H.dateTime(s.archived)}`
+                : ended ? `since ${SUB_H.dateLong(s.endDate)}`
+                : paused ? `since ${SUB_H.dateTime(s.paused)}`
+                : 'billing on schedule'} />
+            {paused ? (
+              <InfoTile icon="pause_circle" label="Paused" value={SUB_H.dateTime(s.paused)} valueVariant="sm"
+                className="sub-status-tile pending" foot="still listed, not billing" />
+            ) : null}
+            {archived ? (
+              <InfoTile icon="inventory_2" label="Archived" value={SUB_H.dateTime(s.archived)} valueVariant="sm"
+                className="sub-status-tile muted" foot="hidden from the default list" />
+            ) : null}
+          </InfoTileGrid>
+        )}
+        content={s.notes ? (
+          <InfoTileGrid>
+            <InfoTile icon="sticky_note_2" label="Notes" wide value={s.notes} />
+          </InfoTileGrid>
+        ) : null}
+      />
       {showEdit && <AddSubscriptionModal subscription={s} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
-    </Card>
+    </div>
   );
 };
 
@@ -167,6 +212,8 @@ const Subscriptions = () => {
   const [jumpId, setJumpId] = useState(null);
   // Card-list server paging: "Load N at a time" batch size, fed to InfiniteList.
   const [batch, setBatch] = useState(25);
+  // The list owns ONE openId — opening a record closes its siblings.
+  const [openId, setOpenId] = useState('sub-netflix');
   const today = SUB_H.subToday();
 
   const jumpTo = (id) => {
@@ -333,8 +380,10 @@ const Subscriptions = () => {
             noun="subscriptions"
             revealKey={jumpId}
             renderItem={(s) => (
-              <SubscriptionListItem row={s}
-                defaultOpen={s.id === 'sub-netflix'} highlight={jumpId === s.id}
+              <SubRecordCard row={s}
+                open={openId === s.id}
+                onToggle={(o) => setOpenId(o ? s.id : null)}
+                highlight={jumpId === s.id}
                 onSave={onSave} onDelete={onDelete} />
             )}
             empty={(
@@ -355,4 +404,4 @@ const Subscriptions = () => {
   );
 };
 
-Object.assign(window, { Subscriptions, SubscriptionListItem, AddSubscriptionModal });
+Object.assign(window, { Subscriptions, SubRecordCard, AddSubscriptionModal });

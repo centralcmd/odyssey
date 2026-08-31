@@ -13,6 +13,17 @@
   --ins-accent-line: oklch(0.72 0.16 282 / 0.42);
 }
 
+/* ONE ACCENT PER RECORD (the RecordCard accent rule). Inside an open card every accented
+   piece resolves to the record's own type colour, which RecordCard publishes as
+   --rec / --rec-soft; the feature indigo stays the fallback for anything drawn
+   outside a card (portfolio summary strip, page chrome). Re-pointing the three
+   feature vars here fixes every consumer at once. */
+.odc-record-body {
+  --ins-accent: var(--rec);
+  --ins-accent-soft: var(--rec-soft);
+  --ins-accent-line: color-mix(in srgb, var(--rec) 42%, transparent);
+}
+
 /* ============================================================
    Portfolio summary strip (header Overview region)
    ============================================================ */
@@ -85,7 +96,10 @@
    Terms-style history (mirrors AccountTerms): a Current-period summary
    + sub-dividers, then a status'd, inline-editable history table.
    ============================================================ */
+/* The 16px here was the old Collapsible body's inner padding; a section's
+   content sits flush with its divider label, so it only applies standalone. */
 .ins-terms { display: flex; flex-direction: column; gap: 22px; padding: 16px; }
+.ins-section .ins-terms, .odc-record-body .ins-terms { padding: 0; }
 .ins-sub { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .ins-sub-label { font: 600 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 .ins-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light); }
@@ -135,8 +149,21 @@
    full-width wrap are handled by the DS .odc-infotile.wide rules). */
 .ins-policy-tiles { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 
+/* The renewal table framed like the trend chart beside it — same surface,
+   border, radius and elevation; the table keeps its own cell padding, so the
+   frame only adds the horizontal inset. */
+.ins-terms .ins-tbl-frame, .ins-section > .ins-tbl-frame {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: 8px 8px 4px;
+}
+
 /* Current-period snapshot when lifted out of the history section to policy level */
 .ins-current { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+/* A body section: divider + its content, no disclosure and no action slot. */
+.ins-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 
 /* Per-row documents chip + expandable documents sub-row (so renewal-level files
    are visible/manageable inline, not just counted). */

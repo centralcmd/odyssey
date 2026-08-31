@@ -7,7 +7,7 @@
                         optional) or ONE-OFF (a single completionDate, no term).
      • ContractParty  { id, accountId? | contactId? | insurancePolicyId? }
                         — exactly one target (the XOR invariant, §6). The party
-                        kind label for a contact target is "Institution".
+                        kind label for a contact target is "Contact".
      • ContractFile   { id, fileMetadataId, fileType, attachedByUserId,
                         attachedAtUtc } — a REFERENCE to an existing FileMetadata
                         record (rendered with the FilesTable shape
@@ -68,7 +68,7 @@
 
   /* ---- Seed contracts. Dates anchored around mid-2026 so the derived statuses
      are stable: covers all four types and all three party kinds (Account /
-     Institution / Insurance policy), plus one Upcoming, one Expired, and one
+     Contact / Insurance policy), plus one Upcoming, one Expired, and one
      Archived record. ---- */
   D.contracts = [
     {
@@ -148,7 +148,7 @@
     {
       id: 'ct-solar', name: 'Solar Panel Lease', type: 'Other',
       description: 'Twenty-year rooftop solar lease — transferred to the new owner on sale of the property. Retained for reference.',
-      startDate: '2023-06-01', endDate: null, archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z',
+      startDate: '2023-06-01', endDate: '2025-10-31', archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z',
       parties: [
         { id: 'cp-solar-1', accountId: '7' },
         { id: 'cp-solar-2', insurancePolicyId: 'ip-home' },
@@ -233,8 +233,8 @@
       if (party.contactId) {
         const c = D.contactById[party.contactId];
         const m = (c && D.contactTypeByKey[c.type]) || {};
-        return { kind: 'contact', kindLabel: 'Institution', name: c ? c.name : 'Unknown institution',
-          typeLabel: m.label || '', icon: m.icon || 'account_balance', color: m.color, soft: m.soft, target: c };
+        return { kind: 'contact', kindLabel: 'Contact', name: c ? c.name : 'Unknown contact',
+          typeLabel: m.label || '', icon: m.icon || 'groups', color: m.color, soft: m.soft, target: c };
       }
       if (party.insurancePolicyId) {
         const p = D.insurancePolicyById ? D.insurancePolicyById[party.insurancePolicyId] : (D.insurancePolicies || []).find(x => x.id === party.insurancePolicyId);

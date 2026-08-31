@@ -8,21 +8,22 @@
    shared .acct-item.dimmed, so nothing extra needed there). Everything else
    (summary tiles, edit grid, chips) reuses kit.css / account.css. */
 
-/* Tag line under the name — external id · company · cadence. */
-.acct-tags .sub-extid-inline { color: var(--mud-palette-text-secondary); letter-spacing: 0.01em; }
-.acct-tags .sub-inst,
-.acct-tags .sub-cadence { display: inline-flex; align-items: center; gap: 5px; }
-.acct-tags .sub-inst .material-icons,
-.acct-tags .sub-cadence .material-icons { font-size: 14px; color: var(--mud-palette-text-secondary); }
-.acct-tags .sub-inst { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The RecordCard header's meta line gets alignment from .odc-record-metaitem in
+   components.css; only the company clamp is feature-specific. */
+.odc-record-meta .sub-extid-inline { color: var(--mud-palette-text-secondary); letter-spacing: 0.01em; }
+.odc-record-meta .sub-inst { max-width: 260px; }
+.odc-record-meta .sub-inst, .odc-record-meta .sub-cadence { overflow: hidden; }
+.odc-record-meta .sub-inst > span, .odc-record-meta .sub-cadence > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Price caption beneath the headline figure in the collapsed header. */
-.acct-figures .sub-figure-word { font: var(--fw-regular) 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 4px; text-align: right; }
-
-/* Price figure — a recurring expense, so it reads in the finance-expense hue. */
-.acct-figures .sub-price { color: var(--finance-expense); }
-/* Same expense hue for the expanded-detail Price tile and the create/edit inputs. */
-.meta-tile-value.sub-price-val { color: var(--finance-expense); }
+/* Price — a recurring expense, so it reads in the finance-expense hue, in the
+   header figure (via RecordCard's tone) and in the Price tile. */
+.sub-price-tile .odc-infotile-v { color: var(--finance-expense); }
+/* Status tile — the value carries the same hue as the header's status chip, and
+   the foot carries the timestamp that state started. */
+.sub-status-tile.income .odc-infotile-v { color: var(--finance-income); }
+.sub-status-tile.pending .odc-infotile-v { color: var(--pending-text, var(--finance-pending)); }
+.sub-status-tile.expense .odc-infotile-v { color: var(--finance-expense); }
+.sub-status-tile.muted .odc-infotile-v { color: var(--mud-palette-text-secondary); }
 .sub-amount-expense .odc-amount-input,
 .sub-amount-expense .odc-amount-adorn { color: var(--finance-expense); }
 

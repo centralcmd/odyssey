@@ -13,6 +13,15 @@
   --con-accent-line: oklch(0.70 0.13 42 / 0.42);
 }
 
+/* ONE ACCENT PER RECORD (the RecordCard accent rule). Inside an open card the feature
+   vars resolve to the record's own type colour (--rec / --rec-soft, published by
+   RecordCard); the feature amber stays the fallback outside a card. */
+.odc-record-body {
+  --con-accent: var(--rec);
+  --con-accent-soft: var(--rec-soft);
+  --con-accent-line: color-mix(in srgb, var(--rec) 42%, transparent);
+}
+
 /* ============================================================
    Portfolio summary strip (header Overview region)
    ============================================================ */
@@ -29,7 +38,7 @@
 .con-headline-word.expired { color: var(--finance-expense); }
 .con-headline-word.archived { color: var(--mud-palette-text-secondary); }
 
-/* The institution chip row inside the collapsed card sub-line */
+/* The contact chip row inside the collapsed card meta line */
 .con-sub-inst { display: inline-flex; align-items: center; gap: 5px; }
 .con-sub-inst .material-icons { font-size: 14px; opacity: 0.8; }
 
@@ -41,28 +50,46 @@
   --odc-infotile-accent: var(--con-accent);
   --odc-infotile-accent-soft: var(--con-accent-soft);
 }
+.con-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+/* Section tables read as cards, like the charts and tables on the other pages. */
+.odc-record-body .con-tbl-frame {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: 8px 8px 4px;
+}
 .con-sub { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .con-sub-label { font: 600 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 .con-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light); }
 .con-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
 
 /* ============================================================
-   Parties list — one row per typed link (Account / Institution /
+   Parties list — one row per typed link (Account / Contact /
    Insurance policy). Each row is the minimal projection: kind icon
    + name + kind label + target type.
    ============================================================ */
 .con-parties { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+/* The 16px was the old Collapsible body's inner padding; a section's content
+   sits flush with its divider label. */
+.odc-record-body .con-parties { padding: 0; }
 .con-party {
   display: flex; align-items: center; gap: 12px;
   border: 1px solid var(--mud-palette-divider); border-radius: 10px;
   background: var(--mud-palette-background); padding: 10px 12px;
 }
+/* Party avatars are set per row from the REFERENCED record's own type colour
+   (references keep their own icon + colour); file-type avatars in the documents table
+   likewise keep their registry colour. */
 .con-party-av {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
   width: 38px; height: 38px; border-radius: 9px;
 }
 .con-party-av .material-icons { font-size: 20px; }
-.con-party-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+/* One line — name, kind chip, target type. min-height keeps the row the same
+   height it was when the meta sat on a second line. */
+.con-party-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; min-height: 38px; }
+.con-party-meta { flex: none; }
 .con-party-name { font: 500 13.5px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .con-party-meta { display: inline-flex; align-items: center; gap: 7px; font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .con-party-kind {
@@ -139,3 +166,10 @@
 .con-kind-lab { font: 500 12px/1.2 var(--font-sans); }
 
 /* Archived card dimming uses the existing .acct-item.dimmed rule from kit.css */
+
+/* Status tile — the value carries the header chip's hue, with the date that
+   state began as its foot (matching the Subscriptions status tile). */
+.con-status-tile.income .odc-infotile-v { color: var(--finance-income); }
+.con-status-tile.info .odc-infotile-v { color: var(--mud-palette-info); }
+.con-status-tile.expense .odc-infotile-v { color: var(--finance-expense); }
+.con-status-tile.muted .odc-infotile-v { color: var(--mud-palette-text-secondary); }

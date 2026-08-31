@@ -120,13 +120,21 @@ const RenewalRowActions = ({ onEdit, onDelete }) => (
 
 /* ====================== Current-period summary tiles ======================
    (DS InfoTile, mirrors the Terms "Current terms" tiles). */
-const CurrentRenewalSummary = ({ r }) => (
-  <div className="ins-tiles">
-    <InfoTile icon="payments" label="Premium" value={INS_H.insMoney(r.premium, r.premiumCurrencyCode)} foot="for this period" />
-    <InfoTile icon="shield" label="Coverage" value={INS_H.insMoney(r.coverageAmount, r.coverageCurrencyCode)} foot="insured sum" />
-    <InfoTile icon="event" label="Renews" value={insDate(r.toDate)} valueVariant="sm" foot={`since ${insDate(r.fromDate)}`} />
-  </div>
-);
+const CurrentRenewalSummary = ({ r, today }) => {
+  const now = today || INS_H.insToday();
+  // Tense and tone follow the period's end against today.
+  const lapsed = r.toDate < now;
+  return (
+    <div className="ins-tiles">
+      <InfoTile icon="payments" label="Premium" className="tone-expense" value={INS_H.insMoney(r.premium, r.premiumCurrencyCode)} foot="for this period" />
+      <InfoTile icon="shield" label="Coverage" value={INS_H.insMoney(r.coverageAmount, r.coverageCurrencyCode)} foot="insured sum" />
+      {/* We know only when this period ends — whether it renews depends on terms
+          we do not record, so the label never promises a renewal. */}
+      <InfoTile icon="event" label={lapsed ? 'Period ended' : 'Period ends'} className={lapsed ? 'tone-expense' : undefined}
+        value={insDate(r.toDate)} valueVariant="sm" foot={`${r.fromDate > now ? 'starts' : 'since'} ${insDate(r.fromDate)}`} />
+    </div>
+  );
+};
 
 /* ====================== Renewal history — TABLE (mirrors the Terms table) ====================== */
 const RenewalTable = ({ renewals, currentId, today, onEdit, onDelete, onUploadRenewal, onDeleteRenewalFile }) => {
@@ -219,7 +227,7 @@ const PremiumTrend = ({ renewals }) => {
       title="Premium"
       sub={`By renewal period · ${cur}`}
       series={series}
-      color="var(--chart-4)"
+      color="var(--rec, var(--chart-4))"
       format={(n) => INS_H.insMoney(n, cur)}
       axisFormat={(n) => INS_H.insMoneyCompact(n, cur)}
       showDelta
@@ -249,12 +257,9 @@ const RenewalHistory = ({ policy, today, onAddRenewal, onEditRenewal, onDeleteRe
   return (
     <div className="ins-terms">
       <PremiumTrend renewals={renewals} />
-      <div>
-        <div className="ins-sub">
-          <span className="ins-sub-label">History</span>
-          <span className="ins-sub-rule" />
-          <span className="ins-sub-meta">{renewals.length} {renewals.length === 1 ? 'period' : 'periods'}</span>
-        </div>
+      {/* The section's own SectionDivider already labels this and carries the
+          period count — no second "History" header inside it. */}
+      <div className="ins-tbl-frame">
         <RenewalTable renewals={renewals} currentId={currentId} today={today} onEdit={onEditRenewal} onDelete={onDeleteRenewal}
           onUploadRenewal={onUploadRenewal} onDeleteRenewalFile={onDeleteRenewalFile} />
       </div>
@@ -271,64 +276,105 @@ const PolicyDetail = ({ policy, today, focusDocs, onNavigate, setPolicy, onAddRe
   const removeFile = (f) => setPolicy(prev => ({ ...prev, files: prev.files.filter(x => x.id !== f.id) }));
   const removeRenewalFile = (rid, f) => setPolicy(prev => ({ ...prev, renewals: prev.renewals.map(r => (r.id === rid ? { ...r, files: (r.files || []).filter(x => x.id !== f.id) } : r)) }));
 
-  const insuredTypeLabel = insured && (INS_D.accountTypeById[insured.type] || {}).label;
+  // Referenced records keep their own type mark (icon + colour) — they point
+  // elsewhere, so they read as that record rather than as part of this one.
+  const insuredMeta = (insured && INS_D.accountTypeById[insured.type]) || {};
+  const insurerMeta = (insurer && INS_D.contactTypeByKey[insurer.type]) || {};
+  const insuredTypeLabel = insuredMeta.label;
+  // Coverage status is derived (archived → upcoming → lapsed → expiring → active
+  // → no coverage), so its tile carries the state and the date it began, tinted
+  // like the header chip — the Subscriptions status tile pattern.
+  const st = INS_H.insCoverageStatus(policy, today);
+  const stMeta = INS_H.insCoverageStatusMeta(st.key);
+  const stTone = stMeta.tone === 'income' ? 'tone-income' : stMeta.tone === 'expense' ? 'tone-expense'
+    : stMeta.tone === 'pending' ? 'tone-pending' : stMeta.tone === 'info' ? 'tone-info' : 'tone-muted';
+  // The foot names the period the STATUS refers to — which is only `current`
+  // while cover is in force. A lapsed policy points at its most recent period,
+  // an upcoming one at its earliest future period.
+  const allPeriods = policy.renewals || [];
+  const lastEnded = allPeriods.filter(r => r.toDate < today).sort((a, b) => (a.toDate < b.toDate ? 1 : -1))[0];
+  const nextStart = allPeriods.filter(r => r.fromDate > today).sort((a, b) => (a.fromDate < b.fromDate ? -1 : 1))[0];
+  const stFoot = st.key === 'Archived' ? `since ${INS_H.dateTime(policy.archived)}`
+    : (st.key === 'Active' || st.key === 'ExpiringSoon') && current ? `this period ends ${insDate(current.toDate)}`
+    : st.key === 'Upcoming' && nextStart ? `starts ${insDate(nextStart.fromDate)}`
+    : st.key === 'Lapsed' && lastEnded ? `ended ${insDate(lastEnded.toDate)}`
+    : 'no renewal period on record';
   // Total premium accrued through the current period (current + all past), in the
   // current period's currency — a policy-level fact, shown beside the other tiles.
   const accrued = current ? (policy.renewals || []).filter(x => INS_H.insDateOnly(x.fromDate) <= INS_H.insDateOnly(current.toDate)) : [];
   const accruedCur = current && current.premiumCurrencyCode;
   const accruedTotal = accrued.reduce((s, x) => s + (INS_H.insConvert(x.premium, x.premiumCurrencyCode, accruedCur) ?? x.premium), 0);
 
-  return (
-    <div className="acct-detail">
-      <div className="ins-tiles ins-policy-tiles">
-        <InfoTile icon="tag" label="Policy number" value={policy.policyNumber || '—'} valueVariant="mono" foot="Insurer reference" />
-        <InfoTile icon={typeInfo.icon} iconColor={typeInfo.color} iconSoft={typeInfo.soft} label="Type" value={typeInfo.label} valueVariant="text" />
-        <InfoTile icon="apartment" label="Insurer" valueVariant="text"
-          value={insurer ? insurer.name : 'Not set'} foot={insurer ? insurer.type : 'Required'} />
-        <InfoTile icon="account_balance_wallet" label="Insured account" valueVariant="text"
-          value={insured ? insured.name : 'Not linked'} foot={insured ? insuredTypeLabel : 'Optional'} />
-        {current ? <InfoTile icon="savings" label="Total premium" value={INS_H.insMoney(accruedTotal, accruedCur)} valueVariant="mono" foot={`${accrued.length} period${accrued.length === 1 ? '' : 's'} to date`} /> : null}
-        {policy.notes ? <InfoTile icon="sticky_note_2" label="Notes" value={policy.notes} wide /> : null}
-      </div>
+  // The card's DETAILS slot: the policy's full field set (rule 3), each tile
+  // rendering on its own field (rule 5). Empty fields drop out — except the
+  // insurer, where the absence is the fact: a policy without one is broken.
+  const details = (
+    <InfoTileGrid>
+      <InfoTile icon="shield" label="Name" value={policy.name} valueVariant="text" className="wrapvalue" />
+      {policy.policyNumber ? <InfoTile icon="tag" label="Policy number" value={policy.policyNumber} valueVariant="mono" foot="Insurer reference" /> : null}
+      <InfoTile icon={typeInfo.icon} label="Type" value={typeInfo.label} valueVariant="text" />
+      <InfoTile icon={insurer ? (insurerMeta.icon || 'groups') : 'apartment'}
+        iconColor={insurer ? insurerMeta.color : undefined} iconSoft={insurer ? insurerMeta.soft : undefined}
+        label="Insurer" valueVariant="text"
+        value={insurer ? insurer.name : 'Not set'} foot={insurer ? (insurerMeta.label || insurer.type) : 'Required'} />
+      {insured ? <InfoTile icon={insuredMeta.icon || 'account_balance_wallet'}
+        iconColor={insuredMeta.color} iconSoft={insuredMeta.soft}
+        label="Insured account" valueVariant="text"
+        value={insured.name} foot={insuredTypeLabel} /> : null}
+      <InfoTile icon={stMeta.icon} label="Status" valueVariant="text" className={stTone}
+        value={stMeta.label} foot={stFoot} />
+      {current ? <InfoTile icon="savings" label="Total premium" value={INS_H.insMoney(accruedTotal, accruedCur)} valueVariant="mono" foot={`${accrued.length} period${accrued.length === 1 ? '' : 's'} to date`} /> : null}
+    </InfoTileGrid>
+  );
+  const content = policy.notes ? (
+    <InfoTileGrid><InfoTile icon="sticky_note_2" label="Notes" value={policy.notes} wide /></InfoTileGrid>
+  ) : null;
 
-      {/* CURRENT PERIOD — a policy-level snapshot, above the history */}
+  return (
+    <React.Fragment>
+      {details}
+      {content}
+
+      {/* CURRENT PERIOD — the current-state section, first among the sections */}
       {current && (
         <div className="ins-current">
-          <div className="ins-sub">
-            <span className="ins-sub-label">Current period</span>
-            <span className="ins-sub-rule" />
-            <span className="ins-sub-meta">in force · {insDate(today)}</span>
-          </div>
-          <CurrentRenewalSummary r={current} />
+          <SectionDivider label="Current period" meta={`in force · ${insDate(today)}`} />
+          <CurrentRenewalSummary r={current} today={today} />
         </div>
       )}
 
-      {/* RENEWAL HISTORY */}
-      <Collapsible icon="event_repeat" title="Renewal history" count={(policy.renewals || []).length} defaultOpen
-        action={<Button variant="text" color="primary" icon="add" onClick={(e) => { e.stopPropagation(); onAddRenewal(); }}>New period</Button>}>
+      {/* RENEWAL HISTORY — a plain section: its "New period" action lives in the
+          row action menu, so the section header carries the label and count only. */}
+      <div className="ins-section">
+        <SectionDivider label="Renewal history" meta={`${(policy.renewals || []).length} period${(policy.renewals || []).length === 1 ? '' : 's'}`} />
         <RenewalHistory policy={policy} today={today}
           onAddRenewal={onAddRenewal} onEditRenewal={onEditRenewal} onDeleteRenewal={onDeleteRenewal}
           onUploadRenewal={onUploadRenewal} onDeleteRenewalFile={removeRenewalFile} />
-      </Collapsible>
+      </div>
 
-      {/* POLICY DOCUMENTS */}
-      <Collapsible key={focusDocs ? 'docs-open' : 'docs'} icon="folder" title="Policy documents" count={(policy.files || []).length} defaultOpen={!!focusDocs}
-        action={<Button variant="text" icon="upload_file" onClick={(e) => { e.stopPropagation(); onUpload(); }}>Attach</Button>}>
-        <InsFilesTable
-          files={policy.files || []}
-          onDelete={removeFile}
-          empty={<div className="empty-line" style={{ padding: 20 }}>No policy-level documents yet — attach the certificate, policy wording, or schedule.</div>}
-        />
-      </Collapsible>
-    </div>
+      {/* POLICY DOCUMENTS — last section, same treatment ("Attach document" is
+          likewise in the row action menu). */}
+      <div className="ins-section">
+        <SectionDivider label="Policy documents" meta={`${(policy.files || []).length} file${(policy.files || []).length === 1 ? '' : 's'}`} />
+        <div className="ins-tbl-frame">
+          <InsFilesTable
+            files={policy.files || []}
+            onDelete={removeFile}
+            empty={<div className="empty-line" style={{ padding: 20 }}>No policy-level documents yet — attach the certificate, policy wording, or schedule.</div>}
+          />
+        </div>
+      </div>
+    </React.Fragment>
   );
 };
 
 /* ====================== One policy list item ====================== */
-const PolicyListItem = ({ pol, today, defaultOpen, highlight, onNavigate, onDelete }) => {
+const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNavigate, onDelete }) => {
   const { useState, useRef, useEffect } = React;
   const [p, setP] = useState(pol);
-  const [open, setOpen] = useState(!!defaultOpen);
+  // Open state lives in the list — opening a policy closes its siblings.
+  const open = !!openProp;
+  const setOpen = (next) => onToggle(typeof next === 'function' ? next(open) : next);
   const [showEdit, setShowEdit] = useState(false);
   const [focusDocs, setFocusDocs] = useState(false);
   const [modal, setModal] = useState(null); // { kind:'renewal'|'upload', renewal? }
@@ -369,7 +415,7 @@ const PolicyListItem = ({ pol, today, defaultOpen, highlight, onNavigate, onDele
 
   useEffect(() => {
     if (!highlight || !cardRef.current) return;
-    setOpen(true);
+    if (!open) setOpen(true);
     const el = cardRef.current;
     let scroller = el.parentElement;
     while (scroller && scroller !== document.body) {
@@ -386,50 +432,41 @@ const PolicyListItem = ({ pol, today, defaultOpen, highlight, onNavigate, onDele
   }, [highlight]);
 
   return (
-    <Card className={`acct-item ${open ? 'open' : ''} ${dimmed ? 'dimmed' : ''} ${highlight ? 'flash' : ''}`} ref={cardRef}>
-      <div className="acct-head" onClick={() => setOpen(o => !o)}>
-        <Avatar icon={typeInfo.icon} tone={{ bg: typeInfo.soft, fg: typeInfo.color }} square size="lg" />
-
-        <div className="acct-id">
-          <div className="acct-name-row">
-            <span className="acct-name">{p.name}</span>
-            <CoverageStatusChip status={st.key} />
-          </div>
-          <div className="acct-tags">
-            <span>{typeInfo.label}</span>
-            <span className="acct-dot">·</span>
-            <span className="ins-sub-insurer"><MIcon name="apartment" size={14} />{insurer ? insurer.name : 'No insurer'}</span>
-            {p.policyNumber && <React.Fragment><span className="acct-dot">·</span><span className="mono">{p.policyNumber}</span></React.Fragment>}
-            <span className="acct-dot">·</span>
-            <span className="acct-counts">
-              <span><MIcon name="event_repeat" size={14} />{(p.renewals || []).length}</span>
-              <span><MIcon name="description" size={14} />{INS_H.insFileCount(p)}</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="acct-figures">
-          <div className={`ins-headline ${headline.value ? '' : 'none'}`}>{headline.value || 'No coverage'}</div>
-          <div className={`ins-headline-word ${headline.cls}`}>{headline.word}</div>
-        </div>
-
-        <div className="acct-controls" onClick={(e) => e.stopPropagation()}>
-          <ActionMenu items={[
-            { icon: 'edit', label: 'Edit policy', onClick: () => setShowEdit(true) },
-            { icon: 'event_repeat', label: 'New renewal period', onClick: () => { setOpen(true); setModal({ kind: 'renewal' }); } },
-            { icon: 'upload_file', label: 'Attach document', onClick: () => { setOpen(true); setModal({ kind: 'upload' }); } },
-            { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(p.id); } },
-            { divider: true },
-            { icon: p.archived ? 'unarchive' : 'archive', label: p.archived ? 'Unarchive' : 'Archive', onClick: () => setP(prev => ({ ...prev, archived: prev.archived ? null : new Date().toISOString() })) },
-            { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(p.id) },
-          ]} />
-          <button className="acct-expand" onClick={() => setOpen(o => !o)} aria-label="Expand">
-            <MIcon name="expand_more" size={22} className={`chev ${open ? 'open' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {open && (
+    <div ref={cardRef}>
+      <RecordCard
+        icon={typeInfo.icon}
+        accent={typeInfo.color}
+        accentSoft={typeInfo.soft}
+        name={p.name}
+        chips={<CoverageStatusChip status={st.key} />}
+        meta={[
+          typeInfo.label,
+          <span className="ins-sub-insurer"><MIcon name={insurer ? ((INS_D.contactTypeByKey[insurer.type] || {}).icon || 'groups') : 'apartment'} size={14} /><span>{insurer ? insurer.name : 'No insurer'}</span></span>,
+          p.policyNumber ? <span className="mono"><MIcon name="tag" size={14} /><span>{p.policyNumber}</span></span> : null,
+        ]}
+        counts={[
+          { icon: 'event_repeat', value: (p.renewals || []).length, label: 'Renewal periods' },
+          { icon: 'description', value: INS_H.insFileCount(p), label: 'Documents' },
+        ]}
+        figure={{
+          value: headline.value || 'No coverage',
+          caption: headline.word,
+          tone: headline.cls === 'lapsed' ? 'expense' : headline.cls === 'soon' ? 'pending' : undefined,
+        }}
+        dimmed={dimmed}
+        highlight={highlight}
+        open={open}
+        onToggle={setOpen}
+        actions={<ActionMenu items={[
+          { icon: 'edit', label: 'Edit policy', onClick: () => setShowEdit(true) },
+          { icon: 'event_repeat', label: 'New renewal period', onClick: () => { setOpen(true); setModal({ kind: 'renewal' }); } },
+          { icon: 'upload_file', label: 'Attach document', onClick: () => { setOpen(true); setModal({ kind: 'upload' }); } },
+          { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(p.id); } },
+          { divider: true },
+          { icon: p.archived ? 'unarchive' : 'archive', label: p.archived ? 'Unarchive' : 'Archive', onClick: () => setP(prev => ({ ...prev, archived: prev.archived ? null : new Date().toISOString() })) },
+          { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(p.id) },
+        ]} />}
+      >
         <PolicyDetail policy={p} today={today} focusDocs={focusDocs}
           onNavigate={onNavigate} setPolicy={setP}
           onAddRenewal={() => setModal({ kind: 'renewal' })}
@@ -437,7 +474,7 @@ const PolicyListItem = ({ pol, today, defaultOpen, highlight, onNavigate, onDele
           onDeleteRenewal={deleteRenewal}
           onUpload={() => setModal({ kind: 'upload' })}
           onUploadRenewal={(rid) => setModal({ kind: 'upload', renewalId: rid })} />
-      )}
+      </RecordCard>
       {showEdit && <AddInsurancePolicyModal policy={p} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
 
       {modal && modal.kind === 'renewal' && (
@@ -446,7 +483,7 @@ const PolicyListItem = ({ pol, today, defaultOpen, highlight, onNavigate, onDele
       {modal && modal.kind === 'upload' && (
         <InsuranceUploadModal policy={p} initialTarget={modal.renewalId || 'policy'} onClose={() => setModal(null)} onUpload={handleUpload} />
       )}
-    </Card>
+    </div>
   );
 };
 
@@ -501,6 +538,8 @@ const InsuranceSummary = ({ policies, today, baseCurrency }) => {
 /* ====================== Page ====================== */
 const Insurance = ({ tweaks = {}, onNavigate }) => {
   const { useState } = React;
+  // One card open at a time — the list owns it.
+  const [openId, setOpenId] = useState('ip-home');
   const baseCurrency = tweaks.summaryBaseCurrency === '' ? null : (tweaks.summaryBaseCurrency || 'USD');
   const today = INS_H.insToday();
 
@@ -632,7 +671,9 @@ const Insurance = ({ tweaks = {}, onNavigate }) => {
             revealKey={jumpId}
             renderItem={(p) => (
               <PolicyListItem pol={p} today={today}
-                defaultOpen={p.id === 'ip-home'} highlight={jumpId === p.id}
+                open={openId === p.id}
+                onToggle={(o) => setOpenId(o ? p.id : null)}
+                highlight={jumpId === p.id}
                 onNavigate={onNavigate} onDelete={deletePolicy} />
             )}
             empty={(
