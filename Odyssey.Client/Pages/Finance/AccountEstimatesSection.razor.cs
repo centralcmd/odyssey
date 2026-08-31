@@ -200,7 +200,10 @@ public partial class AccountEstimatesSection
 
     private string BuildChartSvg(List<(DateTime Date, decimal Value)> series)
     {
-        const string color = "var(--finance-income)";
+        // One accent per record: inside an open card this resolves to the account's own type colour,
+        // which OdsRecordCard publishes as --rec. The mint stays the fallback for the section rendered
+        // outside a card, where there is no record accent to inherit.
+        const string color = "var(--rec, var(--finance-income))";
         const double W = 680, H = 210, padL = 54, padR = 18, padT = 16, padB = 28;
         var plotW = W - padL - padR;
         var plotH = H - padT - padB;
