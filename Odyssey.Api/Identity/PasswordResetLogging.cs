@@ -27,14 +27,12 @@ public static class PasswordResetLogging
 
     /// <summary>
     /// Attaches the completion log to <see cref="ResetRoute"/> within an already-mapped Identity
-    /// group, reporting an error at startup if the route is not part of the group (a framework
-    /// rename would otherwise silently stop the logging with nothing to notice it by).
+    /// group, marking the endpoint it attached to with <see cref="PasswordResetLoggingMetadata"/> so
+    /// <see cref="ValidatePasswordResetLogging"/> can confirm afterwards that it landed.
     /// </summary>
     public static TBuilder LogPasswordResetCompletion<TBuilder>(this TBuilder builder, ILogger logger)
         where TBuilder : IEndpointConventionBuilder
     {
-        var matched = false;
-
         builder.Add(endpointBuilder =>
         {
             if (endpointBuilder is not RouteEndpointBuilder route ||
@@ -43,7 +41,10 @@ public static class PasswordResetLogging
                 return;
             }
 
-            matched = true;
+            // A filter factory leaves nothing on the built endpoint to inspect — it is folded into the
+            // request delegate — so the attachment is marked here. Without it the only observable
+            // property would be "the route exists", which is not the property that matters.
+            endpointBuilder.Metadata.Add(PasswordResetLoggingMetadata.Instance);
 
             // The same mechanism AddEndpointFilter() uses internally, applied to this one endpoint
             // rather than unconditionally to the whole group.
@@ -59,23 +60,34 @@ public static class PasswordResetLogging
             });
         });
 
-        // Finally conventions run once every endpoint in the group has had its conventions applied,
-        // so `matched` is complete by the first invocation; the flag keeps the check to one report.
-        var reported = false;
-        builder.Finally(_ =>
-        {
-            if (reported || matched)
-            {
-                return;
-            }
-
-            reported = true;
-            logger.LogError(
-                "Identity route {Route} was not found, so password-reset completions are not being logged — "
-                + "check whether MapIdentityApi renamed it.", ResetRoute);
-        });
-
         return builder;
+    }
+
+    /// <summary>
+    /// Reports at startup if no built endpoint carries <see cref="PasswordResetLoggingMetadata"/>,
+    /// i.e. if the filter was never attached and completed resets are going unlogged.
+    /// </summary>
+    /// <remarks>
+    /// Read against the <em>built</em> endpoints, like
+    /// <see cref="PasswordChangeExemptRoutes.ValidateExemptEndpoints"/>. This check previously lived in
+    /// an <c>IEndpointConventionBuilder.Finally</c> convention on the assumption that <c>Finally</c>
+    /// runs after the whole group has been walked. It does not: <c>RouteEndpointDataSource</c> applies
+    /// group conventions and then group finally conventions <em>per endpoint</em>, so the report fired
+    /// on the first endpoint built — before <c>/resetPassword</c> was reached — and logged this error
+    /// on every boot even though the filter was attached correctly. See the same note on
+    /// <see cref="IdentityRateLimiting.ValidateMailEndpointRateLimiting"/>.
+    /// </remarks>
+    public static void ValidatePasswordResetLogging(IEnumerable<Endpoint> endpoints, ILogger logger)
+    {
+        if (endpoints.Any(endpoint =>
+                endpoint.Metadata.GetMetadata<PasswordResetLoggingMetadata>() is not null))
+        {
+            return;
+        }
+
+        logger.LogError(
+            "Identity route {Route} was not found, so password-reset completions are not being logged — "
+            + "check whether MapIdentityApi renamed it.", ResetRoute);
     }
 
     // The handler returns Results<Ok, ValidationProblem>, a struct wrapper around the real result,
@@ -117,4 +129,18 @@ public static class PasswordResetLogging
             logger.LogWarning(ex, "Failed to log a completed password reset.");
         }
     }
+}
+
+/// <summary>
+/// Endpoint metadata marking the endpoint the password-reset completion filter was attached to
+/// (issue #405). A filter factory is folded into the request delegate and leaves no trace on the
+/// built endpoint, so this is what makes the attachment observable — to
+/// <see cref="PasswordResetLogging.ValidatePasswordResetLogging"/> at startup, and to a test running
+/// against a real <c>MapIdentityApi</c> rather than a stand-in convention builder.
+/// </summary>
+public sealed class PasswordResetLoggingMetadata
+{
+    public static readonly PasswordResetLoggingMetadata Instance = new();
+
+    private PasswordResetLoggingMetadata() { }
 }

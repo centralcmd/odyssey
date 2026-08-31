@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
+using Odyssey.Api.Identity;
 
 namespace Odyssey.Api;
 
@@ -43,7 +44,7 @@ public static class IdentityRateLimiting
     /// <summary>
     /// The <c>MapIdentityApi</c> routes that cause an outbound email on every call. Route text, not
     /// a handler reference, because the framework maps the group as a unit and exposes nothing else
-    /// to match on — hence the startup check in <see cref="RequireMailEndpointRateLimiting"/>.
+    /// to match on — hence the startup check in <see cref="ValidateMailEndpointRateLimiting"/>.
     /// </summary>
     public static readonly string[] MailEndpointRoutes = ["/forgotPassword", "/resendConfirmationEmail"];
 
@@ -155,20 +156,17 @@ public static class IdentityRateLimiting
     /// <summary>
     /// Tags the <see cref="MailEndpointRoutes"/> members of an already-mapped Identity group with
     /// <see cref="MailEndpointMetadata"/> — the marker the global limiter reads to apply the tighter
-    /// mail window — and logs an error if either route is missing.
+    /// mail window.
     /// </summary>
     /// <remarks>
     /// <c>MapIdentityApi</c> maps the group as a unit, so the two endpoints can only be picked out by
     /// route text. A future ASP.NET version renaming either one would silently drop it back to the
-    /// group policy alone: a degradation rather than a hole (the group limit and the per-recipient
-    /// throttle both still apply), so this reports it to operators rather than refusing to serve
-    /// traffic.
+    /// group policy alone, which is why <see cref="ValidateMailEndpointRateLimiting"/> exists — it
+    /// runs after the endpoints are built and reports what this actually tagged.
     /// </remarks>
-    public static TBuilder RequireMailEndpointRateLimiting<TBuilder>(this TBuilder builder, ILogger logger)
+    public static TBuilder RequireMailEndpointRateLimiting<TBuilder>(this TBuilder builder)
         where TBuilder : IEndpointConventionBuilder
     {
-        var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
         builder.Add(endpointBuilder =>
         {
             if (endpointBuilder is not RouteEndpointBuilder route)
@@ -183,33 +181,57 @@ public static class IdentityRateLimiting
                 return;
             }
 
-            matched.Add(match);
             endpointBuilder.Metadata.Add(MailEndpointMetadata.Instance);
         });
 
-        // Finally conventions run once every endpoint in the group has had its conventions applied,
-        // so `matched` is complete by the first invocation; the flag keeps the check to one report.
-        var reported = false;
-        builder.Finally(_ =>
-        {
-            if (reported)
-            {
-                return;
-            }
-
-            reported = true;
-            var missing = MailEndpointRoutes.Except(matched, StringComparer.OrdinalIgnoreCase).ToArray();
-            if (missing.Length > 0)
-            {
-                logger.LogError(
-                    "Identity mail endpoints {MissingRoutes} were not found, so the tighter '{MailLimiter}' rate "
-                    + "limit is not applied to them. They fall back to the '{GroupPolicy}' group limit alone — "
-                    + "check whether MapIdentityApi renamed these routes.",
-                    string.Join(", ", missing), MailLimiterName, PolicyName);
-            }
-        });
-
         return builder;
+    }
+
+    /// <summary>
+    /// Reports any <see cref="MailEndpointRoutes"/> member that did not come out of endpoint
+    /// construction carrying <see cref="MailEndpointMetadata"/>, i.e. that the tighter mail window
+    /// does not cover.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Read against the <em>built</em> endpoints, the same way
+    /// <see cref="Identity.PasswordChangeExemptRoutes.ValidateExemptEndpoints"/> is, and for a reason
+    /// worth keeping: this check used to live in an <c>IEndpointConventionBuilder.Finally</c>
+    /// convention accumulating matches as the group's endpoints went by. That assumed <c>Finally</c>
+    /// runs once the whole group has been walked. It does not — <c>RouteEndpointDataSource</c> applies
+    /// a group's conventions and then its finally conventions <em>per endpoint</em>, so the report ran
+    /// against the first endpoint built (<c>/register</c>), saw an empty match set, and logged this
+    /// error on <b>every</b> boot while the metadata was in fact being applied correctly to both
+    /// routes moments later. A guard that cries wolf every time is worse than no guard: the real
+    /// rename becomes indistinguishable from the noise operators have learned to skip.
+    /// </para>
+    /// <para>
+    /// Log-and-degrade rather than fail-fast, unchanged: a missed mail window is a degradation (the
+    /// group limit and the per-recipient <c>IEmailSendThrottle</c> both still apply), not a hole.
+    /// Asserting on the metadata rather than on route text is also what makes the property testable
+    /// against a real <c>MapIdentityApi</c> instead of a stand-in convention builder — which is the
+    /// blind spot that let the broken version ship.
+    /// </para>
+    /// </remarks>
+    public static void ValidateMailEndpointRateLimiting(IEnumerable<Endpoint> endpoints, ILogger logger)
+    {
+        var tagged = endpoints
+            .Where(endpoint => endpoint.Metadata.GetMetadata<MailEndpointMetadata>() is not null)
+            .OfType<RouteEndpoint>()
+            .Select(endpoint => PasswordChangeExemptRoutes.NormalizeRoute(endpoint.RoutePattern.RawText))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var missing = MailEndpointRoutes.Where(route => !tagged.Contains(route)).ToArray();
+        if (missing.Length == 0)
+        {
+            return;
+        }
+
+        logger.LogError(
+            "Identity mail endpoints {MissingRoutes} were not found, so the tighter '{MailLimiter}' rate "
+            + "limit is not applied to them. They fall back to the '{GroupPolicy}' group limit alone — "
+            + "check whether MapIdentityApi renamed these routes.",
+            string.Join(", ", missing), MailLimiterName, PolicyName);
     }
 
     // UseForwardedHeaders runs first, so RemoteIpAddress is the real client behind the reverse proxy.

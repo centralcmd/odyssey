@@ -78,6 +78,21 @@ never builds.
    > that database password, straight into production. `down -v` is the only thing that removes
    > it.
 
+   > **On an SELinux host (Fedora, RHEL, CentOS Stream, Rocky, Alma), the two bind mounts
+   > relabel the files they mount.** Both carry the `z` option — `./Caddyfile` and
+   > `./docker/mariadb/init` — because a freshly checked-out file keeps the label of the directory
+   > you cloned into (typically `user_home_t`), which a container process is not permitted to read.
+   > Without it Caddy crash-loops on `open /etc/caddy/Caddyfile: permission denied`, and because
+   > the runtime drops the AVC denial silently, the permission bits look fine and nothing in any
+   > log names SELinux.
+   >
+   > `z` applies the **shared** `container_file_t` label (not the per-container `Z`), and it does so
+   > **in place, permanently** — after the first `up`, `ls -Z Caddyfile` on your deploy checkout
+   > reports `system_u:object_r:container_file_t:s0` rather than what git left there. That is the
+   > mechanism working, not damage, but it does mutate the working tree, so expect it if you deploy
+   > from a clone you also use for other things. On hosts without SELinux the runtime ignores the
+   > option entirely, so there is nothing to configure either way.
+
 4. **Create `.env.prod`** from the template and fill in real values:
    ```bash
    cp .env.prod.example .env.prod
@@ -514,6 +529,30 @@ exposure — a stolen dump, a misdirected backup, a read-only SQL injection, a s
 database client. It does **not** protect against an attacker who has the application host, because
 that attacker has the key ring and the process memory. The access boundary is unchanged by this
 feature; the prize behind it is larger.
+
+**The key ring itself is stored unencrypted, and the API says so on every boot.** Expect this line,
+and do not treat it as a misconfiguration:
+
+```
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {...} may be persisted to storage in unencrypted form.
+```
+
+It means the XML key files on the `dataprotection_keys` volume are not themselves encrypted, which is
+correct for this deployment and follows from the paragraph above: the only things ASP.NET Core could
+encrypt them *with* — DPAPI, or a certificate — are unavailable or circular here. DPAPI is
+Windows-only. A certificate would have to be readable by the API container at startup, so it would
+live in the environment or in a mounted file on the same host, which is where the attacker who has
+the host already is; it would move the secret rather than protect it, and it would reintroduce
+exactly the "credential in the environment" arrangement issue #445 removed. The boundary that does
+the work is filesystem access to the volume — so back it up separately, keep it off shared storage,
+and read the incident-response paragraph above.
+
+Do not confuse it with Odyssey's own startup warning, which is a different and more serious
+condition: `Data Protection has no explicitly configured durable key repository` means the ring is
+**ephemeral** — nothing is being persisted at all, every restart logs everyone out, and writes to
+encrypted secret settings are refused with `503`. That one needs fixing; the framework's
+`No XML encryptor configured` does not.
 
 **Only the `api` container mounts it**, and that is the point: every container holding the ring is one
 more that can decrypt every stored credential. The `migrations` job mounted it too for a while, so

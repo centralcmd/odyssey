@@ -195,7 +195,20 @@ services:
     cap_add:
       - NET_BIND_SERVICE
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # `,z` is not optional here, and its absence was a first-boot failure on any SELinux host
+      # (Fedora, RHEL, Rocky, Alma — much of the self-hosting population). A checked-out file carries
+      # the label the working tree gives it (typically user_home_t), which a container process may not
+      # read, so Caddy crash-looped on `open /etc/caddy/Caddyfile: permission denied` — a denial the
+      # runtime drops silently, so the label never appears in any log. `z` applies the SHARED
+      # container_file_t label, matching the mariadb init mount in the base file; `Z` would apply a
+      # private per-container one, which is wrong for a file the repo owns. On hosts without SELinux
+      # the runtime ignores it, so no platform-specific override is needed.
+      #
+      # Note it RELABELS ./Caddyfile in place, and that persists in the working tree. That is the
+      # mechanism, not a side effect — see docs/deployment.md.
+      #
+      # Every bind mount in a shipped compose file needs this. There are exactly two.
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
       - caddy_data:/data
       - caddy_config:/config
     environment:
