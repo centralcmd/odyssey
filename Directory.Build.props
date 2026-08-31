@@ -9,7 +9,7 @@
     /healthz through the assembly's informational version.
   -->
   <PropertyGroup>
-    <Version>0.18.1</Version> <!-- x-release-please-version -->
+    <Version>0.19.0</Version> <!-- x-release-please-version -->
   </PropertyGroup>
 
   <!--
