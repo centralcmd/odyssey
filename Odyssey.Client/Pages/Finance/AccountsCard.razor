@@ -195,7 +195,7 @@
                             @if (!string.IsNullOrWhiteSpace(account.AccountNumber))
                             {
                                 <OdsInfoTile Icon="tag" Label="Account number"
-                                             ValueVariant="OdsInfoTileVariant.Mono" Foot="@Caption("Custodian reference")">
+                                             ValueVariant="OdsInfoTileVariant.Mono" Foot="@OdsInfoTile.Caption("Custodian reference")">
                                     <Value>@account.AccountNumber</Value>
                                 </OdsInfoTile>
                             }
@@ -205,12 +205,12 @@
                                 var custMeta = OdsTypeRegistries.ContactTypeOf(custodian.Type.ToString());
                                 <OdsInfoTile Icon="@custMeta.Icon" IconColor="@custMeta.Color" IconSoft="@custMeta.Soft"
                                              Label="Custodian" ValueVariant="OdsInfoTileVariant.Text"
-                                             Foot="@Caption(custMeta.Label)">
+                                             Foot="@OdsInfoTile.Caption(custMeta.Label)">
                                     <Value>@custodian.Name</Value>
                                 </OdsInfoTile>
                             }
 
-                            <OdsInfoTile Icon="payments" Label="Currency" Foot="@Caption(CurrencyFoot(account))">
+                            <OdsInfoTile Icon="payments" Label="Currency" Foot="@OdsInfoTile.Caption(CurrencyFoot(account))">
                                 <Value>@account.CurrencyCode</Value>
                             </OdsInfoTile>
 
@@ -218,7 +218,7 @@
                             <OdsInfoTile Icon="@StatusIcon(account)" Label="Status"
                                          ValueVariant="OdsInfoTileVariant.Text"
                                          Tone="@StatusTone(account)"
-                                         Foot="@Caption(GetLifecycle(account))">
+                                         Foot="@OdsInfoTile.Caption(GetLifecycle(account))">
                                 <Value>@GetStatusLabel(account)</Value>
                             </OdsInfoTile>
                         </OdsInfoTileGrid>
@@ -248,13 +248,13 @@
                                     @if (account.CurrentEstimatedValue is { } currentEstimate)
                                     {
                                         <OdsInfoTile Icon="trending_up" Label="Estimated value" Tone="OdsInfoTileTone.Income"
-                                                     Foot="@Caption(EstimateFoot(account))">
+                                                     Foot="@OdsInfoTile.Caption(EstimateFoot(account))">
                                             <Value>@FormatMoney(currentEstimate, account.CurrentEstimatedValueCurrencyCode ?? account.CurrencyCode)</Value>
                                         </OdsInfoTile>
                                         @* The balance stays quiet: the estimate is what counts toward
                                            net worth, so this is the secondary reading. *@
                                         <OdsInfoTile Icon="swap_horiz" Label="Transaction balance"
-                                                     Foot="@Caption(BalanceFoot(account))">
+                                                     Foot="@OdsInfoTile.Caption(BalanceFoot(account))">
                                             <Value>@FormatMoney(account.Balance, account.CurrencyCode)</Value>
                                         </OdsInfoTile>
                                     }
@@ -263,7 +263,7 @@
                                         var info = TermKindVisuals.Info(term.TermKind);
                                         var asTerm = ToTerm(account, term);
                                         <OdsInfoTile Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
-                                                     Label="@info.Label" Foot="@Caption(TermFoot(term))">
+                                                     Label="@info.Label" Foot="@OdsInfoTile.Caption(TermFoot(term))">
                                             <Value>
                                                 <span style="color:@(TermKindVisuals.CostColor(asTerm, account) ?? info.Color);">
                                                     @TermKindVisuals.FormatValue(asTerm, account, FormatMoney)

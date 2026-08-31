@@ -18,8 +18,11 @@ namespace Odyssey.Client.Layout;
 /// <summary>One navigable page within a module.</summary>
 public sealed record NavPage(string Key, string Label, string Icon, string Href, string? Claim = null, bool External = false);
 
-/// <summary>An optionally-labelled group of pages inside a module (Finance is sub-grouped; others are flat).</summary>
-public sealed record NavGroup(string? Label, IReadOnlyList<NavPage> Items);
+/// <summary>An optionally-labelled group of pages inside a module (Finance is sub-grouped; others are flat).
+/// <paramref name="NoDivider"/> suppresses the hairline the rail draws above a group — the design system
+/// runs Finance's Reference pages straight on from Documents rather than splitting a nine-button rail four
+/// ways.</summary>
+public sealed record NavGroup(string? Label, IReadOnlyList<NavPage> Items, bool NoDivider = false);
 
 /// <summary>A top-level module shown in the rail's switcher.</summary>
 public sealed record NavModule(string Key, string Label, string Icon, IReadOnlyList<NavGroup> Groups);
@@ -64,7 +67,7 @@ public static class NavModel
                 new("tags", "Transaction Tags", "local_offer", "transaction-tags"),
                 new("currencies", "Currencies", "attach_money", "currencies"),
                 new("exchange-rates", "Exchange rates", "currency_exchange", "exchange-rates"),
-            ]),
+            ], NoDivider: true),
         ]),
         // The photo library and Contacts live under Journal (design-system app shell): the /photos page
         // shows as "Photos", with Albums, Contacts + the tag pages alongside the journal/task pages in one
@@ -110,7 +113,7 @@ public static class NavModel
     /// <summary>Groups within <paramref name="module"/> whose items the user can view (empty groups dropped).</summary>
     public static IReadOnlyList<NavGroup> VisibleGroups(NavModule module, Func<NavPage, bool> canView) =>
         [.. module.Groups
-            .Select(g => new NavGroup(g.Label, [.. g.Items.Where(canView)]))
+            .Select(g => new NavGroup(g.Label, [.. g.Items.Where(canView)], g.NoDivider))
             .Where(g => g.Items.Count > 0)];
 
     /// <summary>The viewable pages of a module, flattened.</summary>

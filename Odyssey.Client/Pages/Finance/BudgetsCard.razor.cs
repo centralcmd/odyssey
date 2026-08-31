@@ -38,6 +38,11 @@ public partial class BudgetsCard
     private string _announce = "";
     private Guid? _expandedId;
 
+    // "Edit multiple" moved out of the items section's own header and onto the row menu (a section
+    // header inside a record body labels, it does not act), so the page owns the mode. At most one
+    // budget is in it — the same budget as the open card.
+    private Guid? _editingItemsId;
+
     // Card-list windowing (OdsInfiniteList): "Load N at a time" batch size.
     private int _batch = OdsPageSizes.Batch[0];
 
@@ -201,6 +206,10 @@ public partial class BudgetsCard
 
     private async Task ToggleExpand(Guid budgetId)
     {
+        // Batch editing only makes sense while the record is open, and only one card is open at a
+        // time — so closing (or opening another) leaves the mode behind.
+        _editingItemsId = null;
+
         if (_expandedId == budgetId)
         {
             _expandedId = null;
@@ -210,6 +219,34 @@ public partial class BudgetsCard
         _expandedId = budgetId;
         if (!_reports.ContainsKey(budgetId))
             await LoadReport(budgetId);
+    }
+
+    /// <summary>
+    /// Enter / leave the items batch grid for one budget, opening the record if needed.
+    ///
+    /// <para>
+    /// The toggle lives on the row menu, which <see cref="OdsRecordCard"/> renders whether or not the
+    /// card is open — so this can fire on a COLLAPSED row, expanding it and swapping a read-only table
+    /// for a multi-row edit grid several sections further down the page. That is a significant content
+    /// change the user did not visibly navigate to, so it is announced through the page's live region
+    /// (WCAG 2.2 §4.1.3 Status Messages). The announcement names the expansion only when one actually
+    /// happened; re-announcing it for an already-open card would be noise.
+    /// </para>
+    /// </summary>
+    private async Task SetItemsEditing(Guid budgetId, bool editing)
+    {
+        var expanding = editing && _expandedId != budgetId;
+        if (expanding)
+            await ToggleExpand(budgetId);
+
+        _editingItemsId = editing ? budgetId : null;
+
+        var name = _budgets.FirstOrDefault(b => b.BudgetId == budgetId)?.Name;
+        _announce = editing
+            ? expanding ? $"{name} expanded. Editing budget items." : "Editing budget items."
+            : "Stopped editing budget items.";
+
+        StateHasChanged();
     }
 
     private async Task LoadReport(Guid budgetId)
@@ -339,6 +376,7 @@ public partial class BudgetsCard
         _itemBudget = budget;
         _itemKey = Guid.NewGuid();
         _itemOpen = true;
+        _expandedId = budget.BudgetId;
     }
 
     private async Task OnItemSaved()
@@ -404,6 +442,78 @@ public partial class BudgetsCard
     private Task CopyBudgetId(Guid budgetId) =>
         Clipboard.CopyAsync(budgetId.ToString(), "Budget ID copied.");
 
+    // ── Row actions ──────────────────────────────────────────────────────
+    /// <summary>The row action menu. Every section-level action lives here — a section header inside a
+    /// record body labels, it does not act — so "New item" and "Edit multiple" are the budget-items
+    /// section's only entry points.</summary>
+    private IReadOnlyList<OdsMenuItem> RowActions(ExistingBudget budget, bool archived, bool editingItems)
+    {
+        var items = new List<OdsMenuItem>();
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit budget",
+                OnClick = EventCallback.Factory.Create(this, () => EditClicked(budget)),
+            });
+        }
+
+        if (_canCreate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "playlist_add",
+                Label = "New item",
+                OnClick = EventCallback.Factory.Create(this, () => AddItemClicked(budget)),
+            });
+        }
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = editingItems ? "check" : "edit_note",
+                Label = editingItems ? "Done editing items" : "Edit multiple",
+                OnClick = EventCallback.Factory.Create(this,
+                    () => SetItemsEditing(budget.BudgetId, !editingItems)),
+            });
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint",
+            Label = "Copy ID",
+            TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => CopyBudgetId(budget.BudgetId)),
+        });
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = archived ? "unarchive" : "archive",
+                Label = archived ? "Unarchive" : "Archive",
+                OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(budget)),
+            });
+        }
+
+        if (_canDelete)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => ConfirmDelete(budget)),
+            });
+        }
+
+        return items;
+    }
+
     // ── Display helpers ──────────────────────────────────────────────────
     private static string BalanceColor(decimal value) => value switch
     {
@@ -411,6 +521,17 @@ public partial class BudgetsCard
         < 0 => "var(--finance-expense)",
         _ => "var(--mud-palette-text-secondary)",
     };
+
+    // The headline figure and the balance tiles take the finance vocabulary, never the record's accent.
+    // The rule itself (and why it treats zero differently from BalanceColor above) lives in
+    // BudgetBalanceVisuals, where it is testable.
+    private static OdsRecordFigureTone BalanceFigureTone(decimal value) => BudgetBalanceVisuals.FigureTone(value);
+
+    private static OdsInfoTileTone BalanceTileTone(decimal value) => BudgetBalanceVisuals.TileTone(value);
+
+    private static string Lines(int count, string noun) => BudgetBalanceVisuals.Lines(count, noun);
+
+    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     private string FormatMoney(decimal value, string? currencyCode) =>
         value.ToString("C", MoneyFormat(currencyCode));

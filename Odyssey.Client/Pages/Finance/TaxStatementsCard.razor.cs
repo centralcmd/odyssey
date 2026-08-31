@@ -444,6 +444,89 @@ public partial class TaxStatementsCard
 
     private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tax statement ID copied.");
 
+    /// <summary>The row action menu. Every section-level action lives here — a section header inside a
+    /// record body labels, it does not act — so "Upload file" is the documents section's only entry
+    /// point.</summary>
+    private IReadOnlyList<OdsMenuItem> RowActions(ExistingTaxStatement s, bool archived)
+    {
+        var items = new List<OdsMenuItem>();
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit statement",
+                OnClick = EventCallback.Factory.Create(this, () => EditClicked(s)),
+            });
+        }
+
+        if (_canUploadFiles)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "upload_file",
+                Label = "Upload file",
+                OnClick = EventCallback.Factory.Create(this, () => AddFile(s)),
+            });
+        }
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "check_circle",
+                Label = "Mark approved",
+                OnClick = EventCallback.Factory.Create(this, () => SetStatus(s, TaxStatementStatus.Approved, null)),
+            });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "flag",
+                Label = "Flag for review",
+                OnClick = EventCallback.Factory.Create(this,
+                    () => SetStatus(s, TaxStatementStatus.Flagged, s.StatusComment ?? "Flagged for review.")),
+            });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "fiber_new",
+                Label = "Mark as new",
+                OnClick = EventCallback.Factory.Create(this, () => SetStatus(s, TaxStatementStatus.New, null)),
+            });
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint",
+            Label = "Copy ID",
+            TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId)),
+        });
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = archived ? "unarchive" : "archive",
+                Label = archived ? "Unarchive" : "Archive",
+                OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(s)),
+            });
+        }
+
+        if (_canDelete)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => ConfirmDelete(s)),
+            });
+        }
+
+        return items;
+    }
+
     // Builds the full update payload from a statement, overriding only the archived flag.
     private static UpdateTaxStatement ToUpdate(ExistingTaxStatement s, bool archived) => new()
     {
@@ -466,25 +549,21 @@ public partial class TaxStatementsCard
     };
 
     // ── Status display ────────────────────────────────────────────────────────
-    private static string StatusLabel(ExistingTaxStatement s) => s.Archived is not null
-        ? "Archived"
-        : s.Status switch
-        {
-            TaxStatementStatus.Approved => "Approved",
-            TaxStatementStatus.Flagged => "Flagged",
-            _ => "New",
-        };
+    // The vocabulary itself lives in TaxStatementStatusVisuals so its precedence (archived outranks
+    // the review status) and the tile foot are testable; these are the call sites the markup binds to.
+    private static string StatusLabel(ExistingTaxStatement s) => TaxStatementStatusVisuals.Label(s);
 
-    private static OdsChipTone StatusTone(ExistingTaxStatement s) => s.Archived is not null
-        ? OdsChipTone.Outline
-        : s.Status switch
-        {
-            TaxStatementStatus.Approved => OdsChipTone.Income,
-            TaxStatementStatus.Flagged => OdsChipTone.Expense,
-            _ => OdsChipTone.Info,
-        };
+    private static OdsChipTone StatusTone(ExistingTaxStatement s) => TaxStatementStatusVisuals.ChipTone(s);
 
-    private static bool StatusDot(ExistingTaxStatement s) => s.Archived is null;
+    private static bool StatusDot(ExistingTaxStatement s) => TaxStatementStatusVisuals.Dot(s);
+
+    private static string StatusIcon(ExistingTaxStatement s) => TaxStatementStatusVisuals.Icon(s);
+
+    private static OdsInfoTileTone StatusTileTone(ExistingTaxStatement s) => TaxStatementStatusVisuals.TileTone(s);
+
+    private static string? StatusFoot(ExistingTaxStatement s) => TaxStatementStatusVisuals.Foot(s);
+
+    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Money ────────────────────────────────────────────────────────────────
     // Mirrors the design system's taxMoney: symbol-prefixed whole units with an
@@ -529,19 +608,10 @@ public partial class TaxStatementsCard
     private decimal? SettlementFigure(ExistingTaxStatement s) =>
         s.SettlementAmount ?? (_reports.TryGetValue(s.TaxStatementId, out var r) ? r.Reconciliation.OutstandingTax : null);
 
-    private static string SettlementColor(decimal? settle) => settle switch
-    {
-        > 0 => "var(--finance-expense)",
-        < 0 => "var(--finance-income)",
-        _ => "var(--mud-palette-text-secondary)",
-    };
+    private static OdsRecordFigureTone SettlementTone(decimal? settle) => TaxSettlementFigure.Tone(settle);
 
-    private static string SettlementWord(ExistingTaxStatement s, decimal? settle)
-    {
-        if (s.SettlementAmount is { } declared)
-            return declared > 0 ? "additional tax to pay" : declared < 0 ? "refund" : "settled";
-        return settle is null ? "awaiting assessment" : "outstanding (est.)";
-    }
+    private static string SettlementWord(ExistingTaxStatement s, decimal? settle) =>
+        TaxSettlementFigure.Word(s.SettlementAmount, settle);
 
     // Tag id lists → display names (dropping ids no longer in the catalog).
     private IEnumerable<string> TagNames(IEnumerable<Guid> ids) =>

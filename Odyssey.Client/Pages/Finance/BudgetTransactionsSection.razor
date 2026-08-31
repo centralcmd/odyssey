@@ -1,22 +1,18 @@
 @using Odyssey.Dtos.Finance
 @inject ISnackbar Snackbar
 @inject IClipboardService Clipboard
-@inject NavigationManager NavigationManager
 @inject ITransactionsApiClient Transactions
 
 @* Transaction list for an expanded budget card. The transactions shown are those
    whose tag is one of the budget's item tags and whose timestamp falls within the
-   budget period — fetched via the transactions API tagIds/from/to parameters. *@
-<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="receipt_long">
+   budget period — fetched via the transactions API tagIds/from/to parameters.
+
+   Inside an OdsRecordCard the host passes Chrome="false" and introduces the section with
+   its own OdsSectionDivider. The matched rows page in place there; the section carries no
+   "View all" link, because a section header inside a record body labels, it does not act. *@
+<OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="receipt_long">
     <Title>Transactions</Title>
     <Count>@_transactions.Count</Count>
-    <Actions>
-        <MudButton Variant="Variant.Text"
-                   Color="Color.Primary"
-                   Size="Size.Small"
-                   EndIcon="@Icons.Material.Filled.ArrowForward"
-                   OnClick="ViewAllTransactions">View all</MudButton>
-    </Actions>
     <ChildContent>
         @if (_isLoading)
         {
@@ -45,6 +41,12 @@
     [Parameter] public Guid BudgetId { get; set; }
     [Parameter] public DateTime StartDate { get; set; }
     [Parameter] public DateTime EndDate { get; set; }
+
+    /// <summary>
+    /// The disclosure shell. False renders the section bare — no OdsCollapsible, no header — for a host
+    /// that introduces it with its own OdsSectionDivider (an OdsRecordCard body).
+    /// </summary>
+    [Parameter] public bool Chrome { get; set; } = true;
 
     // Transaction-tag ids drawn from the budget's items. With no tags there is nothing
     // to match, so the list stays empty rather than fetching every transaction.
@@ -100,11 +102,6 @@
 
         _isLoading = false;
         StateHasChanged();
-    }
-
-    private void ViewAllTransactions()
-    {
-        NavigationManager.NavigateTo("/transactions");
     }
 
     // Read-only row menu: expand/collapse the detail + copy the id.

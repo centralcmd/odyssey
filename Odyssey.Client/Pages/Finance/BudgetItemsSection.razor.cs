@@ -15,17 +15,43 @@ public partial class BudgetItemsSection
     [Parameter] public List<ExistingTransactionTag> TransactionTags { get; set; } = new();
     [Parameter] public Func<decimal, string?, string> Format { get; set; } = (value, _) => value.ToString("C2");
     [Parameter] public string CurrencyCode { get; set; } = "USD";
+
+    /// <summary>
+    /// The disclosure shell. False renders the section bare — no OdsCollapsible, no header — for a host
+    /// that introduces it with its own OdsSectionDivider (an OdsRecordCard body).
+    /// </summary>
+    [Parameter] public bool Chrome { get; set; } = true;
+
+    /// <summary>
+    /// The "edit multiple" batch grid. Host-owned, because with <see cref="Chrome"/> off the section has
+    /// no header to put the toggle on — it lives on the record's row menu, alongside "New item".
+    /// </summary>
+    [Parameter] public bool Editing { get; set; }
+
+    /// <summary>Raised when the batch grid's own Done button leaves the mode.</summary>
+    [Parameter] public EventCallback<bool> EditingChanged { get; set; }
+
     [Parameter] public bool CanCreate { get; set; }
     [Parameter] public bool CanUpdate { get; set; }
     [Parameter] public bool CanDelete { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
 
     private bool _isOpen = true;
-    private bool _isEditing;
     private bool _isBusy;
+    private bool _seededFor;
     private readonly Dictionary<Guid, Draft> _drafts = new();
 
     private void ToggleOpen() => _isOpen = !_isOpen;
+
+    // The drafts are seeded when the host switches the mode on, not when a button here is pressed.
+    protected override void OnParametersSet()
+    {
+        if (Editing == _seededFor)
+            return;
+        if (Editing)
+            SeedDrafts();
+        _seededFor = Editing;
+    }
 
     // Income first, then expenses; empty groups are dropped.
     private IEnumerable<ItemGroup> VisibleGroups
@@ -63,13 +89,7 @@ public partial class BudgetItemsSection
     }
 
     // ── Edit mode ────────────────────────────────────────────────────────
-    private void StartEditing()
-    {
-        SeedDrafts();
-        _isEditing = true;
-    }
-
-    private void StopEditing() => _isEditing = false;
+    private Task StopEditing() => EditingChanged.InvokeAsync(false);
 
     private void SeedDrafts()
     {
@@ -184,7 +204,12 @@ public partial class BudgetItemsSection
         var wasAdd = _editItem is null;
         await OnChanged.InvokeAsync();
         if (wasAdd)
+        {
             _isOpen = true;
+            // A new row needs a draft before the batch grid can bind to it.
+            if (Editing)
+                SeedDrafts();
+        }
     }
 
     private async Task DeleteItem(ExistingBudgetItem item)

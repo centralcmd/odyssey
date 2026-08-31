@@ -23,7 +23,7 @@
         @for (var gi = 0; gi < _groups.Count; gi++)
         {
             var group = _groups[gi];
-            @if (gi > 0)
+            @if (gi > 0 && !group.NoDivider)
             {
                 <div class="odn-subdiv"></div>
             }

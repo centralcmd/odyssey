@@ -19,6 +19,12 @@ public partial class TaxStatementFilesSection
     /// <summary>The documents currently attached to this statement (embedded on the statement DTO).</summary>
     [Parameter] public List<ExistingTaxStatementFile> Files { get; set; } = [];
 
+    /// <summary>
+    /// The disclosure shell. False renders the section bare — no OdsCollapsible, no header — for a host
+    /// that introduces it with its own OdsSectionDivider (an OdsRecordCard body).
+    /// </summary>
+    [Parameter] public bool Chrome { get; set; } = true;
+
     [Parameter] public bool CanUpload { get; set; }
     [Parameter] public bool CanDownload { get; set; }
     [Parameter] public bool CanDelete { get; set; }

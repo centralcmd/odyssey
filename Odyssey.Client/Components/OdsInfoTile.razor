@@ -25,7 +25,8 @@
     A tile renders if and only if ITS OWN field has a value — never because a sibling
     "already shows that", and a derived tile (Status) summarises without replacing the
     tiles of the fields it is computed from. A foot caption has to earn its place; a tile
-    does not.
+    does not — which is what OdsInfoTile.Caption(text) is for: it returns null rather than
+    an empty fragment, so an absent caption renders no foot ELEMENT, not an empty one.
 *@
 
 <div class="@TileClass" style="@Style">
@@ -66,6 +67,20 @@
 
     /// <summary>Optional muted foot caption.</summary>
     [Parameter] public RenderFragment? Foot { get; set; }
+
+    /// <summary>
+    /// Wraps optional caption text for <see cref="Foot"/>. Blank text returns <c>null</c>, so the tile
+    /// renders no foot element at all — a foot has to earn its place, and an empty one is not the same
+    /// as none.
+    ///
+    /// <para>
+    /// It lives here, on the component whose parameter it feeds, because every record card needs it and
+    /// seven pages had grown their own byte-identical private copy. Same shape as
+    /// <see cref="OdsBillingIntervalChip"/>'s label statics.
+    /// </para>
+    /// </summary>
+    public static RenderFragment? Caption(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
 
     /// <summary>Value typography — Mono (numbers/dates) · Text (names/labels) · Sm (dates).</summary>
     [Parameter] public OdsInfoTileVariant ValueVariant { get; set; } = OdsInfoTileVariant.Mono;

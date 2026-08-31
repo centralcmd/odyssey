@@ -253,7 +253,37 @@ public class SourceConventionTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    //  4. A .razor file's inline @code block stays small
+    //  4. The OdsInfoTile foot caption has exactly one implementation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <c>OdsInfoTile.Caption</c> returns <c>null</c> for blank text so the tile renders no foot
+    /// ELEMENT — the distinction the whole "a foot has to earn its place" rule rests on, and the one a
+    /// re-implementation is most likely to lose by returning an empty fragment instead. Seven pages had
+    /// grown a byte-identical private copy of it before it was pulled onto the component; they were
+    /// still identical, which is exactly the window in which deduplicating is cheap. This keeps an
+    /// eighth from appearing and quietly disagreeing with the other seven.
+    /// </summary>
+    [Fact]
+    public void The_tile_foot_caption_helper_is_not_reimplemented_per_page()
+    {
+        var declaration = new Regex(@"RenderFragment\?\s+Caption\s*\(", RegexOptions.Compiled);
+
+        var offenders = ClientSource.SourceFiles()
+            .Select(file => (File: file, Text: File.ReadAllText(file)))
+            .Where(f => declaration.IsMatch(f.Text))
+            .Select(f => ClientSource.Relative(f.File))
+            // The one real declaration, on the component whose Foot parameter it feeds.
+            .Where(relative => relative.Replace('\\', '/') != "Components/OdsInfoTile.razor")
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            "Private re-implementations of the tile foot caption — call OdsInfoTile.Caption instead:\n" +
+            string.Join('\n', offenders));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  5. A .razor file's inline @code block stays small
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
