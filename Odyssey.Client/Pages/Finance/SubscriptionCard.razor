@@ -184,7 +184,7 @@
                                 </OdsInfoTile>
 
                                 <OdsInfoTile Icon="@dInfo.Icon" Label="Billing interval"
-                                             ValueVariant="OdsInfoTileVariant.Text" Foot="@Caption(dAnchor)">
+                                             ValueVariant="OdsInfoTileVariant.Text" Foot="@OdsInfoTile.Caption(dAnchor)">
                                     <Value>@OdsBillingIntervalChip.CadenceLabel(detail.Interval, detail.IntervalCount)</Value>
                                 </OdsInfoTile>
 
@@ -212,7 +212,7 @@
                                 <OdsInfoTile Icon="play_arrow" Label="@(startsLater ? "Starts on" : "Started on")"
                                              ValueVariant="OdsInfoTileVariant.Sm"
                                              Tone="@(startsLater ? OdsInfoTileTone.Info : OdsInfoTileTone.Default)"
-                                             Foot="@Caption(startsLater ? "upcoming" : null)">
+                                             Foot="@OdsInfoTile.Caption(startsLater ? "upcoming" : null)">
                                     <Value>@LongDate(detail.StartDate)</Value>
                                 </OdsInfoTile>
 

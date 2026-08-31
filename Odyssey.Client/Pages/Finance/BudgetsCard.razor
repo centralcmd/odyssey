@@ -115,33 +115,33 @@
                             </OdsInfoTile>
 
                             <OdsInfoTile Icon="event" Label="Start date" ValueVariant="OdsInfoTileVariant.Sm"
-                                         Foot="@Caption("plan period opens")">
+                                         Foot="@OdsInfoTile.Caption("plan period opens")">
                                 <Value>@LongDate(budget.StartDate)</Value>
                             </OdsInfoTile>
 
                             <OdsInfoTile Icon="event_busy" Label="End date" ValueVariant="OdsInfoTileVariant.Sm"
-                                         Foot="@Caption("plan period closes")">
+                                         Foot="@OdsInfoTile.Caption("plan period closes")">
                                 <Value>@LongDate(budget.EndDate)</Value>
                             </OdsInfoTile>
 
-                            <OdsInfoTile Icon="payments" Label="Base currency" Foot="@Caption("reporting currency")">
+                            <OdsInfoTile Icon="payments" Label="Base currency" Foot="@OdsInfoTile.Caption("reporting currency")">
                                 <Value>@budget.BaseCurrencyCode</Value>
                             </OdsInfoTile>
 
                             <OdsInfoTile Icon="@(archived ? "inventory_2" : "check_circle")" Label="Status"
                                          ValueVariant="OdsInfoTileVariant.Text"
                                          Tone="@(archived ? OdsInfoTileTone.Muted : OdsInfoTileTone.Income)"
-                                         Foot="@Caption(budget.Archived is { } archivedAt ? $"since {LongDate(archivedAt)}" : "in the default list")">
+                                         Foot="@OdsInfoTile.Caption(budget.Archived is { } archivedAt ? $"since {LongDate(archivedAt)}" : "in the default list")">
                                 <Value>@(archived ? "Archived" : "Active")</Value>
                             </OdsInfoTile>
 
                             <OdsInfoTile Icon="trending_up" Label="Planned income" Tone="OdsInfoTileTone.Income"
-                                         Foot="@Caption(Lines(incomeItemCount, "income line"))">
+                                         Foot="@OdsInfoTile.Caption(Lines(incomeItemCount, "income line"))">
                                 <Value>@FormatMoney(budget.ExpectedIncomes, budget.BaseCurrencyCode)</Value>
                             </OdsInfoTile>
 
                             <OdsInfoTile Icon="shopping_cart" Label="Planned expenses" Tone="OdsInfoTileTone.Expense"
-                                         Foot="@Caption(Lines(expenseItemCount, "expense line"))">
+                                         Foot="@OdsInfoTile.Caption(Lines(expenseItemCount, "expense line"))">
                                 <Value>@FormatMoney(budget.ExpectedExpenses, budget.BaseCurrencyCode)</Value>
                             </OdsInfoTile>
 
@@ -151,19 +151,19 @@
                             @if (hasReport)
                             {
                                 <OdsInfoTile Icon="south_west" Label="Actual income" Tone="OdsInfoTileTone.Income"
-                                             Foot="@Caption("from matched transactions")">
+                                             Foot="@OdsInfoTile.Caption("from matched transactions")">
                                     <Value>@FormatMoney(actualIncome, budget.BaseCurrencyCode)</Value>
                                 </OdsInfoTile>
 
                                 <OdsInfoTile Icon="north_east" Label="Actual expenses" Tone="OdsInfoTileTone.Expense"
-                                             Foot="@Caption("from matched transactions")">
+                                             Foot="@OdsInfoTile.Caption("from matched transactions")">
                                     <Value>@FormatMoney(actualExpenses, budget.BaseCurrencyCode)</Value>
                                 </OdsInfoTile>
                             }
 
                             <OdsInfoTile Icon="balance" Label="Expected balance"
                                          Tone="@BalanceTileTone(budget.ExpectedDifference)"
-                                         Foot="@Caption("planned in − planned out")">
+                                         Foot="@OdsInfoTile.Caption("planned in − planned out")">
                                 <Value>@FormatMoney(budget.ExpectedDifference, budget.BaseCurrencyCode)</Value>
                             </OdsInfoTile>
 
@@ -171,7 +171,7 @@
                             {
                                 <OdsInfoTile Icon="account_balance" Label="Actual balance"
                                              Tone="@BalanceTileTone(actualBalance)"
-                                             Foot="@Caption(actualBalance >= budget.ExpectedDifference ? "ahead of plan" : "behind plan")">
+                                             Foot="@OdsInfoTile.Caption(actualBalance >= budget.ExpectedDifference ? "ahead of plan" : "behind plan")">
                                     <Value>@FormatMoney(actualBalance, budget.BaseCurrencyCode)</Value>
                                 </OdsInfoTile>
                             }

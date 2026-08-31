@@ -175,7 +175,7 @@
                                 <Value>@s.FiscalYear</Value>
                             </OdsInfoTile>
 
-                            <OdsInfoTile Icon="payments" Label="Base currency" Foot="@Caption("reporting currency")">
+                            <OdsInfoTile Icon="payments" Label="Base currency" Foot="@OdsInfoTile.Caption("reporting currency")">
                                 <Value>@s.BaseCurrencyCode</Value>
                             </OdsInfoTile>
 
@@ -189,7 +189,7 @@
                             <OdsInfoTile Icon="@StatusIcon(s)" Label="Status"
                                          ValueVariant="OdsInfoTileVariant.Text"
                                          Tone="@StatusTileTone(s)"
-                                         Foot="@Caption(StatusFoot(s))">
+                                         Foot="@OdsInfoTile.Caption(StatusFoot(s))">
                                 <Value>@StatusLabel(s)</Value>
                             </OdsInfoTile>
 
@@ -212,7 +212,7 @@
                             <OdsInfoTile Icon="@(settled ? "task_alt" : "schedule")" Label="Settlement paid"
                                          ValueVariant="@(settled ? OdsInfoTileVariant.Sm : OdsInfoTileVariant.Text)"
                                          Tone="@(settled ? OdsInfoTileTone.Income : OdsInfoTileTone.Pending)"
-                                         Foot="@Caption(settled ? null : "outstanding")">
+                                         Foot="@OdsInfoTile.Caption(settled ? null : "outstanding")">
                                 <Value>@(s.SettledAtUtc is { } paid ? LongDate(paid) : "Not yet")</Value>
                             </OdsInfoTile>
                         </OdsInfoTileGrid>

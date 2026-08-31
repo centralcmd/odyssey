@@ -22,10 +22,10 @@
         <OdsSectionDivider Label="Current period" Meta="@($"in force · {LongDate(DateTime.UtcNow)}")" />
         <div class="ins-tiles">
             @* The premium is money going out, so it reads in the expense hue. *@
-            <OdsInfoTile Icon="payments" Label="Premium" Tone="OdsInfoTileTone.Expense" Foot="@Caption("for this period")">
+            <OdsInfoTile Icon="payments" Label="Premium" Tone="OdsInfoTileTone.Expense" Foot="@OdsInfoTile.Caption("for this period")">
                 <Value>@Money(current.Premium, current.PremiumCurrencyCode)</Value>
             </OdsInfoTile>
-            <OdsInfoTile Icon="shield" Label="Coverage" Foot="@Caption("insured sum")">
+            <OdsInfoTile Icon="shield" Label="Coverage" Foot="@OdsInfoTile.Caption("insured sum")">
                 <Value>@Money(current.CoverageAmount, current.CoverageCurrencyCode)</Value>
             </OdsInfoTile>
             @* We know only when this period ENDS — whether it renews depends on terms we do not
@@ -34,7 +34,7 @@
                          Label="@(Lapsed(current) ? "Period ended" : "Period ends")"
                          ValueVariant="OdsInfoTileVariant.Sm"
                          Tone="@(Lapsed(current) ? OdsInfoTileTone.Expense : OdsInfoTileTone.Default)"
-                         Foot="@Caption($"{(current.FromDate.Date > Today ? "starts" : "since")} {LongDate(current.FromDate)}")">
+                         Foot="@OdsInfoTile.Caption($"{(current.FromDate.Date > Today ? "starts" : "since")} {LongDate(current.FromDate)}")">
                 <Value>@LongDate(current.ToDate)</Value>
             </OdsInfoTile>
         </div>
@@ -91,7 +91,4 @@
 
     private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", System.Globalization.CultureInfo.CurrentCulture);
 
-    /// <summary>An optional tile foot — null renders no foot element at all.</summary>
-    private static RenderFragment? Caption(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
 }

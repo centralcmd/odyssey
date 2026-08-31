@@ -563,11 +563,6 @@ public partial class TaxStatementsCard
 
     private static string? StatusFoot(ExistingTaxStatement s) => TaxStatementStatusVisuals.Foot(s);
 
-    /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
-    /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
-    private static RenderFragment? Caption(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
-
     private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Money ────────────────────────────────────────────────────────────────

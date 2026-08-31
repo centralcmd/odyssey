@@ -533,11 +533,6 @@ public partial class BudgetsCard
 
     private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
-    /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
-    /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
-    private static RenderFragment? Caption(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
-
     private string FormatMoney(decimal value, string? currencyCode) =>
         value.ToString("C", MoneyFormat(currencyCode));
 

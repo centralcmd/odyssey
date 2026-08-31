@@ -142,7 +142,7 @@
                                 @* No per-tile icon colour: the grid inherits the card's accent, which
                                    IS this contract's type colour. *@
                                 <OdsInfoTile Icon="@typeInfo.Icon" Label="Type"
-                                             ValueVariant="OdsInfoTileVariant.Text" Foot="@Caption(oneOff ? "One-off" : "Term")">
+                                             ValueVariant="OdsInfoTileVariant.Text" Foot="@OdsInfoTile.Caption(oneOff ? "One-off" : "Term")">
                                     <Value>@typeInfo.Label</Value>
                                 </OdsInfoTile>
 
@@ -152,7 +152,7 @@
                                                  Label="@(completionPast ? "Completed on" : "Completes on")"
                                                  ValueVariant="OdsInfoTileVariant.Sm"
                                                  Tone="@(completionPast ? OdsInfoTileTone.Default : OdsInfoTileTone.Info)"
-                                                 Foot="@Caption(completionPast ? "delivered on this date" : "upcoming")">
+                                                 Foot="@OdsInfoTile.Caption(completionPast ? "delivered on this date" : "upcoming")">
                                         <Value>@LongDate(completion)</Value>
                                     </OdsInfoTile>
                                 }
@@ -164,7 +164,7 @@
                                                      Label="@(startFuture ? "Starts on" : "Started on")"
                                                      ValueVariant="OdsInfoTileVariant.Sm"
                                                      Tone="@(startFuture ? OdsInfoTileTone.Info : OdsInfoTileTone.Default)"
-                                                     Foot="@Caption(startFuture ? "upcoming" : null)">
+                                                     Foot="@OdsInfoTile.Caption(startFuture ? "upcoming" : null)">
                                             <Value>@LongDate(start)</Value>
                                         </OdsInfoTile>
                                     }
@@ -175,7 +175,7 @@
                                                  Label="@(detail.EndDate is null ? "End date" : endPast ? "Ended on" : "Ends on")"
                                                  ValueVariant="@(detail.EndDate is null ? OdsInfoTileVariant.Text : OdsInfoTileVariant.Sm)"
                                                  Tone="@(endPast ? OdsInfoTileTone.Expense : OdsInfoTileTone.Default)"
-                                                 Foot="@Caption(detail.EndDate is null ? "runs until ended" : endPast ? "no longer in force" : "scheduled")">
+                                                 Foot="@OdsInfoTile.Caption(detail.EndDate is null ? "runs until ended" : endPast ? "no longer in force" : "scheduled")">
                                         <Value>@(detail.EndDate is { } end ? LongDate(end) : "Open-ended")</Value>
                                     </OdsInfoTile>
                                 }
@@ -185,7 +185,7 @@
                                 <OdsInfoTile Icon="@statusMeta.Icon" Label="Status"
                                              ValueVariant="OdsInfoTileVariant.Text"
                                              Tone="@StatusTone(statusMeta.Tone)"
-                                             Foot="@Caption(StatusFoot(detail, oneOff))">
+                                             Foot="@OdsInfoTile.Caption(StatusFoot(detail, oneOff))">
                                     <Value>@statusMeta.Label</Value>
                                 </OdsInfoTile>
 
@@ -193,7 +193,7 @@
                                 {
                                     <OdsInfoTile Icon="inventory_2" Label="Archived"
                                                  ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Muted"
-                                                 Foot="@Caption("hidden from the default list")">
+                                                 Foot="@OdsInfoTile.Caption("hidden from the default list")">
                                         <Value>@LongDate(archivedAt)</Value>
                                     </OdsInfoTile>
                                 }

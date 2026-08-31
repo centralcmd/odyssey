@@ -144,7 +144,7 @@
                                 @if (!string.IsNullOrWhiteSpace(detail.PolicyNumber))
                                 {
                                     <OdsInfoTile Icon="tag" Label="Policy number"
-                                                 ValueVariant="OdsInfoTileVariant.Mono" Foot="@Caption("Insurer reference")">
+                                                 ValueVariant="OdsInfoTileVariant.Mono" Foot="@OdsInfoTile.Caption("Insurer reference")">
                                         <Value>@detail.PolicyNumber</Value>
                                     </OdsInfoTile>
                                 }
@@ -158,7 +158,7 @@
                                 @* Referenced records keep their own mark — they point elsewhere. *@
                                 <OdsInfoTile Icon="@dInsurerMeta.Icon" IconColor="@dInsurerMeta.Color" IconSoft="@dInsurerMeta.Soft"
                                              Label="Insurer" ValueVariant="OdsInfoTileVariant.Text"
-                                             Foot="@Caption(dInsurerMeta.Label)">
+                                             Foot="@OdsInfoTile.Caption(dInsurerMeta.Label)">
                                     <Value>@detail.Insurer.Name</Value>
                                 </OdsInfoTile>
 
@@ -168,7 +168,7 @@
                                                  IconColor="@AccountTypeVisuals.FgColor(insured.Type)"
                                                  IconSoft="@AccountTypeVisuals.BgColor(insured.Type)"
                                                  Label="Insured account" ValueVariant="OdsInfoTileVariant.Text"
-                                                 Foot="@Caption(AccountTypeVisuals.Label(insured.Type))">
+                                                 Foot="@OdsInfoTile.Caption(AccountTypeVisuals.Label(insured.Type))">
                                         <Value>@insured.Name</Value>
                                     </OdsInfoTile>
                                 }
@@ -179,7 +179,7 @@
                                 <OdsInfoTile Icon="@statusMeta.Icon" Label="Status"
                                              ValueVariant="OdsInfoTileVariant.Text"
                                              Tone="@StatusTone(statusMeta.Tone)"
-                                             Foot="@Caption(StatusFoot(detail))">
+                                             Foot="@OdsInfoTile.Caption(StatusFoot(detail))">
                                     <Value>@statusMeta.Label</Value>
                                 </OdsInfoTile>
 
@@ -189,7 +189,7 @@
                                 @if (detail.AccruedPremium is { } accrued)
                                 {
                                     <OdsInfoTile Icon="savings" Label="Total premium"
-                                                 Foot="@Caption($"{detail.AccruedPremiumPeriods} period{(detail.AccruedPremiumPeriods == 1 ? "" : "s")} to date")">
+                                                 Foot="@OdsInfoTile.Caption($"{detail.AccruedPremiumPeriods} period{(detail.AccruedPremiumPeriods == 1 ? "" : "s")} to date")">
                                         <Value>@MoneyFunc(accrued, detail.AccruedPremiumCurrencyCode)</Value>
                                     </OdsInfoTile>
                                 }

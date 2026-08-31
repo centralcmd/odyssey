@@ -725,11 +725,6 @@ public partial class AccountsCard
         return items;
     }
 
-    /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
-    /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
-    private static RenderFragment? Caption(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
-
     private static string GetStatusLabel(ExistingAccount a)
     {
         if (a.Archived != null) return "Archived";
