@@ -144,7 +144,8 @@ function RTMenu({ items }) {
 
 /* ---- Internal: one record row + its expandable detail / edit panel ---- */
 function RTRow({ row, rk, columns, leading, expanded, editing, justSaved, onToggle, actionItems, renderDetail, editCtx, renderEdit, colSpan }) {
-  const clickToggle = () => { if (!editing) onToggle(rk); };
+  const canExpand = !!(renderDetail || renderEdit);
+  const clickToggle = () => { if (!editing && canExpand) onToggle(rk); };
   return (
     <React.Fragment>
       <tr className={`${expanded ? 'expanded' : ''} ${editing ? 'editing' : ''}`.trim() || undefined} onClick={clickToggle}>
@@ -160,16 +161,18 @@ function RTRow({ row, rk, columns, leading, expanded, editing, justSaved, onTogg
         <td>
           <div className="ua-row-actions" onClick={(e) => e.stopPropagation()}>
             <RTMenu items={actionItems} />
-            <button className="ua-expand-btn" aria-label={expanded ? 'Collapse row' : 'Expand row'} aria-expanded={expanded} onClick={clickToggle} disabled={editing}>
-              <span className={`material-icons ua-chev ${expanded ? 'open' : ''}`} aria-hidden="true" style={{ fontSize: 22 }}>expand_more</span>
-            </button>
+            {canExpand && (
+              <button className="ua-expand-btn" aria-label={expanded ? 'Collapse row' : 'Expand row'} aria-expanded={expanded} onClick={clickToggle} disabled={editing}>
+                <span className={`material-icons ua-chev ${expanded ? 'open' : ''}`} aria-hidden="true" style={{ fontSize: 22 }}>expand_more</span>
+              </button>
+            )}
           </div>
         </td>
       </tr>
       {expanded && (
         <tr className="ua-detail-row">
           <td className="ua-detail-cell" colSpan={colSpan}>
-            {editing && renderEdit ? renderEdit(row, editCtx) : renderDetail(row, { expanded })}
+            {editing && renderEdit ? renderEdit(row, editCtx) : (renderDetail ? renderDetail(row, { expanded }) : null)}
           </td>
         </tr>
       )}
@@ -235,7 +238,10 @@ export function RecordTable({
   };
 
   const openRow = (curr, id) => (multiOpen ? [...curr, id] : [...curr.filter((x) => editIds.includes(x)), id]);
-  const toggleRow = (id) => setOpenIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : openRow(curr, id)));
+  const toggleRow = (id) => {
+    if (!renderDetail && !renderEdit) return;
+    setOpenIds((curr) => (curr.includes(id) ? curr.filter((x) => x !== id) : openRow(curr, id)));
+  };
   const startEdit = (id) => {
     setOpenIds((curr) => (curr.includes(id) ? curr : openRow(curr, id)));
     setEditIds((curr) => (curr.includes(id) ? curr : [...curr, id]));

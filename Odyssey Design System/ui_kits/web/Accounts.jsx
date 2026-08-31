@@ -283,13 +283,13 @@ const AllocationDonuts = () => {
 
 /* ---- THE one files surface — the shared DS FilesTable
    (components/FilesTable.jsx, a preset of RecordTable); there is no second
-   implementation here. The table itself owns the record-row lifecycle —
-   expand-to-detail, the inline Edit panel (name + document type), the Saved
-   flash — so this bridge only resolves kind visuals via FILE_ICON, supplies
+   implementation here. The table itself owns the record-row lifecycle — the
+   Edit-file dialog (name + document type) and the Saved flash — so this bridge
+   only resolves kind visuals via FILE_ICON, supplies
    the file-specific menu items (Preview / Download / Analyze / Copy ID), and
-   hosts the modals those open OUTSIDE the table. "Preview" opens the document
-   (FileViewerModal); "View details" expands the record — two different things,
-   hence two names. Pass `onDelete` to allow detaching a file (the transaction
+   hosts the modals those open OUTSIDE the table. `showValidity` (default true)
+   adds the read-only Valid from / Valid to / Issued / Issued by columns.
+   Pass `onDelete` to allow detaching a file (the transaction
    edit panel); pass `accountFor` when rows span accounts (the Files page) — it
    resolves each file's owning account. ---- */
 const FilesTable = ({ files, account, accountFor, onNavigate, onDelete, sort, onSortChange, empty, kinds, showValidity = true }) => {
@@ -342,6 +342,7 @@ const FilesTable = ({ files, account, accountFor, onNavigate, onDelete, sort, on
         issuers={showValidity ? (window.OdysseyData.contacts || [])
           .filter(c => !c.archived)
           .map(c => ({ value: c.id, label: c.name })) : undefined}
+        validityColumns={showValidity}
         formatDate={H.dateLong}
         empty={empty}
         onSave={(id, patch) => setEdits(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }))}

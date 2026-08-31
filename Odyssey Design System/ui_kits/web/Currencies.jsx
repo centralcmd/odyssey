@@ -1,6 +1,8 @@
-/* Currencies — search + status filter + sortable, expandable, editable table
+/* Currencies — search + status filter + sortable table
    following the Transactions pattern. The CurrencyCode is the primary key
-   (ISO-4217), so it's immutable once created — the edit panel locks it.
+   (ISO-4217), so it's immutable once created — the edit dialog locks it.
+   Rows don't expand: every field is a column, so a detail panel would only
+   repeat them.
 
    Fields mirror the Odyssey.Finance.Dtos Currency DTOs:
      ExistingCurrency — CurrencyCode (3), Name (≤64), MinorUnits (0–12),
@@ -15,6 +17,10 @@ const CUR_STATUS_OPTIONS = [
 // MinorUnits is a decimal-place count; the DTO allows 0–12 (Range attribute).
 const CUR_MINOR_OPTIONS = Array.from({ length: 13 }, (_, i) => ({ value: String(i), label: String(i) }));
 
+// Sample formatting of one amount in the currency — shows symbol placement and
+// decimal precision at a glance.
+const curExample = (c) => `${c.symbol || ''}${(1234.5).toLocaleString('en-US', { minimumFractionDigits: c.minorUnits, maximumFractionDigits: c.minorUnits })}`;
+
 const curSortVal = (c, key) => {
   switch (key) {
     case 'code':       return c.code;
@@ -24,26 +30,6 @@ const curSortVal = (c, key) => {
     case 'status':     return c.archived ? 1 : 0;
     default:           return 0;
   }
-};
-
-/* ---------- Expanded DETAIL ---------- */
-const CurDetail = ({ c }) => {
-  const H = window.OdysseyHelpers;
-  const status = H.archivedStatus(c);
-  return (
-    <div className="acct-detail">
-      <div className="meta-grid">
-        <MetaTile label="Currency code" value={c.code} mono />
-        <MetaTile label="Symbol" value={c.symbol || '—'} />
-        <MetaTile label="Name" value={c.name} />
-        <MetaTile label="Minor units" value={`${c.minorUnits} decimal place${c.minorUnits === 1 ? '' : 's'}`} />
-        <MetaTile label="Status" value={<Chip tone={status.tone} dot>{status.label}</Chip>} />
-        <MetaTile label="Base currency" value={c.base ? <Chip tone="info" dot>Workspace base</Chip> : 'No'} />
-        <MetaTile label="Example amount" value={`${c.symbol || ''}${(1234.5).toLocaleString('en-US', { minimumFractionDigits: c.minorUnits, maximumFractionDigits: c.minorUnits })}`} mono />
-        {c.archived && <MetaTile label="Archived" value={H.dateTime(c.archived)} mono />}
-      </div>
-    </div>
-  );
 };
 
 /* ---------- Table (shared DS RecordTable) ---------- */
@@ -72,20 +58,19 @@ const CurrencyTable = ({ currencies, onSave, onDelete, onEdit, sort, onSortChang
         { key: 'name', header: 'Name', sortable: true, sortType: 'text', sortValue: (c) => curSortVal(c, 'name'), cell: (c) => c.name },
         { key: 'symbol', header: 'Symbol', sortable: true, sortType: 'text', className: 'muted', sortValue: (c) => curSortVal(c, 'symbol'), cell: (c) => c.symbol || '—' },
         { key: 'minorUnits', header: 'Minor units', sortable: true, sortType: 'number', defaultDir: 'asc', align: 'right', className: 'muted', sortValue: (c) => curSortVal(c, 'minorUnits'), cell: (c) => c.minorUnits },
+        { key: 'example', header: 'Example', align: 'right', className: 'mono muted', cell: (c) => curExample(c) },
         {
           key: 'status', header: 'Status', sortable: true, sortType: 'status', sortValue: (c) => curSortVal(c, 'status'),
           cell: (c) => { const s = H.archivedStatus(c); return <Chip tone={s.tone} dot>{s.label}</Chip>; },
         },
       ]}
       actions={(c, ctx) => [
-        { icon: ctx.expanded ? 'close' : 'expand_more', label: ctx.expanded ? 'Collapse' : 'View details', onClick: ctx.toggle },
         { icon: 'edit', label: 'Edit', onClick: () => onEdit(c) },
         { icon: c.archived ? 'unarchive' : 'archive', label: c.archived ? 'Restore' : 'Archive', onClick: () => onSave(c.code, { archived: c.archived ? null : new Date().toISOString() }) },
         { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.code); } },
         { divider: true },
         { icon: 'delete', label: 'Delete', danger: true, onClick: ctx.remove },
       ]}
-      renderDetail={(c) => <CurDetail c={c} />}
       onSave={onSave}
       onDelete={onDelete}
       empty={empty}

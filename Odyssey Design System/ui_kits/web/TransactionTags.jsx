@@ -1,6 +1,6 @@
-/* Transaction tags — search + status filter + sortable, expandable, editable
-   table following the Transactions/Users pattern: click a row (or the row-actions
-   menu) to expand into a read-only detail panel, then an Edit panel swaps in.
+/* Transaction tags — search + status filter + sortable table. Rows don't
+   expand: Name / Description / Status is the whole record, so there's nothing
+   a detail panel could add. Editing runs through the tag dialog.
 
    Fields mirror the Odyssey.Finance.Dtos TransactionTag DTOs:
      ExistingTransactionTag — TransactionTagId, Name (≤64), Description (≤256),
@@ -22,26 +22,11 @@ const tagSortVal = (t, key) => {
   }
 };
 
-/* ---------- Expanded DETAIL (read view) ---------- */
-const TagDetail = ({ t }) => {
-  const H = window.OdysseyHelpers;
-  const status = H.archivedStatus(t);
-  return (
-    <div className="acct-detail">
-      <div className="meta-grid">
-        <MetaTile label="Name" value={t.name} />
-        <MetaTile label="Status" value={<Chip tone={status.tone} dot>{status.label}</Chip>} />
-        <MetaTile label="Description" value={t.description || '—'} />
-        {t.archived && <MetaTile label="Archived" value={H.dateTime(t.archived)} mono />}
-      </div>
-    </div>
-  );
-};
-
-/* ---------- Sortable / expandable / editable table ----------
-   The whole row/sort/expand/edit machinery is the shared DS RecordTable; this
-   wrapper only declares the tag-specific columns, row actions, and the detail
-   / edit panels. */
+/* ---------- Sortable table ----------
+   The row/sort machinery is the shared DS RecordTable; this wrapper only
+   declares the tag-specific columns and row actions. Rows don't expand: the
+   three columns already show every field a tag has, so a detail panel would
+   only repeat them. Editing happens in the tag dialog. */
 const TagTable = ({ tags, onSave, onDelete, onEdit, sort, onSortChange, empty, ariaLabel = 'Transaction tags' }) => {
   const H = window.OdysseyHelpers;
   return (
@@ -73,14 +58,12 @@ const TagTable = ({ tags, onSave, onDelete, onEdit, sort, onSortChange, empty, a
         },
       ]}
       actions={(t, ctx) => [
-        { icon: ctx.expanded ? 'close' : 'expand_more', label: ctx.expanded ? 'Collapse' : 'View details', onClick: ctx.toggle },
         { icon: 'edit', label: 'Edit', onClick: () => onEdit(t) },
         { icon: t.archived ? 'unarchive' : 'archive', label: t.archived ? 'Restore' : 'Archive', onClick: () => onSave(t.id, { archived: t.archived ? null : new Date().toISOString() }) },
         { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(t.id); } },
         { divider: true },
         { icon: 'delete', label: 'Delete', danger: true, onClick: ctx.remove },
       ]}
-      renderDetail={(t) => <TagDetail t={t} />}
       onSave={onSave}
       onDelete={onDelete}
       empty={empty}
