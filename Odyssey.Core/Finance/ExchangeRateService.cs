@@ -70,6 +70,10 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
                 ? q.OrderBy(r => r.FromCurrencyCode).ThenBy(r => r.ToCurrencyCode)
                 : q.OrderByDescending(r => r.FromCurrencyCode).ThenByDescending(r => r.ToCurrencyCode),
             ExchangeRateSortBy.Rate => ascending ? q.OrderBy(r => r.Rate) : q.OrderByDescending(r => r.Rate),
+            // Inverse is 1 / Rate, and Rate is > 0 on every write path, so the reciprocal is strictly
+            // decreasing in Rate — order by Rate reversed rather than dividing in SQL, which keeps the
+            // sort exact (no decimal rounding) and lets it use the same index Rate does.
+            ExchangeRateSortBy.Inverse => ascending ? q.OrderByDescending(r => r.Rate) : q.OrderBy(r => r.Rate),
             ExchangeRateSortBy.CreatedAt => ascending ? q.OrderBy(r => r.CreatedAt) : q.OrderByDescending(r => r.CreatedAt),
             // status: current (no newer exists → false) sorts before historical, matching the client (current = 0).
             ExchangeRateSortBy.Status => ascending
