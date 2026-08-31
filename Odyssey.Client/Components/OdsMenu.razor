@@ -5,6 +5,14 @@
     a flat Items list: set Divider for a separator, Header for a group label,
     Danger for a destructive (error-colored) action. Defaults to a more_vert
     icon-button trigger; pass Trigger to anchor it to your own element.
+
+    A disabled item may carry a Description — one line saying WHY it is
+    unavailable. Following the design system's Menu (`disabled={it.disabled &&
+    !it.note}`), such an item does NOT get MudBlazor's disabled treatment: it
+    stays in the focus order and its reason is a SIBLING note wired via
+    aria-describedby, so a keyboard or screen-reader user reaches the explanation
+    instead of a silently skipped item. A disabled item with no Description keeps
+    the ordinary disabled treatment — there is nothing there to reach.
 *@
 
 <MudMenu AnchorOrigin="@Anchor"
@@ -27,8 +35,11 @@
         }
     </ActivatorContent>
     <ChildContent>
-        @foreach (var item in Items)
+        @for (var i = 0; i < Items.Count; i++)
         {
+            var item = Items[i];
+            var noteId = $"{_noteIdPrefix}-{i}";
+
             @if (item.Divider)
             {
                 <MudDivider />
@@ -42,40 +53,32 @@
                 @* OdsMenuItem.Icon is a Material Icons ligature (DS convention),
                    not a MudBlazor SVG constant — render it via the icon font in
                    the item content rather than MudMenuItem's Icon (which would
-                   leave an empty icon gutter). *@
-                <MudMenuItem Disabled="@item.Disabled" OnClick="item.OnClick">
-                    <span class="odc-menu-item @(item.Danger ? "danger" : null) @(string.IsNullOrEmpty(item.Description) ? null : "has-desc")">
-                        @if (!string.IsNullOrEmpty(item.Icon))
-                        {
-                            @* Ligature or literal glyph, the same split the design system's ActionMenu
-                               makes — the terms "§" is a real menu icon, not a Material name. *@
-                            @if (IsLigature(item.Icon))
-                            {
-                                <span class="material-icons odc-menu-item-ic" aria-hidden="true">@item.Icon</span>
-                            }
-                            else
-                            {
-                                <span class="odc-menu-item-glyph" aria-hidden="true">@item.Icon</span>
-                            }
-                        }
-                        @* The description sits INSIDE the item content, so it is part of the item's
-                           accessible name as well as being visible — a disabled item must not convey
-                           its reason by colour alone. *@
-                        <span class="odc-menu-item-body">
-                            <span>@item.Label</span>
-                            @if (!string.IsNullOrEmpty(item.Description))
-                            {
-                                <span class="odc-menu-item-desc">@item.Description</span>
-                            }
-                        </span>
-                        @if (!string.IsNullOrEmpty(item.TrailingIcon))
-                        {
-                            @* Right-aligned affordance icon, revealed on row hover/focus
-                               (Odyssey Design System · ActionMenu trailingIcon). *@
-                            <span class="material-icons odc-menu-item-trail" aria-hidden="true">@item.TrailingIcon</span>
-                        }
-                    </span>
-                </MudMenuItem>
+                   leave an empty icon gutter). See ItemContent. *@
+                @if (item.Disabled && HasNote(item))
+                {
+                    @* Unavailable WITH a stated reason. MudMenuItem writes its own aria-disabled after
+                       any splatted attribute and pulls a disabled item out of the focus order with
+                       tabindex="-1" and pointer-events:none — which is exactly what hides the reason
+                       from the users it was written for. So this case is rendered directly, matching
+                       the item markup MudBlazor emits (same class, same tabindex as an ENABLED item)
+                       while carrying aria-disabled and pointing at its note. No handler is attached,
+                       so activating it neither acts nor closes the menu. *@
+                    <div class="mud-menu-item odc-menu-item-static"
+                         tabindex="0"
+                         aria-disabled="true"
+                         aria-describedby="@noteId">
+                        @ItemContent(item)
+                    </div>
+                    @* A SIBLING of the item, never inside it: inside, the reason would be folded into
+                       the item's accessible NAME instead of read as its description. *@
+                    <p class="odc-menu-note" id="@noteId">@item.Description</p>
+                }
+                else
+                {
+                    <MudMenuItem Disabled="@item.Disabled" OnClick="item.OnClick">
+                        @ItemContent(item)
+                    </MudMenuItem>
+                }
             }
         }
     </ChildContent>
@@ -95,6 +98,38 @@
     [Parameter] public string AriaLabel { get; set; } = "Actions";
 
     [Parameter] public string? Class { get; set; }
+
+    /// <summary>The item's own content — one definition, so the two item shells cannot drift.</summary>
+    private RenderFragment ItemContent(OdsMenuItem item) =>
+        @<span class="odc-menu-item @(item.Danger ? "danger" : null)">
+            @if (!string.IsNullOrEmpty(item.Icon))
+            {
+                @* Ligature or literal glyph, the same split the design system's ActionMenu makes —
+                   the terms "§" is a real menu icon, not a Material name. *@
+                @if (IsLigature(item.Icon))
+                {
+                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">@item.Icon</span>
+                }
+                else
+                {
+                    <span class="odc-menu-item-glyph" aria-hidden="true">@item.Icon</span>
+                }
+            }
+            <span class="odc-menu-item-body">
+                <span>@item.Label</span>
+            </span>
+            @if (!string.IsNullOrEmpty(item.TrailingIcon))
+            {
+                @* Right-aligned affordance icon, revealed on row hover/focus
+                   (Odyssey Design System · ActionMenu trailingIcon). *@
+                <span class="material-icons odc-menu-item-trail" aria-hidden="true">@item.TrailingIcon</span>
+            }
+        </span>;
+
+    private static bool HasNote(OdsMenuItem item) => !string.IsNullOrEmpty(item.Description);
+
+    /// <summary>Instance-unique id stem for the notes, so two menus on one page cannot collide.</summary>
+    private readonly string _noteIdPrefix = $"odc-menu-note-{Guid.NewGuid():N}";
 
     /// <summary>A Material Icons ligature is all-lowercase ASCII letters, digits and underscores
     /// (e.g. "attach_file"); anything else (e.g. "§") renders as a literal glyph.</summary>

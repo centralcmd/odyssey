@@ -44,7 +44,6 @@ public class ScopedWriteRouteTests
         // label                       expected path                                                    method
         { "insurance renewal update",  $"/api/insurance-policies/{Parent}/renewals/{Child}",            "PUT" },
         { "insurance renewal delete",  $"/api/insurance-policies/{Parent}/renewals/{Child}",            "DELETE" },
-        { "insurance policy file",     $"/api/insurance-policies/{Parent}/files/{Child}",               "DELETE" },
         { "insurance renewal file",    $"/api/insurance-policies/{Parent}/renewals/{Child}/files/{Grandchild}", "DELETE" },
         { "contract party remove",     $"/api/contracts/{Parent}/parties/{Child}",                      "DELETE" },
         { "contract file detach",      $"/api/contracts/{Parent}/files/{Child}",                        "DELETE" },
@@ -71,7 +70,6 @@ public class ScopedWriteRouteTests
         {
             "insurance renewal update" => insurance.UpdateRenewalAsync(Parent, Child, SampleRenewalUpdate()),
             "insurance renewal delete" => insurance.DeleteRenewalAsync(Parent, Child),
-            "insurance policy file" => insurance.DetachPolicyFileAsync(Parent, Child),
             "insurance renewal file" => insurance.DetachRenewalFileAsync(Parent, Child, Grandchild),
             "contract party remove" => contracts.RemovePartyAsync(Parent, Child),
             "contract file detach" => contracts.DetachFileAsync(Parent, Child),

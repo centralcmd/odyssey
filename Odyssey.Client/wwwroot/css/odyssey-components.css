@@ -1123,24 +1123,38 @@
 .material-icons.odc-menu-item-trail { font-size: 18px; margin-left: auto; opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); color: var(--mud-palette-text-secondary); }
 .mud-menu-item:hover .odc-menu-item-trail,
 .mud-menu-item:focus-visible .odc-menu-item-trail { opacity: 1; }
-/* Optional second line under the label (OdsMenuItem.Description) — the reason a disabled item is
-   disabled, stated in text rather than left to the greyed-out colour. */
 .odc-menu-item-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.odc-menu-item.has-desc { align-items: flex-start; }
-.odc-menu-item.has-desc .odc-menu-item-ic { margin-top: 2px; }
-.odc-menu-item-desc { font: var(--fw-regular) var(--fs-caption)/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: normal; max-width: 32ch; }
-/* MudBlazor disables an item with `.mud-disabled { opacity: .5 }`, and opacity is applied AFTER the
-   child's own colour — so it compounds, dropping the description from ~7:1 to 2.33:1 (light) and
-   2.71:1 (dark). Both fail WCAG 1.4.3 AA, and no colour choice recovers it: even pure black caps under
-   4:1 on white at 50%. That defeats the whole reason Description exists, which is to state a disabled
-   item's reason in TEXT rather than by colour alone.
-   Restore full opacity for items carrying our custom content and convey "disabled" with a muted colour
-   instead, which is contrast-checkable. Scoped by :has() so no other MudBlazor disabled surface is
-   touched, and `pointer-events: none` from the same rule is deliberately left in place. */
+/* The shell OdsMenu renders itself for an item that is unavailable but carries a reason — MudMenuItem
+   cannot be made to keep such an item reachable. It mirrors what MudBlazor emits for an item, minus
+   the interaction affordances it must not have. */
+.mud-menu-item.odc-menu-item-static { cursor: not-allowed; }
+.mud-menu-item.odc-menu-item-static:hover { background: none; }
+.mud-menu-item.odc-menu-item-static:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: -2px;
+}
+/* The reason a disabled item is unavailable (OdsMenuItem.Description), as a SIBLING note wired via
+   aria-describedby — Odyssey Design System · components.css `.odc-menu-note`. It sits under the item
+   it explains, indented past the icon gutter so the two read as one block. */
+.odc-menu-note {
+    margin: 0; padding: 0 10px 8px 38px; max-width: 268px;
+    font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}
+/* Unavailability is conveyed by a muted COLOUR, which is contrast-checkable, never by opacity.
+   MudBlazor disables an item with `.mud-disabled { opacity: .5 }`, and opacity applies AFTER the
+   child's own colour — so it compounds, and no colour choice recovers it: even pure black caps under
+   4:1 on white at 50%. That is why the static shell (which never carries `.mud-disabled`) and the
+   plain disabled item are both muted here rather than dimmed, and why the opacity is overridden for
+   the latter. The requirement is the outcome — label and icon at >= 4.5:1 — not the survival of any
+   particular rule. */
+.mud-menu-item.odc-menu-item-static .odc-menu-item,
+.mud-menu-item.odc-menu-item-static .odc-menu-item-ic {
+    color: var(--mud-palette-text-secondary);
+}
 .mud-menu-item.mud-disabled:has(.odc-menu-item) { opacity: 1; }
 .mud-menu-item.mud-disabled:has(.odc-menu-item) .odc-menu-item,
-.mud-menu-item.mud-disabled:has(.odc-menu-item) .odc-menu-item-ic,
-.mud-menu-item.mud-disabled:has(.odc-menu-item) .odc-menu-item-desc {
+.mud-menu-item.mud-disabled:has(.odc-menu-item) .odc-menu-item-ic {
     color: var(--mud-palette-text-secondary) !important;
 }
 
@@ -1720,6 +1734,28 @@
   background: var(--mud-palette-background);
 }
 .ins-empty-cover .material-icons { font-size: 20px; opacity: 0.7; }
+/* The button carries its own icon, which must not inherit the state row's dimming. */
+.ins-empty-cover .mud-button-root .material-icons { opacity: 1; }
+/* The empty state's call to action sits at the trailing edge and keeps its own colour — the state
+   text around it is muted, and the button must not read as part of the same dimmed sentence. */
+.ins-empty-cover .mud-button-root { flex: none; }
+
+/* Attach dialog: the target period, stated in the BODY. The dialog no longer asks which period to
+   attach to (issue #26) — it infers one — so the inference has to be visible where the user is
+   about to drop a file, not tucked into the modal's small secondary subtitle. */
+.ins-attach-target {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
+  padding: 10px 12px; margin-bottom: 14px;
+  border: 1px solid var(--ins-accent-line, var(--mud-palette-divider));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ins-accent, var(--mud-palette-primary)) 4%, transparent);
+}
+.ins-attach-target .material-icons { font-size: 16px; align-self: center; color: var(--mud-palette-text-secondary); }
+.ins-attach-target-label {
+  font: var(--fw-semibold, 600) 11px/1 var(--font-sans); letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--mud-palette-text-secondary);
+}
+.ins-attach-target-value { font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
 
 /* Terms-style history (mirrors AccountTerms) */
 /* The 16px was the old disclosure body's inner padding; a section's content sits flush

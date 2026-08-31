@@ -461,20 +461,77 @@ public partial class InsuranceCard
 
     // ── Upload / attach dialog ───────────────────────────────────────────────────
     private ExistingInsurancePolicy? _uploadPolicy;
-    private Guid? _uploadRenewalId;
+    private Guid _uploadRenewalId;
     private Guid _uploadKey;
     private bool _uploadOpen;
 
+    /// <summary>
+    /// Opens the attach dialog against ONE period — the only place an insurance document can live
+    /// (issue #26). The period panel passes its own id; the row menu has no such context, so the
+    /// target is inferred by <see cref="InsuranceAttachTarget"/> and named in the dialog's body.
+    /// </summary>
     private async Task AttachDocument(Guid policyId, Guid? renewalId = null)
     {
         if (!_canUploadFiles) return;
         await EnsureDetail(policyId);
         if (!_details.TryGetValue(policyId, out var d)) return;
+
+        var target = renewalId ?? InsuranceAttachTarget.For(d);
+        if (target == Guid.Empty)
+        {
+            // The gate on RenewalCount should have disabled the action; this is the race where the
+            // last period was deleted underneath an open record.
+            Snackbar.Add("Add a renewal period before attaching a document.", Severity.Warning);
+            return;
+        }
+
         _expandedId = policyId;
         _uploadPolicy = d;
-        _uploadRenewalId = renewalId;
+        _uploadRenewalId = target;
         _uploadKey = Guid.NewGuid();
         _uploadOpen = true;
+    }
+
+    /// <summary>
+    /// After an attach: reload, then ANNOUNCE the period's new document count.
+    ///
+    /// <para>
+    /// The count is written to the documents chip's <c>aria-label</c>, and a changed label on an
+    /// UNFOCUSED control is not announced — focus is back on the Attach button, not the chip. So the
+    /// live region carries it (WCAG 2.2 §4.1.3), the same way BudgetsCard announces its edit-mode
+    /// transition.
+    /// </para>
+    /// </summary>
+    private async Task OnDocumentsAttached(Guid policyId)
+    {
+        var renewalId = _uploadRenewalId;
+        await ReloadPolicy(policyId);
+
+        var count = _details.TryGetValue(policyId, out var d)
+            ? d.Renewals.FirstOrDefault(r => r.PolicyRenewalId == renewalId)?.Files.Count
+            : null;
+        if (count is { } n)
+        {
+            _announce = $"{n} document{(n == 1 ? "" : "s")} on this period.";
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// After a renewal period is saved: reload, and when the policy had none before, announce that
+    /// attaching documents is now possible — the row menu's Attach document has just gone from
+    /// disabled to enabled, which is a state change nothing else would voice.
+    /// </summary>
+    private async Task OnRenewalSaved(Guid policyId)
+    {
+        var hadNone = _policies.FirstOrDefault(p => p.InsurancePolicyId == policyId)?.RenewalCount == 0;
+        await ReloadPolicy(policyId);
+
+        if (hadNone && _policies.FirstOrDefault(p => p.InsurancePolicyId == policyId)?.RenewalCount > 0)
+        {
+            _announce = "Renewal period added. You can now attach documents to this policy.";
+            StateHasChanged();
+        }
     }
 
     // ── Collapsed headline figure ──────────────────────────────────────────────
@@ -557,10 +614,19 @@ public partial class InsuranceCard
 
         if (_canUploadFiles)
         {
+            // Gated on the LIST item's count, not the detail's: RowActions renders from the list item
+            // and _details is populated only for EXPANDED rows, so reading Renewals.Count there would
+            // disable the action on every collapsed row. ReloadPolicy refreshes the list too, so the
+            // enable transition after the first period is saved comes free.
+            var hasPeriod = p.RenewalCount > 0;
             items.Add(new OdsMenuItem
             {
                 Icon = "upload_file",
                 Label = "Attach document",
+                Disabled = !hasPeriod,
+                // A document belongs to a period, so with no period there is nothing to attach to.
+                // The reason is TEXT, associated as a description — never the dimmed styling alone.
+                Description = hasPeriod ? null : "Add a renewal period first",
                 OnClick = EventCallback.Factory.Create(this, () => AttachDocument(p.InsurancePolicyId)),
             });
         }

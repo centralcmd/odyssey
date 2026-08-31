@@ -45,5 +45,4 @@ public class InsurancePolicy
     public required DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public ICollection<PolicyRenewal> Renewals { get; set; } = new List<PolicyRenewal>();
-    public ICollection<InsurancePolicyFile> Files { get; set; } = new List<InsurancePolicyFile>();
 }

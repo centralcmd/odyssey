@@ -5,15 +5,23 @@
     InsuranceRenewalHistory — the Terms-shaped renewal history inside an expanded
     policy (issue #175): a premium-over-time chart (the section hero, shown with ≥ 2
     same-currency periods), then a status'd history table. Each row carries a
-    documents chip that expands an inline per-renewal files table. Mirrors the design
-    system's RenewalHistory / RenewalTable.
+    documents chip that expands an inline per-renewal files table — the only place an
+    insurance document lives since issue #26. Mirrors the design system's
+    RenewalHistory / RenewalTable.
 *@
 
 @if (Renewals.Count == 0)
 {
+    @* With no period there is nowhere to attach a document, so the empty state carries the way out
+       rather than leaving the user to find it in the row menu (issue #26 §3). *@
     <div class="ins-empty-cover">
         <span class="material-icons" aria-hidden="true">event_busy</span>
         <div style="flex:1;">No renewal periods yet — add the first period to record premium, coverage and validity dates.</div>
+        @if (CanWrite)
+        {
+            <OdsButton Variant="OdsButtonVariant.Filled" Icon="event_repeat"
+                       OnClick="@(() => OnAddRenewal.InvokeAsync())">New renewal period</OdsButton>
+        }
     </div>
 }
 else
@@ -142,6 +150,9 @@ else
 
     /// <summary>Formats an amount in its currency — supplied by the host.</summary>
     [Parameter, EditorRequired] public Func<decimal?, string?, string> Money { get; set; } = (v, _) => v?.ToString() ?? "—";
+
+    /// <summary>Raised by the empty state's call to action. Named for the design system's own prop.</summary>
+    [Parameter] public EventCallback OnAddRenewal { get; set; }
 
     [Parameter] public EventCallback<ExistingPolicyRenewal> OnEditRenewal { get; set; }
     [Parameter] public EventCallback<ExistingPolicyRenewal> OnDeleteRenewal { get; set; }

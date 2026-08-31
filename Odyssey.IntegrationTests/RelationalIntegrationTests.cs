@@ -811,15 +811,6 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 CoverageCurrencyCode = "USD",
                 CreatedAtUtc = DateTime.UtcNow,
             });
-            context.InsurancePolicyFiles.Add(new InsurancePolicyFile
-            {
-                Id = Guid.NewGuid(),
-                InsurancePolicyId = policyId,
-                FileMetadataId = fileMetadataId,
-                FileType = Odyssey.Context.PolicyFileType.Contract,
-                AttachedByUserId = "integration-user",
-                AttachedAtUtc = DateTime.UtcNow,
-            });
             context.PolicyRenewalFiles.Add(new PolicyRenewalFile
             {
                 Id = Guid.NewGuid(),
@@ -832,9 +823,9 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             await context.SaveChangesAsync();
         }
 
-        // Delete the policy directly at the database; ON DELETE CASCADE must remove the renewal and
-        // both file-join rows (the renewal join via PolicyRenewal's own cascade), while the shared
-        // FileMetadata/blob — owned by the files API — survive. InMemory enforces none of this.
+        // Delete the policy directly at the database; ON DELETE CASCADE must remove the renewal and its
+        // document links (through PolicyRenewal's own cascade), while the shared FileMetadata/blob —
+        // owned by the files API — survive. InMemory enforces none of this.
         await using (var context = NewRelationalContext())
         {
             await context.InsurancePolicies.Where(p => p.InsurancePolicyId == policyId).ExecuteDeleteAsync();
@@ -843,7 +834,6 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         await using (var context = NewRelationalContext())
         {
             Assert.Equal(0, await context.PolicyRenewals.CountAsync(r => r.InsurancePolicyId == policyId));
-            Assert.Equal(0, await context.InsurancePolicyFiles.CountAsync(f => f.InsurancePolicyId == policyId));
             Assert.Equal(0, await context.PolicyRenewalFiles.CountAsync(f => f.PolicyRenewalId == renewalId));
             Assert.True(await context.FileMetadata.AnyAsync(f => f.Id == fileMetadataId));
 

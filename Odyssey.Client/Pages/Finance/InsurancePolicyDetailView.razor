@@ -3,8 +3,9 @@
 
 @*
     InsurancePolicyDetailView — the SECTIONS of an expanded policy record (issue #175): the
-    current-period snapshot, the renewal history (chart + table) and the policy-level documents.
-    Mirrors the design system's PolicyDetail.
+    current-period snapshot and the renewal history (chart + table). Mirrors the design system's
+    PolicyDetail. There is no policy-documents section: since issue #26 every document hangs off the
+    period it belongs to, reachable through that period's row in the history table.
 
     The policy's fact tiles and notes are NOT here: they belong to the record card's Details and
     Content slots, whose order the card fixes, and InsuranceCard renders them there. What is left is
@@ -12,7 +13,10 @@
     same order as the header's counts, with the record's current state band first.
 
     Sections do not collapse and carry no action slot: the body already opens as a whole, and every
-    section-level action ("New renewal period", "Attach document") lives in the row action menu.
+    section-level action ("New renewal period", "Attach document") lives in the row action menu. The
+    one exception is the renewal history's EMPTY state, which offers "New renewal period" inline —
+    with no period there is nothing to attach a document to, so the call to action has to be where
+    the user is looking (issue #26 §3).
 *@
 
 @if (Policy.CurrentRenewal is { } current)
@@ -48,21 +52,11 @@
                              CanWrite="CanWrite"
                              CanDownload="CanDownload"
                              CanUpload="CanUpload"
+                             OnAddRenewal="OnAddRenewal"
                              OnEditRenewal="OnEditRenewal"
                              OnDeleteRenewal="OnDeleteRenewal"
                              OnAttachRenewal="OnAttachRenewal"
                              OnChanged="OnChanged" />
-</div>
-
-<div class="ins-section">
-    <OdsSectionDivider Label="Policy documents" Meta="@($"{Policy.Files.Count} file{(Policy.Files.Count == 1 ? "" : "s")}")" />
-    <div class="ins-tbl-frame">
-        <InsuranceFilesTable PolicyId="Policy.InsurancePolicyId"
-                             Files="@PolicyFiles"
-                             CanDownload="CanDownload" CanDelete="CanWrite"
-                             OnChanged="OnChanged"
-                             Empty="_emptyPolicyDocs" />
-    </div>
 </div>
 
 @code {
@@ -74,15 +68,13 @@
     [Parameter] public bool CanDownload { get; set; }
     [Parameter] public bool CanUpload { get; set; }
 
+    /// <summary>Raised by the renewal history's empty state — the only inline section action.</summary>
+    [Parameter] public EventCallback OnAddRenewal { get; set; }
+
     [Parameter] public EventCallback<ExistingPolicyRenewal> OnEditRenewal { get; set; }
     [Parameter] public EventCallback<ExistingPolicyRenewal> OnDeleteRenewal { get; set; }
     [Parameter] public EventCallback<Guid> OnAttachRenewal { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
-
-    private IReadOnlyList<InsuranceFileItem> PolicyFiles => [.. Policy.Files.Select(InsuranceFileItem.From)];
-
-    private readonly RenderFragment _emptyPolicyDocs =
-        @<div class="empty-line" style="padding:20px;">No policy-level documents yet — attach the certificate, policy wording, or schedule.</div>;
 
     private static DateTime Today => DateTime.UtcNow.Date;
 

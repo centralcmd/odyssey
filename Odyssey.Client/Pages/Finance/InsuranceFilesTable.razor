@@ -7,11 +7,12 @@
 @inject IInsuranceApiClient Insurance
 
 @*
-    InsuranceFilesTable — the attachments table for an insurance policy (RenewalId
-    null) OR a specific renewal period (RenewalId set). Wraps the shared OdsFilesTable;
-    downloads + detach hit the PARENT-SCOPED routes via IInsuranceApiClient so the
-    IDOR-free guarantee holds (issue #175 §3/§10) — never the generic by-file-id route.
-    Display-only attach is owned by the host's "Attach" action (InsuranceUploadDialog).
+    InsuranceFilesTable — the attachments table for ONE renewal period. Since issue #26
+    a period is the only home for an insurance document, so both ids are required and
+    there is no policy-level mode. Wraps the shared OdsFilesTable; downloads + detach hit
+    the PARENT-SCOPED route via IInsuranceApiClient so the IDOR-free guarantee holds
+    (issue #175 §3/§10) — never the generic by-file-id route. Attach is owned by the
+    host's "Attach" action (InsuranceUploadDialog).
 *@
 
 <OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
@@ -27,10 +28,10 @@
     /// <summary>The owning policy id (the download/detach route's <c>{id}</c>).</summary>
     [Parameter, EditorRequired] public Guid PolicyId { get; set; }
 
-    /// <summary>The renewal id when these are renewal-level documents; null for policy-level.</summary>
-    [Parameter] public Guid? RenewalId { get; set; }
+    /// <summary>The period these documents hang off (the route's <c>{renewalId}</c>).</summary>
+    [Parameter, EditorRequired] public Guid RenewalId { get; set; }
 
-    /// <summary>The attached documents (flattened from the policy or renewal DTO).</summary>
+    /// <summary>The attached documents (flattened from the renewal DTO).</summary>
     [Parameter] public IReadOnlyList<InsuranceFileItem> Files { get; set; } = [];
 
     [Parameter] public bool CanDownload { get; set; }
@@ -79,9 +80,7 @@
 
     private async Task DownloadAsync(InsuranceFileItem file)
     {
-        var result = RenewalId is { } rid
-            ? await Insurance.DownloadRenewalFileAsync(PolicyId, rid, file.FileId)
-            : await Insurance.DownloadPolicyFileAsync(PolicyId, file.FileId);
+        var result = await Insurance.DownloadRenewalFileAsync(PolicyId, RenewalId, file.FileId);
 
         if (result.OrToast(Snackbar, "Download failed") is not { } content) { return; }
 
@@ -102,9 +101,7 @@
         if (confirmed != true)
             return;
 
-        var detached = RenewalId is { } rid
-            ? await Insurance.DetachRenewalFileAsync(PolicyId, rid, file.FileId)
-            : await Insurance.DetachPolicyFileAsync(PolicyId, file.FileId);
+        var detached = await Insurance.DetachRenewalFileAsync(PolicyId, RenewalId, file.FileId);
 
         if (detached.Toast(Snackbar, "Detach failed", "Document detached."))
             await OnChanged.InvokeAsync();

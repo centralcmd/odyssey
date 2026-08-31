@@ -306,15 +306,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .HasConversion<int>();
         });
 
-        modelBuilder.Entity<InsurancePolicyFile>(entity =>
-        {
-            entity.Property(f => f.FileType)
-                .IsRequired()
-                .HasDefaultValue(PolicyFileType.Other)
-                .HasSentinel(PolicyFileType.Other)
-                .HasConversion<int>();
-        });
-
         modelBuilder.Entity<PolicyRenewalFile>(entity =>
         {
             entity.Property(f => f.FileType)
@@ -936,7 +927,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<ContractFile>(modelBuilder, nameof(ContractFile.AttachedByUserId));
         DeclareUserAttribution<TransactionFile>(modelBuilder, nameof(TransactionFile.AttachedByUserId));
         DeclareUserAttribution<TaxStatementFile>(modelBuilder, nameof(TaxStatementFile.AttachedByUserId));
-        DeclareUserAttribution<InsurancePolicyFile>(modelBuilder, nameof(InsurancePolicyFile.AttachedByUserId));
         DeclareUserAttribution<PolicyRenewalFile>(modelBuilder, nameof(PolicyRenewalFile.AttachedByUserId));
 
         DeclareUserAttribution<FileMetadata>(modelBuilder, nameof(Odyssey.Context.FileMetadata.UploadedByUserId));
@@ -1160,7 +1150,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<TaxStatementFile> TaxStatementFiles { get; set; }
     public DbSet<InsurancePolicy> InsurancePolicies { get; set; }
     public DbSet<PolicyRenewal> PolicyRenewals { get; set; }
-    public DbSet<InsurancePolicyFile> InsurancePolicyFiles { get; set; }
     public DbSet<PolicyRenewalFile> PolicyRenewalFiles { get; set; }
     public DbSet<Contract> Contracts { get; set; }
     public DbSet<ContractParty> ContractParties { get; set; }

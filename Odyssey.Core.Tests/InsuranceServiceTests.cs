@@ -687,8 +687,9 @@ public class InsuranceServiceTests
 
     // ── File attach: cap & duplicate ─────────────────────────────────────────────
 
+    /// <summary>The cap is per PERIOD — the policy is no longer a parent it can apply to (issue #26).</summary>
     [Fact]
-    public async Task AttachPolicyFile_ExceedingCap_ThrowsUnprocessable()
+    public async Task AttachRenewalFile_ExceedingCap_ThrowsUnprocessable()
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context, new FixedSystemSettingsLookup
@@ -699,12 +700,13 @@ public class InsuranceServiceTests
         });
         var insurerId = await SeedInsurer();
         var created = await service.Create(NewPolicy(insurerId));
+        var renewal = await service.AddRenewal(created.InsurancePolicyId, NewRenewal(FixedToday, FixedToday.AddDays(1)));
 
         // Seed the cap directly (the join row exists without loading FileMetadata; the count check
         // short-circuits before the file is materialized).
-        context.InsurancePolicyFiles.Add(new InsurancePolicyFile
+        context.PolicyRenewalFiles.Add(new PolicyRenewalFile
         {
-            InsurancePolicyId = created.InsurancePolicyId,
+            PolicyRenewalId = renewal!.PolicyRenewalId,
             FileMetadataId = Guid.NewGuid(),
             AttachedByUserId = "seed",
             AttachedAtUtc = FixedToday,
@@ -712,29 +714,7 @@ public class InsuranceServiceTests
         await context.SaveChangesAsync();
 
         await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
-            service.AttachPolicyFile(created.InsurancePolicyId, Guid.NewGuid(), "user", DtoPolicyFileType.PolicyDocument, null));
-    }
-
-    [Fact]
-    public async Task AttachPolicyFile_Duplicate_ThrowsConflict()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = CreateService(context);
-        var insurerId = await SeedInsurer();
-        var created = await service.Create(NewPolicy(insurerId));
-        var fileId = Guid.NewGuid();
-
-        context.InsurancePolicyFiles.Add(new InsurancePolicyFile
-        {
-            InsurancePolicyId = created.InsurancePolicyId,
-            FileMetadataId = fileId,
-            AttachedByUserId = "seed",
-            AttachedAtUtc = FixedToday,
-        });
-        await context.SaveChangesAsync();
-
-        await Assert.ThrowsAsync<DomainConflictException>(() =>
-            service.AttachPolicyFile(created.InsurancePolicyId, fileId, "user", DtoPolicyFileType.PolicyDocument, null));
+            service.AttachRenewalFile(renewal.PolicyRenewalId, Guid.NewGuid(), "user", DtoPolicyFileType.PolicyDocument, null));
     }
 
     [Fact]

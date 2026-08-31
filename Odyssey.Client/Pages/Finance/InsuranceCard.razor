@@ -84,8 +84,10 @@
                         string.IsNullOrWhiteSpace(p.PolicyNumber) ? null : PolicyNumberMeta(p.PolicyNumber),
                     };
 
-                    @* The header counts are the body's table of contents: same glyphs, same order as
-                       the sections below. *@
+                    @* The header counts: periods, then the documents across them. Since issue #26 the
+                       documents live INSIDE the renewal history rather than in a section of their
+                       own, so the counts no longer map one-to-one onto the body's sections — the
+                       second is a rollup of what the first contains. *@
                     var counts = new[]
                     {
                         new OdsRecordCount("event_repeat", p.RenewalCount.ToString(CultureInfo.CurrentCulture), "Renewal periods"),
@@ -217,6 +219,7 @@
                                                        CanWrite="_canUpdate"
                                                        CanDownload="_canDownloadFiles"
                                                        CanUpload="_canUploadFiles"
+                                                       OnAddRenewal="@(() => AddRenewal(p.InsurancePolicyId))"
                                                        OnEditRenewal="@(r => EditRenewal(p.InsurancePolicyId, r))"
                                                        OnDeleteRenewal="@(r => DeleteRenewal(p.InsurancePolicyId, r))"
                                                        OnAttachRenewal="@(rid => AttachDocument(p.InsurancePolicyId, rid))"
@@ -268,7 +271,7 @@
                       @bind-Open="_renewalOpen"
                       Policy="_renewalPolicy"
                       Renewal="_editingRenewal"
-                      OnSaved="@(() => ReloadPolicy(_renewalPolicy.InsurancePolicyId))" />
+                      OnSaved="@(() => OnRenewalSaved(_renewalPolicy.InsurancePolicyId))" />
 }
 
 @if (_uploadPolicy is not null)
@@ -276,8 +279,8 @@
     <InsuranceUploadDialog @key="_uploadKey"
                            @bind-Open="_uploadOpen"
                            Policy="_uploadPolicy"
-                           InitialRenewalId="_uploadRenewalId"
-                           OnSaved="@(() => ReloadPolicy(_uploadPolicy.InsurancePolicyId))" />
+                           RenewalId="_uploadRenewalId"
+                           OnSaved="@(() => OnDocumentsAttached(_uploadPolicy.InsurancePolicyId))" />
 }
 
 @code {

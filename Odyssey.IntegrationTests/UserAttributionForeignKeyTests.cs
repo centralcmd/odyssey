@@ -5,8 +5,8 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// Pins the twenty-three user-attribution foreign keys at the database, where the only thing that can
-/// satisfy the assertions is the constraint itself.
+/// Pins the user-attribution foreign keys at the database, where the only thing that can satisfy the
+/// assertions is the constraint itself.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -45,8 +45,12 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("ContractFiles", "AttachedByUserId"),
         ("TransactionFiles", "AttachedByUserId"),
         ("TaxStatementFiles", "AttachedByUserId"),
-        ("InsurancePolicyFiles", "AttachedByUserId"),
         ("PolicyRenewalFiles", "AttachedByUserId"),
+        // The relocation ledger from issue #26. It is not an EF entity — it is an operational record
+        // of what the migration did — but its attribution column follows the same rule as the other
+        // twenty-three, and for the same reason: the ledger must outlive the departure of whoever
+        // attached the document it records.
+        ("_InsurancePolicyFileRelocation", "AttachedByUserId"),
         ("FileMetadata", "UploadedByUserId"),
         ("FileAnalysisJobs", "RequestedByUserId"),
         ("FileAnalysisCandidateTransactions", "ReviewedByUserId"),

@@ -47,6 +47,11 @@ public sealed record InsurancePolicyListItem
 
     public int RenewalCount { get; set; }
 
+    /// <summary>
+    /// Documents on this policy — the sum across its periods. A document belongs to a period and
+    /// nowhere else (issue #26), so this counts <c>renewals[].files[]</c>; before that change it
+    /// counted only the policy-level attachments, which no longer exist.
+    /// </summary>
     public int FileCount { get; set; }
 
     public DateTime? Archived { get; set; }
