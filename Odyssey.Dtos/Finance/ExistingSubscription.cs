@@ -36,5 +36,15 @@ public sealed record ExistingSubscription
 
     public DateTime? Archived { get; set; }
 
+    /// <summary>
+    /// The next charge on or after today, derived from <see cref="FirstBillingDate"/> + the interval
+    /// (display only — nothing is scheduled or stored). Null when there is no next charge: the term
+    /// has lapsed, the next occurrence would fall past <see cref="EndDate"/>, or the subscription is
+    /// paused or archived. The emptiness is part of the derivation, not a missing value — the same
+    /// rule <c>SubscriptionSummary.UpcomingRenewals</c> applies, so a client never has to re-derive
+    /// it (and the two can never disagree).
+    /// </summary>
+    public DateOnly? NextBillingDate { get; set; }
+
     public required DateTime CreatedAtUtc { get; set; }
 }

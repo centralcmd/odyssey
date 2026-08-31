@@ -18,7 +18,6 @@
 <OdsLiveAnnouncer Message="@_announce" />
 
 
-<div class="sub-shell">
 <MudStack Spacing="4">
 
     <PageHeader Title="Subscriptions"
@@ -86,93 +85,53 @@
                          EmptyDescription="Keep a manual list of the recurring subscriptions you want to track — what each one is, who bills it, how much, and how often.">
             <RenderItem Context="s">
                 @{
-                    var isExpanded = IsExpanded(s.SubscriptionId);
                     var archived = s.Archived is not null;
                     var ended = IsEnded(s.EndDate);
                     var paused = s.Paused is not null;
                     var info = OdsTypeRegistries.BillingIntervalOf(s.Interval);
                     var anchor = OdsBillingIntervalChip.AnchorLabel(s.Interval, s.FirstBillingDate);
+                    var cadence = OdsBillingIntervalChip.CadenceLabel(s.Interval, s.IntervalCount);
+                    var company = s.Contact is null ? null : OdsTypeRegistries.ContactTypeOf(s.Contact.Type.ToString());
                     var detail = _details.GetValueOrDefault(s.SubscriptionId);
+
+                    @* The single meta line: external id · company · cadence. Null entries are dropped
+                       by the card, so an absent external id leaves no stray separator. *@
+                    var meta = new List<RenderFragment?>();
+                    if (!string.IsNullOrWhiteSpace(s.ExternalId))
+                    {
+                        meta.Add(ExternalIdMeta(s.ExternalId));
+                    }
+                    meta.Add(CompanyMeta(company?.Icon ?? "store", s.Contact?.Name ?? "No company"));
+                    meta.Add(CadenceMeta(info.Icon, anchor is null ? cadence : $"{cadence} · {anchor}"));
                 }
-                <OdsExpandableCard Id="@($"sub-{s.SubscriptionId}")"
-                                   Open="isExpanded"
-                                   Dimmed="archived"
-                                   Flash="@(_flashId == s.SubscriptionId)"
-                                   Label="@s.Name"
-                                   OnToggle="@(() => ToggleExpand(s.SubscriptionId))">
+                @* The accent is the BILLING INTERVAL — a subscription has no type field, but the
+                   interval is its type-equivalent: a categorical registry it always has exactly one
+                   of, carrying its own icon and colour. Derived state (paused / ended / archived) is
+                   never the accent; that stays with the status chip. *@
+                <OdsRecordCard Id="@($"sub-{s.SubscriptionId}")"
+                               Icon="@info.Icon"
+                               Accent="@info.Color"
+                               AccentSoft="@info.Soft"
+                               Name="@s.Name"
+                               Meta="meta"
+                               FigureCaption="@OdsBillingIntervalChip.FigureCaption(s.Interval, s.IntervalCount)"
+                               FigureTone="OdsRecordFigureTone.Expense"
+                               Dimmed="archived"
+                               Highlight="@(_flashId == s.SubscriptionId)"
+                               Open="IsExpanded(s.SubscriptionId)"
+                               OnToggle="@(_ => ToggleExpand(s.SubscriptionId))">
 
-                    <Lead>
-                        <div class="acct-badge" style="background:@info.Soft;color:@info.Color;">
-                            <span class="material-icons" aria-hidden="true">@info.Icon</span>
-                        </div>
-                    </Lead>
+                    <Chips>
+                        <OdsSubscriptionStatusChip Paused="paused" Ended="ended" Archived="archived" ShowActive="true" />
+                    </Chips>
 
-                    <Head>
-                        <div class="acct-name-row">
-                            <span class="acct-name">@s.Name</span>
-                            <OdsSubscriptionStatusChip Paused="paused" Ended="ended" Archived="archived" ShowActive="true" />
-                        </div>
-                        <div class="acct-tags">
-                            @if (!string.IsNullOrWhiteSpace(s.ExternalId))
-                            {
-                                <span class="mono sub-extid-inline">@s.ExternalId</span>
-                                <span class="acct-dot">·</span>
-                            }
-                            <span class="sub-inst">
-                                <span class="material-icons" aria-hidden="true">@(s.Contact is null ? "store" : OdsTypeRegistries.ContactTypeOf(s.Contact.Type.ToString()).Icon)</span>
-                                @(s.Contact?.Name ?? "No company")
-                            </span>
-                            <span class="acct-dot">·</span>
-                            <span class="sub-cadence">
-                                <span class="material-icons" aria-hidden="true">@info.Icon</span>@OdsBillingIntervalChip.CadenceLabel(s.Interval, s.IntervalCount)@(anchor is not null ? $" · {anchor}" : "")
-                            </span>
-                        </div>
-                    </Head>
-
-                    <Figures>
-                        <div class="acct-balance mono sub-price">@Money(s.Amount, s.CurrencyCode)</div>
-                        <div class="sub-figure-word">@OdsBillingIntervalChip.FigureCaption(s.Interval, s.IntervalCount)</div>
-                    </Figures>
+                    <Figure>@Money(s.Amount, s.CurrencyCode)</Figure>
 
                     <Actions>
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                                 Size="Size.Small" Color="Color.Default"
-                                 AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
-                            @if (_canUpdate)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(s))">Edit subscription</MudMenuItem>
-                                @if (!ended)
-                                {
-                                    <MudMenuItem Icon="@(paused ? Icons.Material.Filled.PlayCircle : Icons.Material.Filled.PauseCircle)" OnClick="@(() => TogglePause(s))">
-                                        @(paused ? "Resume" : "Pause")
-                                    </MudMenuItem>
-                                    <MudMenuItem Icon="@Icons.Material.Filled.EventBusy" OnClick="@(() => EndSubscription(s))">End subscription</MudMenuItem>
-                                }
-                            }
-                            <MudMenuItem OnClick="@(() => CopyId(s.SubscriptionId))">
-                                <span class="odc-menu-item">
-                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
-                                    <span>Copy ID</span>
-                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
-                                </span>
-                            </MudMenuItem>
-                            @if (_canUpdate)
-                            {
-                                <MudDivider />
-                                <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Inventory2)" OnClick="@(() => ToggleArchive(s))">
-                                    @(archived ? "Restore" : "Archive")
-                                </MudMenuItem>
-                            }
-                            @if (_canDelete)
-                            {
-                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
-                                             Style="color:var(--mud-palette-error);"
-                                             OnClick="@(() => ConfirmDelete(s))">Delete</MudMenuItem>
-                            }
-                        </MudMenu>
+                        <OdsMenu Items="RowActions(s, paused, ended, archived)" AriaLabel="@($"Actions for {s.Name}")" />
                     </Actions>
 
-                    <Detail>
+                    <Details>
                         @if (detail is null)
                         {
                             <div role="status" aria-live="polite" aria-busy="true">
@@ -182,69 +141,134 @@
                         }
                         else
                         {
-                            <div class="sub-tiles">
-                                <OdsInfoTile Icon="badge" Label="Name" ValueVariant="OdsInfoTileVariant.Text">
+                            @* The record's FULL field set, including the fields the collapsed header
+                               already shows: at tile scale a value arrives with its own label, so the
+                               body reads as the record rather than the remainder of one. Tiles never
+                               condition on each other — each renders on its own field, so no timestamp
+                               can vanish when a derived state takes precedence. *@
+                            var dEnded = IsEnded(detail.EndDate);
+                            var dPaused = detail.Paused is not null;
+                            var dArchived = detail.Archived is not null;
+                            var dInfo = OdsTypeRegistries.BillingIntervalOf(detail.Interval);
+                            var dAnchor = OdsBillingIntervalChip.AnchorLabel(detail.Interval, detail.FirstBillingDate);
+                            var startsLater = detail.StartDate > TodayUtc;
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="subscriptions" Label="Name"
+                                             ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
                                     <Value>@detail.Name</Value>
                                 </OdsInfoTile>
-                                <OdsInfoTile Icon="tag" Label="External id" ValueVariant="OdsInfoTileVariant.Mono">
-                                    <Value>@(string.IsNullOrWhiteSpace(detail.ExternalId) ? "—" : detail.ExternalId)</Value>
-                                </OdsInfoTile>
-                                <OdsInfoTile Icon="store" Label="Company" ValueVariant="OdsInfoTileVariant.Text">
-                                    <Value>
-                                        @if (detail.Contact is { } cp)
-                                        {
-                                            <OdsChip Icon="@OdsTypeRegistries.ContactTypeOf(cp.Type.ToString()).Icon">@cp.Name</OdsChip>
-                                        }
-                                        else
-                                        {
-                                            <text>—</text>
-                                        }
-                                    </Value>
-                                </OdsInfoTile>
-                                <OdsInfoTile Icon="payments" Label="Price" ValueVariant="OdsInfoTileVariant.Mono" Class="sub-price-tile">
+
+                                @if (!string.IsNullOrWhiteSpace(detail.ExternalId))
+                                {
+                                    <OdsInfoTile Icon="tag" Label="External id" ValueVariant="OdsInfoTileVariant.Mono">
+                                        <Value>@detail.ExternalId</Value>
+                                        <Foot>Provider reference</Foot>
+                                    </OdsInfoTile>
+                                }
+
+                                @* A reference to ANOTHER record keeps that record's own icon and
+                                   colour, so it stays recognisable as the contact it points at. *@
+                                @if (detail.Contact is { } cp)
+                                {
+                                    var cpMeta = OdsTypeRegistries.ContactTypeOf(cp.Type.ToString());
+                                    <OdsInfoTile Icon="@cpMeta.Icon" IconColor="@cpMeta.Color" IconSoft="@cpMeta.Soft"
+                                                 Label="Company" ValueVariant="OdsInfoTileVariant.Text">
+                                        <Value>@cp.Name</Value>
+                                        <Foot>@cpMeta.Label</Foot>
+                                    </OdsInfoTile>
+                                }
+
+                                <OdsInfoTile Icon="payments" Label="Price" Tone="OdsInfoTileTone.Expense">
                                     <Value>@Money(detail.Amount, detail.CurrencyCode)</Value>
                                     <Foot>@OdsBillingIntervalChip.FigureCaption(detail.Interval, detail.IntervalCount)</Foot>
                                 </OdsInfoTile>
-                                <OdsInfoTile Icon="@OdsTypeRegistries.BillingIntervalOf(detail.Interval).Icon"
-                                             IconColor="@OdsTypeRegistries.BillingIntervalOf(detail.Interval).Color"
-                                             IconSoft="@OdsTypeRegistries.BillingIntervalOf(detail.Interval).Soft"
-                                             Label="Billing interval" ValueVariant="OdsInfoTileVariant.Text">
-                                    <Value><OdsBillingIntervalChip Interval="detail.Interval" Count="detail.IntervalCount" FirstBillingDate="detail.FirstBillingDate" /></Value>
+
+                                <OdsInfoTile Icon="@dInfo.Icon" Label="Billing interval"
+                                             ValueVariant="OdsInfoTileVariant.Text" Foot="@Caption(dAnchor)">
+                                    <Value>@OdsBillingIntervalChip.CadenceLabel(detail.Interval, detail.IntervalCount)</Value>
                                 </OdsInfoTile>
-                                <OdsInfoTile Icon="event" Label="First billing date" ValueVariant="OdsInfoTileVariant.Sm">
-                                    <Value>@detail.FirstBillingDate.ToString("MMM dd, yyyy")</Value>
+
+                                <OdsInfoTile Icon="event_available" Label="First billing date" ValueVariant="OdsInfoTileVariant.Sm">
+                                    <Value>@LongDate(detail.FirstBillingDate)</Value>
+                                    <Foot>cadence anchor</Foot>
                                 </OdsInfoTile>
-                                <OdsInfoTile Icon="play_circle" Label="Start date" ValueVariant="OdsInfoTileVariant.Sm">
-                                    <Value>@detail.StartDate.ToString("MMM dd, yyyy")</Value>
+
+                                @* Server-derived (issue-free by construction: the same rule the
+                                   header's upcoming-renewals rollup uses). Its emptiness IS the
+                                   derivation — a paused, ended or archived subscription has no next
+                                   charge — so the tile renders on its own value and never consults
+                                   the Status tile. *@
+                                @if (detail.NextBillingDate is { } due)
+                                {
+                                    <OdsInfoTile Icon="event_repeat" Label="Next billing"
+                                                 ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Income">
+                                        <Value>@LongDate(due)</Value>
+                                        <Foot>@Money(detail.Amount, detail.CurrencyCode) · @RelativeDay(due.DayNumber - TodayUtc.DayNumber)</Foot>
+                                    </OdsInfoTile>
+                                }
+
+                                @* Tense follows the date: not yet reached reads "Starts on" in info
+                                   blue; already reached reads "Started on" in neutral ink. *@
+                                <OdsInfoTile Icon="play_arrow" Label="@(startsLater ? "Starts on" : "Started on")"
+                                             ValueVariant="OdsInfoTileVariant.Sm"
+                                             Tone="@(startsLater ? OdsInfoTileTone.Info : OdsInfoTileTone.Default)"
+                                             Foot="@Caption(startsLater ? "upcoming" : null)">
+                                    <Value>@LongDate(detail.StartDate)</Value>
                                 </OdsInfoTile>
-                                <OdsInfoTile Icon="event_busy" Label="@(IsEnded(detail.EndDate) ? "Ended on" : "End date")" ValueVariant="OdsInfoTileVariant.Sm">
-                                    <Value>@(detail.EndDate is { } end ? end.ToString("MMM dd, yyyy") : "—")</Value>
+
+                                @* The empty case is kept deliberately: whether a recurring charge ever
+                                   stops is material, so "No end date" is a fact, not a missing value. *@
+                                <OdsInfoTile Icon="flag"
+                                             Label="@(detail.EndDate is null ? "End date" : dEnded ? "Ended on" : "Ends on")"
+                                             ValueVariant="@(detail.EndDate is null ? OdsInfoTileVariant.Text : OdsInfoTileVariant.Sm)"
+                                             Tone="@(dEnded ? OdsInfoTileTone.Expense : OdsInfoTileTone.Default)">
+                                    <Value>@(detail.EndDate is { } end ? LongDate(end) : "No end date")</Value>
+                                    <Foot>@(detail.EndDate is null ? "open-ended" : dEnded ? "no longer billing" : "scheduled")</Foot>
                                 </OdsInfoTile>
-                                <OdsInfoTile Icon="flag" Label="Status" ValueVariant="OdsInfoTileVariant.Text">
-                                    <Value><OdsSubscriptionStatusChip Paused="detail.Paused is not null" Ended="IsEnded(detail.EndDate)" Archived="detail.Archived is not null" ShowActive="true" /></Value>
+
+                                @* A DERIVED summary of end date / paused / archived: it carries the
+                                   state and the date that state began, while the fields it derives
+                                   from keep their own tiles below. *@
+                                <OdsInfoTile Icon="@StatusIcon(dPaused, dEnded, dArchived)"
+                                             Label="Status" ValueVariant="OdsInfoTileVariant.Text"
+                                             Tone="@StatusTone(dPaused, dEnded, dArchived)">
+                                    <Value>@StatusLabel(dPaused, dEnded, dArchived)</Value>
+                                    <Foot>@StatusFoot(detail, dPaused, dEnded, dArchived)</Foot>
                                 </OdsInfoTile>
+
                                 @if (detail.Paused is { } pausedAt)
                                 {
-                                    <OdsInfoTile Icon="pause_circle" Label="Paused since" ValueVariant="OdsInfoTileVariant.Sm">
-                                        <Value>@pausedAt.ToLocalTime().ToString("MMM dd, yyyy")</Value>
+                                    <OdsInfoTile Icon="pause_circle" Label="Paused"
+                                                 ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Pending">
+                                        <Value>@LongDateTime(pausedAt)</Value>
+                                        <Foot>still listed, not billing</Foot>
                                     </OdsInfoTile>
                                 }
+
                                 @if (detail.Archived is { } archivedAt)
                                 {
-                                    <OdsInfoTile Icon="inventory_2" Label="Archived" ValueVariant="OdsInfoTileVariant.Sm">
-                                        <Value>@archivedAt.ToLocalTime().ToString("MMM dd, yyyy")</Value>
+                                    <OdsInfoTile Icon="inventory_2" Label="Archived"
+                                                 ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Muted">
+                                        <Value>@LongDateTime(archivedAt)</Value>
+                                        <Foot>hidden from the default list</Foot>
                                     </OdsInfoTile>
                                 }
-                                @if (!string.IsNullOrWhiteSpace(detail.Notes))
-                                {
-                                    <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true" ValueVariant="OdsInfoTileVariant.Text">
-                                        <Value>@detail.Notes</Value>
-                                    </OdsInfoTile>
-                                }
-                            </div>
+                            </OdsInfoTileGrid>
                         }
-                    </Detail>
-                </OdsExpandableCard>
+                    </Details>
+
+                    <Content>
+                        @* Prose is not a field: notes go in one wide tile, never a tile column. *@
+                        @if (detail is { Notes: { } notes } && !string.IsNullOrWhiteSpace(notes))
+                        {
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true">
+                                    <Value>@notes</Value>
+                                </OdsInfoTile>
+                            </OdsInfoTileGrid>
+                        }
+                    </Content>
+                </OdsRecordCard>
             </RenderItem>
             <CreateAction>
                 @if (_canCreate)
@@ -263,7 +287,6 @@
         </OdsInfiniteList>
     </div>
 </MudStack>
-</div>
 
 @if (_createKey != Guid.Empty)
 {
@@ -282,4 +305,26 @@
                               Companies="_companyOptions"
                               Currencies="_currencies"
                               OnSaved="OnSubscriptionEdited" />
+}
+
+@code {
+    // The three meta-line entries. They live here rather than in the code-behind because an inline
+    // render fragment is Razor syntax — a .razor.cs cannot express one. Each is a single span so it
+    // becomes the .odc-record-metaitem's only child, which is what the card's meta-line alignment
+    // (.odc-record-metaitem > span) reaches down to.
+
+    private RenderFragment ExternalIdMeta(string externalId) =>
+        @<span class="sub-extid-inline">
+            <span class="material-icons" aria-hidden="true">tag</span><span class="mono">@externalId</span>
+        </span>;
+
+    private RenderFragment CompanyMeta(string icon, string name) =>
+        @<span class="sub-inst">
+            <span class="material-icons" aria-hidden="true">@icon</span><span>@name</span>
+        </span>;
+
+    private RenderFragment CadenceMeta(string icon, string label) =>
+        @<span class="sub-cadence">
+            <span class="material-icons" aria-hidden="true">@icon</span><span>@label</span>
+        </span>;
 }

@@ -528,6 +528,118 @@ public partial class SubscriptionCard
         return $"{symbol} {amount.ToString("#,##0.##", CultureInfo.InvariantCulture)}".Trim();
     }
 
+    // ── Record-card presentation ──────────────────────────────────────────────────
+    // The derived status the card's Status tile summarises. Precedence matches
+    // OdsSubscriptionStatusChip and the server's status partition: Archived → Ended → Paused → Active.
+    // The tile SUMMARISES — the paused / archived / end-date tiles beside it still render their own
+    // values, so no timestamp goes missing when one state takes precedence over another.
+
+    private static string StatusIcon(bool paused, bool ended, bool archived) =>
+        archived ? "inventory_2" : ended ? "event_busy" : paused ? "pause_circle" : "autorenew";
+
+    private static string StatusLabel(bool paused, bool ended, bool archived) =>
+        archived ? "Archived" : ended ? "Ended" : paused ? "Paused" : "Active";
+
+    private static OdsInfoTileTone StatusTone(bool paused, bool ended, bool archived) =>
+        archived ? OdsInfoTileTone.Muted
+        : ended ? OdsInfoTileTone.Expense
+        : paused ? OdsInfoTileTone.Pending
+        : OdsInfoTileTone.Income;
+
+    /// <summary>The date the current state began — a status is a reading of the record at a moment,
+    /// so it carries when that moment was.</summary>
+    private static string StatusFoot(ExistingSubscription s, bool paused, bool ended, bool archived) =>
+        archived && s.Archived is { } archivedAt ? $"since {LongDateTime(archivedAt)}"
+        : ended && s.EndDate is { } end ? $"since {LongDate(end)}"
+        : paused && s.Paused is { } pausedAt ? $"since {LongDateTime(pausedAt)}"
+        : "billing on schedule";
+
+    /// <summary>The row action menu, permission-gated. Archive is offered with its reason rather than
+    /// hidden when it does not apply: the lifecycle is ordered (only an ended subscription can be
+    /// archived), and a disabled item that says why is more use than an item that silently is not
+    /// there. The server enforces the same rule.</summary>
+    private IReadOnlyList<OdsMenuItem> RowActions(SubscriptionListItem s, bool paused, bool ended, bool archived)
+    {
+        var items = new List<OdsMenuItem>();
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit subscription",
+                OnClick = EventCallback.Factory.Create(this, () => EditClicked(s)),
+            });
+
+            if (!ended)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = paused ? "play_circle" : "pause_circle",
+                    Label = paused ? "Resume" : "Pause",
+                    OnClick = EventCallback.Factory.Create(this, () => TogglePause(s)),
+                });
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "event_busy",
+                    Label = "End subscription",
+                    OnClick = EventCallback.Factory.Create(this, () => EndSubscription(s)),
+                });
+            }
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint",
+            Label = "Copy ID",
+            TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => CopyId(s.SubscriptionId)),
+        });
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(ended || archived
+                ? new OdsMenuItem
+                {
+                    Icon = archived ? "unarchive" : "inventory_2",
+                    Label = archived ? "Restore" : "Archive",
+                    OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(s)),
+                }
+                : new OdsMenuItem
+                {
+                    Icon = "inventory_2",
+                    Label = "Archive",
+                    Disabled = true,
+                    Description = "End the subscription first.",
+                });
+        }
+
+        if (_canDelete)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => ConfirmDelete(s)),
+            });
+        }
+
+        return items;
+    }
+
+    /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
+    /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
+    private static RenderFragment? Caption(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
+
+    // ── Date formatting ───────────────────────────────────────────────────────────
+    private static string LongDate(DateOnly date) => date.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+
+    private static string LongDateTime(DateTime utc) =>
+        utc.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+
     // ── Lifecycle-action draft ────────────────────────────────────────────────────
     // The pause / end / archive row actions PUT the whole record, so they round-trip the
     // current values through this shape before applying their one change.
