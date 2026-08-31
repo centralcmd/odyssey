@@ -5,125 +5,82 @@
 @inject ISnackbar Snackbar
 
 @*
-    ContractDetailView — the read view inside an expanded contract (issue #174): the fact tiles,
-    the parties list (one row per typed link — Account / Institution / Insurance policy, the minimal
-    projection) and the documents. Mirrors the design system's ContractDetail.
+    ContractDetailView — the SECTIONS of an expanded contract record (issue #174): the parties (one
+    row per typed link — Account / Contact / Insurance policy, the minimal projection) and the
+    documents. Mirrors the design system's ContractDetail.
+
+    The contract's fact tiles and description are NOT here: they belong to the record card's Details
+    and Content slots, whose order the card fixes, and ContractsCard renders them there. What is left
+    is what the body's last slot is for — the sub-collections, each introduced by an
+    OdsSectionDivider, in the same order as the header's counts.
+
+    Sections do not collapse and carry no action slot: the body already opens as a whole, and every
+    section-level action ("Add party", "Upload document") lives in the row action menu, where a reader
+    looks for actions on this record. A section header labels; it does not act.
 *@
 
-@{
-    var typeInfo = OdsTypeRegistries.ContractTypeOf(Contract.Type);
-}
-
-<div class="con-tiles">
-    <OdsInfoTile Icon="@typeInfo.Icon" IconColor="@typeInfo.Color" IconSoft="@typeInfo.Soft" Label="Type" ValueVariant="OdsInfoTileVariant.Text">
-        <Value>@typeInfo.Label</Value>
-    </OdsInfoTile>
-    @if (Contract.CompletionDate is { } completion)
+<div class="con-section">
+    <OdsSectionDivider Label="Parties" Meta="@($"{Contract.Parties.Count} linked")" />
+    @if (Contract.Parties.Count > 0)
     {
-        <OdsInfoTile Icon="task_alt" Label="Completion" ValueVariant="OdsInfoTileVariant.Sm" Foot="@(InfoFoot("One-off"))">
-            <Value>@completion.ToString("MMM dd, yyyy")</Value>
-        </OdsInfoTile>
+        <div class="con-parties">
+            @foreach (var party in Contract.Parties)
+            {
+                var r = Resolve(party);
+                <div class="con-party">
+                    @* A referenced record is drawn in ITS OWN type icon and colour — the same mark it
+                       carries on its own page — so it stays recognisable as that record rather than
+                       as part of this one. *@
+                    <span class="con-party-av" style="background:@(r.Soft ?? "var(--mud-palette-action-default-hover)");color:@(r.Color ?? "var(--mud-palette-text-secondary)");">
+                        <span class="material-icons" aria-hidden="true">@r.Icon</span>
+                    </span>
+                    @* One line: the name, then the kind chip and target type beside it. *@
+                    <div class="con-party-main">
+                        <span class="con-party-name">@r.Name</span>
+                        <span class="con-party-meta">
+                            <span class="con-party-kind"><span class="material-icons" aria-hidden="true">@r.Icon</span>@r.KindLabel</span>
+                            @if (!string.IsNullOrEmpty(r.TypeLabel))
+                            {
+                                <span class="con-party-dot">·</span>
+                                <span>@r.TypeLabel</span>
+                            }
+                        </span>
+                    </div>
+                    @if (CanWrite)
+                    {
+                        <span class="con-party-detach">
+                            <OdsIconButton Icon="@Icons.Material.Filled.LinkOff" AriaLabel="@($"Detach {r.Name}")" Size="OdsSize.Sm" OnClick="@(() => DetachPartyAsync(party))" />
+                        </span>
+                    }
+                </div>
+            }
+        </div>
     }
     else
     {
-        <OdsInfoTile Icon="play_circle" Label="Starts" ValueVariant="OdsInfoTileVariant.Sm" Foot="@(Contract.StartDate is null ? InfoFoot("Open-started") : null)">
-            <Value>@(Contract.StartDate is { } start ? start.ToString("MMM dd, yyyy") : "No start date")</Value>
-        </OdsInfoTile>
-        <OdsInfoTile Icon="event_busy" Label="Ends" ValueVariant="OdsInfoTileVariant.Sm" Foot="@(Contract.EndDate is null ? InfoFoot("No end date") : null)">
-            <Value>@(Contract.EndDate is { } end ? end.ToString("MMM dd, yyyy") : "Open-ended")</Value>
-        </OdsInfoTile>
-    }
-    <OdsInfoTile Icon="schedule" Label="Added" ValueVariant="OdsInfoTileVariant.Sm" Foot="@(InfoFoot("Created"))">
-        <Value>@Contract.CreatedAtUtc.ToString("MMM dd, yyyy")</Value>
-    </OdsInfoTile>
-    @if (!string.IsNullOrWhiteSpace(Contract.Description))
-    {
-        <OdsInfoTile Icon="sticky_note_2" Label="Description" Wide="true" ValueVariant="OdsInfoTileVariant.Text">
-            <Value>@Contract.Description</Value>
-        </OdsInfoTile>
+        <div class="con-empty-line">
+            <span class="material-icons" aria-hidden="true">diversity_3</span>
+            <div style="flex:1;">No parties yet — link the account, contact, or insurance policy this contract relates to.</div>
+        </div>
     }
 </div>
 
-<OdsCollapsible Icon="diversity_3" DefaultOpen="true">
-    <Title>Parties</Title>
-    <Count>@Contract.Parties.Count</Count>
-    <Actions>
-        @if (CanWrite)
-        {
-            <OdsButton Variant="OdsButtonVariant.Text" Icon="add" OnClick="OnAddParty">Add party</OdsButton>
-        }
-    </Actions>
-    <ChildContent>
-        @if (Contract.Parties.Count > 0)
-        {
-            <div class="con-parties">
-                @foreach (var party in Contract.Parties)
-                {
-                    var r = Resolve(party);
-                    <div class="con-party">
-                        <span class="con-party-av" style="background:@(r.Soft ?? "var(--mud-palette-action-default-hover)");color:@(r.Color ?? "var(--mud-palette-text-secondary)");">
-                            <span class="material-icons" aria-hidden="true">@r.Icon</span>
-                        </span>
-                        <div class="con-party-main">
-                            <span class="con-party-name">@r.Name</span>
-                            <span class="con-party-meta">
-                                <span class="con-party-kind"><span class="material-icons" aria-hidden="true">@r.Icon</span>@r.KindLabel</span>
-                                @if (!string.IsNullOrEmpty(r.TypeLabel))
-                                {
-                                    <span class="con-party-dot">·</span>
-                                    <span>@r.TypeLabel</span>
-                                }
-                            </span>
-                        </div>
-                        @if (CanWrite)
-                        {
-                            <span class="con-party-detach">
-                                <OdsIconButton Icon="@Icons.Material.Filled.LinkOff" AriaLabel="@($"Detach {r.Name}")" Size="OdsSize.Sm" OnClick="@(() => DetachPartyAsync(party))" />
-                            </span>
-                        }
-                    </div>
-                }
-            </div>
-        }
-        else
-        {
-            <div class="con-empty-line">
-                <span class="material-icons" aria-hidden="true">diversity_3</span>
-                <div style="flex:1;">No parties yet — link the account, institution, or insurance policy this contract relates to.</div>
-            </div>
-        }
-    </ChildContent>
-</OdsCollapsible>
-
-<OdsCollapsible Icon="folder" DefaultOpen="true">
-    <Title>Documents</Title>
-    <Count>@Contract.Files.Count</Count>
-    <Actions>
-        @if (CanUpload)
-        {
-            <OdsButton Variant="OdsButtonVariant.Text" Icon="upload_file" OnClick="OnUpload">Upload</OdsButton>
-        }
-    </Actions>
-    <ChildContent>
-        <div class="con-files">
-            <ContractFilesTable ContractId="Contract.ContractId"
-                                Files="@ContractFiles"
-                                CanDownload="CanDownload" CanDelete="CanWrite"
-                                OnChanged="OnChanged"
-                                Empty="_emptyDocs" />
-        </div>
-    </ChildContent>
-</OdsCollapsible>
+<div class="con-section">
+    <OdsSectionDivider Label="Documents" Meta="@($"{Contract.Files.Count} file{(Contract.Files.Count == 1 ? "" : "s")}")" />
+    <div class="con-files con-tbl-frame">
+        <ContractFilesTable ContractId="Contract.ContractId"
+                            Files="@ContractFiles"
+                            CanDownload="CanDownload" CanDelete="CanWrite"
+                            OnChanged="OnChanged"
+                            Empty="_emptyDocs" />
+    </div>
+</div>
 
 @code {
     [Parameter, EditorRequired] public ExistingContract Contract { get; set; } = default!;
 
     [Parameter] public bool CanWrite { get; set; }
     [Parameter] public bool CanDownload { get; set; }
-    [Parameter] public bool CanUpload { get; set; }
-
-    [Parameter] public EventCallback OnAddParty { get; set; }
-    [Parameter] public EventCallback OnUpload { get; set; }
 
     /// <summary>Raised after a party detach or file detach so the host re-fetches the contract.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
@@ -132,8 +89,6 @@
 
     private readonly RenderFragment _emptyDocs =
         @<div class="con-empty-line"><span class="material-icons" aria-hidden="true">folder_open</span><div style="flex:1;">No documents yet — upload the signed agreement, an amendment, or correspondence.</div></div>;
-
-    private static RenderFragment InfoFoot(string text) => @<text>@text</text>;
 
     private sealed record PartyVisual(string KindLabel, string Name, string? TypeLabel, string Icon, string? Color, string? Soft);
 
@@ -146,10 +101,13 @@
                 return new PartyVisual("Account", a.Name, AccountTypeVisuals.Label(a.Type),
                     AccountTypeVisuals.MaterialIcon(a.Type), AccountTypeVisuals.FgColor(a.Type), AccountTypeVisuals.BgColor(a.Type));
             }
+            // The DTO member is still named Institution — it is a serialized enum value, so renaming it
+            // would de-authorize nothing but would break every stored and in-flight payload. The design
+            // renamed what the reader sees, which is all that changed here.
             case ContractPartyKind.Institution when party.Institution is { } c:
             {
                 var m = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
-                return new PartyVisual("Institution", c.Name, m.Label, m.Icon, m.Color, m.Soft);
+                return new PartyVisual("Contact", c.Name, m.Label, m.Icon, m.Color, m.Soft);
             }
             case ContractPartyKind.InsurancePolicy when party.InsurancePolicy is { } p:
             {

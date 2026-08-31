@@ -1807,24 +1807,21 @@
 .con-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 
 /* Collapsed-card headline (period anchor + relative-days word) */
-.con-headline { font: 500 18px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
-.con-headline.none { font-family: var(--font-sans); font-size: 15px; color: var(--mud-palette-text-secondary); }
-.con-headline-word { font: 400 12px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); text-align: right; }
-.con-headline-word.soon { color: var(--finance-pending); }
-.con-headline-word.expired { color: var(--finance-expense); }
-.con-headline-word.archived { color: var(--mud-palette-text-secondary); }
+/* The collapsed headline figure is the record card's own `.odc-record-value` /
+   `.odc-record-caption` now, tinted through RecordCard's FigureTone — one figure treatment
+   across every record list rather than a per-feature copy. */
+/* The contact entry inside the record card's meta line */
 .con-sub-inst { display: inline-flex; align-items: center; gap: 5px; }
 .con-sub-inst .material-icons { font-size: 14px; opacity: 0.8; }
 
-/* Expanded detail — tile grid (OdsInfoTile) */
-.con-tiles {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
-  --odc-infotile-accent: var(--con-accent);
-  --odc-infotile-accent-soft: var(--con-accent-soft);
-}
+/* A section inside the record body: its divider, then its content. */
+.con-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 
-/* Parties list — one row per typed link */
+/* Parties list — one row per typed link (Account / Contact / Insurance policy) */
 .con-parties { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+/* The 16px was the old disclosure body's inner padding; inside a record card a section's
+   content sits flush with its divider label. */
+.odc-record-body .con-parties { padding: 0; }
 .con-party {
   display: flex; align-items: center; gap: 12px;
   border: 1px solid var(--mud-palette-divider); border-radius: 10px;
@@ -1835,9 +1832,11 @@
   width: 38px; height: 38px; border-radius: 9px;
 }
 .con-party-av .material-icons { font-size: 20px; }
-.con-party-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+/* One line — name, kind chip, target type. min-height keeps the row the height it was when
+   the meta sat on a second line. */
+.con-party-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; min-height: 38px; }
 .con-party-name { font: 500 13.5px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.con-party-meta { display: inline-flex; align-items: center; gap: 7px; font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.con-party-meta { display: inline-flex; align-items: center; gap: 7px; font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); flex: none; }
 .con-party-kind {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 2px 8px; border-radius: var(--radius-pill);
@@ -1868,6 +1867,14 @@
 }
 .con-empty-line .material-icons { font-size: 20px; opacity: 0.7; flex: none; }
 .con-files { padding: 4px 4px 8px; }
+/* Section tables read as cards, like the charts and tables on the other record pages. */
+.odc-record-body .con-tbl-frame {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
 
 /* Upload dialog — the "already attached" reference list */
 .con-existing-files { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }

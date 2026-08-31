@@ -1,4 +1,5 @@
 using Odyssey.ApiClient;
+using System.Globalization;
 using Odyssey.ApiClient.Resources;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -448,6 +449,130 @@ public partial class ContractsCard
         _uploadKey = Guid.NewGuid();
         _uploadOpen = true;
     }
+
+    // ── Record-card presentation ──────────────────────────────────────────────────
+
+    /// <summary>The headline figure's colour role. A lapsed term reads expense, one ending inside the
+    /// window reads pending; everything else keeps the neutral ink, archived included — a retired
+    /// record is not a problem.</summary>
+    private static OdsRecordFigureTone HeadlineTone(string cls) => cls switch
+    {
+        "expired" => OdsRecordFigureTone.Expense,
+        "soon" => OdsRecordFigureTone.Pending,
+        _ => OdsRecordFigureTone.Neutral,
+    };
+
+    /// <summary>The Status tile's value tint, from the same registry the status chip reads, so the
+    /// chip in the header and the tile in the body can never disagree.</summary>
+    private static OdsInfoTileTone StatusTone(string chipTone) => chipTone switch
+    {
+        "income" => OdsInfoTileTone.Income,
+        "info" => OdsInfoTileTone.Info,
+        "expense" => OdsInfoTileTone.Expense,
+        _ => OdsInfoTileTone.Muted,
+    };
+
+    /// <summary>The date the current state began — a status is a reading of the record at a moment,
+    /// so it carries when that moment was. Null where the record has no date to point at.</summary>
+    private static string? StatusFoot(ExistingContract c, bool oneOff) => c.Status switch
+    {
+        ContractStatus.Archived => c.Archived is { } a ? $"since {LongDate(a)}" : null,
+        ContractStatus.Expired => c.EndDate is { } e ? $"since {LongDate(e)}" : null,
+        ContractStatus.Upcoming => c.StartDate is { } s ? $"starts {LongDate(s)}" : null,
+        _ when oneOff => c.CompletionDate is { } d ? $"completed {LongDate(d)}" : null,
+        _ => c.StartDate is { } s ? $"since {LongDate(s)}" : null,
+    };
+
+    /// <summary>
+    /// The row action menu, permission-gated. Archive is offered with its reason rather than hidden
+    /// when it does not apply: the lifecycle is ordered (only an ended contract can be archived), and
+    /// a disabled item that says why is more use than an item that silently is not there. The server
+    /// enforces the same rule.
+    ///
+    /// <para>
+    /// "Ended" is not the derived <see cref="ContractStatus.Expired"/>: a delivered one-off is over
+    /// but reads Active, so completion counts too. Same two-branch test the service applies.
+    /// </para>
+    /// </summary>
+    private IReadOnlyList<OdsMenuItem> RowActions(ContractListItem c, bool archived)
+    {
+        var hasEnded = (c.EndDate is { } end && end.Date < Today)
+            || (c.CompletionDate is { } completion && completion.Date <= Today);
+        var items = new List<OdsMenuItem>();
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit contract",
+                OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)),
+            });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "group_add",
+                Label = "Add party",
+                OnClick = EventCallback.Factory.Create(this, () => AddParty(c.ContractId)),
+            });
+        }
+
+        if (_canUploadFiles)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "upload_file",
+                Label = "Upload document",
+                OnClick = EventCallback.Factory.Create(this, () => AttachDocument(c.ContractId)),
+            });
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint",
+            Label = "Copy ID",
+            TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => CopyId(c.ContractId)),
+        });
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(hasEnded || archived
+                ? new OdsMenuItem
+                {
+                    Icon = archived ? "unarchive" : "inventory_2",
+                    Label = archived ? "Restore" : "Archive",
+                    OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(c)),
+                }
+                : new OdsMenuItem
+                {
+                    Icon = "inventory_2",
+                    Label = "Archive",
+                    Disabled = true,
+                    Description = "The contract has to end first.",
+                });
+        }
+
+        if (_canDelete)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete",
+                Label = "Delete",
+                Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => ConfirmDelete(c)),
+            });
+        }
+
+        return items;
+    }
+
+    /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
+    /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
+    private static RenderFragment? Caption(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : builder => builder.AddContent(0, text);
+
+    private static string LongDate(DateTime date) => date.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
 
     // ── Collapsed headline figure (mirrors the design's conHeadline) ──────────────
     private (bool HasValue, string Value, string Word, string Cls) Headline(ContractListItem c)
