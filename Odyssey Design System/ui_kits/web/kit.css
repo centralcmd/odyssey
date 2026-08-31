@@ -2063,6 +2063,14 @@ html, body, #root {
 .odc-record-body .trm-delta, .odc-record-body .est-delta {
   font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono);
 }
+/* Archived records: fade the identity only. Overrides the older rule that faded
+   the whole head — an opacity'd ancestor also fades the action menu popover
+   inside it, which made an archived row's menu unreadable. */
+.odc-record.dimmed .odc-record-head { opacity: 1 !important; }
+.odc-record.dimmed .odc-record-trigger { opacity: 0.62; }
+/* Belt and braces: the popover never inherits a fade, wherever it is rendered. */
+.acct-menu-pop { opacity: 1 !important; background: var(--mud-palette-surface); }
+
 /* Section tables read as cards, same frame as the charts beside them. */
 .odc-record-body .acct-table-frame {
   background: var(--mud-palette-surface);

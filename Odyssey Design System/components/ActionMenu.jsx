@@ -26,14 +26,36 @@ export function ActionMenu({ items }) {
   const toggle = () => {
     if (!open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+      setPos({ top: r.bottom + 4, right: window.innerWidth - r.right, btnTop: r.top });
     }
     setOpen((o) => !o);
   };
 
+  // Flip above the trigger when the menu would run past the viewport bottom
+  // (a fixed popover can't be scrolled into view), and cap its height when
+  // neither side has room.
+  React.useLayoutEffect(() => {
+    if (!open || !pos || !popRef.current) return;
+    const h = popRef.current.offsetHeight;
+    const vh = window.innerHeight;
+    if (pos.top + h <= vh - 8) return;
+    const above = pos.btnTop - 4 - h;
+    if (above >= 8) {
+      setPos((p) => ({ ...p, top: above, maxHeight: undefined }));
+    } else {
+      const room = Math.max(pos.btnTop - 12, vh - pos.top - 8);
+      const flip = pos.btnTop - 12 > vh - pos.top - 8;
+      setPos((p) => ({ ...p, top: flip ? 8 : p.top, maxHeight: room }));
+    }
+  }, [open, pos && pos.top, pos && pos.btnTop]);
+
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onDoc = (e) => {
+      const inTrigger = ref.current && ref.current.contains(e.target);
+      const inPop = popRef.current && popRef.current.contains(e.target);
+      if (!inTrigger && !inPop) setOpen(false);
+    };
     const close = () => setOpen(false);
     // Esc closes the menu and restores trigger focus — capture + stop so an
     // enclosing Modal doesn't close with it.
@@ -98,8 +120,8 @@ export function ActionMenu({ items }) {
           <span className="material-icons" aria-hidden="true">more_vert</span>
         </button>
       </span>
-      {open && pos && (
-        <div className="acct-menu-pop" role="menu" ref={popRef} style={{ top: pos.top, right: pos.right }} onKeyDown={onPopKey}>
+      {open && pos && renderPop(
+        <div className="acct-menu-pop" role="menu" ref={popRef} style={{ top: pos.top, right: pos.right, maxHeight: pos.maxHeight, overflowY: pos.maxHeight ? 'auto' : undefined }} onKeyDown={onPopKey}>
           {items.map((it, i) => it.divider ? (
             <div key={i} className="acct-menu-sep" />
           ) : (
@@ -130,4 +152,12 @@ export function ActionMenu({ items }) {
       )}
     </div>
   );
+}
+
+// A `position: fixed` popover is still faded (and clipped) by an opacity'd or
+// transformed ancestor — an archived record's header, for one — so the menu is
+// rendered into <body> instead of the card's subtree.
+function renderPop(node) {
+  const RD = typeof window !== 'undefined' && window.ReactDOM;
+  return RD && RD.createPortal ? RD.createPortal(node, document.body) : node;
 }

@@ -2402,7 +2402,9 @@
   transition: border-color .15s ease, box-shadow .15s ease;
 }
 .odc-record.open { border-color: var(--mud-palette-lines-default, var(--mud-palette-divider)); box-shadow: var(--mud-elevation-2); }
-.odc-record.dimmed .odc-record-head { opacity: 0.62; }
+/* Dim the record's identity, not its controls — the action menu popover lives
+   inside the head and would inherit the fade. */
+.odc-record.dimmed .odc-record-trigger { opacity: 0.62; }
 @keyframes odc-record-flash { 0% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--finance-pending) 70%, transparent); } 100% { box-shadow: 0 0 0 3px transparent; } }
 .odc-record.flash { animation: odc-record-flash 2s ease-out; }
 @media (prefers-reduced-motion: reduce) { .odc-record.flash { animation: none; } }

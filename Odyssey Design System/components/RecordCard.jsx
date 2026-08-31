@@ -89,6 +89,7 @@ export function RecordCard({
     <button
       type="button"
       className="odc-record-trigger"
+      style={dimmed ? { opacity: 0.62 } : undefined}
       aria-expanded={isOpen}
       aria-controls={bodyId}
       onClick={toggle}
@@ -141,7 +142,10 @@ export function RecordCard({
 
   return (
     <div className={cls} style={Object.keys(style).length ? style : undefined}>
-      <div className="odc-record-head">
+      {/* Dimming is applied inline to the TRIGGER, never to the head: an opacity'd
+          ancestor also fades the action-menu popover inside it, and an inline
+          style beats any stylesheet rule that might still fade the head. */}
+      <div className="odc-record-head" style={{ opacity: 1 }}>
         {headingLevel
           ? <div role="heading" aria-level={headingLevel} style={{ display: 'contents' }}>{trigger}</div>
           : trigger}

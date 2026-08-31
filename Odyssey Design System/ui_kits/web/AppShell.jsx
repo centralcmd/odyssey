@@ -36,7 +36,7 @@ const MODULES = [
       { label: 'Documents', items: [
         { key: 'files', label: 'Files', icon: 'folder' },
       ] },
-      { label: 'Reference', items: [
+      { label: 'Reference', noDivider: true, items: [
         { key: 'tags', label: 'Transaction Tags', icon: 'local_offer' },
         { key: 'currencies', label: 'Currencies', icon: 'attach_money' },
         { key: 'exchange-rates', label: 'Exchange rates', icon: 'currency_exchange' },
@@ -201,7 +201,7 @@ const Rail = ({ current, onNavigate, isAdmin, onOpenSwitcher, onOpenPalette, swi
       <nav aria-label={`${mod.label} pages`} style={{ display: 'contents' }}>
         {groups.map((g, gi) => (
           <React.Fragment key={g.label || gi}>
-            {gi > 0 && <div className="odn-subdiv" />}
+            {gi > 0 && !g.noDivider && <div className="odn-subdiv" />}
             {g.items.map(it => (
               <button key={it.key} type="button"
                       className={`odn-railbtn odn-tip${it.key === current ? ' active' : ''}`}

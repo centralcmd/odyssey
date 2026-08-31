@@ -661,23 +661,24 @@ Because they're nullable, existing attachments are unaffected. In the UI they su
 
 The **Budgets page** is the planning screen at `/budgets`, the sister of the Accounts page. Specimen: `templates/budgets` (the whole page, the first budget expanded, static); reference build: `ui_kits/web/Budgets.jsx`. Like Accounts it composes the **Page header** + a list of expandable **records** (one per budget) — but the record holds a *plan*, not a ledger: a period (`StartDate`–`EndDate`, base currency) with **income and expense items**, each item a planned amount whose **actual is derived** from the transactions its tag matched in range.
 
-**It owns no new chrome — except the item table.** The header, record row, metadata wells, allocation donuts, and collapsibles are all kit atoms already documented for Accounts. The one Budgets-specific surface is the **planned-vs-actual item table** (with its `.bgt-*` rows, fill bars, and the *Edit multiple* batch grid). Unlike Accounts, the header has **no Overview or Problems region** — allocation lives inside each record and budgets carry no rate problems; its sub reads `N active · planned balance $…` (net planned, archived excluded).
+**It owns no new chrome — except the item table.** The page is a **`RecordCard`** rollout (as Accounts, Subscriptions, Tax statements are): each budget is one card whose body follows the fixed order — *details* (the full field set as `InfoTile`s) → *content* (Description) → *sections* (Allocation · Budget items · Transactions, each introduced by a `SectionDivider`). The list owns one `openId`, so opening a budget closes its siblings. The one Budgets-specific surface is the **planned-vs-actual item table** (with its `.bgt-*` rows, fill bars, and the *Edit multiple* batch grid). Unlike Accounts, the header has **no Overview or Problems region** — allocation lives inside each record and budgets carry no rate problems; its sub reads `N active · planned balance $…` (net planned, archived excluded).
 
-**Anatomy of an expanded budget** (`BudgetCard` → `BudgetDetail`):
+**Anatomy of an expanded budget** (`BudgetRecordCard` → `BudgetTiles` + `BudgetDetail`):
 
-| # | Zone | What it shows · Maps to |
+| # | Slot | What it shows · Maps to |
 |---|---|---|
-| 1 | **Metadata wells** | Start / End / Base currency / Status / Description — the `Budget` record fields. |
-| 2 | **Allocation donuts** | Two rings — **Planned income** and **Planned expenses** — each sliced by *this* budget's planned lines, largest-first, zero-planned lines dropped. Planned, not actual. |
-| 3 | **Balance tiles** | **Expected** (planned income − planned expense) and **Actual** (actual income − actual expense); the Actual tile's delta reads **Ahead of / Behind plan**. |
-| 4 | **Budget items** | The planned-vs-actual table — income group then expense group, color-coded by kind. Open by default; its menu carries **New item** + **Edit multiple**. |
-| 5 | **Transactions** | The budget's matched transactions (`BudgetReport.Transactions`); **View all** links to the Transactions page. |
+| 1 | **Header** | Type mark + name + status chip; meta line `start → end · currency`; counts (items · matched transactions); figure **Expected balance** (planned in − planned out), income/expense-toned. |
+| 2 | **Details tiles** | The full record: Name / Start / End / Base currency / Status, then the four roll-ups — **Planned income · Planned expenses · Actual income · Actual expenses** — and the two balances, **Expected** and **Actual** (foot reads *ahead of / behind plan*). Derived tiles never replace the planned tiles they come from. |
+| 3 | **Content** | Description, in one wide tile. Absent when the budget has none. |
+| 4 | **Allocation** | Two rings — **Planned income** and **Planned expenses** — each sliced by *this* budget's planned lines, largest-first, zero-planned lines dropped. Planned, not actual. |
+| 5 | **Budget items** | The planned-vs-actual table — income group then expense group, color-coded by kind. **New item** and **Edit multiple** live in the record menu. |
+| 6 | **Transactions** | The budget's matched transactions (`BudgetReport.Transactions`), paged in place. |
 
 **The item row is the page.** Items group by kind with no header band — the row's left rule + tint mark **income** (mint) vs **expense** (coral). The bar fills `min(actual / planned, 100%)`; an expense past its plan turns the bar **solid coral** and prints an **over by $X** overflow. **Untagged** items are plan-only — their actual reads a neutral `—`. Per-item `actual = Σ|amount|` of transactions whose tag matches the item, inside the budget's date range — exactly the server's `BudgetReport` per-tag sum.
 
 **Edit multiple** swaps the read-only *item* table for an inline batch grid — name, category (picked via **`BudgetCategoryTypeSelect`** — Expense / Income with category glyphs, on the shared `TypeSelect`), transaction tag, planned amount per row, plus an always-visible delete column. Every keystroke commits to the draft; **Done** returns to the planned-vs-actual view. (This same grid, widened, is the Analyze-file review step.) Editing the **budget record itself** (name, dates, currency, description) is a different action: the row menu's **Edit budget** opens `AddBudgetModal` in edit mode, not an inline panel.
 
-**Menus & lifecycle.** The **budget menu** (`more_vert` per row): Edit budget · New item · Copy ID · — · Archive/Unarchive · Delete. The **item menu** (revealed on row hover): Edit · Copy ID · — · Delete. Archiving dims the row and drops the budget from the header's active count and net planned balance. Edit budget expands in place (Name / dates / currency / Description) — it never navigates.
+**Menus & lifecycle.** The **budget menu** (`more_vert` per row): Edit budget · New item · Edit multiple · Copy ID · — · Archive/Unarchive · Delete. The **item menu** (revealed on row hover): Edit · Copy ID · — · Delete. Archiving dims the row and drops the budget from the header's active count and net planned balance. Edit budget expands in place (Name / dates / currency / Description) — it never navigates.
 
 > **Stack reality check.** The list is `BudgetsCard.razor` (`/budgets`), the detail `BudgetCard.razor` (`/budgets/{id}`), driven by `Odyssey.Finance` budget DTOs (`Budget`, `BudgetItem` with `CategoryType` + `TransactionTagId` + `Planned`). The derived actuals and the two balances are the client-side stand-in for the server's `GET /api/budgets/{id}/transactions` → `BudgetReport`, which groups matched transactions by tag and sums them; the prototype computes the same in `data.js` (`budgetItemActual` / `budgetTotals` / `budgetMatchedTxns`). The donuts reuse the allocation-donut primitive (charts, p.11). The `.bgt-*` item table is the only net-new CSS.
 

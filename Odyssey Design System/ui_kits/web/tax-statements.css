@@ -116,25 +116,29 @@
 /* ============================================================
    Derivation tags — two role wells (tax-payment / income)
    ============================================================ */
-.tx-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tx-roles {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  --odc-infotile-accent: var(--rec, var(--brand-text));
+  --odc-infotile-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
+}
 @media (max-width: 720px) { .tx-roles { grid-template-columns: 1fr; } }
-.tx-role {
-  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
-  background: var(--mud-palette-background); padding: 14px 16px;
-  display: flex; flex-direction: column; gap: 11px;
-}
-.tx-role-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.tx-role-name {
-  font: 500 12px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
-  display: flex; align-items: center; gap: 8px; min-width: 0;
-}
-.tx-role-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tx-role-name .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
-.tx-role-figure { text-align: right; flex: none; }
-.tx-role-sum { font: 600 16px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); white-space: nowrap; }
-.tx-role-cap { font: 400 10.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+/* Role wells are DS InfoTiles whose foot carries one extra row: the tag chips. */
+.tx-role .odc-infotile-foot { display: flex; flex-direction: column; gap: 10px; }
+.tx-role-cap { text-transform: uppercase; letter-spacing: 0.05em; }
+.tx-role-tags { border-top: 1px dashed var(--mud-palette-divider-light); padding-top: 10px; }
 .tx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.tx-role-empty { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.tx-role-empty { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* The settlement figure in the collapsed header reads with a balance word. */
 .acct-figures .tx-balance-word { font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* Record-card body sections: divider + content, flush with the divider label;
+   tables read as cards like the other pages. */
+.tax-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.odc-record-body .tax-tbl-frame {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: 8px 8px 4px;
+}
