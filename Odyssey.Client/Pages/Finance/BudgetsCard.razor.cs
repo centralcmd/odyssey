@@ -221,12 +221,31 @@ public partial class BudgetsCard
             await LoadReport(budgetId);
     }
 
-    /// <summary>Enter / leave the items batch grid for one budget, opening the record if needed.</summary>
+    /// <summary>
+    /// Enter / leave the items batch grid for one budget, opening the record if needed.
+    ///
+    /// <para>
+    /// The toggle lives on the row menu, which <see cref="OdsRecordCard"/> renders whether or not the
+    /// card is open — so this can fire on a COLLAPSED row, expanding it and swapping a read-only table
+    /// for a multi-row edit grid several sections further down the page. That is a significant content
+    /// change the user did not visibly navigate to, so it is announced through the page's live region
+    /// (WCAG 2.2 §4.1.3 Status Messages). The announcement names the expansion only when one actually
+    /// happened; re-announcing it for an already-open card would be noise.
+    /// </para>
+    /// </summary>
     private async Task SetItemsEditing(Guid budgetId, bool editing)
     {
-        if (editing && _expandedId != budgetId)
+        var expanding = editing && _expandedId != budgetId;
+        if (expanding)
             await ToggleExpand(budgetId);
+
         _editingItemsId = editing ? budgetId : null;
+
+        var name = _budgets.FirstOrDefault(b => b.BudgetId == budgetId)?.Name;
+        _announce = editing
+            ? expanding ? $"{name} expanded. Editing budget items." : "Editing budget items."
+            : "Stopped editing budget items.";
+
         StateHasChanged();
     }
 
@@ -503,17 +522,14 @@ public partial class BudgetsCard
         _ => "var(--mud-palette-text-secondary)",
     };
 
-    // The headline figure and the balance tiles take the finance vocabulary, never the record's
-    // accent: a plan that spends more than it takes in reads as an expense.
-    private static OdsRecordFigureTone BalanceFigureTone(decimal value) =>
-        value < 0 ? OdsRecordFigureTone.Expense : OdsRecordFigureTone.Income;
+    // The headline figure and the balance tiles take the finance vocabulary, never the record's accent.
+    // The rule itself (and why it treats zero differently from BalanceColor above) lives in
+    // BudgetBalanceVisuals, where it is testable.
+    private static OdsRecordFigureTone BalanceFigureTone(decimal value) => BudgetBalanceVisuals.FigureTone(value);
 
-    private static OdsInfoTileTone BalanceTileTone(decimal value) =>
-        value < 0 ? OdsInfoTileTone.Expense : OdsInfoTileTone.Income;
+    private static OdsInfoTileTone BalanceTileTone(decimal value) => BudgetBalanceVisuals.TileTone(value);
 
-    /// <summary>"1 income line" / "3 income lines" — the count a planned tile's foot carries.</summary>
-    private static string Lines(int count, string noun) =>
-        $"{count} {noun}{(count == 1 ? "" : "s")}";
+    private static string Lines(int count, string noun) => BudgetBalanceVisuals.Lines(count, noun);
 
     private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 

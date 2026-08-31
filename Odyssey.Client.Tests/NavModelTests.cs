@@ -118,6 +118,27 @@ public class NavModelTests
         Assert.Contains("Reference", groups.Select(g => g.Label));
     }
 
+    /// <summary>
+    /// The rail draws a hairline above every group but the first, so <c>NoDivider</c> is what runs
+    /// Finance's Reference pages straight on from Documents instead of splitting a nine-button rail
+    /// four ways (the design system's AppShell). <c>VisibleGroups</c> rebuilds each <c>NavGroup</c> to
+    /// drop the pages a user can't see — a rebuild that forgot to carry the flag would silently put
+    /// the divider back, which nothing else in the suite would notice.
+    /// </summary>
+    [Fact]
+    public void VisibleGroups_carries_NoDivider_through_the_rebuild()
+    {
+        foreach (var user in new[] { Admin, NonAdmin })
+        {
+            var reference = NavModel.VisibleGroups(Module("finance"), user).Single(g => g.Label == "Reference");
+            Assert.True(reference.NoDivider);
+        }
+
+        // And it is not simply true everywhere: the groups that DO earn a divider still declare one.
+        var groups = NavModel.VisibleGroups(Module("finance"), Admin);
+        Assert.All(groups.Where(g => g.Label != "Reference"), g => Assert.False(g.NoDivider));
+    }
+
     [Fact]
     public void Contacts_page_is_gated_by_ContactsRead()
         // Contacts was relocated into the Journal module and gated to mirror ContactsCard's

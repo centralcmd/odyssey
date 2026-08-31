@@ -549,58 +549,19 @@ public partial class TaxStatementsCard
     };
 
     // ── Status display ────────────────────────────────────────────────────────
-    private static string StatusLabel(ExistingTaxStatement s) => s.Archived is not null
-        ? "Archived"
-        : s.Status switch
-        {
-            TaxStatementStatus.Approved => "Approved",
-            TaxStatementStatus.Flagged => "Flagged",
-            _ => "New",
-        };
+    // The vocabulary itself lives in TaxStatementStatusVisuals so its precedence (archived outranks
+    // the review status) and the tile foot are testable; these are the call sites the markup binds to.
+    private static string StatusLabel(ExistingTaxStatement s) => TaxStatementStatusVisuals.Label(s);
 
-    private static OdsChipTone StatusTone(ExistingTaxStatement s) => s.Archived is not null
-        ? OdsChipTone.Outline
-        : s.Status switch
-        {
-            TaxStatementStatus.Approved => OdsChipTone.Income,
-            TaxStatementStatus.Flagged => OdsChipTone.Expense,
-            _ => OdsChipTone.Info,
-        };
+    private static OdsChipTone StatusTone(ExistingTaxStatement s) => TaxStatementStatusVisuals.ChipTone(s);
 
-    private static bool StatusDot(ExistingTaxStatement s) => s.Archived is null;
+    private static bool StatusDot(ExistingTaxStatement s) => TaxStatementStatusVisuals.Dot(s);
 
-    /// <summary>The Status tile's glyph — the same lifecycle the chip shows, at tile scale.</summary>
-    private static string StatusIcon(ExistingTaxStatement s) => s.Archived is not null
-        ? "inventory_2"
-        : s.Status switch
-        {
-            TaxStatementStatus.Approved => "check_circle",
-            TaxStatementStatus.Flagged => "flag",
-            _ => "fiber_new",
-        };
+    private static string StatusIcon(ExistingTaxStatement s) => TaxStatementStatusVisuals.Icon(s);
 
-    private static OdsInfoTileTone StatusTileTone(ExistingTaxStatement s) => s.Archived is not null
-        ? OdsInfoTileTone.Muted
-        : s.Status switch
-        {
-            TaxStatementStatus.Approved => OdsInfoTileTone.Income,
-            TaxStatementStatus.Flagged => OdsInfoTileTone.Expense,
-            _ => OdsInfoTileTone.Info,
-        };
+    private static OdsInfoTileTone StatusTileTone(ExistingTaxStatement s) => TaxStatementStatusVisuals.TileTone(s);
 
-    /// <summary>When the state began, and a pointer to the note above when there is one — the derived
-    /// tile carries its own date rather than borrowing one from the fields it summarises.</summary>
-    private static string? StatusFoot(ExistingTaxStatement s)
-    {
-        var parts = new List<string>();
-        if (s.Archived is { } archivedAt)
-            parts.Add(LongDate(archivedAt));
-        else if (s.StatusChangedAt != default)
-            parts.Add(LongDate(s.StatusChangedAt));
-        if (!string.IsNullOrWhiteSpace(s.StatusComment))
-            parts.Add("see note above");
-        return parts.Count == 0 ? null : string.Join(" · ", parts);
-    }
+    private static string? StatusFoot(ExistingTaxStatement s) => TaxStatementStatusVisuals.Foot(s);
 
     /// <summary>An optional tile foot. Returns null for an absent caption so the tile renders no foot
     /// element at all — a foot has to earn its place, and an empty one is not the same as none.</summary>
@@ -652,29 +613,10 @@ public partial class TaxStatementsCard
     private decimal? SettlementFigure(ExistingTaxStatement s) =>
         s.SettlementAmount ?? (_reports.TryGetValue(s.TaxStatementId, out var r) ? r.Reconciliation.OutstandingTax : null);
 
-    // The headline figure takes the finance vocabulary, never the record's accent: tax still to pay
-    // is an expense, a refund is income, and a settled (or unassessed) year is neutral.
-    private static OdsRecordFigureTone SettlementTone(decimal? settle) => settle switch
-    {
-        > 0 => OdsRecordFigureTone.Expense,
-        < 0 => OdsRecordFigureTone.Income,
-        _ => OdsRecordFigureTone.Neutral,
-    };
+    private static OdsRecordFigureTone SettlementTone(decimal? settle) => TaxSettlementFigure.Tone(settle);
 
-    private static string SettlementWord(ExistingTaxStatement s, decimal? settle)
-    {
-        if (s.SettlementAmount is { } declared)
-            return declared > 0 ? "additional tax to pay" : declared < 0 ? "refund" : "settled";
-        // Estimated from the reconciliation: an unassessed year says so, and the estimate reads with
-        // the same three words its declared counterpart would, marked "(est.)".
-        return settle switch
-        {
-            null => "awaiting assessment",
-            > 0 => "outstanding (est.)",
-            < 0 => "refund (est.)",
-            _ => "settled (est.)",
-        };
-    }
+    private static string SettlementWord(ExistingTaxStatement s, decimal? settle) =>
+        TaxSettlementFigure.Word(s.SettlementAmount, settle);
 
     // Tag id lists → display names (dropping ids no longer in the catalog).
     private IEnumerable<string> TagNames(IEnumerable<Guid> ids) =>
