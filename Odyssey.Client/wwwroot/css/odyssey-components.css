@@ -1734,28 +1734,29 @@
   background: var(--mud-palette-background);
 }
 .ins-empty-cover .material-icons { font-size: 20px; opacity: 0.7; }
-/* The button carries its own icon, which must not inherit the state row's dimming. */
+/* The empty state carries the action that unblocks documents, so it needs room for a button beside
+   the sentence — and that button's own icon must not inherit the state row's dimming. */
+.ins-empty-cover { flex-wrap: wrap; }
 .ins-empty-cover .mud-button-root .material-icons { opacity: 1; }
 /* The empty state's call to action sits at the trailing edge and keeps its own colour — the state
    text around it is muted, and the button must not read as part of the same dimmed sentence. */
 .ins-empty-cover .mud-button-root { flex: none; }
 
-/* Attach dialog: the target period, stated in the BODY. The dialog no longer asks which period to
-   attach to (issue #26) — it infers one — so the inference has to be visible where the user is
-   about to drop a file, not tucked into the modal's small secondary subtitle. */
+/* "Attaching to" — the target period named in the upload dialog's body, for the two cases with no
+   choice to make: opened from a period's own panel, or a policy with a single period. Where the
+   target was inferred AND there is more than one period, an OdsSelect stands here instead. Either
+   way it sits in the body, not the modal's small secondary subtitle. */
 .ins-attach-target {
-  display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
-  padding: 10px 12px; margin-bottom: 14px;
-  border: 1px solid var(--ins-accent-line, var(--mud-palette-divider));
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--ins-accent, var(--mud-palette-primary)) 4%, transparent);
+  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background);
 }
-.ins-attach-target .material-icons { font-size: 16px; align-self: center; color: var(--mud-palette-text-secondary); }
+.ins-attach-target .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
 .ins-attach-target-label {
-  font: var(--fw-semibold, 600) 11px/1 var(--font-sans); letter-spacing: 0.04em;
-  text-transform: uppercase; color: var(--mud-palette-text-secondary);
+  font: 500 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary);
 }
-.ins-attach-target-value { font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
+.ins-attach-target-value { font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 
 /* Terms-style history (mirrors AccountTerms) */
 /* The 16px was the old disclosure body's inner padding; a section's content sits flush

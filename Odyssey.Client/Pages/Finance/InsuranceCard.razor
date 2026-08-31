@@ -280,7 +280,8 @@
                            @bind-Open="_uploadOpen"
                            Policy="_uploadPolicy"
                            RenewalId="_uploadRenewalId"
-                           OnSaved="@(() => OnDocumentsAttached(_uploadPolicy.InsurancePolicyId))" />
+                           LockPeriod="_uploadLockPeriod"
+                           OnSaved="@(rid => OnDocumentsAttached(_uploadPolicy.InsurancePolicyId, rid))" />
 }
 
 @code {

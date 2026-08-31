@@ -462,13 +462,20 @@ public partial class InsuranceCard
     // ── Upload / attach dialog ───────────────────────────────────────────────────
     private ExistingInsurancePolicy? _uploadPolicy;
     private Guid _uploadRenewalId;
+    private bool _uploadLockPeriod;
     private Guid _uploadKey;
     private bool _uploadOpen;
 
     /// <summary>
     /// Opens the attach dialog against ONE period — the only place an insurance document can live
-    /// (issue #26). The period panel passes its own id; the row menu has no such context, so the
-    /// target is inferred by <see cref="InsuranceAttachTarget"/> and named in the dialog's body.
+    /// (issue #26).
+    ///
+    /// <para>
+    /// The period panel passes its own id, and that target is the user's own choice, so the dialog
+    /// locks it. The row menu has no such context: the target is inferred by
+    /// <see cref="InsuranceAttachTarget"/> and the dialog offers it as a defaulted picker instead, so
+    /// a late-arriving document can still be filed against an earlier period.
+    /// </para>
     /// </summary>
     private async Task AttachDocument(Guid policyId, Guid? renewalId = null)
     {
@@ -488,6 +495,7 @@ public partial class InsuranceCard
         _expandedId = policyId;
         _uploadPolicy = d;
         _uploadRenewalId = target;
+        _uploadLockPeriod = renewalId is not null;
         _uploadKey = Guid.NewGuid();
         _uploadOpen = true;
     }
@@ -502,17 +510,17 @@ public partial class InsuranceCard
     /// transition.
     /// </para>
     /// </summary>
-    private async Task OnDocumentsAttached(Guid policyId)
+    private async Task OnDocumentsAttached(Guid policyId, Guid renewalId)
     {
-        var renewalId = _uploadRenewalId;
         await ReloadPolicy(policyId);
 
-        var count = _details.TryGetValue(policyId, out var d)
-            ? d.Renewals.FirstOrDefault(r => r.PolicyRenewalId == renewalId)?.Files.Count
-            : null;
-        if (count is { } n)
+        // The period the documents actually landed on — which the picker may have changed — so the
+        // announcement names it rather than "this period".
+        if (_details.TryGetValue(policyId, out var d)
+            && d.Renewals.FirstOrDefault(r => r.PolicyRenewalId == renewalId) is { } period)
         {
-            _announce = $"{n} document{(n == 1 ? "" : "s")} on this period.";
+            var n = period.Files.Count;
+            _announce = $"{n} document{(n == 1 ? "" : "s")} on {LongDate(period.FromDate)} → {LongDate(period.ToDate)}.";
             StateHasChanged();
         }
     }
@@ -529,7 +537,7 @@ public partial class InsuranceCard
 
         if (hadNone && _policies.FirstOrDefault(p => p.InsurancePolicyId == policyId)?.RenewalCount > 0)
         {
-            _announce = "Renewal period added. You can now attach documents to this policy.";
+            _announce = "First renewal period added. Attach document is now available.";
             StateHasChanged();
         }
     }
@@ -626,7 +634,7 @@ public partial class InsuranceCard
                 Disabled = !hasPeriod,
                 // A document belongs to a period, so with no period there is nothing to attach to.
                 // The reason is TEXT, associated as a description — never the dimmed styling alone.
-                Description = hasPeriod ? null : "Add a renewal period first",
+                Description = hasPeriod ? null : "Add a renewal period first.",
                 OnClick = EventCallback.Factory.Create(this, () => AttachDocument(p.InsurancePolicyId)),
             });
         }
