@@ -5,6 +5,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0](https://github.com/centralcmd/odyssey/compare/v0.19.0...v0.20.0) (2026-09-01)
+
+
+### Features
+
+* **client:** flatten the record lists the design system stopped expanding ([8fc9bc5](https://github.com/centralcmd/odyssey/commit/8fc9bc55ad1306a2cc16de127aa75c453275b523))
+
 ## [0.19.0](https://github.com/centralcmd/odyssey/compare/v0.18.1...v0.19.0) (2026-08-31)
 
 
