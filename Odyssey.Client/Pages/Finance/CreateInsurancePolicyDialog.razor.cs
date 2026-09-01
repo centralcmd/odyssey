@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -12,6 +13,18 @@ public partial class CreateInsurancePolicyDialog
 
     /// <summary>Active contact options (non-archived), shared by the three contact pickers.</summary>
     [Parameter] public IReadOnlyList<OdsOption> Contacts { get; set; } = [];
+
+    /// <summary>
+    /// The contact type behind each option in <see cref="Contacts"/>, keyed by id.
+    ///
+    /// <para>
+    /// Needed because a chip states its member's type, and <see cref="OdsOption"/> deliberately
+    /// carries presentation (glyph, colour, caption) rather than the domain enum. Every id in
+    /// <see cref="Contacts"/> has an entry: the host builds both from the same reference-data pass.
+    /// </para>
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<string, ContactType> ContactTypes { get; set; } =
+        new Dictionary<string, ContactType>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Active insured-account options (non-archived accounts).</summary>
     [Parameter] public IReadOnlyList<OdsOption> Accounts { get; set; } = [];
@@ -97,7 +110,47 @@ public partial class CreateInsurancePolicyDialog
         }
     }
 
-    private PolicyContactReference? LinkFor(string id) => _contactLinks.GetValueOrDefault(id);
+    /// <summary>
+    /// How a chip's member should read: the policy's own stored link where there is one, otherwise
+    /// the live options list the user picked from.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The options fallback is the half that matters. <c>_contactLinks</c> only ever holds links the
+    /// policy <b>already had</b> when the dialog opened, so without it every freshly picked contact —
+    /// every chip in the create dialog, and every newly added chip while editing — resolved to
+    /// "not a stored link" and rendered as <c>Unavailable</c>, even though the user had just chosen
+    /// it from the list and the save then worked.
+    /// </para>
+    /// <para>
+    /// An id present in <see cref="Contacts"/> is by construction an existing, non-archived contact:
+    /// the host builds that list from the live reference data. So it resolves to
+    /// <see cref="LinkAvailability.Available"/> with its real name and type, which is exactly what
+    /// the read path will return for it after the save.
+    /// </para>
+    /// </remarks>
+    internal PolicyContactReference? LinkFor(string id)
+    {
+        if (_contactLinks.TryGetValue(id, out var stored))
+        {
+            return stored;
+        }
+
+        var option = Contacts.FirstOrDefault(o => o.Value == id);
+        if (option is null)
+        {
+            // Genuinely unresolvable: neither a stored link nor a live option.
+            return null;
+        }
+
+        return new PolicyContactReference
+        {
+            ContactId = Guid.TryParse(id, out var contactId) ? contactId : Guid.Empty,
+            Name = option.Label,
+            Type = ContactTypes.TryGetValue(id, out var type) ? type : null,
+            Availability = LinkAvailability.Available,
+        };
+    }
 
     /// <summary>
     /// True for a member the picker must not offer to remove: its contact is archived or no longer

@@ -8,6 +8,7 @@ using Odyssey.Client.Authorization;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -24,6 +25,9 @@ public partial class InsuranceCard
     // beneficiaries all choose from the whole address book (no contact-type restriction: a trust is a
     // legitimate beneficiary, a company a legitimate insured).
     private IReadOnlyList<OdsOption> _contactOptions = [];
+    // The domain type behind each contact option, for the dialog's chips. Built in the same pass as
+    // the options so the two cannot describe different sets.
+    private Dictionary<string, ContactType> _contactTypes = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<OdsOption> _accountOptions = [];
     private Dictionary<Guid, AccountType> _accountTypes = new();
     // True until both option lists have arrived. The dialog's pickers show their loading row rather
@@ -223,10 +227,12 @@ public partial class InsuranceCard
     private async Task LoadContacts()
     {
         var contacts = await ReferenceData.ContactsAsync();
+        var active = contacts.Where(c => c.Archived is null).ToList();
+        _contactTypes = active.ToDictionary(
+            c => c.ContactId.ToString(), c => c.Type, StringComparer.OrdinalIgnoreCase);
         _contactOptions =
         [
-            .. contacts
-                .Where(c => c.Archived is null)
+            .. active
                 .OrderBy(c => c.ResolvedDisplayName, StringComparer.CurrentCultureIgnoreCase)
                 .Select(c =>
                 {
