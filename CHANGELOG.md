@@ -5,6 +5,22 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0](https://github.com/centralcmd/odyssey/compare/v0.20.0...v0.21.0) (2026-09-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* an insurance document belongs to a renewal period
+
+### Features
+
+* an insurance document belongs to a renewal period ([05ba3f2](https://github.com/centralcmd/odyssey/commit/05ba3f2de8b2494ccbfe61ef9a91f8b1d376e7dc))
+
+
+### Documentation
+
+* update design system ([3b44ffe](https://github.com/centralcmd/odyssey/commit/3b44ffe412a1e013f859d40b1d7652e539f8aa73))
+
 ## [0.20.0](https://github.com/centralcmd/odyssey/compare/v0.19.0...v0.20.0) (2026-09-01)
 
 
