@@ -5,6 +5,21 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0](https://github.com/centralcmd/odyssey/compare/v0.18.1...v0.19.0) (2026-08-31)
+
+
+### Features
+
+* **client:** extend the RecordCard rollout to Budgets and Tax statements ([#21](https://github.com/centralcmd/odyssey/issues/21)) ([6995282](https://github.com/centralcmd/odyssey/commit/69952820f93196051c1db2512b16c52478788b19))
+* roll out the design system's RecordCard pattern across the four record lists ([#19](https://github.com/centralcmd/odyssey/issues/19)) ([c080108](https://github.com/centralcmd/odyssey/commit/c08010869bf0bc4a9971893406ee25137752b816))
+
+
+### Documentation
+
+* update design system ([f7816ca](https://github.com/centralcmd/odyssey/commit/f7816ca4c7bee9305f2a444b59ec8e95d4aeeba3))
+* update design system ([0ee3635](https://github.com/centralcmd/odyssey/commit/0ee363568a88d94214f7fb5d59348c181e9d3615))
+* update design system ([051effc](https://github.com/centralcmd/odyssey/commit/051effc83286570028f98ab53f57db8b4546884d))
+
 ## [0.18.1](https://github.com/centralcmd/odyssey/compare/v0.18.0...v0.18.1) (2026-08-31)
 
 
