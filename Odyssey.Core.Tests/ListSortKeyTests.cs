@@ -143,7 +143,7 @@ public class ListSortKeyTests
         Assert.Equal("ZZB", statusDesc[0]);
     }
 
-    // ── Exchange rates: AsOf (default), Pair, Rate, CreatedAt, Status ────────────
+    // ── Exchange rates: AsOf (default), Pair, Rate, Inverse, CreatedAt, Status ──
 
     [Fact]
     public async Task ExchangeRates_NonStatusSortKeys_AreHonoured()
@@ -169,6 +169,9 @@ public class ListSortKeyTests
         AssertOrder(await List(ExchangeRateSortBy.Pair, SortDirection.Asc), ids, r3.ExchangeRateId, r1.ExchangeRateId, r2.ExchangeRateId);
         // Rate: 1, 2, 3
         AssertOrder(await List(ExchangeRateSortBy.Rate, SortDirection.Asc), ids, r3.ExchangeRateId, r1.ExchangeRateId, r2.ExchangeRateId);
+        // Inverse (1 / Rate): 1/3, 1/2, 1 — the Rate order reversed, in both directions.
+        AssertOrder(await List(ExchangeRateSortBy.Inverse, SortDirection.Asc), ids, r2.ExchangeRateId, r1.ExchangeRateId, r3.ExchangeRateId);
+        AssertOrder(await List(ExchangeRateSortBy.Inverse, SortDirection.Desc), ids, r3.ExchangeRateId, r1.ExchangeRateId, r2.ExchangeRateId);
         // CreatedAt: D1, D2, D3
         AssertOrder(await List(ExchangeRateSortBy.CreatedAt, SortDirection.Asc), ids, r2.ExchangeRateId, r3.ExchangeRateId, r1.ExchangeRateId);
         AssertOrder(await List(ExchangeRateSortBy.CreatedAt, SortDirection.Desc), ids, r1.ExchangeRateId, r3.ExchangeRateId, r2.ExchangeRateId);

@@ -168,14 +168,16 @@
 </OdsModal>
 
 @code {
-    // ── Inline edit + delete (table-owned lifecycle) ──
+    // ── Edit + delete (table-owned lifecycle) ──
     // The flat file's mutable fields are name + description, so the page supplies a
-    // custom edit panel (FilesMetaEditPanel) rather than the default name + type
+    // custom Edit dialog (FilesMetaEditDialog) rather than the default name + type
     // one. Both Edit and the OnSave handler are gated on FilesUpdate; Delete on
     // FilesDelete — so the table only surfaces the items the user may perform.
-    private Func<OdsFilesRow, OdsRecordEditContext, RenderFragment>? EditRenderer =>
+    private Func<OdsFilesRow, OdsFileEditContext, RenderFragment>? EditRenderer =>
         _canUpdate
-            ? (row, ctx) => @<FilesMetaEditPanel File="row" OnSave="@(p => ctx.Save(p))" OnCancel="@(() => ctx.Cancel())" />
+            ? (row, ctx) => @<FilesMetaEditDialog @key="ctx.Key" File="row"
+                                                  Open="ctx.Open" OpenChanged="ctx.OpenChanged"
+                                                  OnSave="ctx.OnSave" />
             : null;
 
     // <text> groups the two sibling MudMenuItems for the ActionMenu RenderFragment without adding a

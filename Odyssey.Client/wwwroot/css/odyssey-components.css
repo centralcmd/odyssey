@@ -1159,6 +1159,8 @@
 .odc-rec tbody tr { transition: background-color var(--duration-base) var(--ease-standard); }
 .odc-rec tbody td { border-bottom: 1px solid var(--mud-palette-table-lines); }
 .odc-rec tbody tr:hover { background: var(--mud-palette-action-default-hover); cursor: pointer; }
+/* A flat table (no detail / edit panel) has nothing to open, so its rows are not clickable. */
+.odc-rec.odc-rec-flat tbody tr:hover { cursor: default; }
 .odc-rec .odc-rec-numeric { text-align: right; white-space: nowrap; }
 .odc-rec thead th.odc-rec-numeric { font-family: var(--font-sans); }
 .odc-rec td.odc-rec-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -3337,6 +3339,9 @@
     border-radius: var(--radius-md);
     box-shadow: var(--mud-elevation-1);
     padding: var(--space-2) var(--space-2) var(--space-1);
+    /* Wide record tables (e.g. account files with the validity columns) scroll inside the frame
+       instead of being clipped by .odc-record's overflow-x. */
+    overflow-x: auto;
 }
 .odc-record-body .trm-history { padding: var(--space-3) var(--space-2) var(--space-2); }
 

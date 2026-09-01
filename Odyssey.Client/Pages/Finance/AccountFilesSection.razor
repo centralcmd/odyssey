@@ -65,6 +65,7 @@
                                    TypeFor="@(row => KindMeta(FileById(row.Id).FileType))"
                                    Actions="@(row => BuildMenu(FileById(row.Id)))"
                                    Issuers="_issuerOptions"
+                                   ValidityColumns="true"
                                    IssuerFor="@(row => IssuerName(FileById(row.Id).IssuedBy))"
                                    OnSave="@SaveAction"
                                    OnDelete="@DeleteAction" />

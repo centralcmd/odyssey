@@ -60,6 +60,10 @@ public enum ExchangeRateSortBy
     Rate,
     Status,
     CreatedAt,
+
+    /// <summary>The reciprocal rate (1 / Rate) shown in the Inverse column. Rate is constrained
+    /// greater than zero on every write path, so this is exactly <see cref="Rate"/> reversed.</summary>
+    Inverse,
 }
 
 /// <summary>Sortable keys for the files list.</summary>

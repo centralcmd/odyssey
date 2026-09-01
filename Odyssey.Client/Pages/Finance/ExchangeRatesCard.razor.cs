@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
@@ -59,7 +58,10 @@ public partial class ExchangeRatesCard
     private DateTime? _latestAsOf => _allRates.Count == 0 ? null : _allRates.Max(r => r.AsOf);
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _toFilter.Count > 0 || _statusFilter.Count > 0;
 
-    private static string Fmt(decimal n) => n.ToString("#,##0.00##", CultureInfo.InvariantCulture);
+    // Both figures live on ExchangeRateFigures so the zero guard and the format are testable.
+    private static string Fmt(decimal n) => ExchangeRateFigures.Format(n);
+
+    private static decimal Inverse(decimal rate) => ExchangeRateFigures.Inverse(rate);
 
     protected override async Task OnInitializedAsync()
     {
@@ -229,15 +231,8 @@ public partial class ExchangeRatesCard
 
     private IReadOnlyList<OdsMenuItem> BuildActions(ExistingExchangeRate r, OdsRecordActionContext ctx)
     {
-        var items = new List<OdsMenuItem>
-        {
-            new()
-            {
-                Icon = ctx.Expanded ? "close" : "expand_more",
-                Label = ctx.Expanded ? "Collapse" : "View details",
-                OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
-            },
-        };
+        // No "View details": every field a rate has is already a column, so rows don't expand.
+        var items = new List<OdsMenuItem>();
 
         if (_canUpdate)
         {

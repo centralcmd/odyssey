@@ -213,15 +213,8 @@ public partial class OdsTagAdmin<TRow>
 
     private IReadOnlyList<OdsMenuItem> BuildActions(TRow t, OdsRecordActionContext ctx)
     {
-        var items = new List<OdsMenuItem>
-        {
-            new()
-            {
-                Icon = ctx.Expanded ? "close" : "expand_more",
-                Label = ctx.Expanded ? "Collapse" : "View details",
-                OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
-            },
-        };
+        // No "View details": the three columns are the whole record, so rows don't expand.
+        var items = new List<OdsMenuItem>();
 
         if (_canUpdate)
         {
