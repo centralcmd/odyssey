@@ -103,9 +103,12 @@ public class InsuranceService
         var policies = await q.ToListAsync(cancellationToken);
 
         var policyIds = policies.Select(p => p.InsurancePolicyId).ToList();
-        var fileCounts = await context.InsurancePolicyFiles
-            .Where(f => policyIds.Contains(f.InsurancePolicyId))
-            .GroupBy(f => f.InsurancePolicyId)
+        // A document lives on a period, so the policy's count is the sum across its periods
+        // (issue #26). Still one grouped query over indexed columns for the whole filtered set —
+        // the same shape and cost class as the policy-level query it replaces, and no N+1.
+        var fileCounts = await context.PolicyRenewalFiles
+            .Where(f => policyIds.Contains(f.PolicyRenewal!.InsurancePolicyId))
+            .GroupBy(f => f.PolicyRenewal!.InsurancePolicyId)
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
 
@@ -256,7 +259,6 @@ public class InsuranceService
         var policy = await context.InsurancePolicies
             .Include(p => p.Renewals)
                 .ThenInclude(r => r.Files)
-            .Include(p => p.Files)
             .FirstOrDefaultAsync(p => p.InsurancePolicyId == id, cancellationToken);
         if (policy is null)
         {
@@ -353,63 +355,6 @@ public class InsuranceService
 
     public async Task<bool> RenewalExists(Guid policyId, Guid renewalId, CancellationToken cancellationToken = default) =>
         await context.PolicyRenewals.AnyAsync(r => r.PolicyRenewalId == renewalId && r.InsurancePolicyId == policyId, cancellationToken);
-
-    // ── Policy-level files ──────────────────────────────────────────────────────
-
-    public async Task<ExistingInsurancePolicyFile> AttachPolicyFile(
-        Guid policyId, Guid fileId, string userId, DtoPolicyFileType fileType, DateTime? effectiveDate, CancellationToken cancellationToken = default)
-    {
-        var existing = await context.InsurancePolicyFiles
-            .AnyAsync(f => f.InsurancePolicyId == policyId && f.FileMetadataId == fileId, cancellationToken);
-        if (existing)
-        {
-            throw new DomainConflictException(
-                $"File {fileId} is already attached to policy {policyId}.");
-        }
-
-        var count = await context.InsurancePolicyFiles.CountAsync(f => f.InsurancePolicyId == policyId, cancellationToken);
-        var caps = await systemSettingsLookup.GetRequestCapsAsync(cancellationToken);
-        if (count >= caps.MaxFilesPerParent)
-        {
-            throw new DomainUnprocessableException(
-                $"Policy {policyId} already has the maximum of {caps.MaxFilesPerParent} attached files.");
-        }
-
-        var association = new InsurancePolicyFile
-        {
-            InsurancePolicyId = policyId,
-            FileMetadataId = fileId,
-            FileType = fileType.Adapt<ContextPolicyFileType>(),
-            EffectiveDate = effectiveDate,
-            AttachedByUserId = userId,
-            AttachedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
-        };
-
-        context.InsurancePolicyFiles.Add(association);
-        await context.SaveChangesAsync(cancellationToken);
-
-        var loaded = await context.InsurancePolicyFiles
-            .Include(f => f.FileMetadata)
-            .FirstAsync(f => f.Id == association.Id);
-        return ToPolicyFileDto(loaded);
-    }
-
-    public async Task<bool> IsFileAttachedToPolicy(Guid policyId, Guid fileId, CancellationToken cancellationToken = default) =>
-        await context.InsurancePolicyFiles.AnyAsync(f => f.InsurancePolicyId == policyId && f.FileMetadataId == fileId, cancellationToken);
-
-    public async Task<bool> DetachPolicyFile(Guid policyId, Guid fileId, CancellationToken cancellationToken = default)
-    {
-        var association = await context.InsurancePolicyFiles
-            .FirstOrDefaultAsync(f => f.InsurancePolicyId == policyId && f.FileMetadataId == fileId, cancellationToken);
-        if (association is null)
-        {
-            return false;
-        }
-
-        context.InsurancePolicyFiles.Remove(association);
-        await context.SaveChangesAsync(cancellationToken);
-        return true;
-    }
 
     // ── Renewal-level files ─────────────────────────────────────────────────────
 
@@ -685,9 +630,7 @@ public class InsuranceService
         .Include(p => p.InsuredAccount)
         .Include(p => p.Renewals)
             .ThenInclude(r => r.Files)
-                .ThenInclude(f => f.FileMetadata)
-        .Include(p => p.Files)
-            .ThenInclude(f => f.FileMetadata);
+                .ThenInclude(f => f.FileMetadata);
 
     /// <summary>
     /// Fills in the accrued-premium figure: every period starting on or before the current period
@@ -762,11 +705,6 @@ public class InsuranceService
                 .ThenByDescending(r => r.CreatedAtUtc)
                 .Select(ToRenewalDto)
                 .ToList(),
-            Files = policy.Files
-                .Where(f => f.FileMetadata is not null)
-                .OrderBy(f => f.AttachedAtUtc)
-                .Select(ToPolicyFileDto)
-                .ToList(),
             Archived = policy.Archived,
             CreatedAtUtc = policy.CreatedAtUtc,
         };
@@ -817,17 +755,6 @@ public class InsuranceService
             .OrderBy(f => f.AttachedAtUtc)
             .Select(ToRenewalFileDto)
             .ToList(),
-    };
-
-    private static ExistingInsurancePolicyFile ToPolicyFileDto(InsurancePolicyFile file) => new()
-    {
-        Id = file.Id,
-        InsurancePolicyId = file.InsurancePolicyId,
-        FileMetadata = file.FileMetadata!.Adapt<ExistingFileMetadata>(),
-        FileType = file.FileType.Adapt<DtoPolicyFileType>(),
-        EffectiveDate = file.EffectiveDate,
-        AttachedByUserId = file.AttachedByUserId,
-        AttachedAtUtc = file.AttachedAtUtc,
     };
 
     private static ExistingPolicyRenewalFile ToRenewalFileDto(PolicyRenewalFile file) => new()

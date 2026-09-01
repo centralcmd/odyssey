@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Odyssey.Context;
 
@@ -11,9 +12,11 @@ using Odyssey.Context;
 namespace Odyssey.Context.Migrations
 {
     [DbContext(typeof(OdysseyContext))]
-    partial class OdysseyContextModelSnapshot : ModelSnapshot
+    [Migration("20260831203620_AddInsurancePolicyFileRelocationLedger")]
+    partial class AddInsurancePolicyFileRelocationLedger
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2372,6 +2375,46 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("InsurancePolicies");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("AttachedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("AttachedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("EffectiveDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("FileMetadataId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("FileType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(5);
+
+                    b.Property<Guid>("InsurancePolicyId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttachedAtUtc");
+
+                    b.HasIndex("AttachedByUserId");
+
+                    b.HasIndex("FileMetadataId");
+
+                    b.HasIndex("InsurancePolicyId", "FileMetadataId")
+                        .IsUnique();
+
+                    b.ToTable("InsurancePolicyFiles");
+                });
+
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>
                 {
                     b.Property<Guid>("JournalEntryId")
@@ -4515,6 +4558,30 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("InsuredAccount");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyFile", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AttachedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.FileMetadata", "FileMetadata")
+                        .WithMany()
+                        .HasForeignKey("FileMetadataId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.InsurancePolicy", "InsurancePolicy")
+                        .WithMany("Files")
+                        .HasForeignKey("InsurancePolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FileMetadata");
+
+                    b.Navigation("InsurancePolicy");
+                });
+
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>
                 {
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
@@ -5037,6 +5104,8 @@ namespace Odyssey.Context.Migrations
 
             modelBuilder.Entity("Odyssey.Context.InsurancePolicy", b =>
                 {
+                    b.Navigation("Files");
+
                     b.Navigation("Renewals");
                 });
 

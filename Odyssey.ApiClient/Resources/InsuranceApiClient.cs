@@ -4,11 +4,12 @@ namespace Odyssey.ApiClient.Resources;
 
 /// <summary>
 /// Typed client for the insurance-policies endpoints (issue #175), plus the <b>scoped, parent-routed</b>
-/// file downloads the spec mandates (§3 client notes / §10): downloads hit
-/// <c>/api/insurance-policies/{id}/files/{fileId}</c> and the renewal variant — never the generic
+/// file downloads the spec mandates (§3 client notes / §10): a download hits
+/// <c>/api/insurance-policies/{id}/renewals/{renewalId}/files/{fileId}</c> — never the generic
 /// by-file-id route — so the IDOR-free guarantee holds. The same scoping applies to the renewal and
 /// attachment writes: every sub-resource route is built from its parent id here, so no caller can
-/// address a file by id alone.
+/// address a file by id alone. Since issue #26 a document belongs to a period and nowhere else, so
+/// the period is the only scope there is.
 /// </summary>
 public interface IInsuranceApiClient
 {
@@ -24,15 +25,13 @@ public interface IInsuranceApiClient
         string? sortDir = null,
         CancellationToken ct = default);
 
-    /// <summary>Loads one policy with full renewals, files and derived status. Returns null on failure.</summary>
+    /// <summary>Loads one policy with its renewal periods, their documents and derived status.
+    /// Returns null on failure.</summary>
     Task<ExistingInsurancePolicy?> GetAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>Loads the portfolio rollup. When <paramref name="baseCurrency"/> is given the API adds
     /// converted grand totals. Returns null on failure.</summary>
     Task<InsurancePortfolioSummary?> GetSummaryAsync(string? baseCurrency = null, CancellationToken ct = default);
-
-    /// <summary>Downloads a policy-level attachment via the policy-scoped route.</summary>
-    Task<ApiResult<ApiFile>> DownloadPolicyFileAsync(Guid policyId, Guid fileId, CancellationToken ct = default);
 
     /// <summary>Downloads a renewal-level attachment via the renewal-scoped route.</summary>
     Task<ApiResult<ApiFile>> DownloadRenewalFileAsync(Guid policyId, Guid renewalId, Guid fileId, CancellationToken ct = default);
@@ -55,13 +54,8 @@ public interface IInsuranceApiClient
 
     // ── Attachments ──────────────────────────────────────────────────────────
 
-    /// <summary>Attaches an already-uploaded file to the policy itself.</summary>
-    Task<ApiResult> AttachPolicyFileAsync(Guid policyId, AttachInsurancePolicyFileRequest request, CancellationToken ct = default);
-
     /// <summary>Attaches an already-uploaded file to one of the policy's renewal periods.</summary>
     Task<ApiResult> AttachRenewalFileAsync(Guid policyId, Guid renewalId, AttachInsurancePolicyFileRequest request, CancellationToken ct = default);
-
-    Task<ApiResult> DetachPolicyFileAsync(Guid policyId, Guid fileId, CancellationToken ct = default);
 
     Task<ApiResult> DetachRenewalFileAsync(Guid policyId, Guid renewalId, Guid fileId, CancellationToken ct = default);
 }
@@ -99,9 +93,6 @@ public sealed class InsuranceApiClient(IOdysseyApi api) : IInsuranceApiClient
         return (await api.GetAsync<InsurancePortfolioSummary>(url, ct)).Value;
     }
 
-    public Task<ApiResult<ApiFile>> DownloadPolicyFileAsync(Guid policyId, Guid fileId, CancellationToken ct = default) =>
-        api.GetFileAsync($"{Base}/{policyId}/files/{fileId}", "policy-file", ct: ct);
-
     public Task<ApiResult<ApiFile>> DownloadRenewalFileAsync(Guid policyId, Guid renewalId, Guid fileId, CancellationToken ct = default) =>
         api.GetFileAsync($"{Base}/{policyId}/renewals/{renewalId}/files/{fileId}", "renewal-file", ct: ct);
 
@@ -129,14 +120,8 @@ public sealed class InsuranceApiClient(IOdysseyApi api) : IInsuranceApiClient
 
     // ── Attachments ──────────────────────────────────────────────────────────
 
-    public Task<ApiResult> AttachPolicyFileAsync(Guid policyId, AttachInsurancePolicyFileRequest request, CancellationToken ct = default) =>
-        api.SendAsync(HttpMethod.Post, $"{Base}/{policyId}/files", request, ct);
-
     public Task<ApiResult> AttachRenewalFileAsync(Guid policyId, Guid renewalId, AttachInsurancePolicyFileRequest request, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, $"{Renewals(policyId)}/{renewalId}/files", request, ct);
-
-    public Task<ApiResult> DetachPolicyFileAsync(Guid policyId, Guid fileId, CancellationToken ct = default) =>
-        api.SendAsync(HttpMethod.Delete, $"{Base}/{policyId}/files/{fileId}", null, ct);
 
     public Task<ApiResult> DetachRenewalFileAsync(Guid policyId, Guid renewalId, Guid fileId, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Renewals(policyId)}/{renewalId}/files/{fileId}", null, ct);

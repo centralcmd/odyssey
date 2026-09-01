@@ -3,8 +3,10 @@
    Sibling of Accounts / Budgets / Tax Statements: the same page-header +
    expandable-record scaffold (.acct-list / .acct-item), with an insurance-
    specific expanded detail. Each policy holds an ordered history of RENEWAL
-   PERIODS (premium · coverage · validity window) plus documents at the policy
-   AND renewal level. Coverage status (Active / ExpiringSoon / Lapsed / Upcoming
+   PERIODS (premium · coverage · validity window), and every document hangs off
+   one of those periods — a period is a document's only home, so a certificate or
+   invoice inherits a validity window instead of floating on the policy.
+   Coverage status (Active / ExpiringSoon / Lapsed / Upcoming
    / NoCoverage) and the "current renewal" are DERIVED, never stored — computed
    per the spec §5 ordered rules against one request "today".
 
@@ -240,16 +242,21 @@ const PremiumTrend = ({ renewals }) => {
 /* ====================== Renewal history wrapper — Terms-shaped ======================
    Mirrors AccountTerms: a Current-period summary, then the History as a status'd,
    inline-editable table with an "Add period" action. */
-const RenewalHistory = ({ policy, today, onAddRenewal, onEditRenewal, onDeleteRenewal, onUploadRenewal, onDeleteRenewalFile }) => {
+const RenewalHistory = ({ policy, today, canWrite = true, onAddRenewal, onEditRenewal, onDeleteRenewal, onUploadRenewal, onDeleteRenewalFile }) => {
   const renewals = policy.renewals || [];
   const current = INS_H.insCurrentRenewal(policy, today);
   const currentId = current ? current.id : null;
 
   if (!renewals.length) {
     return (
+      /* No period means nowhere to file a document, so the empty state carries
+         the action that unblocks both — same label as the row menu's item. */
       <div className="ins-empty-cover">
         <MIcon name="event_busy" size={20} />
-        <div style={{ flex: 1 }}>No renewal periods yet — add the first period to record premium, coverage and validity dates.</div>
+        <div style={{ flex: 1 }}>No renewal periods yet — add the first period to record premium, coverage and validity dates, and to have somewhere to file the policy's documents.</div>
+        {canWrite && (
+          <Button variant="filled" color="primary" icon="event_repeat" onClick={onAddRenewal}>New renewal period</Button>
+        )}
       </div>
     );
   }
@@ -268,12 +275,11 @@ const RenewalHistory = ({ policy, today, onAddRenewal, onEditRenewal, onDeleteRe
 };
 
 /* ====================== Expanded detail ====================== */
-const PolicyDetail = ({ policy, today, focusDocs, onNavigate, setPolicy, onAddRenewal, onEditRenewal, onDeleteRenewal, onUpload, onUploadRenewal }) => {
+const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onAddRenewal, onEditRenewal, onDeleteRenewal, onUploadRenewal }) => {
   const insurer = INS_H.insInsurer(policy);
   const insured = INS_H.insInsuredAccount(policy);
   const typeInfo = INS_H.insurancePolicyTypeInfo(policy.type);
   const current = INS_H.insCurrentRenewal(policy, today);
-  const removeFile = (f) => setPolicy(prev => ({ ...prev, files: prev.files.filter(x => x.id !== f.id) }));
   const removeRenewalFile = (rid, f) => setPolicy(prev => ({ ...prev, renewals: prev.renewals.map(r => (r.id === rid ? { ...r, files: (r.files || []).filter(x => x.id !== f.id) } : r)) }));
 
   // Referenced records keep their own type mark (icon + colour) — they point
@@ -343,26 +349,15 @@ const PolicyDetail = ({ policy, today, focusDocs, onNavigate, setPolicy, onAddRe
         </div>
       )}
 
-      {/* RENEWAL HISTORY — a plain section: its "New period" action lives in the
-          row action menu, so the section header carries the label and count only. */}
+      {/* RENEWAL HISTORY — the last section, and the only home for documents:
+          each period row's docs chip expands that period's files in place. Its
+          "New renewal period" action lives in the row action menu (and in the
+          empty state), so the section header carries label and count only. */}
       <div className="ins-section">
         <SectionDivider label="Renewal history" meta={`${(policy.renewals || []).length} period${(policy.renewals || []).length === 1 ? '' : 's'}`} />
         <RenewalHistory policy={policy} today={today}
           onAddRenewal={onAddRenewal} onEditRenewal={onEditRenewal} onDeleteRenewal={onDeleteRenewal}
           onUploadRenewal={onUploadRenewal} onDeleteRenewalFile={removeRenewalFile} />
-      </div>
-
-      {/* POLICY DOCUMENTS — last section, same treatment ("Attach document" is
-          likewise in the row action menu). */}
-      <div className="ins-section">
-        <SectionDivider label="Policy documents" meta={`${(policy.files || []).length} file${(policy.files || []).length === 1 ? '' : 's'}`} />
-        <div className="ins-tbl-frame">
-          <InsFilesTable
-            files={policy.files || []}
-            onDelete={removeFile}
-            empty={<div className="empty-line" style={{ padding: 20 }}>No policy-level documents yet — attach the certificate, policy wording, or schedule.</div>}
-          />
-        </div>
       </div>
     </React.Fragment>
   );
@@ -376,8 +371,10 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
   const open = !!openProp;
   const setOpen = (next) => onToggle(typeof next === 'function' ? next(open) : next);
   const [showEdit, setShowEdit] = useState(false);
-  const [focusDocs, setFocusDocs] = useState(false);
-  const [modal, setModal] = useState(null); // { kind:'renewal'|'upload', renewal? }
+  // Count changes and the enable transition are ANNOUNCED — an updated
+  // aria-label on an unfocused chip is never read out.
+  const [announce, setAnnounce] = useState('');
+  const [modal, setModal] = useState(null); // { kind:'renewal'|'upload', renewalId? }
   const cardRef = useRef(null);
 
   const typeInfo = INS_H.insurancePolicyTypeInfo(p.type);
@@ -386,6 +383,10 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
   const insurer = INS_H.insInsurer(p);
   const headline = insHeadline(p, today);
   const dimmed = !!p.archived;
+  // The gate reads the LIST row's period count (never an expanded-only detail),
+  // so a collapsed card resolves it too.
+  const periodCount = (p.renewals || []).length;
+  const attachTarget = INS_H.insAttachTargetRenewal(p, today);
 
   const saveEdit = (draft) => {
     setP(prev => ({ ...prev, name: draft.name.trim() || prev.name, policyNumber: draft.policyNumber ? draft.policyNumber.trim() : null,
@@ -393,6 +394,7 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
     setShowEdit(false);
   };
   const addRenewal = (dto, id) => {
+    if (!id && !(p.renewals || []).length) setAnnounce('First renewal period added. Attach document is now available.');
     setP(prev => {
       const renewals = id
         ? prev.renewals.map(r => (r.id === id ? { ...r, ...dto } : r))
@@ -402,15 +404,16 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
     setModal(null);
   };
   const deleteRenewal = (r) => setP(prev => ({ ...prev, renewals: prev.renewals.filter(x => x.id !== r.id) }));
-  const handleUpload = (newFiles, target) => {
-    setP(prev => {
-      if (target && target !== 'policy') {
-        return { ...prev, renewals: prev.renewals.map(r => (r.id === target ? { ...r, files: [...(r.files || []), ...newFiles] } : r)) };
-      }
-      return { ...prev, files: [...(prev.files || []), ...newFiles] };
-    });
+  // Every attach lands on ONE period — the panel's own, or the target the row
+  // menu resolved (§3).
+  const handleUpload = (newFiles, renewalId) => {
+    const target = (p.renewals || []).find(r => r.id === renewalId);
+    if (target) {
+      const n = (target.files || []).length + newFiles.length;
+      setAnnounce(`${newFiles.length} document${newFiles.length === 1 ? '' : 's'} attached to ${insRange(target.fromDate, target.toDate)}. ${n} document${n === 1 ? '' : 's'} on this period.`);
+    }
+    setP(prev => ({ ...prev, renewals: prev.renewals.map(r => (r.id === renewalId ? { ...r, files: [...(r.files || []), ...newFiles] } : r)) }));
     setModal(null); setOpen(true);
-    if (!target || target === 'policy') setFocusDocs(true);
   };
 
   useEffect(() => {
@@ -460,28 +463,36 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
         actions={<ActionMenu items={[
           { icon: 'edit', label: 'Edit policy', onClick: () => setShowEdit(true) },
           { icon: 'event_repeat', label: 'New renewal period', onClick: () => { setOpen(true); setModal({ kind: 'renewal' }); } },
-          { icon: 'upload_file', label: 'Attach document', onClick: () => { setOpen(true); setModal({ kind: 'upload' }); } },
+          /* A document can only live on a period, so with none there is nothing
+             to attach to: aria-disabled + a reason, never the dimmed state alone.
+             The target is inferred (current period, else the latest-ending one)
+             and named in the dialog body. */
+          {
+            icon: 'upload_file', label: 'Attach document',
+            disabled: !periodCount, note: periodCount ? undefined : 'Add a renewal period first.',
+            onClick: () => { setOpen(true); setModal({ kind: 'upload', renewalId: attachTarget && attachTarget.id }); },
+          },
           { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(p.id); } },
           { divider: true },
           { icon: p.archived ? 'unarchive' : 'archive', label: p.archived ? 'Unarchive' : 'Archive', onClick: () => setP(prev => ({ ...prev, archived: prev.archived ? null : new Date().toISOString() })) },
           { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(p.id) },
         ]} />}
       >
-        <PolicyDetail policy={p} today={today} focusDocs={focusDocs}
+        <PolicyDetail policy={p} today={today}
           onNavigate={onNavigate} setPolicy={setP}
           onAddRenewal={() => setModal({ kind: 'renewal' })}
           onEditRenewal={(r) => setModal({ kind: 'renewal', renewal: r })}
           onDeleteRenewal={deleteRenewal}
-          onUpload={() => setModal({ kind: 'upload' })}
-          onUploadRenewal={(rid) => setModal({ kind: 'upload', renewalId: rid })} />
+          onUploadRenewal={(rid) => setModal({ kind: 'upload', renewalId: rid, lockPeriod: true })} />
       </RecordCard>
+      <div className="odc-sr-only" role="status" aria-live="polite">{announce}</div>
       {showEdit && <AddInsurancePolicyModal policy={p} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
 
       {modal && modal.kind === 'renewal' && (
         <AddRenewalModal policy={p} renewal={modal.renewal} onClose={() => setModal(null)} onSave={addRenewal} />
       )}
-      {modal && modal.kind === 'upload' && (
-        <InsuranceUploadModal policy={p} initialTarget={modal.renewalId || 'policy'} onClose={() => setModal(null)} onUpload={handleUpload} />
+      {modal && modal.kind === 'upload' && modal.renewalId && (
+        <InsuranceUploadModal policy={p} renewalId={modal.renewalId} lockPeriod={modal.lockPeriod} onClose={() => setModal(null)} onUpload={handleUpload} />
       )}
     </div>
   );

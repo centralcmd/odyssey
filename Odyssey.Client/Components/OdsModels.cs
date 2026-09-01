@@ -130,13 +130,20 @@ public sealed class OdsMenuItem
     public string? Header { get; set; }
 
     /// <summary>
-    /// A second line of explanatory text under <see cref="Label"/> (issue #439).
+    /// One line saying WHY an item is unavailable, rendered under <see cref="Label"/> (issue #439).
     ///
     /// <para>
-    /// Added for the one case where an item is <see cref="Disabled"/> for a reason the user cannot
-    /// otherwise see — Analyze while AI document analysis is switched off instance-wide. A disabled
-    /// item that only greys out conveys its meaning by colour alone; the description is inside the
-    /// item's own content, so it is both visible and part of the item's accessible name.
+    /// A disabled item that only greys out conveys its meaning by colour alone, so the reason is
+    /// stated in text. Since issue #26 that text is a <b>sibling</b> note wired to the item through
+    /// <c>aria-describedby</c>, matching the design system's Menu — not content inside the item,
+    /// which folded the reason into the item's accessible <em>name</em>.
+    /// </para>
+    ///
+    /// <para>
+    /// Setting this alongside <see cref="Disabled"/> also changes how the item is disabled: it keeps
+    /// <c>aria-disabled</c> but drops MudBlazor's <c>disabled</c> treatment, so it stays reachable by
+    /// keyboard and a screen-reader user can actually get to the explanation rather than skipping a
+    /// silent item. <see cref="OdsMenu"/> suppresses the action and the menu-close itself.
     /// </para>
     /// </summary>
     public string? Description { get; set; }

@@ -26,8 +26,6 @@ public sealed record ExistingInsurancePolicy
 
     public List<ExistingPolicyRenewal> Renewals { get; set; } = new();
 
-    public List<ExistingInsurancePolicyFile> Files { get; set; } = new();
-
     /// <summary>
     /// Premium accrued through the current period — every period starting on or before the current
     /// one ends — converted into <see cref="AccruedPremiumCurrencyCode"/>. Null when the policy has no

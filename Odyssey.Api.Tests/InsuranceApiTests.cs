@@ -1,6 +1,7 @@
 using Odyssey.Dtos;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
@@ -398,49 +399,98 @@ public class InsuranceApiTests
 
     // ── Files (criteria #5, #11) ───────────────────────────────────────────────
 
+    /// <summary>
+    /// The three policy-level file routes are gone (issue #26) — a period is the only home for an
+    /// insurance document. Asserted for a caller holding EVERY relevant claim, so a 404 here is the
+    /// routing table and not an authorization result.
+    /// </summary>
     [Fact]
-    public async Task AttachFile_DownloadDetach_BlobSurvives_ParentChainEnforced()
+    public async Task PolicyLevelFileRoutes_AreGone()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var (insurerId, _) = await SeedInsurerAndAccountAsync(factory);
+        var insurerId = await SeedContactAsync(factory);
         var pdfId = await SeedFileAsync(factory, "contract.pdf", "application/pdf");
-        var textId = await SeedFileAsync(factory, "notes.txt", "text/plain");
         using var client = factory.CreateClient();
 
-        var policyA = await CreateAsync(client, insurerId);
-        var policyB = await CreateAsync(client, insurerId);
+        var policy = await CreateAsync(client, insurerId);
 
-        var attach = await client.PostAsJsonAsync($"{Path}/{policyA}/files", AttachRequest(pdfId));
-        Assert.Equal(HttpStatusCode.Created, attach.StatusCode);
+        var attach = await client.PostAsJsonAsync($"{Path}/{policy}/files", AttachRequest(pdfId));
+        Assert.Equal(HttpStatusCode.NotFound, attach.StatusCode);
 
-        // Disallowed content type.
-        var bad = await client.PostAsJsonAsync($"{Path}/{policyA}/files", AttachRequest(textId));
-        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        var download = await client.GetAsync($"{Path}/{policy}/files/{pdfId}");
+        Assert.Equal(HttpStatusCode.NotFound, download.StatusCode);
 
-        // Duplicate (parent, file) → 409.
-        var duplicate = await client.PostAsJsonAsync($"{Path}/{policyA}/files", AttachRequest(pdfId));
-        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        var detach = await client.DeleteAsync($"{Path}/{policy}/files/{pdfId}");
+        Assert.Equal(HttpStatusCode.NotFound, detach.StatusCode);
+    }
 
-        // Download via the parent-scoped route sets safe headers (criterion #11).
-        var download = await client.GetAsync($"{Path}/{policyA}/files/{pdfId}");
-        Assert.Equal(HttpStatusCode.OK, download.StatusCode);
-        Assert.Equal("nosniff", download.Headers.TryGetValues("X-Content-Type-Options", out var v) ? string.Join(",", v) : null);
-        Assert.Equal("attachment", download.Content.Headers.ContentDisposition?.DispositionType);
+    /// <summary>
+    /// The detail DTO no longer carries a top-level <c>files</c> property, and the documents live
+    /// under the period that owns them.
+    /// </summary>
+    [Fact]
+    public async Task Get_CarriesNoTopLevelFiles_AndDocumentsHangOffTheirPeriod()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var insurerId = await SeedContactAsync(factory);
+        var pdfId = await SeedFileAsync(factory, "schedule.pdf", "application/pdf");
+        using var client = factory.CreateClient();
 
-        // A file attached to A is not downloadable through B.
-        var crossPolicy = await client.GetAsync($"{Path}/{policyB}/files/{pdfId}");
-        Assert.Equal(HttpStatusCode.NotFound, crossPolicy.StatusCode);
+        var policy = await CreateAsync(client, insurerId);
+        var renewal = await AddRenewalAsync(client, policy);
+        Assert.Equal(HttpStatusCode.Created,
+            (await client.PostAsJsonAsync($"{Path}/{policy}/renewals/{renewal}/files", AttachRequest(pdfId))).StatusCode);
 
-        // Detach removes the join only; the underlying blob survives.
-        var detach = await client.DeleteAsync($"{Path}/{policyA}/files/{pdfId}");
-        Assert.Equal(HttpStatusCode.NoContent, detach.StatusCode);
+        using var body = await client.GetFromJsonAsync<JsonDocument>($"{Path}/{policy}");
+        var root = body!.RootElement;
 
-        var afterDetach = await client.GetAsync($"{Path}/{policyA}/files/{pdfId}");
-        Assert.Equal(HttpStatusCode.NotFound, afterDetach.StatusCode);
+        Assert.False(root.TryGetProperty("files", out _));
 
-        using var scope = factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        Assert.True(await context.FileMetadata.AnyAsync(f => f.Id == pdfId));
+        var files = root.GetProperty("renewals")[0].GetProperty("files");
+        Assert.Equal(1, files.GetArrayLength());
+        Assert.Equal(pdfId, files[0].GetProperty("fileMetadata").GetProperty("id").GetGuid());
+    }
+
+    /// <summary>
+    /// <c>fileCount</c> is redefined as the sum across the policy's periods (issue #26 Goal 10). It is
+    /// asserted against the DETAIL endpoint's own nested arrays rather than a literal, so the two
+    /// contracts cannot drift apart silently.
+    /// </summary>
+    [Fact]
+    public async Task List_FileCount_SumsDocumentsAcrossPeriods()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var insurerId = await SeedContactAsync(factory);
+        using var client = factory.CreateClient();
+
+        // Three shapes: no documents, one on a single period, and documents spread over two periods.
+        var empty = await CreateAsync(client, insurerId);
+
+        var single = await CreateAsync(client, insurerId);
+        var singleRenewal = await AddRenewalAsync(client, single);
+        await client.PostAsJsonAsync($"{Path}/{single}/renewals/{singleRenewal}/files",
+            AttachRequest(await SeedFileAsync(factory, "one.pdf", "application/pdf")));
+
+        var spread = await CreateAsync(client, insurerId);
+        var first = await AddRenewalAsync(client, spread, Parse("2024-01-01"), Parse("2024-12-31"));
+        var second = await AddRenewalAsync(client, spread, Parse("2025-01-01"), Parse("2025-12-31"));
+        await client.PostAsJsonAsync($"{Path}/{spread}/renewals/{first}/files",
+            AttachRequest(await SeedFileAsync(factory, "two.pdf", "application/pdf")));
+        await client.PostAsJsonAsync($"{Path}/{spread}/renewals/{second}/files",
+            AttachRequest(await SeedFileAsync(factory, "three.pdf", "application/pdf")));
+        await client.PostAsJsonAsync($"{Path}/{spread}/renewals/{second}/files",
+            AttachRequest(await SeedFileAsync(factory, "four.pdf", "application/pdf")));
+
+        var list = await client.GetPagedItemsAsync<InsurancePolicyListItem>(Path);
+
+        foreach (var (id, expected) in new[] { (empty, 0), (single, 1), (spread, 3) })
+        {
+            var item = list.Single(p => p.InsurancePolicyId == id);
+            Assert.Equal(expected, item.FileCount);
+
+            var detail = await client.GetFromJsonAsync<ExistingInsurancePolicy>($"{Path}/{id}");
+            Assert.Equal(detail!.Renewals.Sum(r => r.Files.Count), item.FileCount);
+        }
     }
 
     [Fact]
@@ -493,10 +543,11 @@ public class InsuranceApiTests
     }
 
     [Fact]
-    public async Task AttachPolicyFile_ExceedingCap_Returns422()
+    public async Task AttachRenewalFile_ExceedingCap_Returns422_AndNamesTheEffectiveCap()
     {
         // Shrink the per-parent file cap so the boundary is cheap to hit. Set as a settings row, not as
-        // configuration: the cap moved out of `InsuranceOptions` in issue #421 Wave 3.
+        // configuration: the cap moved out of `InsuranceOptions` in issue #421 Wave 3. The parent is
+        // the PERIOD — the policy stopped being one in issue #26.
         await using var factory = new ApiFactory(ReadWriteWithFiles);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.InsuranceMaxFilesPerParent, "2");
         var insurerId = await SeedContactAsync(factory);
@@ -506,11 +557,17 @@ public class InsuranceApiTests
         using var client = factory.CreateClient();
 
         var policy = await CreateAsync(client, insurerId);
-        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync($"{Path}/{policy}/files", AttachRequest(f1))).StatusCode);
-        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync($"{Path}/{policy}/files", AttachRequest(f2))).StatusCode);
+        var renewal = await AddRenewalAsync(client, policy);
+        var route = $"{Path}/{policy}/renewals/{renewal}/files";
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync(route, AttachRequest(f1))).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync(route, AttachRequest(f2))).StatusCode);
 
-        var overCap = await client.PostAsJsonAsync($"{Path}/{policy}/files", AttachRequest(f3));
+        var overCap = await client.PostAsJsonAsync(route, AttachRequest(f3));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, overCap.StatusCode);
+
+        // The remedy is for an administrator to RAISE the cap — detaching is not executable in the
+        // product — so the message has to name the number actually in force.
+        Assert.Contains("2", await overCap.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -584,8 +641,9 @@ public class InsuranceApiTests
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client, insurerId);
+        var renewal = await AddRenewalAsync(client, id);
 
-        var attach = await client.PostAsJsonAsync($"{Path}/{id}/files", AttachRequest(pdfId));
+        var attach = await client.PostAsJsonAsync($"{Path}/{id}/renewals/{renewal}/files", AttachRequest(pdfId));
         Assert.Equal(HttpStatusCode.Forbidden, attach.StatusCode);
     }
 
@@ -709,9 +767,9 @@ public class InsuranceApiTests
         return created!.InsurancePolicyId;
     }
 
-    private static async Task<Guid> AddRenewalAsync(HttpClient client, Guid policyId)
+    private static async Task<Guid> AddRenewalAsync(HttpClient client, Guid policyId, DateTime? from = null, DateTime? to = null)
     {
-        var add = await client.PostAsJsonAsync($"{Path}/{policyId}/renewals", Renewal(YearStart, YearEnd));
+        var add = await client.PostAsJsonAsync($"{Path}/{policyId}/renewals", Renewal(from ?? YearStart, to ?? YearEnd));
         add.EnsureSuccessStatusCode();
         var renewal = await add.Content.ReadFromJsonAsync<ExistingPolicyRenewal>();
         return renewal!.PolicyRenewalId;

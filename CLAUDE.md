@@ -151,14 +151,17 @@ could not declare one across a model boundary:
   the two attachment tables) used to be bare `Guid`s. They now carry the on-delete behaviour the
   application code was imitating — `SET NULL` for the optional contact links, `CASCADE` for
   `ContractParty` and the file links, `RESTRICT` for the required `InsurancePolicy.InsurerId`.
-- **User attribution:** 23 columns across 17 entities (`CreatedByUserId`/`UpdatedByUserId`,
-  `AttachedByUserId`, `UploadedByUserId`, `RequestedByUserId`, `ReviewedByUserId`) used to be bare
-  strings, so deleting a user left every one of them naming an account that no longer existed. All 23
-  are now FKs with **`SET NULL`** — these rows are *shared* data that must survive their author's
-  departure, so `RESTRICT` (which would make any author undeletable) and `CASCADE` (which would destroy
-  the shared record) are both wrong. `LicenseAcceptances.UserId` and `TermsOfServiceAcceptances.UserId`
-  are the **deliberate exception** and stay FK-free: they outlive the account and are pseudonymized in
-  place. Don't "complete the set" by adding keys to them.
+- **User attribution:** the `CreatedByUserId`/`UpdatedByUserId`, `AttachedByUserId`,
+  `UploadedByUserId`, `RequestedByUserId` and `ReviewedByUserId` columns used to be bare strings, so
+  deleting a user left every one of them naming an account that no longer existed. Every one is now an
+  FK with **`SET NULL`** — these rows are *shared* data that must survive their author's departure, so
+  `RESTRICT` (which would make any author undeletable) and `CASCADE` (which would destroy the shared
+  record) are both wrong. The rule also reaches `_InsurancePolicyFileRelocation`, the issue-#26
+  relocation ledger, which is not an EF entity but records who attached each document it moved.
+  `LicenseAcceptances.UserId` and `TermsOfServiceAcceptances.UserId` are the **deliberate exception**
+  and stay FK-free: they outlive the account and are pseudonymized in place. Don't "complete the set"
+  by adding keys to them. The full set is the allow-list in
+  `Odyssey.IntegrationTests/UserAttributionForeignKeyTests`.
 
 That last group is what makes `users.delete` genuinely atomic: `UserAdministrationService.DeleteAsync`
 opens one transaction, and the cascades and set-nulls now resolve inside it. See

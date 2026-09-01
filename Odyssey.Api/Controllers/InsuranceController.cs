@@ -162,72 +162,10 @@ public class InsuranceController : ControllerBase
             : this.NotFoundProblem($"Renewal ID {renewalId} is not part of insurance policy ID {id}.");
     }
 
-    // ── Policy-level files ──────────────────────────────────────────────────────
-
-    [HttpPost("{id}/files", Name = "AttachInsurancePolicyFile")]
-    [Authorize(Policy = PermissionClaims.InsuranceUpdate)]
-    [Authorize(Policy = PermissionClaims.FilesRead)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Attach an already-uploaded document to a policy (requires insurance.update + files.read).")]
-    public async Task<IActionResult> AttachPolicyFile(
-        [FromRoute(Name = "id")] Guid id,
-        [FromBody] AttachInsurancePolicyFileRequest request, CancellationToken cancellationToken = default)
-    {
-        if (!await service.Exists(id, cancellationToken))
-        {
-            return this.NotFoundProblem($"Insurance policy ID {id} not found.");
-        }
-
-        if (await ValidateAttachableFile(request.FileId, cancellationToken) is { } problem)
-        {
-            return problem;
-        }
-
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            return Unauthorized();
-        }
-
-        await service.AttachPolicyFile(id, request.FileId, userId, request.FileType, request.EffectiveDate, cancellationToken);
-        return CreatedAtRoute("DownloadInsurancePolicyFile", new { id, fileId = request.FileId }, null);
-    }
-
-    [HttpGet("{id}/files/{fileId}", Name = "DownloadInsurancePolicyFile")]
-    [Authorize(Policy = PermissionClaims.InsuranceRead)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Download a document attached to a policy.")]
-    public async Task<IActionResult> DownloadPolicyFile(
-        [FromRoute(Name = "id")] Guid id,
-        [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)
-    {
-        if (!await service.IsFileAttachedToPolicy(id, fileId, cancellationToken))
-        {
-            return this.NotFoundProblem($"File ID {fileId} is not attached to insurance policy ID {id}.");
-        }
-
-        return await StreamFile(fileId, cancellationToken);
-    }
-
-    [HttpDelete("{id}/files/{fileId}", Name = "DetachInsurancePolicyFile")]
-    [Authorize(Policy = PermissionClaims.InsuranceUpdate)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Detach a document from a policy (the underlying file is left intact).")]
-    public async Task<IActionResult> DetachPolicyFile(
-        [FromRoute(Name = "id")] Guid id,
-        [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)
-    {
-        return await service.DetachPolicyFile(id, fileId, cancellationToken)
-            ? NoContent()
-            : this.NotFoundProblem($"File ID {fileId} is not attached to insurance policy ID {id}.");
-    }
-
     // ── Renewal-level files ─────────────────────────────────────────────────────
+    // The only document surface there is. The policy-level trio was removed in issue #26 — a period is
+    // the only home for an insurance document — so every route here is scoped by BOTH parent ids, and
+    // RenewalExists(id, renewalId) runs on all three verbs, not just the attach.
 
     [HttpPost("{id}/renewals/{renewalId}/files", Name = "AttachPolicyRenewalFile")]
     [Authorize(Policy = PermissionClaims.InsuranceUpdate)]

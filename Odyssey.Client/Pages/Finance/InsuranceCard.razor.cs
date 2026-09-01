@@ -461,21 +461,90 @@ public partial class InsuranceCard
 
     // ── Upload / attach dialog ───────────────────────────────────────────────────
     private ExistingInsurancePolicy? _uploadPolicy;
-    private Guid? _uploadRenewalId;
+    private Guid _uploadRenewalId;
+    private bool _uploadLockPeriod;
     private Guid _uploadKey;
     private bool _uploadOpen;
 
+    /// <summary>
+    /// Opens the attach dialog against ONE period — the only place an insurance document can live
+    /// (issue #26).
+    ///
+    /// <para>
+    /// The period panel passes its own id, and that target is the user's own choice, so the dialog
+    /// locks it. The row menu has no such context: the target is inferred by
+    /// <see cref="InsuranceAttachTarget"/> and the dialog offers it as a defaulted picker instead, so
+    /// a late-arriving document can still be filed against an earlier period.
+    /// </para>
+    /// </summary>
     private async Task AttachDocument(Guid policyId, Guid? renewalId = null)
     {
         if (!_canUploadFiles) return;
         await EnsureDetail(policyId);
         if (!_details.TryGetValue(policyId, out var d)) return;
+
+        var target = InsuranceAttachTarget.Resolve(d, renewalId);
+        if (target == Guid.Empty)
+        {
+            // The gate on RenewalCount should have disabled the action; this is the race where the
+            // last period was deleted underneath an open record.
+            Snackbar.Add("Add a renewal period before attaching a document.", Severity.Warning);
+            return;
+        }
+
         _expandedId = policyId;
         _uploadPolicy = d;
-        _uploadRenewalId = renewalId;
+        _uploadRenewalId = target;
+        _uploadLockPeriod = renewalId is not null;
         _uploadKey = Guid.NewGuid();
         _uploadOpen = true;
     }
+
+    /// <summary>
+    /// After an attach: reload, then ANNOUNCE the period's new document count.
+    ///
+    /// <para>
+    /// The count is written to the documents chip's <c>aria-label</c>, and a changed label on an
+    /// UNFOCUSED control is not announced — focus is back on the Attach button, not the chip. So the
+    /// live region carries it (WCAG 2.2 §4.1.3), the same way BudgetsCard announces its edit-mode
+    /// transition.
+    /// </para>
+    /// </summary>
+    private async Task OnDocumentsAttached(Guid policyId, Guid renewalId)
+    {
+        await ReloadPolicy(policyId);
+
+        // The period the documents actually landed on — which the picker may have changed — so the
+        // announcement names it rather than "this period".
+        if (_details.TryGetValue(policyId, out var d)
+            && d.Renewals.FirstOrDefault(r => r.PolicyRenewalId == renewalId) is { } period)
+        {
+            _announce = InsuranceAnnouncements.DocumentsOnPeriod(period);
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// After a renewal period is saved: reload, and when the policy had none before, announce that
+    /// attaching documents is now possible — the row menu's Attach document has just gone from
+    /// disabled to enabled, which is a state change nothing else would voice.
+    /// </summary>
+    private async Task OnRenewalSaved(Guid policyId)
+    {
+        var before = PeriodCount(policyId);
+        await ReloadPolicy(policyId);
+
+        if (InsuranceAnnouncements.PeriodsBecameAvailable(before, PeriodCount(policyId)) is { } message)
+        {
+            _announce = message;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>The LIST row's period count — the same source the row-menu gate reads, so the
+    /// announcement and the gate can never disagree about whether a policy has a period.</summary>
+    private int PeriodCount(Guid policyId) =>
+        _policies.FirstOrDefault(p => p.InsurancePolicyId == policyId)?.RenewalCount ?? 0;
 
     // ── Collapsed headline figure ──────────────────────────────────────────────
     // ── Record-card presentation ──────────────────────────────────────────────────
@@ -557,10 +626,19 @@ public partial class InsuranceCard
 
         if (_canUploadFiles)
         {
+            // Gated on the LIST item's count, not the detail's: RowActions renders from the list item
+            // and _details is populated only for EXPANDED rows, so reading Renewals.Count there would
+            // disable the action on every collapsed row. ReloadPolicy refreshes the list too, so the
+            // enable transition after the first period is saved comes free.
+            var hasPeriod = p.RenewalCount > 0;
             items.Add(new OdsMenuItem
             {
                 Icon = "upload_file",
                 Label = "Attach document",
+                Disabled = !hasPeriod,
+                // A document belongs to a period, so with no period there is nothing to attach to.
+                // The reason is TEXT, associated as a description — never the dimmed styling alone.
+                Description = hasPeriod ? null : "Add a renewal period first.",
                 OnClick = EventCallback.Factory.Create(this, () => AttachDocument(p.InsurancePolicyId)),
             });
         }

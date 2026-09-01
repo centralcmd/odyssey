@@ -62,10 +62,10 @@ The lookup services (`IContactLookup`, `IFileLookup`, `IPhotoLookup`, `IContactR
 
 ### User attribution foreign keys
 
-Twenty-three columns across seventeen entities name the user who created, updated, attached, uploaded,
-requested or reviewed a row — `CreatedByUserId`/`UpdatedByUserId` on `Calendar`, `CalendarEvent`,
-`JournalEntry`, `JournalTask`, `Photo`, `PhotoAlbum` and `RecurrencePattern`; `AttachedByUserId` on the
-six file-link tables; `FileMetadata.UploadedByUserId`; `FileAnalysisJob.RequestedByUserId`; and
+Columns across the model name the user who created, updated, attached, uploaded, requested or reviewed
+a row — `CreatedByUserId`/`UpdatedByUserId` on `Calendar`, `CalendarEvent`, `JournalEntry`,
+`JournalTask`, `Photo`, `PhotoAlbum` and `RecurrencePattern`; `AttachedByUserId` on the file-link
+tables; `FileMetadata.UploadedByUserId`; `FileAnalysisJob.RequestedByUserId`; and
 `FileAnalysisCandidateTransaction.ReviewedByUserId`.
 
 They were bare strings while identity lived in its own context, so deleting a user left every one of
@@ -92,6 +92,35 @@ own.
 
 `Odyssey.IntegrationTests/UserAttributionForeignKeyTests` pins all of this at the database; EF InMemory
 enforces no foreign keys, so the fast tiers never exercise it.
+
+The rule reaches one table that is **not** an entity: `_InsurancePolicyFileRelocation` (below) carries
+`AttachedByUserId` with the same `SET NULL` key, because a ledger recording who attached a document
+must outlive that person's account exactly as the document does.
+
+### The insurance relocation ledger
+
+`_InsurancePolicyFileRelocation` is not part of the EF model. It is an operational record, written by
+the `MoveInsurancePolicyFilesToRenewals` migration (issue #26), of every `InsurancePolicyFiles` row it
+moved onto a renewal period before `DropInsurancePolicyFiles` removed that table.
+
+It carries the **full source payload**, not just ids, because it is the only surviving record of those
+rows and the sole basis for `Down`. It has the same three foreign keys the dropped table had —
+`CASCADE` to `InsurancePolicies` and `FileMetadata`, `SET NULL` to `AspNetUsers` — which is what lets
+`Down` reinsert into a table that has those keys without ever violating one: a parent deleted since
+`Up` has already cascaded its ledger row away, so there is nothing stale to restore.
+`DestinationPolicyRenewalFileId` and `DestinationPolicyRenewalId` deliberately carry no key, because
+they must survive a detach or a period deletion.
+
+**Retention: indefinite, and deliberately so.** It is small, it is the reversibility mechanism, and
+there is no later phase that would dispose of it — a ledger deleted on a schedule stops being a basis
+for `Down` on exactly the day someone needs one. The personal data it holds is a single column,
+`AttachedByUserId`, and that is `SET NULL`-ed by `users.delete` along with every other attribution
+column (GDPR Art. 17), so the record survives erasure without the identifier. It holds no file
+content, no filenames and no file metadata — only ids — which is the data-minimisation posture
+(Art. 5(1)(c)) that made a table preferable to a log stream that may be shipped off-box.
+
+**Do not add an entity type for it** — the tables an EF model owns are the ones the application reads
+and writes, and nothing outside the migration touches this one.
 
 ### Permission claims are not seeded here
 
