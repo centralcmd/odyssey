@@ -47,3 +47,19 @@
 .cvi-busy { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 40px 20px; text-align: center; }
 .cvi-busy-l { font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .cvi-busy-s { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* ---------- Blocked contact delete (insurance links) + detach path ---------- */
+/* Which KINDS block the delete, always in text — counts are link rows. */
+.cpl-kinds { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cpl-kinds li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--mud-palette-divider); border-radius: 10px; background: var(--mud-palette-background); }
+.cpl-kinds .material-icons { font-size: 17px; color: var(--mud-palette-text-secondary); flex: none; }
+.cpl-kind-name { font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.cpl-kind-note { flex: 1; min-width: 0; font: 400 12px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cpl-kind-count { flex: none; min-width: 22px; text-align: right; font: 500 13px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
+.cpl-policies { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.cpl-policy { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; background: var(--mud-palette-background); }
+.cpl-policy .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); flex: none; }
+.cpl-policy-name { flex: 1; min-width: 0; font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cpl-policy-kinds { flex: none; font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cpl-note { margin: 14px 0 0; font: 400 12.5px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cpl-note strong { color: var(--mud-palette-text-primary); font-weight: 500; }

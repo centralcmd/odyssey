@@ -643,8 +643,8 @@
         "message": "<TagChipsItem> doesn't accept that prop. Declared props: id, label, name."
       },
       {
-        "selector": "JSXOpeningElement[name.name='TagMultiSelectOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|key|ref|className|style|children)$/]",
-        "message": "<TagMultiSelectOption> doesn't accept that prop. Declared props: value, label."
+        "selector": "JSXOpeningElement[name.name='TagMultiSelectOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|icon|iconColor|sub|key|ref|className|style|children)$/]",
+        "message": "<TagMultiSelectOption> doesn't accept that prop. Declared props: value, label, icon, iconColor, sub."
       },
       {
         "selector": "JSXOpeningElement[name.name='TaskBoardTask'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|status|position|title|key|ref|className|style|children)$/]",

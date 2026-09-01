@@ -61,14 +61,78 @@ const insHeadline = (policy, today) => {
   return { value: insDate(latest.toDate), word: `expired ${days} day${days === 1 ? '' : 's'} ago`, cls: 'lapsed' };
 };
 
-/* ====================== Insurer / insured-account read chips ====================== */
-const InsLinkChip = ({ icon, name, type, empty }) => {
-  if (!name) return <span className="ins-link-chip empty"><MIcon name={icon} size={16} />{empty}</span>;
+/* ====================== Link collections — read display ======================
+   The four collections (insurers · insured accounts · insured contacts ·
+   beneficiaries) render ONE TILE PER MEMBER, so every linked record reads as its
+   own card with its own type glyph, colour, name and type caption — a referenced
+   record points elsewhere, so it reads as that record rather than as a line in a
+   list. An UNNAMED member (archived, or no longer resolvable) shows the state
+   word where its name would be: the read model carries the id and the type,
+   never the name. Past five members the collection collapses into a "+N more"
+   tile, so a collection at the cap of 50 has a defined rendering. */
+const INS_LINK_TILE_LIMIT = INS_D.INSURANCE_LINK_TILE_LIMIT || 5;
+
+const insRefKey = (r) => r.contactId || r.accountId;
+const insRefMeta = (r, kind) => {
+  if (kind === 'account') return (r.type && INS_D.accountTypeById[r.type]) || {};
+  return (r.type && INS_D.contactTypeByKey[r.type]) || {};
+};
+/* One collection = one tile PER MEMBER, so every linked record reads as its own
+   card with its own type glyph, colour and caption. Empty collections render no
+   tile (rule 5): zero members is a healthy state, including zero insurers.
+   Past five members the collection collapses into a "+N more" tile that expands
+   in place, so a collection at the cap of 50 has a defined rendering. */
+const InsLinkTiles = ({ refs, kind, label, fallbackIcon }) => {
+  const { useState } = React;
+  const [expanded, setExpanded] = useState(false);
+  if (!refs.length) return null;
+  const shown = expanded ? refs : refs.slice(0, INS_LINK_TILE_LIMIT);
+  const hidden = refs.length - shown.length;
   return (
-    <span className="ins-link-chip">
-      <MIcon name={icon} size={16} />
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-      {type && <span className="ins-link-type">{type}</span>}
+    <React.Fragment>
+      {shown.map((r) => {
+        const meta = insRefMeta(r, kind);
+        const unnamed = r.availability !== 'Available';
+        const state = r.availability === 'Archived' ? 'Archived' : 'Unavailable';
+        return (
+          <InfoTile
+            key={insRefKey(r)}
+            icon={unnamed ? (r.availability === 'Archived' ? 'inventory_2' : 'link_off') : (meta.icon || fallbackIcon)}
+            iconColor={unnamed ? undefined : meta.color}
+            iconSoft={unnamed ? undefined : meta.soft}
+            /* The label is the collection's singular name, repeated per member —
+               no position, no count: the tiles themselves are the count, and the
+               caption slot keeps the type. */
+            label={label}
+            valueVariant="text"
+            className={`wrapvalue${unnamed ? ' tone-muted' : ''}`}
+            value={unnamed ? state : r.name}
+            foot={unnamed && !r.type ? undefined : meta.label}
+          />
+        );
+      })}
+      {hidden > 0 ? (
+        <InfoTile icon="more_horiz" label={label} valueVariant="text" className="tone-muted"
+          value={<button type="button" className="ins-linkmore" onClick={() => setExpanded(true)}>+{hidden} more</button>}
+          foot={`${refs.length} in total`} />
+      ) : null}
+    </React.Fragment>
+  );
+};
+
+/* The collapsed card's insurers segment: up to TWO named, then "+N". Omitted
+   entirely when the policy has none — zero insurers is valid now, so absence is
+   no longer "the fact". */
+const InsInsurerMeta = ({ refs }) => {
+  if (!refs.length) return null;
+  const named = refs.slice(0, 2);
+  const rest = refs.length - named.length;
+  const types = [...new Set(refs.map(r => r.type).filter(Boolean))];
+  const icon = types.length === 1 ? ((INS_D.contactTypeByKey[types[0]] || {}).icon || 'groups') : 'link';
+  return (
+    <span className="ins-sub-insurer">
+      <MIcon name={icon} size={14} />
+      <span>{named.map(r => (r.availability === 'Available' ? r.name : r.availability === 'Archived' ? 'Archived' : 'Unavailable')).join(', ')}{rest > 0 ? ` +${rest}` : ''}</span>
     </span>
   );
 };
@@ -276,17 +340,14 @@ const RenewalHistory = ({ policy, today, canWrite = true, onAddRenewal, onEditRe
 
 /* ====================== Expanded detail ====================== */
 const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onAddRenewal, onEditRenewal, onDeleteRenewal, onUploadRenewal }) => {
-  const insurer = INS_H.insInsurer(policy);
-  const insured = INS_H.insInsuredAccount(policy);
+  const insurers = INS_H.insInsurers(policy);
+  const insuredAccounts = INS_H.insInsuredAccounts(policy);
+  const insuredContacts = INS_H.insInsuredContacts(policy);
+  const beneficiaries = INS_H.insBeneficiaries(policy);
   const typeInfo = INS_H.insurancePolicyTypeInfo(policy.type);
   const current = INS_H.insCurrentRenewal(policy, today);
   const removeRenewalFile = (rid, f) => setPolicy(prev => ({ ...prev, renewals: prev.renewals.map(r => (r.id === rid ? { ...r, files: (r.files || []).filter(x => x.id !== f.id) } : r)) }));
 
-  // Referenced records keep their own type mark (icon + colour) — they point
-  // elsewhere, so they read as that record rather than as part of this one.
-  const insuredMeta = (insured && INS_D.accountTypeById[insured.type]) || {};
-  const insurerMeta = (insurer && INS_D.contactTypeByKey[insurer.type]) || {};
-  const insuredTypeLabel = insuredMeta.label;
   // Coverage status is derived (archived → upcoming → lapsed → expiring → active
   // → no coverage), so its tile carries the state and the date it began, tinted
   // like the header chip — the Subscriptions status tile pattern.
@@ -312,21 +373,14 @@ const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onAddRenewal, onEd
   const accruedTotal = accrued.reduce((s, x) => s + (INS_H.insConvert(x.premium, x.premiumCurrencyCode, accruedCur) ?? x.premium), 0);
 
   // The card's DETAILS slot: the policy's full field set (rule 3), each tile
-  // rendering on its own field (rule 5). Empty fields drop out — except the
-  // insurer, where the absence is the fact: a policy without one is broken.
+  // rendering on its own field (rule 5). Empty fields drop out — the four link
+  // collections included: zero members is a healthy state, so a collection with
+  // none renders no tile at all.
   const details = (
     <InfoTileGrid>
       <InfoTile icon="shield" label="Name" value={policy.name} valueVariant="text" className="wrapvalue" />
       {policy.policyNumber ? <InfoTile icon="tag" label="Policy number" value={policy.policyNumber} valueVariant="mono" foot="Insurer reference" /> : null}
       <InfoTile icon={typeInfo.icon} label="Type" value={typeInfo.label} valueVariant="text" />
-      <InfoTile icon={insurer ? (insurerMeta.icon || 'groups') : 'apartment'}
-        iconColor={insurer ? insurerMeta.color : undefined} iconSoft={insurer ? insurerMeta.soft : undefined}
-        label="Insurer" valueVariant="text"
-        value={insurer ? insurer.name : 'Not set'} foot={insurer ? (insurerMeta.label || insurer.type) : 'Required'} />
-      {insured ? <InfoTile icon={insuredMeta.icon || 'account_balance_wallet'}
-        iconColor={insuredMeta.color} iconSoft={insuredMeta.soft}
-        label="Insured account" valueVariant="text"
-        value={insured.name} foot={insuredTypeLabel} /> : null}
       <InfoTile icon={stMeta.icon} label="Status" valueVariant="text" className={stTone}
         value={stMeta.label} foot={stFoot} />
       {current ? <InfoTile icon="savings" label="Total premium" value={INS_H.insMoney(accruedTotal, accruedCur)} valueVariant="mono" foot={`${accrued.length} period${accrued.length === 1 ? '' : 's'} to date`} /> : null}
@@ -336,10 +390,27 @@ const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onAddRenewal, onEd
     <InfoTileGrid><InfoTile icon="sticky_note_2" label="Notes" value={policy.notes} wide /></InfoTileGrid>
   ) : null;
 
+  /* PARTIES — who and what is on the policy, as its own section: one tile per
+     linked record, in write order (insurers, then the insured, then
+     beneficiaries). Omitted entirely when the policy names nobody. */
+  const partyCount = insurers.length + insuredAccounts.length + insuredContacts.length + beneficiaries.length;
+  const parties = partyCount ? (
+    <div className="ins-section">
+      <SectionDivider label="Parties" meta={`${partyCount} link${partyCount === 1 ? '' : 's'}`} />
+      <InfoTileGrid>
+        <InsLinkTiles refs={insurers} kind="contact" label="Insurer" fallbackIcon="groups" />
+        <InsLinkTiles refs={insuredAccounts} kind="account" label="Insured" fallbackIcon="account_balance_wallet" />
+        <InsLinkTiles refs={insuredContacts} kind="contact" label="Insured" fallbackIcon="person" />
+        <InsLinkTiles refs={beneficiaries} kind="contact" label="Beneficiary" fallbackIcon="volunteer_activism" />
+      </InfoTileGrid>
+    </div>
+  ) : null;
+
   return (
     <React.Fragment>
       {details}
       {content}
+      {parties}
 
       {/* CURRENT PERIOD — the current-state section, first among the sections */}
       {current && (
@@ -364,7 +435,7 @@ const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onAddRenewal, onEd
 };
 
 /* ====================== One policy list item ====================== */
-const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNavigate, onDelete }) => {
+const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNavigate, onDelete, optionsLoading = false, effectiveCap = null }) => {
   const { useState, useRef, useEffect } = React;
   const [p, setP] = useState(pol);
   // Open state lives in the list — opening a policy closes its siblings.
@@ -380,7 +451,7 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
   const typeInfo = INS_H.insurancePolicyTypeInfo(p.type);
   const st = INS_H.insCoverageStatus(p, today);
   const meta = INS_H.insCoverageStatusMeta(st.key);
-  const insurer = INS_H.insInsurer(p);
+  const insurers = INS_H.insInsurers(p);
   const headline = insHeadline(p, today);
   const dimmed = !!p.archived;
   // The gate reads the LIST row's period count (never an expanded-only detail),
@@ -390,7 +461,11 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
 
   const saveEdit = (draft) => {
     setP(prev => ({ ...prev, name: draft.name.trim() || prev.name, policyNumber: draft.policyNumber ? draft.policyNumber.trim() : null,
-      type: draft.type, insurerId: draft.insurerId, insuredAccountId: draft.insuredAccountId || null, notes: draft.notes }));
+      type: draft.type,
+      // The write carries the complete desired SET for each collection.
+      insurerIds: draft.insurerIds, insuredAccountIds: draft.insuredAccountIds,
+      insuredContactIds: draft.insuredContactIds, beneficiaryIds: draft.beneficiaryIds,
+      notes: draft.notes }));
     setShowEdit(false);
   };
   const addRenewal = (dto, id) => {
@@ -444,7 +519,7 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
         chips={<CoverageStatusChip status={st.key} />}
         meta={[
           typeInfo.label,
-          <span className="ins-sub-insurer"><MIcon name={insurer ? ((INS_D.contactTypeByKey[insurer.type] || {}).icon || 'groups') : 'apartment'} size={14} /><span>{insurer ? insurer.name : 'No insurer'}</span></span>,
+          <InsInsurerMeta refs={insurers} />,
           p.policyNumber ? <span className="mono"><MIcon name="tag" size={14} /><span>{p.policyNumber}</span></span> : null,
         ]}
         counts={[
@@ -486,7 +561,7 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
           onUploadRenewal={(rid) => setModal({ kind: 'upload', renewalId: rid, lockPeriod: true })} />
       </RecordCard>
       <div className="odc-sr-only" role="status" aria-live="polite">{announce}</div>
-      {showEdit && <AddInsurancePolicyModal policy={p} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
+      {showEdit && <AddInsurancePolicyModal policy={p} optionsLoading={optionsLoading} effectiveCap={effectiveCap} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
 
       {modal && modal.kind === 'renewal' && (
         <AddRenewalModal policy={p} renewal={modal.renewal} onClose={() => setModal(null)} onSave={addRenewal} />
@@ -595,9 +670,12 @@ const Insurance = ({ tweaks = {}, onNavigate }) => {
     if (typeFilter.length && !typeFilter.includes(p.type)) return false;
     if (statusFilter.length && !statusFilter.includes(st)) return false;
     if (q) {
-      const insurer = INS_H.insInsurer(p);
+      const insurers = INS_H.insInsurers(p);
       const needle = q.toLowerCase();
-      const hay = `${p.name} ${p.policyNumber || ''} ${INS_H.insurancePolicyTypeInfo(p.type).label} ${insurer ? insurer.name : ''} ${p.notes || ''}`.toLowerCase();
+      // Search keeps today's semantics: policy name + INSURER names. Insured
+      // contacts and beneficiaries are deliberately not searched — it would make
+      // the contacts surface's names queryable through a second door.
+      const hay = `${p.name} ${p.policyNumber || ''} ${INS_H.insurancePolicyTypeInfo(p.type).label} ${insurers.map(i => i.name || '').join(' ')} ${p.notes || ''}`.toLowerCase();
       if (!hay.includes(needle)) return false;
     }
     return true;
@@ -683,6 +761,8 @@ const Insurance = ({ tweaks = {}, onNavigate }) => {
             renderItem={(p) => (
               <PolicyListItem pol={p} today={today}
                 open={openId === p.id}
+                optionsLoading={!!tweaks.insOptionsLoading}
+                effectiveCap={tweaks.insEffectiveCap == null || tweaks.insEffectiveCap === '' ? null : Number(tweaks.insEffectiveCap)}
                 onToggle={(o) => setOpenId(o ? p.id : null)}
                 highlight={jumpId === p.id}
                 onNavigate={onNavigate} onDelete={deletePolicy} />
@@ -698,7 +778,9 @@ const Insurance = ({ tweaks = {}, onNavigate }) => {
         </div>
       )}
 
-      {showAdd && <AddInsurancePolicyModal onClose={() => setShowAdd(false)} onCreate={createPolicy} />}
+      {showAdd && <AddInsurancePolicyModal optionsLoading={!!tweaks.insOptionsLoading}
+        effectiveCap={tweaks.insEffectiveCap == null || tweaks.insEffectiveCap === '' ? null : Number(tweaks.insEffectiveCap)}
+        onClose={() => setShowAdd(false)} onCreate={createPolicy} />}
     </div>
   );
 };

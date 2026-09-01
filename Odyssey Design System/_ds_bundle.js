@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"c0ff965931f8","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"405e74b88332","components/ContactChip.jsx":"84820884f1d0","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"d3a9026394fa","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"fc773cfaf6b8","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MultiSelect.jsx":"dbb3b8710537","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b2ef3a111060","components/TagMultiSelect.jsx":"a31e3f264d46","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"63773ec5d23e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"bf69671bfea5","ui_kits/web/AddAccountModal.jsx":"35d6d60bd403","ui_kits/web/AddBudgetItemModal.jsx":"8dc5d7b427ba","ui_kits/web/AddBudgetModal.jsx":"edd942d3d192","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"8a96b0d53c48","ui_kits/web/AddEstimateModal.jsx":"4e2dd58b032a","ui_kits/web/AddFileModal.jsx":"35a97b29e621","ui_kits/web/AddInsurancePolicyModal.jsx":"98bbff419847","ui_kits/web/AddRenewalModal.jsx":"bb6ea59154dc","ui_kits/web/AddSubscriptionModal.jsx":"29f8104f027b","ui_kits/web/AddTaxStatementModal.jsx":"054ea5a1d78a","ui_kits/web/AddTermModal.jsx":"4a9ce4542ade","ui_kits/web/AddTransactionModal.jsx":"625177041c8d","ui_kits/web/AnalyzeFileModal.jsx":"d45f26f5e580","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"f4010640760d","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"8000224353ab","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/Contacts.jsx":"18ed07924daf","ui_kits/web/Contracts.jsx":"35250a2eff35","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"affc48614941","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"db3f18a11ae0","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"0e28ff79b5bb","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"f13761a94a44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7033ff0bc236","ui_kits/web/Preferences.jsx":"c56b25306430","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"bd7a50a736b5","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"8d8baebaa4a7","ui_kits/web/data.js":"1115df5493fe","ui_kits/web/insurance-data.js":"ae7b16c67d7e","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"c98d7395c179","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"c0ff965931f8","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"405e74b88332","components/ContactChip.jsx":"595200f6059a","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"d3a9026394fa","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"fc773cfaf6b8","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"806ae364ec54","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"63773ec5d23e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"bf69671bfea5","ui_kits/web/AddAccountModal.jsx":"35d6d60bd403","ui_kits/web/AddBudgetItemModal.jsx":"8dc5d7b427ba","ui_kits/web/AddBudgetModal.jsx":"edd942d3d192","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"8a96b0d53c48","ui_kits/web/AddEstimateModal.jsx":"4e2dd58b032a","ui_kits/web/AddFileModal.jsx":"35a97b29e621","ui_kits/web/AddInsurancePolicyModal.jsx":"62bb9c3b92f9","ui_kits/web/AddRenewalModal.jsx":"bb6ea59154dc","ui_kits/web/AddSubscriptionModal.jsx":"29f8104f027b","ui_kits/web/AddTaxStatementModal.jsx":"054ea5a1d78a","ui_kits/web/AddTermModal.jsx":"4a9ce4542ade","ui_kits/web/AddTransactionModal.jsx":"625177041c8d","ui_kits/web/AnalyzeFileModal.jsx":"d45f26f5e580","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"f4010640760d","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"8000224353ab","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c388d4828996","ui_kits/web/Contracts.jsx":"35250a2eff35","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"affc48614941","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"db3f18a11ae0","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"fc3bd4b9465c","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"f13761a94a44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7033ff0bc236","ui_kits/web/Preferences.jsx":"c56b25306430","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"bd7a50a736b5","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"8d8baebaa4a7","ui_kits/web/data.js":"acffb8e12396","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"c98d7395c179","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -3379,7 +3379,7 @@ function ContactChip({
   // Unavailable: a since-deleted / no-access id — stated in text, never a crash.
   if (cp && cp.unavailable) {
     return /*#__PURE__*/React.createElement("span", {
-      className: `odc-chip outline${sz}${className ? ' ' + className : ''}`,
+      className: `odc-chip entity${sz}${className ? ' ' + className : ''}`,
       title: "This contact was deleted or you don't have access.",
       style: style
     }, /*#__PURE__*/React.createElement("span", {
@@ -3393,7 +3393,7 @@ function ContactChip({
   const typeLabel = meta.label || cp.type || '';
   const a11yName = `${cp.name}${typeLabel ? ` (${typeLabel})` : ''}${archived ? ', archived' : ''}`;
   return /*#__PURE__*/React.createElement("span", {
-    className: `odc-chip outline${archived ? ' archived' : ''}${sz}${className ? ' ' + className : ''}`,
+    className: `odc-chip entity${archived ? ' archived' : ''}${sz}${className ? ' ' + className : ''}`,
     style: style
   }, /*#__PURE__*/React.createElement("span", {
     className: "odc-sr-only"
@@ -7483,7 +7483,16 @@ function MultiSelect({
   onChange,
   options = [],
   icon,
-  align = 'start'
+  align = 'start',
+  /* Search follows the same contract as TagMultiSelect's: the same box, the same
+     row list beneath it. On by default once the list is long enough to be worth
+     filtering, so a filter over a whole contact book is usable. */
+  searchable,
+  searchLabel,
+  searchPlaceholder = 'Search…',
+  loading = false,
+  loadingText = 'Loading…',
+  emptyText = 'No matches'
 }) {
   const opts = options.map(o => typeof o === 'string' ? {
     value: o,
@@ -7498,6 +7507,13 @@ function MultiSelect({
   } = odcUsePopover({
     align
   });
+  const [query, setQuery] = React.useState('');
+  const searchOn = searchable != null ? searchable : opts.length > 8;
+  const q = query.trim().toLowerCase();
+  const filtered = q ? opts.filter(o => o.label.toLowerCase().includes(q)) : opts;
+  React.useEffect(() => {
+    if (!open) setQuery('');
+  }, [open]);
   const set = new Set(value);
   const toggle = v => {
     const next = new Set(set);
@@ -7506,21 +7522,75 @@ function MultiSelect({
   };
   const clear = () => onChange && onChange([]);
 
-  // Move focus into the popover on open — the checkbox list is native
-  // (Tab/Space work for free); ↑/↓ also rove for menu-style ergonomics.
+  // Move focus into the popover on open — the search field when there is one,
+  // else the checkbox list (native: Tab/Space work for free); ↑/↓ also rove.
   React.useEffect(() => {
     if (!open) return;
-    const first = popRef.current && popRef.current.querySelector('input[type="checkbox"]');
+    const pop = popRef.current;
+    if (!pop) return;
+    const first = pop.querySelector('.odc-ms-search input') || pop.querySelector('input[type="checkbox"]');
     if (first) first.focus();
   }, [open, popRef]);
-  const onPopKey = e => {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-    const els = popRef.current ? Array.from(popRef.current.querySelectorAll('input[type="checkbox"], .odc-btn:not([disabled])')) : [];
-    if (!els.length) return;
-    e.preventDefault();
-    const idx = els.indexOf(document.activeElement);
-    els[e.key === 'ArrowDown' ? Math.min(idx + 1, els.length - 1) : Math.max(idx - 1, 0)].focus();
+
+  /* Keyboard inside the popover. It is portaled to <body>, so the browser's own
+     Tab order would walk straight out of it — Tab and Shift+Tab therefore CYCLE
+     within the popover, ↑/↓ rove the option rows (from the search field, ↓
+     enters the list), and Enter toggles the focused row. */
+  /* Keep the roved row visible — the checkbox is visually replaced, so the
+     browser's scroll-on-focus has nothing to scroll to. */
+  const revealRow = el => {
+    const row = el && el.closest('.odc-ms-opt');
+    const list = popRef.current && popRef.current.querySelector('.odc-ms-list');
+    if (!row || !list) return;
+    const r = row.getBoundingClientRect();
+    const l = list.getBoundingClientRect();
+    if (r.top < l.top) list.scrollTop -= l.top - r.top + 4;else if (r.bottom > l.bottom) list.scrollTop += r.bottom - l.bottom + 4;
   };
+
+  /* Native, window-capture: the popover is portaled to <body> (outside the React
+     root container, so a React onKeyDown there never fires) and any Modal above
+     traps Tab on document — capturing on window lets the popover own its keys.
+     Tab/Shift+Tab cycle inside it, ↑/↓ rove the rows, Enter toggles. */
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const onKey = ev => {
+      const pop = popRef.current;
+      if (!pop || !pop.contains(ev.target)) return;
+      const els = Array.from(pop.querySelectorAll('.odc-ms-search input, .odc-ms-opt input[type="checkbox"], .odc-ms-foot .odc-btn:not([disabled])'));
+      if (!els.length) return;
+      const i = els.indexOf(document.activeElement);
+      if (ev.key === 'Tab') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const n = els.length;
+        const next = ev.shiftKey ? i <= 0 ? n - 1 : i - 1 : i < 0 || i === n - 1 ? 0 : i + 1;
+        els[next].focus();
+        revealRow(els[next]);
+        return;
+      }
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+        const boxes = els.filter(x => x.type === 'checkbox');
+        if (!boxes.length) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const bi = boxes.indexOf(document.activeElement);
+        const target = bi < 0 ? boxes[ev.key === 'ArrowDown' ? 0 : boxes.length - 1] : boxes[Math.min(Math.max(bi + (ev.key === 'ArrowDown' ? 1 : -1), 0), boxes.length - 1)];
+        target.focus();
+        revealRow(target);
+        return;
+      }
+      if (ev.key === 'Enter') {
+        const el = document.activeElement;
+        if (el && el.type === 'checkbox') {
+          ev.preventDefault();
+          ev.stopPropagation();
+          el.click();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [open]);
   return /*#__PURE__*/React.createElement("div", {
     className: "odc-ms",
     ref: anchorRef
@@ -7543,9 +7613,26 @@ function MultiSelect({
     role: "group",
     "aria-label": label,
     ref: popRef,
-    style: floatStyle,
-    onKeyDown: onPopKey
-  }, opts.map(o => /*#__PURE__*/React.createElement("label", {
+    style: floatStyle
+  }, searchOn ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-ms-search"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, "search"), /*#__PURE__*/React.createElement("input", {
+    value: query,
+    "aria-label": searchLabel || `Search ${label.toLowerCase()}`,
+    placeholder: searchPlaceholder,
+    onChange: e => setQuery(e.target.value)
+  })) : null, /*#__PURE__*/React.createElement("div", {
+    className: "odc-ms-list"
+  }, loading ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-ms-loading",
+    role: "status"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, "hourglass_top"), /*#__PURE__*/React.createElement("span", null, loadingText)) : filtered.map(o => /*#__PURE__*/React.createElement("label", {
     className: "odc-ms-opt odc-check",
     key: o.value
   }, /*#__PURE__*/React.createElement("input", {
@@ -7565,7 +7652,9 @@ function MultiSelect({
     "aria-hidden": "true"
   }, o.icon) : null, /*#__PURE__*/React.createElement("span", {
     className: "odc-check-label"
-  }, o.label))), /*#__PURE__*/React.createElement("div", {
+  }, o.label))), !loading && filtered.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-tagms-empty"
+  }, emptyText) : null), /*#__PURE__*/React.createElement("div", {
     className: "odc-ms-foot"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
@@ -11873,10 +11962,10 @@ function TagChips({
   return /*#__PURE__*/React.createElement("span", {
     className: `odc-tagchips${className ? ' ' + className : ''}`
   }, shown.map((t, i) => /*#__PURE__*/React.createElement("span", {
-    className: "odc-chip tag",
+    className: "odc-chip entity",
     key: t.id != null ? t.id : `${t.label}-${i}`
   }, t.label)), hidden.length > 0 ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-chip tag odc-tagchips-more",
+    className: "odc-chip entity odc-tagchips-more",
     title: hidden.map(t => t.label).join(', ')
   }, "+", hidden.length, /*#__PURE__*/React.createElement("span", {
     className: "sr-only"
@@ -11889,20 +11978,44 @@ Object.assign(__ds_scope, { TagChips });
 try { (() => {
 /**
  * Odyssey DS — TagMultiSelect
- * The multi-tag picker for the transaction forms (New transaction dialog and
- * the inline edit panel). A transaction now carries a list of TransactionTags,
- * so the single "Tag" Select is replaced by this: a field whose control box
- * shows each selected tag as a removable `.odc-chip.tag`, with an "Add tag"
- * affordance that opens a searchable, checkable list — consistent with the
- * ledger-header MultiSelect filter, but labelled and chip-displaying for data
- * entry. Provide `onCreate` to offer an inline "Create …" row for a name that
- * matches nothing (the same create affordance the single tag Combobox had).
+ * The multi-member picker behind the transaction-tag fields AND every entity
+ * picker built on it (Journal Contacts, Photos People / Albums, and the four
+ * Insurance link collections — insurers, insured accounts, insured contacts,
+ * beneficiaries). A field whose control box shows each selected member as a
+ * removable chip, with a trigger that opens a searchable, checkable list.
+ * Provide `onCreate` to offer an inline "Create …" row for a name that matches
+ * nothing (the create affordance the single tag Combobox had).
  *
- * Controlled: `value` is an array of tag ids; `onChange(nextIds)` fires the
- * full next set on every add / remove. `options` are {value,label} (or plain
- * strings). The popover is portaled to <body> so it escapes a modal body /
- * card / collapsible overflow, and flips above when there isn't room below.
- * Shares the Field label + help + error chrome. Styled by `.odc-tagms`.
+ * Controlled: `value` is an array of ids; `onChange(nextIds)` fires the full
+ * next set on every add / remove. `options` are {value,label,icon?,iconColor?}
+ * (or plain strings). The popover is portaled to <body> so it escapes a modal
+ * body / card / collapsible overflow, and flips above when there isn't room
+ * below. Shares the Field label + help + error chrome. Styled by `.odc-tagms`.
+ *
+ * Structure (why the control box is not a <button>): the chips and their remove
+ * controls live INSIDE the control box, so a real <button> remove control would
+ * nest interactive elements. The box is a plain container holding the chip list
+ * and a separate focusable trigger — which is what lets each chip carry a real
+ * `<button aria-label="Remove …">` (keyboard operable, ≥24 px hit area, focus
+ * moved to the next remove control or the trigger after a removal).
+ *
+ * Entity-picker props:
+ *   • `loading`          — an announced "Loading…" row, distinct from "no match"
+ *                          (options that arrive asynchronously).
+ *   • `unknownLabel`     — the label for a selected id absent from `options`, so
+ *                          a raw GUID is never rendered or announced.
+ *   • `chipTemplate(id)` — renders the chip BODY for a member (e.g. the DS
+ *                          ContactChip with its Archived / Unavailable states).
+ *                          The picker keeps owning the remove <button>, and the
+ *                          default `.odc-chip` wrapper is not emitted.
+ *   • `preserveOnClear(id)` — true for a member the picker must not remove: the
+ *                          bulk Clear keeps it (and reports how many were kept)
+ *                          AND no remove control is rendered for it. Used for a
+ *                          member with no row in the list to have been chosen
+ *                          from — an archived or unresolvable link.
+ *   • `searchLabel` / `searchPlaceholder` — name the entity being searched.
+ *   • `apiRef`           — receives `{ focus() }` so a host can move focus to an
+ *                          invalid picker after a failed save.
  */
 
 /* ---- odcUsePopover — fixed-position, portaled popover (inlined; bundle
@@ -11968,7 +12081,7 @@ function odcUsePopover({
       // and keyboard focus returns to the trigger.
       e.stopPropagation();
       setOpen(false);
-      const t = anchorRef.current && anchorRef.current.querySelector('button:not([disabled]), input, select, textarea, [tabindex]');
+      const t = anchorRef.current && anchorRef.current.querySelector('.odc-tagms-trigger');
       if (t) t.focus();
     };
     window.addEventListener('scroll', onScroll, true);
@@ -12019,6 +12132,15 @@ function TagMultiSelect({
   optional = false,
   disabled = false,
   emptyText = 'No tags match',
+  loading = false,
+  loadingText = 'Loading…',
+  searchLabel = 'Search tags',
+  searchPlaceholder,
+  unknownLabel = 'Unknown',
+  chipTemplate,
+  preserveOnClear,
+  apiRef,
+  noun = 'tag',
   className = '',
   id
 }) {
@@ -12030,15 +12152,19 @@ function TagMultiSelect({
   const autoId = React.useId();
   const fieldId = id || autoId;
   const helpId = `${fieldId}-help`;
+  const labelId = `${fieldId}-label`;
   const msg = error || help;
   const opts = options.map(o => typeof o === 'string' ? {
     value: o,
     label: o
   } : o);
   const byVal = Object.fromEntries(opts.map(o => [o.value, o]));
+  // A selected id absent from `options` never renders as a raw id — it reads as
+  // `unknownLabel` (or through `chipTemplate`, which knows the real state).
   const selected = value.map(v => byVal[v] || {
     value: v,
-    label: v
+    label: unknownLabel,
+    unknown: true
   });
   const {
     open,
@@ -12050,24 +12176,76 @@ function TagMultiSelect({
     matchWidth: true
   });
   const [query, setQuery] = useState('');
+  const [announce, setAnnounce] = useState('');
   const inputRef = useRef(null);
+  const triggerRef = useRef(null);
+  const chipsRef = useRef(null);
+  const nonce = useRef(0);
+  // Focus target after a removal: the index of the remove control to land on,
+  // or -1 for the trigger (the last chip went).
+  const pendingFocus = useRef(null);
+
+  // Repeat announcements: an identical live-region string does not re-fire, so
+  // every message carries an invisible counter token.
+  const say = text => {
+    nonce.current += 1;
+    setAnnounce(`${text}${'\u200B'.repeat(nonce.current % 4 + 1)}`);
+  };
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current && inputRef.current.focus(), 20);else setQuery('');
   }, [open]);
+  useEffect(() => {
+    if (!apiRef) return;
+    apiRef.current = {
+      focus: () => triggerRef.current && triggerRef.current.focus()
+    };
+  }, [apiRef]);
+  useEffect(() => {
+    const want = pendingFocus.current;
+    if (want == null) return;
+    pendingFocus.current = null;
+    const btns = chipsRef.current ? chipsRef.current.querySelectorAll('.odc-tagms-x') : [];
+    const next = want >= 0 && btns[want] ? btns[want] : btns.length ? btns[btns.length - 1] : null;
+    if (next) next.focus();else if (triggerRef.current) triggerRef.current.focus();
+  }, [value.length]);
   const set = new Set(value);
+  const nameOf = o => o.unknown ? unknownLabel : o.label;
+  const locked = v => !!(preserveOnClear && preserveOnClear(v));
   const toggle = v => {
     const next = new Set(set);
-    if (next.has(v)) next.delete(v);else next.add(v);
+    const adding = !next.has(v);
+    if (adding) next.add(v);else next.delete(v);
     if (onChange) onChange([...next]);
+    const o = byVal[v] || {
+      value: v,
+      label: unknownLabel,
+      unknown: true
+    };
+    say(`${nameOf(o)} ${adding ? 'added' : 'removed'}. ${next.size} ${noun}${next.size === 1 ? '' : 's'} selected.`);
   };
-  const remove = v => {
-    if (onChange) onChange(value.filter(x => x !== v));
+  const remove = (v, idx) => {
+    if (locked(v)) return;
+    const rest = value.filter(x => x !== v);
+    // Focus moves to the next chip's remove control, or the trigger when the
+    // last chip goes — never lost to <body>.
+    pendingFocus.current = rest.length ? Math.min(idx, rest.length - 1) : -1;
+    if (onChange) onChange(rest);
+    const o = byVal[v] || {
+      value: v,
+      label: unknownLabel,
+      unknown: true
+    };
+    say(`${nameOf(o)} removed. ${rest.length} ${noun}${rest.length === 1 ? '' : 's'} selected.`);
   };
-  const clear = () => onChange && onChange([]);
+  const clear = () => {
+    const kept = value.filter(v => locked(v));
+    if (onChange) onChange(kept);
+    say(kept.length ? `Selection cleared. ${kept.length} ${noun}${kept.length === 1 ? '' : 's'} kept — ${kept.length === 1 ? 'it cannot' : 'they cannot'} be removed here.` : 'Selection cleared.');
+  };
   const q = query.trim().toLowerCase();
   const filtered = q ? opts.filter(o => o.label.toLowerCase().includes(q)) : opts;
   const exact = opts.some(o => o.label.toLowerCase() === q);
-  const showCreate = !!onCreate && !!q && !exact;
+  const showCreate = !!onCreate && !!q && !exact && !loading;
   const create = () => {
     const made = onCreate(query.trim());
     if (made != null && onChange) {
@@ -12075,14 +12253,93 @@ function TagMultiSelect({
         value: made,
         label: made
       } : made;
-      if (!set.has(opt.value)) onChange([...value, opt.value]);
+      if (!set.has(opt.value)) {
+        onChange([...value, opt.value]);
+        say(`${opt.label} created and added.`);
+      }
     }
     setQuery('');
   };
+
+  /* Keyboard inside the popover. Two things make this a native, window-capture
+     listener rather than a React onKeyDown: the popover is portaled to <body>,
+     OUTSIDE the React root container, so a React handler on it never fires; and
+     the Modal traps Tab with a document-level listener, which would pull focus
+     back into the dialog before a bubble-phase handler could stop it. Capturing
+     on window runs first, so the popover owns its own keys:
+       Tab / Shift+Tab  cycle within the popover (search, rows, Clear, Done)
+       ↑ / ↓            rove the option rows; from the search field, ↓ enters
+       Enter            toggles the focused row
+       Esc              closes and returns focus to the trigger (odcUsePopover) */
+  const popFocusables = () => popRef.current ? Array.from(popRef.current.querySelectorAll('.odc-tagms-search input, .odc-tagms-opt input[type="checkbox"], .odc-tagms-create, .odc-tagms-foot .odc-btn:not([disabled])')) : [];
+  /* Keep the roved row visible. The row's checkbox is visually replaced, so the
+     browser's own scroll-on-focus has nothing to scroll to — the list is nudged
+     by the overshoot instead (never scrollIntoView, which moves the page). */
+  const revealRow = el => {
+    const row = el && el.closest('.odc-tagms-opt');
+    const list = popRef.current && popRef.current.querySelector('.odc-tagms-list');
+    if (!row || !list) return;
+    const r = row.getBoundingClientRect();
+    const l = list.getBoundingClientRect();
+    if (r.top < l.top) list.scrollTop -= l.top - r.top + 4;else if (r.bottom > l.bottom) list.scrollTop += r.bottom - l.bottom + 4;
+  };
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = e => {
+      const pop = popRef.current;
+      if (!pop || !pop.contains(e.target)) return;
+      const els = popFocusables();
+      if (!els.length) return;
+      const i = els.indexOf(document.activeElement);
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        const n = els.length;
+        const next = e.shiftKey ? i <= 0 ? n - 1 : i - 1 : i < 0 || i === n - 1 ? 0 : i + 1;
+        els[next].focus();
+        revealRow(els[next]);
+        return;
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const boxes = els.filter(x => x.type === 'checkbox');
+        if (!boxes.length) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const bi = boxes.indexOf(document.activeElement);
+        const target = bi < 0 ? boxes[e.key === 'ArrowDown' ? 0 : boxes.length - 1] : boxes[Math.min(Math.max(bi + (e.key === 'ArrowDown' ? 1 : -1), 0), boxes.length - 1)];
+        target.focus();
+        revealRow(target);
+        return;
+      }
+      if (e.key === 'Enter') {
+        const el = document.activeElement;
+        if (el && el.type === 'checkbox') {
+          e.preventDefault();
+          e.stopPropagation();
+          el.click();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [open]);
+  const removeBtn = (o, idx) => /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "odc-tagms-x",
+    "aria-label": `Remove ${nameOf(o)}`,
+    onClick: e => {
+      e.stopPropagation();
+      remove(o.value, idx);
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, "close"));
   return /*#__PURE__*/React.createElement("div", {
     className: `odc-field${error ? ' error' : ''}${className ? ' ' + className : ''}`
   }, label ? /*#__PURE__*/React.createElement("label", {
     className: "odc-field-label",
+    id: labelId,
     htmlFor: fieldId
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
@@ -12092,43 +12349,63 @@ function TagMultiSelect({
   }, "Optional") : null) : null, /*#__PURE__*/React.createElement("div", {
     className: "odc-tagms",
     ref: anchorRef
-  }, /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("div", {
+    className: `odc-tagms-control${open ? ' open' : ''}${selected.length ? '' : ' placeholder'}${disabled ? ' disabled' : ''}`,
+    onMouseDown: e => {
+      // Clicking the box's own empty space opens the popover; a click on a
+      // chip or its remove button does not.
+      if (disabled) return;
+      if (e.target.closest('.odc-tagms-chip, .odc-tagms-tchip, .odc-tagms-x, .odc-tagms-trigger')) return;
+      e.preventDefault();
+      setOpen(o => !o);
+      if (triggerRef.current) triggerRef.current.focus();
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-tagms-chips",
+    ref: chipsRef
+  }, selected.length === 0 ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-tagms-ph"
+  }, placeholder) : selected.map((t, i) => chipTemplate ?
+  /*#__PURE__*/
+  /* The template owns the chip body AND its styling — the
+     default .odc-chip wrapper would double-apply. */
+  React.createElement("span", {
+    className: "odc-tagms-tchip",
+    key: t.value
+  }, chipTemplate(t.value), locked(t.value) ? null : removeBtn(t, i)) : /*#__PURE__*/React.createElement("span", {
+    className: "odc-chip entity odc-tagms-chip",
+    key: t.value
+  }, t.icon ? /*#__PURE__*/React.createElement("span", {
+    className: "material-icons odc-tagms-chip-ic",
+    style: t.iconColor ? {
+      color: t.iconColor
+    } : undefined,
+    "aria-hidden": "true"
+  }, t.icon) : null, t.label, locked(t.value) ? null : removeBtn(t, i)))), /*#__PURE__*/React.createElement("button", {
     type: "button",
     id: fieldId,
-    className: `odc-tagms-control${open ? ' open' : ''}${selected.length ? '' : ' placeholder'}`,
+    ref: triggerRef,
+    className: "odc-tagms-trigger odc-tagms-add",
     disabled: disabled,
-    "aria-haspopup": "listbox",
+    "aria-haspopup": "dialog",
     "aria-expanded": open,
     "aria-invalid": error ? true : undefined,
     "aria-describedby": msg ? helpId : undefined,
     onClick: () => setOpen(o => !o)
   }, /*#__PURE__*/React.createElement("span", {
-    className: "odc-tagms-chips"
-  }, selected.length === 0 ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-tagms-ph"
-  }, placeholder) : selected.map(t => /*#__PURE__*/React.createElement("span", {
-    className: "odc-chip tag odc-tagms-chip",
-    key: t.value
-  }, t.label, /*#__PURE__*/React.createElement("span", {
-    className: "odc-tagms-x",
-    role: "button",
-    "aria-label": `Remove ${t.label}`,
-    onClick: e => {
-      e.stopPropagation();
-      remove(t.value);
-    }
-  }, /*#__PURE__*/React.createElement("span", {
     className: "material-icons",
     "aria-hidden": "true"
-  }, "close"))))), /*#__PURE__*/React.createElement("span", {
-    className: "odc-tagms-add"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "material-icons",
-    "aria-hidden": "true"
-  }, open ? 'expand_less' : 'add'), selected.length === 0 ? /*#__PURE__*/React.createElement("span", null, addLabel) : null)), open ? ReactDOM.createPortal(/*#__PURE__*/React.createElement("div", {
+  }, open ? 'expand_less' : 'add'), selected.length === 0 ? /*#__PURE__*/React.createElement("span", null, addLabel) : /*#__PURE__*/React.createElement("span", {
+    className: "odc-sr-only"
+  }, addLabel))), open ? ReactDOM.createPortal(
+  /*#__PURE__*/
+  /* A labelled GROUP of checkboxes — not a listbox: these are real
+     <input type="checkbox"> rows, so role="listbox"/"option" would
+     describe a widget that isn't here. */
+  React.createElement("div", {
     className: "odc-tagms-pop",
-    role: "listbox",
-    "aria-multiselectable": "true",
+    role: "group",
+    "aria-label": typeof label === 'string' && label ? label : addLabel,
     ref: popRef,
     style: floatStyle
   }, /*#__PURE__*/React.createElement("div", {
@@ -12139,7 +12416,8 @@ function TagMultiSelect({
   }, "search"), /*#__PURE__*/React.createElement("input", {
     ref: inputRef,
     value: query,
-    placeholder: onCreate ? 'Search or add a tag…' : 'Search tags…',
+    "aria-label": searchLabel,
+    placeholder: searchPlaceholder || (onCreate ? 'Search or add a tag…' : 'Search tags…'),
     onChange: e => setQuery(e.target.value),
     onKeyDown: e => {
       if (e.key === 'Enter' && showCreate) {
@@ -12149,7 +12427,13 @@ function TagMultiSelect({
     }
   })), /*#__PURE__*/React.createElement("div", {
     className: "odc-tagms-list"
-  }, filtered.map(o => /*#__PURE__*/React.createElement("label", {
+  }, loading ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-tagms-loading",
+    role: "status"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, "hourglass_top"), /*#__PURE__*/React.createElement("span", null, loadingText)) : /*#__PURE__*/React.createElement(React.Fragment, null, filtered.map(o => /*#__PURE__*/React.createElement("label", {
     className: "odc-tagms-opt odc-check",
     key: o.value
   }, /*#__PURE__*/React.createElement("input", {
@@ -12163,7 +12447,15 @@ function TagMultiSelect({
     className: "material-icons"
   }, "check")), /*#__PURE__*/React.createElement("span", {
     className: "odc-check-label"
-  }, o.label))), showCreate ? /*#__PURE__*/React.createElement("button", {
+  }, o.icon ? /*#__PURE__*/React.createElement("span", {
+    className: "material-icons odc-tagms-opt-ic",
+    style: o.iconColor ? {
+      color: o.iconColor
+    } : undefined,
+    "aria-hidden": "true"
+  }, o.icon) : null, /*#__PURE__*/React.createElement("span", null, o.label), o.sub ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-tagms-opt-sub"
+  }, o.sub) : null))), showCreate ? /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: "odc-tagms-create",
     onMouseDown: e => {
@@ -12175,22 +12467,29 @@ function TagMultiSelect({
     "aria-hidden": "true"
   }, "add"), /*#__PURE__*/React.createElement("span", null, `${createLabel} "${query.trim()}"`)) : null, filtered.length === 0 && !showCreate ? /*#__PURE__*/React.createElement("div", {
     className: "odc-tagms-empty"
-  }, emptyText) : null), /*#__PURE__*/React.createElement("div", {
+  }, emptyText) : null)), /*#__PURE__*/React.createElement("div", {
     className: "odc-tagms-foot"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: "odc-btn text",
     onClick: clear,
-    disabled: !value.length
+    disabled: !value.some(v => !locked(v))
   }, "Clear"), /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: "odc-btn text",
-    onClick: () => setOpen(false)
+    onClick: () => {
+      setOpen(false);
+      if (triggerRef.current) triggerRef.current.focus();
+    }
   }, "Done"))), document.body) : null), msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
-  }, msg) : null);
+  }, msg) : null, /*#__PURE__*/React.createElement("div", {
+    className: "odc-sr-only",
+    role: "status",
+    "aria-live": "polite"
+  }, announce));
 }
 Object.assign(__ds_scope, { TagMultiSelect });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/TagMultiSelect.jsx", error: String((e && e.message) || e) }); }
@@ -20979,34 +21278,65 @@ Object.assign(window, {
 
 // ui_kits/web/AddInsurancePolicyModal.jsx
 try { (() => {
-/* AddInsurancePolicyModal — New policy dialog (Insurance page "New policy" button
-   + the dashed add-row). Fields mirror the NewInsurancePolicy creation DTO:
-     • name              (required)
-     • policyNumber      (optional)
-     • type              (InsurancePolicyType)
-     • insurerId         (required → Contact, non-archived) — OdsCombobox
-     • insuredAccountId  (optional → Account, non-archived)      — OdsCombobox
-     • notes             (optional)
-   Scalar ids only (no nested entities — the §6/§10 mass-assignment invariant).
-   A new policy starts with no renewals (→ NoCoverage) and no documents. */
+/* AddInsurancePolicyModal — New / edit policy dialog (Insurance page "New policy"
+   button, the dashed add-row, and the row action "Edit").
+   ----------------------------------------------------------------------------
+   Fields mirror the NewInsurancePolicy / UpdateInsurancePolicy write DTOs:
+     • name                (required)
+     • policyNumber        (optional)
+     • type                (InsurancePolicyType)
+     • insurerIds          (optional → Contact[])   ┐
+     • insuredAccountIds   (optional → Account[])   │ four link collections,
+     • insuredContactIds   (optional → Contact[])   │ each a SET of scalar ids
+     • beneficiaryIds      (optional → Contact[])   ┘
+     • notes               (optional)
+   Scalar ids only, at any depth (the §6/§10 mass-assignment invariant): the
+   dialog never sends a nested Contact or Account object, so a policy write can
+   never create or rename a linked record.
+
+   All four collections are OPTIONAL — a policy drafted before the insurer is
+   known is a valid, healthy record, so nothing here is required but the name and
+   the type. The save carries the complete desired set for each collection.
+
+   Chip order follows the picker's own model while editing (parent order, new ids
+   appended); the server orders by resolved display name, so the dialog RE-SORTS
+   ON LOAD only — the user never sees a reorder mid-edit.
+
+   An UNNAMED member (its contact archived, or no longer resolvable) has no name
+   in the read model, so it renders through ContactChip's Archived / Unavailable
+   state and carries NO remove control: an ordinary write cannot remove it. The
+   field help names the two routes that do work, detach first. */
+
+const AIP_LINK_CEILING = 50; // InsuranceLinkLimits.MaxLinksPerPolicy — a shared
+// compile-time constant, safe to guard against here.
 
 const AddInsurancePolicyModal = ({
   onClose,
   onCreate,
   onSave,
-  policy = null
+  policy = null,
+  optionsLoading = false,
+  effectiveCap = null
 }) => {
   const {
-    useState
+    useState,
+    useRef
   } = React;
   const D = window.OdysseyData;
+  const H = window.OdysseyHelpers;
   const editing = !!policy;
+
+  // Server order on load (resolved display name ascending); the picker owns
+  // order from here.
+  const idsOf = (refs, key) => refs.map(r => r[key]);
   const [draft, setDraft] = useState({
     name: policy?.name || '',
     policyNumber: policy?.policyNumber || '',
     type: policy?.type || '',
-    insurerId: policy?.insurerId || '',
-    insuredAccountId: policy?.insuredAccountId || '',
+    insurerIds: policy ? idsOf(H.insInsurers(policy), 'contactId') : [],
+    insuredAccountIds: policy ? idsOf(H.insInsuredAccounts(policy), 'accountId') : [],
+    insuredContactIds: policy ? idsOf(H.insInsuredContacts(policy), 'contactId') : [],
+    beneficiaryIds: policy ? idsOf(H.insBeneficiaries(policy), 'contactId') : [],
     notes: policy?.notes || ''
   });
   const [errors, setErrors] = useState({});
@@ -21020,13 +21350,22 @@ const AddInsurancePolicyModal = ({
       [k]: undefined
     }));
   };
-  const insurerOptions = D.activeContacts().map(c => {
+
+  // Focus APIs — a failed save moves focus to the first offending picker.
+  const api = {
+    insurerIds: useRef(null),
+    insuredAccountIds: useRef(null),
+    insuredContactIds: useRef(null),
+    beneficiaryIds: useRef(null)
+  };
+  const contactOptions = D.activeContacts().map(c => {
     const m = D.contactTypeByKey[c.type] || {};
     return {
       value: c.id,
       label: c.name,
       icon: m.icon,
-      iconColor: m.color
+      iconColor: m.color,
+      sub: m.label
     };
   });
   const accountOptions = D.accounts.filter(a => !a.archived).map(a => {
@@ -21035,25 +21374,79 @@ const AddInsurancePolicyModal = ({
       value: a.id,
       label: a.name,
       icon: m.icon,
-      iconColor: m.color
+      iconColor: m.color,
+      sub: m.label
     };
   });
+
+  // A member the picker cannot remove: no live, non-archived contact to have
+  // been chosen from. Kept by the bulk Clear, and rendered with no remove
+  // control — the write path refuses its removal, so the affordance would lie.
+  const contactUnnamed = id => {
+    const c = D.contactById[id];
+    return !c || !!c.archived;
+  };
+  // The chip body for a contact link: the DS ContactChip, which already carries
+  // the Archived ("(archived)") and Unavailable (link_off) states in TEXT.
+  const contactChip = id => {
+    // The DS component, read off the namespace — NOT window.ContactChip, which
+    // the Journal page overwrites with its own {cp}-shaped adapter.
+    const Chip = (window.OdysseyDesignSystem_d5aa51 || {}).ContactChip;
+    const c = D.contactById[id];
+    if (!Chip) return /*#__PURE__*/React.createElement("span", null, c ? c.name : 'Unavailable');
+    // Name withheld for an unnamed member — the read model never carries it.
+    if (!c) return /*#__PURE__*/React.createElement(Chip, {
+      contact: {
+        unavailable: true
+      },
+      size: "sm"
+    });
+    if (c.archived) return /*#__PURE__*/React.createElement(Chip, {
+      contact: {
+        name: 'Archived contact',
+        type: c.type,
+        archived: c.archived
+      },
+      size: "sm"
+    });
+    return /*#__PURE__*/React.createElement(Chip, {
+      name: c.name,
+      type: c.type,
+      size: "sm"
+    });
+  };
+  const LINK_HELP = 'Archived or unresolvable members keep their place without a name and cannot be removed here — detach them from the contact, or unarchive the contact first.';
   const submit = () => {
     const next = {};
     if (!draft.name.trim()) next.name = 'Give the policy a name.';
     if (!draft.type) next.type = 'Pick a policy type.';
-    if (!draft.insurerId) next.insurerId = 'Choose the insurer.';
+    // The client guards only the shared compile-time ceiling. The EFFECTIVE cap
+    // is a server setting — it is never copied into the client, so an over-cap
+    // collection is learned from the save's 422, with the cap interpolated.
+    const cap = effectiveCap;
+    for (const [k, name] of [['insurerIds', 'insurers'], ['insuredAccountIds', 'insured accounts'], ['insuredContactIds', 'insured contacts'], ['beneficiaryIds', 'beneficiaries']]) {
+      const n = draft[k].length;
+      if (n > AIP_LINK_CEILING) next[k] = `A policy takes at most ${AIP_LINK_CEILING} ${name}.`;else if (cap != null && n > cap) next[k] = `At most ${cap} ${name} per policy. Remove ${n - cap} to save.`;
+    }
     if (Object.keys(next).length) {
       setErrors(next);
+      const first = ['name', 'type', 'insurerIds', 'insuredAccountIds', 'insuredContactIds', 'beneficiaryIds'].find(k => next[k]);
+      const ref = api[first];
+      if (ref && ref.current) ref.current.focus();
       return;
     }
+    const links = {
+      insurerIds: draft.insurerIds,
+      insuredAccountIds: draft.insuredAccountIds,
+      insuredContactIds: draft.insuredContactIds,
+      beneficiaryIds: draft.beneficiaryIds
+    };
     if (editing) {
       onSave && onSave({
         name: draft.name.trim(),
         policyNumber: draft.policyNumber.trim() || null,
         type: draft.type,
-        insurerId: draft.insurerId,
-        insuredAccountId: draft.insuredAccountId || null,
+        ...links,
         notes: draft.notes.trim() || null
       });
     } else {
@@ -21062,19 +21455,53 @@ const AddInsurancePolicyModal = ({
         name: draft.name.trim(),
         policyNumber: draft.policyNumber.trim() || null,
         type: draft.type,
-        insurerId: draft.insurerId,
-        insuredAccountId: draft.insuredAccountId || null,
+        ...links,
         notes: draft.notes.trim() || null,
         archived: null,
         createdAtUtc: new Date().toISOString(),
-        renewals: [],
-        files: []
+        renewals: []
       });
     }
   };
+  const linkPicker = ({
+    key,
+    label,
+    addLabel,
+    placeholder,
+    options,
+    help,
+    noun,
+    contacts = true
+  }) => {
+    // The unnamed-member rule is stated where it is LIVE — on a field that
+    // actually holds one — rather than three times over as standing noise.
+    const hasUnnamed = contacts && draft[key].some(contactUnnamed);
+    return /*#__PURE__*/React.createElement(TagMultiSelect, {
+      id: `aip-${key}`,
+      label: label,
+      optional: true,
+      value: draft[key],
+      onChange: set(key),
+      options: options,
+      loading: optionsLoading,
+      loadingText: "Loading\u2026",
+      placeholder: placeholder,
+      addLabel: addLabel,
+      noun: noun,
+      searchLabel: contacts ? 'Search contacts' : 'Search accounts',
+      searchPlaceholder: contacts ? 'Search contacts…' : 'Search accounts…',
+      emptyText: contacts ? 'No contacts match' : 'No accounts match',
+      unknownLabel: "Unavailable",
+      chipTemplate: contacts ? contactChip : undefined,
+      preserveOnClear: contacts ? contactUnnamed : undefined,
+      apiRef: api[key],
+      error: errors[key],
+      help: errors[key] ? undefined : hasUnnamed ? `${help} ${LINK_HELP}` : help
+    });
+  };
   return /*#__PURE__*/React.createElement(Modal, {
     title: editing ? 'Edit insurance policy' : 'New insurance policy',
-    subtitle: editing ? 'Update the insurer and policy details. Renewal periods and documents are managed from the policy.' : 'Record the insurer and policy details, then add renewal periods and documents from the policy.',
+    subtitle: editing ? 'Update the policy details and who is on it. Renewal periods and documents are managed from the policy.' : 'Record the policy details and who is on it, then add renewal periods and documents from the policy.',
     icon: "shield",
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -21103,39 +21530,49 @@ const AddInsurancePolicyModal = ({
     onChange: set('type'),
     error: errors.type,
     placeholder: "Choose a type\u2026"
-  })), /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Insurer",
-    htmlFor: "aip-insurer",
-    error: errors.insurerId,
-    helper: errors.insurerId ? undefined : 'The contact that issues this policy.'
-  }, /*#__PURE__*/React.createElement(Combobox, {
-    id: "aip-insurer",
-    value: draft.insurerId,
-    onChange: v => set('insurerId')(v),
-    options: insurerOptions,
-    placeholder: "Search insurers\u2026",
-    ariaLabel: "Insurer",
-    invalid: !!errors.insurerId
-  })), /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Insured account",
-    htmlFor: "aip-account",
-    optional: true,
-    helper: "Link the account representing the insured asset, if any."
-  }, /*#__PURE__*/React.createElement(Combobox, {
-    id: "aip-account",
-    value: draft.insuredAccountId,
-    onChange: v => set('insuredAccountId')(v || ''),
+  })), /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Parties & insured assets",
+    meta: "all optional"
+  }), linkPicker({
+    key: 'insurerIds',
+    label: 'Insurers',
+    addLabel: 'Add insurer',
+    placeholder: 'No insurers',
+    options: contactOptions,
+    noun: 'insurer',
+    help: 'The contacts that carry this cover — several where it is placed across co-insurers.'
+  }), linkPicker({
+    key: 'insuredAccountIds',
+    label: 'Insured accounts',
+    addLabel: 'Add account',
+    placeholder: 'No insured accounts',
     options: accountOptions,
-    placeholder: "Search accounts\u2026",
-    ariaLabel: "Insured account",
-    clearable: true
-  })), /*#__PURE__*/React.createElement(NoteField, {
+    noun: 'account',
+    contacts: false,
+    help: 'The accounts representing the insured assets — a house and an outbuilding, two vehicles.'
+  }), linkPicker({
+    key: 'insuredContactIds',
+    label: 'Insured contacts',
+    addLabel: 'Add contact',
+    placeholder: 'No insured contacts',
+    options: contactOptions,
+    noun: 'contact',
+    help: 'The people and organisations insured under this policy — the policyholder, a spouse, named drivers.'
+  }), linkPicker({
+    key: 'beneficiaryIds',
+    label: 'Beneficiaries',
+    addLabel: 'Add beneficiary',
+    placeholder: 'No beneficiaries',
+    options: contactOptions,
+    noun: 'beneficiary',
+    help: 'Who receives on this policy. A person, or an organisation such as a trust or an estate.'
+  }), /*#__PURE__*/React.createElement(NoteField, {
     label: "Notes",
     optional: true,
     maxLength: 1024,
     value: draft.notes,
     onChange: set('notes'),
-    placeholder: "What this policy covers, excess, named parties\u2026"
+    placeholder: "What this policy covers, excess, claims history\u2026"
   }));
 };
 Object.assign(window, {
@@ -29631,6 +30068,187 @@ Object.assign(window, {
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/ContactImportModal.jsx", error: String((e && e.message) || e) }); }
 
+// ui_kits/web/ContactLinksBlockedModal.jsx
+try { (() => {
+/* ContactLinksBlockedModal — the blocked contact delete (409) and its detach path.
+   ----------------------------------------------------------------------------
+   A contact named as an INSURER, an INSURED CONTACT or a BENEFICIARY on any
+   policy cannot be deleted by the ordinary route: the delete is refused, because
+   a beneficiary designation vanishing silently on contact deletion would lose it
+   without trace. RESTRICT alone is not an acceptable answer for a person
+   exercising erasure, so this dialog also carries the supported release valve:
+   detach every insurance link and delete the contact in ONE request.
+
+   Two things are claim-conditional, and the dialog is honest about both:
+     • The payload. A caller holding `insurance.read` is told WHICH policies
+       block the delete; a caller without it gets kinds and counts only — never a
+       policy name or id.
+     • The action. Detaching needs `contacts.delete` AND `insurance.update`,
+       composed from existing claims. Without the second the button is
+       unavailable with the reason stated, never a silent downgrade to the
+       refused delete.
+
+   The result step reports what the request destroyed (per-kind counts + the
+   affected policies), because links removed wholesale in one request is the one
+   operation with a blast radius the ordinary edit does not have. */
+
+const ContactLinksBlockedModal = ({
+  contact,
+  blocking,
+  canReadInsurance = true,
+  canUpdateInsurance = true,
+  onClose,
+  onDetachAndDelete
+}) => {
+  const {
+    useState
+  } = React;
+  const [result, setResult] = useState(null);
+  const KIND_META = {
+    'Insurer': {
+      icon: 'groups',
+      note: 'carries cover on the policy'
+    },
+    'Insured contact': {
+      icon: 'person',
+      note: 'insured under the policy'
+    },
+    'Beneficiary': {
+      icon: 'volunteer_activism',
+      note: 'receives on the policy'
+    }
+  };
+  // Per-kind counts — link ROWS, the same thing every other surface counts.
+  const byKind = {};
+  for (const b of blocking) for (const k of b.kinds) byKind[k] = (byKind[k] || 0) + 1;
+  const kinds = Object.keys(KIND_META).filter(k => byKind[k]);
+  const totalLinks = Object.values(byKind).reduce((a, b) => a + b, 0);
+  const detach = () => {
+    setResult({
+      byKind,
+      policies: blocking,
+      totalLinks
+    });
+    if (onDetachAndDelete) onDetachAndDelete(contact.id);
+  };
+  if (result) {
+    return /*#__PURE__*/React.createElement(Modal, {
+      title: "Contact deleted",
+      subtitle: "The insurance links and the contact were removed in one transaction.",
+      icon: "link_off",
+      onClose: onClose,
+      footer: /*#__PURE__*/React.createElement(Button, {
+        variant: "filled",
+        color: "primary",
+        icon: "check",
+        onClick: onClose
+      }, "Done")
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "alert info compact"
+    }, /*#__PURE__*/React.createElement(SeverityIcon, {
+      severity: "info",
+      size: 18,
+      className: "alert-icon"
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "alert-body"
+    }, /*#__PURE__*/React.createElement("strong", null, result.totalLinks, " link", result.totalLinks === 1 ? '' : 's', " detached"), " across", ' ', result.policies.length, " polic", result.policies.length === 1 ? 'y' : 'ies', ", then the contact was deleted.")), /*#__PURE__*/React.createElement("ul", {
+      className: "cpl-kinds"
+    }, kinds.map(k => /*#__PURE__*/React.createElement("li", {
+      key: k
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: KIND_META[k].icon,
+      size: 17
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "cpl-kind-name"
+    }, k), /*#__PURE__*/React.createElement("span", {
+      className: "cpl-kind-count"
+    }, byKind[k])))), canReadInsurance ? /*#__PURE__*/React.createElement("div", {
+      className: "cpl-policies"
+    }, result.policies.map(b => /*#__PURE__*/React.createElement("div", {
+      className: "cpl-policy",
+      key: b.policyId
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "shield",
+      size: 16
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "cpl-policy-name"
+    }, b.policyName), /*#__PURE__*/React.createElement("span", {
+      className: "cpl-policy-kinds"
+    }, b.kinds.join(' · '))))) : null, /*#__PURE__*/React.createElement("p", {
+      className: "cpl-note"
+    }, "The policies themselves are untouched \u2014 each stands with one fewer member."));
+  }
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "Unable to delete this contact",
+    subtitle: "It is named on insurance policies. Detach those links to delete it.",
+    icon: "block",
+    onClose: onClose,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onClose
+    }, "Cancel"), canUpdateInsurance ? /*#__PURE__*/React.createElement(Button, {
+      variant: "danger",
+      icon: "link_off",
+      onClick: detach
+    }, "Detach links & delete") : null)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "alert error compact"
+  }, /*#__PURE__*/React.createElement(SeverityIcon, {
+    severity: "error",
+    size: 18,
+    className: "alert-icon"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "alert-body"
+  }, /*#__PURE__*/React.createElement("strong", null, contact.name), " holds ", totalLinks, " insurance link", totalLinks === 1 ? '' : 's', canReadInsurance ? /*#__PURE__*/React.createElement(React.Fragment, null, " across ", blocking.length, " polic", blocking.length === 1 ? 'y' : 'ies') : null, ".")), /*#__PURE__*/React.createElement("ul", {
+    className: "cpl-kinds"
+  }, kinds.map(k => /*#__PURE__*/React.createElement("li", {
+    key: k
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: KIND_META[k].icon,
+    size: 17
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-kind-name"
+  }, k), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-kind-note"
+  }, KIND_META[k].note), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-kind-count"
+  }, byKind[k])))), canReadInsurance ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Blocking policies",
+    meta: `${blocking.length} record${blocking.length === 1 ? '' : 's'}`
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "cpl-policies"
+  }, blocking.map(b => /*#__PURE__*/React.createElement("div", {
+    className: "cpl-policy",
+    key: b.policyId
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "shield",
+    size: 16
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-policy-name"
+  }, b.policyName), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-policy-kinds"
+  }, b.kinds.join(' · ')))))) :
+  /*#__PURE__*/
+  /* No insurance.read: kinds and counts only — no policy name, no id. */
+  React.createElement("p", {
+    className: "cpl-note"
+  }, "Which policies these are is not shown, because you do not have access to insurance records. Ask someone who can edit them to detach the links."), canUpdateInsurance ? /*#__PURE__*/React.createElement("p", {
+    className: "cpl-note"
+  }, /*#__PURE__*/React.createElement("strong", null, "Detach links & delete"), " removes all ", totalLinks, " link", totalLinks === 1 ? '' : 's', " and the contact in one transaction \u2014 either all of it happens, or none of it does. The policies survive with one fewer member. This cannot be undone.") : /*#__PURE__*/React.createElement("div", {
+    className: "alert warning compact"
+  }, /*#__PURE__*/React.createElement(SeverityIcon, {
+    severity: "warning",
+    size: 18,
+    className: "alert-icon"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "alert-body"
+  }, "Detaching needs permission to edit insurance policies, which you do not have. Ask someone who does, then delete the contact.")));
+};
+Object.assign(window, {
+  ContactLinksBlockedModal
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/ContactLinksBlockedModal.jsx", error: String((e && e.message) || e) }); }
+
 // ui_kits/web/Contacts.jsx
 try { (() => {
 /* Contacts — v5 "Extended Contacts".
@@ -31300,7 +31918,25 @@ const Contacts = ({
     ...c,
     ...patch
   }) : c));
-  const onDelete = id => setRows(prev => prev.filter(c => c.id !== id));
+  // A contact named as an insurer, an insured contact or a beneficiary on any
+  // policy cannot be deleted by the ordinary route — the delete is refused and
+  // the dialog carries the supported detach path (see ContactLinksBlockedModal).
+  const [blocked, setBlocked] = useState(null);
+  const removeRow = id => setRows(prev => prev.filter(c => c.id !== id));
+  const onDelete = id => {
+    const linking = (window.OdysseyHelpers.insPoliciesLinkingContact || (() => []))(id);
+    if (linking.length) {
+      setBlocked({
+        contact: rows.find(c => c.id === id) || {
+          id,
+          name: 'This contact'
+        },
+        blocking: linking
+      });
+      return;
+    }
+    removeRow(id);
+  };
   // Any child (address/email/phone) mutation bumps the parent UpdatedAt (§9).
   const onContacts = (id, coll, value) => setRows(prev => prev.map(c => c.id === id ? touch({
     ...c,
@@ -31519,7 +32155,14 @@ const Contacts = ({
     duration: 4200,
     onClose: () => setToast(null),
     message: toast.message
-  })));
+  })), blocked && window.ContactLinksBlockedModal && /*#__PURE__*/React.createElement(window.ContactLinksBlockedModal, {
+    contact: blocked.contact,
+    blocking: blocked.blocking,
+    canReadInsurance: tweaks.cpCanReadInsurance !== false,
+    canUpdateInsurance: tweaks.cpCanUpdateInsurance !== false,
+    onClose: () => setBlocked(null),
+    onDetachAndDelete: id => removeRow(id)
+  }));
 };
 
 /* ---- local styles (tokens only — valid in both themes) ---- */
@@ -36063,33 +36706,88 @@ const insHeadline = (policy, today) => {
   };
 };
 
-/* ====================== Insurer / insured-account read chips ====================== */
-const InsLinkChip = ({
-  icon,
-  name,
-  type,
-  empty
+/* ====================== Link collections — read display ======================
+   The four collections (insurers · insured accounts · insured contacts ·
+   beneficiaries) render ONE TILE PER MEMBER, so every linked record reads as its
+   own card with its own type glyph, colour, name and type caption — a referenced
+   record points elsewhere, so it reads as that record rather than as a line in a
+   list. An UNNAMED member (archived, or no longer resolvable) shows the state
+   word where its name would be: the read model carries the id and the type,
+   never the name. Past five members the collection collapses into a "+N more"
+   tile, so a collection at the cap of 50 has a defined rendering. */
+const INS_LINK_TILE_LIMIT = INS_D.INSURANCE_LINK_TILE_LIMIT || 5;
+const insRefKey = r => r.contactId || r.accountId;
+const insRefMeta = (r, kind) => {
+  if (kind === 'account') return r.type && INS_D.accountTypeById[r.type] || {};
+  return r.type && INS_D.contactTypeByKey[r.type] || {};
+};
+/* One collection = one tile PER MEMBER, so every linked record reads as its own
+   card with its own type glyph, colour and caption. Empty collections render no
+   tile (rule 5): zero members is a healthy state, including zero insurers.
+   Past five members the collection collapses into a "+N more" tile that expands
+   in place, so a collection at the cap of 50 has a defined rendering. */
+const InsLinkTiles = ({
+  refs,
+  kind,
+  label,
+  fallbackIcon
 }) => {
-  if (!name) return /*#__PURE__*/React.createElement("span", {
-    className: "ins-link-chip empty"
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: icon,
-    size: 16
-  }), empty);
+  const {
+    useState
+  } = React;
+  const [expanded, setExpanded] = useState(false);
+  if (!refs.length) return null;
+  const shown = expanded ? refs : refs.slice(0, INS_LINK_TILE_LIMIT);
+  const hidden = refs.length - shown.length;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, shown.map(r => {
+    const meta = insRefMeta(r, kind);
+    const unnamed = r.availability !== 'Available';
+    const state = r.availability === 'Archived' ? 'Archived' : 'Unavailable';
+    return /*#__PURE__*/React.createElement(InfoTile, {
+      key: insRefKey(r),
+      icon: unnamed ? r.availability === 'Archived' ? 'inventory_2' : 'link_off' : meta.icon || fallbackIcon,
+      iconColor: unnamed ? undefined : meta.color,
+      iconSoft: unnamed ? undefined : meta.soft
+      /* The label is the collection's singular name, repeated per member —
+         no position, no count: the tiles themselves are the count, and the
+         caption slot keeps the type. */,
+      label: label,
+      valueVariant: "text",
+      className: `wrapvalue${unnamed ? ' tone-muted' : ''}`,
+      value: unnamed ? state : r.name,
+      foot: unnamed && !r.type ? undefined : meta.label
+    });
+  }), hidden > 0 ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "more_horiz",
+    label: label,
+    valueVariant: "text",
+    className: "tone-muted",
+    value: /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "ins-linkmore",
+      onClick: () => setExpanded(true)
+    }, "+", hidden, " more"),
+    foot: `${refs.length} in total`
+  }) : null);
+};
+
+/* The collapsed card's insurers segment: up to TWO named, then "+N". Omitted
+   entirely when the policy has none — zero insurers is valid now, so absence is
+   no longer "the fact". */
+const InsInsurerMeta = ({
+  refs
+}) => {
+  if (!refs.length) return null;
+  const named = refs.slice(0, 2);
+  const rest = refs.length - named.length;
+  const types = [...new Set(refs.map(r => r.type).filter(Boolean))];
+  const icon = types.length === 1 ? (INS_D.contactTypeByKey[types[0]] || {}).icon || 'groups' : 'link';
   return /*#__PURE__*/React.createElement("span", {
-    className: "ins-link-chip"
+    className: "ins-sub-insurer"
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: icon,
-    size: 16
-  }), /*#__PURE__*/React.createElement("span", {
-    style: {
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap'
-    }
-  }, name), type && /*#__PURE__*/React.createElement("span", {
-    className: "ins-link-type"
-  }, type));
+    size: 14
+  }), /*#__PURE__*/React.createElement("span", null, named.map(r => r.availability === 'Available' ? r.name : r.availability === 'Archived' ? 'Archived' : 'Unavailable').join(', '), rest > 0 ? ` +${rest}` : ''));
 };
 
 /* ====================== Files table (policy / renewal scoped) ====================== */
@@ -36415,8 +37113,10 @@ const PolicyDetail = ({
   onDeleteRenewal,
   onUploadRenewal
 }) => {
-  const insurer = INS_H.insInsurer(policy);
-  const insured = INS_H.insInsuredAccount(policy);
+  const insurers = INS_H.insInsurers(policy);
+  const insuredAccounts = INS_H.insInsuredAccounts(policy);
+  const insuredContacts = INS_H.insInsuredContacts(policy);
+  const beneficiaries = INS_H.insBeneficiaries(policy);
   const typeInfo = INS_H.insurancePolicyTypeInfo(policy.type);
   const current = INS_H.insCurrentRenewal(policy, today);
   const removeRenewalFile = (rid, f) => setPolicy(prev => ({
@@ -36427,11 +37127,6 @@ const PolicyDetail = ({
     } : r)
   }));
 
-  // Referenced records keep their own type mark (icon + colour) — they point
-  // elsewhere, so they read as that record rather than as part of this one.
-  const insuredMeta = insured && INS_D.accountTypeById[insured.type] || {};
-  const insurerMeta = insurer && INS_D.contactTypeByKey[insurer.type] || {};
-  const insuredTypeLabel = insuredMeta.label;
   // Coverage status is derived (archived → upcoming → lapsed → expiring → active
   // → no coverage), so its tile carries the state and the date it began, tinted
   // like the header chip — the Subscriptions status tile pattern.
@@ -36452,8 +37147,9 @@ const PolicyDetail = ({
   const accruedTotal = accrued.reduce((s, x) => s + (INS_H.insConvert(x.premium, x.premiumCurrencyCode, accruedCur) ?? x.premium), 0);
 
   // The card's DETAILS slot: the policy's full field set (rule 3), each tile
-  // rendering on its own field (rule 5). Empty fields drop out — except the
-  // insurer, where the absence is the fact: a policy without one is broken.
+  // rendering on its own field (rule 5). Empty fields drop out — the four link
+  // collections included: zero members is a healthy state, so a collection with
+  // none renders no tile at all.
   const details = /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
     icon: "shield",
     label: "Name",
@@ -36472,22 +37168,6 @@ const PolicyDetail = ({
     value: typeInfo.label,
     valueVariant: "text"
   }), /*#__PURE__*/React.createElement(InfoTile, {
-    icon: insurer ? insurerMeta.icon || 'groups' : 'apartment',
-    iconColor: insurer ? insurerMeta.color : undefined,
-    iconSoft: insurer ? insurerMeta.soft : undefined,
-    label: "Insurer",
-    valueVariant: "text",
-    value: insurer ? insurer.name : 'Not set',
-    foot: insurer ? insurerMeta.label || insurer.type : 'Required'
-  }), insured ? /*#__PURE__*/React.createElement(InfoTile, {
-    icon: insuredMeta.icon || 'account_balance_wallet',
-    iconColor: insuredMeta.color,
-    iconSoft: insuredMeta.soft,
-    label: "Insured account",
-    valueVariant: "text",
-    value: insured.name,
-    foot: insuredTypeLabel
-  }) : null, /*#__PURE__*/React.createElement(InfoTile, {
     icon: stMeta.icon,
     label: "Status",
     valueVariant: "text",
@@ -36507,7 +37187,38 @@ const PolicyDetail = ({
     value: policy.notes,
     wide: true
   })) : null;
-  return /*#__PURE__*/React.createElement(React.Fragment, null, details, content, current && /*#__PURE__*/React.createElement("div", {
+
+  /* PARTIES — who and what is on the policy, as its own section: one tile per
+     linked record, in write order (insurers, then the insured, then
+     beneficiaries). Omitted entirely when the policy names nobody. */
+  const partyCount = insurers.length + insuredAccounts.length + insuredContacts.length + beneficiaries.length;
+  const parties = partyCount ? /*#__PURE__*/React.createElement("div", {
+    className: "ins-section"
+  }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Parties",
+    meta: `${partyCount} link${partyCount === 1 ? '' : 's'}`
+  }), /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InsLinkTiles, {
+    refs: insurers,
+    kind: "contact",
+    label: "Insurer",
+    fallbackIcon: "groups"
+  }), /*#__PURE__*/React.createElement(InsLinkTiles, {
+    refs: insuredAccounts,
+    kind: "account",
+    label: "Insured",
+    fallbackIcon: "account_balance_wallet"
+  }), /*#__PURE__*/React.createElement(InsLinkTiles, {
+    refs: insuredContacts,
+    kind: "contact",
+    label: "Insured",
+    fallbackIcon: "person"
+  }), /*#__PURE__*/React.createElement(InsLinkTiles, {
+    refs: beneficiaries,
+    kind: "contact",
+    label: "Beneficiary",
+    fallbackIcon: "volunteer_activism"
+  }))) : null;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, details, content, parties, current && /*#__PURE__*/React.createElement("div", {
     className: "ins-current"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Current period",
@@ -36539,7 +37250,9 @@ const PolicyListItem = ({
   onToggle,
   highlight,
   onNavigate,
-  onDelete
+  onDelete,
+  optionsLoading = false,
+  effectiveCap = null
 }) => {
   const {
     useState,
@@ -36559,7 +37272,7 @@ const PolicyListItem = ({
   const typeInfo = INS_H.insurancePolicyTypeInfo(p.type);
   const st = INS_H.insCoverageStatus(p, today);
   const meta = INS_H.insCoverageStatusMeta(st.key);
-  const insurer = INS_H.insInsurer(p);
+  const insurers = INS_H.insInsurers(p);
   const headline = insHeadline(p, today);
   const dimmed = !!p.archived;
   // The gate reads the LIST row's period count (never an expanded-only detail),
@@ -36572,8 +37285,11 @@ const PolicyListItem = ({
       name: draft.name.trim() || prev.name,
       policyNumber: draft.policyNumber ? draft.policyNumber.trim() : null,
       type: draft.type,
-      insurerId: draft.insurerId,
-      insuredAccountId: draft.insuredAccountId || null,
+      // The write carries the complete desired SET for each collection.
+      insurerIds: draft.insurerIds,
+      insuredAccountIds: draft.insuredAccountIds,
+      insuredContactIds: draft.insuredContactIds,
+      beneficiaryIds: draft.beneficiaryIds,
       notes: draft.notes
     }));
     setShowEdit(false);
@@ -36649,12 +37365,9 @@ const PolicyListItem = ({
     chips: /*#__PURE__*/React.createElement(CoverageStatusChip, {
       status: st.key
     }),
-    meta: [typeInfo.label, /*#__PURE__*/React.createElement("span", {
-      className: "ins-sub-insurer"
-    }, /*#__PURE__*/React.createElement(MIcon, {
-      name: insurer ? (INS_D.contactTypeByKey[insurer.type] || {}).icon || 'groups' : 'apartment',
-      size: 14
-    }), /*#__PURE__*/React.createElement("span", null, insurer ? insurer.name : 'No insurer')), p.policyNumber ? /*#__PURE__*/React.createElement("span", {
+    meta: [typeInfo.label, /*#__PURE__*/React.createElement(InsInsurerMeta, {
+      refs: insurers
+    }), p.policyNumber ? /*#__PURE__*/React.createElement("span", {
       className: "mono"
     }, /*#__PURE__*/React.createElement(MIcon, {
       name: "tag",
@@ -36756,6 +37469,8 @@ const PolicyListItem = ({
     "aria-live": "polite"
   }, announce), showEdit && /*#__PURE__*/React.createElement(AddInsurancePolicyModal, {
     policy: p,
+    optionsLoading: optionsLoading,
+    effectiveCap: effectiveCap,
     onClose: () => setShowEdit(false),
     onSave: saveEdit
   }), modal && modal.kind === 'renewal' && /*#__PURE__*/React.createElement(AddRenewalModal, {
@@ -36941,9 +37656,12 @@ const Insurance = ({
     if (typeFilter.length && !typeFilter.includes(p.type)) return false;
     if (statusFilter.length && !statusFilter.includes(st)) return false;
     if (q) {
-      const insurer = INS_H.insInsurer(p);
+      const insurers = INS_H.insInsurers(p);
       const needle = q.toLowerCase();
-      const hay = `${p.name} ${p.policyNumber || ''} ${INS_H.insurancePolicyTypeInfo(p.type).label} ${insurer ? insurer.name : ''} ${p.notes || ''}`.toLowerCase();
+      // Search keeps today's semantics: policy name + INSURER names. Insured
+      // contacts and beneficiaries are deliberately not searched — it would make
+      // the contacts surface's names queryable through a second door.
+      const hay = `${p.name} ${p.policyNumber || ''} ${INS_H.insurancePolicyTypeInfo(p.type).label} ${insurers.map(i => i.name || '').join(' ')} ${p.notes || ''}`.toLowerCase();
       if (!hay.includes(needle)) return false;
     }
     return true;
@@ -37091,6 +37809,8 @@ const Insurance = ({
       pol: p,
       today: today,
       open: openId === p.id,
+      optionsLoading: !!tweaks.insOptionsLoading,
+      effectiveCap: tweaks.insEffectiveCap == null || tweaks.insEffectiveCap === '' ? null : Number(tweaks.insEffectiveCap),
       onToggle: o => setOpenId(o ? p.id : null),
       highlight: jumpId === p.id,
       onNavigate: onNavigate,
@@ -37109,6 +37829,8 @@ const Insurance = ({
       onClick: () => setShowAdd(true)
     })
   })), showAdd && /*#__PURE__*/React.createElement(AddInsurancePolicyModal, {
+    optionsLoading: !!tweaks.insOptionsLoading,
+    effectiveCap: tweaks.insEffectiveCap == null || tweaks.insEffectiveCap === '' ? null : Number(tweaks.insEffectiveCap),
     onClose: () => setShowAdd(false),
     onCreate: createPolicy
   }));
@@ -50633,6 +51355,48 @@ window.OdysseyData = {
     orgNumber: '94-1347393',
     description: 'Former bank — held the closed checking account.',
     archived: '2021-03-12T00:00:00Z'
+  },
+  // ---- Insured people + beneficiaries: the contacts named ON a policy
+  //      (policyholder, spouse, named drivers, beneficiaries). Persons and
+  //      Organizations alike are eligible — a trust or an estate is a
+  //      legitimate beneficiary. `c34` is archived to exercise the
+  //      unnamed-member state on the insurance link surfaces.
+  {
+    id: 'c30',
+    name: 'Anna Sørensen',
+    normalizedName: 'ANNA SØRENSEN',
+    type: 'Person',
+    description: 'Policyholder on the household policies.',
+    archived: null
+  }, {
+    id: 'c31',
+    name: 'Jonas Sørensen',
+    normalizedName: 'JONAS SØRENSEN',
+    type: 'Person',
+    description: 'Spouse — named on the home and motor policies.',
+    archived: null
+  }, {
+    id: 'c32',
+    name: 'Nora Sørensen',
+    normalizedName: 'NORA SØRENSEN',
+    type: 'Person',
+    description: 'Named driver; beneficiary on the term life policy.',
+    archived: null
+  }, {
+    id: 'c33',
+    name: 'Sørensen Family Trust',
+    normalizedName: 'SØRENSEN FAMILY TRUST',
+    type: 'Organization',
+    orgNumber: '88-4410072',
+    description: 'Trust named as a beneficiary on the life policy.',
+    archived: null
+  }, {
+    id: 'c34',
+    name: 'Lena Waverly',
+    normalizedName: 'LENA WAVERLY',
+    type: 'Person',
+    description: 'Archived while an erasure request is in flight.',
+    archived: '2026-05-04T09:00:00Z'
   }],
   // Currency — CurrencyCode (3, PK/ISO-4217), Name (≤64), MinorUnits (0–12),
   // Symbol (≤8), Archived (datetime?, null = active). USD is the workspace base.
@@ -53043,8 +53807,13 @@ try { (() => {
 /* Seed data + helpers for the Insurance Policies feature (Insurance.jsx).
    ----------------------------------------------------------------------------
    Shapes mirror the spec's Odyssey.Finance.Context entities:
-     • InsurancePolicy  { name, policyNumber?, type, insurerId, insuredAccountId?,
-                          notes?, archived?, createdAtUtc, renewals[] }
+     • InsurancePolicy  { name, policyNumber?, type, notes?, archived?, createdAtUtc,
+                          insurerIds[], insuredAccountIds[], insuredContactIds[],
+                          beneficiaryIds[], renewals[] }
+                          (FOUR link collections, each a set of scalar ids and
+                          each OPTIONAL — zero insurers is a valid, healthy
+                          state. The old scalar InsurerId / InsuredAccountId are
+                          gone: the collections are the single representation.)
                           (NO policy-level files[] — a document's only home is a
                           renewal PERIOD, so it inherits that period's validity
                           window instead of floating on the policy.)
@@ -53070,6 +53839,12 @@ try { (() => {
 
   // The configurable "expiring soon" window (Insurance:ExpiringSoonWindowDays).
   D.INSURANCE_EXPIRING_WINDOW_DAYS = 30;
+  // InsuranceMaxLinksPerPolicy — admin-editable, bounded by the compile-time
+  // InsuranceLinkLimits.MaxLinksPerPolicy = 50. The client never holds a copy of
+  // the live setting; this fixture stands in for the server's effective cap.
+  D.INSURANCE_MAX_LINKS_PER_POLICY = 50;
+  // Members a detail tile names before it collapses into "+N more".
+  D.INSURANCE_LINK_TILE_LIMIT = 5;
 
   /* ---- Seed policies. Dates are anchored around mid-2026 so the derived
      statuses are stable: one Active, one ExpiringSoon, one Lapsed, one Upcoming,
@@ -53080,8 +53855,10 @@ try { (() => {
     name: 'Home & Contents 2026',
     policyNumber: 'HC-2026-99182',
     type: 'Contents',
-    insurerId: 'c12',
-    insuredAccountId: '7',
+    insurerIds: ['c12', 'c23'],
+    insuredAccountIds: ['7'],
+    insuredContactIds: ['c30', 'c31'],
+    beneficiaryIds: [],
     notes: 'Buildings + contents on the Maple St residence. Accidental-damage rider included.',
     archived: null,
     createdAtUtc: '2024-12-18T10:00:00Z',
@@ -53136,8 +53913,10 @@ try { (() => {
     name: 'Honda Civic — Comprehensive',
     policyNumber: 'MV-55-220714',
     type: 'Vehicle',
-    insurerId: 'c20',
-    insuredAccountId: '5',
+    insurerIds: ['c20'],
+    insuredAccountIds: ['5'],
+    insuredContactIds: ['c30', 'c31', 'c32'],
+    beneficiaryIds: [],
     notes: 'Comprehensive motor cover, €500 excess. Named drivers: 2.',
     archived: null,
     createdAtUtc: '2024-07-10T09:00:00Z',
@@ -53182,8 +53961,10 @@ try { (() => {
     name: 'Annual Multi-Trip Travel',
     policyNumber: 'TRV-EU-7741',
     type: 'Travel',
-    insurerId: 'c22',
-    insuredAccountId: null,
+    insurerIds: ['c22'],
+    insuredAccountIds: [],
+    insuredContactIds: ['c30', 'c31', 'c32'],
+    beneficiaryIds: [],
     notes: 'Worldwide ex-US. Winter-sports add-on. Renew before the next trip.',
     archived: null,
     createdAtUtc: '2025-05-20T09:00:00Z',
@@ -53210,8 +53991,10 @@ try { (() => {
     name: 'Term Life — 20 Year',
     policyNumber: 'LIFE-20Y-33180',
     type: 'Life',
-    insurerId: 'c21',
-    insuredAccountId: null,
+    insurerIds: ['c21'],
+    insuredAccountIds: [],
+    insuredContactIds: ['c30'],
+    beneficiaryIds: ['c31', 'c32', 'c33', 'c34'],
     notes: 'Level term, 20-year. Beneficiary on file. Cover starts at the next anniversary.',
     archived: null,
     createdAtUtc: '2026-06-02T09:00:00Z',
@@ -53239,8 +54022,10 @@ try { (() => {
     name: 'Family Health Plan',
     policyNumber: 'HLT-FAM-90021',
     type: 'Health',
-    insurerId: 'c24',
-    insuredAccountId: null,
+    insurerIds: ['c24'],
+    insuredAccountIds: [],
+    insuredContactIds: ['c30', 'c31', 'c32'],
+    beneficiaryIds: [],
     notes: 'Family of four. Outpatient + dental module.',
     archived: null,
     createdAtUtc: '2024-12-22T09:00:00Z',
@@ -53285,8 +54070,10 @@ try { (() => {
     name: 'Bella — Pet Cover',
     policyNumber: null,
     type: 'Pet',
-    insurerId: 'c24',
-    insuredAccountId: null,
+    insurerIds: [],
+    insuredAccountIds: [],
+    insuredContactIds: ['c30'],
+    beneficiaryIds: [],
     notes: 'Quote received — no cover purchased yet.',
     archived: null,
     createdAtUtc: '2026-06-15T09:00:00Z',
@@ -53301,8 +54088,10 @@ try { (() => {
     name: 'Personal Liability',
     policyNumber: 'PL-2019-6640',
     type: 'Liability',
-    insurerId: 'c20',
-    insuredAccountId: null,
+    insurerIds: ['c20'],
+    insuredAccountIds: [],
+    insuredContactIds: ['c30'],
+    beneficiaryIds: ['c-deleted-8821'],
     notes: 'Legacy record — imported before renewal periods were tracked.',
     archived: null,
     createdAtUtc: '2019-04-02T09:00:00Z',
@@ -53335,8 +54124,10 @@ try { (() => {
     name: 'Hytte — Cabin (Norway)',
     policyNumber: 'NO-HYT-44120',
     type: 'Property',
-    insurerId: 'c23',
-    insuredAccountId: null,
+    insurerIds: ['c23', 'c12'],
+    insuredAccountIds: [],
+    insuredContactIds: ['c30', 'c31'],
+    beneficiaryIds: [],
     notes: 'Mountain cabin, Hemsedal. Building + contents.',
     archived: null,
     createdAtUtc: '2025-12-10T09:00:00Z',
@@ -53364,8 +54155,10 @@ try { (() => {
     name: 'Fine Art & Valuables Rider',
     policyNumber: 'CH-ART-2010',
     type: 'Contents',
-    insurerId: 'c23',
-    insuredAccountId: null,
+    insurerIds: ['c23'],
+    insuredAccountIds: ['7'],
+    insuredContactIds: [],
+    beneficiaryIds: [],
     notes: 'Scheduled valuables — worldwide cover. Premium billed in CHF.',
     archived: null,
     createdAtUtc: '2026-01-20T09:00:00Z',
@@ -53552,22 +54345,112 @@ try { (() => {
       };
       return map[key] || map.NoCoverage;
     },
-    // Minimal cross-claim projections (spec §10 #4) — id, name, type only.
-    insInsurer(policy) {
-      const c = policy.insurerId && D.contactById[policy.insurerId];
-      return c ? {
-        contactId: c.id,
-        name: c.name,
-        type: c.type
-      } : null;
+    // Minimal cross-claim projections (§10 #2) — id, name, type, availability
+    // and nothing else. A link whose contact is ARCHIVED or no longer resolves
+    // keeps its row and LOSES ITS NAME: the id survives a read-modify-write
+    // round trip (so an ordinary save can never silently delete it), while the
+    // name — the personal data — never enters this read model.
+    insContactLinks(policy, key) {
+      const refs = (policy[key] || []).map(id => {
+        const c = D.contactById[id];
+        if (!c) return {
+          contactId: id,
+          name: null,
+          type: null,
+          availability: 'Unresolvable'
+        };
+        if (c.archived) return {
+          contactId: id,
+          name: null,
+          type: c.type,
+          availability: 'Archived'
+        };
+        return {
+          contactId: id,
+          name: c.name,
+          type: c.type,
+          availability: 'Available'
+        };
+      });
+      // Display order is resolved display name ascending; an unnamed member has
+      // no name to sort on, so it sorts last, by id.
+      return refs.sort((a, b) => {
+        if (a.name && b.name) return a.name.localeCompare(b.name);
+        if (a.name) return -1;
+        if (b.name) return 1;
+        return a.contactId < b.contactId ? -1 : 1;
+      });
     },
-    insInsuredAccount(policy) {
-      const a = policy.insuredAccountId && D.accountById[policy.insuredAccountId];
-      return a ? {
-        accountId: a.id,
-        name: a.name,
-        type: a.type
-      } : null;
+    insInsurers(policy) {
+      return H.insContactLinks(policy, 'insurerIds');
+    },
+    insInsuredContacts(policy) {
+      return H.insContactLinks(policy, 'insuredContactIds');
+    },
+    insBeneficiaries(policy) {
+      return H.insContactLinks(policy, 'beneficiaryIds');
+    },
+    insInsuredAccounts(policy) {
+      return (policy.insuredAccountIds || []).map(id => {
+        const a = D.accountById[id];
+        if (!a) return {
+          accountId: id,
+          name: null,
+          type: null,
+          availability: 'Unresolvable'
+        };
+        if (a.archived) return {
+          accountId: id,
+          name: null,
+          type: a.type,
+          availability: 'Archived'
+        };
+        return {
+          accountId: id,
+          name: a.name,
+          type: a.type,
+          availability: 'Available'
+        };
+      }).sort((a, b) => a.name && b.name ? a.name.localeCompare(b.name) : a.name ? -1 : b.name ? 1 : 0);
+    },
+    // An UNNAMED member: archived or unresolvable. It round-trips unchanged, and
+    // the picker renders it without a remove control (§3 State 7).
+    insLinkUnnamed(ref) {
+      return !!ref && ref.availability !== 'Available';
+    },
+    // Every count counts link ROWS, never resolved names — otherwise a contact
+    // whose links were invisible to the counts would look erasable when it is not.
+    insLinkCounts(policy) {
+      return {
+        insurers: (policy.insurerIds || []).length,
+        insuredAccounts: (policy.insuredAccountIds || []).length,
+        insuredContacts: (policy.insuredContactIds || []).length,
+        beneficiaries: (policy.beneficiaryIds || []).length
+      };
+    },
+    // Which of the three contact collections name a given contact — the shape
+    // the blocked-delete (409) payload reports per kind.
+    insPoliciesLinkingContact(contactId, policies) {
+      const KINDS = [{
+        key: 'insurerIds',
+        label: 'Insurer'
+      }, {
+        key: 'insuredContactIds',
+        label: 'Insured contact'
+      }, {
+        key: 'beneficiaryIds',
+        label: 'Beneficiary'
+      }];
+      const out = [];
+      for (const p of policies || D.insurancePolicies) {
+        const kinds = KINDS.filter(k => (p[k.key] || []).includes(contactId)).map(k => k.label);
+        if (kinds.length) out.push({
+          policyId: p.id,
+          policyName: p.name,
+          kinds
+        });
+      }
+      return out;
     },
     // Non-archived policies — the set the summary aggregates over.
     insActivePolicies(policies) {

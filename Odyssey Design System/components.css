@@ -1393,20 +1393,42 @@
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
 .odc-tagms-control:hover { border-color: var(--mud-palette-text-secondary); }
-.odc-tagms-control.open { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
-.odc-tagms-control:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.odc-tagms-control:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Open, not focused: while the popover is up, real focus lives in its search
+   field — which carries the ONLY teal indicator. The control keeps its neutral
+   hover-weight border, so "open" reads as a state rather than a second focus
+   ring stacked against the one below it. */
+.odc-tagms-control.open { border-color: var(--mud-palette-text-secondary); box-shadow: none; }
+.odc-tagms-control.disabled { opacity: 0.5; cursor: not-allowed; }
 .odc-field.error .odc-tagms-control { border-color: var(--mud-palette-error); }
 .odc-tagms-chips { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .odc-tagms-ph { color: var(--mud-palette-text-disabled); font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans); }
-.odc-tagms-chip { padding-right: 4px; }
+.odc-tagms-chip { padding-right: 2px; }
+.odc-tagms-chip-ic { font-size: 14px; }
+/* A templated chip (ChipTemplate) brings its own chip body — the wrapper carries
+   the pill border so the picker-owned remove button sits INSIDE the chip and the
+   two read as one unit (the body's own border would double-apply). */
+.odc-tagms-tchip { display: inline-flex; align-items: center; max-width: 100%; padding-right: 2px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-pill); }
+.odc-tagms-tchip > .odc-chip { border: 0; background: transparent; padding-right: 4px; }
+/* The archived cue (dashed + quieter) moves to the fused wrapper. */
+.odc-tagms-tchip > .odc-chip.archived { opacity: 1; border-style: solid; }
+.odc-tagms-tchip:has(> .odc-chip.archived) { border-style: dashed; opacity: 0.75; }
+.odc-tagms-tchip > .odc-tagms-x { margin-left: 0; }
+/* A real <button>: keyboard operable, named "Remove {label}", and expanded
+   horizontally to 24 px with the chip's full height for the vertical axis
+   (WCAG 2.5.8 — the residual vertical shortfall in a dense row is carried by
+   the spacing exception, never by an under-sized target). */
 .odc-tagms-x {
-  display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 2px;
+  display: inline-grid; place-items: center; min-width: 24px; align-self: stretch; min-height: 20px;
+  margin-left: 2px; padding: 0; border: none; background: transparent;
   border-radius: var(--radius-pill); cursor: pointer; color: currentColor; opacity: 0.7;
   transition: opacity var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
 }
 .odc-tagms-x:hover { opacity: 1; background: color-mix(in oklab, currentColor 22%, transparent); }
+.odc-tagms-x:focus-visible { opacity: 1; outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 .odc-tagms-x .material-icons { font-size: 13px; }
+.odc-tagms-trigger { border: none; background: transparent; padding: 2px; border-radius: var(--radius-sm); cursor: pointer; }
+.odc-tagms-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-tagms-trigger:disabled { cursor: not-allowed; }
 .odc-tagms-add { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--mud-palette-text-secondary); font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); }
 .odc-tagms-add .material-icons { font-size: 18px; }
 .odc-tagms-pop {
@@ -1433,6 +1455,11 @@
 }
 .odc-tagms-create:hover { background: var(--mud-palette-action-default-hover); }
 .odc-tagms-create .material-icons { font-size: 18px; }
+.odc-tagms-loading { display: flex; align-items: center; gap: 8px; padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+.odc-tagms-loading .material-icons { font-size: 17px; }
+.odc-tagms-opt .odc-check-label { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.odc-tagms-opt-ic { font-size: 17px; color: var(--mud-palette-text-secondary); }
+.odc-tagms-opt-sub { color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); }
 .odc-tagms-empty { padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 .odc-tagms-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider); }
 
@@ -2506,3 +2533,74 @@
 }
 .odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light, var(--mud-palette-divider)); }
 .odc-sectiondivider-meta { font: var(--fw-regular) 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
+
+/* ---------- Picker shell — ONE search / list / row / footer treatment ----------
+   TagMultiSelect (multi + chips), MultiSelect (filter bar) and Combobox (single
+   value) each own their own behaviour and semantics, but their popovers are one
+   visual language: same panel chrome, same search field, same row geometry and
+   hover, same option glyph, same loading / empty / footer. DS components are
+   standalone and cannot import a shared React shell, so the shell is declared
+   here, once, as grouped selectors — the markup contract each component follows
+   is: .odc-*-pop > (.odc-*-search) + rows (.odc-*-opt) + (.odc-*-loading /
+   .odc-*-empty) + (.odc-*-foot). */
+.odc-tagms-pop, .odc-ms-pop, .odc-combo-pop {
+  padding: var(--space-3); border-radius: var(--radius-md);
+  /* Reads clearly as a layer ABOVE the dialog: a visible edge, a hairline ring
+     and a deep shadow — a popover over a modal shares the modal's surface, so
+     the divider-weight border alone left the two blending into each other. */
+  border: 1px solid color-mix(in oklab, var(--mud-palette-text-secondary) 42%, transparent);
+  background: var(--mud-palette-surface);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 20px 48px rgba(0, 0, 0, 0.55);
+}
+.odc-combo-pop { list-style: none; margin: 0; }
+/* Search field — the same box, at the same height as every other input, whether
+   it filters tags, contacts or accounts. */
+.odc-tagms-search, .odc-ms-search {
+  display: flex; align-items: center; gap: 8px; box-sizing: border-box;
+  min-height: var(--control-h); padding: 5px 10px; margin-bottom: var(--space-2);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm);
+  background: var(--mud-palette-background);
+}
+.odc-tagms-search:focus-within, .odc-ms-search:focus-within { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
+.odc-tagms-search .material-icons, .odc-ms-search .material-icons { font-size: 20px; color: var(--mud-palette-text-secondary); }
+.odc-tagms-search input, .odc-ms-search input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
+}
+/* The placeholder token every other input uses — never the UA grey (which fails
+   4.5:1) and never the 0.38 disabled alpha. */
+.odc-tagms-search input::placeholder, .odc-ms-search input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+/* Scroll region + row geometry. */
+.odc-tagms-list, .odc-ms-list { max-height: 232px; overflow-y: auto; display: flex; flex-direction: column; }
+.odc-tagms-opt, .odc-ms-opt, .odc-combo-opt {
+  display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
+  padding: 8px; border-radius: var(--radius-sm); cursor: pointer;
+  font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans);
+}
+.odc-tagms-opt:hover, .odc-ms-opt:hover, .odc-combo-opt:hover, .odc-combo-opt.active { background: var(--mud-palette-action-default-hover); }
+/* The row's checkbox is visually replaced, so the ROW carries the focus ring —
+   otherwise keyboard roving through the list has no visible position. */
+.odc-tagms-opt:has(input:focus-visible), .odc-ms-opt:has(input:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -1px;
+  background: var(--mud-palette-action-default-hover);
+}
+/* One option glyph size and tone across all three. */
+.odc-opt-icon, .odc-tagms-opt-ic { font-size: 17px; color: var(--mud-palette-text-secondary); flex: none; }
+/* Async + empty rows read identically — "loading" is never mistaken for "none". */
+.odc-tagms-loading, .odc-ms-loading, .odc-tagms-empty, .odc-combo-empty {
+  display: flex; align-items: center; gap: 8px; padding: 10px 8px;
+  color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans);
+}
+.odc-tagms-loading .material-icons, .odc-ms-loading .material-icons { font-size: 17px; }
+.odc-tagms-foot, .odc-ms-foot {
+  display: flex; justify-content: space-between; gap: 8px;
+  margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider);
+}
+
+/* ---------- Entity chip — the one chip a linked record wears ----------
+   Contacts, accounts, albums and tags all read as the same pill: outline, a
+   coloured type glyph, name in text, an optional muted trailing segment. Used by
+   ContactChip / CustodianChip, by TagChips, and by every picker's selected
+   chips, so a "linked thing" looks the same wherever it is surfaced. */
+.odc-chip.entity { color: var(--mud-palette-text-primary); background: transparent; border: 1px solid var(--mud-palette-divider); }
+.odc-chip.entity .material-icons { font-size: 14px; }

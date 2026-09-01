@@ -1,8 +1,13 @@
 /* Seed data + helpers for the Insurance Policies feature (Insurance.jsx).
    ----------------------------------------------------------------------------
    Shapes mirror the spec's Odyssey.Finance.Context entities:
-     • InsurancePolicy  { name, policyNumber?, type, insurerId, insuredAccountId?,
-                          notes?, archived?, createdAtUtc, renewals[] }
+     • InsurancePolicy  { name, policyNumber?, type, notes?, archived?, createdAtUtc,
+                          insurerIds[], insuredAccountIds[], insuredContactIds[],
+                          beneficiaryIds[], renewals[] }
+                          (FOUR link collections, each a set of scalar ids and
+                          each OPTIONAL — zero insurers is a valid, healthy
+                          state. The old scalar InsurerId / InsuredAccountId are
+                          gone: the collections are the single representation.)
                           (NO policy-level files[] — a document's only home is a
                           renewal PERIOD, so it inherits that period's validity
                           window instead of floating on the policy.)
@@ -28,6 +33,12 @@
 
   // The configurable "expiring soon" window (Insurance:ExpiringSoonWindowDays).
   D.INSURANCE_EXPIRING_WINDOW_DAYS = 30;
+  // InsuranceMaxLinksPerPolicy — admin-editable, bounded by the compile-time
+  // InsuranceLinkLimits.MaxLinksPerPolicy = 50. The client never holds a copy of
+  // the live setting; this fixture stands in for the server's effective cap.
+  D.INSURANCE_MAX_LINKS_PER_POLICY = 50;
+  // Members a detail tile names before it collapses into "+N more".
+  D.INSURANCE_LINK_TILE_LIMIT = 5;
 
   /* ---- Seed policies. Dates are anchored around mid-2026 so the derived
      statuses are stable: one Active, one ExpiringSoon, one Lapsed, one Upcoming,
@@ -36,7 +47,7 @@
   D.insurancePolicies = [
     {
       id: 'ip-home', name: 'Home & Contents 2026', policyNumber: 'HC-2026-99182', type: 'Contents',
-      insurerId: 'c12', insuredAccountId: '7', notes: 'Buildings + contents on the Maple St residence. Accidental-damage rider included.',
+      insurerIds: ['c12', 'c23'], insuredAccountIds: ['7'], insuredContactIds: ['c30', 'c31'], beneficiaryIds: [], notes: 'Buildings + contents on the Maple St residence. Accidental-damage rider included.',
       archived: null, createdAtUtc: '2024-12-18T10:00:00Z',
       renewals: [
         { id: 'rn-home-26', fromDate: '2026-01-01', toDate: '2026-12-31', premium: 1840.00, premiumCurrencyCode: 'USD', coverageAmount: 1500000.00, coverageCurrencyCode: 'USD', notes: 'Premium up 4% on prior year; coverage unchanged.', createdAtUtc: '2025-12-18T10:00:00Z', files: [
@@ -52,7 +63,7 @@
     },
     {
       id: 'ip-auto', name: 'Honda Civic — Comprehensive', policyNumber: 'MV-55-220714', type: 'Vehicle',
-      insurerId: 'c20', insuredAccountId: '5', notes: 'Comprehensive motor cover, €500 excess. Named drivers: 2.',
+      insurerIds: ['c20'], insuredAccountIds: ['5'], insuredContactIds: ['c30', 'c31', 'c32'], beneficiaryIds: [], notes: 'Comprehensive motor cover, €500 excess. Named drivers: 2.',
       archived: null, createdAtUtc: '2024-07-10T09:00:00Z',
       renewals: [
         { id: 'rn-auto-25', fromDate: '2025-07-16', toDate: '2026-07-15', premium: 1260.00, premiumCurrencyCode: 'USD', coverageAmount: 24500.00, coverageCurrencyCode: 'USD', notes: 'No-claims discount applied (40%).', createdAtUtc: '2025-07-12T09:00:00Z', files: [
@@ -65,7 +76,7 @@
     },
     {
       id: 'ip-travel', name: 'Annual Multi-Trip Travel', policyNumber: 'TRV-EU-7741', type: 'Travel',
-      insurerId: 'c22', insuredAccountId: null, notes: 'Worldwide ex-US. Winter-sports add-on. Renew before the next trip.',
+      insurerIds: ['c22'], insuredAccountIds: [], insuredContactIds: ['c30', 'c31', 'c32'], beneficiaryIds: [], notes: 'Worldwide ex-US. Winter-sports add-on. Renew before the next trip.',
       archived: null, createdAtUtc: '2025-05-20T09:00:00Z',
       renewals: [
         { id: 'rn-travel-25', fromDate: '2025-06-01', toDate: '2026-05-31', premium: 340.00, premiumCurrencyCode: 'EUR', coverageAmount: 150000.00, coverageCurrencyCode: 'EUR', notes: 'Covered the Lofoten + Lisbon trips.', createdAtUtc: '2025-05-20T09:00:00Z', files: [
@@ -75,7 +86,7 @@
     },
     {
       id: 'ip-life', name: 'Term Life — 20 Year', policyNumber: 'LIFE-20Y-33180', type: 'Life',
-      insurerId: 'c21', insuredAccountId: null, notes: 'Level term, 20-year. Beneficiary on file. Cover starts at the next anniversary.',
+      insurerIds: ['c21'], insuredAccountIds: [], insuredContactIds: ['c30'], beneficiaryIds: ['c31', 'c32', 'c33', 'c34'], notes: 'Level term, 20-year. Beneficiary on file. Cover starts at the next anniversary.',
       archived: null, createdAtUtc: '2026-06-02T09:00:00Z',
       renewals: [
         { id: 'rn-life-26', fromDate: '2026-09-01', toDate: '2027-08-31', premium: 540.00, premiumCurrencyCode: 'USD', coverageAmount: 750000.00, coverageCurrencyCode: 'USD', notes: 'First annual term — cover begins Sep 1.', createdAtUtc: '2026-06-02T09:00:00Z', files: [
@@ -85,7 +96,7 @@
     },
     {
       id: 'ip-health', name: 'Family Health Plan', policyNumber: 'HLT-FAM-90021', type: 'Health',
-      insurerId: 'c24', insuredAccountId: null, notes: 'Family of four. Outpatient + dental module.',
+      insurerIds: ['c24'], insuredAccountIds: [], insuredContactIds: ['c30', 'c31', 'c32'], beneficiaryIds: [], notes: 'Family of four. Outpatient + dental module.',
       archived: null, createdAtUtc: '2024-12-22T09:00:00Z',
       renewals: [
         { id: 'rn-health-26', fromDate: '2026-01-01', toDate: '2026-12-31', premium: 6240.00, premiumCurrencyCode: 'USD', coverageAmount: 1000000.00, coverageCurrencyCode: 'USD', notes: 'Annual limit raised to $1M.', createdAtUtc: '2025-12-20T09:00:00Z', files: [
@@ -98,7 +109,7 @@
     },
     {
       id: 'ip-pet', name: 'Bella — Pet Cover', policyNumber: null, type: 'Pet',
-      insurerId: 'c24', insuredAccountId: null, notes: 'Quote received — no cover purchased yet.',
+      insurerIds: [], insuredAccountIds: [], insuredContactIds: ['c30'], beneficiaryIds: [], notes: 'Quote received — no cover purchased yet.',
       archived: null, createdAtUtc: '2026-06-15T09:00:00Z',
       renewals: [],
     },
@@ -108,7 +119,7 @@
        migration's pinned literal, so it reads as Lapsed until someone corrects it. */
     {
       id: 'ip-liability', name: 'Personal Liability', policyNumber: 'PL-2019-6640', type: 'Liability',
-      insurerId: 'c20', insuredAccountId: null, notes: 'Legacy record — imported before renewal periods were tracked.',
+      insurerIds: ['c20'], insuredAccountIds: [], insuredContactIds: ['c30'], beneficiaryIds: ['c-deleted-8821'], notes: 'Legacy record — imported before renewal periods were tracked.',
       archived: null, createdAtUtc: '2019-04-02T09:00:00Z',
       renewals: [
         { id: 'rn-liability-mig', fromDate: '2026-08-31', toDate: '2026-08-31', premium: 0, premiumCurrencyCode: 'USD', coverageAmount: 0, coverageCurrencyCode: 'USD',
@@ -121,7 +132,7 @@
     },
     {
       id: 'ip-cabin', name: 'Hytte — Cabin (Norway)', policyNumber: 'NO-HYT-44120', type: 'Property',
-      insurerId: 'c23', insuredAccountId: null, notes: 'Mountain cabin, Hemsedal. Building + contents.',
+      insurerIds: ['c23', 'c12'], insuredAccountIds: [], insuredContactIds: ['c30', 'c31'], beneficiaryIds: [], notes: 'Mountain cabin, Hemsedal. Building + contents.',
       archived: null, createdAtUtc: '2025-12-10T09:00:00Z',
       renewals: [
         { id: 'rn-cabin-26', fromDate: '2026-01-01', toDate: '2026-12-31', premium: 8400.00, premiumCurrencyCode: 'NOK', coverageAmount: 3100000.00, coverageCurrencyCode: 'NOK', notes: null, createdAtUtc: '2025-12-12T09:00:00Z', files: [
@@ -131,7 +142,7 @@
     },
     {
       id: 'ip-art', name: 'Fine Art & Valuables Rider', policyNumber: 'CH-ART-2010', type: 'Contents',
-      insurerId: 'c23', insuredAccountId: null, notes: 'Scheduled valuables — worldwide cover. Premium billed in CHF.',
+      insurerIds: ['c23'], insuredAccountIds: ['7'], insuredContactIds: [], beneficiaryIds: [], notes: 'Scheduled valuables — worldwide cover. Premium billed in CHF.',
       archived: null, createdAtUtc: '2026-01-20T09:00:00Z',
       renewals: [
         { id: 'rn-art-26', fromDate: '2026-02-01', toDate: '2027-01-31', premium: 980.00, premiumCurrencyCode: 'CHF', coverageAmount: 220000.00, coverageCurrencyCode: 'CHF', notes: 'No CHF→USD rate on file — excluded from converted totals.', createdAtUtc: '2026-01-20T09:00:00Z', files: [] },
@@ -244,14 +255,65 @@
       return map[key] || map.NoCoverage;
     },
 
-    // Minimal cross-claim projections (spec §10 #4) — id, name, type only.
-    insInsurer(policy) {
-      const c = policy.insurerId && D.contactById[policy.insurerId];
-      return c ? { contactId: c.id, name: c.name, type: c.type } : null;
+    // Minimal cross-claim projections (§10 #2) — id, name, type, availability
+    // and nothing else. A link whose contact is ARCHIVED or no longer resolves
+    // keeps its row and LOSES ITS NAME: the id survives a read-modify-write
+    // round trip (so an ordinary save can never silently delete it), while the
+    // name — the personal data — never enters this read model.
+    insContactLinks(policy, key) {
+      const refs = (policy[key] || []).map(id => {
+        const c = D.contactById[id];
+        if (!c) return { contactId: id, name: null, type: null, availability: 'Unresolvable' };
+        if (c.archived) return { contactId: id, name: null, type: c.type, availability: 'Archived' };
+        return { contactId: id, name: c.name, type: c.type, availability: 'Available' };
+      });
+      // Display order is resolved display name ascending; an unnamed member has
+      // no name to sort on, so it sorts last, by id.
+      return refs.sort((a, b) => {
+        if (a.name && b.name) return a.name.localeCompare(b.name);
+        if (a.name) return -1;
+        if (b.name) return 1;
+        return a.contactId < b.contactId ? -1 : 1;
+      });
     },
-    insInsuredAccount(policy) {
-      const a = policy.insuredAccountId && D.accountById[policy.insuredAccountId];
-      return a ? { accountId: a.id, name: a.name, type: a.type } : null;
+    insInsurers(policy) { return H.insContactLinks(policy, 'insurerIds'); },
+    insInsuredContacts(policy) { return H.insContactLinks(policy, 'insuredContactIds'); },
+    insBeneficiaries(policy) { return H.insContactLinks(policy, 'beneficiaryIds'); },
+    insInsuredAccounts(policy) {
+      return (policy.insuredAccountIds || []).map(id => {
+        const a = D.accountById[id];
+        if (!a) return { accountId: id, name: null, type: null, availability: 'Unresolvable' };
+        if (a.archived) return { accountId: id, name: null, type: a.type, availability: 'Archived' };
+        return { accountId: id, name: a.name, type: a.type, availability: 'Available' };
+      }).sort((a, b) => (a.name && b.name ? a.name.localeCompare(b.name) : a.name ? -1 : b.name ? 1 : 0));
+    },
+    // An UNNAMED member: archived or unresolvable. It round-trips unchanged, and
+    // the picker renders it without a remove control (§3 State 7).
+    insLinkUnnamed(ref) { return !!ref && ref.availability !== 'Available'; },
+    // Every count counts link ROWS, never resolved names — otherwise a contact
+    // whose links were invisible to the counts would look erasable when it is not.
+    insLinkCounts(policy) {
+      return {
+        insurers: (policy.insurerIds || []).length,
+        insuredAccounts: (policy.insuredAccountIds || []).length,
+        insuredContacts: (policy.insuredContactIds || []).length,
+        beneficiaries: (policy.beneficiaryIds || []).length,
+      };
+    },
+    // Which of the three contact collections name a given contact — the shape
+    // the blocked-delete (409) payload reports per kind.
+    insPoliciesLinkingContact(contactId, policies) {
+      const KINDS = [
+        { key: 'insurerIds', label: 'Insurer' },
+        { key: 'insuredContactIds', label: 'Insured contact' },
+        { key: 'beneficiaryIds', label: 'Beneficiary' },
+      ];
+      const out = [];
+      for (const p of (policies || D.insurancePolicies)) {
+        const kinds = KINDS.filter(k => (p[k.key] || []).includes(contactId)).map(k => k.label);
+        if (kinds.length) out.push({ policyId: p.id, policyName: p.name, kinds });
+      }
+      return out;
     },
 
     // Non-archived policies — the set the summary aggregates over.

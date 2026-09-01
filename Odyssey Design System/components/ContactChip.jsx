@@ -54,7 +54,7 @@ export function ContactChip({ contact, name, type, size = 'md', showType = false
   if (cp && cp.unavailable) {
     return (
       <span
-        className={`odc-chip outline${sz}${className ? ' ' + className : ''}`}
+        className={`odc-chip entity${sz}${className ? ' ' + className : ''}`}
         title="This contact was deleted or you don't have access."
         style={style}
       >
@@ -72,7 +72,7 @@ export function ContactChip({ contact, name, type, size = 'md', showType = false
 
   return (
     <span
-      className={`odc-chip outline${archived ? ' archived' : ''}${sz}${className ? ' ' + className : ''}`}
+      className={`odc-chip entity${archived ? ' archived' : ''}${sz}${className ? ' ' + className : ''}`}
       style={style}
     >
       <span className="odc-sr-only">{a11yName}</span>
