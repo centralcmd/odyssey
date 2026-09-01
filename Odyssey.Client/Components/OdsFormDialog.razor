@@ -21,10 +21,16 @@
         </div>
     </ChildContent>
     <Footer>
-        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelAsync">@CancelLabel</OdsButton>
-        <OdsButton Variant="@SubmitVariant" Icon="@SubmitIcon" Loading="_isSaving" OnClick="SubmitAsync">
-            @SubmitLabel
-        </OdsButton>
+        @if (ShowCancel)
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelAsync">@CancelLabel</OdsButton>
+        }
+        @if (ShowSubmit)
+        {
+            <OdsButton Variant="@SubmitVariant" Icon="@SubmitIcon" Loading="_isSaving" OnClick="SubmitAsync">
+                @SubmitLabel
+            </OdsButton>
+        }
     </Footer>
 </OdsModal>
 
@@ -55,6 +61,19 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     [Parameter] public string CancelLabel { get; set; } = "Cancel";
+
+    /// <summary>
+    /// Render the Cancel button. Off for a terminal step whose only sensible action is to close —
+    /// two buttons that both dismiss read as a choice the user does not have.
+    /// </summary>
+    [Parameter] public bool ShowCancel { get; set; } = true;
+
+    /// <summary>
+    /// Render the submit button. Off when the dialog reports a state the caller cannot act on — a
+    /// blocked delete the caller lacks the second claim to resolve — so it never offers an action it
+    /// knows will 403.
+    /// </summary>
+    [Parameter] public bool ShowSubmit { get; set; } = true;
 
     [Parameter] public string SubmitLabel { get; set; } = "Save";
 

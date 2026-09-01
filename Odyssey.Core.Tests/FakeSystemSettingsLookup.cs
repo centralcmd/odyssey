@@ -17,7 +17,7 @@ internal sealed class FakeSystemSettingsLookup : ISystemSettingsLookup
 {
     public InsurancePolicySettings InsurancePolicy { get; set; } = new(30, 1000);
 
-    public FinanceRequestCaps Caps { get; set; } = new(25, 50, 1000, 100, 50);
+    public FinanceRequestCaps Caps { get; set; } = new(25, 50, 1000, 100, 50, 50);
 
     /// <summary>The issue #437 defaults: a 45-day window, six renewal rows, a 1000-row summary fetch.</summary>
     public SubscriptionSettings Subscriptions { get; set; } = new(45, 6, 1000);

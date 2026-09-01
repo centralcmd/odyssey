@@ -65,4 +65,5 @@ public sealed record FinanceRequestCaps(
     int MaxFilesPerContract,
     int MaxSummaryContracts,
     int MaxRenewalsPerPolicy,
-    int MaxFilesPerParent);
+    int MaxFilesPerParent,
+    int MaxLinksPerPolicy);

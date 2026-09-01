@@ -97,4 +97,51 @@ public static class ApiInteropExtensions
         snackbar.Add($"{failureLead}: {result.Error}", Severity.Error);
         return false;
     }
+
+    /// <summary>
+    /// Routes a failed write to the form fields that caused it, falling back to a toast when the
+    /// server named none.
+    ///
+    /// <para>
+    /// The reusable half of <c>ApiProblem.Errors</c> → form mapping (issue #27 §11): a dialog whose
+    /// only field errors are client-side pre-checks has no way to show a server rejection on the
+    /// control responsible, so every failure becomes a toast the user then has to translate back into
+    /// a field. <paramref name="assign"/> is called once per field the server named, with the JSON
+    /// property name and the first message; anything it does not recognise (and any failure with no
+    /// field errors at all) is toasted instead, so a rejection can never vanish.
+    /// </para>
+    /// </summary>
+    /// <returns>True on success — the same contract <see cref="Toast(ApiResult, ISnackbar, string, string?)"/> has.</returns>
+    public static bool ToastOrFields(
+        this ApiResult result,
+        ISnackbar snackbar,
+        string failureLead,
+        Func<string, string, bool> assign,
+        string? successMessage = null)
+    {
+        if (result.IsSuccess)
+        {
+            if (!string.IsNullOrEmpty(successMessage))
+                snackbar.Add(successMessage, Severity.Success);
+
+            return true;
+        }
+
+        var assigned = false;
+        var errors = result.Problem?.Errors ?? new Dictionary<string, string[]>();
+        foreach (var (field, messages) in errors)
+        {
+            if (messages.Length > 0 && assign(field, messages[0]))
+            {
+                assigned = true;
+            }
+        }
+
+        if (!assigned)
+        {
+            snackbar.Add($"{failureLead}: {result.Error}", Severity.Error);
+        }
+
+        return false;
+    }
 }

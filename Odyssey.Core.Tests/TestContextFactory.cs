@@ -1,4 +1,5 @@
 using Odyssey.Core.Finance;
+using Odyssey.Dtos.Finance;
 using Odyssey.Context;
 using Odyssey.Core.Journal;
 using Microsoft.EntityFrameworkCore;
@@ -51,11 +52,17 @@ public sealed class FakeImportExportLimitsLookup : IImportExportLimitsLookup
 /// </summary>
 public sealed class NoopContactReferenceGuard : IContactReferenceGuard
 {
-    public Task<bool> IsReferencedAsInsurerAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+    public Task<InsuranceLinkBlockers> GetInsuranceLinkBlockersAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(InsuranceLinkBlockers.None);
+
+    public Task<bool> IsReferencedByInsuranceAsync(Guid contactId, CancellationToken cancellationToken = default) =>
         Task.FromResult(false);
 
     public Task ClearAndCascadeReferencesAsync(Guid contactId, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
+
+    public Task<DetachedInsuranceLinks> StageInsuranceLinkDetachAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DetachedInsuranceLinks());
 }
 
 public static class TestContextFactory

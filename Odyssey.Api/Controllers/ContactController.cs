@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Authorization;
@@ -23,14 +24,22 @@ public class ContactController : ControllerBase
     private readonly ILogger<ContactController> logger;
     private readonly ContactService contactService;
     private readonly ContactVCardService vCardService;
+    private readonly IContactReferenceGuard referenceGuard;
 
     public ContactController(
-        ILogger<ContactController> logger, ContactService contactService, ContactVCardService vCardService)
+        ILogger<ContactController> logger,
+        ContactService contactService,
+        ContactVCardService vCardService,
+        IContactReferenceGuard referenceGuard)
     {
         this.logger = logger;
         this.contactService = contactService;
         this.vCardService = vCardService;
+        this.referenceGuard = referenceGuard;
     }
+
+    /// <summary>The house claim check — the same shape PhotosController and JournalEntriesController use.</summary>
+    private bool HasClaim(string claimValue) => User.HasClaim(PermissionClaims.Type, claimValue);
 
     [HttpGet(Name = "GetContacts")]
     [Authorize(Policy = PermissionClaims.ContactsRead)]
@@ -95,12 +104,81 @@ public class ContactController : ControllerBase
     [HttpDelete("{id}", Name = "DeleteContact")]
     [Authorize(Policy = PermissionClaims.ContactsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DetachedInsuranceLinks))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Delete a contact.",
+        Description = @"409 when the contact is named as an insurer, an insured contact or a beneficiary
+on any insurance policy. With detachInsuranceLinks=true those link rows are removed and the contact
+deleted in ONE transaction, which needs insurance.update in addition to contacts.delete; the response is
+then 200 with a summary of what was destroyed.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
-            Description = @"The ID for the contact to delete.")] Guid id, CancellationToken cancellationToken = default)
+            Description = @"The ID for the contact to delete.")] Guid id,
+        [FromQuery] [SwaggerParameter(Description = @"Remove the contact's insurance link rows and delete
+it in one transaction, instead of refusing with a 409. Requires insurance.update.")] bool detachInsuranceLinks = false,
+        CancellationToken cancellationToken = default)
     {
-        await contactService.Delete(id, cancellationToken);
+        if (detachInsuranceLinks)
+        {
+            // Composed from two existing claims rather than a third one — no RolePermissions change, no
+            // role-claim reconciliation, no sign-out/sign-in. A caller holding only contacts.delete gets
+            // a 403 here, never a silent downgrade to the refused delete.
+            if (!HasClaim(PermissionClaims.InsuranceUpdate))
+            {
+                return this.ForbiddenProblem(
+                    "Detaching insurance links requires permission to update insurance policies.");
+            }
+
+            var detached = await contactService.Delete(id, detachInsuranceLinks: true, cancellationToken);
+            if (detached is null)
+            {
+                // The contact did not exist; nothing was detached and nothing was deleted.
+                return NoContent();
+            }
+
+            // Ids only, never names — the caller asked to erase a contact. This one line exists because
+            // the detach path's blast radius (every link across every policy, in one request) is
+            // materially larger than an ordinary per-policy edit; it is NOT an audit trail and §10 #12
+            // does not claim it is.
+            logger.LogInformation(
+                "Detached {LinkCount} insurance link(s) across {PolicyCount} policy/policies for contact {ContactId} ({Kinds}) and deleted the contact.",
+                detached.TotalLinks,
+                detached.AffectedPolicyIds.Count,
+                id,
+                string.Join(", ", detached.Kinds.Select(k => $"{k.Kind}={k.Count}")));
+
+            return Ok(detached);
+        }
+
+        // The claim conditional lives HERE, not in the service: DomainConflictException carries a
+        // message and nothing else, and the domain service has no ClaimsPrincipal — so neither it nor
+        // GlobalExceptionHandler could shape a claim-conditional payload. The service keeps its own
+        // unconditional guard as defence-in-depth for non-HTTP callers.
+        var blockers = await referenceGuard.GetInsuranceLinkBlockersAsync(id, cancellationToken);
+        if (blockers.Any)
+        {
+            var canReadInsurance = HasClaim(PermissionClaims.InsuranceRead);
+            var payload = new ContactInsuranceLinkBlockers
+            {
+                Kinds = [.. blockers.Kinds],
+                TotalLinks = blockers.TotalLinks,
+                PolicyCount = blockers.Policies.Count,
+                // Names and ids only for a caller that could read them from the insurance surface
+                // anyway. The boundary costs nothing today (every shipped role holding contacts.delete
+                // also holds insurance.read, asserted by a guard test) and is kept for a future role.
+                Policies = canReadInsurance ? [.. blockers.Policies] : [],
+            };
+
+            return this.ConflictProblem(
+                "This contact is named on one or more insurance policies and cannot be deleted. "
+                + "Retry with detachInsuranceLinks=true to remove those links and delete it in one "
+                + "transaction, or remove it from those policies first.",
+                new Dictionary<string, object?> { ["insuranceLinks"] = payload });
+        }
+
+        await contactService.Delete(id, detachInsuranceLinks: false, cancellationToken);
         return NoContent();
     }
 

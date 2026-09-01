@@ -14,8 +14,9 @@ namespace Odyssey.ApiClient.Resources;
 public interface IInsuranceApiClient
 {
     /// <summary>
-    /// Lists policies (lean projection) with server-side search, multi-type/status filters and sort
-    /// (issue #277).
+    /// Lists policies (lean projection) with server-side search, multi-type/status filters, sort
+    /// (issue #277) and the API-only contact filter (issue #27), which matches a policy naming the
+    /// contact as an insurer, an insured contact or a beneficiary.
     /// </summary>
     Task<ApiResult<List<InsurancePolicyListItem>>> ListAsync(
         string? search = null,
@@ -23,6 +24,7 @@ public interface IInsuranceApiClient
         IReadOnlyCollection<string>? statuses = null,
         string? sortBy = null,
         string? sortDir = null,
+        IReadOnlyCollection<Guid>? contactIds = null,
         CancellationToken ct = default);
 
     /// <summary>Loads one policy with its renewal periods, their documents and derived status.
@@ -71,6 +73,7 @@ public sealed class InsuranceApiClient(IOdysseyApi api) : IInsuranceApiClient
         IReadOnlyCollection<string>? statuses = null,
         string? sortBy = null,
         string? sortDir = null,
+        IReadOnlyCollection<Guid>? contactIds = null,
         CancellationToken ct = default) =>
         api.GetAllAsync<InsurancePolicyListItem>(
             PagedQuery.For(Base)
@@ -79,6 +82,9 @@ public sealed class InsuranceApiClient(IOdysseyApi api) : IInsuranceApiClient
                 .AddMany("statuses", statuses)
                 .Add("sortBy", sortBy)
                 .Add("sortDir", sortDir)
+                // API-only in v1 (issue #27 Non-Goal 7): no page reads it, but a consumer asking
+                // "which policies is this contact on?" has an answer.
+                .AddMany("contactIds", contactIds?.Select(id => id.ToString()).ToList())
                 .Build(),
             ct);
 

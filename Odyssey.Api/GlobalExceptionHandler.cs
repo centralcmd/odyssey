@@ -94,13 +94,14 @@ public static class GlobalExceptionHandler
 
     /// <summary>
     /// The problem-details extensions a domain error contributes: its <c>code</c> discriminator, and —
-    /// for a field-attributable validation failure — the standard <c>errors</c> dictionary, so a form
-    /// can render the message on the offending control instead of only in a toast (issue #421 Wave 0b).
+    /// for a field-attributable failure (a validation 400, or a 422 for a cap) — the standard
+    /// <c>errors</c> dictionary, so a form can render the message on the offending control instead of
+    /// only in a toast (issue #421 Wave 0b, widened in issue #27).
     /// Returns null when the error carries neither, keeping the response byte-identical to before.
     /// </summary>
     private static IDictionary<string, object?>? DomainExtensions(DomainException domain)
     {
-        var errors = domain is DomainValidationException { Errors: { } fieldErrors } ? fieldErrors : null;
+        var errors = domain.Errors;
 
         if (domain.Code is null && errors is null)
         {

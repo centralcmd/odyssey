@@ -12,9 +12,21 @@ public sealed record ExistingInsurancePolicy
 
     public InsurancePolicyType Type { get; set; }
 
-    public required InsurerReference Insurer { get; set; }
+    /// <summary>
+    /// The contacts carrying this cover. Optional and possibly empty (issue #27 Goal 2): a policy
+    /// drafted before the insurer is known is a valid, healthy record. Ordered by resolved display
+    /// name ascending, server-side; an unnamed member (archived / unresolvable) sorts last.
+    /// </summary>
+    public List<PolicyContactReference> Insurers { get; set; } = new();
 
-    public InsuredAccountReference? InsuredAccount { get; set; }
+    /// <summary>The accounts representing the insured assets.</summary>
+    public List<InsuredAccountReference> InsuredAccounts { get; set; } = new();
+
+    /// <summary>The people and organisations insured under this policy.</summary>
+    public List<PolicyContactReference> InsuredContacts { get; set; } = new();
+
+    /// <summary>Who receives on this policy — a person, or an organisation such as a trust or estate.</summary>
+    public List<PolicyContactReference> Beneficiaries { get; set; } = new();
 
     public string? Notes { get; set; }
 

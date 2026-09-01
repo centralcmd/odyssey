@@ -73,14 +73,16 @@
                     var typeInfo = OdsTypeRegistries.InsurancePolicyTypeOf(p.Type);
                     var headline = Headline(p);
                     var detail = _details.GetValueOrDefault(p.InsurancePolicyId);
-                    var insurerMeta = OdsTypeRegistries.ContactTypeOf(p.Insurer.Type.ToString());
 
-                    @* The meta line: type · insurer · policy number. The insurer is a REFERENCE to a
-                       contact, so it keeps that contact type's own glyph. *@
+                    @* The meta line: type · insurers · policy number. The insurers are REFERENCES to
+                       contacts, so the segment keeps the contact type's own glyph — the generic
+                       "link" glyph where they are of mixed type. It is omitted entirely when the
+                       policy names none: zero insurers is valid now, so absence is no longer "the
+                       fact". *@
                     var meta = new List<RenderFragment?>
                     {
                         OdsRecordMeta.Text(typeInfo.Label),
-                        InsurerMeta(insurerMeta.Icon, p.Insurer.Name),
+                        p.Insurers.Count == 0 ? null : InsurerMeta(InsurerGlyph(p.Insurers), InsurerNames(p.Insurers)),
                         string.IsNullOrWhiteSpace(p.PolicyNumber) ? null : PolicyNumberMeta(p.PolicyNumber),
                     };
 
@@ -133,9 +135,10 @@
                         else
                         {
                             @* The policy's full field set, each tile rendering on its own field. Empty
-                               fields drop out — except the insurer, where the absence is the fact: a
-                               policy without one is broken, so it says so rather than vanishing. *@
-                            var dInsurerMeta = OdsTypeRegistries.ContactTypeOf(detail.Insurer.Type.ToString());
+                               fields drop out — the four link collections included: zero members is a
+                               healthy state, so a collection with none renders no tile at all. The
+                               links live in their own PARTIES section below rather than among the
+                               policy's own fields, because each one is a whole referenced record. *@
                             var statusMeta = OdsCoverageStatus.Meta(detail.CoverageStatus);
                             <OdsInfoTileGrid>
                                 <OdsInfoTile Icon="shield" Label="Name"
@@ -156,24 +159,6 @@
                                 <OdsInfoTile Icon="@typeInfo.Icon" Label="Type" ValueVariant="OdsInfoTileVariant.Text">
                                     <Value>@typeInfo.Label</Value>
                                 </OdsInfoTile>
-
-                                @* Referenced records keep their own mark — they point elsewhere. *@
-                                <OdsInfoTile Icon="@dInsurerMeta.Icon" IconColor="@dInsurerMeta.Color" IconSoft="@dInsurerMeta.Soft"
-                                             Label="Insurer" ValueVariant="OdsInfoTileVariant.Text"
-                                             Foot="@OdsInfoTile.Caption(dInsurerMeta.Label)">
-                                    <Value>@detail.Insurer.Name</Value>
-                                </OdsInfoTile>
-
-                                @if (detail.InsuredAccount is { } insured)
-                                {
-                                    <OdsInfoTile Icon="@AccountTypeVisuals.MaterialIcon(insured.Type)"
-                                                 IconColor="@AccountTypeVisuals.FgColor(insured.Type)"
-                                                 IconSoft="@AccountTypeVisuals.BgColor(insured.Type)"
-                                                 Label="Insured account" ValueVariant="OdsInfoTileVariant.Text"
-                                                 Foot="@OdsInfoTile.Caption(AccountTypeVisuals.Label(insured.Type))">
-                                        <Value>@insured.Name</Value>
-                                    </OdsInfoTile>
-                                }
 
                                 @* A DERIVED summary: the state, plus the date that state began. The
                                    foot names the period the STATUS refers to, which is only the
@@ -214,6 +199,24 @@
                     <Sections>
                         @if (detail is not null)
                         {
+                            @* PARTIES — who and what is on the policy, as its own section: one tile per
+                               linked record, in write order (insurers, then the insured, then
+                               beneficiaries). Omitted entirely when the policy names nobody. *@
+                            var partyCount = detail.Insurers.Count + detail.InsuredAccounts.Count
+                                + detail.InsuredContacts.Count + detail.Beneficiaries.Count;
+                            if (partyCount > 0)
+                            {
+                                <div class="ins-section">
+                                    <OdsSectionDivider Label="Parties" Meta="@($"{partyCount} link{(partyCount == 1 ? "" : "s")}")" />
+                                    <OdsInfoTileGrid>
+                                        <InsurancePolicyLinkTiles Members="ContactMembers(detail.Insurers)" Label="Insurer" FallbackIcon="groups" />
+                                        <InsurancePolicyLinkTiles Members="AccountMembers(detail.InsuredAccounts)" Label="Insured" FallbackIcon="account_balance_wallet" />
+                                        <InsurancePolicyLinkTiles Members="ContactMembers(detail.InsuredContacts)" Label="Insured" FallbackIcon="person" />
+                                        <InsurancePolicyLinkTiles Members="ContactMembers(detail.Beneficiaries)" Label="Beneficiary" FallbackIcon="volunteer_activism" />
+                                    </OdsInfoTileGrid>
+                                </div>
+                            }
+
                             <InsurancePolicyDetailView Policy="detail"
                                                        Money="@MoneyFunc"
                                                        CanWrite="_canUpdate"
@@ -250,8 +253,10 @@
 {
     <CreateInsurancePolicyDialog @key="_createKey"
                                  @bind-Open="_createOpen"
-                                 Insurers="_insurerOptions"
+                                 Contacts="_contactOptions"
                                  Accounts="_accountOptions"
+                                 OptionsLoading="_optionsLoading"
+                                 OnStaleOptions="ReloadReferenceOptions"
                                  OnSaved="OnPolicyCreated" />
 }
 
@@ -260,8 +265,10 @@
     <CreateInsurancePolicyDialog @key="_editPolicyKey"
                                  @bind-Open="_editPolicyOpen"
                                  InsurancePolicy="_editPolicy"
-                                 Insurers="_insurerOptions"
+                                 Contacts="_contactOptions"
                                  Accounts="_accountOptions"
+                                 OptionsLoading="_optionsLoading"
+                                 OnStaleOptions="ReloadReferenceOptions"
                                  OnSaved="OnPolicyEdited" />
 }
 
@@ -289,9 +296,9 @@
     // cannot live in the code-behind. One span each, so each becomes the .odc-record-metaitem's only
     // child and picks up the meta line's alignment.
 
-    private RenderFragment InsurerMeta(string icon, string name) =>
+    private RenderFragment InsurerMeta(string icon, string names) =>
         @<span class="ins-sub-insurer">
-            <span class="material-icons" aria-hidden="true">@icon</span><span>@name</span>
+            <span class="material-icons" aria-hidden="true">@icon</span><span>@names</span>
         </span>;
 
     private RenderFragment PolicyNumberMeta(string policyNumber) =>

@@ -84,18 +84,20 @@ public class SystemSettingsBoundsTests
 
     /// <summary>
     /// The census, so a wrong denominator cannot scope a future fix to a subset of its own defect class.
-    /// 38 int keys before issue #437, 41 after, 42 once issue #8 added the SMTP port.
+    /// 38 int keys before issue #437, 41 after, 42 once issue #8 added the SMTP port, 43 once issue #27
+    /// added the insurance link cap.
     /// </summary>
     [Fact]
-    public void The_int_key_census_is_forty_two()
+    public void The_int_key_census_is_forty_three()
     {
-        Assert.Equal(42, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
-        Assert.Equal(42, IntProperties.Count);
+        Assert.Equal(43, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
+        Assert.Equal(43, IntProperties.Count);
 
         // …and the whole registry equals the persisted key catalogue, which is the check that the
         // per-kind counts are right rather than merely consistent with each other. Issue #8 added four:
         // one int (the SMTP port), one bool (STARTTLS) and two strings (the host and the link origin).
-        Assert.Equal(66, SystemSettingsRegistry.All.Count);
+        // Issue #27 added one more int, InsuranceMaxLinksPerPolicy.
+        Assert.Equal(67, SystemSettingsRegistry.All.Count);
         Assert.Equal(5, SystemSettingsRegistry.All.OfType<BoolSetting>().Count());
         Assert.Equal(8, SystemSettingsRegistry.All.OfType<CapacitySetting>().Count());
         Assert.Equal(10, SystemSettingsRegistry.All.OfType<StringSetting>().Count());

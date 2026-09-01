@@ -250,7 +250,17 @@ public class DtoValidationBoundaryTests
         await PostExpectingBadRequest("/api/insurance-policies", new NewInsurancePolicy
         {
             Name = new string('x', 129), // [StringLength(128, MinimumLength = 1)]
-            InsurerId = Guid.NewGuid(),
+            InsurerIds = [Guid.NewGuid()],
+        });
+
+    [Fact]
+    public async Task CreateInsurancePolicy_LinkArrayOverCompileTimeCeiling_Returns400() =>
+        // The compile-time ceiling on each link collection (issue #27 §9). It runs in model validation,
+        // ahead of the service's live effective cap, so an over-length array never reaches the lookup.
+        await PostExpectingBadRequest("/api/insurance-policies", new NewInsurancePolicy
+        {
+            Name = "Home contents",
+            BeneficiaryIds = [.. Enumerable.Range(0, InsuranceLinkLimits.MaxLinksPerPolicy + 1).Select(_ => Guid.NewGuid())],
         });
 
     [Fact]
@@ -258,7 +268,7 @@ public class DtoValidationBoundaryTests
         await PostExpectingBadRequest("/api/insurance-policies", new NewInsurancePolicy
         {
             Name = "Home contents",
-            InsurerId = Guid.NewGuid(),
+            InsurerIds = [Guid.NewGuid()],
             Notes = new string('x', 1025), // [StringLength(1024)]
         });
 

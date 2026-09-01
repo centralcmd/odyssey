@@ -20,6 +20,14 @@ public abstract class DomainException : Exception
     /// </summary>
     public virtual string? Code => null;
 
+    /// <summary>
+    /// Per-field messages for the problem-details <c>errors</c> extension, or <see langword="null"/>
+    /// when this rejection is not attributable to a specific field. On the base type because two of the
+    /// concrete kinds carry it: a <c>400</c> for an unresolvable link and a <c>422</c> for a collection
+    /// over its cap both belong on the same form control (issue #27 §11).
+    /// </summary>
+    public IReadOnlyDictionary<string, string[]>? Errors { get; protected init; }
+
     protected DomainException(string message) : base(message)
     {
     }
@@ -68,12 +76,6 @@ public sealed class DomainValidationException : DomainException
         Code = code;
         Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { [field] = [message] };
     }
-
-    /// <summary>
-    /// Per-field messages for the problem-details <c>errors</c> extension, or <see langword="null"/>
-    /// when this rejection is not attributable to a specific field.
-    /// </summary>
-    public IReadOnlyDictionary<string, string[]>? Errors { get; }
 }
 
 /// <summary>
@@ -111,5 +113,16 @@ public sealed class DomainUnprocessableException : DomainException
 
     public DomainUnprocessableException(string message) : base(message)
     {
+    }
+
+    /// <summary>
+    /// As above, plus the <paramref name="field"/> this rejection belongs to, surfaced in the
+    /// problem-details <c>errors</c> dictionary so a form can render the message on the offending
+    /// control. A cap that is exceeded is attributable to exactly one field, and the client needs to
+    /// mark and focus it (issue #27 §3 State 5, §11).
+    /// </summary>
+    public DomainUnprocessableException(string message, string field) : base(message)
+    {
+        Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { [field] = [message] };
     }
 }

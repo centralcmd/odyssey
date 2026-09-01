@@ -49,7 +49,7 @@ public class InsuranceServiceTests
         /// literals are inline rather than referencing SystemSettingsKeys because this project has no
         /// dependency on Odyssey.Context — the reason the interface lives in Odyssey.Core.Finance.
         /// </summary>
-        public FinanceRequestCaps Caps { get; set; } = new(25, 50, 1000, 100, 50);
+        public FinanceRequestCaps Caps { get; set; } = new(25, 50, 1000, 100, 50, 50);
 
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(Caps);
@@ -108,8 +108,8 @@ public class InsuranceServiceTests
     {
         Name = "Home cover",
         Type = DtoInsurancePolicyType.Home,
-        InsurerId = insurerId,
-        InsuredAccountId = accountId,
+        InsurerIds = [insurerId],
+        InsuredAccountIds = accountId is { } id ? [id] : null,
     };
 
     private static NewPolicyRenewal NewRenewal(
@@ -394,7 +394,7 @@ public class InsuranceServiceTests
         {
             Name = created.Name,
             Type = created.Type,
-            InsurerId = insurerId,
+            InsurerIds = [insurerId],
             Archived = true,
         });
 
@@ -563,7 +563,7 @@ public class InsuranceServiceTests
         {
             Caps = new FinanceRequestCaps(
                 MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
-                MaxRenewalsPerPolicy: 2, MaxFilesPerParent: 50),
+                MaxRenewalsPerPolicy: 2, MaxFilesPerParent: 50, MaxLinksPerPolicy: 50),
         });
         var insurerId = await SeedInsurer();
         var created = await service.Create(NewPolicy(insurerId));
@@ -640,7 +640,7 @@ public class InsuranceServiceTests
 
         var created = await service.Create(NewPolicy(insurerId, accountId));
 
-        Assert.Equal(accountId, created.InsuredAccount!.AccountId);
+        Assert.Equal(accountId, Assert.Single(created.InsuredAccounts).AccountId);
     }
 
     [Fact]
@@ -662,7 +662,7 @@ public class InsuranceServiceTests
         {
             Name = "Renamed cover",
             Type = created.Type,
-            InsurerId = insurerId,
+            InsurerIds = [insurerId],
         });
 
         Assert.Equal("Renamed cover", updated!.Name);
@@ -681,7 +681,7 @@ public class InsuranceServiceTests
             {
                 Name = created.Name,
                 Type = created.Type,
-                InsurerId = Guid.NewGuid(),
+                InsurerIds = [Guid.NewGuid()],
             }));
     }
 
@@ -696,7 +696,7 @@ public class InsuranceServiceTests
         {
             Caps = new FinanceRequestCaps(
                 MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
-                MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 1),
+                MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 1, MaxLinksPerPolicy: 50),
         });
         var insurerId = await SeedInsurer();
         var created = await service.Create(NewPolicy(insurerId));
@@ -781,7 +781,7 @@ public class InsuranceServiceTests
         {
             Name = archivedPolicy.Name,
             Type = archivedPolicy.Type,
-            InsurerId = insurerId,
+            InsurerIds = [insurerId],
             Archived = true,
         });
 
@@ -849,7 +849,7 @@ public class InsuranceServiceTests
 
         async Task<Guid> Seed(string name, DtoInsurancePolicyType type, decimal premium, DateTime end)
         {
-            var policy = await service.Create(new NewInsurancePolicy { Name = name, Type = type, InsurerId = insurerId });
+            var policy = await service.Create(new NewInsurancePolicy { Name = name, Type = type, InsurerIds = [insurerId] });
             await service.AddRenewal(policy.InsurancePolicyId, NewRenewal(FixedToday.AddDays(-10), end, premium: premium));
             return policy.InsurancePolicyId;
         }

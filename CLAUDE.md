@@ -150,9 +150,11 @@ could not declare one across a model boundary:
   insurer, contract party, file-analysis match) and a journal/photo row naming a file (`Photo.FileId`,
   the two attachment tables) used to be bare `Guid`s. They now carry the on-delete behaviour the
   application code was imitating — `SET NULL` for the optional contact links, `CASCADE` for
-  `ContractParty` and the file links, `RESTRICT` for the required `InsurancePolicy.InsurerId`.
+  `ContractParty` and the file links, `RESTRICT` for the three insurance contact links
+  (`InsurancePolicyInsurer`, `InsurancePolicyInsuredContact`, `InsurancePolicyBeneficiary`).
 - **User attribution:** the `CreatedByUserId`/`UpdatedByUserId`, `AttachedByUserId`,
-  `UploadedByUserId`, `RequestedByUserId` and `ReviewedByUserId` columns used to be bare strings, so
+  `UploadedByUserId`, `RequestedByUserId`, `ReviewedByUserId` and (issue #27)
+  `InsurancePolicyBeneficiary.CreatedByUserId` columns used to be bare strings, so
   deleting a user left every one of them naming an account that no longer existed. Every one is now an
   FK with **`SET NULL`** — these rows are *shared* data that must survive their author's departure, so
   `RESTRICT` (which would make any author undeletable) and `CASCADE` (which would destroy the shared
@@ -166,6 +168,45 @@ could not declare one across a model boundary:
 That last group is what makes `users.delete` genuinely atomic: `UserAdministrationService.DeleteAsync`
 opens one transaction, and the cascades and set-nulls now resolve inside it. See
 `Odyssey.Context/README.md` for both tables.
+
+**An insurance policy's four link collections replaced two scalar columns** (issue #27):
+`InsurancePolicy.InsurerId` and `.InsuredAccountId` are gone, and `Insurers`, `InsuredAccounts`,
+`InsuredContacts` and `Beneficiaries` are the single representation. Every collection is **optional** —
+zero insurers is a valid, healthy state, so nothing on the read path may treat absence as a defect. Four
+narrow tables rather than one polymorphic table with a kind discriminator: the target types are fixed
+per collection and it is the *relationship* that differs, and `InsurancePolicyBeneficiary`'s attribution
+columns are the first instance of exactly the divergence that buys.
+
+Three rules that are easy to get backwards, and that the tests pin:
+
+- **A link whose target is archived or unresolvable keeps its row and loses its name.** Not the old
+  `"(unknown)"`-plus-GUID placeholder, and not an outright drop: the first leaks a GUID into the UI and
+  keeps disclosing archived names, and the second silently deletes link rows, because a full-set diff
+  computes the member the caller never saw as *removed*. The id is what keeps a read-modify-write round
+  trip honest; the name is the personal data and stays out.
+- **Omitting such a link from a write is refused with a `422`, not silently ignored.** A `200` whose
+  body did not match the request would misdescribe the write, and silently retaining would swallow a
+  genuinely deliberate removal in the race where the target was `Available` at load. The `422` names
+  both routes that work, **detach first** — unarchiving is globally visible and momentarily re-discloses
+  the name on every policy linking that contact.
+- **Every count counts link ROWS, never resolved names.** The list row's three counts, the `409` payload,
+  the `contactIds` filter and the read collections all count the same thing. Aligning a display count
+  onto resolved names would make a contact whose links are all unnamed look erasable when it is not.
+
+`DELETE /api/contacts/{id}?detachInsuranceLinks=true` is the supported release valve: it removes every
+insurance link naming the contact and deletes it **in one transaction**, composing `contacts.delete`
+with `insurance.update` rather than adding a claim. Its `409` counterpart is **claim-conditional**, and
+that conditional lives in `ContactController` — `DomainConflictException` carries a message and nothing
+else, and the domain service has no `ClaimsPrincipal`, so neither it nor `GlobalExceptionHandler` could
+shape one.
+
+**`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed only because the
+insurer foreign key had been removed; three real `RESTRICT` keys are back, so the database arbitrates
+the race it was written for and its violation maps to a `409` rather than a `500`. Removing the
+insurance call sites left it a mutex with no counterparty, still taking a pinned connection and a
+blocking ten-second acquire on every contact delete. Note this is **not** a counter-example to the rule
+below: the lock was an explicit no-op on non-relational providers, so it never protected the fast tiers
+either.
 
 The lookup services (`IContactLookup`, `IFileLookup`, `IPhotoLookup`, `IContactReferenceGuard`) stay,
 and are **not** redundant with the constraints: they build read-path projections without an `Include`,
@@ -184,6 +225,14 @@ is gone, and with it the one `__EFMigrationsHistory` table shared between two co
 **Data flow:** Controllers → domain services (e.g., `AccountService`, `TransactionService`) → EF Core DbContexts → MariaDB. DTOs map between layers using Mapster.
 
 ## Key Details
+
+**`ExecuteDeleteAsync`/`ExecuteUpdateAsync` throw on the EF InMemory provider.** They live in
+`EntityFrameworkCore.Relational`, so any cleanup written in them is unrunnable on the tier the
+application-code cascade exists to serve — a fix written that way passes review and can never pass its
+own test. Use tracked `RemoveRange` for anything the fast tiers must exercise. The exception is
+`ContactReferenceGuard.ClearAndCascadeReferencesAsync`, whose six statements are relational-only and
+predate the rule; the consequence is that **no full contact delete runs under `Odyssey.Api.Tests`**, so
+that path's coverage lives in `Odyssey.IntegrationTests`.
 
 **Database connections:** `appsettings.json` has empty connection strings by default. Docker Compose injects them as environment variables. `UseInMemoryDatabase=true` switches EF to the in-memory provider (used by tests). Note it enforces **no foreign keys at all**, so nothing in the two groups above is exercised by the fast tiers.
 

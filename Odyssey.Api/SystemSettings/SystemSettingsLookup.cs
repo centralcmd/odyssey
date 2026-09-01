@@ -98,6 +98,7 @@ public sealed class SystemSettingsLookup(
         SystemSettingsKeys.ContractMaxSummaryContracts,
         SystemSettingsKeys.InsuranceMaxRenewalsPerPolicy,
         SystemSettingsKeys.InsuranceMaxFilesPerParent,
+        SystemSettingsKeys.InsuranceMaxLinksPerPolicy,
     ];
 
     private static readonly string[] SubscriptionKeys =
@@ -175,7 +176,11 @@ public sealed class SystemSettingsLookup(
             Resolve(values, readFailed, SystemSettingsKeys.InsuranceMaxFilesPerParent,
                 SystemSettingsDefaults.InsuranceMaxFilesPerParent,
                 SystemSettingsBounds.InsuranceMaxFilesPerParentMin,
-                SystemSettingsBounds.InsuranceMaxFilesPerParentMax));
+                SystemSettingsBounds.InsuranceMaxFilesPerParentMax),
+            Resolve(values, readFailed, SystemSettingsKeys.InsuranceMaxLinksPerPolicy,
+                SystemSettingsDefaults.InsuranceMaxLinksPerPolicy,
+                SystemSettingsBounds.InsuranceMaxLinksPerPolicyMin,
+                SystemSettingsBounds.InsuranceMaxLinksPerPolicyMax));
 
         cache.Set(SystemSettingsService.FinanceCapsCacheKey, caps, CacheTtl);
         return caps;

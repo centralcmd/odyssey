@@ -121,6 +121,13 @@ public static class SystemSettingsKeys
     public const string ContractMaxSummaryContracts = "ContractMaxSummaryContracts";
     public const string InsuranceMaxRenewalsPerPolicy = "InsuranceMaxRenewalsPerPolicy";
     public const string InsuranceMaxFilesPerParent = "InsuranceMaxFilesPerParent";
+
+    /// <summary>
+    /// Members allowed in each of an insurance policy's four link collections (issue #27). One cap
+    /// applied per collection, not four settings — "at most 50 insurers" and "at most 50 beneficiaries"
+    /// are the same kind of limit.
+    /// </summary>
+    public const string InsuranceMaxLinksPerPolicy = "InsuranceMaxLinksPerPolicy";
     public const string PhotoMaxLinksPerKind = "PhotoMaxLinksPerKind";
     public const string PhotoMaxAlbumMembers = "PhotoMaxAlbumMembers";
     public const string JournalEntryMaxLinksPerKind = "JournalEntryMaxLinksPerKind";
@@ -238,6 +245,7 @@ public static class SystemSettingsKeys
         ContractMaxSummaryContracts,
         InsuranceMaxRenewalsPerPolicy,
         InsuranceMaxFilesPerParent,
+        InsuranceMaxLinksPerPolicy,
         PhotoMaxLinksPerKind,
         PhotoMaxAlbumMembers,
         JournalEntryMaxLinksPerKind,

@@ -79,6 +79,16 @@ public sealed class InsurancePoliciesQueryParams : QueryParams<InsuranceSortBy>
 
     [MaxLength(ListDefaults.MaxFilterArrayLength)]
     public CoverageStatus[]? Statuses { get; set; }
+
+    /// <summary>
+    /// Matches policies where the given contact appears in <b>any</b> of the three contact collections
+    /// — insurers, insured contacts or beneficiaries (issue #27 §6). <b>API-only in v1</b>: there is no
+    /// filter-bar control and no query-string binding on the page (Non-Goal 7). A row does not indicate
+    /// <i>why</i> it matched; a future filter UI that needs to explain the match will need a
+    /// matched-kind projection.
+    /// </summary>
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public Guid[]? ContactIds { get; set; }
 }
 
 /// <summary>Subscriptions list query: filter by billing interval(s) and derived lifecycle status(es).</summary>

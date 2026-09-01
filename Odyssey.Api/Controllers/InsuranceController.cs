@@ -79,11 +79,25 @@ public class InsuranceController : ControllerBase
     [Authorize(Policy = PermissionClaims.InsuranceCreate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingInsurancePolicy))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create an insurance policy.")]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Create an insurance policy.",
+        Description = @"The four link collections — insurerIds, insuredAccountIds, insuredContactIds and
+beneficiaryIds — are arrays of scalar ids, all optional. 400 when an id names no existing, non-archived
+record or an array is longer than the compile-time ceiling; 422 when a collection exceeds the effective
+InsuranceMaxLinksPerPolicy cap.")]
     public async Task<IActionResult> Post(
         [FromBody] NewInsurancePolicy request, CancellationToken cancellationToken = default)
     {
-        var created = await service.Create(request, cancellationToken);
+        // The calling user is stamped on any beneficiary link this write creates — the same
+        // User.FindFirstValue pattern AttachPolicyRenewalFile already uses, and the only source of
+        // InsurancePolicyBeneficiary.CreatedByUserId.
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        var created = await service.Create(request, userId, cancellationToken);
         return CreatedAtRoute("GetInsurancePolicy", new { id = created.InsurancePolicyId }, created);
     }
 
@@ -92,12 +106,22 @@ public class InsuranceController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingInsurancePolicy))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update an insurance policy's fields.")]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Update an insurance policy's fields.",
+        Description = @"For each of the four link collections, null leaves it unchanged and [] clears it.
+422 when a collection would exceed the effective cap, or when the submitted array omits a stored link
+whose target is archived or no longer resolves — such a link cannot be removed by an ordinary write.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateInsurancePolicy request, CancellationToken cancellationToken = default)
     {
-        var updated = await service.Update(id, request, cancellationToken);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        var updated = await service.Update(id, request, userId, cancellationToken);
         return updated is null ? this.NotFoundProblem($"Insurance policy ID {id} not found.") : Ok(updated);
     }
 

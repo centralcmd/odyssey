@@ -1,0 +1,100 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    InsurancePolicyLinkTiles — the read display of ONE of a policy's four link collections
+    (Odyssey Design System · Insurance "Parties" section).
+
+    One tile PER MEMBER, so every linked record reads as its own card with its own type glyph,
+    colour, name and type caption — a referenced record points elsewhere, so it reads as that record
+    rather than as a line in a list. Empty collections render nothing at all: zero members is a
+    healthy state, including zero insurers.
+
+    An UNNAMED member (archived, or no longer resolvable) shows the STATE WORD where its name would
+    be — the read model carries the id and the type, never the name — with no type caption at all
+    when the link is unresolvable, since there is no contact row to read a type from. Meaning never
+    rides on the glyph alone.
+
+    Past five members the collection collapses into a "+N more" tile that expands in place, so a
+    collection at the cap of 50 has a defined rendering.
+*@
+
+@if (Members.Count > 0)
+{
+    var shown = _expanded ? Members : Members.Take(TileLimit).ToList();
+    var hidden = Members.Count - shown.Count;
+
+    @foreach (var member in shown)
+    {
+        <OdsInfoTile Icon="@(member.Unnamed ? UnnamedIcon(member) : (member.Icon ?? FallbackIcon))"
+                     IconColor="@(member.Unnamed ? null : member.IconColor)"
+                     IconSoft="@(member.Unnamed ? null : member.IconSoft)"
+                     @* The label is the collection's SINGULAR name, repeated per member — no position
+                        and no count: the tiles themselves are the count, and the caption slot keeps
+                        the type, which is where the record's meaning lives in text. *@
+                     Label="@Label"
+                     ValueVariant="OdsInfoTileVariant.Text"
+                     WrapValue="true"
+                     Tone="@(member.Unnamed ? OdsInfoTileTone.Muted : OdsInfoTileTone.Default)"
+                     Foot="@OdsInfoTile.Caption(member.TypeLabel)">
+            <Value>@member.Display</Value>
+        </OdsInfoTile>
+    }
+
+    @if (hidden > 0)
+    {
+        <OdsInfoTile Icon="more_horiz" Label="@Label" ValueVariant="OdsInfoTileVariant.Text"
+                     Tone="OdsInfoTileTone.Muted"
+                     Foot="@OdsInfoTile.Caption($"{Members.Count} in total")">
+            <Value>
+                <button type="button" class="ins-linkmore" @onclick="@(() => _expanded = true)">
+                    +@hidden more
+                </button>
+            </Value>
+        </OdsInfoTile>
+    }
+}
+
+@code {
+    /// <summary>Members a collection names before it collapses into "+N more".</summary>
+    public const int TileLimit = 5;
+
+    /// <summary>The collection's members, already in the server's display order.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<LinkTileMember> Members { get; set; } = [];
+
+    /// <summary>The collection's SINGULAR name — "Insurer", "Insured", "Beneficiary".</summary>
+    [Parameter, EditorRequired] public string? Label { get; set; }
+
+    /// <summary>Glyph for a member whose own type resolves to none.</summary>
+    [Parameter] public string FallbackIcon { get; set; } = "link";
+
+    private bool _expanded;
+
+    private static string UnnamedIcon(LinkTileMember member) =>
+        member.State == LinkAvailability.Archived ? "inventory_2" : "link_off";
+
+    /// <summary>
+    /// One member of a link collection, flattened for display. Built by the host, which holds both
+    /// the reference DTO and the type registry the glyph and colour come from.
+    /// </summary>
+    public sealed record LinkTileMember
+    {
+        public required string Key { get; init; }
+
+        /// <summary>The name, or the state word for an unnamed member — always in TEXT.</summary>
+        public required string Display { get; init; }
+
+        /// <summary>The type, in text. Null for an unresolvable link, which has no type to state.</summary>
+        public string? TypeLabel { get; init; }
+
+        public string? Icon { get; init; }
+
+        public string? IconColor { get; init; }
+
+        public string? IconSoft { get; init; }
+
+        public LinkAvailability State { get; init; } = LinkAvailability.Available;
+
+        public bool Unnamed => State != LinkAvailability.Available;
+    }
+}

@@ -131,6 +131,13 @@ public static class SystemSettingsDefaults
     public const int ContractMaxSummaryContracts = 1000;
     public const int InsuranceMaxRenewalsPerPolicy = 100;
     public const int InsuranceMaxFilesPerParent = 50;
+
+    /// <summary>
+    /// Members in each of a policy's four link collections (issue #27). Equal to
+    /// <c>InsuranceLinkLimits.MaxLinksPerPolicy</c>, the compile-time ceiling that pre-empts it: the
+    /// shipped default is the ceiling, so the setting can only ever tighten.
+    /// </summary>
+    public const int InsuranceMaxLinksPerPolicy = Finance.InsuranceLinkLimits.MaxLinksPerPolicy;
     public const int PhotoMaxLinksPerKind = 50;
     public const int PhotoMaxAlbumMembers = 1000;
     public const int JournalEntryMaxLinksPerKind = 50;

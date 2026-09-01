@@ -121,6 +121,9 @@ public static class SystemSettingsBounds
     public const int InsuranceMaxFilesPerParentMin = 1;
     public const int InsuranceMaxFilesPerParentMax = 100000;
 
+    public const int InsuranceMaxLinksPerPolicyMin = 1;
+    public const int InsuranceMaxLinksPerPolicyMax = 100000;
+
     public const int PhotoMaxLinksPerKindMin = 1;
     public const int PhotoMaxLinksPerKindMax = 100000;
 

@@ -54,6 +54,39 @@ public sealed record ApiProblem
     public string? ErrorFor(string field) =>
         Errors.TryGetValue(field, out var messages) && messages.Length > 0 ? messages[0] : null;
 
+    /// <summary>
+    /// Any further problem-details extension members, unparsed. RFC 7807 lets a response carry
+    /// arbitrary extensions, and a handful do — the blocked contact delete names which insurance link
+    /// kinds refuse it, and which policies when the caller may see them (issue #27 §7 #5). Read one
+    /// with <see cref="Extension{T}"/> rather than adding a typed property per feature, which would
+    /// grow this shared shape for every consumer's private payload.
+    /// </summary>
+    [JsonExtensionData]
+    public IDictionary<string, JsonElement>? Extensions { get; init; }
+
+    /// <summary>
+    /// Deserializes the named extension member, or <see langword="null"/> when the response carried no
+    /// such member or it does not deserialize into <typeparamref name="T"/> — a malformed extension is
+    /// an absent one, never a throw on an error path.
+    /// </summary>
+    public T? Extension<T>(string name)
+        where T : class
+    {
+        if (Extensions is null || !Extensions.TryGetValue(name, out var element))
+        {
+            return null;
+        }
+
+        try
+        {
+            return element.Deserialize<T>(ApiProblemExtensions.SerializerOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>The HTTP reason phrase, captured at parse time as a fallback when <see cref="Detail"/> is absent.</summary>
     [JsonIgnore]
     public string? ReasonFallback { get; init; }
@@ -74,6 +107,9 @@ public sealed record ApiProblem
 public static class ApiProblemExtensions
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+
+    /// <summary>The same web-defaults options, for reading a problem extension member.</summary>
+    internal static JsonSerializerOptions SerializerOptions => Options;
 
     /// <summary>
     /// Reads an RFC 7807 <c>problem+json</c> error body into an <see cref="ApiProblem"/>. Guards

@@ -634,6 +634,7 @@ public sealed class SystemSettingsService(
             // from the compile-time constants that also drive [MaxLength] on the photo request DTOs,
             // so the client can bound its control instead of offering a value the API will reject.
             PhotoMaxLinksPerKindCeiling = RequestCapCeilings.PhotoLinksPerKind,
+            InsuranceMaxLinksPerPolicyCeiling = RequestCapCeilings.InsuranceLinksPerPolicy,
             PhotoMaxAlbumMembersCeiling = RequestCapCeilings.PhotoAlbumMembers,
 
             // The upload cap's ceiling is startup configuration, not a constant (issue #421 Wave 4):

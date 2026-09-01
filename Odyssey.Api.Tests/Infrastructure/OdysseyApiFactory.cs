@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -22,11 +23,33 @@ public class OdysseyApiFactory(
     IReadOnlyCollection<string>? permissions = null,
     string actorUserId = TestAuthHandler.DefaultActorUserId,
     IReadOnlyDictionary<string, string?>? configuration = null,
-    Action<IServiceCollection>? configureServices = null)
+    Action<IServiceCollection>? configureServices = null,
+    OdysseyApiFactory? sharingStoreWith = null)
     : WebApplicationFactory<Program>
 {
-    private readonly string applicationDatabaseName = $"app-{Guid.NewGuid()}";
-    private readonly string domainDatabaseName = $"domain-{Guid.NewGuid()}";
+    private readonly string applicationDatabaseName = sharingStoreWith?.applicationDatabaseName ?? $"app-{Guid.NewGuid()}";
+    private readonly string domainDatabaseName = sharingStoreWith?.domainDatabaseName ?? $"domain-{Guid.NewGuid()}";
+
+    /// <summary>
+    /// ONE store root for the whole assembly, deliberately: a database NAME alone is scoped to EF's
+    /// internal service provider, which each host builds its own of, so two factories naming the same
+    /// database would silently get two separate stores. Isolation still comes from the per-factory
+    /// GUID names above — the root only makes a shared name actually shared.
+    ///
+    /// <para>
+    /// It is static rather than per-factory because a fresh root per factory makes every options
+    /// instance distinct, which makes EF build a new internal service provider per factory and trips
+    /// <c>ManyServiceProvidersCreatedWarning</c> — an exception by default — once a run passes twenty.
+    /// </para>
+    ///
+    /// <para>
+    /// Why share a store at all: a claim-conditional response and a composed permission gate can only
+    /// be exercised by a SECOND principal against the first one's data (issue #27 §16 #34). Nothing
+    /// else should reach for <c>sharingStoreWith</c> — an isolated store per factory is the default
+    /// for good reason.
+    /// </para>
+    /// </summary>
+    private static readonly InMemoryDatabaseRoot DatabaseRoot = new();
 
     /// <summary>
     /// A per-factory Data Protection keys directory (issue #444 §5). Without it this host runs on an
@@ -73,7 +96,7 @@ public class OdysseyApiFactory(
         {
             services.RemoveAll<DbContextOptions<OdysseyContext>>();
             services.AddDbContext<OdysseyContext>(options =>
-                options.UseInMemoryDatabase(applicationDatabaseName)
+                options.UseInMemoryDatabase(applicationDatabaseName, DatabaseRoot)
                     // UserAdministrationService's delete opens a transaction so the acceptance-row
                     // pseudonymization commits with the deletion (issue #354 §6) — a genuine no-op on
                     // InMemory, which would otherwise throw rather than ignore it.
@@ -83,7 +106,7 @@ public class OdysseyApiFactory(
             // avoid cross-test pollution.
             services.RemoveAll<DbContextOptions<OdysseyContext>>();
             services.AddDbContext<OdysseyContext>(options =>
-                options.UseInMemoryDatabase(domainDatabaseName)
+                options.UseInMemoryDatabase(domainDatabaseName, DatabaseRoot)
                     // EF Core InMemory doesn't support real transactions and throws by default rather
                     // than silently no-opping — ContactVCardService's import path opens one for
                     // atomicity (issue #338 review), which is a genuine no-op here. The actual

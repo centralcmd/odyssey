@@ -179,3 +179,13 @@
                         Contact="_editTarget"
                         OnSaved="OnEditSaved" />
 }
+
+@if (_blockedKey != Guid.Empty && _blockedContact is { } blocked)
+{
+    <ContactInsuranceLinksDialog @key="_blockedKey"
+                                 @bind-Open="_blockedOpen"
+                                 ContactName="@blocked.ResolvedDisplayName"
+                                 Blockers="_blockedLinks"
+                                 CanUpdateInsurance="_canUpdateInsurance"
+                                 OnDetachAndDelete="DetachAndDeleteAsync" />
+}
