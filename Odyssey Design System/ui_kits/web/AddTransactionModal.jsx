@@ -342,7 +342,7 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
           </div>
 
           <Select label="Currency" value={draft.currency} onChange={set('currency')} options={ATM_CURRENCIES} />
-          <DateField label="Date" value={draft.date} onChange={set('date')} helper="Defaults to today" />
+          <DateField label="Date" value={draft.date} onChange={set('date')} help="Defaults to today" />
 
           <div className="odc-form-grid-wide">
             <Field

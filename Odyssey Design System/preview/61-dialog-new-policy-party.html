@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- @dsCard group="Dialogs" name="New / Edit insurance policy" subtitle="AddInsurancePolicyModal — policy details only (name, number, type, notes). Parties are managed one at a time from the policy's New party action; the link sets ride through this dialog untouched. Live." viewport="760x560" -->
+<!-- @dsCard group="Dialogs" name="New policy party" subtitle="AddPolicyPartyModal — choose a role (Insurer / Insured account / Insured contact / Beneficiary), pick the record from a pre-loaded Combobox, then optionally date the party's term in that role: both dates default to null — null start means the policy's own start, and a set start can't precede the first period. Live." viewport="760x760" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Odyssey · New insurance policy dialog</title>
+  <title>Odyssey · New policy party dialog</title>
   <link rel="stylesheet" href="../colors_and_type.css" />
   <link rel="stylesheet" href="../ui_kits/web/kit.css" />
   <link rel="stylesheet" href="../ui_kits/web/insurance.css" />
@@ -29,19 +29,21 @@
 </head>
 <body>
   <div class="specimen-bg">
-    <h1>Insurance</h1>
-    <p>5 policies · 1 expiring soon</p>
+    <h1>Home &amp; Contents 2026</h1>
+    <p>Property · parties</p>
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
   </div>
   <div id="root"></div>
 
   <script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
-  <script type="text/babel" src="../ui_kits/web/AddInsurancePolicyModal.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AddPolicyPartyModal.jsx"></script>
 
   <script type="text/babel" data-presets="env,react">
-    const AddInsurancePolicyModal = window.AddInsurancePolicyModal;
+    const AddPolicyPartyModal = window.AddPolicyPartyModal;
+    const D = window.OdysseyData;
+    const policy = (D.insurancePolicies || [])[0] || { insurerIds: [], insuredAccountIds: [], insuredContactIds: [], beneficiaryIds: [], renewals: [] };
     ReactDOM.createRoot(document.getElementById('root')).render(
-      <AddInsurancePolicyModal onClose={() => {}} onCreate={() => {}} />
+      <AddPolicyPartyModal policy={policy} onClose={() => {}} onAdd={() => {}} />
     );
   </script>
 </body>

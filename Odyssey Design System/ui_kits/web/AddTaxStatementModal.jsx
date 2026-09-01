@@ -149,7 +149,7 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
 
       <FormRow>
         <DateField label="Period start" value={draft.startDate} onChange={set('startDate')} />
-        <DateField label="Period end" value={draft.endDate} onChange={set('endDate')} helper={errors.endDate || 'Defaults to the calendar year.'} />
+        <DateField label="Period end" value={draft.endDate} onChange={set('endDate')} help="Defaults to the calendar year." error={errors.endDate} />
       </FormRow>
 
       {editing ? (

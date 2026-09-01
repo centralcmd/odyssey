@@ -152,7 +152,7 @@ const RecordRateModal = ({ onClose, onCreate, onSave, rate: editRate, initial })
       <Field label="Rate" value={draft.rate} onChange={set('rate')}
         placeholder="e.g. 0.9218" error={errors.rate}
         helper={draft.to ? `1 ${draft.from} = rate × ${draft.to} · must be greater than 0` : 'Units of the To currency per 1 unit of From'} />
-      <DateField label="Effective from (AsOf)" value={draft.asOf} onChange={set('asOf')} helper={editing ? 'When this rate takes effect' : 'Defaults to today'} />
+      <DateField label="Effective from (AsOf)" value={draft.asOf} onChange={set('asOf')} help={editing ? 'When this rate takes effect' : 'Defaults to today'} />
     </Modal>
   );
 };

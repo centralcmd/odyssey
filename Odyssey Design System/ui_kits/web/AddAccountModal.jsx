@@ -108,11 +108,11 @@ const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
 
       <FormRow>
         <Select label="Currency" value={draft.currency} onChange={set('currency')} options={AAM_CURRENCIES} />
-        <DateField label="Opened" value={draft.opened} onChange={set('opened')} helper="Defaults to today" />
+        <DateField label="Opened" value={draft.opened} onChange={set('opened')} help="Defaults to today" />
       </FormRow>
 
       {editing && (
-        <DateField label="Closed" value={draft.closed} onChange={set('closed')} helper="Leave empty while the account is active" />
+        <DateField label="Closed" value={draft.closed} onChange={set('closed')} help="Leave empty while the account is active" />
       )}
 
       <Field

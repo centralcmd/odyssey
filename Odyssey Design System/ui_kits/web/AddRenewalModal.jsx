@@ -78,8 +78,10 @@ const AddRenewalModal = ({ policy, renewal, onClose, onSave }) => {
         </React.Fragment>
       }>
       <FormRow>
-        <DateField label="Cover from" value={draft.fromDate} onChange={set('fromDate')} helper={errors.fromDate} />
-        <DateField label="Cover to" value={draft.toDate} onChange={set('toDate')} helper={errors.toDate || 'End of this period’s cover.'} />
+        <DateField label="Cover from" value={draft.fromDate} onChange={set('fromDate')}
+          help="Start of this period’s cover." error={errors.fromDate} />
+        <DateField label="Cover to" value={draft.toDate} onChange={set('toDate')}
+          help="End of this period’s cover." error={errors.toDate} />
       </FormRow>
 
       <FormRow>

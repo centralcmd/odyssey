@@ -113,7 +113,7 @@
     'Files.jsx', 'Transactions.jsx', 'TransactionTags.jsx', 'ContactImportModal.jsx', 'Contacts.jsx',
     'Currencies.jsx', 'ExchangeRates.jsx', 'AddBudgetModal.jsx', 'AddBudgetItemModal.jsx',
     'Budgets.jsx', 'AddTaxStatementModal.jsx', 'TaxStatements.jsx',
-    'AddInsurancePolicyModal.jsx', 'AddRenewalModal.jsx', 'InsuranceUploadModal.jsx', 'Insurance.jsx',
+    'AddInsurancePolicyModal.jsx', 'AddRenewalModal.jsx', 'InsuranceUploadModal.jsx', 'AddPolicyPartyModal.jsx', 'Insurance.jsx',
     'AddContractModal.jsx', 'AddContractPartyModal.jsx', 'AddContractFileModal.jsx', 'Contracts.jsx',
     'AddSubscriptionModal.jsx', 'Subscriptions.jsx',
     'ImportJournalEntriesModal.jsx', 'Journal.jsx', 'ImportTasksModal.jsx', 'Tasks.jsx',
