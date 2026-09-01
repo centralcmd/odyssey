@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"c0ff965931f8","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"405e74b88332","components/ContactChip.jsx":"595200f6059a","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"d3a9026394fa","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"fc773cfaf6b8","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"806ae364ec54","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"63773ec5d23e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"bf69671bfea5","ui_kits/web/AddAccountModal.jsx":"35d6d60bd403","ui_kits/web/AddBudgetItemModal.jsx":"8dc5d7b427ba","ui_kits/web/AddBudgetModal.jsx":"edd942d3d192","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"8a96b0d53c48","ui_kits/web/AddEstimateModal.jsx":"4e2dd58b032a","ui_kits/web/AddFileModal.jsx":"35a97b29e621","ui_kits/web/AddInsurancePolicyModal.jsx":"62bb9c3b92f9","ui_kits/web/AddRenewalModal.jsx":"bb6ea59154dc","ui_kits/web/AddSubscriptionModal.jsx":"29f8104f027b","ui_kits/web/AddTaxStatementModal.jsx":"054ea5a1d78a","ui_kits/web/AddTermModal.jsx":"4a9ce4542ade","ui_kits/web/AddTransactionModal.jsx":"625177041c8d","ui_kits/web/AnalyzeFileModal.jsx":"d45f26f5e580","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"f4010640760d","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"8000224353ab","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c388d4828996","ui_kits/web/Contracts.jsx":"35250a2eff35","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"affc48614941","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"db3f18a11ae0","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"fc3bd4b9465c","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"f13761a94a44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7033ff0bc236","ui_kits/web/Preferences.jsx":"c56b25306430","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"bd7a50a736b5","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"8d8baebaa4a7","ui_kits/web/data.js":"acffb8e12396","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"c98d7395c179","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"c0ff965931f8","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"405e74b88332","components/ContactChip.jsx":"595200f6059a","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"d3a9026394fa","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"fc773cfaf6b8","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"806ae364ec54","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"63773ec5d23e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"bf69671bfea5","ui_kits/web/AddAccountModal.jsx":"b19baa5c9166","ui_kits/web/AddBudgetItemModal.jsx":"8dc5d7b427ba","ui_kits/web/AddBudgetModal.jsx":"44cfa55f8440","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"3833b7a19a10","ui_kits/web/AddEstimateModal.jsx":"4e2dd58b032a","ui_kits/web/AddFileModal.jsx":"35a97b29e621","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"5af0bf6bd424","ui_kits/web/AddRenewalModal.jsx":"465143ecc3bf","ui_kits/web/AddSubscriptionModal.jsx":"29f8104f027b","ui_kits/web/AddTaxStatementModal.jsx":"7644d3ab69f1","ui_kits/web/AddTermModal.jsx":"4a9ce4542ade","ui_kits/web/AddTransactionModal.jsx":"e92215161049","ui_kits/web/AnalyzeFileModal.jsx":"d45f26f5e580","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"f4010640760d","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"8000224353ab","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c388d4828996","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"d933de61fd4f","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"db3f18a11ae0","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"f13761a94a44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7033ff0bc236","ui_kits/web/Preferences.jsx":"c56b25306430","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"bd7a50a736b5","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"acffb8e12396","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"c98d7395c179","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -19732,12 +19732,12 @@ const AddAccountModal = ({
     label: "Opened",
     value: draft.opened,
     onChange: set('opened'),
-    helper: "Defaults to today"
+    help: "Defaults to today"
   })), editing && /*#__PURE__*/React.createElement(DateField, {
     label: "Closed",
     value: draft.closed,
     onChange: set('closed'),
-    helper: "Leave empty while the account is active"
+    help: "Leave empty while the account is active"
   }), /*#__PURE__*/React.createElement(Field, {
     label: "Account number",
     value: draft.accountNumber,
@@ -19988,18 +19988,14 @@ const AddBudgetModal = ({
     label: "Start date",
     value: draft.startDate,
     onChange: set('startDate'),
-    helper: "Defaults to today"
+    help: "Defaults to today"
   }), /*#__PURE__*/React.createElement(DateField, {
     label: "End date",
     value: draft.endDate,
     onChange: set('endDate'),
-    helper: errors.endDate || 'Defaults to +1 month'
-  })), errors.endDate && /*#__PURE__*/React.createElement("div", {
-    className: "helper aam-err",
-    style: {
-      marginTop: -8
-    }
-  }, errors.endDate), /*#__PURE__*/React.createElement(Select, {
+    help: "Defaults to +1 month",
+    error: errors.endDate
+  })), /*#__PURE__*/React.createElement(Select, {
     label: "Base currency",
     value: draft.currency,
     onChange: set('currency'),
@@ -20749,14 +20745,14 @@ Object.assign(window, {
 try { (() => {
 /* AddContractPartyModal — add a party to a contract (§3 step 3, §7 POST
    …/parties). The accessible two-step picker the spec mandates (frontend B2):
-     1. choose the party KIND — Account / Contact / Insurance policy
+     1. choose the party KIND — Account / Contact
      2. pick the specific record from a type-to-filter `Combobox` whose options
         are PRE-LOADED for the chosen kind (no in-widget async fetch — the
         candidate lists are handed in up front, keeping it inside Combobox's
         accessible contract). The inaccessible CreateTransactionDialog popover
         is deliberately NOT used.
    On save the party is created from a SCALAR ID only (accountId xor
-   contactId xor insurancePolicyId — the XOR + anti-over-posting invariant,
+   contactId — the XOR + anti-over-posting invariant,
    §6/§10). Already-linked targets are filtered out so the same record can't be
    attached twice (the §9 duplicate guard, surfaced before submit). */
 
@@ -20770,11 +20766,6 @@ const CONTRACT_PARTY_KINDS = [{
   label: 'Contact',
   icon: 'groups',
   field: 'contactId'
-}, {
-  kind: 'insurancePolicy',
-  label: 'Insurance policy',
-  icon: 'shield',
-  field: 'insurancePolicyId'
 }];
 const AddContractPartyModal = ({
   contract,
@@ -20795,18 +20786,16 @@ const AddContractPartyModal = ({
   const linked = useMemo(() => {
     const s = {
       accountId: new Set(),
-      contactId: new Set(),
-      insurancePolicyId: new Set()
+      contactId: new Set()
     };
     (contract.parties || []).forEach(p => {
       if (p.accountId) s.accountId.add(p.accountId);
       if (p.contactId) s.contactId.add(p.contactId);
-      if (p.insurancePolicyId) s.insurancePolicyId.add(p.insurancePolicyId);
     });
     return s;
   }, [contract.parties]);
   const def = CONTRACT_PARTY_KINDS.find(k => k.kind === kind);
-  const allOptions = kind === 'account' ? H.conAccountOptions() : kind === 'contact' ? H.conInstitutionOptions() : H.conPolicyOptions();
+  const allOptions = kind === 'account' ? H.conAccountOptions() : H.conInstitutionOptions();
   const options = allOptions.filter(o => !linked[def.field].has(o.value));
   const pickKind = k => {
     setKind(k);
@@ -20824,8 +20813,8 @@ const AddContractPartyModal = ({
     });
   };
   return /*#__PURE__*/React.createElement(Modal, {
-    title: "Add party",
-    subtitle: "Link the account, contact, or insurance policy this contract relates to.",
+    title: "New party",
+    subtitle: "Link the account or contact this contract relates to.",
     icon: "group_add",
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -20836,7 +20825,7 @@ const AddContractPartyModal = ({
       color: "primary",
       icon: "add",
       onClick: submit
-    }, "Add party"))
+    }, "Create party"))
   }, /*#__PURE__*/React.createElement(FieldShell, {
     label: "Party kind"
   }, /*#__PURE__*/React.createElement("div", {
@@ -21287,47 +21276,32 @@ try { (() => {
      • type                (InsurancePolicyType)
      • insurerIds          (optional → Contact[])   ┐
      • insuredAccountIds   (optional → Account[])   │ four link collections,
-     • insuredContactIds   (optional → Contact[])   │ each a SET of scalar ids
-     • beneficiaryIds      (optional → Contact[])   ┘
+     • insuredContactIds   (optional → Contact[])   │ each a SET of scalar ids,
+     • beneficiaryIds      (optional → Contact[])   ┘ carried through UNCHANGED
      • notes               (optional)
    Scalar ids only, at any depth (the §6/§10 mass-assignment invariant): the
    dialog never sends a nested Contact or Account object, so a policy write can
    never create or rename a linked record.
 
-   All four collections are OPTIONAL — a policy drafted before the insurer is
-   known is a valid, healthy record, so nothing here is required but the name and
-   the type. The save carries the complete desired set for each collection.
-
-   Chip order follows the picker's own model while editing (parent order, new ids
-   appended); the server orders by resolved display name, so the dialog RE-SORTS
-   ON LOAD only — the user never sees a reorder mid-edit.
-
-   An UNNAMED member (its contact archived, or no longer resolvable) has no name
-   in the read model, so it renders through ContactChip's Archived / Unavailable
-   state and carries NO remove control: an ordinary write cannot remove it. The
-   field help names the two routes that do work, detach first. */
-
-const AIP_LINK_CEILING = 50; // InsuranceLinkLimits.MaxLinksPerPolicy — a shared
-// compile-time constant, safe to guard against here.
+   The four collections are NOT edited here. A party is added, re-dated and
+   removed one at a time from the policy's own "New party" action and its party
+   tiles, which carry the member's TERM in the role — a fact this dialog has
+   nowhere to put. So it reads the existing sets in and writes the same sets
+   back untouched: a policy edit can neither add nor drop a party. (The
+   TagMultiSelect pickers this dialog used to carry stay in the design system
+   for the surfaces that do edit a whole set at once.) */
 
 const AddInsurancePolicyModal = ({
   onClose,
   onCreate,
   onSave,
-  policy = null,
-  optionsLoading = false,
-  effectiveCap = null
+  policy = null
 }) => {
   const {
-    useState,
-    useRef
+    useState
   } = React;
-  const D = window.OdysseyData;
   const H = window.OdysseyHelpers;
   const editing = !!policy;
-
-  // Server order on load (resolved display name ascending); the picker owns
-  // order from here.
   const idsOf = (refs, key) => refs.map(r => r[key]);
   const [draft, setDraft] = useState({
     name: policy?.name || '',
@@ -21350,91 +21324,15 @@ const AddInsurancePolicyModal = ({
       [k]: undefined
     }));
   };
-
-  // Focus APIs — a failed save moves focus to the first offending picker.
-  const api = {
-    insurerIds: useRef(null),
-    insuredAccountIds: useRef(null),
-    insuredContactIds: useRef(null),
-    beneficiaryIds: useRef(null)
-  };
-  const contactOptions = D.activeContacts().map(c => {
-    const m = D.contactTypeByKey[c.type] || {};
-    return {
-      value: c.id,
-      label: c.name,
-      icon: m.icon,
-      iconColor: m.color,
-      sub: m.label
-    };
-  });
-  const accountOptions = D.accounts.filter(a => !a.archived).map(a => {
-    const m = D.accountTypeById[a.type] || {};
-    return {
-      value: a.id,
-      label: a.name,
-      icon: m.icon,
-      iconColor: m.color,
-      sub: m.label
-    };
-  });
-
-  // A member the picker cannot remove: no live, non-archived contact to have
-  // been chosen from. Kept by the bulk Clear, and rendered with no remove
-  // control — the write path refuses its removal, so the affordance would lie.
-  const contactUnnamed = id => {
-    const c = D.contactById[id];
-    return !c || !!c.archived;
-  };
-  // The chip body for a contact link: the DS ContactChip, which already carries
-  // the Archived ("(archived)") and Unavailable (link_off) states in TEXT.
-  const contactChip = id => {
-    // The DS component, read off the namespace — NOT window.ContactChip, which
-    // the Journal page overwrites with its own {cp}-shaped adapter.
-    const Chip = (window.OdysseyDesignSystem_d5aa51 || {}).ContactChip;
-    const c = D.contactById[id];
-    if (!Chip) return /*#__PURE__*/React.createElement("span", null, c ? c.name : 'Unavailable');
-    // Name withheld for an unnamed member — the read model never carries it.
-    if (!c) return /*#__PURE__*/React.createElement(Chip, {
-      contact: {
-        unavailable: true
-      },
-      size: "sm"
-    });
-    if (c.archived) return /*#__PURE__*/React.createElement(Chip, {
-      contact: {
-        name: 'Archived contact',
-        type: c.type,
-        archived: c.archived
-      },
-      size: "sm"
-    });
-    return /*#__PURE__*/React.createElement(Chip, {
-      name: c.name,
-      type: c.type,
-      size: "sm"
-    });
-  };
-  const LINK_HELP = 'Archived or unresolvable members keep their place without a name and cannot be removed here — detach them from the contact, or unarchive the contact first.';
   const submit = () => {
     const next = {};
     if (!draft.name.trim()) next.name = 'Give the policy a name.';
     if (!draft.type) next.type = 'Pick a policy type.';
-    // The client guards only the shared compile-time ceiling. The EFFECTIVE cap
-    // is a server setting — it is never copied into the client, so an over-cap
-    // collection is learned from the save's 422, with the cap interpolated.
-    const cap = effectiveCap;
-    for (const [k, name] of [['insurerIds', 'insurers'], ['insuredAccountIds', 'insured accounts'], ['insuredContactIds', 'insured contacts'], ['beneficiaryIds', 'beneficiaries']]) {
-      const n = draft[k].length;
-      if (n > AIP_LINK_CEILING) next[k] = `A policy takes at most ${AIP_LINK_CEILING} ${name}.`;else if (cap != null && n > cap) next[k] = `At most ${cap} ${name} per policy. Remove ${n - cap} to save.`;
-    }
     if (Object.keys(next).length) {
       setErrors(next);
-      const first = ['name', 'type', 'insurerIds', 'insuredAccountIds', 'insuredContactIds', 'beneficiaryIds'].find(k => next[k]);
-      const ref = api[first];
-      if (ref && ref.current) ref.current.focus();
       return;
     }
+    // The link sets ride along exactly as they were read.
     const links = {
       insurerIds: draft.insurerIds,
       insuredAccountIds: draft.insuredAccountIds,
@@ -21463,45 +21361,9 @@ const AddInsurancePolicyModal = ({
       });
     }
   };
-  const linkPicker = ({
-    key,
-    label,
-    addLabel,
-    placeholder,
-    options,
-    help,
-    noun,
-    contacts = true
-  }) => {
-    // The unnamed-member rule is stated where it is LIVE — on a field that
-    // actually holds one — rather than three times over as standing noise.
-    const hasUnnamed = contacts && draft[key].some(contactUnnamed);
-    return /*#__PURE__*/React.createElement(TagMultiSelect, {
-      id: `aip-${key}`,
-      label: label,
-      optional: true,
-      value: draft[key],
-      onChange: set(key),
-      options: options,
-      loading: optionsLoading,
-      loadingText: "Loading\u2026",
-      placeholder: placeholder,
-      addLabel: addLabel,
-      noun: noun,
-      searchLabel: contacts ? 'Search contacts' : 'Search accounts',
-      searchPlaceholder: contacts ? 'Search contacts…' : 'Search accounts…',
-      emptyText: contacts ? 'No contacts match' : 'No accounts match',
-      unknownLabel: "Unavailable",
-      chipTemplate: contacts ? contactChip : undefined,
-      preserveOnClear: contacts ? contactUnnamed : undefined,
-      apiRef: api[key],
-      error: errors[key],
-      help: errors[key] ? undefined : hasUnnamed ? `${help} ${LINK_HELP}` : help
-    });
-  };
   return /*#__PURE__*/React.createElement(Modal, {
     title: editing ? 'Edit insurance policy' : 'New insurance policy',
-    subtitle: editing ? 'Update the policy details and who is on it. Renewal periods and documents are managed from the policy.' : 'Record the policy details and who is on it, then add renewal periods and documents from the policy.',
+    subtitle: editing ? 'Update the policy details. Parties, renewal periods and documents are managed from the policy.' : 'Record the policy details, then add parties, renewal periods and documents from the policy.',
     icon: "shield",
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -21530,43 +21392,7 @@ const AddInsurancePolicyModal = ({
     onChange: set('type'),
     error: errors.type,
     placeholder: "Choose a type\u2026"
-  })), /*#__PURE__*/React.createElement(SectionDivider, {
-    label: "Parties & insured assets",
-    meta: "all optional"
-  }), linkPicker({
-    key: 'insurerIds',
-    label: 'Insurers',
-    addLabel: 'Add insurer',
-    placeholder: 'No insurers',
-    options: contactOptions,
-    noun: 'insurer',
-    help: 'The contacts that carry this cover — several where it is placed across co-insurers.'
-  }), linkPicker({
-    key: 'insuredAccountIds',
-    label: 'Insured accounts',
-    addLabel: 'Add account',
-    placeholder: 'No insured accounts',
-    options: accountOptions,
-    noun: 'account',
-    contacts: false,
-    help: 'The accounts representing the insured assets — a house and an outbuilding, two vehicles.'
-  }), linkPicker({
-    key: 'insuredContactIds',
-    label: 'Insured contacts',
-    addLabel: 'Add contact',
-    placeholder: 'No insured contacts',
-    options: contactOptions,
-    noun: 'contact',
-    help: 'The people and organisations insured under this policy — the policyholder, a spouse, named drivers.'
-  }), linkPicker({
-    key: 'beneficiaryIds',
-    label: 'Beneficiaries',
-    addLabel: 'Add beneficiary',
-    placeholder: 'No beneficiaries',
-    options: contactOptions,
-    noun: 'beneficiary',
-    help: 'Who receives on this policy. A person, or an organisation such as a trust or an estate.'
-  }), /*#__PURE__*/React.createElement(NoteField, {
+  })), /*#__PURE__*/React.createElement(NoteField, {
     label: "Notes",
     optional: true,
     maxLength: 1024,
@@ -21579,6 +21405,227 @@ Object.assign(window, {
   AddInsurancePolicyModal
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddInsurancePolicyModal.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/web/AddPolicyPartyModal.jsx
+try { (() => {
+/* AddPolicyPartyModal — add ONE party to an existing policy, the insurance
+   sibling of AddContractPartyModal (Insurance row action "New party").
+   The same accessible two-step picker:
+     1. choose the party ROLE — Insurer / Insured account / Insured contact /
+        Beneficiary (the policy's four link collections)
+     2. pick the record from a type-to-filter `Combobox` whose options are
+        PRE-LOADED for the chosen role.
+   The save carries a SCALAR ID and the collection it belongs to — never a
+   nested Contact or Account object (the §6/§10 mass-assignment invariant), so
+   adding a party can never create or rename the linked record. Already-linked
+   records are filtered out of the picker, so the same record cannot be
+   attached twice in the same role. The full set is still editable field by
+   field in "Edit policy"; this is the one-off add.
+
+   With `party` ({ field, id, fromDate, toDate }) the same dialog EDITS that
+   link — the hover action on a party tile. Role and record stay editable: a
+   party moved to another role, or pointed at another record, is the same
+   correction as a re-typed date, and the save carries the old link so the
+   caller can replace it. */
+
+const POLICY_PARTY_ROLES = [{
+  role: 'insurer',
+  label: 'Insurer',
+  icon: 'groups',
+  field: 'insurerIds',
+  noun: 'contact',
+  help: 'The contact that carries this cover.'
+}, {
+  role: 'account',
+  label: 'Insured account',
+  icon: 'account_balance_wallet',
+  field: 'insuredAccountIds',
+  noun: 'account',
+  help: 'An account representing an insured asset.'
+}, {
+  role: 'contact',
+  label: 'Insured contact',
+  icon: 'person',
+  field: 'insuredContactIds',
+  noun: 'contact',
+  help: 'A person or organisation insured under this policy.'
+}, {
+  role: 'beneficiary',
+  label: 'Beneficiary',
+  icon: 'volunteer_activism',
+  field: 'beneficiaryIds',
+  noun: 'contact',
+  help: 'Who receives on this policy.'
+}];
+const AddPolicyPartyModal = ({
+  policy,
+  party = null,
+  optionsLoading = false,
+  onClose,
+  onAdd,
+  onSave,
+  onRemove
+}) => {
+  const {
+    useState
+  } = React;
+  const D = window.OdysseyData;
+  const editing = !!party;
+
+  /* The party's TERM in the role — independent of the policy's own periods,
+     with one tie: it cannot begin before cover ever did. Both dates default to
+     NULL, and null is read as the policy's own extent — from the first
+     period's start, open-ended — so a party added with the defaults follows
+     the policy for its whole lifetime and a later renewal never re-dates it. */
+  const firstStart = (policy.renewals || []).map(r => r.fromDate).sort()[0] || null;
+  const [role, setRole] = useState(editing ? (POLICY_PARTY_ROLES.find(r => r.field === party.field) || POLICY_PARTY_ROLES[0]).role : 'insurer');
+  const [value, setValue] = useState(editing ? party.id : '');
+  const [fromDate, setFromDate] = useState(editing ? party.fromDate || null : null);
+  const [toDate, setToDate] = useState(editing ? party.toDate || null : null);
+  const [error, setError] = useState(null);
+  const [dateError, setDateError] = useState({});
+  const def = POLICY_PARTY_ROLES.find(r => r.role === role);
+  const linked = new Set(policy[def.field] || []);
+  const allOptions = def.noun === 'account' ? D.accounts.filter(a => !a.archived).map(a => {
+    const m = D.accountTypeById[a.type] || {};
+    return {
+      value: a.id,
+      label: a.name,
+      icon: m.icon,
+      iconColor: m.color,
+      sub: m.label
+    };
+  }) : D.activeContacts().map(c => {
+    const m = D.contactTypeByKey[c.type] || {};
+    return {
+      value: c.id,
+      label: c.name,
+      icon: m.icon,
+      iconColor: m.color,
+      sub: m.label
+    };
+  });
+  // The party being edited is not "already linked" as far as its own picker is
+  // concerned — only its siblings are.
+  const options = allOptions.filter(o => !linked.has(o.value) || editing && o.value === party.id);
+  const pickRole = r => {
+    setRole(r);
+    setValue('');
+    setError(null);
+  };
+  const submit = () => {
+    if (!value) {
+      setError(`Select a ${def.noun} to link.`);
+      return;
+    }
+    const de = {};
+    if (fromDate && firstStart && fromDate < firstStart) de.fromDate = `Cover began ${firstStart} — a party can’t be in the role before that.`;
+    if (fromDate && toDate && toDate < fromDate) de.toDate = 'End date can’t be before the start date.';
+    if (Object.keys(de).length) {
+      setDateError(de);
+      return;
+    }
+    const dto = {
+      field: def.field,
+      id: value,
+      fromDate: fromDate || null,
+      toDate: toDate || null
+    };
+    if (editing) onSave && onSave(dto, {
+      field: party.field,
+      id: party.id
+    });else onAdd && onAdd(dto);
+  };
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: editing ? 'Edit party' : 'New party',
+    subtitle: editing ? 'Change the role, the linked record, or the dates this party is in the role.' : 'Link a contact or account to this policy in one of its four roles.',
+    icon: "group_add",
+    onClose: onClose,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, editing && onRemove ? /*#__PURE__*/React.createElement(Button, {
+      variant: "danger",
+      icon: "link_off",
+      className: "ins-remove-party",
+      onClick: () => onRemove({
+        field: party.field,
+        id: party.id
+      })
+    }, "Remove party") : null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onClose
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: editing ? 'check' : 'add',
+      onClick: submit
+    }, editing ? 'Save changes' : 'Create party'))
+  }, /*#__PURE__*/React.createElement(FieldShell, {
+    label: "Role"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ins-kind-seg",
+    role: "radiogroup",
+    "aria-label": "Role"
+  }, POLICY_PARTY_ROLES.map(r => /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    key: r.role,
+    role: "radio",
+    "aria-checked": role === r.role,
+    className: `ins-kind-opt ${role === r.role ? 'on' : ''}`,
+    onClick: () => pickRole(r.role)
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, r.icon), /*#__PURE__*/React.createElement("span", {
+    className: "ins-kind-lab"
+  }, r.label))))), /*#__PURE__*/React.createElement(FieldShell, {
+    label: def.label,
+    htmlFor: "app-target",
+    error: error,
+    helper: error ? undefined : options.length ? `${def.help} ${options.length} ${def.noun}${options.length === 1 ? '' : 's'} available to link.` : `Every ${def.noun} is already linked to this policy in this role.`
+  }, /*#__PURE__*/React.createElement(Combobox, {
+    id: "app-target",
+    value: value,
+    onChange: v => {
+      setValue(v || '');
+      if (error) setError(null);
+    },
+    options: options,
+    loading: optionsLoading,
+    placeholder: `Search ${def.noun}s…`,
+    ariaLabel: def.label,
+    invalid: !!error
+  })), /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "In the role",
+    meta: "optional"
+  }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
+    label: "From",
+    value: fromDate,
+    onChange: v => {
+      setFromDate(v || null);
+      setDateError(e => ({
+        ...e,
+        fromDate: undefined
+      }));
+    },
+    help: firstStart ? `Leave empty to start with the policy (${firstStart}).` : 'Leave empty to start with the policy.',
+    error: dateError.fromDate
+  }), /*#__PURE__*/React.createElement(DateField, {
+    label: "To",
+    value: toDate,
+    onChange: v => {
+      setToDate(v || null);
+      setDateError(e => ({
+        ...e,
+        toDate: undefined
+      }));
+    },
+    help: "Leave empty while the party is still in the role.",
+    error: dateError.toDate
+  })));
+};
+Object.assign(window, {
+  AddPolicyPartyModal
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddPolicyPartyModal.jsx", error: String((e && e.message) || e) }); }
 
 // ui_kits/web/AddRenewalModal.jsx
 try { (() => {
@@ -21699,12 +21746,14 @@ const AddRenewalModal = ({
     label: "Cover from",
     value: draft.fromDate,
     onChange: set('fromDate'),
-    helper: errors.fromDate
+    help: "Start of this period\u2019s cover.",
+    error: errors.fromDate
   }), /*#__PURE__*/React.createElement(DateField, {
     label: "Cover to",
     value: draft.toDate,
     onChange: set('toDate'),
-    helper: errors.toDate || 'End of this period’s cover.'
+    help: "End of this period\u2019s cover.",
+    error: errors.toDate
   })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ARN_MoneyField, {
     label: "Premium",
     value: draft.premium,
@@ -22180,7 +22229,8 @@ const AddTaxStatementModal = ({
     label: "Period end",
     value: draft.endDate,
     onChange: set('endDate'),
-    helper: errors.endDate || 'Defaults to the calendar year.'
+    help: "Defaults to the calendar year.",
+    error: errors.endDate
   })), editing ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "tx-section-h",
     style: {
@@ -23100,7 +23150,7 @@ const AddTransactionModal = ({
     label: "Date",
     value: draft.date,
     onChange: set('date'),
-    helper: "Defaults to today"
+    help: "Defaults to today"
   }), /*#__PURE__*/React.createElement("div", {
     className: "odc-form-grid-wide"
   }, /*#__PURE__*/React.createElement(Field, {
@@ -32289,7 +32339,7 @@ try { (() => {
    expandable-record scaffold (.acct-list / .acct-item), with a contract-
    specific expanded detail. Each contract is a single agreement with a name,
    a type, an active period, a description, the PARTIES it relates to (an
-   account, a contact, or an insurance policy — one-of-three),
+   account or a contact),
    and the DOCUMENTS that evidence it (references to existing library files).
 
    Status (Upcoming / Active / Expired / Archived) is DERIVED, never stored —
@@ -32367,37 +32417,28 @@ const ContractFilesTable = ({
   }));
 };
 
-/* ====================== One party row ====================== */
-const PartyRow = ({
+/* ====================== One party tile ====================== */
+/* Same shape as a policy's Parties section (Insurance.jsx `InsLinkTiles`): one
+   InfoTile per linked record, drawn in that record's own type icon and colour,
+   with the kind as the overline and the target type as the caption. The detach
+   action rides on the tile, revealed on hover / focus-within. */
+const PartyTile = ({
   party,
   onDetach
 }) => {
   const r = CON_H.conResolveParty(party);
   return /*#__PURE__*/React.createElement("div", {
-    className: "con-party"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "con-party-av",
-    style: {
-      background: r.soft || 'var(--mud-palette-action-default-hover)',
-      color: r.color || 'var(--mud-palette-text-secondary)'
-    }
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: r.icon,
-    size: 20
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "con-party-main"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "con-party-name"
-  }, r.name), /*#__PURE__*/React.createElement("span", {
-    className: "con-party-meta"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "con-party-kind"
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: r.icon,
-    size: 13
-  }), r.kindLabel), r.typeLabel && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
-    className: "con-party-dot"
-  }, "\xB7"), /*#__PURE__*/React.createElement("span", null, r.typeLabel)))), /*#__PURE__*/React.createElement("span", {
+    className: "con-party-tile"
+  }, /*#__PURE__*/React.createElement(InfoTile, {
+    icon: r.icon,
+    iconColor: r.color,
+    iconSoft: r.soft,
+    label: r.kindLabel,
+    value: r.name,
+    valueVariant: "text",
+    className: "wrapvalue",
+    foot: r.typeLabel || undefined
+  }), /*#__PURE__*/React.createElement("span", {
     className: "con-party-detach",
     title: `Detach ${r.name}`
   }, /*#__PURE__*/React.createElement(IconButton, {
@@ -32493,9 +32534,7 @@ const ContractDetail = ({
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Parties",
     meta: `${parties.length} linked`
-  }), parties.length ? /*#__PURE__*/React.createElement("div", {
-    className: "con-parties"
-  }, parties.map(p => /*#__PURE__*/React.createElement(PartyRow, {
+  }), parties.length ? /*#__PURE__*/React.createElement(InfoTileGrid, null, parties.map(p => /*#__PURE__*/React.createElement(PartyTile, {
     key: p.id,
     party: p,
     onDetach: detachParty
@@ -32508,7 +32547,7 @@ const ContractDetail = ({
     style: {
       flex: 1
     }
-  }, "No parties yet \u2014 link the account, contact, or insurance policy this contract relates to."))), /*#__PURE__*/React.createElement("div", {
+  }, "No parties yet \u2014 link the account or contact this contract relates to."))), /*#__PURE__*/React.createElement("div", {
     className: "con-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Documents",
@@ -32659,7 +32698,7 @@ const ContractListItem = ({
         onClick: () => setShowEdit(true)
       }, {
         icon: 'group_add',
-        label: 'Add party',
+        label: 'New party',
         onClick: () => {
           setOpen(true);
           setModal('party');
@@ -33960,7 +33999,7 @@ const RecordRateModal = ({
     label: "Effective from (AsOf)",
     value: draft.asOf,
     onChange: set('asOf'),
-    helper: editing ? 'When this rate takes effect' : 'Defaults to today'
+    help: editing ? 'When this rate takes effect' : 'Defaults to today'
   }));
 };
 
@@ -36659,6 +36698,15 @@ const INS_CURRENCY_OPTIONS = INS_D.currencies.filter(c => !c.archived).map(c => 
 /* date 'YYYY-MM-DD' → "Jan 01, 2026" */
 const insDate = iso => INS_H.dateLong(iso);
 const insRange = (a, b) => `${insDate(a)} → ${insDate(b)}`;
+/* The COMPACT date, for captions that share a line with other facts: no
+   zero-padding, and the year written once where both ends share it. */
+const INS_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const insDayShort = iso => {
+  const p = iso.split('-');
+  return `${INS_MON[+p[1] - 1]} ${+p[2]}`;
+};
+const insDateShort = iso => `${insDayShort(iso)} ${iso.slice(0, 4)}`;
+const insRangeShort = (a, b) => a.slice(0, 4) === b.slice(0, 4) ? `${insDayShort(a)} – ${insDayShort(b)} ${b.slice(0, 4)}` : `${insDateShort(a)} – ${insDateShort(b)}`;
 
 /* The headline figure shown on the collapsed card: coverage end + days word. */
 const insHeadline = (policy, today) => {
@@ -36725,12 +36773,18 @@ const insRefMeta = (r, kind) => {
    card with its own type glyph, colour and caption. Empty collections render no
    tile (rule 5): zero members is a healthy state, including zero insurers.
    Past five members the collection collapses into a "+N more" tile that expands
-   in place, so a collection at the cap of 50 has a defined rendering. */
+   in place, so a collection at the cap of 50 has a defined rendering.
+   A member whose ROLE TERM differs from the default (in-role for the whole
+   policy) carries that term in its caption — the term is the party's own fact,
+   so a renewal never rewrites it. */
 const InsLinkTiles = ({
   refs,
   kind,
   label,
-  fallbackIcon
+  fallbackIcon,
+  terms,
+  field,
+  onEditParty
 }) => {
   const {
     useState
@@ -36750,8 +36804,29 @@ const InsLinkTiles = ({
       iconSoft: unnamed ? undefined : meta.soft
       /* The label is the collection's singular name, repeated per member —
          no position, no count: the tiles themselves are the count, and the
-         caption slot keeps the type. */,
-      label: label,
+         caption slot keeps the type. The role TERM goes on its own small
+         line under it, so the caption stays one line and a long range
+         never wraps. */,
+      label: (() => {
+        const id = r.contactId || r.accountId;
+        const term = terms && terms(field, id);
+        /* The tile's own edit action — revealed on hover / keyboard focus,
+           and never offered for an unnamed member: its record is not in
+           the picker, so the dialog could not round-trip it. */
+        const edit = onEditParty && !unnamed ? /*#__PURE__*/React.createElement("button", {
+          type: "button",
+          className: "ins-tile-edit",
+          "aria-label": `Edit ${label.toLowerCase()} ${r.name}`,
+          onClick: () => onEditParty(field, id)
+        }, /*#__PURE__*/React.createElement("span", {
+          className: "material-icons",
+          "aria-hidden": "true"
+        }, "edit")) : null;
+        if (!term && !edit) return label;
+        return /*#__PURE__*/React.createElement(React.Fragment, null, label, term ? /*#__PURE__*/React.createElement("span", {
+          className: "ins-term"
+        }, term) : null, edit);
+      })(),
       valueVariant: "text",
       className: `wrapvalue${unnamed ? ' tone-muted' : ''}`,
       value: unnamed ? state : r.name,
@@ -37108,6 +37183,7 @@ const PolicyDetail = ({
   today,
   onNavigate,
   setPolicy,
+  onEditParty,
   onAddRenewal,
   onEditRenewal,
   onDeleteRenewal,
@@ -37192,6 +37268,21 @@ const PolicyDetail = ({
      linked record, in write order (insurers, then the insured, then
      beneficiaries). Omitted entirely when the policy names nobody. */
   const partyCount = insurers.length + insuredAccounts.length + insuredContacts.length + beneficiaries.length;
+  /* A member's TERM in the role, when it is not simply "the whole policy":
+     `policy.partyTerms` holds one entry per dated link ({ field, id, fromDate,
+     toDate }); an absent entry — or a null date — IS the default, the policy's
+     own extent, which needs no caption. */
+  const termText = (field, id) => {
+    const t = (policy.partyTerms || []).find(x => x.field === field && x.id === id);
+    if (!t) return null;
+    // Kept SHORT deliberately: this sits after the type in a tile caption, and
+    // the tiles are a fixed-height grid — "Sep 1 – Dec 31 2026" fits the line
+    // where "in role Sep 01, 2026 – Dec 31, 2026" wrapped it.
+    if (t.fromDate && t.toDate) return insRangeShort(t.fromDate, t.toDate);
+    if (t.fromDate) return `from ${insDateShort(t.fromDate)}`;
+    if (t.toDate) return `to ${insDateShort(t.toDate)}`;
+    return null;
+  };
   const parties = partyCount ? /*#__PURE__*/React.createElement("div", {
     className: "ins-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
@@ -37201,22 +37292,34 @@ const PolicyDetail = ({
     refs: insurers,
     kind: "contact",
     label: "Insurer",
-    fallbackIcon: "groups"
+    fallbackIcon: "groups",
+    terms: termText,
+    field: "insurerIds",
+    onEditParty: onEditParty
   }), /*#__PURE__*/React.createElement(InsLinkTiles, {
     refs: insuredAccounts,
     kind: "account",
     label: "Insured",
-    fallbackIcon: "account_balance_wallet"
+    fallbackIcon: "account_balance_wallet",
+    terms: termText,
+    field: "insuredAccountIds",
+    onEditParty: onEditParty
   }), /*#__PURE__*/React.createElement(InsLinkTiles, {
     refs: insuredContacts,
     kind: "contact",
     label: "Insured",
-    fallbackIcon: "person"
+    fallbackIcon: "person",
+    terms: termText,
+    field: "insuredContactIds",
+    onEditParty: onEditParty
   }), /*#__PURE__*/React.createElement(InsLinkTiles, {
     refs: beneficiaries,
     kind: "contact",
     label: "Beneficiary",
-    fallbackIcon: "volunteer_activism"
+    fallbackIcon: "volunteer_activism",
+    terms: termText,
+    field: "beneficiaryIds",
+    onEditParty: onEditParty
   }))) : null;
   return /*#__PURE__*/React.createElement(React.Fragment, null, details, content, parties, current && /*#__PURE__*/React.createElement("div", {
     className: "ins-current"
@@ -37251,8 +37354,7 @@ const PolicyListItem = ({
   highlight,
   onNavigate,
   onDelete,
-  optionsLoading = false,
-  effectiveCap = null
+  optionsLoading = false
 }) => {
   const {
     useState,
@@ -37267,7 +37369,7 @@ const PolicyListItem = ({
   // Count changes and the enable transition are ANNOUNCED — an updated
   // aria-label on an unfocused chip is never read out.
   const [announce, setAnnounce] = useState('');
-  const [modal, setModal] = useState(null); // { kind:'renewal'|'upload', renewalId? }
+  const [modal, setModal] = useState(null); // { kind:'renewal'|'upload'|'party', renewalId? }
   const cardRef = useRef(null);
   const typeInfo = INS_H.insurancePolicyTypeInfo(p.type);
   const st = INS_H.insCoverageStatus(p, today);
@@ -37290,6 +37392,9 @@ const PolicyListItem = ({
       insuredAccountIds: draft.insuredAccountIds,
       insuredContactIds: draft.insuredContactIds,
       beneficiaryIds: draft.beneficiaryIds,
+      // A member dropped by the pickers takes its term with it; the ones added
+      // there simply have none, which is the default term.
+      partyTerms: (prev.partyTerms || []).filter(t => (draft[t.field] || []).includes(t.id)),
       notes: draft.notes
     }));
     setShowEdit(false);
@@ -37311,6 +37416,70 @@ const PolicyListItem = ({
         renewals
       };
     });
+    setModal(null);
+  };
+  // A party add appends ONE scalar id to ONE of the policy's four link
+  // collections, and — when either date is set — one entry to `partyTerms`. No
+  // entry, or a null date, means the policy's own extent, so a party added from
+  // the Edit policy pickers takes the default term.
+  const addParty = ({
+    field,
+    id,
+    fromDate,
+    toDate
+  }) => {
+    setP(prev => {
+      const dated = !!(fromDate || toDate);
+      return {
+        ...prev,
+        [field]: [...(prev[field] || []), id],
+        partyTerms: dated ? [...(prev.partyTerms || []), {
+          field,
+          id,
+          fromDate: fromDate || null,
+          toDate: toDate || null
+        }] : prev.partyTerms || []
+      };
+    });
+    setModal(null);
+  };
+  /* Editing a party is the add, in reverse then forward: the OLD link (and its
+     term) is dropped and the edited one written, so a party moved between roles
+     stays one party rather than two. */
+  const saveParty = ({
+    field,
+    id,
+    fromDate,
+    toDate
+  }, prevLink) => {
+    setP(prev => {
+      const next = {
+        ...prev
+      };
+      next[prevLink.field] = (prev[prevLink.field] || []).filter(x => x !== prevLink.id);
+      next[field] = [...(next[field] || []), id];
+      const terms = (prev.partyTerms || []).filter(x => !(x.field === prevLink.field && x.id === prevLink.id));
+      next.partyTerms = fromDate || toDate ? [...terms, {
+        field,
+        id,
+        fromDate: fromDate || null,
+        toDate: toDate || null
+      }] : terms;
+      return next;
+    });
+    setModal(null);
+  };
+  // Removing a party drops the link and its term. The contact or account is
+  // never touched — a party is a link, so this detaches, it does not delete.
+  const removeParty = ({
+    field,
+    id
+  }) => {
+    setP(prev => ({
+      ...prev,
+      [field]: (prev[field] || []).filter(x => x !== id),
+      partyTerms: (prev.partyTerms || []).filter(x => !(x.field === field && x.id === id))
+    }));
     setModal(null);
   };
   const deleteRenewal = r => setP(prev => ({
@@ -37397,6 +37566,15 @@ const PolicyListItem = ({
         label: 'Edit policy',
         onClick: () => setShowEdit(true)
       }, {
+        icon: 'group_add',
+        label: 'New party',
+        onClick: () => {
+          setOpen(true);
+          setModal({
+            kind: 'party'
+          });
+        }
+      }, {
         icon: 'event_repeat',
         label: 'New renewal period',
         onClick: () => {
@@ -37450,6 +37628,18 @@ const PolicyListItem = ({
     today: today,
     onNavigate: onNavigate,
     setPolicy: setP,
+    onEditParty: (field, id) => {
+      const t = (p.partyTerms || []).find(x => x.field === field && x.id === id);
+      setModal({
+        kind: 'party',
+        party: {
+          field,
+          id,
+          fromDate: t && t.fromDate || null,
+          toDate: t && t.toDate || null
+        }
+      });
+    },
     onAddRenewal: () => setModal({
       kind: 'renewal'
     }),
@@ -37469,10 +37659,16 @@ const PolicyListItem = ({
     "aria-live": "polite"
   }, announce), showEdit && /*#__PURE__*/React.createElement(AddInsurancePolicyModal, {
     policy: p,
-    optionsLoading: optionsLoading,
-    effectiveCap: effectiveCap,
     onClose: () => setShowEdit(false),
     onSave: saveEdit
+  }), modal && modal.kind === 'party' && /*#__PURE__*/React.createElement(AddPolicyPartyModal, {
+    policy: p,
+    party: modal.party || null,
+    optionsLoading: optionsLoading,
+    onClose: () => setModal(null),
+    onAdd: addParty,
+    onSave: saveParty,
+    onRemove: removeParty
   }), modal && modal.kind === 'renewal' && /*#__PURE__*/React.createElement(AddRenewalModal, {
     policy: p,
     renewal: modal.renewal,
@@ -37810,7 +38006,6 @@ const Insurance = ({
       today: today,
       open: openId === p.id,
       optionsLoading: !!tweaks.insOptionsLoading,
-      effectiveCap: tweaks.insEffectiveCap == null || tweaks.insEffectiveCap === '' ? null : Number(tweaks.insEffectiveCap),
       onToggle: o => setOpenId(o ? p.id : null),
       highlight: jumpId === p.id,
       onNavigate: onNavigate,
@@ -37829,8 +38024,6 @@ const Insurance = ({
       onClick: () => setShowAdd(true)
     })
   })), showAdd && /*#__PURE__*/React.createElement(AddInsurancePolicyModal, {
-    optionsLoading: !!tweaks.insOptionsLoading,
-    effectiveCap: tweaks.insEffectiveCap == null || tweaks.insEffectiveCap === '' ? null : Number(tweaks.insEffectiveCap),
     onClose: () => setShowAdd(false),
     onCreate: createPolicy
   }));
@@ -49649,7 +49842,7 @@ try { (() => {
                         completionDate?, archived?, createdAtUtc, parties[], files[] }
                         — a contract is either TERM-based (startDate/endDate, either
                         optional) or ONE-OFF (a single completionDate, no term).
-     • ContractParty  { id, accountId? | contactId? | insurancePolicyId? }
+     • ContractParty  { id, accountId? | contactId? }
                         — exactly one target (the XOR invariant, §6). The party
                         kind label for a contact target is "Contact".
      • ContractFile   { id, fileMetadataId, fileType, attachedByUserId,
@@ -49824,8 +50017,8 @@ try { (() => {
   }];
 
   /* ---- Seed contracts. Dates anchored around mid-2026 so the derived statuses
-     are stable: covers all four types and all three party kinds (Account /
-     Contact / Insurance policy), plus one Upcoming, one Expired, and one
+     are stable: covers all four types and both party kinds (Account /
+     Contact), plus one Upcoming, one Expired, and one
      Archived record. ---- */
   D.contracts = [{
     id: 'ct-employment',
@@ -49871,9 +50064,6 @@ try { (() => {
     }, {
       id: 'cp-lease-2',
       contactId: 'c9'
-    }, {
-      id: 'cp-lease-3',
-      insurancePolicyId: 'ip-home'
     }],
     files: [{
       id: 'cf-lease-1',
@@ -49996,9 +50186,6 @@ try { (() => {
     parties: [{
       id: 'cp-solar-1',
       accountId: '7'
-    }, {
-      id: 'cp-solar-2',
-      insurancePolicyId: 'ip-home'
     }],
     files: [{
       id: 'cf-solar-1',
@@ -50139,20 +50326,6 @@ try { (() => {
           target: c
         };
       }
-      if (party.insurancePolicyId) {
-        const p = D.insurancePolicyById ? D.insurancePolicyById[party.insurancePolicyId] : (D.insurancePolicies || []).find(x => x.id === party.insurancePolicyId);
-        const m = p && D.insurancePolicyTypeByKey[p.type] || {};
-        return {
-          kind: 'insurancePolicy',
-          kindLabel: 'Insurance policy',
-          name: p ? p.name : 'Unknown policy',
-          typeLabel: m.label || '',
-          icon: m.icon || 'shield',
-          color: m.color,
-          soft: m.soft,
-          target: p
-        };
-      }
       return {
         kind: 'unknown',
         kindLabel: 'Party',
@@ -50164,7 +50337,7 @@ try { (() => {
         target: null
       };
     },
-    // The three selectable party-kind option sets (pre-loaded for the picker).
+    // The two selectable party-kind option sets (pre-loaded for the picker).
     conAccountOptions() {
       return D.accounts.filter(a => !a.archived).map(a => {
         const m = D.accountTypeById[a.type] || {};
@@ -50182,17 +50355,6 @@ try { (() => {
         return {
           value: c.id,
           label: c.name,
-          icon: m.icon,
-          iconColor: m.color
-        };
-      });
-    },
-    conPolicyOptions() {
-      return (D.insurancePolicies || []).filter(p => !p.archived).map(p => {
-        const m = D.insurancePolicyTypeByKey[p.type] || {};
-        return {
-          value: p.id,
-          label: p.name,
           icon: m.icon,
           iconColor: m.color
         };

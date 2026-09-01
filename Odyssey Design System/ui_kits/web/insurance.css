@@ -142,6 +142,43 @@
 /* Tile grids \u2014 the tiles themselves are the DS InfoTile (.odc-infotile). The
    grid sets the InfoTile icon-chip accent to the feature's indigo for any tile
    without a per-tile iconColor (e.g. the Type tile keeps its own category color). */
+/* A party tile's role TERM sits on its own small line under the uppercase
+   label, in the space the icon leaves \u2014 so the type caption below stays one
+   line and a long range never wraps. */
+.ins-section .odc-infotile-k:has(.ins-term) { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; }
+.ins-section .ins-term {
+  font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
+  color: var(--mud-palette-text-secondary); white-space: nowrap;
+}
+/* Per-tile edit action: the renewal row's own icon-button treatment (borderless,
+   tinted hover), hidden until the tile is hovered or something inside it takes
+   focus, so the parties grid stays quiet while it is only being read. */
+.ins-section .odc-tilegrid > .odc-infotile { position: relative; }
+.ins-tile-edit {
+  position: absolute; top: 6px; right: 6px; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0; border-radius: 6px;
+  border: none; background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
+  opacity: 0; transition: opacity .12s ease, background .12s ease, color .12s ease;
+}
+.ins-tile-edit .material-icons { font-size: 18px; }
+.odc-infotile:hover .ins-tile-edit, .ins-tile-edit:focus-visible { opacity: 1; }
+.ins-tile-edit:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+
+/* Role picker in the New party dialog — the contract party-kind cards, in the
+   insurance accent, with four roles instead of two kinds. */
+.ins-kind-seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.ins-kind-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
+  padding: 14px 8px; border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+  background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+.ins-kind-opt:hover { border-color: var(--ins-accent-line); color: var(--mud-palette-text-primary); }
+.ins-kind-opt.on { border-color: var(--ins-accent-line); background: var(--ins-accent-soft); color: var(--mud-palette-text-primary); }
+.ins-kind-opt .material-icons { font-size: 24px; color: var(--ins-accent); }
+.ins-kind-lab { font: 500 12px/1.2 var(--font-sans); }
+
 .ins-tiles {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
   --odc-infotile-accent: var(--ins-accent);
@@ -220,3 +257,7 @@
 .ins-docs-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--mud-palette-divider-light); }
 .ins-docs-title { font: 600 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 .ins-docs-head .odc-btn { margin-left: auto; }
+
+/* The destructive action in the Edit party dialog sits apart from the
+   Cancel / Save pair. */
+.odc-modal-foot .ins-remove-party { margin-right: auto; }

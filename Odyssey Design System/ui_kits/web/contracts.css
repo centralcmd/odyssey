@@ -65,51 +65,25 @@
 .con-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
 
 /* ============================================================
-   Parties list — one row per typed link (Account / Contact /
-   Insurance policy). Each row is the minimal projection: kind icon
-   + name + kind label + target type.
+   Parties — one InfoTile per typed link (Account / Contact), the
+   same tile design a policy's Parties section uses. Each tile is
+   drawn in the referenced record's own icon + colour; the detach
+   action sits top-right, revealed on hover / focus-within.
    ============================================================ */
-.con-parties { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
-/* The 16px was the old Collapsible body's inner padding; a section's content
-   sits flush with its divider label. */
-.odc-record-body .con-parties { padding: 0; }
-.con-party {
-  display: flex; align-items: center; gap: 12px;
-  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
-  background: var(--mud-palette-background); padding: 10px 12px;
-}
-/* Party avatars are set per row from the REFERENCED record's own type colour
-   (references keep their own icon + colour); file-type avatars in the documents table
-   likewise keep their registry colour. */
-.con-party-av {
-  display: inline-flex; align-items: center; justify-content: center; flex: none;
-  width: 38px; height: 38px; border-radius: 9px;
-}
-.con-party-av .material-icons { font-size: 20px; }
-/* One line — name, kind chip, target type. min-height keeps the row the same
-   height it was when the meta sat on a second line. */
-.con-party-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; min-height: 38px; }
-.con-party-meta { flex: none; }
-.con-party-name { font: 500 13.5px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.con-party-meta { display: inline-flex; align-items: center; gap: 7px; font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.con-party-kind {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 2px 8px; border-radius: var(--radius-pill);
-  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface);
-  font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.02em; color: var(--mud-palette-text-secondary);
-  flex: none;
-}
-.con-party-kind .material-icons { font-size: 13px; }
-.con-party-dot { opacity: 0.5; }
+.con-party-tile { position: relative; display: flex; min-width: 0; }
+.con-party-tile > .odc-infotile { flex: 1; min-width: 0; }
 /* Detach control — a destructive ACTION, not a "broken link" status. Hidden at
-   rest so the row stays quiet; revealed on row hover (or keyboard focus within
-   the row, for a11y), where it reads as an interactive destructive control
+   rest so the tile stays quiet; revealed on tile hover (or keyboard focus
+   within it, for a11y), where it reads as an interactive destructive control
    (coral on hover) so link_off isn't mistaken for a status glyph. */
-.con-party-detach { flex: none; opacity: 0; transition: opacity .12s ease; }
-.con-party:hover .con-party-detach,
-.con-party:focus-within .con-party-detach { opacity: 1; }
+.con-party-detach {
+  position: absolute; top: 6px; right: 6px; z-index: 1;
+  opacity: 0; transition: opacity .12s ease;
+}
+.con-party-tile:hover .con-party-detach,
+.con-party-tile:focus-within .con-party-detach { opacity: 1; }
 .con-party-detach .odc-iconbtn { color: var(--mud-palette-text-secondary); transition: color .12s ease, background-color 0s; }
-.con-party:hover .con-party-detach .odc-iconbtn { color: var(--mud-palette-text-primary); }
+.con-party-tile:hover .con-party-detach .odc-iconbtn { color: var(--mud-palette-text-primary); }
 .con-party-detach .odc-iconbtn:hover,
 .con-party-detach .odc-iconbtn:focus-visible { color: var(--finance-expense); }
 
@@ -151,8 +125,10 @@
 .con-archive-ttl { font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .con-archive-desc { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
 
-/* The party-kind segmented selector in the Add-party dialog */
-.con-kind-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+/* The party-kind segmented selector in the New-party dialog. Two equal
+   options, centred as a pair so they balance the dialog rather than stretching
+   to full width now that there are two kinds instead of three. */
+.con-kind-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 180px)); gap: 8px; justify-content: center; }
 .con-kind-opt {
   display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
   padding: 14px 10px; border: 1px solid var(--mud-palette-divider); border-radius: 10px;

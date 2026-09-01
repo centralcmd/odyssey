@@ -34,6 +34,14 @@ const INS_CURRENCY_OPTIONS = INS_D.currencies
 /* date 'YYYY-MM-DD' → "Jan 01, 2026" */
 const insDate = (iso) => INS_H.dateLong(iso);
 const insRange = (a, b) => `${insDate(a)} → ${insDate(b)}`;
+/* The COMPACT date, for captions that share a line with other facts: no
+   zero-padding, and the year written once where both ends share it. */
+const INS_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const insDayShort = (iso) => { const p = iso.split('-'); return `${INS_MON[+p[1] - 1]} ${+p[2]}`; };
+const insDateShort = (iso) => `${insDayShort(iso)} ${iso.slice(0, 4)}`;
+const insRangeShort = (a, b) => (a.slice(0, 4) === b.slice(0, 4)
+  ? `${insDayShort(a)} – ${insDayShort(b)} ${b.slice(0, 4)}`
+  : `${insDateShort(a)} – ${insDateShort(b)}`);
 
 /* The headline figure shown on the collapsed card: coverage end + days word. */
 const insHeadline = (policy, today) => {
@@ -81,8 +89,11 @@ const insRefMeta = (r, kind) => {
    card with its own type glyph, colour and caption. Empty collections render no
    tile (rule 5): zero members is a healthy state, including zero insurers.
    Past five members the collection collapses into a "+N more" tile that expands
-   in place, so a collection at the cap of 50 has a defined rendering. */
-const InsLinkTiles = ({ refs, kind, label, fallbackIcon }) => {
+   in place, so a collection at the cap of 50 has a defined rendering.
+   A member whose ROLE TERM differs from the default (in-role for the whole
+   policy) carries that term in its caption — the term is the party's own fact,
+   so a renewal never rewrites it. */
+const InsLinkTiles = ({ refs, kind, label, fallbackIcon, terms, field, onEditParty }) => {
   const { useState } = React;
   const [expanded, setExpanded] = useState(false);
   if (!refs.length) return null;
@@ -102,8 +113,25 @@ const InsLinkTiles = ({ refs, kind, label, fallbackIcon }) => {
             iconSoft={unnamed ? undefined : meta.soft}
             /* The label is the collection's singular name, repeated per member —
                no position, no count: the tiles themselves are the count, and the
-               caption slot keeps the type. */
-            label={label}
+               caption slot keeps the type. The role TERM goes on its own small
+               line under it, so the caption stays one line and a long range
+               never wraps. */
+            label={(() => {
+              const id = r.contactId || r.accountId;
+              const term = terms && terms(field, id);
+              /* The tile's own edit action — revealed on hover / keyboard focus,
+                 and never offered for an unnamed member: its record is not in
+                 the picker, so the dialog could not round-trip it. */
+              const edit = onEditParty && !unnamed ? (
+                <button type="button" className="ins-tile-edit"
+                  aria-label={`Edit ${label.toLowerCase()} ${r.name}`}
+                  onClick={() => onEditParty(field, id)}>
+                  <span className="material-icons" aria-hidden="true">edit</span>
+                </button>
+              ) : null;
+              if (!term && !edit) return label;
+              return <React.Fragment>{label}{term ? <span className="ins-term">{term}</span> : null}{edit}</React.Fragment>;
+            })()}
             valueVariant="text"
             className={`wrapvalue${unnamed ? ' tone-muted' : ''}`}
             value={unnamed ? state : r.name}
@@ -339,7 +367,7 @@ const RenewalHistory = ({ policy, today, canWrite = true, onAddRenewal, onEditRe
 };
 
 /* ====================== Expanded detail ====================== */
-const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onAddRenewal, onEditRenewal, onDeleteRenewal, onUploadRenewal }) => {
+const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onEditParty, onAddRenewal, onEditRenewal, onDeleteRenewal, onUploadRenewal }) => {
   const insurers = INS_H.insInsurers(policy);
   const insuredAccounts = INS_H.insInsuredAccounts(policy);
   const insuredContacts = INS_H.insInsuredContacts(policy);
@@ -394,14 +422,29 @@ const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onAddRenewal, onEd
      linked record, in write order (insurers, then the insured, then
      beneficiaries). Omitted entirely when the policy names nobody. */
   const partyCount = insurers.length + insuredAccounts.length + insuredContacts.length + beneficiaries.length;
+  /* A member's TERM in the role, when it is not simply "the whole policy":
+     `policy.partyTerms` holds one entry per dated link ({ field, id, fromDate,
+     toDate }); an absent entry — or a null date — IS the default, the policy's
+     own extent, which needs no caption. */
+  const termText = (field, id) => {
+    const t = (policy.partyTerms || []).find(x => x.field === field && x.id === id);
+    if (!t) return null;
+    // Kept SHORT deliberately: this sits after the type in a tile caption, and
+    // the tiles are a fixed-height grid — "Sep 1 – Dec 31 2026" fits the line
+    // where "in role Sep 01, 2026 – Dec 31, 2026" wrapped it.
+    if (t.fromDate && t.toDate) return insRangeShort(t.fromDate, t.toDate);
+    if (t.fromDate) return `from ${insDateShort(t.fromDate)}`;
+    if (t.toDate) return `to ${insDateShort(t.toDate)}`;
+    return null;
+  };
   const parties = partyCount ? (
     <div className="ins-section">
       <SectionDivider label="Parties" meta={`${partyCount} link${partyCount === 1 ? '' : 's'}`} />
       <InfoTileGrid>
-        <InsLinkTiles refs={insurers} kind="contact" label="Insurer" fallbackIcon="groups" />
-        <InsLinkTiles refs={insuredAccounts} kind="account" label="Insured" fallbackIcon="account_balance_wallet" />
-        <InsLinkTiles refs={insuredContacts} kind="contact" label="Insured" fallbackIcon="person" />
-        <InsLinkTiles refs={beneficiaries} kind="contact" label="Beneficiary" fallbackIcon="volunteer_activism" />
+        <InsLinkTiles refs={insurers} kind="contact" label="Insurer" fallbackIcon="groups" terms={termText} field="insurerIds" onEditParty={onEditParty} />
+        <InsLinkTiles refs={insuredAccounts} kind="account" label="Insured" fallbackIcon="account_balance_wallet" terms={termText} field="insuredAccountIds" onEditParty={onEditParty} />
+        <InsLinkTiles refs={insuredContacts} kind="contact" label="Insured" fallbackIcon="person" terms={termText} field="insuredContactIds" onEditParty={onEditParty} />
+        <InsLinkTiles refs={beneficiaries} kind="contact" label="Beneficiary" fallbackIcon="volunteer_activism" terms={termText} field="beneficiaryIds" onEditParty={onEditParty} />
       </InfoTileGrid>
     </div>
   ) : null;
@@ -435,7 +478,7 @@ const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onAddRenewal, onEd
 };
 
 /* ====================== One policy list item ====================== */
-const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNavigate, onDelete, optionsLoading = false, effectiveCap = null }) => {
+const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNavigate, onDelete, optionsLoading = false }) => {
   const { useState, useRef, useEffect } = React;
   const [p, setP] = useState(pol);
   // Open state lives in the list — opening a policy closes its siblings.
@@ -445,7 +488,7 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
   // Count changes and the enable transition are ANNOUNCED — an updated
   // aria-label on an unfocused chip is never read out.
   const [announce, setAnnounce] = useState('');
-  const [modal, setModal] = useState(null); // { kind:'renewal'|'upload', renewalId? }
+  const [modal, setModal] = useState(null); // { kind:'renewal'|'upload'|'party', renewalId? }
   const cardRef = useRef(null);
 
   const typeInfo = INS_H.insurancePolicyTypeInfo(p.type);
@@ -465,6 +508,9 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
       // The write carries the complete desired SET for each collection.
       insurerIds: draft.insurerIds, insuredAccountIds: draft.insuredAccountIds,
       insuredContactIds: draft.insuredContactIds, beneficiaryIds: draft.beneficiaryIds,
+      // A member dropped by the pickers takes its term with it; the ones added
+      // there simply have none, which is the default term.
+      partyTerms: (prev.partyTerms || []).filter(t => (draft[t.field] || []).includes(t.id)),
       notes: draft.notes }));
     setShowEdit(false);
   };
@@ -476,6 +522,47 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
         : [{ id: `rn-new-${Date.now()}`, files: [], createdAtUtc: new Date().toISOString(), ...dto }, ...prev.renewals];
       return { ...prev, renewals };
     });
+    setModal(null);
+  };
+  // A party add appends ONE scalar id to ONE of the policy's four link
+  // collections, and — when either date is set — one entry to `partyTerms`. No
+  // entry, or a null date, means the policy's own extent, so a party added from
+  // the Edit policy pickers takes the default term.
+  const addParty = ({ field, id, fromDate, toDate }) => {
+    setP(prev => {
+      const dated = !!(fromDate || toDate);
+      return {
+        ...prev,
+        [field]: [...(prev[field] || []), id],
+        partyTerms: dated
+          ? [...(prev.partyTerms || []), { field, id, fromDate: fromDate || null, toDate: toDate || null }]
+          : (prev.partyTerms || []),
+      };
+    });
+    setModal(null);
+  };
+  /* Editing a party is the add, in reverse then forward: the OLD link (and its
+     term) is dropped and the edited one written, so a party moved between roles
+     stays one party rather than two. */
+  const saveParty = ({ field, id, fromDate, toDate }, prevLink) => {
+    setP(prev => {
+      const next = { ...prev };
+      next[prevLink.field] = (prev[prevLink.field] || []).filter(x => x !== prevLink.id);
+      next[field] = [...(next[field] || []), id];
+      const terms = (prev.partyTerms || []).filter(x => !(x.field === prevLink.field && x.id === prevLink.id));
+      next.partyTerms = (fromDate || toDate) ? [...terms, { field, id, fromDate: fromDate || null, toDate: toDate || null }] : terms;
+      return next;
+    });
+    setModal(null);
+  };
+  // Removing a party drops the link and its term. The contact or account is
+  // never touched — a party is a link, so this detaches, it does not delete.
+  const removeParty = ({ field, id }) => {
+    setP(prev => ({
+      ...prev,
+      [field]: (prev[field] || []).filter(x => x !== id),
+      partyTerms: (prev.partyTerms || []).filter(x => !(x.field === field && x.id === id)),
+    }));
     setModal(null);
   };
   const deleteRenewal = (r) => setP(prev => ({ ...prev, renewals: prev.renewals.filter(x => x.id !== r.id) }));
@@ -537,6 +624,7 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
         onToggle={setOpen}
         actions={<ActionMenu items={[
           { icon: 'edit', label: 'Edit policy', onClick: () => setShowEdit(true) },
+          { icon: 'group_add', label: 'New party', onClick: () => { setOpen(true); setModal({ kind: 'party' }); } },
           { icon: 'event_repeat', label: 'New renewal period', onClick: () => { setOpen(true); setModal({ kind: 'renewal' }); } },
           /* A document can only live on a period, so with none there is nothing
              to attach to: aria-disabled + a reason, never the dimmed state alone.
@@ -555,14 +643,22 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
       >
         <PolicyDetail policy={p} today={today}
           onNavigate={onNavigate} setPolicy={setP}
+          onEditParty={(field, id) => {
+            const t = (p.partyTerms || []).find(x => x.field === field && x.id === id);
+            setModal({ kind: 'party', party: { field, id, fromDate: (t && t.fromDate) || null, toDate: (t && t.toDate) || null } });
+          }}
           onAddRenewal={() => setModal({ kind: 'renewal' })}
           onEditRenewal={(r) => setModal({ kind: 'renewal', renewal: r })}
           onDeleteRenewal={deleteRenewal}
           onUploadRenewal={(rid) => setModal({ kind: 'upload', renewalId: rid, lockPeriod: true })} />
       </RecordCard>
       <div className="odc-sr-only" role="status" aria-live="polite">{announce}</div>
-      {showEdit && <AddInsurancePolicyModal policy={p} optionsLoading={optionsLoading} effectiveCap={effectiveCap} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
+      {showEdit && <AddInsurancePolicyModal policy={p} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
 
+      {modal && modal.kind === 'party' && (
+        <AddPolicyPartyModal policy={p} party={modal.party || null} optionsLoading={optionsLoading}
+          onClose={() => setModal(null)} onAdd={addParty} onSave={saveParty} onRemove={removeParty} />
+      )}
       {modal && modal.kind === 'renewal' && (
         <AddRenewalModal policy={p} renewal={modal.renewal} onClose={() => setModal(null)} onSave={addRenewal} />
       )}
@@ -762,7 +858,6 @@ const Insurance = ({ tweaks = {}, onNavigate }) => {
               <PolicyListItem pol={p} today={today}
                 open={openId === p.id}
                 optionsLoading={!!tweaks.insOptionsLoading}
-                effectiveCap={tweaks.insEffectiveCap == null || tweaks.insEffectiveCap === '' ? null : Number(tweaks.insEffectiveCap)}
                 onToggle={(o) => setOpenId(o ? p.id : null)}
                 highlight={jumpId === p.id}
                 onNavigate={onNavigate} onDelete={deletePolicy} />
@@ -778,9 +873,7 @@ const Insurance = ({ tweaks = {}, onNavigate }) => {
         </div>
       )}
 
-      {showAdd && <AddInsurancePolicyModal optionsLoading={!!tweaks.insOptionsLoading}
-        effectiveCap={tweaks.insEffectiveCap == null || tweaks.insEffectiveCap === '' ? null : Number(tweaks.insEffectiveCap)}
-        onClose={() => setShowAdd(false)} onCreate={createPolicy} />}
+      {showAdd && <AddInsurancePolicyModal onClose={() => setShowAdd(false)} onCreate={createPolicy} />}
     </div>
   );
 };

@@ -9,87 +9,47 @@
 <x-dc>
 <!-- @template name="Insurance Policies page" description="Insurance portfolio page: policies with derived coverage status (Active / Expiring soon / Lapsed / Upcoming), an ordered renewal-period history (Current-period summary + status'd history table, Terms pattern), premium + coverage rollups across currencies, and per-period document storage (a period is a document's only home)." -->
 <helmet>
-  <link rel="stylesheet" href="../../colors_and_type.css" />
-  <link rel="stylesheet" href="../../ui_kits/web/kit.css" />
-  <link rel="stylesheet" href="../../ui_kits/web/account.css" />
-  <link rel="stylesheet" href="../../ui_kits/web/insurance.css" />
-
-  <!-- Babel transpiles the kit's JSX. React/ReactDOM come from the DC runtime
-       (React 18.3.1) — we deliberately do NOT load our own copy. -->
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-
-  <!-- The Insurance page is the kit's React app, authored as JSX across several
-       files that register their exports on window. Load every dependency through
-       one ordered loader AFTER the runtime's React is ready: the compiled DS
-       bundle, the kit's seed data + insurance seed/helpers, then the page's
-       atoms (incl. AfmUpload from AddFileModal, MultiSelect/FilesTable from
-       Accounts) + the modals + the page itself. The logic class polls for
-       window.Insurance and mounts once done. -->
-  <script>
-    (async function () {
-      const until = (cond) => new Promise((res) => {
-        (function tick() { cond() ? res() : requestAnimationFrame(tick); })();
-      });
-      await until(() => window.React && window.ReactDOM && window.ReactDOM.createRoot && window.Babel);
-
-      const run = (code, jsx) => {
-        const out = jsx ? window.Babel.transform(code, { presets: ['react'] }).code : code;
-        (0, eval)(out);
-      };
-      const load = async (url, jsx) => {
-        try { const r = await fetch(url); run(await r.text(), jsx); }
-        catch (e) { console.error('[Insurance template] failed to load ' + url, e); }
-      };
-
-      await load('../../_ds_bundle.js', false);
-      await load('../../ui_kits/web/data.js', false);
-      await load('../../ui_kits/web/insurance-data.js', false);
-      for (const f of ['Components.jsx', 'page-header.jsx', 'AddFileModal.jsx', 'Accounts.jsx',
-                       'AddInsurancePolicyModal.jsx', 'AddRenewalModal.jsx', 'InsuranceUploadModal.jsx', 'Insurance.jsx']) {
-        await load('../../ui_kits/web/' + f, true);
-      }
-    })();
-  </script>
+  <script src="../kit-app.js"></script>
 </helmet>
-
 <div data-theme="dark" style="min-height: 100vh; background: var(--mud-palette-background, #14161c); color: var(--mud-palette-text-primary, #e7ebf3); padding: 28px 28px 64px; box-sizing: border-box;">
-  <div id="ins-mount-root" style="max-width: 1180px; margin: 0 auto;"></div>
-  <div id="ins-loading" style="display: block; max-width: 1180px; margin: 0 auto; padding: 72px 0; text-align: center; font: 400 14px/1.5 var(--font-sans, system-ui); color: var(--mud-palette-text-secondary, #9aa3b2);">
+  <div id="kit-mount" style="max-width: 1180px; margin: 0 auto;"></div>
+  <div id="kit-loading" style="display: block; max-width: 1180px; margin: 0 auto; padding: 72px 0; text-align: center; font: 400 14px/1.5 var(--font-sans, system-ui); color: var(--mud-palette-text-secondary, #9aa3b2);">
     Loading the Insurance page…
   </div>
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{
-  &quot;summaryBaseCurrency&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;&quot;, &quot;USD&quot;, &quot;EUR&quot;, &quot;NOK&quot;], &quot;default&quot;: &quot;USD&quot;, &quot;tsType&quot;: &quot;'' | 'USD' | 'EUR' | 'NOK'&quot; }
-}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;summaryBaseCurrency&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;&quot;, &quot;USD&quot;, &quot;EUR&quot;, &quot;NOK&quot;], &quot;default&quot;: &quot;USD&quot;, &quot;tsType&quot;: &quot;'' | 'USD' | 'EUR' | 'NOK'&quot; }}">
 class Component extends DCLogic {
-  // The Insurance page is the kit's multi-file React app (Insurance.jsx + its
-  // atoms + modals), loaded via <helmet>. We mount it as a React root into a
-  // ref'd container using the runtime's React, and re-render on Tweaks changes.
+  // Mounts the kit's existing React page (loaded by ../kit-app.js) into a plain
+  // container, using the DC runtime's React. See templates/kit-app.js.
+  get COMPONENT() { return 'Insurance'; }
 
-  _tweaks() {
-    return {
+  _props() {
+    const base = window.__KIT_PROPS || {};
+    const tweaks = Object.assign({}, base.tweaks, {
       summaryBaseCurrency: this.props.summaryBaseCurrency != null ? this.props.summaryBaseCurrency : 'USD',
-    };
+    });
+    return Object.assign({}, base, { tweaks: tweaks });
   }
 
   _mountWhenReady() {
     if (this._mounted) { this._renderApp(); return; }
-    if (!this._el) this._el = document.getElementById('ins-mount-root');
+    if (!this._el) this._el = document.getElementById('kit-mount');
     const ready = this._el && window.React && window.ReactDOM &&
-                  window.ReactDOM.createRoot && window.Insurance;
+                  window.ReactDOM.createRoot && window.__kitReady && window[this.COMPONENT];
     if (!ready) { this._raf = setTimeout(() => this._mountWhenReady(), 80); return; }
     this._root = window.ReactDOM.createRoot(this._el);
     this._mounted = true;
-    const loader = document.getElementById('ins-loading');
+    const loader = document.getElementById('kit-loading');
     if (loader) loader.style.display = 'none';
     this._renderApp();
   }
 
   _renderApp() {
-    if (!this._root || !window.Insurance) return;
-    this._root.render(window.React.createElement(window.Insurance, { tweaks: this._tweaks() }));
+    const C = window[this.COMPONENT];
+    if (!this._root || !C) return;
+    this._root.render(window.React.createElement(C, this._props()));
   }
 
   componentDidMount() { this._mountWhenReady(); }
@@ -98,7 +58,6 @@ class Component extends DCLogic {
     if (this._raf) clearTimeout(this._raf);
     if (this._root) { try { this._root.unmount(); } catch (e) {} }
   }
-
   renderVals() { return {}; }
 }
 </script>

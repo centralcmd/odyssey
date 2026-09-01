@@ -4,7 +4,7 @@
    expandable-record scaffold (.acct-list / .acct-item), with a contract-
    specific expanded detail. Each contract is a single agreement with a name,
    a type, an active period, a description, the PARTIES it relates to (an
-   account, a contact, or an insurance policy — one-of-three),
+   account or a contact),
    and the DOCUMENTS that evidence it (references to existing library files).
 
    Status (Upcoming / Active / Expired / Archived) is DERIVED, never stored —
@@ -54,25 +54,18 @@ const ContractFilesTable = ({ files, onDelete, empty }) => {
   );
 };
 
-/* ====================== One party row ====================== */
-const PartyRow = ({ party, onDetach }) => {
+/* ====================== One party tile ====================== */
+/* Same shape as a policy's Parties section (Insurance.jsx `InsLinkTiles`): one
+   InfoTile per linked record, drawn in that record's own type icon and colour,
+   with the kind as the overline and the target type as the caption. The detach
+   action rides on the tile, revealed on hover / focus-within. */
+const PartyTile = ({ party, onDetach }) => {
   const r = CON_H.conResolveParty(party);
   return (
-    <div className="con-party">
-      {/* A referenced record is drawn in ITS OWN type icon and colour — the same
-          mark it carries on its own page — so it is recognisable as that record
-          rather than as part of this one. */}
-      <span className="con-party-av" style={{ background: r.soft || 'var(--mud-palette-action-default-hover)', color: r.color || 'var(--mud-palette-text-secondary)' }}>
-        <MIcon name={r.icon} size={20} />
-      </span>
-      {/* One line: name, then the kind chip and target type beside it. */}
-      <div className="con-party-main">
-        <span className="con-party-name">{r.name}</span>
-        <span className="con-party-meta">
-          <span className="con-party-kind"><MIcon name={r.icon} size={13} />{r.kindLabel}</span>
-          {r.typeLabel && <React.Fragment><span className="con-party-dot">·</span><span>{r.typeLabel}</span></React.Fragment>}
-        </span>
-      </div>
+    <div className="con-party-tile">
+      <InfoTile icon={r.icon} iconColor={r.color} iconSoft={r.soft}
+        label={r.kindLabel} value={r.name} valueVariant="text" className="wrapvalue"
+        foot={r.typeLabel || undefined} />
       <span className="con-party-detach" title={`Detach ${r.name}`}>
         <IconButton icon="link_off" label={`Detach ${r.name}`} onClick={() => onDetach(party)} />
       </span>
@@ -142,17 +135,17 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         <InfoTileGrid><InfoTile icon="sticky_note_2" label="Description" value={contract.description} wide /></InfoTileGrid>
       ) : null}
 
-      {/* PARTIES — a plain section; "Add party" lives in the row action menu. */}
+      {/* PARTIES — a plain section; "New party" lives in the row action menu. */}
       <div className="con-section">
         <SectionDivider label="Parties" meta={`${parties.length} linked`} />
         {parties.length ? (
-          <div className="con-parties">
-            {parties.map(p => <PartyRow key={p.id} party={p} onDetach={detachParty} />)}
-          </div>
+          <InfoTileGrid>
+            {parties.map(p => <PartyTile key={p.id} party={p} onDetach={detachParty} />)}
+          </InfoTileGrid>
         ) : (
           <div className="con-empty-line">
             <MIcon name="diversity_3" size={20} />
-            <div style={{ flex: 1 }}>No parties yet — link the account, contact, or insurance policy this contract relates to.</div>
+            <div style={{ flex: 1 }}>No parties yet — link the account or contact this contract relates to.</div>
           </div>
         )}
       </div>
@@ -256,7 +249,7 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
         onToggle={setOpen}
         actions={<ActionMenu items={[
           { icon: 'edit', label: 'Edit contract', onClick: () => setShowEdit(true) },
-          { icon: 'group_add', label: 'Add party', onClick: () => { setOpen(true); setModal('party'); } },
+          { icon: 'group_add', label: 'New party', onClick: () => { setOpen(true); setModal('party'); } },
           { icon: 'attach_file', label: 'Upload document', onClick: () => { setOpen(true); setModal('file'); } },
           { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
           { divider: true },

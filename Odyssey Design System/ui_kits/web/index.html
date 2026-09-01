@@ -83,6 +83,7 @@
   <script type="text/babel" src="AddInsurancePolicyModal.jsx"></script>
   <script type="text/babel" src="AddRenewalModal.jsx"></script>
   <script type="text/babel" src="InsuranceUploadModal.jsx"></script>
+  <script type="text/babel" src="AddPolicyPartyModal.jsx"></script>
   <script type="text/babel" src="Insurance.jsx"></script>
   <script type="text/babel" src="AddContractModal.jsx"></script>
   <script type="text/babel" src="AddContractPartyModal.jsx"></script>
@@ -243,12 +244,9 @@
               <TweakSelect label="Base currency" value={tweaks.summaryBaseCurrency}
                            options={[{ value: '', label: 'No conversion' }, { value: 'USD', label: 'USD' }, { value: 'EUR', label: 'EUR' }, { value: 'NOK', label: 'NOK' }]}
                            onChange={(v) => setTweak('summaryBaseCurrency', v)} />
-              <TweakSection label="Link collections (insurers · accounts · contacts · beneficiaries)" />
+              <TweakSection label="Parties (New party / edit party)" />
               <TweakToggle label="Options still loading" value={tweaks.insOptionsLoading}
                            onChange={(v) => setTweak('insOptionsLoading', v)} />
-              <TweakRadio label="Effective cap (server setting)" value={tweaks.insEffectiveCap}
-                          options={[{ value: '', label: '50 (default)' }, { value: '3', label: '3 — over-cap on save' }, { value: '1', label: '1 — one member each' }]}
-                          onChange={(v) => setTweak('insEffectiveCap', v)} />
             </React.Fragment>
           )}
           {view === 'contracts' && (

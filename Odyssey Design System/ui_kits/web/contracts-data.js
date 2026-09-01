@@ -5,7 +5,7 @@
                         completionDate?, archived?, createdAtUtc, parties[], files[] }
                         — a contract is either TERM-based (startDate/endDate, either
                         optional) or ONE-OFF (a single completionDate, no term).
-     • ContractParty  { id, accountId? | contactId? | insurancePolicyId? }
+     • ContractParty  { id, accountId? | contactId? }
                         — exactly one target (the XOR invariant, §6). The party
                         kind label for a contact target is "Contact".
      • ContractFile   { id, fileMetadataId, fileType, attachedByUserId,
@@ -67,8 +67,8 @@
   ];
 
   /* ---- Seed contracts. Dates anchored around mid-2026 so the derived statuses
-     are stable: covers all four types and all three party kinds (Account /
-     Contact / Insurance policy), plus one Upcoming, one Expired, and one
+     are stable: covers all four types and both party kinds (Account /
+     Contact), plus one Upcoming, one Expired, and one
      Archived record. ---- */
   D.contracts = [
     {
@@ -91,7 +91,6 @@
       parties: [
         { id: 'cp-lease-1', accountId: '7' },
         { id: 'cp-lease-2', contactId: 'c9' },
-        { id: 'cp-lease-3', insurancePolicyId: 'ip-home' },
       ],
       files: [
         { id: 'cf-lease-1', fileMetadataId: 'fm-lease-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-08-14T10:02:00Z' },
@@ -151,7 +150,6 @@
       startDate: '2023-06-01', endDate: '2025-10-31', archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z',
       parties: [
         { id: 'cp-solar-1', accountId: '7' },
-        { id: 'cp-solar-2', insurancePolicyId: 'ip-home' },
       ],
       files: [
         { id: 'cf-solar-1', fileMetadataId: 'fm-solar-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2023-05-28T09:04:00Z' },
@@ -236,16 +234,10 @@
         return { kind: 'contact', kindLabel: 'Contact', name: c ? c.name : 'Unknown contact',
           typeLabel: m.label || '', icon: m.icon || 'groups', color: m.color, soft: m.soft, target: c };
       }
-      if (party.insurancePolicyId) {
-        const p = D.insurancePolicyById ? D.insurancePolicyById[party.insurancePolicyId] : (D.insurancePolicies || []).find(x => x.id === party.insurancePolicyId);
-        const m = (p && D.insurancePolicyTypeByKey[p.type]) || {};
-        return { kind: 'insurancePolicy', kindLabel: 'Insurance policy', name: p ? p.name : 'Unknown policy',
-          typeLabel: m.label || '', icon: m.icon || 'shield', color: m.color, soft: m.soft, target: p };
-      }
       return { kind: 'unknown', kindLabel: 'Party', name: '—', typeLabel: '', icon: 'help', color: undefined, soft: undefined, target: null };
     },
 
-    // The three selectable party-kind option sets (pre-loaded for the picker).
+    // The two selectable party-kind option sets (pre-loaded for the picker).
     conAccountOptions() {
       return D.accounts.filter(a => !a.archived).map(a => {
         const m = D.accountTypeById[a.type] || {};
@@ -256,12 +248,6 @@
       return D.activeContacts().map(c => {
         const m = D.contactTypeByKey[c.type] || {};
         return { value: c.id, label: c.name, icon: m.icon, iconColor: m.color };
-      });
-    },
-    conPolicyOptions() {
-      return (D.insurancePolicies || []).filter(p => !p.archived).map(p => {
-        const m = D.insurancePolicyTypeByKey[p.type] || {};
-        return { value: p.id, label: p.name, icon: m.icon, iconColor: m.color };
       });
     },
 
