@@ -28,17 +28,3 @@ public sealed record ContractContactReference
 
     public ContactType Type { get; set; }
 }
-
-/// <summary>
-/// Minimal, data-minimised projection of an insurance policy linked as a contract party (issue #174
-/// §10 #2). Drops <c>PolicyNumber</c> and free-text <c>Notes</c> so a <c>contracts.read</c>-only
-/// caller cannot read the record gated by <c>insurance.read</c>.
-/// </summary>
-public sealed record ContractPolicyReference
-{
-    public required Guid InsurancePolicyId { get; set; }
-
-    public required string Name { get; set; }
-
-    public InsurancePolicyType Type { get; set; }
-}

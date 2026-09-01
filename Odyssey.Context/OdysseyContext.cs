@@ -326,12 +326,12 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         modelBuilder.Entity<ContractParty>(entity =>
         {
-            // One-of-three (XOR) invariant: a party links to exactly one target (issue #174 §6).
+            // One-of-two (XOR) invariant: a party links to exactly one target (issue #174 §6).
             // The service layer is the real guard (returns 400); this CHECK is a DB backstop declared
             // on the model so it lands in the snapshot. The app only runs on MariaDB, which honours it.
             entity.ToTable(tb => tb.HasCheckConstraint(
                 "CK_ContractParties_ExactlyOneTarget",
-                "((`AccountId` IS NOT NULL) + (`ContactId` IS NOT NULL) + (`InsurancePolicyId` IS NOT NULL)) = 1"));
+                "((`AccountId` IS NOT NULL) + (`ContactId` IS NOT NULL)) = 1"));
         });
 
         modelBuilder.Entity<ContractFile>(entity =>

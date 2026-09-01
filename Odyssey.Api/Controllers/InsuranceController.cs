@@ -136,6 +136,81 @@ whose target is archived or no longer resolves — such a link cannot be removed
         return await service.Delete(id, cancellationToken) ? NoContent() : this.NotFoundProblem($"Insurance policy ID {id} not found.");
     }
 
+    // ── Parties ───────────────────────────────────────────────────────────────
+    // One link at a time, with the TERM the full-set PUT has nowhere to put. A party is addressed by
+    // its ROLE and its TARGET, not by a link-row id: that pair is the unique index on each of the four
+    // tables, and it is what the read model already gives the caller.
+
+    [HttpPost("{id}/parties", Name = "PostInsurancePolicyParty")]
+    [Authorize(Policy = PermissionClaims.InsuranceUpdate)]
+    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingInsurancePolicy))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Link one contact or account to a policy in one of its four roles.",
+        Description = @"Both dates are optional, and null is not 'unset' but the default term — the
+policy's own extent — so a party added with the defaults follows the policy for its whole lifetime and
+a later renewal never re-dates it. 409 when the target already holds that role, 422 when the role's
+collection would exceed the effective cap.")]
+    public async Task<IActionResult> PostParty(
+        [FromRoute(Name = "id")] Guid id,
+        [FromBody] InsurancePolicyPartyRequest request, CancellationToken cancellationToken = default)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        var updated = await service.AddParty(id, request, userId, cancellationToken);
+        return updated is null
+            ? this.NotFoundProblem($"Insurance policy ID {id} not found.")
+            : CreatedAtRoute("GetInsurancePolicy", new { id }, updated);
+    }
+
+    [HttpPut("{id}/parties/{role}/{targetId}", Name = "PutInsurancePolicyParty")]
+    [Authorize(Policy = PermissionClaims.InsuranceUpdate)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingInsurancePolicy))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Re-write one party: its role, its target, its dates, or any combination.",
+        Description = @"The route names the link as it stands; the body names what it should become. A
+party moved to another role stays ONE party — the old row and the new one are written in a single
+transaction, never left as two.")]
+    public async Task<IActionResult> PutParty(
+        [FromRoute(Name = "id")] Guid id,
+        [FromRoute(Name = "role")] InsurancePartyRole role,
+        [FromRoute(Name = "targetId")] Guid targetId,
+        [FromBody] InsurancePolicyPartyRequest request, CancellationToken cancellationToken = default)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        var updated = await service.UpdateParty(id, role, targetId, request, userId, cancellationToken);
+        return updated is null ? this.NotFoundProblem($"Insurance policy ID {id} not found.") : Ok(updated);
+    }
+
+    [HttpDelete("{id}/parties/{role}/{targetId}", Name = "DeleteInsurancePolicyParty")]
+    [Authorize(Policy = PermissionClaims.InsuranceUpdate)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Detach one party. The linked contact or account itself is untouched.")]
+    public async Task<IActionResult> DeleteParty(
+        [FromRoute(Name = "id")] Guid id,
+        [FromRoute(Name = "role")] InsurancePartyRole role,
+        [FromRoute(Name = "targetId")] Guid targetId, CancellationToken cancellationToken = default)
+    {
+        return await service.RemoveParty(id, role, targetId, cancellationToken)
+            ? NoContent()
+            : this.NotFoundProblem($"Insurance policy ID {id} has no such party.");
+    }
+
     // ── Renewals ──────────────────────────────────────────────────────────────
 
     [HttpPost("{id}/renewals", Name = "PostPolicyRenewal")]

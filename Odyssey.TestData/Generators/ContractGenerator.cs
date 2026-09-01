@@ -17,7 +17,7 @@ namespace Odyssey.TestData.Generators;
 /// </summary>
 public static class ContractGenerator
 {
-    private enum PartyKind { Account, Contact, InsurancePolicy }
+    private enum PartyKind { Account, Contact }
 
     private sealed record PartySpec(PartyKind Kind, string TargetName);
 
@@ -68,14 +68,14 @@ public static class ContractGenerator
                     new(PartyKind.Contact, Catalog.Contacts.CityPowerWater),
                 ]),
 
-            // Other — links the household to an insurance policy and the mortgaged property account.
-            // Active (started a year ago, open-ended). Exercises the InsurancePolicy party kind.
+            // Other — links the household's insurer to the mortgaged property account. Active
+            // (started a year ago, open-ended). Exercises a two-party contract across both kinds.
             new(
                 "Mortgage Insurance Mandate", ContractType.Other,
-                "Standing mandate tying the home insurance policy to the mortgage account.",
+                "Standing mandate tying the home insurance cover to the mortgage account.",
                 anchor.AddYears(-1), null, false,
                 [
-                    new(PartyKind.InsurancePolicy, "Home Insurance"),
+                    new(PartyKind.Contact, Catalog.Contacts.Globex),
                     new(PartyKind.Account, Catalog.Accounts.HomeMortgage),
                 ]),
 
@@ -119,8 +119,6 @@ public static class ContractGenerator
                         ? Catalog.Accounts.IdFor(party.TargetName) : null,
                     ContactId = party.Kind == PartyKind.Contact
                         ? Catalog.Contacts.IdFor(party.TargetName) : null,
-                    InsurancePolicyId = party.Kind == PartyKind.InsurancePolicy
-                        ? InsurancePolicyGenerator.IdFor(party.TargetName) : null,
                 });
             }
         }

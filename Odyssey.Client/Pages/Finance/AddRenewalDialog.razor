@@ -21,7 +21,8 @@
             <OdsFormRow>
                 <OdsDatePicker Value="_fromDate" ValueChanged="@(d => { _fromDate = d; _errors.Remove("fromDate"); })"
                                Label="Cover from" Error="@_errors.ContainsKey("fromDate")"
-                               ErrorText="@_errors.GetValueOrDefault("fromDate")" />
+                               ErrorText="@_errors.GetValueOrDefault("fromDate")"
+                               HelperText="Start of this period's cover." />
                 <OdsDatePicker Value="_toDate" ValueChanged="@(d => { _toDate = d; _errors.Remove("toDate"); })"
                                Label="Cover to" Error="@_errors.ContainsKey("toDate")"
                                ErrorText="@_errors.GetValueOrDefault("toDate")"

@@ -46,6 +46,21 @@ public interface IInsuranceApiClient
 
     Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default);
 
+    // ── Parties ──────────────────────────────────────────────────────────────
+    // One link at a time, with the term the full-set update has nowhere to put. A party is addressed
+    // by its ROLE and its TARGET — the pair the read model already carries — not by a link-row id.
+
+    /// <summary>Links one contact or account to a policy in one of its four roles.</summary>
+    Task<ApiResult> AddPartyAsync(Guid policyId, InsurancePolicyPartyRequest party, CancellationToken ct = default);
+
+    /// <summary>Re-writes one party: its role, its target, its dates, or any combination. The route
+    /// names the link as it stands; <paramref name="party"/> names what it should become.</summary>
+    Task<ApiResult> UpdatePartyAsync(
+        Guid policyId, InsurancePartyRole role, Guid targetId, InsurancePolicyPartyRequest party, CancellationToken ct = default);
+
+    /// <summary>Detaches one party. The linked contact or account itself is untouched.</summary>
+    Task<ApiResult> RemovePartyAsync(Guid policyId, InsurancePartyRole role, Guid targetId, CancellationToken ct = default);
+
     // ── Renewals ─────────────────────────────────────────────────────────────
 
     Task<ApiResult> AddRenewalAsync(Guid policyId, NewPolicyRenewal renewal, CancellationToken ct = default);
@@ -113,6 +128,18 @@ public sealed class InsuranceApiClient(IOdysseyApi api) : IInsuranceApiClient
     public Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Base}/{id}", null, ct);
 
+    // ── Parties ──────────────────────────────────────────────────────────────
+
+    public Task<ApiResult> AddPartyAsync(Guid policyId, InsurancePolicyPartyRequest party, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Post, Parties(policyId), party, ct);
+
+    public Task<ApiResult> UpdatePartyAsync(
+        Guid policyId, InsurancePartyRole role, Guid targetId, InsurancePolicyPartyRequest party, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Put, $"{Parties(policyId)}/{role}/{targetId}", party, ct);
+
+    public Task<ApiResult> RemovePartyAsync(Guid policyId, InsurancePartyRole role, Guid targetId, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Delete, $"{Parties(policyId)}/{role}/{targetId}", null, ct);
+
     // ── Renewals ─────────────────────────────────────────────────────────────
 
     public Task<ApiResult> AddRenewalAsync(Guid policyId, NewPolicyRenewal renewal, CancellationToken ct = default) =>
@@ -133,4 +160,6 @@ public sealed class InsuranceApiClient(IOdysseyApi api) : IInsuranceApiClient
         api.SendAsync(HttpMethod.Delete, $"{Renewals(policyId)}/{renewalId}/files/{fileId}", null, ct);
 
     private static string Renewals(Guid policyId) => $"{Base}/{policyId}/renewals";
+
+    private static string Parties(Guid policyId) => $"{Base}/{policyId}/parties";
 }

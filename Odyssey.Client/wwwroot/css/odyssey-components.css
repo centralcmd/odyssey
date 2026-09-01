@@ -1825,6 +1825,49 @@
 /* The old `.ins-sub` sub-divider was promoted to the design system as SectionDivider
    (OdsSectionDivider, `.odc-sectiondivider`) — one divider across every record body. */
 
+/* A party tile's role TERM sits on its own small line under the uppercase label, in the space
+   the icon leaves — so the type caption below stays one line and a long range never wraps. */
+.ins-section .odc-infotile-k:has(.ins-term) { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; }
+.ins-section .ins-term {
+  font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
+  color: var(--mud-palette-text-secondary); white-space: nowrap;
+}
+/* Per-tile edit action: the renewal row's own icon-button treatment (borderless, tinted hover),
+   hidden until the tile is hovered or something inside it takes focus, so the parties grid stays
+   quiet while it is only being read. */
+.ins-section .odc-tilegrid > .odc-infotile { position: relative; }
+.ins-tile-edit {
+  position: absolute; top: 6px; right: 6px; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0; border-radius: 6px;
+  border: none; background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
+  opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.ins-tile-edit .material-icons { font-size: 18px; }
+.odc-infotile:hover .ins-tile-edit, .ins-tile-edit:focus-visible { opacity: 1; }
+.ins-tile-edit:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.ins-tile-edit:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+
+/* Role picker in the New party dialog — the contract party-kind cards, in the insurance accent,
+   with four roles instead of two kinds. */
+.ins-kind-seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.ins-kind-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
+  padding: 14px 8px; border: 1px solid var(--mud-palette-divider); border-radius: 10px;
+  background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.ins-kind-opt:hover { border-color: var(--ins-accent-line); color: var(--mud-palette-text-primary); }
+.ins-kind-opt.on { border-color: var(--ins-accent-line); background: var(--ins-accent-soft); color: var(--mud-palette-text-primary); }
+.ins-kind-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.ins-kind-opt .material-icons { font-size: 24px; color: var(--ins-accent); }
+.ins-kind-lab { font: var(--fw-medium) 12px/1.2 var(--font-sans); }
+
+/* The destructive action in the Edit party dialog sits apart from the Cancel / Save pair.
+   The `.mud-dialog` prefix is what beats MudBlazor's own actions-row specificity — the same
+   escalation every ods-modal-foot rule above needs. */
+.mud-dialog .mud-dialog-actions.ods-modal-foot > .ins-remove-party { margin-right: auto; }
+
 /* Tile grids — the tiles are OdsInfoTile (.odc-infotile). The grid sets the
    InfoTile icon-chip accent to the feature's indigo unless a tile sets its own. */
 .ins-tiles {
@@ -1940,44 +1983,23 @@
 /* A section inside the record body: its divider, then its content. */
 .con-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 
-/* Parties list — one row per typed link (Account / Contact / Insurance policy) */
-.con-parties { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
-/* The 16px was the old disclosure body's inner padding; inside a record card a section's
-   content sits flush with its divider label. */
-.odc-record-body .con-parties { padding: 0; }
-.con-party {
-  display: flex; align-items: center; gap: 12px;
-  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
-  background: var(--mud-palette-background); padding: 10px 12px;
-}
-.con-party-av {
-  display: inline-flex; align-items: center; justify-content: center; flex: none;
-  width: 38px; height: 38px; border-radius: 9px;
-}
-.con-party-av .material-icons { font-size: 20px; }
-/* One line — name, kind chip, target type. min-height keeps the row the height it was when
-   the meta sat on a second line. */
-.con-party-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; min-height: 38px; }
-.con-party-name { font: 500 13.5px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.con-party-meta { display: inline-flex; align-items: center; gap: 7px; font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); flex: none; }
-.con-party-kind {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 2px 8px; border-radius: var(--radius-pill);
-  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface);
-  font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.02em; color: var(--mud-palette-text-secondary);
-  flex: none;
-}
-.con-party-kind .material-icons { font-size: 13px; }
-.con-party-dot { opacity: 0.5; }
+/* Parties — one InfoTile per typed link (Account / Contact), the same tile design a policy's
+   Parties section uses. Each tile is drawn in the referenced record's own icon + colour; the
+   detach action sits top-right, revealed on hover / focus-within. */
+.con-party-tile { position: relative; display: flex; min-width: 0; }
+.con-party-tile > .odc-infotile { flex: 1; min-width: 0; }
 /* Detach control — a destructive ACTION, not a "broken link" status. Hidden at
-   rest so the row stays quiet; revealed on row hover (or keyboard focus within
-   the row, for a11y), where it reads as an interactive destructive control
+   rest so the tile stays quiet; revealed on tile hover (or keyboard focus within
+   it, for a11y), where it reads as an interactive destructive control
    (coral on hover) so link_off isn't mistaken for a status glyph. */
-.con-party-detach { flex: none; opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
-.con-party:hover .con-party-detach,
-.con-party:focus-within .con-party-detach { opacity: 1; }
+.con-party-detach {
+  position: absolute; top: 6px; right: 6px; z-index: 1;
+  opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.con-party-tile:hover .con-party-detach,
+.con-party-tile:focus-within .con-party-detach { opacity: 1; }
 .con-party-detach .mud-icon-button { color: var(--mud-palette-text-secondary); transition: color var(--duration-fast) var(--ease-standard), background-color 0s; }
-.con-party:hover .con-party-detach .mud-icon-button { color: var(--mud-palette-text-primary); }
+.con-party-tile:hover .con-party-detach .mud-icon-button { color: var(--mud-palette-text-primary); }
 .con-party-detach .mud-icon-button:hover,
 .con-party-detach .mud-icon-button:focus-visible { color: var(--finance-expense); }
 
@@ -2007,8 +2029,10 @@
 .con-existing-name { flex: 1; min-width: 0; font: 400 12.5px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .con-existing-kind { flex: none; font: 500 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
-/* The party-kind segmented selector in the Add-party dialog */
-.con-kind-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+/* The party-kind segmented selector in the New-party dialog. Two equal options, centred as a
+   pair so they balance the dialog rather than stretching to full width now that there are two
+   kinds instead of three. */
+.con-kind-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 180px)); gap: 8px; justify-content: center; }
 .con-kind-opt {
   display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
   padding: 14px 10px; border: 1px solid var(--mud-palette-divider); border-radius: 10px;

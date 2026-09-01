@@ -420,11 +420,11 @@ public class ContractServiceTests
     }
 
     [Fact]
-    public async Task AddParty_ThreeTargets_Throws()
+    public async Task AddParty_BothTargets_Throws()
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var (accountId, contactId, policyId) = await SeedTargets(context);
+        var (accountId, contactId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday));
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
@@ -432,7 +432,6 @@ public class ContractServiceTests
             {
                 AccountId = accountId,
                 ContactId = contactId,
-                InsurancePolicyId = policyId,
             }));
     }
 
@@ -474,17 +473,6 @@ public class ContractServiceTests
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
             service.AddParty(contract.ContractId, new AddContractPartyRequest { ContactId = Guid.NewGuid() }));
-    }
-
-    [Fact]
-    public async Task AddParty_UnknownInsurancePolicy_ThrowsNotFound()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = CreateService(context);
-        var contract = await service.Create(NewContract(FixedToday));
-
-        await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AddParty(contract.ContractId, new AddContractPartyRequest { InsurancePolicyId = Guid.NewGuid() }));
     }
 
     [Fact]

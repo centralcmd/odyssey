@@ -21,7 +21,6 @@ public partial class ContractsCard
 
     private IReadOnlyList<OdsOption> _accountOptions = [];
     private IReadOnlyList<OdsOption> _institutionOptions = [];
-    private IReadOnlyList<OdsOption> _policyOptions = [];
 
     private Guid? _flashId;
 
@@ -89,7 +88,7 @@ public partial class ContractsCard
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
-        await Task.WhenAll(LoadContracts(), LoadSummary(), LoadAccounts(), LoadInstitutions(), LoadPolicies());
+        await Task.WhenAll(LoadContracts(), LoadSummary(), LoadAccounts(), LoadInstitutions());
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -229,24 +228,6 @@ public partial class ContractsCard
                 {
                     var meta = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
                     return new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName) { Icon = meta.Icon, IconColor = meta.Color };
-                })
-        ];
-    }
-
-    private async Task LoadPolicies()
-    {
-        // Insurance policies are an optional party kind; if the user lacks insurance.read the list
-        // comes back empty and the picker simply offers none.
-        var policies = (await Insurance.ListAsync()).ItemsOrToast(Snackbar, "insurance policies");
-        _policyOptions =
-        [
-            .. policies
-                .Where(p => p.Archived is null)
-                .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)
-                .Select(p =>
-                {
-                    var meta = OdsTypeRegistries.InsurancePolicyTypeOf(p.Type);
-                    return new OdsOption(p.InsurancePolicyId.ToString(), p.Name) { Icon = meta.Icon, IconColor = meta.Color };
                 })
         ];
     }
@@ -513,7 +494,7 @@ public partial class ContractsCard
             items.Add(new OdsMenuItem
             {
                 Icon = "group_add",
-                Label = "Add party",
+                Label = "New party",
                 OnClick = EventCallback.Factory.Create(this, () => AddParty(c.ContractId)),
             });
         }

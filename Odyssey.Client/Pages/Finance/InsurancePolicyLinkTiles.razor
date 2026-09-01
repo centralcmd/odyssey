@@ -10,10 +10,16 @@
     rather than as a line in a list. Empty collections render nothing at all: zero members is a
     healthy state, including zero insurers.
 
+    A member whose ROLE TERM differs from the default (in the role for the whole policy) carries that
+    term on its own small line under the label — the term is the party's own fact, so a renewal never
+    rewrites it, and keeping it out of the caption leaves the type on one line where a long range
+    would have wrapped it.
+
     An UNNAMED member (archived, or no longer resolvable) shows the STATE WORD where its name would
     be — the read model carries the id and the type, never the name — with no type caption at all
     when the link is unresolvable, since there is no contact row to read a type from. Meaning never
-    rides on the glyph alone.
+    rides on the glyph alone. It also carries NO edit action: its record is not in the picker, so the
+    dialog could not round-trip it.
 
     Past five members the collection collapses into a "+N more" tile that expands in place, so a
     collection at the cap of 50 has a defined rendering.
@@ -29,15 +35,16 @@
        record's meaning lives in text. *@
     @foreach (var member in shown)
     {
-        <OdsInfoTile Icon="@(member.Unnamed ? UnnamedIcon(member) : (member.Icon ?? FallbackIcon))"
-                     IconColor="@(member.Unnamed ? null : member.IconColor)"
-                     IconSoft="@(member.Unnamed ? null : member.IconSoft)"
-                     Label="@Label"
+        var m = member;
+        <OdsInfoTile Icon="@(m.Unnamed ? UnnamedIcon(m) : (m.Icon ?? FallbackIcon))"
+                     IconColor="@(m.Unnamed ? null : m.IconColor)"
+                     IconSoft="@(m.Unnamed ? null : m.IconSoft)"
+                     LabelContent="@LabelFor(m)"
                      ValueVariant="OdsInfoTileVariant.Text"
                      WrapValue="true"
-                     Tone="@(member.Unnamed ? OdsInfoTileTone.Muted : OdsInfoTileTone.Default)"
-                     Foot="@OdsInfoTile.Caption(member.TypeLabel)">
-            <Value>@member.Display</Value>
+                     Tone="@(m.Unnamed ? OdsInfoTileTone.Muted : OdsInfoTileTone.Default)"
+                     Foot="@OdsInfoTile.Caption(m.TypeLabel)">
+            <Value>@m.Display</Value>
         </OdsInfoTile>
     }
 
@@ -68,10 +75,57 @@
     /// <summary>Glyph for a member whose own type resolves to none.</summary>
     [Parameter] public string FallbackIcon { get; set; } = "link";
 
+    /// <summary>Which of the policy's four collections this is — passed back with an edit.</summary>
+    [Parameter] public InsurancePartyRole Role { get; set; }
+
+    /// <summary>
+    /// Raised with (role, targetId) when a member's edit action is used. Unset means the tiles are
+    /// read-only, which is also what a caller without insurance.update passes.
+    /// </summary>
+    [Parameter] public EventCallback<(InsurancePartyRole Role, Guid TargetId)> OnEditParty { get; set; }
+
     private bool _expanded;
 
     private static string UnnamedIcon(LinkTileMember member) =>
         member.State == LinkAvailability.Archived ? "inventory_2" : "link_off";
+
+    /// <summary>
+    /// The overline: the collection's singular name, plus the member's term when it has one, plus the
+    /// tile's own edit action. The term goes on its OWN line rather than into the caption so the type
+    /// stays one line and a long range never wraps it.
+    /// </summary>
+    private RenderFragment LabelFor(LinkTileMember member) => builder =>
+    {
+        var seq = 0;
+        builder.AddContent(seq++, Label);
+
+        if (!string.IsNullOrEmpty(member.Term))
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "ins-term");
+            builder.AddContent(seq++, member.Term);
+            builder.CloseElement();
+        }
+
+        // Never offered for an unnamed member: its record is not in the picker, so the dialog could
+        // not round-trip it. The affordance would promise a write that cannot be made.
+        if (OnEditParty.HasDelegate && !member.Unnamed && Guid.TryParse(member.Key, out var targetId))
+        {
+            var role = Role;
+            builder.OpenElement(seq++, "button");
+            builder.AddAttribute(seq++, "type", "button");
+            builder.AddAttribute(seq++, "class", "ins-tile-edit");
+            builder.AddAttribute(seq++, "aria-label", $"Edit {Label?.ToLowerInvariant()} {member.Display}");
+            builder.AddAttribute(seq++, "onclick",
+                EventCallback.Factory.Create<MouseEventArgs>(this, () => OnEditParty.InvokeAsync((role, targetId))));
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "material-icons");
+            builder.AddAttribute(seq++, "aria-hidden", "true");
+            builder.AddContent(seq++, "edit");
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+    };
 
     /// <summary>
     /// One member of a link collection, flattened for display. Built by the host, which holds both
@@ -86,6 +140,12 @@
 
         /// <summary>The type, in text. Null for an unresolvable link, which has no type to state.</summary>
         public string? TypeLabel { get; init; }
+
+        /// <summary>
+        /// The member's term in the role, already formatted — null when it is the default (the
+        /// policy's own extent), which needs no caption.
+        /// </summary>
+        public string? Term { get; init; }
 
         public string? Icon { get; init; }
 

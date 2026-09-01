@@ -26,5 +26,15 @@ public class InsurancePolicyInsuredAccount
 
     public Guid AccountId { get; set; }
 
+    /// <summary>
+    /// When this party entered the role, or <c>null</c> for the policy's own extent — the default. A
+    /// party's term is its <em>own</em> fact, independent of the policy's renewal periods, so a
+    /// renewal never re-dates it (design system, <c>AddPolicyPartyModal</c>).
+    /// </summary>
+    public DateTime? FromDate { get; set; }
+
+    /// <summary>When this party left the role, or <c>null</c> while it is still in it.</summary>
+    public DateTime? ToDate { get; set; }
+
     public InsurancePolicy? InsurancePolicy { get; set; }
 }

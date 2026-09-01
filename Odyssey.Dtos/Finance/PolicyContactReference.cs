@@ -30,4 +30,14 @@ public sealed record PolicyContactReference
     public ContactType? Type { get; set; }
 
     public LinkAvailability Availability { get; set; }
+
+    /// <summary>
+    /// When this contact entered the role, or <c>null</c> for the policy's own extent — the default,
+    /// and what an undated link means. The term is the party's own fact, independent of the policy's
+    /// renewal periods, so a renewal never re-dates it.
+    /// </summary>
+    public DateTime? FromDate { get; set; }
+
+    /// <summary>When this contact left the role, or <c>null</c> while it is still in it.</summary>
+    public DateTime? ToDate { get; set; }
 }
