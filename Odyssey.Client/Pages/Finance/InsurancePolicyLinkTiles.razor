@@ -24,14 +24,14 @@
     var shown = _expanded ? Members : Members.Take(TileLimit).ToList();
     var hidden = Members.Count - shown.Count;
 
+    @* Label is the collection's SINGULAR name, repeated per member — no position and no count: the
+       tiles themselves are the count, and the caption slot keeps the type, which is where the
+       record's meaning lives in text. *@
     @foreach (var member in shown)
     {
         <OdsInfoTile Icon="@(member.Unnamed ? UnnamedIcon(member) : (member.Icon ?? FallbackIcon))"
                      IconColor="@(member.Unnamed ? null : member.IconColor)"
                      IconSoft="@(member.Unnamed ? null : member.IconSoft)"
-                     @* The label is the collection's SINGULAR name, repeated per member — no position
-                        and no count: the tiles themselves are the count, and the caption slot keeps
-                        the type, which is where the record's meaning lives in text. *@
                      Label="@Label"
                      ValueVariant="OdsInfoTileVariant.Text"
                      WrapValue="true"
