@@ -651,13 +651,33 @@ public class InsuranceService
         LinkDiff InsuredContacts,
         LinkDiff Beneficiaries);
 
-    /// <summary>One collection's write field, for messages and the problem-details errors key.</summary>
-    private sealed record LinkField(string Property, string Noun);
+    /// <summary>
+    /// One collection's write field: the problem-details errors key, the noun for a cap message, and
+    /// the routes that actually remove an unnamed member.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="RemovalAdvice"/> is per-collection rather than one shared sentence because the two
+    /// target kinds do not have the same routes. A contact link can be detached wholesale
+    /// (<c>DELETE /api/contacts/{id}?detachInsuranceLinks=true</c>); an <b>account</b> link has no
+    /// such endpoint, so telling that caller to "detach the contact's insurance links" names an
+    /// operation that does not exist for the field they were writing.
+    /// </remarks>
+    private sealed record LinkField(string Property, string Noun, string RemovalAdvice);
 
-    private static readonly LinkField InsurersField = new(nameof(UpdateInsurancePolicy.InsurerIds), "insurers");
-    private static readonly LinkField InsuredAccountsField = new(nameof(UpdateInsurancePolicy.InsuredAccountIds), "insured accounts");
-    private static readonly LinkField InsuredContactsField = new(nameof(UpdateInsurancePolicy.InsuredContactIds), "insured contacts");
-    private static readonly LinkField BeneficiariesField = new(nameof(UpdateInsurancePolicy.BeneficiaryIds), "beneficiaries");
+    private const string ContactRemovalAdvice =
+        "Detach the contact's insurance links, or unarchive the contact and then remove it.";
+
+    private const string AccountRemovalAdvice =
+        "Unarchive the account and then remove it.";
+
+    private static readonly LinkField InsurersField =
+        new(nameof(UpdateInsurancePolicy.InsurerIds), "insurers", ContactRemovalAdvice);
+    private static readonly LinkField InsuredAccountsField =
+        new(nameof(UpdateInsurancePolicy.InsuredAccountIds), "insured accounts", AccountRemovalAdvice);
+    private static readonly LinkField InsuredContactsField =
+        new(nameof(UpdateInsurancePolicy.InsuredContactIds), "insured contacts", ContactRemovalAdvice);
+    private static readonly LinkField BeneficiariesField =
+        new(nameof(UpdateInsurancePolicy.BeneficiaryIds), "beneficiaries", ContactRemovalAdvice);
 
     /// <summary>
     /// Turns the four submitted arrays into four diffs, in a fixed number of round trips: one batched
@@ -766,7 +786,7 @@ public class InsuranceService
             throw new DomainUnprocessableException(
                 $"{field.Property} omits {ids}, which cannot be removed here: the linked record is "
                 + "archived or no longer resolves, so it has no name to show and no chip to remove. "
-                + "Detach the contact's insurance links, or unarchive it and then remove it.",
+                + field.RemovalAdvice,
                 field.Property);
         }
 

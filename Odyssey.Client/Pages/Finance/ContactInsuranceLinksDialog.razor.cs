@@ -58,21 +58,21 @@ public partial class ContactInsuranceLinksDialog
         return false;
     }
 
-    private static string KindLabel(InsuranceLinkKind kind) => kind switch
+    internal static string KindLabel(InsuranceLinkKind kind) => kind switch
     {
         InsuranceLinkKind.Insurer => "Insurer",
         InsuranceLinkKind.InsuredContact => "Insured contact",
         _ => "Beneficiary",
     };
 
-    private static string KindIcon(InsuranceLinkKind kind) => kind switch
+    internal static string KindIcon(InsuranceLinkKind kind) => kind switch
     {
         InsuranceLinkKind.Insurer => "groups",
         InsuranceLinkKind.InsuredContact => "person",
         _ => "volunteer_activism",
     };
 
-    private static string KindNote(InsuranceLinkKind kind) => kind switch
+    internal static string KindNote(InsuranceLinkKind kind) => kind switch
     {
         InsuranceLinkKind.Insurer => "carries cover on the policy",
         InsuranceLinkKind.InsuredContact => "insured under the policy",

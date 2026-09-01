@@ -224,4 +224,99 @@ public class ApiInteropTests
         Assert.False(PagedLoad<Row>.From(Failed<PagedResult<Row>>()).IsSuccess);
         Assert.True(PagedLoad<Row>.From(ApiResult<PagedResult<Row>>.Success(Page(), HttpStatusCode.OK)).IsSuccess);
     }
+
+    // ── ToastOrFields ────────────────────────────────────────────────────────
+    // The write-side counterpart of the Empty-vs-Error rule above: a rejection the form cannot place
+    // on a control must still reach the user somehow. The failure mode is the same shape — silence
+    // that looks like nothing happened.
+
+    private static ApiResult FailedWithFields(params (string Field, string Message)[] errors) =>
+        ApiResult.Failure(HttpStatusCode.UnprocessableEntity, new ApiProblem
+        {
+            Detail = "boom",
+            Errors = errors.ToDictionary(e => e.Field, e => new[] { e.Message }, StringComparer.OrdinalIgnoreCase),
+        });
+
+    [Fact]
+    public void ToastOrFields_returns_true_and_toasts_the_success_message()
+    {
+        var snackbar = new RecordingSnackbar();
+
+        var ok = ApiResult.Success(HttpStatusCode.OK)
+            .ToastOrFields(snackbar, "Unable to save", (_, _) => true, "Saved.");
+
+        Assert.True(ok);
+        Assert.Equal(("Saved.", Severity.Success), Assert.Single(snackbar.Toasts));
+    }
+
+    [Fact]
+    public void ToastOrFields_routes_a_recognised_field_to_the_form_and_stays_quiet()
+    {
+        var snackbar = new RecordingSnackbar();
+        var assigned = new List<(string, string)>();
+
+        var ok = FailedWithFields(("InsurerIds", "Too many insurers."))
+            .ToastOrFields(snackbar, "Unable to save", (field, message) =>
+            {
+                assigned.Add((field, message));
+                return true;
+            });
+
+        Assert.False(ok);
+        Assert.Equal(("InsurerIds", "Too many insurers."), Assert.Single(assigned));
+        // Placed on its control, so no toast — the message is already where the user is looking.
+        Assert.Empty(snackbar.Toasts);
+    }
+
+    [Fact]
+    public void ToastOrFields_toasts_a_field_the_form_does_not_recognise()
+    {
+        var snackbar = new RecordingSnackbar();
+
+        var ok = FailedWithFields(("SomethingElse", "Not a field this form knows."))
+            .ToastOrFields(snackbar, "Unable to save", (_, _) => false);
+
+        Assert.False(ok);
+        var toast = Assert.Single(snackbar.Toasts);
+        Assert.Equal(Severity.Error, toast.Severity);
+        Assert.Contains("Not a field this form knows.", toast.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The mixed case, and the reason this helper's loop cannot key off "did anything get placed?".
+    /// A response naming two fields where the form knows one must still surface the other: reporting
+    /// only the recognised half would drop a rejection the server made, with no toast, no field
+    /// marking and no trace — which is precisely the vanishing the contract rules out.
+    /// </summary>
+    [Fact]
+    public void ToastOrFields_still_toasts_an_unrecognised_field_when_another_one_was_placed()
+    {
+        var snackbar = new RecordingSnackbar();
+
+        var ok = FailedWithFields(
+                ("InsurerIds", "Too many insurers."),
+                ("SomethingElse", "This one has nowhere to go."))
+            .ToastOrFields(snackbar, "Unable to save",
+                (field, _) => field == "InsurerIds");
+
+        Assert.False(ok);
+        var toast = Assert.Single(snackbar.Toasts);
+        Assert.Contains("This one has nowhere to go.", toast.Message, StringComparison.Ordinal);
+        // The placed one is NOT repeated in the toast — it is already on its control.
+        Assert.DoesNotContain("Too many insurers.", toast.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ToastOrFields_toasts_the_detail_when_the_failure_named_no_field_at_all()
+    {
+        var snackbar = new RecordingSnackbar();
+
+        var ok = FailedWrite("The server said no.")
+            .ToastOrFields(snackbar, "Unable to save", (_, _) => true);
+
+        Assert.False(ok);
+        var toast = Assert.Single(snackbar.Toasts);
+        Assert.Contains("The server said no.", toast.Message, StringComparison.Ordinal);
+        Assert.Contains("Unable to save", toast.Message, StringComparison.Ordinal);
+    }
 }

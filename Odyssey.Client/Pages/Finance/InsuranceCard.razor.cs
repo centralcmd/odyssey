@@ -231,7 +231,15 @@ public partial class InsuranceCard
                 .Select(c =>
                 {
                     var meta = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
-                    return new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName) { Icon = meta.Icon, IconColor = meta.Color };
+                    // Sub carries the type in TEXT beside the name: three of the four pickers choose
+                    // from the whole address book, where two records can share a display name and the
+                    // glyph alone cannot tell a person from an organisation.
+                    return new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName)
+                    {
+                        Icon = meta.Icon,
+                        IconColor = meta.Color,
+                        Sub = meta.Label,
+                    };
                 })
         ];
     }
@@ -275,6 +283,7 @@ public partial class InsuranceCard
                 {
                     Icon = AccountTypeVisuals.MaterialIcon(a.AccountType),
                     IconColor = AccountTypeVisuals.FgColor(a.AccountType),
+                    Sub = AccountTypeVisuals.Label(a.AccountType),
                 })
         ];
     }
@@ -285,7 +294,7 @@ public partial class InsuranceCard
     /// The meta line's insurer segment: up to TWO named, then "+N". An unnamed member reads as its
     /// STATE, never as a name and never as a GUID — the read model carries no name for it.
     /// </summary>
-    private static string InsurerNames(IReadOnlyList<PolicyContactReference> insurers)
+    internal static string InsurerNames(IReadOnlyList<PolicyContactReference> insurers)
     {
         const int named = 2;
         var shown = insurers.Take(named).Select(DisplayOf);
@@ -298,7 +307,7 @@ public partial class InsuranceCard
     /// "link" glyph. Never an arbitrary type glyph over a mixed collection — a single icon cannot
     /// stand for two types, and the names beside it are what carry the meaning anyway.
     /// </summary>
-    private static string InsurerGlyph(IReadOnlyList<PolicyContactReference> insurers)
+    internal static string InsurerGlyph(IReadOnlyList<PolicyContactReference> insurers)
     {
         var types = insurers.Select(i => i.Type).Where(t => t is not null).Distinct().ToList();
         return types.Count == 1
@@ -306,14 +315,14 @@ public partial class InsuranceCard
             : "link";
     }
 
-    private static string DisplayOf(PolicyContactReference reference) => reference.Availability switch
+    internal static string DisplayOf(PolicyContactReference reference) => reference.Availability switch
     {
         LinkAvailability.Archived => "Archived",
         LinkAvailability.Unresolvable => "Unavailable",
         _ => reference.Name ?? "Unavailable",
     };
 
-    private static IReadOnlyList<InsurancePolicyLinkTiles.LinkTileMember> ContactMembers(
+    internal static IReadOnlyList<InsurancePolicyLinkTiles.LinkTileMember> ContactMembers(
         IReadOnlyList<PolicyContactReference> references) =>
     [
         .. references.Select(reference =>
@@ -334,7 +343,7 @@ public partial class InsuranceCard
         })
     ];
 
-    private static IReadOnlyList<InsurancePolicyLinkTiles.LinkTileMember> AccountMembers(
+    internal static IReadOnlyList<InsurancePolicyLinkTiles.LinkTileMember> AccountMembers(
         IReadOnlyList<InsuredAccountReference> references) =>
     [
         .. references.Select(reference => new InsurancePolicyLinkTiles.LinkTileMember

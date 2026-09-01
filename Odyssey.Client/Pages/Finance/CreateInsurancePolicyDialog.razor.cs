@@ -121,7 +121,7 @@ public partial class CreateInsurancePolicyDialog
     private string BeneficiariesHelp => Help(_beneficiaryIds,
         "Who receives on this policy. A person, or an organisation such as a trust or an estate.");
 
-    private string? Error(string field) => _fieldErrors.GetValueOrDefault(field);
+    internal string? Error(string field) => _fieldErrors.GetValueOrDefault(field);
 
     private void Set(ref IReadOnlyCollection<string> target, IReadOnlyCollection<string> value, string field)
     {
@@ -207,7 +207,7 @@ public partial class CreateInsurancePolicyDialog
         return false;
     }
 
-    private bool AssignFieldError(string field, string message)
+    internal bool AssignFieldError(string field, string message)
     {
         if (!KnownFields.Contains(field))
         {
@@ -226,7 +226,7 @@ public partial class CreateInsurancePolicyDialog
         nameof(UpdateInsurancePolicy.BeneficiaryIds),
     };
 
-    private List<Guid> ParseIds(IReadOnlyCollection<string> values, string field, string noun)
+    internal List<Guid> ParseIds(IReadOnlyCollection<string> values, string field, string noun)
     {
         var parsed = new List<Guid>(values.Count);
         foreach (var value in values)

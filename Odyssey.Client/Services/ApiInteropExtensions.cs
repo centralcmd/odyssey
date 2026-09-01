@@ -127,18 +127,32 @@ public static class ApiInteropExtensions
             return true;
         }
 
-        var assigned = false;
+        // Every message the form could not place is toasted — NOT "toast only when nothing was
+        // placed". A response naming two fields where the caller recognises one would otherwise
+        // report the recognised one on its control and drop the other entirely: no toast, no field
+        // marking, no trace. That is the exact vanishing this method's contract rules out.
+        var unassigned = new List<string>();
         var errors = result.Problem?.Errors ?? new Dictionary<string, string[]>();
         foreach (var (field, messages) in errors)
         {
-            if (messages.Length > 0 && assign(field, messages[0]))
+            if (messages.Length == 0)
             {
-                assigned = true;
+                continue;
+            }
+
+            if (!assign(field, messages[0]))
+            {
+                unassigned.Add(messages[0]);
             }
         }
 
-        if (!assigned)
+        if (unassigned.Count > 0)
         {
+            snackbar.Add($"{failureLead}: {string.Join(" ", unassigned)}", Severity.Error);
+        }
+        else if (errors.Count == 0)
+        {
+            // No field errors at all — the failure has only its top-level detail to report.
             snackbar.Add($"{failureLead}: {result.Error}", Severity.Error);
         }
 

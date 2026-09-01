@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using Odyssey.Context;
@@ -361,6 +362,136 @@ public class InsurancePolicyLinkIntegrationTests(MariaDbFixture fixture)
         }
     }
 
+    // ── The migration's own backfill, against real pre-migration data ──────────
+
+    /// <summary>
+    /// Seeds a policy in the OLD shape — scalar <c>InsurerId</c>/<c>InsuredAccountId</c> — then runs
+    /// the real migration and asserts it carried both into link rows and dropped the columns.
+    ///
+    /// <para>
+    /// This is the production backfill DML itself, not a simulation of it. Everything else in this
+    /// file migrates straight to head, where the old columns no longer exist and the
+    /// <c>INSERT … SELECT</c> has nothing to carry — so without stopping at the preceding migration
+    /// first, the statements that actually move a deployment's data would never run under test.
+    /// </para>
+    /// </summary>
+    [SkippableFact]
+    public async Task The_migration_backfills_the_scalar_columns_into_link_rows()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+
+        var connectionString = await CreateEmptyAsync();
+        try
+        {
+            var insurerId = Guid.NewGuid();
+            var accountId = Guid.NewGuid();
+            var withBoth = Guid.NewGuid();
+            var insurerOnly = Guid.NewGuid();
+
+            await using (var context = New(connectionString))
+            {
+                await MigrationSeam.MigrateToAsync(context, PrecedingMigration);
+
+                context.Contacts.Add(Organization(insurerId, "Legacy Insurer"));
+                context.Accounts.Add(new Account
+                {
+                    AccountId = accountId,
+                    Name = "Legacy Home",
+                    Description = "asset",
+                    Opened = DateTime.UtcNow,
+                    AccountType = ContextAccountType.Property,
+                    CurrencyCode = "USD",
+                });
+                await context.SaveChangesAsync();
+
+                // Raw SQL, because the entity no longer has the columns the old schema still demands.
+                await InsertLegacyPolicyAsync(context, withBoth, "Both links", insurerId, accountId);
+                await InsertLegacyPolicyAsync(context, insurerOnly, "Insurer only", insurerId, null);
+            }
+
+            await using (var context = New(connectionString))
+            {
+                await context.Database.MigrateAsync();
+
+                // Exactly one link row of each kind per policy that had the scalar set.
+                Assert.Equal(insurerId, (await context.InsurancePolicyInsurers.AsNoTracking()
+                    .SingleAsync(l => l.InsurancePolicyId == withBoth)).ContactId);
+                Assert.Equal(insurerId, (await context.InsurancePolicyInsurers.AsNoTracking()
+                    .SingleAsync(l => l.InsurancePolicyId == insurerOnly)).ContactId);
+                Assert.Equal(accountId, (await context.InsurancePolicyInsuredAccounts.AsNoTracking()
+                    .SingleAsync(l => l.InsurancePolicyId == withBoth)).AccountId);
+
+                // A null scalar carried nothing — it is not a link to a zero GUID.
+                Assert.Empty(await context.InsurancePolicyInsuredAccounts.AsNoTracking()
+                    .Where(l => l.InsurancePolicyId == insurerOnly).ToListAsync());
+
+                // Both policies survive, and the source columns are gone.
+                Assert.Equal(2, await context.InsurancePolicies.CountAsync());
+                Assert.False(await ColumnExistsAsync(context, "InsurancePolicies", "InsurerId"));
+                Assert.False(await ColumnExistsAsync(context, "InsurancePolicies", "InsuredAccountId"));
+            }
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
+    /// <summary>
+    /// The backfill is written <c>INSERT … SELECT … WHERE NOT EXISTS</c> so a manual re-apply — the
+    /// path <c>docs/migration-history-drift.md</c> describes — inserts nothing the second time rather
+    /// than dying on the unique index. Re-running the statement is the only way to prove that.
+    /// </summary>
+    [SkippableFact]
+    public async Task The_backfill_is_idempotent_when_replayed_by_hand()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+
+        var connectionString = await CreateEmptyAsync();
+        try
+        {
+            var insurerId = Guid.NewGuid();
+            var policyId = Guid.NewGuid();
+
+            await using (var context = New(connectionString))
+            {
+                await MigrationSeam.MigrateToAsync(context, PrecedingMigration);
+                context.Contacts.Add(Organization(insurerId, "Legacy Insurer"));
+                await context.SaveChangesAsync();
+                await InsertLegacyPolicyAsync(context, policyId, "Replayed", insurerId, null);
+            }
+
+            await using (var context = New(connectionString))
+            {
+                await context.Database.MigrateAsync();
+                Assert.Equal(1, await context.InsurancePolicyInsurers.CountAsync(l => l.InsurancePolicyId == policyId));
+
+                // The migration's own statement, re-run against the post-migration schema. The source
+                // column is gone by now, so the operator's repair runs it against whatever they
+                // restored; what matters is that the guard clause refuses a duplicate rather than
+                // throwing on the unique index.
+                var replay = string.Format(
+                    CultureInfo.InvariantCulture,
+                    """
+                    INSERT INTO `InsurancePolicyInsurers` (`Id`, `InsurancePolicyId`, `ContactId`)
+                    SELECT UUID(), '{0}', '{1}'
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM `InsurancePolicyInsurers` l
+                        WHERE l.`InsurancePolicyId` = '{0}' AND l.`ContactId` = '{1}');
+                    """,
+                    policyId,
+                    insurerId);
+                await context.Database.ExecuteSqlRawAsync(replay);
+
+                Assert.Equal(1, await context.InsurancePolicyInsurers.CountAsync(l => l.InsurancePolicyId == policyId));
+            }
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
     // ── The migration's verify step ────────────────────────────────────────────
 
     /// <summary>
@@ -497,6 +628,47 @@ public class InsurancePolicyLinkIntegrationTests(MariaDbFixture fixture)
         Type = ContextInsurancePolicyType.Home,
         CreatedAtUtc = DateTime.UtcNow,
     };
+
+    /// <summary>The migration immediately before the one under test.</summary>
+    private const string PrecedingMigration = "_DropInsurancePolicyFiles";
+
+    private static Task InsertLegacyPolicyAsync(
+        OdysseyContext context, Guid policyId, string name, Guid insurerId, Guid? accountId)
+    {
+        var account = accountId is null ? "NULL" : $"'{accountId}'";
+        var createdAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
+        var sql = string.Format(
+            CultureInfo.InvariantCulture,
+            """
+            INSERT INTO `InsurancePolicies`
+                (`InsurancePolicyId`, `Name`, `Type`, `InsurerId`, `InsuredAccountId`, `CreatedAtUtc`)
+            VALUES ('{0}', '{1}', 1, '{2}', {3}, '{4}');
+            """,
+            policyId, name, insurerId, account, createdAt);
+        return context.Database.ExecuteSqlRawAsync(sql);
+    }
+
+    private static async Task<bool> ColumnExistsAsync(OdysseyContext context, string table, string column)
+    {
+        var count = await MigrationSeam.CountAsync(context, string.Format(
+            CultureInfo.InvariantCulture,
+            """
+            SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{0}' AND COLUMN_NAME = '{1}'
+            """,
+            table, column));
+        return count > 0;
+    }
+
+    /// <summary>A database with no schema at all, for the tests that migrate up in two steps.</summary>
+    private async Task<string> CreateEmptyAsync()
+    {
+        await DropAsync();
+
+        await using var admin = new OdysseyContext(OptionsFor(fixture.OdysseyConnectionString));
+        await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
+        return fixture.ConnectionStringFor(Database);
+    }
 
     private async Task<string> MigratedSchemaAsync()
     {

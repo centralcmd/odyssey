@@ -549,6 +549,24 @@ public class InsuranceLinkCollectionsApiTests
         Assert.True(await context.InsurancePolicyBeneficiaries.AnyAsync(l => l.ContactId == contact));
     }
 
+    /// <summary>
+    /// The detach flag on a contact that does not exist. Reachable at this tier — unlike the detach
+    /// SUCCESS case — because the controller returns before the service reaches the relational-only
+    /// cleanup, and worth pinning because "nothing to detach" must read as a plain 204 rather than a
+    /// 200 claiming an empty detach happened.
+    /// </summary>
+    [Fact]
+    public async Task DeleteContact_WithDetach_ForAContactThatDoesNotExist_ReturnsNoContent()
+    {
+        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.ContactsDelete]);
+        await EnsureCreatedAsync(factory);
+        using var client = factory.CreateClient();
+
+        var delete = await client.DeleteAsync($"/api/contacts/{Guid.NewGuid()}?detachInsuranceLinks=true");
+
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+    }
+
     // ── Deletes and the InMemory cascade ───────────────────────────────────────
 
     /// <summary>

@@ -45,9 +45,15 @@
                  Disabled="@Disabled"
                  OpenChanged="@(open => _open = open)">
             <ActivatorContent>
-                @* Clicking the box's own space opens the popover; a chip's remove button stops the
-                   click from getting here, so removing a member never toggles the list. *@
-                <div class="@ControlClass" @onclick="@context.ToggleAsync">
+                @* The box itself does NOT open the popover — only the trigger button below does.
+                   A click handler here would make every pixel of the box a second, larger pointer
+                   target with a different function, touching each chip's remove button on three of
+                   its four sides. That competing target is what disqualifies WCAG 2.5.8's spacing
+                   exception in the dense grid cell, where the remove button falls short of 24 px
+                   vertically: a pointer user missing the small "x" by two pixels would open the
+                   picker instead of removing the chip. The trigger is a real focusable button, so
+                   dropping the box handler costs a mouse-only convenience and nothing else. *@
+                <div class="@ControlClass">
                     <span class="odc-tagms-chips">
                         @if (Selected.Count == 0)
                         {
@@ -74,7 +80,7 @@
                                 }
                                 else
                                 {
-                                    <span class="odc-chip tag odc-tagms-chip">
+                                    <span class="odc-chip entity odc-tagms-chip">
                                         @if (!string.IsNullOrEmpty(option.Icon))
                                         {
                                             <span class="material-icons odc-tagms-chip-ic" aria-hidden="true"
@@ -99,12 +105,14 @@
                             aria-expanded="@(_open ? "true" : "false")"
                             aria-label="@TriggerAriaLabel"
                             aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
-                            aria-describedby="@(string.IsNullOrEmpty(Message) ? null : MessageId)">
+                            aria-describedby="@(string.IsNullOrEmpty(Message) ? null : MessageId)"
+                            @onclick="@context.ToggleAsync">
                         <span class="material-icons" aria-hidden="true">@(_open ? "expand_less" : "add")</span>
-                        @if (Selected.Count == 0)
-                        {
-                            <span>@AddLabel</span>
-                        }
+                        @* The label goes visually-hidden rather than away once there are chips (DS
+                           parity): the glyph is aria-hidden, so dropping it outright would leave the
+                           button with no accessible name at exactly the moment it has chips to
+                           manage — the moment it matters most. *@
+                        <span class="@(Selected.Count == 0 ? null : "sr-only")">@AddLabel</span>
                     </button>
                 </div>
             </ActivatorContent>
@@ -149,6 +157,10 @@
                                                   style="@IconStyle(option)">@option.Icon</span>
                                         }
                                         <span>@option.Label</span>
+                                        @if (!string.IsNullOrEmpty(option.Sub))
+                                        {
+                                            <span class="odc-tagms-opt-sub">@option.Sub</span>
+                                        }
                                     </span>
                                 </label>
                             }

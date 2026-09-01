@@ -29,6 +29,11 @@
 .odc-chip.pending { color: var(--pending-text);    background: var(--finance-pending-soft); }
 .odc-chip.info    { color: var(--info-text);       background: var(--info-soft); }
 .odc-chip.tag     { color: var(--tag-text);        background: var(--tag-soft); }
+/* The one chip a LINKED RECORD wears — contacts, accounts, albums — as against .tag's coloured
+   category pill: outline, a coloured type glyph, the name in text. Every entity picker that
+   supplies no ChipTemplate renders through this. */
+.odc-chip.entity  { color: var(--mud-palette-text-primary); background: transparent; border: 1px solid var(--mud-palette-divider); }
+.odc-chip.entity .material-icons { font-size: 14px; }
 .odc-chip.warning { color: var(--pending-text);    background: var(--finance-pending-soft); }
 .odc-chip.error   { color: var(--finance-expense); background: var(--finance-expense-soft); }
 .odc-chip.outline { color: var(--mud-palette-text-secondary); background: transparent; border: 1px solid var(--mud-palette-divider); }
@@ -1060,7 +1065,9 @@
   border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm);
   color: var(--mud-palette-text-primary);
-  text-align: left; cursor: pointer;
+  /* Default cursor, not pointer: the box itself no longer opens the popover (only the trigger
+     does), so a pointer here would advertise a click that does nothing. */
+  text-align: left; cursor: default;
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
 .odc-tagms-control:hover { border-color: var(--mud-palette-text-secondary); }
@@ -1097,7 +1104,13 @@
 .odc-tagms-x:hover { opacity: 1; background: color-mix(in oklab, currentColor 22%, transparent); }
 .odc-tagms-x:focus-visible { opacity: 1; outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 .odc-tagms-x .material-icons { font-size: 13px; }
-.odc-tagms-trigger { border: none; background: transparent; padding: 2px; border-radius: var(--radius-sm); cursor: pointer; }
+/* The ONLY thing that opens the popover now, so it carries a real 24x24 target of its own — once
+   there are chips it renders as an icon with a visually-hidden label, and a bare glyph would be the
+   smallest control on the surface. */
+.odc-tagms-trigger {
+  border: none; background: transparent; padding: 2px; border-radius: var(--radius-sm); cursor: pointer;
+  min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; justify-content: center;
+}
 .odc-tagms-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-tagms-trigger:disabled { cursor: not-allowed; }
 .odc-tagms-add { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--mud-palette-text-secondary); font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); }
@@ -1123,6 +1136,9 @@
 }
 .odc-tagms-opt .odc-check-label { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .odc-tagms-opt-ic { font-size: 17px; color: var(--mud-palette-text-secondary); flex: none; }
+/* The option row's secondary caption — the type, an account number — which is what disambiguates
+   two same-named records in a picker whose whole job here is naming one of several. */
+.odc-tagms-opt-sub { color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); }
 .odc-tagms-create {
   display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box;
   padding: 7px 6px; border: none; border-radius: var(--radius-sm); cursor: pointer;
@@ -3451,7 +3467,7 @@
 .cpl-kind-name { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .cpl-kind-note { flex: 1; min-width: 0; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cpl-kind-count { flex: none; min-width: 22px; text-align: right; font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
-.cpl-policies { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.cpl-policies { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .cpl-policy { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--radius-sm); background: var(--mud-palette-background); }
 .cpl-policy .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); flex: none; }
 .cpl-policy-name { flex: 1; min-width: 0; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -71,6 +71,245 @@ public class InsuranceServiceTests
             new FixedTimeProvider(FixedToday),
             systemSettingsLookup ?? new FixedSystemSettingsLookup());
 
+
+    // ── Link collections: the diff at the unit tier (issue #27 §9) ──────────────
+    // The API tier drives these same rules over HTTP. They are re-asserted here because this is the
+    // logic's own tier: ResolveLinkWriteAsync/Diff is where null-vs-[], dedupe, added-only
+    // validation, archived retention and the resulting-row cap all actually live, and a direct call
+    // names the exception type and the offending field rather than a status code.
+
+    [Fact]
+    public async Task Update_NullCollection_LeavesItUnchanged_EmptyArrayClearsIt()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var beneficiaryId = await SeedInsurer();
+
+        var created = await service.Create(new NewInsurancePolicy
+        {
+            Name = "Term life",
+            Type = DtoInsurancePolicyType.Life,
+            InsurerIds = [insurerId],
+            BeneficiaryIds = [beneficiaryId],
+        });
+
+        // Null: the collection is not mentioned, so it is not touched.
+        var renamed = await service.Update(created.InsurancePolicyId, new UpdateInsurancePolicy
+        {
+            Name = "Renamed",
+            Type = created.Type,
+        });
+        Assert.Equal(beneficiaryId, Assert.Single(renamed!.Beneficiaries).ContactId);
+        Assert.Single(renamed.Insurers);
+
+        // Empty: an explicit clear, and only of the collection that was named.
+        var cleared = await service.Update(created.InsurancePolicyId, new UpdateInsurancePolicy
+        {
+            Name = "Renamed",
+            Type = created.Type,
+            BeneficiaryIds = [],
+        });
+        Assert.Empty(cleared!.Beneficiaries);
+        Assert.Single(cleared.Insurers);
+    }
+
+    [Fact]
+    public async Task Create_DeduplicatesRatherThanRejecting()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+
+        var created = await service.Create(new NewInsurancePolicy
+        {
+            Name = "Home cover",
+            Type = DtoInsurancePolicyType.Home,
+            InsurerIds = [insurerId, insurerId],
+        });
+
+        Assert.Equal(insurerId, Assert.Single(created.Insurers).ContactId);
+    }
+
+    [Fact]
+    public async Task Update_OverTheEffectiveCap_ThrowsUnprocessableNamingTheField()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context, new FixedSystemSettingsLookup
+        {
+            Caps = new FinanceRequestCaps(
+                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
+                MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 50, MaxLinksPerPolicy: 1),
+        });
+        var first = await SeedInsurer();
+        var second = await SeedInsurer();
+        var created = await service.Create(NewPolicy(first));
+
+        var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
+            service.Update(created.InsurancePolicyId, new UpdateInsurancePolicy
+            {
+                Name = created.Name,
+                Type = created.Type,
+                InsurerIds = [first, second],
+            }));
+
+        // The effective cap is interpolated, never a literal, and the failure names its field so the
+        // dialog can mark and focus the offending picker.
+        Assert.Contains("1", error.Message, StringComparison.Ordinal);
+        Assert.Contains(nameof(UpdateInsurancePolicy.InsurerIds), error.Errors!.Keys);
+    }
+
+    /// <summary>
+    /// The retention rule at its own tier: a stored link whose contact was archived after the fact is
+    /// kept, an echoing save succeeds, and omitting it is refused rather than silently honoured.
+    /// </summary>
+    [Fact]
+    public async Task Update_OmittingAnArchivedContactLink_IsRefused_AndNamesTheContactRoutes()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var beneficiaryId = await SeedInsurer();
+
+        var created = await service.Create(new NewInsurancePolicy
+        {
+            Name = "Term life",
+            Type = DtoInsurancePolicyType.Life,
+            InsurerIds = [insurerId],
+            BeneficiaryIds = [beneficiaryId],
+        });
+
+        var beneficiary = await journal.Contacts.FindAsync(beneficiaryId);
+        beneficiary!.Archived = FixedToday;
+        await journal.SaveChangesAsync();
+
+        // Echoing it back is an ordinary edit and must not 422 — this is the dialog's own save.
+        var echoed = await service.Update(created.InsurancePolicyId, new UpdateInsurancePolicy
+        {
+            Name = "Renamed",
+            Type = created.Type,
+            BeneficiaryIds = [beneficiaryId],
+        });
+        Assert.Equal(beneficiaryId, Assert.Single(echoed!.Beneficiaries).ContactId);
+        Assert.Null(echoed.Beneficiaries[0].Name);
+        Assert.Equal(LinkAvailability.Archived, echoed.Beneficiaries[0].Availability);
+
+        var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
+            service.Update(created.InsurancePolicyId, new UpdateInsurancePolicy
+            {
+                Name = "Renamed again",
+                Type = created.Type,
+                BeneficiaryIds = [],
+            }));
+
+        Assert.Contains(beneficiaryId.ToString(), error.Message, StringComparison.OrdinalIgnoreCase);
+        // A CONTACT link, so the advice names the detach path.
+        Assert.Contains("Detach the contact", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same rule for an ACCOUNT link — the branch that exposed the advice bug. An account has no
+    /// detach endpoint, so the message must not send the caller looking for one.
+    /// </summary>
+    [Fact]
+    public async Task Update_OmittingAnArchivedAccountLink_IsRefused_AndAdvisesUnarchivingNotDetaching()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var accountId = await SeedAccount(context);
+
+        var created = await service.Create(new NewInsurancePolicy
+        {
+            Name = "Home cover",
+            Type = DtoInsurancePolicyType.Home,
+            InsurerIds = [insurerId],
+            InsuredAccountIds = [accountId],
+        });
+
+        var account = await context.Accounts.FindAsync(accountId);
+        account!.Archived = FixedToday;
+        await context.SaveChangesAsync();
+
+        var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
+            service.Update(created.InsurancePolicyId, new UpdateInsurancePolicy
+            {
+                Name = created.Name,
+                Type = created.Type,
+                InsuredAccountIds = [],
+            }));
+
+        Assert.Contains(accountId.ToString(), error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(nameof(UpdateInsurancePolicy.InsuredAccountIds), error.Errors!.Keys);
+        Assert.Contains("Unarchive the account", error.Message, StringComparison.Ordinal);
+        // "detach" is a contact-delete query parameter with no account equivalent; naming it here
+        // would send the caller after an operation that does not exist for this field.
+        Assert.DoesNotContain("Detach the contact", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The cap counts the RESULTING rows: a retained unnamed link plus a full cap's worth of new ids
+    /// is over, even though the submitted array alone is not.
+    /// </summary>
+    [Fact]
+    public async Task Update_CapCountsSubmittedPlusRetained()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context, new FixedSystemSettingsLookup
+        {
+            Caps = new FinanceRequestCaps(
+                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
+                MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 50, MaxLinksPerPolicy: 2),
+        });
+        var archived = await SeedInsurer();
+        var liveOne = await SeedInsurer();
+        var liveTwo = await SeedInsurer();
+
+        var created = await service.Create(new NewInsurancePolicy
+        {
+            Name = "Term life",
+            Type = DtoInsurancePolicyType.Life,
+            BeneficiaryIds = [archived],
+        });
+
+        var contact = await journal.Contacts.FindAsync(archived);
+        contact!.Archived = FixedToday;
+        await journal.SaveChangesAsync();
+
+        // Two submitted is exactly the cap; the retained third takes it over.
+        await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
+            service.Update(created.InsurancePolicyId, new UpdateInsurancePolicy
+            {
+                Name = created.Name,
+                Type = created.Type,
+                BeneficiaryIds = [archived, liveOne, liveTwo],
+            }));
+
+        var unchanged = await service.Get(created.InsurancePolicyId);
+        Assert.Single(unchanged!.Beneficiaries);
+    }
+
+    [Fact]
+    public async Task Update_AddingAnArchivedContact_ThrowsValidationNamingTheField()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var archived = await SeedInsurer(archived: FixedToday);
+        var created = await service.Create(NewPolicy(insurerId));
+
+        var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
+            service.Update(created.InsurancePolicyId, new UpdateInsurancePolicy
+            {
+                Name = created.Name,
+                Type = created.Type,
+                BeneficiaryIds = [archived],
+            }));
+
+        Assert.Contains(archived.ToString(), error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(nameof(UpdateInsurancePolicy.BeneficiaryIds), error.Errors!.Keys);
+    }
+
     // ── Seed helpers ────────────────────────────────────────────────────────────
 
     private async Task<Guid> SeedInsurer(DateTime? archived = null)

@@ -208,7 +208,12 @@ public partial class OdsTagMultiSelect
 
     private string? Message => string.IsNullOrEmpty(Error) ? Help : Error;
 
-    private string? TriggerAriaLabel => string.IsNullOrEmpty(Label) ? AriaLabel : null;
+    // With a visible Label the <label for> names the trigger, so no aria-label. Without one, the
+    // caller's AriaLabel wins — and AddLabel is the floor, so a host that supplies neither still
+    // gets a named button rather than an anonymous one. Neither parameter is [EditorRequired], so
+    // this is the only thing standing between a future label-less instance and a nameless control.
+    private string? TriggerAriaLabel =>
+        string.IsNullOrEmpty(Label) ? (string.IsNullOrEmpty(AriaLabel) ? AddLabel : AriaLabel) : null;
 
     private string GroupLabel => !string.IsNullOrEmpty(Label) ? Label : (AriaLabel ?? AddLabel);
 
@@ -252,7 +257,29 @@ public partial class OdsTagMultiSelect
         _announcement = text + new string('​', _announceNonce % 4 + 1);
     }
 
-    private string Plural(int count) => count == 1 ? Noun : (NounPlural ?? Noun + "s");
+    /// <summary>
+    /// What <b>Clear</b> announces: a plain confirmation, or — when members were preserved — how many
+    /// were kept and that they cannot be removed here.
+    /// </summary>
+    /// <remarks>
+    /// Static and internal so it can be asserted without rendering the component. The count is what a
+    /// screen-reader user has instead of the visual fact that chips remain, so a silent or wrong
+    /// count reads as "Clear did nothing" on the one action whose whole point is that it partly did.
+    /// </remarks>
+    internal static string ClearAnnouncement(int keptCount, string noun, string? nounPlural) =>
+        keptCount > 0
+            ? $"Selection cleared. {keptCount} {Plural(keptCount, noun, nounPlural)} kept — "
+              + (keptCount == 1 ? "it cannot" : "they cannot") + " be removed here."
+            : "Selection cleared.";
+
+    /// <summary>
+    /// The noun for a count. <paramref name="nounPlural"/> exists because <c>noun + "s"</c> is wrong
+    /// for the one existing instance that needs it ("person" → "people").
+    /// </summary>
+    internal static string Plural(int count, string noun, string? nounPlural) =>
+        count == 1 ? noun : (nounPlural ?? noun + "s");
+
+    private string Plural(int count) => Plural(count, Noun, NounPlural);
 
     private Task Toggle(string value)
     {
@@ -288,10 +315,7 @@ public partial class OdsTagMultiSelect
         var kept = Value.Where(IsLocked).ToList();
         _selected = [.. kept];
 
-        Say(kept.Count > 0
-            ? $"Selection cleared. {kept.Count} {Plural(kept.Count)} kept — "
-              + (kept.Count == 1 ? "it cannot" : "they cannot") + " be removed here."
-            : "Selection cleared.");
+        Say(ClearAnnouncement(kept.Count, Noun, NounPlural));
         return Emit();
     }
 

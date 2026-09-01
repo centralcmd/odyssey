@@ -84,16 +84,18 @@
             <OdsSectionDivider Label="Blocking policies"
                                Meta="@($"{Blockers.Policies.Count} record{(Blockers.Policies.Count == 1 ? "" : "s")}")"
                                HeadingLevel="0" />
-            <div class="cpl-policies">
+            @* A list of records, marked up as one — same as the .cpl-kinds block above. Reading as
+               a list visually while being a run of divs programmatically is exactly the 1.3.1 gap. *@
+            <ul class="cpl-policies">
                 @foreach (var policy in Blockers.Policies)
                 {
-                    <div class="cpl-policy">
+                    <li class="cpl-policy">
                         <span class="material-icons" aria-hidden="true">shield</span>
                         <span class="cpl-policy-name">@policy.Name</span>
                         <span class="cpl-policy-kinds">@string.Join(" · ", policy.Kinds.Select(KindLabel))</span>
-                    </div>
+                    </li>
                 }
-            </div>
+            </ul>
         }
         else
         {
