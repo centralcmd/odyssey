@@ -81,6 +81,23 @@
 .ins-link-chip .ins-link-type { color: var(--mud-palette-text-secondary); font-size: 11.5px; white-space: nowrap; flex: none; }
 .ins-link-chip.empty { color: var(--mud-palette-text-secondary); border-style: dashed; }
 
+/* Link-collection tile body: one row per member — name in text, type in text.
+   Beyond five members the tile names five and expands the rest in place. */
+.ins-linklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.ins-linklist li { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.ins-linklist .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); transform: translateY(2px); flex: none; }
+.ins-link-name { font: 400 13.5px/1.45 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.ins-linklist .ins-link-type { color: var(--mud-palette-text-secondary); font: 400 11.5px/1.5 var(--font-sans); white-space: nowrap; flex: none; }
+/* An unnamed member reads as its STATE, in text — never a name, never a GUID. */
+.ins-linklist li.unnamed .ins-link-name { color: var(--mud-palette-text-secondary); font-style: italic; }
+.ins-linkmore {
+  margin-top: 1px; padding: 2px 6px; border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-pill); background: transparent; cursor: pointer;
+  color: var(--mud-palette-text-secondary); font: 500 11.5px/1.4 var(--font-sans);
+}
+.ins-linkmore:hover { color: var(--mud-palette-text-primary); border-color: var(--mud-palette-text-secondary); }
+.ins-linkmore:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 2px; }
+
 /* ============================================================
    Renewal history — shared
    ============================================================ */

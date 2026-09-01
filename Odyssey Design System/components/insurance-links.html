@@ -1,0 +1,315 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Insurance link collections" subtitle="The four many-link collections on a policy — insurers, insured accounts, insured contacts, beneficiaries: the reworked TagMultiSelect as an entity picker (icons, loading, ChipTemplate, unnamed members that carry no remove control), the read tiles, the collapsed meta line, and the blocked contact delete with its detach path." viewport="1320x2180" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Insurance link collections</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../components.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+<style>
+body{margin:0;padding:28px 30px 44px;background:var(--mud-palette-background);color:var(--mud-palette-text-primary);font:var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans)}
+.cap{font:var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans);letter-spacing:.04em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin-bottom:18px}
+.cap code{font:var(--fw-regular) 11px/1 var(--font-mono);text-transform:none;letter-spacing:0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.panel{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:14px;padding:20px 22px 24px}
+.panel.wide{grid-column:1/-1}
+.panel h3{margin:0 0 4px;font:var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans)}
+.panel p.sub{margin:0 0 18px;color:var(--mud-palette-text-secondary);font:var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans);max-width:62ch}
+.stack{display:flex;flex-direction:column;gap:16px}
+.lbl{display:block;margin:0 0 8px;font:var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans);letter-spacing:.04em;text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.note{margin:18px 0 0;color:var(--mud-palette-text-secondary);font:var(--fw-regular) var(--fs-body2)/1.65 var(--font-sans)}
+.note b{color:var(--mud-palette-text-primary);font-weight:var(--fw-medium)}
+/* Link-tile body (mirrors ui_kits/web/insurance.css) */
+.ins-linklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.ins-linklist li{display:flex;align-items:baseline;gap:6px;min-width:0}
+.ins-linklist .material-icons{font-size:15px;color:var(--mud-palette-text-secondary);transform:translateY(2px);flex:none}
+.ins-link-name{font:400 13.5px/1.45 var(--font-sans);color:var(--mud-palette-text-primary);overflow-wrap:anywhere}
+.ins-linklist .ins-link-type{color:var(--mud-palette-text-secondary);font:400 11.5px/1.5 var(--font-sans);white-space:nowrap;flex:none}
+.ins-linklist li.unnamed .ins-link-name{color:var(--mud-palette-text-secondary);font-style:italic}
+.ins-linkmore{margin-top:1px;padding:2px 6px;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-pill);background:transparent;cursor:pointer;color:var(--mud-palette-text-secondary);font:500 11.5px/1.4 var(--font-sans)}
+/* Collapsed-card meta line */
+.metaline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:10px;background:var(--mud-palette-background);color:var(--mud-palette-text-secondary);font:400 12.5px/1.4 var(--font-sans)}
+.metaline .seg{display:inline-flex;align-items:center;gap:5px}
+.metaline .seg .material-icons{font-size:14px;opacity:.8}
+.metaline .dot{opacity:.45}
+.metaline .mono{font-family:var(--font-mono)}
+/* Blocked-delete panel */
+.kinds{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.kinds li{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--mud-palette-divider);border-radius:10px;background:var(--mud-palette-background)}
+.kinds .material-icons{font-size:17px;color:var(--mud-palette-text-secondary);flex:none}
+.kinds .k{font:500 13px/1.3 var(--font-sans);color:var(--mud-palette-text-primary)}
+.kinds .n{flex:1;min-width:0;font:400 12px/1.3 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.kinds .c{flex:none;font:500 13px/1.3 var(--font-mono);font-variant-numeric:tabular-nums}
+.pol{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--mud-palette-background);margin-top:4px}
+.pol .material-icons{font-size:16px;color:var(--mud-palette-text-secondary)}
+.pol .nm{flex:1;font:400 13px/1.4 var(--font-sans);color:var(--mud-palette-text-primary)}
+.pol .ks{font:400 11.5px/1.4 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--mud-palette-divider)}
+</style>
+</head>
+<body>
+<div class="cap">Insurance link collections <code>&lt;TagMultiSelect chipTemplate preserveOnClear loading /&gt;</code> · <code>&lt;InfoTile /&gt;</code> · <code>&lt;ContactChip /&gt;</code></div>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+
+<script type="text/babel" data-presets="env,react">
+const NS = () => window.OdysseyDesignSystem_d5aa51 || {};
+
+/* Seed: the contacts and accounts a policy links. `archived` and `gone` model
+   the two UNNAMED states — a link whose contact is archived, and one whose id no
+   longer resolves. Neither carries a name in the read model. */
+const PEOPLE = [
+  { id: 'c30', name: 'Anna Sørensen', type: 'Person' },
+  { id: 'c31', name: 'Jonas Sørensen', type: 'Person' },
+  { id: 'c32', name: 'Nora Sørensen', type: 'Person' },
+  { id: 'c33', name: 'Sørensen Family Trust', type: 'Organization' },
+  { id: 'c12', name: 'Pacific Home Insurance', type: 'Organization' },
+  { id: 'c23', name: 'Nordic Forsikring', type: 'Organization' },
+  { id: 'c21', name: 'Anchor Life Assurance', type: 'Organization' },
+  { id: 'c34', name: 'Lena Waverly', type: 'Person', archived: '2026-05-04' },
+  { id: 'c-gone-8821', gone: true },
+];
+const BY_ID = Object.fromEntries(PEOPLE.map(p => [p.id, p]));
+const TYPE_IC = { Person: 'person', Organization: 'corporate_fare' };
+const contactOptions = PEOPLE.filter(p => !p.archived && !p.gone)
+  .map(p => ({ value: p.id, label: p.name, icon: TYPE_IC[p.type], sub: p.type }));
+const accountOptions = [
+  { value: '7', name: 'Maple St Residence', label: 'Maple St Residence', icon: 'home_work', sub: 'Property' },
+  { value: '5', name: 'Citi Auto Loan', label: 'Citi Auto Loan', icon: 'directions_car', sub: 'Car loan' },
+];
+
+const unnamed = (id) => { const c = BY_ID[id]; return !c || !!c.archived || !!c.gone; };
+const ChipFor = (id) => {
+  const { ContactChip } = NS();
+  const c = BY_ID[id];
+  if (!ContactChip) return <span>{c ? c.name : 'Unavailable'}</span>;
+  if (!c || c.gone) return <ContactChip contact={{ unavailable: true }} size="sm" />;
+  if (c.archived) return <ContactChip contact={{ name: 'Archived contact', type: c.type, archived: c.archived }} size="sm" />;
+  return <ContactChip name={c.name} type={c.type} size="sm" />;
+};
+
+const LINK_HELP = 'Archived or unresolvable members keep their place without a name and cannot be removed here — detach them from the contact, or unarchive the contact first.';
+
+function Picker(props) {
+  const { TagMultiSelect } = NS();
+  if (!TagMultiSelect) return null;
+  return <TagMultiSelect optional searchLabel="Search contacts" searchPlaceholder="Search contacts…"
+    emptyText="No contacts match" unknownLabel="Unavailable" {...props} />;
+}
+
+/* ---------- 1 · the dialog's four pickers ---------- */
+function DialogPickers() {
+  const [insurers, setInsurers] = React.useState(['c12', 'c23']);
+  const [accounts, setAccounts] = React.useState(['7']);
+  const [insured, setInsured] = React.useState(['c30', 'c31']);
+  const [benes, setBenes] = React.useState(['c31', 'c33', 'c34', 'c-gone-8821']);
+  return (
+    <div className="panel wide">
+      <h3>Policy dialog — four pickers, all optional</h3>
+      <p className="sub">The four collections read as four form fields: homogeneous per field, each a set of scalar ids, each editable to zero members. Nothing here is required — a policy drafted before the insurer is known is a healthy record. One save carries the complete desired set for every collection.</p>
+      <div className="stack">
+        <Picker label="Insurers" noun="insurer" addLabel="Add insurer" placeholder="No insurers"
+          options={contactOptions} value={insurers} onChange={setInsurers}
+          chipTemplate={ChipFor} preserveOnClear={unnamed}
+          help="The contacts that carry this cover — several where it is placed across co-insurers." />
+        <Picker label="Insured accounts" noun="account" addLabel="Add account" placeholder="No insured accounts"
+          searchLabel="Search accounts" searchPlaceholder="Search accounts…" emptyText="No accounts match"
+          options={accountOptions} value={accounts} onChange={setAccounts}
+          help="The accounts representing the insured assets — a house and an outbuilding, two vehicles." />
+        <Picker label="Insured contacts" noun="contact" addLabel="Add contact" placeholder="No insured contacts"
+          options={contactOptions} value={insured} onChange={setInsured}
+          chipTemplate={ChipFor} preserveOnClear={unnamed}
+          help="The people and organisations insured under this policy — the policyholder, a spouse, named drivers." />
+        <Picker label="Beneficiaries" noun="beneficiary" addLabel="Add beneficiary" placeholder="No beneficiaries"
+          options={contactOptions} value={benes} onChange={setBenes}
+          chipTemplate={ChipFor} preserveOnClear={unnamed}
+          help={'Who receives on this policy. A person, or an organisation such as a trust or an estate. ' + LINK_HELP} />
+      </div>
+      <p className="note"><b>Beneficiaries</b> above holds two unnamed members — one archived contact, one id that no longer resolves. Both render their <b>state in text</b>, never a name and never a GUID; neither carries a remove control, because the write path refuses an ordinary removal. The popover's <b>Clear</b> keeps them and says how many were kept.</p>
+    </div>
+  );
+}
+
+/* ---------- 2 · picker states ---------- */
+function PickerStates() {
+  const [a, setA] = React.useState([]);
+  const [b, setB] = React.useState(['c30', 'c31', 'c32', 'c33']);
+  return (
+    <div className="panel">
+      <h3>Picker states</h3>
+      <p className="sub">Every async state is announced, and each one is distinguishable from the others: an empty contact book, options still arriving, and an id that resolved to nothing are three different sentences.</p>
+      <div className="stack">
+        <div><span className="lbl">Empty — nothing selected</span>
+          <Picker label="Beneficiaries" noun="beneficiary" addLabel="Add beneficiary" placeholder="No beneficiaries"
+            options={contactOptions} value={a} onChange={setA} help="Who receives on this policy." /></div>
+        <div><span className="lbl">Loading — options not yet resolved</span>
+          <Picker label="Insurers" noun="insurer" addLabel="Add insurer" placeholder="No insurers"
+            options={[]} value={[]} loading help="Open the popover: a “Loading…” row, not “No contacts match”." /></div>
+        <div><span className="lbl">Over the effective cap — 422 on save</span>
+          <Picker label="Insured contacts" noun="contact" addLabel="Add contact" placeholder="No insured contacts"
+            options={contactOptions} value={b} onChange={setB} chipTemplate={ChipFor} preserveOnClear={unnamed}
+            error="At most 3 insured contacts per policy. Remove 1 to save." /></div>
+      </div>
+      <p className="note">The cap in the message is the number the <b>server</b> enforced, interpolated from the response — the client holds no copy of it. A failed save moves focus to the first offending picker, which carries <code>aria-invalid</code> and an associated message.</p>
+    </div>
+  );
+}
+
+/* ---------- 3 · read tiles ---------- */
+function ReadTiles() {
+  const { InfoTile, InfoTileGrid } = NS();
+  const [open, setOpen] = React.useState(false);
+  if (!InfoTile) return null;
+  const p = (name, type = 'Person') => ({ key: name, name, type, icon: TYPE_IC[type] });
+  const benes = [p('Erik Haugen'), p('Jonas Sørensen'), p('Marta Lie'), p('Nora Sørensen'),
+    p('Sørensen Family Trust', 'Organization'),
+    { key: 'x1', state: 'Archived', type: 'Person', icon: 'inventory_2' },
+    { key: 'x2', state: 'Unavailable', icon: 'link_off' }];
+  const shown = open ? benes : benes.slice(0, 5);
+  const hidden = benes.length - shown.length;
+  return (
+    <div className="panel wide">
+      <h3>Expanded record — one tile per linked record</h3>
+      <p className="sub">Every member of every collection gets its own tile: a referenced record points elsewhere, so it reads as that record — its own type glyph, name and type caption — rather than as a line inside a shared tile. An empty collection renders no tile at all, because zero members is a healthy state. Where a collection holds several, the tiles themselves are the count — the label stays the plain singular.</p>
+      <InfoTileGrid>
+        <InfoTile icon="corporate_fare" label="Insurer" valueVariant="text" className="wrapvalue" value="Nordic Forsikring" foot="Organization" />
+        <InfoTile icon="corporate_fare" label="Insurer" valueVariant="text" className="wrapvalue" value="Pacific Home Insurance" foot="Organization" />
+        <InfoTile icon="home_work" label="Insured" valueVariant="text" className="wrapvalue" value="Maple St Residence" foot="Property" />
+        <InfoTile icon="person" label="Insured" valueVariant="text" className="wrapvalue" value="Anna Sørensen" foot="Person" />
+        <InfoTile icon="person" label="Insured" valueVariant="text" className="wrapvalue" value="Jonas Sørensen" foot="Person" />
+        {shown.map((r, i) => (
+          <InfoTile key={r.key} icon={r.icon} label="Beneficiary"
+            valueVariant="text" className={'wrapvalue' + (r.state ? ' tone-muted' : '')}
+            value={r.state || r.name} foot={r.type || undefined} />
+        ))}
+        {hidden > 0 ? (
+          <InfoTile icon="more_horiz" label="Beneficiary" valueVariant="text" className="tone-muted"
+            value={<button type="button" className="ins-linkmore" onClick={() => setOpen(true)}>+{hidden} more</button>}
+            foot={`${benes.length} in total`} />
+        ) : null}
+      </InfoTileGrid>
+      <p className="note">An <b>unnamed</b> member — its contact archived, or its id no longer resolving — shows the state word where the name would be, muted, with the type kept where there still is one. An unresolvable link has no contact row to read a type from, so it shows none.</p>
+    </div>
+  );
+}
+
+/* ---------- 4 · collapsed meta line ---------- */
+function MetaLines() {
+  const seg = (icon, text, key) => <span className="seg" key={key}><span className="material-icons" aria-hidden="true">{icon}</span><span>{text}</span></span>;
+  const line = (label, parts) => (
+    <div key={label}>
+      <span className="lbl">{label}</span>
+      <div className="metaline">{parts.map((x, i) => (
+        <React.Fragment key={i}>{i ? <span className="dot">·</span> : null}{x}</React.Fragment>
+      ))}</div>
+    </div>
+  );
+  return (
+    <div className="panel wide">
+      <h3>Collapsed card — the insurers segment</h3>
+      <p className="sub">The meta line names up to <b>two</b> insurers and then counts the rest. With no insurers the segment is omitted entirely: absence is no longer "the fact", so a zero-insurer policy reads as a normal record rather than a broken one.</p>
+      <div className="stack">
+        {line('One insurer', ['Contents', seg('corporate_fare', 'Pacific Home Insurance', 'a'), <span className="seg mono" key="n"><span className="material-icons" aria-hidden="true">tag</span><span>HC-2026-99182</span></span>])}
+        {line('Four insurers — two named, then +N', ['Property', seg('corporate_fare', 'Nordic Forsikring, Pacific Home Insurance +2', 'b'), <span className="seg mono" key="n2"><span className="material-icons" aria-hidden="true">tag</span><span>NO-HYT-44120</span></span>])}
+        {line('Mixed contact types — generic glyph', ['Life', seg('link', 'Anchor Life Assurance, Anna Sørensen +1', 'c')])}
+        {line('No insurer — segment omitted', ['Pet'])}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 5 · blocked delete + detach ---------- */
+function BlockedDelete() {
+  const kinds = [
+    { k: 'Insurer', n: 'carries cover on the policy', c: 1, icon: 'groups' },
+    { k: 'Insured contact', n: 'insured under the policy', c: 2, icon: 'person' },
+    { k: 'Beneficiary', n: 'receives on the policy', c: 1, icon: 'volunteer_activism' },
+  ];
+  const policies = [
+    { id: 1, nm: 'Home & Contents 2026', ks: 'Insured contact' },
+    { id: 2, nm: 'Term Life — 20 Year', ks: 'Beneficiary' },
+    { id: 3, nm: 'Hytte — Cabin (Norway)', ks: 'Insurer · Insured contact' },
+  ];
+  const { Button } = NS();
+  const Btn = Button || (({ children }) => <button>{children}</button>);
+  return (
+    <React.Fragment>
+      <div className="panel">
+        <h3>Blocked contact delete — with insurance.read</h3>
+        <p className="sub">A contact named as an insurer, an insured contact or a beneficiary is not deletable by the ordinary route: a beneficiary designation vanishing silently would lose it without trace.</p>
+        <div className="odc-alert error">
+          <span className="material-icons" aria-hidden="true">error</span>
+          <div className="odc-alert-body"><b>Anna Sørensen</b> holds 4 insurance links across 3 policies.</div>
+        </div>
+        <ul className="kinds">
+          {kinds.map(x => (
+            <li key={x.k}><span className="material-icons" aria-hidden="true">{x.icon}</span>
+              <span className="k">{x.k}</span><span className="n">{x.n}</span><span className="c">{x.c}</span></li>
+          ))}
+        </ul>
+        <div style={{ marginTop: 14 }}>
+          {policies.map(x => (
+            <div className="pol" key={x.id}><span className="material-icons" aria-hidden="true">shield</span>
+              <span className="nm">{x.nm}</span><span className="ks">{x.ks}</span></div>
+          ))}
+        </div>
+        <p className="note"><b>Detach links &amp; delete</b> removes all four links and the contact in one transaction — either all of it happens, or none of it does. Composed from two claims the caller already holds, so no new permission and no re-login.</p>
+        <div className="foot"><Btn variant="text">Cancel</Btn><Btn variant="danger" icon="link_off">Detach links &amp; delete</Btn></div>
+      </div>
+
+      <div className="panel">
+        <h3>Same refusal — without insurance.read</h3>
+        <p className="sub">The payload is claim-conditional: which policies block is withheld from a caller who cannot read insurance records. Kinds and counts still ship, because they are what makes the refusal actionable.</p>
+        <div className="odc-alert error">
+          <span className="material-icons" aria-hidden="true">error</span>
+          <div className="odc-alert-body"><b>Anna Sørensen</b> holds 4 insurance links.</div>
+        </div>
+        <ul className="kinds">
+          {kinds.map(x => (
+            <li key={x.k}><span className="material-icons" aria-hidden="true">{x.icon}</span>
+              <span className="k">{x.k}</span><span className="n">{x.n}</span><span className="c">{x.c}</span></li>
+          ))}
+        </ul>
+        <p className="note">Which policies these are is not shown, because you do not have access to insurance records. Ask someone who can edit them to detach the links.</p>
+        <div className="odc-alert warning" style={{ marginTop: 14 }}>
+          <span className="material-icons" aria-hidden="true">warning</span>
+          <div className="odc-alert-body">Detaching needs permission to edit insurance policies, which you do not have.</div>
+        </div>
+        <div className="foot"><Btn variant="text">Close</Btn></div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+function Demo() {
+  return (
+    <div className="grid">
+      <DialogPickers />
+      <PickerStates />
+      <ReadTiles />
+      <MetaLines />
+      <BlockedDelete />
+    </div>
+  );
+}
+
+function Root() {
+  const [, tick] = React.useState(0);
+  React.useEffect(() => {
+    if (NS().TagMultiSelect) return undefined;
+    let n = 0;
+    const t = setInterval(() => { if (NS().TagMultiSelect || ++n > 25) { clearInterval(t); tick(x => x + 1); } }, 100);
+    return () => clearInterval(t);
+  }, []);
+  if (!NS().TagMultiSelect) return <div className="note">Building components…</div>;
+  return <Demo />;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+</script>
+</body>
+</html>

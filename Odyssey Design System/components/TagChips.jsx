@@ -30,10 +30,10 @@ export function TagChips({ tags = [], max, empty = '—', className = '' }) {
   return (
     <span className={`odc-tagchips${className ? ' ' + className : ''}`}>
       {shown.map((t, i) => (
-        <span className="odc-chip tag" key={t.id != null ? t.id : `${t.label}-${i}`}>{t.label}</span>
+        <span className="odc-chip entity" key={t.id != null ? t.id : `${t.label}-${i}`}>{t.label}</span>
       ))}
       {hidden.length > 0 ? (
-        <span className="odc-chip tag odc-tagchips-more" title={hidden.map((t) => t.label).join(', ')}>
+        <span className="odc-chip entity odc-tagchips-more" title={hidden.map((t) => t.label).join(', ')}>
           +{hidden.length}
           {/* title= is mouse-only — give AT the hidden names as text. */}
           <span className="sr-only"> more tags: {hidden.map((t) => t.label).join(', ')}</span>

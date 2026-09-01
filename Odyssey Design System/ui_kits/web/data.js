@@ -225,6 +225,16 @@ window.OdysseyData = {
     { id: 'c16', name: 'American Express',          normalizedName: 'AMERICAN EXPRESS',          type: 'Organization',  orgNumber: '13-4922250',  description: 'Card issuer — holds the Platinum card.',       archived: null },
     { id: 'c17', name: 'Vanguard',                  normalizedName: 'VANGUARD',                  type: 'Organization',  orgNumber: '23-2868925',  description: 'Brokerage — custodies the index-fund portfolio.', archived: null },
     { id: 'c19', name: 'Wells Fargo',               normalizedName: 'WELLS FARGO',               type: 'Organization',  orgNumber: '94-1347393',  description: 'Former bank — held the closed checking account.', archived: '2021-03-12T00:00:00Z' },
+    // ---- Insured people + beneficiaries: the contacts named ON a policy
+    //      (policyholder, spouse, named drivers, beneficiaries). Persons and
+    //      Organizations alike are eligible — a trust or an estate is a
+    //      legitimate beneficiary. `c34` is archived to exercise the
+    //      unnamed-member state on the insurance link surfaces.
+    { id: 'c30', name: 'Anna Sørensen',             normalizedName: 'ANNA SØRENSEN',             type: 'Person',        description: 'Policyholder on the household policies.',       archived: null },
+    { id: 'c31', name: 'Jonas Sørensen',            normalizedName: 'JONAS SØRENSEN',            type: 'Person',        description: 'Spouse — named on the home and motor policies.', archived: null },
+    { id: 'c32', name: 'Nora Sørensen',             normalizedName: 'NORA SØRENSEN',             type: 'Person',        description: 'Named driver; beneficiary on the term life policy.', archived: null },
+    { id: 'c33', name: 'Sørensen Family Trust',     normalizedName: 'SØRENSEN FAMILY TRUST',     type: 'Organization',  orgNumber: '88-4410072', description: 'Trust named as a beneficiary on the life policy.', archived: null },
+    { id: 'c34', name: 'Lena Waverly',              normalizedName: 'LENA WAVERLY',              type: 'Person',        description: 'Archived while an erasure request is in flight.', archived: '2026-05-04T09:00:00Z' },
   ],
 
   // Currency — CurrencyCode (3, PK/ISO-4217), Name (≤64), MinorUnits (0–12),
