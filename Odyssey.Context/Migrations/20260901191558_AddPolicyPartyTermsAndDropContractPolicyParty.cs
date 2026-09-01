@@ -11,6 +11,68 @@ namespace Odyssey.Context.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // ORDER IS LOAD-BEARING: every AddColumn runs BEFORE the drops.
+            //
+            // MariaDB commits each DDL statement implicitly, so an interruption leaves an arbitrary
+            // prefix of this migration applied with no history row, and the next run replays the whole
+            // thing. MigrationRunner's drift guard is what turns that into a message naming the repair
+            // instead of a bare engine error — but it can only see objects a pending migration would
+            // CREATE (MigrationRunner.CreatedBy), because a replayed drop is what an ordinary upgrade
+            // looks like and cannot be distinguished from one. With the drops first, an interruption
+            // inside them leaves nothing the guard can see, and the replay dies on
+            // `DELETE ... WHERE InsurancePolicyId` against a column that is already gone. With the
+            // additive half first, any interruption past the first AddColumn leaves a column the guard
+            // recognises, and the run fails with MigrationDriftException instead (issue #468).
+            //
+            // Sequencing them this way is free: the two halves touch different tables.
+            migrationBuilder.AddColumn<DateTime>(
+                name: "FromDate",
+                table: "InsurancePolicyInsurers",
+                type: "datetime(6)",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "ToDate",
+                table: "InsurancePolicyInsurers",
+                type: "datetime(6)",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "FromDate",
+                table: "InsurancePolicyInsuredContacts",
+                type: "datetime(6)",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "ToDate",
+                table: "InsurancePolicyInsuredContacts",
+                type: "datetime(6)",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "FromDate",
+                table: "InsurancePolicyInsuredAccounts",
+                type: "datetime(6)",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "ToDate",
+                table: "InsurancePolicyInsuredAccounts",
+                type: "datetime(6)",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "FromDate",
+                table: "InsurancePolicyBeneficiaries",
+                type: "datetime(6)",
+                nullable: true);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "ToDate",
+                table: "InsurancePolicyBeneficiaries",
+                type: "datetime(6)",
+                nullable: true);
+
             // A party whose ONLY target was a policy has no target left once the column goes, and the
             // re-added CHECK (which MariaDB validates against existing rows) would then refuse to
             // create. The rows are deleted while the column still exists, so the constraint is added
@@ -34,54 +96,6 @@ namespace Odyssey.Context.Migrations
             migrationBuilder.DropColumn(
                 name: "InsurancePolicyId",
                 table: "ContractParties");
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "FromDate",
-                table: "InsurancePolicyInsurers",
-                type: "datetime(6)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ToDate",
-                table: "InsurancePolicyInsurers",
-                type: "datetime(6)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "FromDate",
-                table: "InsurancePolicyInsuredContacts",
-                type: "datetime(6)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ToDate",
-                table: "InsurancePolicyInsuredContacts",
-                type: "datetime(6)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "FromDate",
-                table: "InsurancePolicyInsuredAccounts",
-                type: "datetime(6)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ToDate",
-                table: "InsurancePolicyInsuredAccounts",
-                type: "datetime(6)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "FromDate",
-                table: "InsurancePolicyBeneficiaries",
-                type: "datetime(6)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ToDate",
-                table: "InsurancePolicyBeneficiaries",
-                type: "datetime(6)",
-                nullable: true);
 
             migrationBuilder.AddCheckConstraint(
                 name: "CK_ContractParties_ExactlyOneTarget",

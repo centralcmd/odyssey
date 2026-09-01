@@ -163,6 +163,99 @@ public class InsurancePolicyPartiesApiTests
         Assert.Equal(HttpStatusCode.NotFound, post.StatusCode);
     }
 
+    // ── The effective cap ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The cap is per collection and is read LIVE on every write, so a per-party add is refused with a
+    /// 422 once the role's collection is full — and the number the caller is told is the number the
+    /// server enforced, interpolated rather than written as a literal.
+    /// </summary>
+    [Fact]
+    public async Task Post_PartyOverTheEffectiveCap_Returns422()
+    {
+        await using var factory = new ApiFactory([.. ReadWrite,
+            PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
+        var contacts = new List<Guid>();
+        for (var i = 0; i < 3; i++)
+        {
+            contacts.Add(await SeedContactAsync(factory, $"Insurer {i}"));
+        }
+
+        using var client = factory.CreateClient();
+        await SetLinkCapAsync(client, 2);
+        var id = await CreateAsync(client);
+
+        await AddPartyAsync(client, id, InsurancePartyRole.Insurer, contacts[0]);
+        await AddPartyAsync(client, id, InsurancePartyRole.Insurer, contacts[1]);
+
+        var over = await client.PostAsJsonAsync($"{Path}/{id}/parties", new InsurancePolicyPartyRequest
+        {
+            Role = InsurancePartyRole.Insurer,
+            TargetId = contacts[2],
+        });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, over.StatusCode);
+        Assert.Contains("2", await over.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The cap counts one collection, not all four: a policy at the cap for insurers can still take a
+    /// beneficiary. Counting across them would make the four collections share a budget they were
+    /// deliberately split to avoid.
+    /// </summary>
+    [Fact]
+    public async Task Post_PartyInAnotherRole_IsNotBlockedByAFullCollection()
+    {
+        await using var factory = new ApiFactory([.. ReadWrite,
+            PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
+        var insurer = await SeedContactAsync(factory, "Acme Insurance");
+        var beneficiary = await SeedContactAsync(factory, "Sam Rivera");
+
+        using var client = factory.CreateClient();
+        await SetLinkCapAsync(client, 1);
+        var id = await CreateAsync(client);
+
+        await AddPartyAsync(client, id, InsurancePartyRole.Insurer, insurer);
+
+        var other = await client.PostAsJsonAsync($"{Path}/{id}/parties", new InsurancePolicyPartyRequest
+        {
+            Role = InsurancePartyRole.Beneficiary,
+            TargetId = beneficiary,
+        });
+
+        Assert.Equal(HttpStatusCode.Created, other.StatusCode);
+    }
+
+    /// <summary>
+    /// Re-dating a party at the cap is not "one more row": the edit re-uses the row it is replacing,
+    /// so a collection sitting exactly at its cap stays editable. Counting the insert without
+    /// discounting the removal would make a full collection permanently frozen.
+    /// </summary>
+    [Fact]
+    public async Task Put_PartyAtTheCap_IsStillEditable()
+    {
+        await using var factory = new ApiFactory([.. ReadWrite,
+            PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
+        var insurer = await SeedContactAsync(factory, "Acme Insurance");
+
+        using var client = factory.CreateClient();
+        await SetLinkCapAsync(client, 1);
+        var id = await CreateAsync(client);
+        await AddPartyAsync(client, id, InsurancePartyRole.Insurer, insurer);
+
+        var put = await client.PutAsJsonAsync(
+            $"{Path}/{id}/parties/{InsurancePartyRole.Insurer}/{insurer}",
+            new InsurancePolicyPartyRequest
+            {
+                Role = InsurancePartyRole.Insurer,
+                TargetId = insurer,
+                ToDate = CoverStart.AddYears(1),
+            });
+
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        Assert.Equal(CoverStart.AddYears(1), Assert.Single((await GetAsync(client, id)).Insurers).ToDate);
+    }
+
     // ── Term validation ────────────────────────────────────────────────────────
 
     /// <summary>The one tie between a party's own term and the policy's: it cannot start before
@@ -494,6 +587,12 @@ public class InsurancePolicyPartiesApiTests
             ToDate = toDate,
         });
         post.EnsureSuccessStatusCode();
+    }
+
+    private static async Task SetLinkCapAsync(HttpClient client, int value)
+    {
+        var put = await client.PutAsJsonAsync("/api/system-settings", new { insuranceMaxLinksPerPolicy = value });
+        put.EnsureSuccessStatusCode();
     }
 
     private static async Task EnsureCreatedAsync(WebApplicationFactory<Program> factory)

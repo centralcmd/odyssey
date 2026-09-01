@@ -132,6 +132,14 @@ public partial class AddPolicyPartyDialog
 
     private IReadOnlyList<OdsOption> Available => [.. AllForRole.Where(o => !LinkedForRole.Contains(o.Value))];
 
+    /// <summary>
+    /// The picker's helper line: what the role means, plus how many records are still linkable — so
+    /// "nothing to choose" reads as a stated fact rather than as an empty list.
+    /// </summary>
+    private string PickerHelp => Available.Count > 0
+        ? $"{Current.Help} {Available.Count} {Current.Noun}{(Available.Count == 1 ? "" : "s")} available to link."
+        : $"Every {Current.Noun} is already linked to this policy in this role.";
+
     private void PickRole(InsurancePartyRole role)
     {
         if (_role == role) return;

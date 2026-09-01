@@ -393,7 +393,7 @@ public class ContractServiceTests
         Assert.Null(item.StartDate);
     }
 
-    // ── XOR party invariant: setCount 0/1/2/3 ───────────────────────────────────
+    // ── XOR party invariant: setCount 0/1/2 ─────────────────────────────────────
 
     [Fact]
     public async Task AddParty_ZeroTargets_Throws()
@@ -417,22 +417,6 @@ public class ContractServiceTests
         await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.AddParty(contract.ContractId,
                 new AddContractPartyRequest { AccountId = accountId, ContactId = contactId }));
-    }
-
-    [Fact]
-    public async Task AddParty_BothTargets_Throws()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = CreateService(context);
-        var (accountId, contactId, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday));
-
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AddParty(contract.ContractId, new AddContractPartyRequest
-            {
-                AccountId = accountId,
-                ContactId = contactId,
-            }));
     }
 
     [Fact]

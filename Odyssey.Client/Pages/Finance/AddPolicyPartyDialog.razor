@@ -52,27 +52,20 @@
                 </div>
             </div>
 
-            <div class="odc-field @(_error is not null ? "error" : "")">
-                <label class="odc-field-label" for="ins-party-pick">@Current.Label</label>
+            @* OdsFieldShell owns the label association AND the helper/error ids — the hand-rolled
+               .odc-field markup this replaced had neither, so a screen-reader user never heard the
+               available-count hint or the reason a save was refused. The visible label owns the
+               accessible name, so NO AriaLabel here: OdsCombobox renders its own sr-only
+               <label for> whenever AriaLabel and InputId are both set, which would name the field
+               twice. Help and Error are mutually exclusive below, so the error reuses HelpId and one
+               AriaDescribedBy covers both states. *@
+            <OdsFieldShell Label="@Current.Label" HtmlFor="ins-party-pick"
+                           Help="@(_error is null ? PickerHelp : null)" Error="@_error">
                 <OdsCombobox InputId="ins-party-pick" Value="@_value" ValueChanged="OnValueChanged"
                              Options="Available" Loading="OptionsLoading"
                              Placeholder="@($"Search {Current.Noun}s…")"
-                             AriaLabel="@Current.Label" Error="@(_error is not null)" />
-                <div class="odc-field-help @(_error is not null ? "error" : "")">
-                    @if (_error is not null)
-                    {
-                        @_error
-                    }
-                    else if (Available.Count > 0)
-                    {
-                        @($"{Current.Help} {Available.Count} {Current.Noun}{(Available.Count == 1 ? "" : "s")} available to link.")
-                    }
-                    else
-                    {
-                        @($"Every {Current.Noun} is already linked to this policy in this role.")
-                    }
-                </div>
-            </div>
+                             AriaDescribedBy="ins-party-pick-help" Error="@(_error is not null)" />
+            </OdsFieldShell>
 
             @* The term is the party's own fact, not the policy's: left as it lands, the party is on
                the policy for its whole life. *@
