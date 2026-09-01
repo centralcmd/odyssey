@@ -195,7 +195,13 @@ public class InsurancePolicyPartiesApiTests
         });
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, over.StatusCode);
-        Assert.Contains("2", await over.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        var body = await over.Content.ReadAsStringAsync();
+        Assert.Contains("2", body, StringComparison.Ordinal);
+        // Keyed on the field the caller actually sent. A per-party write carries no InsurerIds, so
+        // keying on the bulk DTO's collection property would name a field the client cannot mark.
+        Assert.Contains(nameof(InsurancePolicyPartyRequest.TargetId), body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(nameof(UpdateInsurancePolicy.InsurerIds), body, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

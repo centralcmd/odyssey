@@ -103,69 +103,23 @@ namespace Odyssey.Context.Migrations
                 sql: "((`AccountId` IS NOT NULL) + (`ContactId` IS NOT NULL)) = 1");
         }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropCheckConstraint(
-                name: "CK_ContractParties_ExactlyOneTarget",
-                table: "ContractParties");
-
-            migrationBuilder.DropColumn(
-                name: "FromDate",
-                table: "InsurancePolicyInsurers");
-
-            migrationBuilder.DropColumn(
-                name: "ToDate",
-                table: "InsurancePolicyInsurers");
-
-            migrationBuilder.DropColumn(
-                name: "FromDate",
-                table: "InsurancePolicyInsuredContacts");
-
-            migrationBuilder.DropColumn(
-                name: "ToDate",
-                table: "InsurancePolicyInsuredContacts");
-
-            migrationBuilder.DropColumn(
-                name: "FromDate",
-                table: "InsurancePolicyInsuredAccounts");
-
-            migrationBuilder.DropColumn(
-                name: "ToDate",
-                table: "InsurancePolicyInsuredAccounts");
-
-            migrationBuilder.DropColumn(
-                name: "FromDate",
-                table: "InsurancePolicyBeneficiaries");
-
-            migrationBuilder.DropColumn(
-                name: "ToDate",
-                table: "InsurancePolicyBeneficiaries");
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "InsurancePolicyId",
-                table: "ContractParties",
-                type: "char(36)",
-                nullable: true,
-                collation: "ascii_general_ci");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ContractParties_InsurancePolicyId",
-                table: "ContractParties",
-                column: "InsurancePolicyId");
-
-            migrationBuilder.AddCheckConstraint(
-                name: "CK_ContractParties_ExactlyOneTarget",
-                table: "ContractParties",
-                sql: "((`AccountId` IS NOT NULL) + (`ContactId` IS NOT NULL) + (`InsurancePolicyId` IS NOT NULL)) = 1");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_ContractParties_InsurancePolicies_InsurancePolicyId",
-                table: "ContractParties",
-                column: "InsurancePolicyId",
-                principalTable: "InsurancePolicies",
-                principalColumn: "InsurancePolicyId",
-                onDelete: ReferentialAction.Cascade);
-        }
+        /// <summary>
+        /// Not reversible. Re-adding the column and the three-target <c>CHECK</c> is mechanical, but the
+        /// party rows <c>Up</c> deleted are gone: a party whose only target was a policy has no other
+        /// target to have been recorded under, so there is nothing to backfill from and no legal value
+        /// to invent. Recreating the schema while silently leaving those links absent would report a
+        /// successful revert that had lost data — restore from backup instead.
+        ///
+        /// <para>
+        /// The term columns alone would revert cleanly; they are not the reason this throws, and
+        /// splitting the migration to make half of it reversible would buy nothing, since the half that
+        /// matters still could not be.
+        /// </para>
+        /// </summary>
+        protected override void Down(MigrationBuilder migrationBuilder) =>
+            throw new NotSupportedException(
+                "AddPolicyPartyTermsAndDropContractPolicyParty cannot be reverted. Its Up deleted every "
+                + "contract party whose only target was an insurance policy, and no other column holds "
+                + "what they pointed at, so the rows cannot be rebuilt. Restore from backup.");
     }
 }

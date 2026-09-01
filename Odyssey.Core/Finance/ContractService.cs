@@ -17,7 +17,7 @@ namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// CRUD for contracts plus party- and file-link management, derived-status computation and the summary
-/// rollup (issue #174). Owns all business validation — the one-of-three (XOR) party invariant, the
+/// rollup (issue #174). Owns all business validation — the one-of-two (XOR) party invariant, the
 /// archive guard, defensive caps and the data-minimised read projections; the controller owns claim
 /// authorization and the file content-type allow-list.
 ///

@@ -573,6 +573,34 @@ public class InsuranceServiceTests
     }
 
     /// <summary>
+    /// The per-party cap names <see cref="InsurancePolicyPartyRequest.TargetId"/> — the field the
+    /// request actually carries — not the bulk DTO's collection property, which a per-party caller has
+    /// no field to mark. The collection is still named in the MESSAGE, where it reads as the role.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_OverTheEffectiveCap_ThrowsUnprocessableNamingTheTarget()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context, new FixedSystemSettingsLookup
+        {
+            Caps = new FinanceRequestCaps(
+                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
+                MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 50, MaxLinksPerPolicy: 1),
+        });
+        var first = await SeedInsurer();
+        var second = await SeedInsurer();
+        var created = await service.Create(NewPolicy(first));
+
+        var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
+            service.AddParty(created.InsurancePolicyId,
+                new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Insurer, TargetId = second }));
+
+        Assert.Contains(nameof(InsurancePolicyPartyRequest.TargetId), error.Errors!.Keys);
+        Assert.DoesNotContain(nameof(UpdateInsurancePolicy.InsurerIds), error.Errors.Keys);
+        Assert.Contains("insurers", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The full-set write and the per-party write agree on one set of rows: a member the full set
     /// retains keeps the term the per-party write gave it, and one it drops takes its term with it.
     /// </summary>

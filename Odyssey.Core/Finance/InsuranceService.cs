@@ -457,9 +457,13 @@ public class InsuranceService
         var resulting = PartyCount(policy, role) + (duplicate is not null ? 0 : 1);
         if (resulting > caps.MaxLinksPerPolicy)
         {
+            // Keyed on TargetId, not on the bulk DTO's collection property: ApiProblem.Errors joins on
+            // the property name of the request that was actually SENT, and a per-party write has no
+            // InsurerIds field for a client to mark. The collection is still named in the message,
+            // where it reads as the role rather than as a field the caller is expected to find.
             throw new DomainUnprocessableException(
                 $"A policy takes at most {caps.MaxLinksPerPolicy} {field.Noun}; this would leave {resulting}.",
-                field.Property);
+                nameof(InsurancePolicyPartyRequest.TargetId));
         }
 
         // The old row goes first, so a party moved between roles is one party rather than two.
@@ -554,17 +558,13 @@ public class InsuranceService
     private async Task EnsurePartyTargetAvailable(
         InsurancePartyRole role, Guid targetId, CancellationToken cancellationToken)
     {
-        var field = PartyField(role);
         if (role == InsurancePartyRole.InsuredAccount)
         {
             var live = await context.Accounts
                 .AnyAsync(a => a.AccountId == targetId && a.Archived == null, cancellationToken);
             if (!live)
             {
-                throw new DomainValidationException(
-                    $"{field.Property} contains {targetId}, which does not reference an existing, non-archived record.",
-                    code: null,
-                    field: nameof(InsurancePolicyPartyRequest.TargetId));
+                throw Unavailable(targetId, role);
             }
 
             return;
@@ -573,12 +573,20 @@ public class InsuranceService
         var refs = await contactLookup.ResolveRefsAsync([targetId], cancellationToken);
         if (!refs.TryGetValue(targetId, out var contact) || contact.Archived is not null)
         {
-            throw new DomainValidationException(
-                $"{field.Property} contains {targetId}, which does not reference an existing, non-archived record.",
-                code: null,
-                field: nameof(InsurancePolicyPartyRequest.TargetId));
+            throw Unavailable(targetId, role);
         }
     }
+
+    /// <summary>
+    /// The rejection for a target that does not exist or is archived. Names the ROLE rather than the
+    /// bulk DTO's collection property — a per-party write does not carry one — and keys on
+    /// <see cref="InsurancePolicyPartyRequest.TargetId"/>, the field the client can actually mark.
+    /// </summary>
+    private static DomainValidationException Unavailable(Guid targetId, InsurancePartyRole role) =>
+        new($"{targetId} is not an existing, non-archived record, so it cannot be linked as "
+            + $"{PartyNoun(role)}.",
+            code: null,
+            field: nameof(InsurancePolicyPartyRequest.TargetId));
 
     private static object? FindParty(InsurancePolicy policy, InsurancePartyRole role, Guid targetId) => role switch
     {
