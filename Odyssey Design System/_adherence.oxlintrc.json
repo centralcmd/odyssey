@@ -263,6 +263,10 @@
         "message": "<CoverageStatusMeta> tone must be one of 'income' | 'pending' | 'expense' | 'info' | 'outline'."
       },
       {
+        "selector": "JSXOpeningElement[name.name='CurrencyOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|key|ref|className|style|children)$/]",
+        "message": "<CurrencyOption> doesn't accept that prop. Declared props: value, label."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='Custodian'] > JSXAttribute > JSXIdentifier[name!=/^(?:contactId|name|type|normalizedName|organizationNumber|archived|key|ref|className|style|children)$/]",
         "message": "<Custodian> doesn't accept that prop. Declared props: contactId, name, type, normalizedName, organizationNumber, archived."
       },
@@ -401,6 +405,10 @@
       {
         "selector": "JSXOpeningElement[name.name='Modal'] > JSXAttribute[name.name='iconTone'] > Literal[value!=/^(?:brand|warning|error)$/]",
         "message": "<Modal> iconTone must be one of 'brand' | 'warning' | 'error'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='MoneyCurrencyOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|key|ref|className|style|children)$/]",
+        "message": "<MoneyCurrencyOption> doesn't accept that prop. Declared props: value, label."
       },
       {
         "selector": "JSXOpeningElement[name.name='MultiSelectOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|icon|iconColor|key|ref|className|style|children)$/]",
@@ -833,6 +841,9 @@
       "CoverageStatusMeta": {
         "replaces": []
       },
+      "CurrencyOption": {
+        "replaces": []
+      },
       "Custodian": {
         "replaces": []
       },
@@ -909,6 +920,9 @@
         "replaces": []
       },
       "Modal": {
+        "replaces": []
+      },
+      "MoneyCurrencyOption": {
         "replaces": []
       },
       "MultiSelectOption": {

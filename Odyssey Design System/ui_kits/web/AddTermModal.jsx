@@ -20,7 +20,9 @@
    confirm, onSave(dto, id?) receives the term-shaped object (id present on edit). */
 
 const TRM_SYM = window.ATM_CURRENCY_SYMBOL || { USD: '$', EUR: '€', GBP: '£', JPY: '¥', NOK: 'kr', SEK: 'kr', CAD: '$' };
-const TRM_CURRENCIES = window.ATM_CURRENCIES || ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD'].map(c => ({ value: c, label: c }));
+const TRM_CURRENCIES = (window.OdysseyData.currencies || [])
+  .filter(c => !c.archived)
+  .map(c => ({ value: c.code, label: c.name }));
 
 /* sensible default billing period per fee kind */
 const TRM_DEFAULT_BILLING = {
@@ -112,7 +114,7 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
     }, term && term.id);
   };
 
-  const sym = TRM_SYM[draft.currency] || draft.currency;
+  const sym = TRM_SYM[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
   const previewFrac = (() => {
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     return isNaN(raw) ? null : raw / 100;
@@ -196,26 +198,39 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
           )}
         </div>
 
-        <AmountField
-          size="lg"
-          prefix={!isPct ? sym : undefined}
-          suffix={isPct ? '%' : undefined}
-          allowNegative
-          autoFocus
-          value={draft.valueStr}
-          onChange={set('valueStr')}
-          error={errors.value}
-          help={isPct
-            ? <React.Fragment>Stored as a fraction: <b>{previewFrac == null ? '—' : previewFrac.toFixed(4)}</b>{isRate ? ' · annual' : ''}</React.Fragment>
-            : <React.Fragment>Flat amount in <b>{draft.currency}</b>{draft.billingPeriod && draft.billingPeriod !== 'OneTime' ? <React.Fragment> · {(H.billingInfo(draft.billingPeriod) || {}).label}</React.Fragment> : ''}</React.Fragment>}
-        />
+        {isPct ? (
+          <AmountField
+            size="lg"
+            suffix="%"
+            allowNegative
+            autoFocus
+            value={draft.valueStr}
+            onChange={set('valueStr')}
+            error={errors.value}
+            help={<React.Fragment>Stored as a fraction: <b>{previewFrac == null ? '—' : previewFrac.toFixed(4)}</b>{isRate ? ' · annual' : ''}</React.Fragment>}
+          />
+        ) : (
+          <MoneyField
+            size="lg"
+            allowNegative
+            signEditable
+            autoFocus
+            value={draft.valueStr}
+            onChange={set('valueStr')}
+            currency={draft.currency}
+            onCurrencyChange={set('currency')}
+            currencyOptions={TRM_CURRENCIES}
+            currencySearchThreshold={0}
+            error={errors.value}
+            help={<React.Fragment>Flat amount in <b>{draft.currency}</b>{draft.billingPeriod && draft.billingPeriod !== 'OneTime' ? <React.Fragment> · {(H.billingInfo(draft.billingPeriod) || {}).label}</React.Fragment> : ''}</React.Fragment>}
+          />
+        )}
       </div>
 
-      {/* Currency (amount only) + Effective date */}
-      <FormRow>
-        {!isPct ? (
-          <Select label="Currency" value={draft.currency} onChange={set('currency')} options={TRM_CURRENCIES} />
-        ) : (
+      {/* Effective date — currency now lives inside the money field (amount mode);
+         a rate has no currency, so that column only appears for percentages. */}
+      <FormRow cols={isPct ? 2 : 1}>
+        {isPct ? (
           <div className="field">
             <div className="label">Currency</div>
             <div className="trm-kind-opt" style={{ cursor: 'default', height: 44, padding: '0 12px', opacity: 0.6 }}>
@@ -223,7 +238,7 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
               <span className="trm-kind-opt-name" style={{ fontWeight: 400, color: 'var(--mud-palette-text-secondary)' }}>Not used for a rate</span>
             </div>
           </div>
-        )}
+        ) : null}
         <DateField label="Effective from" value={draft.effectiveFrom} onChange={set('effectiveFrom')}
           helper={errors.effectiveFrom ? undefined : 'When this value takes effect'} />
       </FormRow>

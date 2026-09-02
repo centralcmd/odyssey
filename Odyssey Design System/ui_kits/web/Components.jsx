@@ -320,6 +320,32 @@ const AmountField = ({ helper, ...props }) => {
   );
 };
 
+// MoneyField — amount + ISO currency code as one control (the canonical money
+// editor). Falls back to AmountField + a separate Select until the bundle
+// carries it.
+const MoneyField = ({ helper, ...props }) => {
+  if (DS.MoneyField) return <DS.MoneyField help={helper} {...props} />;
+  const { label, currency, onCurrencyChange, currencyOptions = [], currencyEditable = true, ...amt } = props;
+  return (
+    <div>
+      <AmountField label={label} helper={helper} {...amt} />
+      {currencyEditable && onCurrencyChange ? (
+        <div style={{ marginTop: 8 }}>
+          <Select value={currency} onChange={onCurrencyChange} options={currencyOptions} />
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+// CurrencySelect — currency-only picker (same list + search as MoneyField's
+// segment). Falls back to a plain Select until the bundle carries it.
+const CurrencySelect = ({ helper, ...props }) => {
+  if (DS.CurrencySelect) return <DS.CurrencySelect help={helper} {...props} />;
+  const { label = 'Currency', options = [], ...rest } = props;
+  return <Select label={label} options={options} helper={helper} {...rest} />;
+};
+
 // NoteField — the canonical multi-line note / description field with a live
 // character counter, replacing the kit's hand-rolled .field + .atm-textarea +
 // .*-charcount pattern. Typed DS component with a shipped-markup fallback.
@@ -1310,7 +1336,7 @@ const getImportLimitMb = (surface) => {
 Object.assign(window, {
   IMPORT_LIMIT_MB_DEFAULTS, getImportLimitMb,
   MIcon, Button, IconButton, Card, CardBody, CardHeader, Modal,
-  Field, SearchField, Select, AmountField, NoteField, NumberField, FieldShell, FormRow, DateField, DateRangePicker, Chip, Alert, SeverityIcon, Avatar, TONE_MAP, Switch, Checkbox, StatTile, EmptyState, BrandMark,
+  Field, SearchField, Select, AmountField, MoneyField, CurrencySelect, NoteField, NumberField, FieldShell, FormRow, DateField, DateRangePicker, Chip, Alert, SeverityIcon, Avatar, TONE_MAP, Switch, Checkbox, StatTile, EmptyState, BrandMark,
   ContactTypeSelect,
   SettingRow,
   SettingField,

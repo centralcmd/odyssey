@@ -14,9 +14,36 @@
 
 const ATS_CURRENCIES = window.OdysseyData.currencies
   .filter(c => !c.archived)
-  .map(c => ({ value: c.code, label: `${c.code} · ${c.name}` }));
+  .map(c => ({ value: c.code, label: c.name }));
 
 const ATS_NumField = ({ help, ...props }) => <NumberField helper={help} {...props} />;
+
+/* Declared figures are money, so they use MoneyField with the code locked to the
+   statement's base currency. The draft keeps them as numbers (the DTO shape), so
+   this holds the typed magnitude and its sign locally and reports the parsed
+   number up — a partial entry ("1 250,") still reads as 1250 rather than null. */
+const ATS_Money = ({ label, value, onChange, currency, help, signEditable = false }) => {
+  const [mag, setMag] = React.useState(value == null ? '' : String(Math.abs(value)));
+  const [neg, setNeg] = React.useState(value != null && value < 0);
+  const report = (isNeg, m) => {
+    const body = m.replace(/\s/g, '').replace(',', '.').replace(/[.]$/, '');
+    const n = parseFloat(body);
+    onChange(body === '' || isNaN(n) ? null : (isNeg ? -n : n));
+  };
+  const handle = (next) => {
+    const isNeg = /^\s*-/.test(next);
+    const m = next.replace(/^\s*-/, '');
+    setNeg(isNeg);
+    setMag(m);
+    report(isNeg, m);
+  };
+  return (
+    <MoneyField label={label} value={(neg ? '-' : '') + mag} onChange={handle}
+      currency={currency} currencyEditable={false}
+      signEditable={signEditable} allowNegative={signEditable}
+      placeholder="0.00" help={help} />
+  );
+};
 
 const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) => {
   const { useState } = React;
@@ -41,10 +68,17 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
     startDate: `${defaultYear}-01-01`,
     endDate: `${defaultYear}-12-31`,
     baseCurrency: 'NOK',
-    declared: { totalIncome: null, assessedTax: null, netWorth: null },
+    notes: '',
+    taxTags: [],
+    incomeTags: [],
+    filedAtUtc: '',
+    taxOfficeApprovedAtUtc: '',
+    declared: {
+      totalAssets: null, totalLiabilities: null, netWorth: null,
+      totalIncome: null, assessedTax: null, settlementAmount: null, settledAtUtc: '',
+    },
   });
   const [errors, setErrors] = useState({});
-  const [showFigures, setShowFigures] = useState(false);
 
   const set = (k) => (v) => {
     setDraft(d => ({ ...d, [k]: v }));
@@ -100,16 +134,13 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
       startDate: draft.startDate, endDate: draft.endDate,
       baseCurrency: draft.baseCurrency,
       status: 'New', statusComment: null, statusChangedAt: new Date().toISOString(),
-      filedAtUtc: null, taxOfficeApprovedAtUtc: null,
-      notes: '', archived: null, createdAtUtc: new Date().toISOString(),
-      declared: {
-        totalAssets: null, totalLiabilities: null, netWorth: d.netWorth,
-        totalIncome: d.totalIncome, assessedTax: d.assessedTax,
-        settlementAmount: null, settledAtUtc: null,
-      },
-      // No account-balance sync and no tags yet → derived not available, sums 0.
+      filedAtUtc: draft.filedAtUtc || null,
+      taxOfficeApprovedAtUtc: draft.taxOfficeApprovedAtUtc || null,
+      notes: draft.notes, archived: null, createdAtUtc: new Date().toISOString(),
+      declared: { ...d, settledAtUtc: d.settledAtUtc || null },
+      // No account-balance sync yet → derived not available, sums 0.
       derived: { available: false, totalAssets: null, totalLiabilities: null, netWorth: null, paidTax: 0, actualIncome: 0 },
-      taxTags: [], incomeTags: [],
+      taxTags: draft.taxTags, incomeTags: draft.incomeTags,
       files: [],
       excludedTransactionCount: 0, excludedCurrencies: {},
     });
@@ -144,7 +175,7 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
         <ATS_NumField label="Fiscal year" value={draft.fiscalYear}
           onChange={editing ? ((v) => set('fiscalYear')(v ? Math.round(v) : draft.fiscalYear)) : setYear}
           help={errors.fiscalYear || 'The income year.'} />
-        <Select label="Base currency" value={draft.baseCurrency} onChange={set('baseCurrency')} options={ATS_CURRENCIES} helper="Derived sums include only this currency." />
+        <CurrencySelect label="Base currency" value={draft.baseCurrency} onChange={set('baseCurrency')} options={ATS_CURRENCIES} searchThreshold={0} helper="Derived sums include only this currency." />
       </FormRow>
 
       <FormRow>
@@ -152,62 +183,40 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
         <DateField label="Period end" value={draft.endDate} onChange={set('endDate')} help="Defaults to the calendar year." error={errors.endDate} />
       </FormRow>
 
-      {editing ? (
-        <React.Fragment>
-          <div className="tx-section-h" style={{ marginTop: 6 }}><MIcon name="receipt_long" size={18} />Declared figures<span className="tx-section-cap">From the official statement — all optional</span></div>
-          <FormRow>
-            <ATS_NumField label="Total assets" value={draft.declared.totalAssets} onChange={setDec('totalAssets')} />
-            <ATS_NumField label="Total liabilities" value={draft.declared.totalLiabilities} onChange={setDec('totalLiabilities')} />
-          </FormRow>
-          <FormRow>
-            <ATS_NumField label="Net worth" value={draft.declared.netWorth} onChange={setDec('netWorth')} help="Stated directly — may differ from assets − liabilities." />
-            <ATS_NumField label="Total income" value={draft.declared.totalIncome} onChange={setDec('totalIncome')} />
-          </FormRow>
-          <FormRow>
-            <ATS_NumField label="Assessed tax" value={draft.declared.assessedTax} onChange={setDec('assessedTax')} />
-            <ATS_NumField label="Settlement amount" value={draft.declared.settlementAmount} onChange={setDec('settlementAmount')} help="Positive = additional tax owed · negative = refund." />
-          </FormRow>
-          <FormRow>
-            <DateField label="Settlement paid" value={draft.declared.settledAtUtc} onChange={setDec('settledAtUtc')} />
-            <DateField label="Filed to authority" value={draft.filedAtUtc} onChange={set('filedAtUtc')} />
-          </FormRow>
-          <FormRow>
-            <DateField label="Authority approved" value={draft.taxOfficeApprovedAtUtc} onChange={set('taxOfficeApprovedAtUtc')} />
-            <div />
-          </FormRow>
+      <SectionDivider label="Declared figures" meta="from the official statement · all optional" />
+      <FormRow>
+        <ATS_Money label="Total assets" value={draft.declared.totalAssets} onChange={setDec('totalAssets')} currency={draft.baseCurrency} />
+        <ATS_Money label="Total liabilities" value={draft.declared.totalLiabilities} onChange={setDec('totalLiabilities')} currency={draft.baseCurrency} />
+      </FormRow>
+      <FormRow>
+        <ATS_Money label="Net worth" value={draft.declared.netWorth} onChange={setDec('netWorth')} currency={draft.baseCurrency} signEditable help="Stated directly — may differ from assets − liabilities." />
+        <ATS_Money label="Total income" value={draft.declared.totalIncome} onChange={setDec('totalIncome')} currency={draft.baseCurrency} />
+      </FormRow>
+      <FormRow>
+        <ATS_Money label="Assessed tax" value={draft.declared.assessedTax} onChange={setDec('assessedTax')} currency={draft.baseCurrency} />
+        <ATS_Money label="Settlement amount" value={draft.declared.settlementAmount} onChange={setDec('settlementAmount')} currency={draft.baseCurrency} signEditable help="Positive = additional tax owed · negative = refund." />
+      </FormRow>
+      <FormRow>
+        <DateField label="Settlement paid" value={draft.declared.settledAtUtc} onChange={setDec('settledAtUtc')} />
+        <DateField label="Filed to authority" value={draft.filedAtUtc} onChange={set('filedAtUtc')} />
+      </FormRow>
+      <FormRow>
+        <DateField label="Authority approved" value={draft.taxOfficeApprovedAtUtc} onChange={set('taxOfficeApprovedAtUtc')} />
+        <div />
+      </FormRow>
 
-          <NoteField label="Notes" optional maxLength={1024} value={draft.notes} onChange={set('notes')}
-            placeholder="Anything worth remembering about this statement…" />
+      <NoteField label="Notes" optional maxLength={1024} value={draft.notes} onChange={set('notes')}
+        placeholder="Anything worth remembering about this statement…" />
 
-          <div className="tx-section-h" style={{ marginTop: 6 }}><MIcon name="local_offer" size={18} />Derivation tags<span className="tx-section-cap">Which transaction tags feed the derived figures</span></div>
-          <FormRow>
-            <FieldShell label="Tax-payment tags" helper="Sum into derived advance tax paid (within the year).">
-              <MultiSelect allLabel="Select tags…" value={draft.taxTags} onChange={set('taxTags')} options={taxOpts} />
-            </FieldShell>
-            <FieldShell label="Income tags" helper="Sum into derived actual income.">
-              <MultiSelect allLabel="Select tags…" value={draft.incomeTags} onChange={set('incomeTags')} options={incOpts} />
-            </FieldShell>
-          </FormRow>
-        </React.Fragment>
-      ) : (
-        /* optional declared figures — collapsible to keep the create path light */
-        <div className="atm-adv">
-          <button type="button" className="atm-adv-toggle" onClick={() => setShowFigures(v => !v)}>
-            <MIcon name="expand_more" size={20} className={`chev ${showFigures ? 'open' : ''}`} />
-            Declared figures
-            <span className="atm-adv-hint">Optional — add now or later</span>
-          </button>
-          {showFigures && (
-            <div className="atm-adv-body">
-              <FormRow>
-                <ATS_NumField label="Total income" value={draft.declared.totalIncome} onChange={setDec('totalIncome')} />
-                <ATS_NumField label="Assessed tax" value={draft.declared.assessedTax} onChange={setDec('assessedTax')} />
-              </FormRow>
-              <ATS_NumField label="Net worth" value={draft.declared.netWorth} onChange={setDec('netWorth')} help="Stated on the assessment — may differ from assets − liabilities." />
-            </div>
-          )}
-        </div>
-      )}
+      <SectionDivider label="Derivation tags" meta="tags feeding the derived figures" />
+      <FormRow>
+        <FieldShell label="Tax-payment tags" helper="Sum into derived advance tax paid (within the year).">
+          <MultiSelect allLabel="Select tags…" value={draft.taxTags} onChange={set('taxTags')} options={taxOpts} />
+        </FieldShell>
+        <FieldShell label="Income tags" helper="Sum into derived actual income.">
+          <MultiSelect allLabel="Select tags…" value={draft.incomeTags} onChange={set('incomeTags')} options={incOpts} />
+        </FieldShell>
+      </FormRow>
     </Modal>
   );
 };

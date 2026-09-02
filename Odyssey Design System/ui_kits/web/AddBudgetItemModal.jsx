@@ -75,13 +75,16 @@ const AddBudgetItemModal = ({ budget, item, onClose, onCreate }) => {
 
       <FormRow>
         <BudgetCategoryTypeSelect label="Category" value={draft.categoryType} onChange={set('categoryType')} />
-        <Field
+        <MoneyField
           label="Planned amount"
-          type="number"
           value={draft.planned}
           onChange={set('planned')}
+          currency={budget.currency}
+          currencyEditable={false}
+          allowNegative={false}
           placeholder="0.00"
           error={errors.planned}
+          helper={errors.planned ? undefined : 'Budget currency'}
         />
       </FormRow>
 

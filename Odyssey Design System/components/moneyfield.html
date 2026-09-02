@@ -1,0 +1,147 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="MoneyField" subtitle="The canonical money editor — amount plus its ISO currency code as one control. The code sits on the right inside the same box, and is either a picker or locked to static text. Use instead of AmountField + a separate currency Select." viewport="900x680" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · MoneyField</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 760px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; }
+    .sep { height: 1px; background: var(--mud-palette-divider); }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 22px; }
+    .note { font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 12px; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js?v=6"></script>
+</head>
+<body>
+  <h1>MoneyField — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;MoneyField value currency onChange onCurrencyChange /&gt;</code></h1>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var MoneyField = NS.MoneyField;
+      var useState = React.useState;
+
+      var CURRENCIES = [
+        { value: 'NOK', label: 'Norwegian krone' },
+        { value: 'USD', label: 'US dollar' },
+        { value: 'EUR', label: 'Euro' },
+        { value: 'GBP', label: 'Pound sterling' },
+        { value: 'SEK', label: 'Swedish krona' },
+        { value: 'JPY', label: 'Japanese yen' }
+      ];
+
+      function Live(props) {
+        var v = useState(props.init || '');
+        var c = useState(props.initCurrency || 'NOK');
+        var rest = {};
+        Object.keys(props).forEach(function (k) {
+          if (k !== 'init' && k !== 'initCurrency' && k !== 'lockCurrency' && k !== 'currencyOptions') rest[k] = props[k];
+        });
+        return e(MoneyField, Object.assign(rest, {
+          value: v[0], onChange: function (nv) { v[1](nv); },
+          currency: c[0],
+          currencyOptions: props.currencyOptions || CURRENCIES,
+          onCurrencyChange: props.lockCurrency ? undefined : function (nc) { c[1](nc); }
+        }));
+      }
+
+      var MANY = ('AED AFN ALL AMD AOA ARS AUD AZN BAM BDT BGN BHD BRL CAD CHF CLP CNY COP CZK DKK DZD EGP ETB EUR GBP GEL GHS HKD HRK HUF IDR ILS INR ISK JPY KES KRW KWD MAD MXN MYR NGN NOK NZD PHP PKR PLN QAR RON RSD RUB SAR SEK SGD THB TRY TWD TZS UAH USD UYU VND ZAR')
+        .split(' ').map(function (c) { return { value: c }; });
+
+      function Dir(props) {
+        var v = useState(props.init || '');
+        var c = useState(props.initCurrency || 'USD');
+        var d = useState('expense');
+        var rest = {};
+        Object.keys(props).forEach(function (k) {
+          if (k !== 'init' && k !== 'initCurrency') rest[k] = props[k];
+        });
+        return e(MoneyField, Object.assign(rest, {
+          value: v[0], onChange: function (nv) { v[1](nv); },
+          currency: c[0], onCurrencyChange: function (nc) { c[1](nc); },
+          currencyOptions: CURRENCIES,
+          direction: d[0], onDirectionChange: function (nd) { d[1](nd); },
+          allowNegative: false,
+          help: d[0] === 'expense' ? 'Expense — click the sign, or type + in the amount, for income.' : 'Income — click the sign, or type − in the amount, for expense.'
+        }));
+      }
+
+      function Signed(props) {
+        var v = useState(props.init || '');
+        var c2 = useState('NOK');
+        var rest = {};
+        Object.keys(props).forEach(function (k) { if (k !== 'init') rest[k] = props[k]; });
+        return e(MoneyField, Object.assign(rest, {
+          value: v[0], onChange: function (nv) { v[1](nv); },
+          currency: c2[0], onCurrencyChange: function (nc) { c2[1](nc); },
+          currencyOptions: CURRENCIES, signEditable: true
+        }));
+      }
+
+      function Section(title, body, note) {
+        return e('div', null,
+          e('div', { className: 'cap' }, title),
+          body,
+          note ? e('div', { className: 'note' }, note) : null);
+      }
+
+      var root = [
+        Section('Editable currency — the default',
+          e('div', { className: 'row' },
+            e(Live, { key: 1, label: 'Amount', init: '1 250,00', initCurrency: 'NOK', required: true }),
+            e(Live, { key: 2, label: 'Opening balance', init: '485 000', initCurrency: 'USD', align: 'right', help: 'Right-aligned for table-style entry' })),
+          ['Click the code to pick a currency. ↑/↓ opens the list, ', e('b', { key: 'b' }, 'Esc'), ' closes it.']),
+        e('div', { className: 'sep', key: 's1' }),
+        Section(['Locked currency · ', e('code', { key: 'c' }, 'currencyEditable={false}')],
+          e('div', { className: 'row' },
+            e(Live, { key: 1, label: 'Amount', init: '12 400', initCurrency: 'NOK', currencyEditable: false, help: 'Account currency · NOK' }),
+            e(Live, { key: 2, label: 'Fee', init: '49', initCurrency: 'EUR', lockCurrency: true, help: 'No onCurrencyChange — the code is static text' })),
+          'Metrics are identical to the editable form, so locking the currency never shifts the row.'),
+        e('div', { className: 'sep', key: 's2' }),
+        Section('States',
+          e('div', { className: 'row' },
+            e(Live, { key: 1, label: 'With error', init: '-50', initCurrency: 'NOK', error: 'A fee amount can’t be negative.' }),
+            e(Live, { key: 2, label: 'Optional', optional: true, initCurrency: 'USD', placeholder: '0.00' }),
+            e(MoneyField, { key: 3, label: 'Disabled', value: '0.00', currency: 'NOK', disabled: true }),
+            e(Live, { key: 4, label: 'Amount editable, currency locked', init: '900', initCurrency: 'GBP', currencyDisabled: true, help: 'currencyDisabled' }))),
+        e('div', { className: 'sep', key: 's3' }),
+        Section(['Long list — searchable picker · ', e('code', { key: 'c' }, 'currencySearchThreshold')],
+          e('div', { style: { maxWidth: 360 } },
+            e(Live, { label: 'Amount', init: '2 500', initCurrency: 'JPY', currencyOptions: MANY })),
+          'Above 8 options the picker gets a filter box (code or name). Type to narrow, ↓ to enter the list, Enter picks the top match.'),
+        e('div', { className: 'sep', key: 's4' }),
+        Section(['Sign toggle · ', e('code', { key: 'c' }, 'signEditable')],
+          e('div', { className: 'row' },
+            e(Signed, { key: 1, label: 'Premium', init: '1 250,00', help: 'Click −/+ to sign it — refunds, corrections' }),
+            e(Signed, { key: 2, label: 'Adjustment', init: '-49', help: 'Value stays signed for the form' })),
+          'For amounts with no income/expense meaning: the segment toggles the value’s own minus, so it is picked rather than typed.'),
+        e('div', { className: 'sep', key: 's4b' }),
+        Section(['Expense / income · ', e('code', { key: 'c' }, 'direction'), ' + ', e('code', { key: 'c2' }, 'onDirectionChange')],
+          e('div', { style: { maxWidth: 400 } },
+            e(Dir, { label: 'Amount', size: 'lg', init: '128.40', initCurrency: 'USD' })),
+          'The leading segment mirrors the currency segment: click it to flip expense ↔ income, or type − / + while in the amount. Direction, amount and currency in one control — no separate toggle.'),
+        e('div', { className: 'sep', key: 's5' }),
+        Section(['Hero · ', e('code', { key: 'c' }, 'size="lg"')],
+          e('div', { style: { maxWidth: 400 } },
+            e(Live, { label: 'Estimated value', size: 'lg', init: '485 000', initCurrency: 'USD', help: 'Recorded in the selected currency' })))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root.map(function (n, i) {
+        return e(React.Fragment, { key: i }, n);
+      })));
+    })();
+  </script>
+</body>
+</html>

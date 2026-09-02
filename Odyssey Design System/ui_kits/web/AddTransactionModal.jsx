@@ -24,8 +24,9 @@
 
    onCreate(newTransaction) receives the assembled DTO-shaped object. */
 
-const ATM_CURRENCIES = ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD']
-  .map(c => ({ value: c, label: c }));
+const ATM_CURRENCIES = (window.OdysseyData.currencies || [])
+  .filter(c => !c.archived)
+  .map(c => ({ value: c.code, label: c.name }));
 const ATM_CURRENCY_SYMBOL = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', NOK: 'kr', SEK: 'kr', CAD: '$' };
 
 const ATM_STATUSES = [
@@ -220,7 +221,7 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
     setExtraTags(prev => [...prev, opt]);
     return opt.value;
   };
-  const sym = ATM_CURRENCY_SYMBOL[draft.currency] || draft.currency;
+  const sym = ATM_CURRENCY_SYMBOL[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
 
   const submit = () => {
     const next = {};
@@ -309,39 +310,28 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
         </React.Fragment>
       }>
           <div className="odc-form-grid">
-          {/* Amount — the hero. Direction toggle drives the sign of the DTO Amount. */}
+          {/* Amount — the hero. Direction, amount and currency are one control:
+             the leading segment flips expense ↔ income and signs the DTO Amount. */}
           <div className="atm-amount-block odc-form-grid-wide">
-            {/* Value picker, not tabs — radio semantics (matches DS SegmentedControl). */}
-            <div className="atm-seg" role="radiogroup" aria-label="Direction">
-              <button type="button" role="radio" aria-checked={draft.dir === 'expense'}
-                className={`atm-seg-btn ${draft.dir === 'expense' ? 'on expense' : ''}`}
-                onClick={() => set('dir')('expense')}>
-                <MIcon name="south_west" size={16} />Expense
-              </button>
-              <button type="button" role="radio" aria-checked={draft.dir === 'income'}
-                className={`atm-seg-btn ${draft.dir === 'income' ? 'on income' : ''}`}
-                onClick={() => set('dir')('income')}>
-                <MIcon name="north_east" size={16} />Income
-              </button>
-            </div>
-            <div className={`atm-amount ${draft.dir} ${errors.amount ? 'has-error' : ''}`}>
-              <span className="atm-amount-sign">{draft.dir === 'expense' ? '−' : '+'}</span>
-              <span className="atm-amount-cur">{sym}</span>
-              <input
-                inputMode="decimal"
-                placeholder="0.00"
-                value={draft.amount}
-                autoFocus
-                onChange={(e) => {
-                  const v = e.target.value.replace(/[^0-9.,]/g, '');
-                  set('amount')(v);
-                }}
-              />
-            </div>
-            {errors.amount && <div className="helper aam-err">{errors.amount}</div>}
+            <MoneyField
+              label="Amount"
+              size="lg"
+              direction={draft.dir}
+              onDirectionChange={set('dir')}
+              allowNegative={false}
+              autoFocus
+              placeholder="0.00"
+              value={draft.amount}
+              onChange={set('amount')}
+              currency={draft.currency}
+              onCurrencyChange={set('currency')}
+              currencyOptions={ATM_CURRENCIES}
+              currencySearchThreshold={0}
+              error={errors.amount}
+              help={draft.dir === 'expense' ? 'Expense — click the sign, or type + in the amount, for income.' : 'Income — click the sign, or type − in the amount, for expense.'}
+            />
           </div>
 
-          <Select label="Currency" value={draft.currency} onChange={set('currency')} options={ATM_CURRENCIES} />
           <DateField label="Date" value={draft.date} onChange={set('date')} help="Defaults to today" />
 
           <div className="odc-form-grid-wide">

@@ -1,0 +1,78 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="CurrencySelect" subtitle="Currency-only picker — the same ISO-code list, search box and keyboard behaviour as MoneyField's currency segment, in standard Select chrome. For account currency, base currency, reporting currency; use MoneyField when there's an amount." viewport="900x560" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · CurrencySelect</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 30px 32px; }
+    .stack { display: flex; flex-direction: column; gap: 26px; max-width: 760px; }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin-bottom: 12px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; }
+    .sep { height: 1px; background: var(--mud-palette-divider); }
+    .note { font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 12px; }
+    h1 { font: var(--fw-bold) var(--fs-h6)/1 var(--font-sans); margin: 0 0 22px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js?v=2"></script>
+</head>
+<body>
+  <h1>CurrencySelect — <code style="font-family:var(--font-mono);font-size:0.8em;color:var(--brand-text)">&lt;CurrencySelect value onChange options /&gt;</code></h1>
+  <div id="root" class="stack"></div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var CurrencySelect = NS.CurrencySelect;
+      var useState = React.useState;
+
+      var SHORT = [
+        { value: 'NOK', label: 'Norwegian krone' },
+        { value: 'USD', label: 'US dollar' },
+        { value: 'EUR', label: 'Euro' },
+        { value: 'GBP', label: 'Pound sterling' }
+      ];
+      var NAMES = { AED:'UAE dirham', AUD:'Australian dollar', BRL:'Brazilian real', CAD:'Canadian dollar', CHF:'Swiss franc', CNY:'Renminbi', CZK:'Czech koruna', DKK:'Danish krone', EUR:'Euro', GBP:'Pound sterling', HKD:'Hong Kong dollar', HUF:'Hungarian forint', INR:'Indian rupee', ISK:'Icelandic króna', JPY:'Japanese yen', KRW:'South Korean won', MXN:'Mexican peso', NOK:'Norwegian krone', NZD:'New Zealand dollar', PLN:'Polish złoty', SEK:'Swedish krona', SGD:'Singapore dollar', THB:'Thai baht', TRY:'Turkish lira', USD:'US dollar', ZAR:'South African rand' };
+      var MANY = Object.keys(NAMES).sort().map(function (c) { return { value: c, label: NAMES[c] }; });
+
+      function Live(props) {
+        var v = useState(props.init || '');
+        var rest = {};
+        Object.keys(props).forEach(function (k) { if (k !== 'init') rest[k] = props[k]; });
+        return e(CurrencySelect, Object.assign(rest, { value: v[0], onChange: function (nv) { v[1](nv); } }));
+      }
+
+      function Section(title, body, note) {
+        return e('div', null, e('div', { className: 'cap' }, title), body, note ? e('div', { className: 'note' }, note) : null);
+      }
+
+      var root = [
+        Section('Short list — no search needed',
+          e('div', { className: 'row' },
+            e(Live, { key: 1, init: 'NOK', options: SHORT, help: 'Everything this ledger uses' }),
+            e(Live, { key: 2, label: 'Base currency', init: 'USD', options: SHORT, help: 'All planned amounts use this currency.' }))),
+        e('div', { className: 'sep' }),
+        Section(['Long list \u2014 searchable \u00b7 ', e('code', { key: 'c' }, 'searchThreshold')],
+          e('div', { className: 'row' },
+            e(Live, { key: 1, label: 'Reporting currency', init: 'EUR', options: MANY, required: true }),
+            e(Live, { key: 2, label: 'Code only', init: 'JPY', options: MANY, showName: false, help: 'showName={false}' })),
+          'Type to filter on code or name, \u2193 to enter the list, Enter picks the top match.'),
+        e('div', { className: 'sep' }),
+        Section('States',
+          e('div', { className: 'row' },
+            e(Live, { key: 1, label: 'Unset', options: MANY, optional: true }),
+            e(Live, { key: 2, label: 'With error', options: MANY, error: 'Pick a base currency.' }),
+            e(CurrencySelect, { key: 3, label: 'Disabled', value: 'USD', options: SHORT, disabled: true, help: 'Locked to the account currency' })))
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root.map(function (n, i) { return e(React.Fragment, { key: i }, n); })));
+    })();
+  </script>
+</body>
+</html>

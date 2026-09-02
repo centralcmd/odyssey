@@ -307,6 +307,125 @@
 .odc-amount.lg .odc-amount-adorn { font: 500 22px/1 var(--font-sans); }
 .odc-amount.lg .odc-amount-input { font: 400 30px/1 var(--font-mono); letter-spacing: -0.01em; }
 
+/* ---------- MoneyField (amount + ISO currency code as one control) ---------- */
+/* One box owns the border, hover, focus and error states; the amount and the
+   currency segment sit inside it, split by a hairline, so the pair reads as a
+   single control. The code is always the ISO 4217 code, never a symbol. */
+.odc-money {
+  position: relative;
+  display: flex; align-items: stretch;
+  box-sizing: border-box; height: 44px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-md);
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-money:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-money:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
+.odc-money.error { border-color: var(--mud-palette-error); }
+.odc-money.error:focus-within { box-shadow: inset 0 0 0 1px var(--mud-palette-error); }
+.odc-money.disabled { opacity: 0.5; cursor: not-allowed; }
+.odc-money-input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md);
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+.odc-money-input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+/* Leading sign for signed amounts (direction owned by the form) + its tone.
+   With `direction` + `onDirectionChange` the same segment becomes a button that
+   flips expense ↔ income — the mirror of the currency segment on the right. */
+.odc-money-sign {
+  flex: none; display: grid; place-items: center;
+  width: 18px; margin-left: 12px;
+  font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-money-sign.btn {
+  display: flex; align-items: center; justify-content: center; min-width: 34px;
+  margin: 0; padding: 0 10px; align-self: stretch;
+  appearance: none; background: none; cursor: pointer;
+  border: 0; border-right: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-money-sign.btn:hover { background: var(--mud-palette-action-default-hover); }
+.odc-money-sign.btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-money-sign.btn:disabled { cursor: not-allowed; }
+.odc-money-dir-sign { font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans); }
+.odc-money-sign + .odc-money-input { padding-left: 6px; }
+.odc-money-sign.btn + .odc-money-input { padding-left: 12px; }
+.odc-money.tone-income .odc-money-sign, .odc-money.tone-income .odc-money-input { color: var(--finance-income); }
+.odc-money.tone-expense .odc-money-sign, .odc-money.tone-expense .odc-money-input { color: var(--finance-expense); }
+.odc-money-input:disabled { cursor: not-allowed; }
+/* Currency segment — static text or a picker trigger. Same metrics either way
+   so locking the currency doesn't shift the layout. */
+.odc-money-cur {
+  flex: none; display: flex; align-items: center; gap: 2px;
+  padding: 0 12px; border-left: 1px solid var(--mud-palette-lines-inputs);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-money-code {
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono);
+  letter-spacing: 0.04em; text-transform: uppercase; font-variant-numeric: tabular-nums;
+}
+.odc-money-cur.btn {
+  appearance: none; background: none; cursor: pointer;
+  border: none; border-left: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding-right: 8px;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-money-cur.btn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-money-cur.btn.open { background: var(--mud-palette-action-default-hover); color: var(--brand-text); }
+.odc-money-cur.btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-money-cur.btn:disabled { cursor: not-allowed; }
+.odc-money-chev { font-size: 18px; line-height: 1; transition: transform var(--duration-base) var(--ease-standard); }
+.odc-money-cur.btn.open .odc-money-chev { transform: rotate(180deg); }
+/* Popover is right-anchored to the currency segment; codes stay mono. With a
+   long list it gets a sticky filter box above the scrolling options. */
+.odc-money-pop { min-width: 240px; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.odc-money-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: var(--space-1); list-style: none; }
+.odc-money-list li { list-style: none; margin: 0; padding: 0; }
+.odc-money-search {
+  flex: none; display: flex; align-items: center; gap: 10px;
+  padding: 0 12px; height: 44px;
+  border-bottom: 1px solid var(--mud-palette-divider);
+}
+.odc-money-search .material-icons { font-size: 20px; color: var(--mud-palette-text-secondary); flex: none; }
+/* Beat any ambient input styling from the host page — the row IS the field. */
+.odc-money-pop .odc-money-search input {
+  flex: 1; min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
+  appearance: none; background: none; border: 0; outline: none; box-shadow: none;
+  margin: 0; padding: 0; border-radius: 0;
+  font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary);
+}
+.odc-money-search input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+.odc-money-empty {
+  padding: 12px; text-align: center;
+  font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.odc-money-opt-code {
+  flex: none; min-width: 42px;
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); letter-spacing: 0.04em;
+}
+.odc-money-pop .odc-select-opt-label { color: var(--mud-palette-text-secondary); }
+.odc-money-pop .odc-select-opt.selected .odc-select-opt-label { color: var(--mud-palette-text-secondary); }
+/* Recess inside modals, matching .odc-input / .odc-amount. */
+.odc-modal-body .odc-money { background-color: var(--mud-palette-background); }
+/* Hero variant — a large, focal money input. Radius stays at the standard field
+   radius so it sits square with the rest of the form. */
+.odc-money.lg { height: 60px; border-radius: var(--radius-md); background: var(--mud-palette-background); }
+.odc-money.lg .odc-money-input { padding: 0 18px; font: 400 30px/1 var(--font-mono); letter-spacing: -0.01em; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.odc-money.lg .odc-money-cur { padding: 0 16px; }
+.odc-money.lg .odc-money-cur.btn { border-radius: 0 var(--radius-md) var(--radius-md) 0; padding-right: 12px; }
+.odc-money.lg .odc-money-code { font: 500 17px/1 var(--font-mono); }
+.odc-money.lg .odc-money-chev { font-size: 20px; }
+.odc-money.lg .odc-money-sign { width: 22px; margin-left: 18px; font-size: 30px; }
+.odc-money.lg .odc-money-sign + .odc-money-input { padding-left: 8px; }
+.odc-money.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.odc-money.lg .odc-money-dir-sign { font-size: 30px; }
+.odc-money.lg .odc-money-sign.btn + .odc-money-input { padding-left: 16px; }
+
 /* ---------- StepperField (compact integer + trailing unit label) ---------- */
 .odc-stepper { display: flex; align-items: center; gap: 10px; height: var(--control-h); }
 .odc-stepper-num { width: 84px; flex: none; text-align: center; }
@@ -2531,7 +2650,7 @@
   font: 600 11px/1 var(--font-sans); letter-spacing: var(--tracking-caps, 0.08em);
   text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none;
 }
-.odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light, var(--mud-palette-divider)); }
+.odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider); }
 .odc-sectiondivider-meta { font: var(--fw-regular) 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
 
 /* ---------- Picker shell — ONE search / list / row / footer treatment ----------
