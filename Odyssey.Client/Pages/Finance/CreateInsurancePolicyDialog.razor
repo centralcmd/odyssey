@@ -6,20 +6,31 @@
 
 @*
     CreateInsurancePolicyDialog — the "New policy" dialog (issue #175), reused in edit mode
-    when an InsurancePolicy is supplied (design-system update: every record's Edit action
-    opens its create dialog rather than an inline panel). Fields mirror the
-    NewInsurancePolicy / UpdateInsurancePolicy DTOs: name (required), policy number
-    (optional), type, insurer (required → Contact, OdsCombobox), insured account
-    (optional → Account, OdsCombobox) and notes. Scalar ids only (the §6/§10
-    mass-assignment invariant); a new policy starts with no renewals (→ NoCoverage) and no
-    documents, and renewal periods/documents stay managed from the policy itself.
+    when an InsurancePolicy is supplied. Fields mirror the NewInsurancePolicy /
+    UpdateInsurancePolicy DTOs: name (required), policy number (optional), type, the four link
+    collections (issue #27) and notes.
+
+    All four collections are OPTIONAL — a policy drafted before the insurer is known is a valid,
+    healthy record, so nothing here is required but the name and the type. Each save carries the
+    complete desired SET for each collection. Scalar ids only, at any depth (the §6/§10
+    mass-assignment invariant): the dialog never sends a nested Contact or Account object, so a
+    policy write can never create or rename a linked record.
+
+    Chip order follows the picker's own model while editing (parent order, new ids appended); the
+    server orders by resolved display name, so the dialog RE-SORTS ON LOAD only — the user never
+    sees a reorder mid-edit.
+
+    An UNNAMED member (its contact archived, or no longer resolvable) has no name in the read model,
+    so it renders through OdsContactChip's Archived / Unavailable state and carries NO remove
+    control: an ordinary write cannot remove it, so an affordance would silently no-op. The field
+    help then names the two routes that do work, detach first.
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
                Icon="shield" Title="@(IsEdit ? "Edit insurance policy" : "New insurance policy")"
                Subtitle="@(IsEdit
-                   ? "Update the insurer and policy details. Renewal periods and documents are managed from the policy."
-                   : "Record the insurer and policy details, then add renewal periods and documents from the policy.")"
+                   ? "Update the policy details and who is on it. Renewal periods and documents are managed from the policy."
+                   : "Record the policy details and who is on it, then add renewal periods and documents from the policy.")"
                SubmitLabel="@(IsEdit ? "Save changes" : "Create policy")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
@@ -34,119 +45,93 @@
                                       Placeholder="Choose a type…" Error="@_typeError" />
     </OdsFormRow>
 
-    <div class="odc-field @(_insurerError ? "error" : "")">
-        <label class="odc-field-label" for="@InsurerInputId">Insurer</label>
-        <OdsCombobox InputId="@InsurerInputId" Value="@_insurerId" ValueChanged="OnInsurerChanged"
-                     Options="Insurers" Placeholder="Search insurers…" Error="_insurerError" />
-        <div class="odc-field-help @(_insurerError ? "error" : "")">
-            @(_insurerError ? "Choose the insurer." : "The contact that issues this policy.")
-        </div>
-    </div>
+    @* The four collections read as four form fields — homogeneous per field, each a set of ids, all
+       optional. The divider keeps a now-eight-field dialog scannable without hiding anything behind
+       a disclosure. *@
+    <OdsSectionDivider Label="Parties & insured assets" Meta="all optional" HeadingLevel="0" />
 
-    <div class="odc-field">
-        <label class="odc-field-label" for="@AccountInputId">Insured account <span class="odc-field-opt">Optional</span></label>
-        <OdsCombobox InputId="@AccountInputId" Value="@_insuredAccountId" ValueChanged="@(v => _insuredAccountId = v)"
-                     Options="Accounts" Placeholder="Search accounts…" />
-        <div class="odc-field-help">Link the account representing the insured asset, if any.</div>
-    </div>
+    <OdsTagMultiSelect @ref="_insurersPicker"
+                       Id="@FieldId("insurers")"
+                       Label="Insurers" Optional="true"
+                       Value="_insurerIds" ValueChanged="@(v => Set(ref _insurerIds, v, nameof(UpdateInsurancePolicy.InsurerIds)))"
+                       Options="Contacts" Loading="OptionsLoading"
+                       Placeholder="No insurers" AddLabel="Add insurer"
+                       Noun="insurer"
+                       SearchLabel="Search contacts" SearchPlaceholder="Search contacts…"
+                       EmptyText="No contacts match"
+                       UnknownLabel="Unavailable"
+                       ChipTemplate="ContactChip" PreserveOnClear="IsUnnamedContact"
+                       Error="@Error(nameof(UpdateInsurancePolicy.InsurerIds))"
+                       Help="@InsurersHelp" />
+
+    <OdsTagMultiSelect @ref="_insuredAccountsPicker"
+                       Id="@FieldId("insured-accounts")"
+                       Label="Insured accounts" Optional="true"
+                       Value="_insuredAccountIds" ValueChanged="@(v => Set(ref _insuredAccountIds, v, nameof(UpdateInsurancePolicy.InsuredAccountIds)))"
+                       Options="Accounts" Loading="OptionsLoading"
+                       Placeholder="No insured accounts" AddLabel="Add account"
+                       Noun="account"
+                       SearchLabel="Search accounts" SearchPlaceholder="Search accounts…"
+                       EmptyText="No accounts match"
+                       Error="@Error(nameof(UpdateInsurancePolicy.InsuredAccountIds))"
+                       Help="The accounts representing the insured assets — a house and an outbuilding, two vehicles." />
+
+    <OdsTagMultiSelect @ref="_insuredContactsPicker"
+                       Id="@FieldId("insured-contacts")"
+                       Label="Insured contacts" Optional="true"
+                       Value="_insuredContactIds" ValueChanged="@(v => Set(ref _insuredContactIds, v, nameof(UpdateInsurancePolicy.InsuredContactIds)))"
+                       Options="Contacts" Loading="OptionsLoading"
+                       Placeholder="No insured contacts" AddLabel="Add contact"
+                       Noun="contact"
+                       SearchLabel="Search contacts" SearchPlaceholder="Search contacts…"
+                       EmptyText="No contacts match"
+                       UnknownLabel="Unavailable"
+                       ChipTemplate="ContactChip" PreserveOnClear="IsUnnamedContact"
+                       Error="@Error(nameof(UpdateInsurancePolicy.InsuredContactIds))"
+                       Help="@InsuredContactsHelp" />
+
+    <OdsTagMultiSelect @ref="_beneficiariesPicker"
+                       Id="@FieldId("beneficiaries")"
+                       Label="Beneficiaries" Optional="true"
+                       Value="_beneficiaryIds" ValueChanged="@(v => Set(ref _beneficiaryIds, v, nameof(UpdateInsurancePolicy.BeneficiaryIds)))"
+                       Options="Contacts" Loading="OptionsLoading"
+                       Placeholder="No beneficiaries" AddLabel="Add beneficiary"
+                       Noun="beneficiary" NounPlural="beneficiaries"
+                       SearchLabel="Search contacts" SearchPlaceholder="Search contacts…"
+                       EmptyText="No contacts match"
+                       UnknownLabel="Unavailable"
+                       ChipTemplate="ContactChip" PreserveOnClear="IsUnnamedContact"
+                       Error="@Error(nameof(UpdateInsurancePolicy.BeneficiaryIds))"
+                       Help="@BeneficiariesHelp" />
 
     <OdsNoteField Label="Notes" Optional="true" MaxLength="1024" @bind-Value="_notes"
-                  Placeholder="What this policy covers, excess, named parties…" />
+                  Placeholder="What this policy covers, excess, claims history…" />
 </OdsFormDialog>
 
 @code {
-    [Parameter] public bool Open { get; set; }
-    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
-
-    /// <summary>Active insurer options (non-archived contacts).</summary>
-    [Parameter] public IReadOnlyList<OdsOption> Insurers { get; set; } = [];
-
-    /// <summary>Active insured-account options (non-archived accounts).</summary>
-    [Parameter] public IReadOnlyList<OdsOption> Accounts { get; set; } = [];
-
-    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
-    [Parameter] public EventCallback OnSaved { get; set; }
-
-    /// <summary>When set, the dialog edits this policy. Null = create mode.</summary>
-    [Parameter] public ExistingInsurancePolicy? InsurancePolicy { get; set; }
-
-    private bool IsEdit => InsurancePolicy is not null;
-
-    private string InsurerInputId => IsEdit ? "ins-edit-insurer" : "ins-new-insurer";
-    private string AccountInputId => IsEdit ? "ins-edit-account" : "ins-new-account";
-
-    private string? _name;
-    private string? _policyNumber;
-    private string _type = string.Empty;
-    private string? _insurerId;
-    private string? _insuredAccountId;
-    private string? _notes;
-
-    private string? _nameError;
-    private string? _typeError;
-    private bool _insurerError;
-
-    protected override void OnInitialized()
-    {
-        if (InsurancePolicy is { } policy)
-        {
-            _name             = policy.Name;
-            _policyNumber     = policy.PolicyNumber;
-            _type             = policy.Type.ToString();
-            _insurerId        = policy.Insurer.ContactId.ToString();
-            _insuredAccountId = policy.InsuredAccount?.AccountId.ToString();
-            _notes            = policy.Notes;
-        }
-    }
-
-    private void OnInsurerChanged(string? value)
-    {
-        _insurerId = value;
-        _insurerError = false;
-    }
-
-    private async Task<bool> SaveAsync()
-    {
-        _nameError = string.IsNullOrWhiteSpace(_name) ? "Give the policy a name." : null;
-        _typeError = string.IsNullOrEmpty(_type) ? "Pick a policy type." : null;
-        _insurerError = !Guid.TryParse(_insurerId, out var insurerId);
-        if (_nameError is not null || _typeError is not null || _insurerError)
-            return false;
-
-        Guid? insuredAccountId = Guid.TryParse(_insuredAccountId, out var acc) ? acc : null;
-        var name = _name!.Trim();
-        var policyNumber = string.IsNullOrWhiteSpace(_policyNumber) ? null : _policyNumber!.Trim();
-        var type = Enum.TryParse<InsurancePolicyType>(_type, out var t) ? t : InsurancePolicyType.Other;
-        var notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes!.Trim();
-
-        if (InsurancePolicy is { } existing)
-        {
-            var update = new UpdateInsurancePolicy
+    // The chip BODY for a contact link — OdsContactChip, which already carries the Archived
+    // ("(archived)") and Unavailable (link_off) states in TEXT with a settled accessible name. An
+    // inline render fragment is Razor syntax, so it cannot live in the code-behind. The picker keeps
+    // owning the remove button, and withholds it for a member this returns an unnamed chip for.
+    private RenderFragment<string> ContactChip => id =>
+        @<span>
+            @{
+                var link = LinkFor(id);
+            }
+            @if (link is null || link.Availability == LinkAvailability.Unresolvable)
             {
-                Name = name,
-                PolicyNumber = policyNumber,
-                Type = type,
-                InsurerId = insurerId,
-                InsuredAccountId = insuredAccountId,
-                Notes = notes,
-                // Archive/restore is a separate row action — preserve whatever the record already has.
-                Archived = existing.Archived is not null,
-            };
-
-            return (await Insurance.UpdateAsync(existing.InsurancePolicyId, update)).Toast(Snackbar,
-                "Unable to update policy", "Policy updated.");
-        }
-
-        var policy = new NewInsurancePolicy
-        {
-            Name = name,
-            PolicyNumber = policyNumber,
-            Type = type,
-            InsurerId = insurerId,
-            InsuredAccountId = insuredAccountId,
-            Notes = notes,
-        };
-
-        return (await Insurance.CreateAsync(policy)).Toast(Snackbar, "Unable to create policy", "Policy created.");
-    }
+                @* No contact row at all: no name AND no type to show. *@
+                <OdsContactChip Unavailable="true" Compact="true" />
+            }
+            else if (link.Availability == LinkAvailability.Archived)
+            {
+                @* The read model carries no name for an archived link, so the chip states the STATE
+                   where a name would go — never the archived contact's name, never a GUID. *@
+                <OdsContactChip Name="Archived contact" Type="@link.Type?.ToString()" Archived="true" Compact="true" />
+            }
+            else
+            {
+                <OdsContactChip Name="@link.Name" Type="@link.Type?.ToString()" Compact="true" />
+            }
+        </span>;
 }

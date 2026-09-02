@@ -144,6 +144,12 @@ public sealed record SystemSettingsDto
 
     public int InsuranceMaxFilesPerParent { get; set; }
 
+    /// <summary>
+    /// Members allowed in each of a policy's four link collections — insurers, insured accounts,
+    /// insured contacts, beneficiaries — counted per collection (issue #27 §14).
+    /// </summary>
+    public int InsuranceMaxLinksPerPolicy { get; set; }
+
     public int PhotoMaxLinksPerKind { get; set; }
 
     public int PhotoMaxAlbumMembers { get; set; }
@@ -185,6 +191,13 @@ public sealed record SystemSettingsDto
 
     /// <summary>Hard ceiling on <see cref="PhotoMaxAlbumMembers"/> — same reason.</summary>
     public int PhotoMaxAlbumMembersCeiling { get; set; }
+
+    /// <summary>
+    /// Server-computed hard ceiling on <see cref="InsuranceMaxLinksPerPolicy"/>: the compile-time
+    /// <c>InsuranceLinkLimits.MaxLinksPerPolicy</c> that feeds <c>[MaxLength]</c> on the eight link
+    /// arrays of the two insurance write DTOs. Same tighten-only reason as the photo ceilings.
+    /// </summary>
+    public int InsuranceMaxLinksPerPolicyCeiling { get; set; }
 
     // ---------------------------------------------------------------------------------------------
     // The last compiled-in tuning constants (issue #434).

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Odyssey.Core.Finance;
+using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Api.SystemSettings;
@@ -53,6 +54,14 @@ public sealed class RequestCapCeilings
 
     public static int PhotoAlbumMembers => PhotoLimits.MaxAlbumMembers;
 
+    /// <summary>
+    /// The compile-time ceiling on each insurance link collection (issue #27 §14). Same mechanism as
+    /// the photo pair: <c>InsuranceLinkLimits.MaxLinksPerPolicy</c> feeds <c>[MaxLength]</c> on the
+    /// eight link arrays of the two insurance write DTOs, so a setting above it could never take
+    /// effect.
+    /// </summary>
+    public static int InsuranceLinksPerPolicy => InsuranceLinkLimits.MaxLinksPerPolicy;
+
     public string? ValidateUploadMegabytes(int value) =>
         value > UploadMegabytes
             ? $"cannot exceed {UploadMegabytes}: the transport request-body limit is fixed at startup "
@@ -65,6 +74,9 @@ public sealed class RequestCapCeilings
 
     public static string? ValidatePhotoAlbumMembers(int value) =>
         Validate(value, PhotoAlbumMembers, "album member");
+
+    public static string? ValidateInsuranceLinksPerPolicy(int value) =>
+        Validate(value, InsuranceLinksPerPolicy, "policy link");
 
     private static string? Validate(int value, int ceiling, string what) =>
         value > ceiling

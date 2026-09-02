@@ -198,6 +198,12 @@ public sealed record SystemSettingsUpdate
         "Files per policy or renewal must be between 1 and 100000.")]
     public int? InsuranceMaxFilesPerParent { get; set; }
 
+    [Range(SystemSettingsBounds.InsuranceMaxLinksPerPolicyMin,
+        SystemSettingsBounds.InsuranceMaxLinksPerPolicyMax, ErrorMessage =
+        "Links per policy collection must be between 1 and 100000. The effective ceiling is lower: "
+        + "the compile-time limit on the request DTOs rejects a longer array before the setting is read.")]
+    public int? InsuranceMaxLinksPerPolicy { get; set; }
+
     [Range(1, 100000)]
     public int? PhotoMaxLinksPerKind { get; set; }
 

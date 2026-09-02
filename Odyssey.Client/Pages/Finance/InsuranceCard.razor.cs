@@ -8,6 +8,7 @@ using Odyssey.Client.Authorization;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -20,9 +21,18 @@ public partial class InsuranceCard
     private InsurancePortfolioSummary? _summary;
 
     private Dictionary<string, string> _currencySymbols = new(StringComparer.OrdinalIgnoreCase);
-    private IReadOnlyList<OdsOption> _insurerOptions = [];
+    // One contact list, shared by the three contact pickers — insurers, insured contacts and
+    // beneficiaries all choose from the whole address book (no contact-type restriction: a trust is a
+    // legitimate beneficiary, a company a legitimate insured).
+    private IReadOnlyList<OdsOption> _contactOptions = [];
+    // The domain type behind each contact option, for the dialog's chips. Built in the same pass as
+    // the options so the two cannot describe different sets.
+    private Dictionary<string, ContactType> _contactTypes = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<OdsOption> _accountOptions = [];
     private Dictionary<Guid, AccountType> _accountTypes = new();
+    // True until both option lists have arrived. The dialog's pickers show their loading row rather
+    // than "No contacts match", which would be indistinguishable from an empty address book.
+    private bool _optionsLoading = true;
 
     private string? _baseCurrency;
     private Guid? _flashId;
@@ -95,7 +105,7 @@ public partial class InsuranceCard
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
         _baseCurrency = UserPreferences.DefaultCurrency;
-        await Task.WhenAll(LoadPolicies(), LoadSummary(), LoadCurrencies(), LoadInsurers(), LoadAccounts());
+        await Task.WhenAll(LoadPolicies(), LoadSummary(), LoadCurrencies(), LoadReferenceOptions());
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -214,20 +224,56 @@ public partial class InsuranceCard
             .ToDictionary(g => g.Key, g => g.First().Symbol, StringComparer.OrdinalIgnoreCase);
     }
 
-    private async Task LoadInsurers()
+    private async Task LoadContacts()
     {
         var contacts = await ReferenceData.ContactsAsync();
-        _insurerOptions =
+        var active = contacts.Where(c => c.Archived is null).ToList();
+        _contactTypes = active.ToDictionary(
+            c => c.ContactId.ToString(), c => c.Type, StringComparer.OrdinalIgnoreCase);
+        _contactOptions =
         [
-            .. contacts
-                .Where(c => c.Archived is null)
+            .. active
                 .OrderBy(c => c.ResolvedDisplayName, StringComparer.CurrentCultureIgnoreCase)
                 .Select(c =>
                 {
                     var meta = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
-                    return new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName) { Icon = meta.Icon, IconColor = meta.Color };
+                    // Sub carries the type in TEXT beside the name: three of the four pickers choose
+                    // from the whole address book, where two records can share a display name and the
+                    // glyph alone cannot tell a person from an organisation.
+                    return new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName)
+                    {
+                        Icon = meta.Icon,
+                        IconColor = meta.Color,
+                        Sub = meta.Label,
+                    };
                 })
         ];
+    }
+
+    /// <summary>
+    /// Re-reads both option lists after a save was rejected for naming a record that no longer
+    /// resolves. The cache holds until it is invalidated, so a plain reload would re-serve the same
+    /// stale list the save just failed on.
+    /// </summary>
+    private async Task ReloadReferenceOptions()
+    {
+        ReferenceData.InvalidateContacts();
+        _optionsLoading = true;
+        StateHasChanged();
+        await LoadReferenceOptions();
+    }
+
+    private async Task LoadReferenceOptions()
+    {
+        try
+        {
+            await Task.WhenAll(LoadContacts(), LoadAccounts());
+        }
+        finally
+        {
+            _optionsLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task LoadAccounts()
@@ -243,9 +289,79 @@ public partial class InsuranceCard
                 {
                     Icon = AccountTypeVisuals.MaterialIcon(a.AccountType),
                     IconColor = AccountTypeVisuals.FgColor(a.AccountType),
+                    Sub = AccountTypeVisuals.Label(a.AccountType),
                 })
         ];
     }
+
+    // ── Link collections: meta line and detail tiles (issue #27 §3) ────────────
+
+    /// <summary>
+    /// The meta line's insurer segment: up to TWO named, then "+N". An unnamed member reads as its
+    /// STATE, never as a name and never as a GUID — the read model carries no name for it.
+    /// </summary>
+    internal static string InsurerNames(IReadOnlyList<PolicyContactReference> insurers)
+    {
+        const int named = 2;
+        var shown = insurers.Take(named).Select(DisplayOf);
+        var rest = insurers.Count - Math.Min(named, insurers.Count);
+        return string.Join(", ", shown) + (rest > 0 ? $" +{rest}" : string.Empty);
+    }
+
+    /// <summary>
+    /// The segment's glyph: the contact type's own where every insurer shares one, else the generic
+    /// "link" glyph. Never an arbitrary type glyph over a mixed collection — a single icon cannot
+    /// stand for two types, and the names beside it are what carry the meaning anyway.
+    /// </summary>
+    internal static string InsurerGlyph(IReadOnlyList<PolicyContactReference> insurers)
+    {
+        var types = insurers.Select(i => i.Type).Where(t => t is not null).Distinct().ToList();
+        return types.Count == 1
+            ? OdsTypeRegistries.ContactTypeOf(types[0]!.Value.ToString()).Icon
+            : "link";
+    }
+
+    internal static string DisplayOf(PolicyContactReference reference) => reference.Availability switch
+    {
+        LinkAvailability.Archived => "Archived",
+        LinkAvailability.Unresolvable => "Unavailable",
+        _ => reference.Name ?? "Unavailable",
+    };
+
+    internal static IReadOnlyList<InsurancePolicyLinkTiles.LinkTileMember> ContactMembers(
+        IReadOnlyList<PolicyContactReference> references) =>
+    [
+        .. references.Select(reference =>
+        {
+            // A resolved type still carries its glyph and its label in TEXT; an unresolvable link has
+            // no contact row to read either from, so it states neither.
+            var meta = reference.Type is { } type ? OdsTypeRegistries.ContactTypeOf(type.ToString()) : null;
+            return new InsurancePolicyLinkTiles.LinkTileMember
+            {
+                Key = reference.ContactId.ToString(),
+                Display = DisplayOf(reference),
+                TypeLabel = meta?.Label,
+                Icon = meta?.Icon,
+                IconColor = meta?.Color,
+                IconSoft = meta?.Soft,
+                State = reference.Availability,
+            };
+        })
+    ];
+
+    internal static IReadOnlyList<InsurancePolicyLinkTiles.LinkTileMember> AccountMembers(
+        IReadOnlyList<InsuredAccountReference> references) =>
+    [
+        .. references.Select(reference => new InsurancePolicyLinkTiles.LinkTileMember
+        {
+            Key = reference.AccountId.ToString(),
+            Display = reference.Name,
+            TypeLabel = AccountTypeVisuals.Label(reference.Type),
+            Icon = AccountTypeVisuals.MaterialIcon(reference.Type),
+            IconColor = AccountTypeVisuals.FgColor(reference.Type),
+            IconSoft = AccountTypeVisuals.BgColor(reference.Type),
+        })
+    ];
 
     // ── Header problem rollup (ExpiringSoon / Lapsed) ──────────────────────────
     private List<PageHeaderProblem> HeaderProblems =>
@@ -380,8 +496,9 @@ public partial class InsuranceCard
             Name = d.Name,
             PolicyNumber = d.PolicyNumber,
             Type = d.Type,
-            InsurerId = d.Insurer.ContactId,
-            InsuredAccountId = d.InsuredAccount?.AccountId,
+            // Archive/unarchive touches the policy's own state only, so every link collection is left
+            // NULL — the "leave unchanged" shorthand. Echoing the four sets back would be a needless
+            // full-set diff, and would fail outright on a policy holding an archived link.
             Notes = d.Notes,
             Archived = archiving,
         };

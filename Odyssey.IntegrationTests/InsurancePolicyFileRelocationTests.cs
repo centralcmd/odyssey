@@ -675,7 +675,10 @@ public class InsurancePolicyFileRelocationTests(MariaDbFixture fixture)
             Guid reattachedId;
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
+                // Up to the migration under test ONLY, not to latest: a later migration
+                // (AddInsurancePolicyLinkCollections, issue #27) has no Down at all, so migrating
+                // down past it would fail on ITS refusal rather than exercising this one.
+                await MigrationSeam.MigrateToAsync(context, Drop);
 
                 // A same-file re-attachment AFTER the migration, on a different period, so deleting by
                 // (period, file) rather than by row id would be visible.
@@ -769,7 +772,10 @@ public class InsurancePolicyFileRelocationTests(MariaDbFixture fixture)
 
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
+                // Up to the migration under test ONLY, not to latest: a later migration
+                // (AddInsurancePolicyLinkCollections, issue #27) has no Down at all, so migrating
+                // down past it would fail on ITS refusal rather than exercising this one.
+                await MigrationSeam.MigrateToAsync(context, Drop);
                 await context.InsurancePolicies.Where(p => p.InsurancePolicyId == doomed).ExecuteDeleteAsync();
 
                 // The cascade took the ledger row with the policy, which is the behaviour the source
@@ -951,7 +957,17 @@ public class InsurancePolicyFileRelocationTests(MariaDbFixture fixture)
         await context.SaveChangesAsync();
     }
 
-    /// <summary>A policy plus the insurer contact its required, RESTRICT-ed foreign key needs.</summary>
+    /// <summary>
+    /// A policy plus the insurer contact its required, RESTRICT-ed foreign key needs — inserted with
+    /// raw SQL, like <see cref="AddPolicyFileAsync"/> and for the same reason.
+    /// </summary>
+    /// <remarks>
+    /// These tests run against the <see cref="Baseline"/> schema, where <c>InsurancePolicies</c> still
+    /// carries a NOT NULL <c>InsurerId</c> column. Issue #27 removed that property from the entity, so
+    /// an EF insert here no longer supplies a value the column still demands. Raw SQL keeps the seed
+    /// describing the schema under test rather than whatever the current model happens to be — which
+    /// is the whole point of a migration test.
+    /// </remarks>
     private static async Task SeedPolicyAsync(OdysseyContext context, Guid policyId, string name)
     {
         var insurerId = Guid.NewGuid();
@@ -963,15 +979,14 @@ public class InsurancePolicyFileRelocationTests(MariaDbFixture fixture)
             NormalizedName = name.ToUpperInvariant(),
             Type = ContactType.Organization,
         });
-        context.InsurancePolicies.Add(new InsurancePolicy
-        {
-            InsurancePolicyId = policyId,
-            Name = name,
-            Type = InsurancePolicyType.Home,
-            InsurerId = insurerId,
-            CreatedAtUtc = DateTime.UtcNow,
-        });
         await context.SaveChangesAsync();
+
+        var createdAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
+        await context.Database.ExecuteSqlRawAsync($"""
+            INSERT INTO `InsurancePolicies`
+                (`InsurancePolicyId`, `Name`, `Type`, `InsurerId`, `CreatedAtUtc`)
+            VALUES ('{policyId}', '{name}', 1, '{insurerId}', '{createdAt}');
+            """);
     }
 
     private static async Task AddPeriodAsync(OdysseyContext context, Guid renewalId, Guid policyId, DateTime from)

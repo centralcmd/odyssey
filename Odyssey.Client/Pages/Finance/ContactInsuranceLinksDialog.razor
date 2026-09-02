@@ -1,0 +1,127 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    ContactInsuranceLinksDialog — the blocked contact delete (409) and its detach path
+    (Odyssey Design System · ContactLinksBlockedModal).
+
+    A contact named as an INSURER, an INSURED CONTACT or a BENEFICIARY on any policy cannot be deleted
+    by the ordinary route: the delete is refused, because a beneficiary designation vanishing silently
+    on contact deletion would lose it without trace. RESTRICT alone is not an acceptable answer for a
+    person exercising erasure, so this dialog also carries the supported release valve — detach every
+    insurance link and delete the contact in ONE request, one transaction.
+
+    Two things are claim-conditional, and the dialog is honest about both:
+      • The payload. A caller holding insurance.read is told WHICH policies block the delete; a caller
+        without it gets kinds and counts only — never a policy name or id. That decision is the
+        server's: it simply sends no policies, and the dialog says why the list is absent rather than
+        rendering an empty one.
+      • The action. Detaching needs contacts.delete AND insurance.update. Without the second the
+        button is unavailable with the reason stated, never a silent downgrade to the refused delete.
+
+    Meaning never rides on a glyph: each blocking KIND is named in text alongside its row count.
+*@
+
+<OdsFormDialog Open="Open"
+               OpenChanged="OpenChanged"
+               Icon="@(_result is null ? "block" : "link_off")"
+               IconTone="@(_result is null ? OdsModalTone.Error : OdsModalTone.Brand)"
+               Title="@(_result is null ? "Unable to delete this contact" : "Contact deleted")"
+               Subtitle="@(_result is null
+                   ? "It is named on insurance policies. Detach those links to delete it."
+                   : "The insurance links and the contact were removed in one transaction.")"
+               ShowCancel="@(_result is null)"
+               SubmitLabel="@(_result is null ? "Detach links & delete" : "Done")"
+               SubmitIcon="@(_result is null ? "link_off" : "check")"
+               SubmitVariant="@(_result is null ? OdsButtonVariant.Danger : OdsButtonVariant.Filled)"
+               ShowSubmit="@(_result is not null || CanUpdateInsurance)"
+               OnSubmit="SubmitAsync">
+
+    @if (_result is { } result)
+    {
+        <OdsAlert Severity="Severity.Info">
+            <strong>@result.TotalLinks link@(result.TotalLinks == 1 ? "" : "s") detached</strong>
+            across @result.AffectedPolicyIds.Count polic@(result.AffectedPolicyIds.Count == 1 ? "y" : "ies"),
+            then the contact was deleted.
+        </OdsAlert>
+
+        <ul class="cpl-kinds">
+            @foreach (var kind in result.Kinds)
+            {
+                <li>
+                    <span class="material-icons" aria-hidden="true">@KindIcon(kind.Kind)</span>
+                    <span class="cpl-kind-name">@KindLabel(kind.Kind)</span>
+                    <span class="cpl-kind-count">@kind.Count</span>
+                </li>
+            }
+        </ul>
+
+        <p class="cpl-note">The policies themselves are untouched — each stands with one fewer member.</p>
+    }
+    else
+    {
+        <OdsAlert Severity="Severity.Error">
+            <strong>@ContactName</strong> holds @Blockers.TotalLinks insurance link@(Blockers.TotalLinks == 1 ? "" : "s")@(Blockers.PolicyCount > 0
+                ? $" across {Blockers.PolicyCount} polic{(Blockers.PolicyCount == 1 ? "y" : "ies")}"
+                : "").
+        </OdsAlert>
+
+        @* Which KINDS block, always — the counts are link rows, the same thing every other surface counts. *@
+        <ul class="cpl-kinds">
+            @foreach (var kind in Blockers.Kinds)
+            {
+                <li>
+                    <span class="material-icons" aria-hidden="true">@KindIcon(kind.Kind)</span>
+                    <span class="cpl-kind-name">@KindLabel(kind.Kind)</span>
+                    <span class="cpl-kind-note">@KindNote(kind.Kind)</span>
+                    <span class="cpl-kind-count">@kind.Count</span>
+                </li>
+            }
+        </ul>
+
+        @if (Blockers.Policies.Count > 0)
+        {
+            <OdsSectionDivider Label="Blocking policies"
+                               Meta="@($"{Blockers.Policies.Count} record{(Blockers.Policies.Count == 1 ? "" : "s")}")"
+                               HeadingLevel="0" />
+            @* A list of records, marked up as one — same as the .cpl-kinds block above. Reading as
+               a list visually while being a run of divs programmatically is exactly the 1.3.1 gap. *@
+            <ul class="cpl-policies">
+                @foreach (var policy in Blockers.Policies)
+                {
+                    <li class="cpl-policy">
+                        <span class="material-icons" aria-hidden="true">shield</span>
+                        <span class="cpl-policy-name">@policy.Name</span>
+                        <span class="cpl-policy-kinds">@string.Join(" · ", policy.Kinds.Select(KindLabel))</span>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            @* The server withheld the identifiers because the caller cannot read insurance records.
+               Saying so beats rendering an empty list that reads as "no policies". *@
+            <p class="cpl-note">
+                Which policies these are is not shown, because you do not have access to insurance
+                records. Ask someone who can edit them to detach the links.
+            </p>
+        }
+
+        @if (CanUpdateInsurance)
+        {
+            <p class="cpl-note">
+                <strong>Detach links &amp; delete</strong> removes all @Blockers.TotalLinks
+                link@(Blockers.TotalLinks == 1 ? "" : "s") and the contact in one transaction — either
+                all of it happens, or none of it does. The policies survive with one fewer member.
+                This cannot be undone.
+            </p>
+        }
+        else
+        {
+            <OdsAlert Severity="Severity.Warning">
+                Detaching needs permission to edit insurance policies, which you do not have. Ask
+                someone who does, then delete the contact.
+            </OdsAlert>
+        }
+    }
+</OdsFormDialog>

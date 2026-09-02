@@ -5,8 +5,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Odyssey.Context;
 
 [Index(nameof(Type), nameof(Archived))]
-[Index(nameof(InsurerId))]
-[Index(nameof(InsuredAccountId))]
 [Index(nameof(Archived))]
 public class InsurancePolicy
 {
@@ -24,18 +22,6 @@ public class InsurancePolicy
     [Required]
     public InsurancePolicyType Type { get; set; } = InsurancePolicyType.Other;
 
-    // The insurer Contact. A real FK with ON DELETE RESTRICT, declared in OdysseyContext, so a contact
-    // named on a policy cannot be deleted. InsuranceService still validates existence via IContactLookup
-    // (a 400 beats an FK violation), and IContactReferenceGuard still turns the restriction into a 409.
-    [Required]
-    public required Guid InsurerId { get; set; }
-
-    public Guid? InsuredAccountId { get; set; }
-
-    [ForeignKey(nameof(InsuredAccountId))]
-    [DeleteBehavior(DeleteBehavior.SetNull)]
-    public Account? InsuredAccount { get; set; }
-
     [StringLength(1024)]
     public string? Notes { get; set; }
 
@@ -45,4 +31,22 @@ public class InsurancePolicy
     public required DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public ICollection<PolicyRenewal> Renewals { get; set; } = new List<PolicyRenewal>();
+
+    // The four link collections (issue #27). Each is OPTIONAL and may hold many members — zero is a
+    // valid, healthy state for all four, insurers included: a policy drafted before the insurer is
+    // known is a real record. They replace the former scalar InsurerId / InsuredAccountId outright
+    // rather than sitting alongside them; the collections are the single representation.
+    //
+    // Each link carries a real FK to its target with the on-delete behaviour the application code
+    // would otherwise be imitating: RESTRICT for the three contact kinds (a contact named on a policy
+    // cannot be deleted — the guard turns that into a 409 that explains itself, and the detach path is
+    // the supported release valve), CASCADE for the account kind (deleting the account removes the
+    // link and leaves the policy standing, which is what SET NULL used to mean on the scalar).
+    public ICollection<InsurancePolicyInsurer> Insurers { get; set; } = new List<InsurancePolicyInsurer>();
+
+    public ICollection<InsurancePolicyInsuredAccount> InsuredAccounts { get; set; } = new List<InsurancePolicyInsuredAccount>();
+
+    public ICollection<InsurancePolicyInsuredContact> InsuredContacts { get; set; } = new List<InsurancePolicyInsuredContact>();
+
+    public ICollection<InsurancePolicyBeneficiary> Beneficiaries { get; set; } = new List<InsurancePolicyBeneficiary>();
 }

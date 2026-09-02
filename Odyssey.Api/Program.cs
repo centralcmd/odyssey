@@ -387,7 +387,6 @@ builder.Services.AddScoped<SubscriptionService>();
 // finance and journal now share one DbContext. No feature toggle — capability is gated by claims only.
 builder.Services.AddScoped<Odyssey.Core.Finance.IContactLookup, Odyssey.Core.Journal.ContactLookup>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IContactReferenceGuard, Odyssey.Core.Finance.ContactReferenceGuard>();
-builder.Services.AddScoped<Odyssey.Core.Finance.IContactMutationLock, Odyssey.Core.Finance.ContactMutationLock>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IFileLookup, Odyssey.Core.Finance.FileLookup>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IFileReferenceGuard, Odyssey.Core.Finance.FileReferenceGuard>();
 builder.Services.AddScoped<Odyssey.Core.Journal.JournalEntryService>();

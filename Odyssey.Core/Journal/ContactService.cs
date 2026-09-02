@@ -5,6 +5,8 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
+// Aliased rather than a plain using: Odyssey.Dtos.Finance also declares ArchivalStatus.
+using DetachedInsuranceLinks = Odyssey.Dtos.Finance.DetachedInsuranceLinks;
 using Odyssey.Core.Journal.Interop;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
@@ -29,20 +31,15 @@ public class ContactService
 
     private readonly OdysseyContext context;
     private readonly IContactReferenceGuard referenceGuard;
-    private readonly IContactMutationLock mutationLock;
     private readonly TimeProvider timeProvider;
 
-    // mutationLock trails the existing optional TimeProvider so the positional (…, TimeProvider) callers
-    // don't shift; DI still supplies the registered lock. Defaults to a no-op for direct construction.
     public ContactService(
         OdysseyContext context,
         IContactReferenceGuard referenceGuard,
-        TimeProvider? timeProvider = null,
-        IContactMutationLock? mutationLock = null)
+        TimeProvider? timeProvider = null)
     {
         this.context = context;
         this.referenceGuard = referenceGuard;
-        this.mutationLock = mutationLock ?? ContactMutationLock.None;
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -295,41 +292,103 @@ public class ContactService
         return trimmed;
     }
 
-    public async Task Delete(Guid id, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Deletes a contact, applying the Finance-side on-delete behaviours first.
+    ///
+    /// <para>
+    /// With <paramref name="detachInsuranceLinks"/> the contact's insurer, insured-contact and
+    /// beneficiary link rows are removed <b>in the same transaction</b> instead of blocking the delete
+    /// — the supported release valve for an erasure request (issue #27 §7 #6, §10 #5). Without it a
+    /// contact named on any policy is refused, which is the deliberate default: a beneficiary
+    /// designation vanishing silently on contact deletion would lose it without trace.
+    /// </para>
+    /// </summary>
+    /// <returns>What was detached, or null when nothing was (including when the contact did not exist).</returns>
+    public async Task<DetachedInsuranceLinks?> Delete(
+        Guid id, bool detachInsuranceLinks = false, CancellationToken cancellationToken = default)
     {
         var contact = await context.Contacts
             .FirstOrDefaultAsync(value => value.ContactId == id, cancellationToken);
         if (contact is null)
         {
-            return;
+            return null;
         }
 
         // The finance references to a contact are real FKs again now that both halves share one context,
         // so the database would apply the SET NULL / CASCADE / RESTRICT behaviours on its own. The
-        // application-level guard below is kept in front of them for two reasons: it turns the insurer
+        // application-level guard below is kept in front of them for two reasons: it turns the insurance
         // RESTRICT into a 409 with an explanation rather than a raw FK violation surfacing as a 500, and
         // it is the only implementation of those behaviours under the EF InMemory provider the fast test
-        // tiers run on. Hold the per-contact lock across the whole check-and-delete so a concurrent
-        // insurance-policy write referencing this contact can't slip in between the insurer check and the
-        // delete. The insurer write path takes the same lock; both serialize on the contact id.
-        await using var _ = await mutationLock.AcquireAsync(id, cancellationToken);
+        // tiers run on.
+        //
+        // There is no advisory lock any more (issue #27 §5). The three link tables carry real Restrict
+        // FKs, so the DATABASE arbitrates the check-and-write race the lock was written for, and the
+        // residual loser surfaces as a 409 rather than a 500. The lock's own counterparty — the
+        // insurance write path — no longer takes it, which left it a mutex with nothing to contend with,
+        // holding a pinned connection and a 10-second timeout per delete.
+        DetachedInsuranceLinks? detached = null;
 
-        // Restrict: an insurer still in use blocks the delete (mirrors the former required+Restrict FK).
-        if (await referenceGuard.IsReferencedAsInsurerAsync(id, cancellationToken))
+        await ExecuteAtomicallyAsync(async () =>
         {
-            throw new DomainConflictException(
-                "This contact is the insurer on one or more insurance policies and cannot be deleted.");
+            if (detachInsuranceLinks)
+            {
+                // Staged onto this context, not saved: the detach and the delete must commit together,
+                // or an interruption leaves the links gone and the contact still present. Tracked
+                // RemoveRange, never ExecuteDelete — that throws on the InMemory provider.
+                detached = await referenceGuard.StageInsuranceLinkDetachAsync(id, cancellationToken);
+            }
+            else if (await referenceGuard.IsReferencedByInsuranceAsync(id, cancellationToken))
+            {
+                // Restrict: a contact named as an insurer, an insured contact or a beneficiary blocks
+                // the delete. The controller re-checks first and shapes a claim-conditional payload;
+                // this stays as defence-in-depth for direct (non-HTTP) callers.
+                throw new DomainConflictException(
+                    "This contact is named on one or more insurance policies and cannot be deleted. "
+                    + "Detach its insurance links, or remove it from those policies first.");
+            }
+
+            // Clear/cascade the Finance-side references (SetNull + contract-party Cascade), then delete
+            // the contact (its Person/Org/address/email/phone children and the journal/photo link rows
+            // cascade in-context). All of it inside the transaction: widening the guard from one probe
+            // to three widened the window this used to leave open, and the six ExecuteUpdate/
+            // ExecuteDelete statements in the cleanup were the genuinely non-atomic part all along.
+            await referenceGuard.ClearAndCascadeReferencesAsync(id, cancellationToken);
+
+            context.Contacts.Remove(contact);
+            await context.SaveChangesAsync(cancellationToken);
+        });
+
+        return detached;
+    }
+
+    /// <summary>
+    /// Runs <paramref name="work"/> in one database transaction. Wrapped in the context's execution
+    /// strategy because <c>AddDatabases</c> enables retry-on-failure, and a retrying strategy refuses an
+    /// ambient transaction it did not open itself (a bare <c>BeginTransactionAsync</c> throws).
+    /// Follows <c>UserAdministrationService.ExecuteAtomicallyAsync</c>.
+    ///
+    /// <para>
+    /// The EF InMemory provider honours neither transactions nor the execution strategy, so it runs the
+    /// work directly — which is correct rather than a compromise: there is nothing there to be atomic
+    /// against, and <c>BeginTransactionAsync</c> would warn. The real coverage lives in
+    /// <c>Odyssey.IntegrationTests</c>.
+    /// </para>
+    /// </summary>
+    private async Task ExecuteAtomicallyAsync(Func<Task> work)
+    {
+        if (!context.Database.IsRelational())
+        {
+            await work();
+            return;
         }
 
-        // Clear/cascade the Finance-side references first (SetNull + contract-party Cascade), then delete
-        // the contact (its Person/Org/address/email/phone children and the journal/photo link rows cascade
-        // in-context). This is now one context, but still several statements rather than one transaction;
-        // the order is chosen so an interruption leaves only nulled Finance references with the contact
-        // still present — a benign, re-runnable state — and the FKs make the reverse impossible.
-        await referenceGuard.ClearAndCascadeReferencesAsync(id, cancellationToken);
-
-        context.Contacts.Remove(contact);
-        await context.SaveChangesAsync(cancellationToken);
+        var strategy = context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            await work();
+            await transaction.CommitAsync();
+        });
     }
 
     // ── Base + details mapping ────────────────────────────────────────────────

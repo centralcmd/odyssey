@@ -46,15 +46,15 @@ public class SettingsBoundsCatalogueTests
     }
 
     /// <summary>
-    /// Scope, stated rather than implied: 42 of the catalogue's 50 numeric rows (41 of 49 before issue
-    /// #8 added the SMTP port). The eight <c>CapacityLimit?</c> rows are correctly excluded by the
+    /// Scope, stated rather than implied: 43 of the catalogue's 51 numeric rows (42 of 50 before issue
+    /// #27 added the insurance link cap). The eight <c>CapacityLimit?</c> rows are correctly excluded by the
     /// <c>int?</c> selector — their properties carry no <c>[Range]</c> at all, so their
     /// <c>Min: 1, Max: 1_000_000</c> is a client-only invention with no server end to name.
     /// </summary>
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(42, NumericRows.Count);
+        Assert.Equal(43, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));
@@ -118,7 +118,7 @@ public class SettingsBoundsCatalogueTests
     public void An_exempted_rows_load_phase_fallback_stays_inside_its_pair()
     {
         var exempt = NumericRows.Where(item => item.MaxFrom is not null || item.MinFrom is not null).ToList();
-        Assert.Equal(9, exempt.Count);
+        Assert.Equal(10, exempt.Count);
 
         foreach (var item in exempt)
         {

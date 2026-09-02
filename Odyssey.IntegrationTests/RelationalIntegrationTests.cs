@@ -190,7 +190,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         await using (var journal = NewRelationalContext())
         await using (var finance = NewRelationalContext())
         {
-            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System, new ContactMutationLock(finance));
+            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System);
             await service.Delete(custodianId);
         }
 
@@ -394,7 +394,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 InsurancePolicyId = policyId,
                 Name = "Restricting cover",
                 Type = Odyssey.Context.InsurancePolicyType.Home,
-                InsurerId = insurerId,
+                Insurers = [new InsurancePolicyInsurer { ContactId = insurerId }],
                 CreatedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
@@ -412,7 +412,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             Assert.True(await context.Contacts.AnyAsync(c => c.ContactId == insurerId));
             Assert.Equal(
                 insurerId,
-                (await context.InsurancePolicies.AsNoTracking().SingleAsync(p => p.InsurancePolicyId == policyId)).InsurerId);
+                (await context.InsurancePolicyInsurers.AsNoTracking().SingleAsync(l => l.InsurancePolicyId == policyId)).ContactId);
 
             // cleanup, policy first — the constraint under test refuses the other order.
             await context.InsurancePolicies.Where(p => p.InsurancePolicyId == policyId).ExecuteDeleteAsync();
@@ -679,7 +679,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         await using (var journal = NewRelationalContext())
         await using (var finance = NewRelationalContext())
         {
-            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System, new ContactMutationLock(finance));
+            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System);
             await service.Delete(contactId);
         }
 
@@ -729,16 +729,17 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 InsurancePolicyId = policyId,
                 Name = "Home cover",
                 Type = Odyssey.Context.InsurancePolicyType.Home,
-                InsurerId = insurerId,
-                InsuredAccountId = accountId,
+                Insurers = [new InsurancePolicyInsurer { ContactId = insurerId }],
+                InsuredAccounts = [new InsurancePolicyInsuredAccount { AccountId = accountId }],
                 CreatedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
 
-        // Deleting the insured account must SET NULL the policy link (DeleteBehavior.SetNull), not
-        // cascade-delete or block the policy. This Account→InsurancePolicy FK is still a real Finance FK
-        // (only the Contact link moved), so it remains a DB-level assertion. InMemory cannot enforce this.
+        // Deleting the insured account must remove the LINK ROW and leave the policy standing — the
+        // same observable outcome the former scalar column's SET NULL had, expressed the only way a
+        // link table can express it (issue #27 §6: nulling the only target would leave a row pointing
+        // at nothing). InMemory enforces no FK, so this stays a DB-level assertion.
         await using (var context = NewRelationalContext())
         {
             await context.Accounts.Where(a => a.AccountId == accountId).ExecuteDeleteAsync();
@@ -746,8 +747,10 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
 
         await using (var context = NewRelationalContext())
         {
-            var policy = await context.InsurancePolicies.AsNoTracking().SingleAsync(p => p.InsurancePolicyId == policyId);
-            Assert.Null(policy.InsuredAccountId);
+            // The policy survives with one fewer insured account.
+            Assert.True(await context.InsurancePolicies.AnyAsync(p => p.InsurancePolicyId == policyId));
+            Assert.Empty(await context.InsurancePolicyInsuredAccounts.AsNoTracking()
+                .Where(l => l.InsurancePolicyId == policyId).ToListAsync());
 
             // cleanup
             await context.InsurancePolicies.Where(p => p.InsurancePolicyId == policyId).ExecuteDeleteAsync();
@@ -796,7 +799,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 InsurancePolicyId = policyId,
                 Name = "Home cover",
                 Type = Odyssey.Context.InsurancePolicyType.Home,
-                InsurerId = insurerId,
+                Insurers = [new InsurancePolicyInsurer { ContactId = insurerId }],
                 CreatedAtUtc = DateTime.UtcNow,
             });
             context.PolicyRenewals.Add(new PolicyRenewal
@@ -868,20 +871,20 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 InsurancePolicyId = policyId,
                 Name = "Active cover",
                 Type = Odyssey.Context.InsurancePolicyType.Home,
-                InsurerId = insurerId,
+                Insurers = [new InsurancePolicyInsurer { ContactId = insurerId }],
                 CreatedAtUtc = DateTime.UtcNow,
             });
             await context.SaveChangesAsync();
         }
 
-        // InsurancePolicy.InsurerId is a real ON DELETE RESTRICT FK again now that finance and journal
-        // share one context. The service check runs in front of it so the caller gets a
-        // DomainConflictException (409) rather than a raw FK violation; both the policy and the contact
-        // must remain either way.
+        // InsurancePolicyInsurer.ContactId is a real ON DELETE RESTRICT FK (issue #27 §6, widened from
+        // the former scalar column to all three contact link kinds). The service check runs in front of
+        // it so the caller gets a DomainConflictException (409) rather than a raw FK violation; both the
+        // policy and the contact must remain either way.
         await using (var journal = NewRelationalContext())
         await using (var finance = NewRelationalContext())
         {
-            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System, new ContactMutationLock(finance));
+            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System);
             await Assert.ThrowsAsync<DomainConflictException>(() => service.Delete(insurerId));
         }
 
@@ -1039,7 +1042,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         await using (var journal = NewRelationalContext())
         await using (var finance = NewRelationalContext())
         {
-            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System, new ContactMutationLock(finance));
+            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System);
             await service.Delete(contactId);
         }
 
@@ -1329,7 +1332,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         await using (var journal = NewRelationalContext())
         await using (var finance = NewRelationalContext())
         {
-            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System, new ContactMutationLock(finance));
+            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System);
             await service.Delete(contactId);
         }
 

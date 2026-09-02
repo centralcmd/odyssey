@@ -634,7 +634,16 @@ public class AccountService
         {
             return;
         }
-        
+
+        // The insured-account link rows cascade with the account in MariaDB. Removed explicitly here as
+        // well because the EF InMemory provider enforces no foreign keys at all, so without this the
+        // fast test tiers would leave an orphan link the insurance read path would then meet
+        // (issue #27 §6). Tracked RemoveRange, never ExecuteDelete — that throws on InMemory.
+        var insuredLinks = await context.InsurancePolicyInsuredAccounts
+            .Where(link => link.AccountId == id)
+            .ToListAsync(cancellationToken);
+        context.InsurancePolicyInsuredAccounts.RemoveRange(insuredLinks);
+
         context.Accounts.Remove(account);
         await context.SaveChangesAsync(cancellationToken);
     }

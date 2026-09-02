@@ -91,17 +91,17 @@ public class InsuranceApiTests
         var fetched = await client.GetFromJsonAsync<ExistingInsurancePolicy>($"{Path}/{created!.InsurancePolicyId}");
         Assert.Equal(CoverageStatus.NoCoverage, fetched!.CoverageStatus);
         Assert.Null(fetched.CurrentRenewal);
-        Assert.Equal(insurerId, fetched.Insurer.ContactId);
-        Assert.Equal("Acme Insurance", fetched.Insurer.Name);
-        Assert.NotNull(fetched.InsuredAccount);
-        Assert.Equal(accountId, fetched.InsuredAccount!.AccountId);
-        Assert.Equal("Apartment", fetched.InsuredAccount.Name);
+        Assert.Equal(insurerId, Assert.Single(fetched.Insurers).ContactId);
+        Assert.Equal("Acme Insurance", fetched.Insurers[0].Name);
+        Assert.Equal(LinkAvailability.Available, fetched.Insurers[0].Availability);
+        Assert.Equal(accountId, Assert.Single(fetched.InsuredAccounts).AccountId);
+        Assert.Equal("Apartment", fetched.InsuredAccounts[0].Name);
     }
 
     [Fact]
     public async Task Get_ReadPath_OmitsInsurerOrgNumberAndDescription()
     {
-        // Serialize the raw JSON: the minimal InsurerReference must not leak the richer contact
+        // Serialize the raw JSON: the minimal PolicyContactReference must not leak the richer contact
         // fields gated by contacts.read (criterion #9).
         await using var factory = new ApiFactory(ReadWrite);
         var (insurerId, accountId) = await SeedInsurerAndAccountAsync(factory);
@@ -225,15 +225,15 @@ public class InsuranceApiTests
         {
             Name = "Renamed home contents",
             Type = Odyssey.Dtos.Finance.InsurancePolicyType.Contents,
-            InsurerId = insurerId,
-            InsuredAccountId = accountId,
+            InsurerIds = [insurerId],
+            InsuredAccountIds = [accountId],
         };
         var unchanged = await client.PutAsJsonAsync($"{Path}/{id}", rename);
         Assert.Equal(HttpStatusCode.OK, unchanged.StatusCode);
 
         // Switching to a *different* archived insurer is a change → revalidated → 400.
         var otherArchivedInsurer = await SeedContactAsync(factory, archived: true);
-        var switchInsurer = await client.PutAsJsonAsync($"{Path}/{id}", rename with { InsurerId = otherArchivedInsurer });
+        var switchInsurer = await client.PutAsJsonAsync($"{Path}/{id}", rename with { InsurerIds = [otherArchivedInsurer] });
         Assert.Equal(HttpStatusCode.BadRequest, switchInsurer.StatusCode);
     }
 
@@ -730,15 +730,15 @@ public class InsuranceApiTests
     {
         Name = "Home contents",
         Type = Odyssey.Dtos.Finance.InsurancePolicyType.Contents,
-        InsurerId = insurerId,
-        InsuredAccountId = insuredAccountId,
+        InsurerIds = [insurerId],
+        InsuredAccountIds = insuredAccountId is { } accountId ? [accountId] : null,
     };
 
     private static UpdateInsurancePolicy UpdatePolicy(Guid insurerId, bool archived) => new()
     {
         Name = "Home contents",
         Type = Odyssey.Dtos.Finance.InsurancePolicyType.Contents,
-        InsurerId = insurerId,
+        InsurerIds = [insurerId],
         Archived = archived,
     };
 

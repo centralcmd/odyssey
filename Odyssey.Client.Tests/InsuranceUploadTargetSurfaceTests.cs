@@ -54,7 +54,7 @@ public class InsuranceUploadTargetSurfaceTests
     {
         InsurancePolicyId = Guid.NewGuid(),
         Name = "Home cover",
-        Insurer = new InsurerReference { ContactId = Guid.NewGuid(), Name = "Insurer" },
+        Insurers = [new PolicyContactReference { ContactId = Guid.NewGuid(), Name = "Insurer" }],
         Renewals = [.. periods],
         CreatedAtUtc = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
     };

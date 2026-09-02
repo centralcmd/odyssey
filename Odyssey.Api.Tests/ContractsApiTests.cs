@@ -637,7 +637,7 @@ public class ContractsApiTests
             Name = "Liability cover",
             PolicyNumber = "POL-SECRET-9",
             Type = ContextInsurancePolicyType.Liability,
-            InsurerId = contactId,
+            Insurers = [new InsurancePolicyInsurer { ContactId = contactId }],
             Notes = "secret policy notes",
             CreatedAtUtc = DateTime.UtcNow,
         });

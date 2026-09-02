@@ -31,7 +31,7 @@ public class InsuranceAttachTargetTests
     {
         InsurancePolicyId = Guid.NewGuid(),
         Name = "Cover",
-        Insurer = new InsurerReference { ContactId = Guid.NewGuid(), Name = "Insurer" },
+        Insurers = [new PolicyContactReference { ContactId = Guid.NewGuid(), Name = "Insurer" }],
         CurrentRenewal = current,
         Renewals = [.. renewals],
         CreatedAtUtc = Created,

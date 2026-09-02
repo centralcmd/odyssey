@@ -14,10 +14,25 @@ public sealed record UpdateInsurancePolicy
     [EnumDataType(typeof(InsurancePolicyType))]
     public InsurancePolicyType Type { get; set; } = InsurancePolicyType.Other;
 
-    [Required]
-    public required Guid InsurerId { get; set; }
+    /// <summary>
+    /// The complete desired set of insurers. <b><c>null</c> leaves the collection unchanged;
+    /// <c>[]</c> clears it</b> (issue #27 §6) — the house idiom, and what stops a partially-constructed
+    /// body from silently wiping a beneficiary designation. Scalar ids only, at any depth.
+    /// </summary>
+    [MaxLength(InsuranceLinkLimits.MaxLinksPerPolicy)]
+    public List<Guid>? InsurerIds { get; set; }
 
-    public Guid? InsuredAccountId { get; set; }
+    /// <inheritdoc cref="InsurerIds" />
+    [MaxLength(InsuranceLinkLimits.MaxLinksPerPolicy)]
+    public List<Guid>? InsuredAccountIds { get; set; }
+
+    /// <inheritdoc cref="InsurerIds" />
+    [MaxLength(InsuranceLinkLimits.MaxLinksPerPolicy)]
+    public List<Guid>? InsuredContactIds { get; set; }
+
+    /// <inheritdoc cref="InsurerIds" />
+    [MaxLength(InsuranceLinkLimits.MaxLinksPerPolicy)]
+    public List<Guid>? BeneficiaryIds { get; set; }
 
     [StringLength(1024)]
     public string? Notes { get; set; }

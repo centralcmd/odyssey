@@ -86,7 +86,7 @@ public class RecordCardDerivationTests
     {
         InsurancePolicyId = Guid.NewGuid(),
         Name = "Policy",
-        Insurer = new InsurerReference { ContactId = Guid.NewGuid(), Name = "Insurer" },
+        Insurers = [new PolicyContactReference { ContactId = Guid.NewGuid(), Name = "Insurer" }],
         CoverageStatus = status,
         CurrentRenewalEndDate = currentEnd,
         LatestRenewalEndDate = latestEnd,

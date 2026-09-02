@@ -2335,12 +2335,6 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<Guid?>("InsuredAccountId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<Guid>("InsurerId")
-                        .HasColumnType("char(36)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -2363,13 +2357,105 @@ namespace Odyssey.Context.Migrations
 
                     b.HasIndex("Archived");
 
-                    b.HasIndex("InsuredAccountId");
-
-                    b.HasIndex("InsurerId");
-
                     b.HasIndex("Type", "Archived");
 
                     b.ToTable("InsurancePolicies");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyBeneficiary", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ContactId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<Guid>("InsurancePolicyId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("InsurancePolicyId", "ContactId")
+                        .IsUnique();
+
+                    b.ToTable("InsurancePolicyBeneficiaries");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyInsuredAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("InsurancePolicyId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("InsurancePolicyId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("InsurancePolicyInsuredAccounts");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyInsuredContact", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ContactId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("InsurancePolicyId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactId");
+
+                    b.HasIndex("InsurancePolicyId", "ContactId")
+                        .IsUnique();
+
+                    b.ToTable("InsurancePolicyInsuredContacts");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyInsurer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("ContactId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("InsurancePolicyId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactId");
+
+                    b.HasIndex("InsurancePolicyId", "ContactId")
+                        .IsUnique();
+
+                    b.ToTable("InsurancePolicyInsurers");
                 });
 
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>
@@ -3561,6 +3647,12 @@ namespace Odyssey.Context.Migrations
                         },
                         new
                         {
+                            Key = "InsuranceMaxLinksPerPolicy",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "50"
+                        },
+                        new
+                        {
                             Key = "PhotoMaxLinksPerKind",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "50"
@@ -4499,20 +4591,77 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("FileBlob");
                 });
 
-            modelBuilder.Entity("Odyssey.Context.InsurancePolicy", b =>
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyBeneficiary", b =>
                 {
-                    b.HasOne("Odyssey.Context.Account", "InsuredAccount")
-                        .WithMany()
-                        .HasForeignKey("InsuredAccountId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Odyssey.Context.Contact", null)
                         .WithMany()
-                        .HasForeignKey("InsurerId")
+                        .HasForeignKey("ContactId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("InsuredAccount");
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.InsurancePolicy", "InsurancePolicy")
+                        .WithMany("Beneficiaries")
+                        .HasForeignKey("InsurancePolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InsurancePolicy");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyInsuredAccount", b =>
+                {
+                    b.HasOne("Odyssey.Context.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.InsurancePolicy", "InsurancePolicy")
+                        .WithMany("InsuredAccounts")
+                        .HasForeignKey("InsurancePolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InsurancePolicy");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyInsuredContact", b =>
+                {
+                    b.HasOne("Odyssey.Context.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.InsurancePolicy", "InsurancePolicy")
+                        .WithMany("InsuredContacts")
+                        .HasForeignKey("InsurancePolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InsurancePolicy");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InsurancePolicyInsurer", b =>
+                {
+                    b.HasOne("Odyssey.Context.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.InsurancePolicy", "InsurancePolicy")
+                        .WithMany("Insurers")
+                        .HasForeignKey("InsurancePolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InsurancePolicy");
                 });
 
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>
@@ -5037,6 +5186,14 @@ namespace Odyssey.Context.Migrations
 
             modelBuilder.Entity("Odyssey.Context.InsurancePolicy", b =>
                 {
+                    b.Navigation("Beneficiaries");
+
+                    b.Navigation("InsuredAccounts");
+
+                    b.Navigation("InsuredContacts");
+
+                    b.Navigation("Insurers");
+
                     b.Navigation("Renewals");
                 });
 

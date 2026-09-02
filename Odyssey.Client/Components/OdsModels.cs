@@ -79,6 +79,13 @@ public sealed record OdsOption(string Value, string Label)
 
     /// <summary>Color for the leading <see cref="Icon"/> (any CSS color, e.g. a category oklch). Inherits otherwise.</summary>
     public string? IconColor { get; init; }
+
+    /// <summary>
+    /// Secondary text after the label on an option row — a type ("Person", "Property"), an account
+    /// number. What tells two same-named records apart in a picker, which is the whole job of the
+    /// insurance link pickers. Rendered by <c>OdsTagMultiSelect</c>; ignored elsewhere.
+    /// </summary>
+    public string? Sub { get; init; }
 }
 
 /// <summary>One option in a <see cref="OdsRadioGroup"/>.</summary>

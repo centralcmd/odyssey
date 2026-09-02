@@ -22,7 +22,9 @@
                        Placeholder="No tags" AddLabel="Add tag" />
     <OdsTagMultiSelect Label="Contacts" Optional="true" Value="Draft.ContactIds"
                        ValueChanged="@(v => Draft.ContactIds = v)" Options="ContactOptions"
-                       Placeholder="No linked contacts" AddLabel="Link contact" />
+                       Placeholder="No linked contacts" AddLabel="Link contact" Noun="contact"
+                       SearchLabel="Search contacts" SearchPlaceholder="Search contacts…"
+                       EmptyText="No contacts match" />
 </OdsFormRow>
 
 <OdsNoteField Label="Content" Value="@Draft.Content" MaxLength="4096" Rows="6"

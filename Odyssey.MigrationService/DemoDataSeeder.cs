@@ -404,6 +404,10 @@ public sealed class DemoDataSeeder(
         await context.TransactionTagLinks.AddRangeAsync(data.TransactionTagLinks, cancellationToken);
         await context.InsurancePolicies.AddRangeAsync(data.InsurancePolicies, cancellationToken);
         await context.PolicyRenewals.AddRangeAsync(data.PolicyRenewals, cancellationToken);
+        await context.InsurancePolicyInsurers.AddRangeAsync(data.InsurancePolicyInsurers, cancellationToken);
+        await context.InsurancePolicyInsuredAccounts.AddRangeAsync(data.InsurancePolicyInsuredAccounts, cancellationToken);
+        await context.InsurancePolicyInsuredContacts.AddRangeAsync(data.InsurancePolicyInsuredContacts, cancellationToken);
+        await context.InsurancePolicyBeneficiaries.AddRangeAsync(data.InsurancePolicyBeneficiaries, cancellationToken);
         await context.Contracts.AddRangeAsync(data.Contracts, cancellationToken);
         await context.ContractParties.AddRangeAsync(data.ContractParties, cancellationToken);
         await context.TaxStatements.AddRangeAsync(data.TaxStatements, cancellationToken);

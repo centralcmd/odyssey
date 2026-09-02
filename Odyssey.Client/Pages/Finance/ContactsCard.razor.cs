@@ -5,6 +5,7 @@ using MudBlazor;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -28,10 +29,20 @@ public partial class ContactsCard
     private bool _canCreate;
     private bool _canUpdate;
     private bool _canDelete;
+    // The second half of the composed detach gate (issue #27 §7 #6). The server enforces it with a
+    // 403; this only keeps the blocked-delete dialog from offering an action it knows will fail.
+    private bool _canUpdateInsurance;
     private bool _canImport => _canCreate && _canUpdate; // POST vcard requires BOTH claims (§7.3)
 
     private bool _exporting;
     private bool _importOpen;
+
+    // The blocked-delete dialog's state. The key forces a fresh component per refusal, so a second
+    // blocked delete never reopens on the previous one's result step.
+    private bool _blockedOpen;
+    private Guid _blockedKey;
+    private ExistingContact? _blockedContact;
+    private ContactInsuranceLinkBlockers _blockedLinks = new();
 
     private const string PageStateKey = "contacts-page";
     private bool _overviewOpen = true;
@@ -142,6 +153,7 @@ public partial class ContactsCard
         _canCreate = user.HasPermission(PermissionClaims.ContactsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.ContactsUpdate);
         _canDelete = user.HasPermission(PermissionClaims.ContactsDelete);
+        _canUpdateInsurance = user.HasPermission(PermissionClaims.InsuranceUpdate);
     }
 
     // Server-side fetch (issue #277): search/type/status/sort applied by the API.
@@ -380,15 +392,70 @@ public partial class ContactsCard
         if (contact is null)
             return;
 
-        if ((await Contacts.DeleteAsync(contact.ContactId)).Toast(Snackbar, "Delete failed", "Contact deleted."))
+        // On success, a full refresh rather than a local Remove: the delete changes the total, so the
+        // pager and the current page have to be re-fetched or the page renders short against a stale
+        // count. A refusal may instead be a recoverable insurance one — see ShowInsuranceBlockers.
+        var result = await Contacts.DeleteAsync(contact.ContactId);
+        if (!ShowInsuranceBlockers(contact, result)
+            && result.Toast(Snackbar, "Delete failed", "Contact deleted."))
         {
             ReferenceData.InvalidateContacts();
-            // Full refresh, not a local Remove: the delete changes the total, so the pager and the
-            // current page have to be re-fetched or the page renders short against a stale count.
             await RefreshAsync();
         }
 
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Opens the blocked-delete dialog when the refusal was an insurance one, and reports whether it
+    /// did.
+    ///
+    /// <para>
+    /// A 409 here means the contact is named as an insurer, an insured contact or a beneficiary
+    /// (issue #27 §7 #5). The payload says which KINDS block and how many link rows, and — only when
+    /// the caller holds <c>insurance.read</c> — which policies. It is a recoverable state with a
+    /// supported route out, so it opens a dialog rather than becoming a toast the user cannot act on.
+    /// </para>
+    /// </summary>
+    private bool ShowInsuranceBlockers(ExistingContact contact, ApiClient.ApiResult result)
+    {
+        if (result.Status != System.Net.HttpStatusCode.Conflict
+            || result.Problem?.Extension<ContactInsuranceLinkBlockers>("insuranceLinks")
+                is not { Kinds.Count: > 0 } blockers)
+        {
+            return false;
+        }
+
+        _blockedContact = contact;
+        _blockedLinks = blockers;
+        _blockedKey = Guid.NewGuid();
+        _blockedOpen = true;
+        return true;
+    }
+
+    /// <summary>
+    /// The detach path: removes every insurance link naming the contact and deletes it in ONE request
+    /// and one transaction (issue #27 §7 #6). Composed from <c>contacts.delete</c> and
+    /// <c>insurance.update</c>; a caller holding only the first gets a 403 rather than a silent
+    /// downgrade to the refused delete.
+    /// </summary>
+    private async Task<DetachedInsuranceLinks?> DetachAndDeleteAsync()
+    {
+        if (_blockedContact is not { } contact)
+            return null;
+
+        var result = await Contacts.DeleteWithInsuranceDetachAsync(contact.ContactId);
+        if (!result.IsSuccess)
+        {
+            Snackbar.Add($"Unable to detach and delete: {result.Error}", Severity.Error);
+            return null;
+        }
+
+        ReferenceData.InvalidateContacts();
+        // Same reason as the ordinary delete: the total changed, so the pager has to be re-fetched.
+        await RefreshAsync();
+        StateHasChanged();
+        return result.Value;
     }
 
     private Task CopyId(Guid contactId) =>

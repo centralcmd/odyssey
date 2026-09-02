@@ -42,6 +42,10 @@ public class SystemSettingsRegistryTests
         // Server-computed hard ceilings, not stored settings (issue #421 Wave 3).
         nameof(SystemSettingsDto.PhotoMaxLinksPerKindCeiling),
         nameof(SystemSettingsDto.PhotoMaxAlbumMembersCeiling),
+        // Same shape, for the insurance link cap (issue #27): the compile-time
+        // InsuranceLinkLimits.MaxLinksPerPolicy that feeds [MaxLength] on the write DTOs' eight link
+        // arrays, published so the settings field can bound itself.
+        nameof(SystemSettingsDto.InsuranceMaxLinksPerPolicyCeiling),
         // Same, for the upload cap (Wave 4) — computed from startup configuration rather than stored.
         nameof(SystemSettingsDto.UploadMegabytesCeiling),
         // The six issue #434 bound projections. Five ceilings and one floor, all server-computed rather

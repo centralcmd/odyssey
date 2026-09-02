@@ -417,6 +417,22 @@ internal static class SystemSettingsRegistry
         },
         new IntSetting
         {
+            Key = SystemSettingsKeys.InsuranceMaxLinksPerPolicy,
+            Min = SystemSettingsBounds.InsuranceMaxLinksPerPolicyMin,
+            Max = SystemSettingsBounds.InsuranceMaxLinksPerPolicyMax,
+            FieldName = nameof(SystemSettingsUpdate.InsuranceMaxLinksPerPolicy),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.InsuranceMaxLinksPerPolicy),
+            // FinanceCapsCacheKey, NOT InsuranceCacheKey: MaxLinksPerPolicy is served off
+            // FinanceRequestCaps, which SystemSettingsLookup caches under that key. Evicting the other
+            // entry would leave a settings change invisible for up to the cache TTL.
+            CacheKeyToEvict = SystemSettingsService.FinanceCapsCacheKey,
+            Validator = (value, _) => RequestCapCeilings.ValidateInsuranceLinksPerPolicy(value),
+            Read = r => r.InsuranceMaxLinksPerPolicy,
+            Write = (dto, v) => dto.InsuranceMaxLinksPerPolicy = v,
+        },
+        new IntSetting
+        {
             Key = SystemSettingsKeys.PhotoMaxLinksPerKind,
             Min = SystemSettingsBounds.PhotoMaxLinksPerKindMin,
             Max = SystemSettingsBounds.PhotoMaxLinksPerKindMax,

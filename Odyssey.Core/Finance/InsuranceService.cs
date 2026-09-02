@@ -30,25 +30,24 @@ public class InsuranceService
     private readonly TimeProvider timeProvider;
     private readonly ISystemSettingsLookup systemSettingsLookup;
 
-    private readonly IContactMutationLock mutationLock;
-
     public InsuranceService(
         OdysseyContext context,
         CurrencyConversionService conversion,
         IContactLookup contactLookup,
         TimeProvider timeProvider,
-        ISystemSettingsLookup systemSettingsLookup,
-        IContactMutationLock? mutationLock = null)
+        ISystemSettingsLookup systemSettingsLookup)
     {
         this.context = context;
         this.conversion = conversion;
         this.contactLookup = contactLookup;
         this.timeProvider = timeProvider;
         this.systemSettingsLookup = systemSettingsLookup;
-        // Serializes insurer validate-then-persist against a concurrent delete of that contact (the
-        // TOCTOU the removed required+RESTRICT FK used to prevent). Defaults to a no-op for direct
-        // construction / the in-memory test provider; DI supplies the real MariaDB advisory lock.
-        this.mutationLock = mutationLock ?? ContactMutationLock.None;
+        // No advisory lock on this path (issue #27 §5). The three contact link tables carry real
+        // Restrict FKs, so the DATABASE arbitrates the validate-then-persist race against a concurrent
+        // contact delete, and its violation maps to a 409 rather than surfacing as a 500. The lock that
+        // used to stand here pinned a connection for a blocking ten-second acquire on every write, and
+        // was a documented no-op on non-relational providers — so it never protected the fast tiers
+        // either.
     }
 
     private DateTime Today => timeProvider.GetUtcNow().UtcDateTime.Date;
@@ -69,22 +68,35 @@ public class InsuranceService
         var q = context.InsurancePolicies
             .AsNoTracking()
             .Include(p => p.Renewals)
+            .Include(p => p.Insurers)
+            .AsSplitQuery()
             .AsQueryable();
 
         var term = ListQuery.NormalizeSearch(query.Search);
         if (term is not null)
         {
             var pattern = ListQuery.ContainsPattern(term);
-            // Pre-resolve the matching insurer ids via the lookup and filter this table by InsurerId
-            // membership — OR-combined with the policy-field match, so the term matches on policy name OR
-            // insurer name. This shape dates from when Contact lived in a separate context and a JOIN was
-            // impossible; the contexts are merged now, so a JOIN would work and would be cheaper on a
-            // large contact table. Left as-is deliberately: it is a behaviour-preserving rewrite for its
-            // own change, not part of the merge.
+            // Pre-resolve the matching insurer ids via the lookup and filter by insurer-link membership
+            // — OR-combined with the policy-field match, so the term matches on policy name OR insurer
+            // name, exactly as before. Insured contacts and beneficiaries are deliberately NOT searched
+            // (§10 #6): an insurance.read holder can already list every policy, so it adds no capability
+            // — but it would make the contacts surface's names queryable through a second door.
             var insurerMatchIds = (await contactLookup.SearchIdsByNameAsync(term, cancellationToken)).ToHashSet();
             q = q.Where(p =>
                 EF.Functions.Like(p.Name, pattern) ||
-                insurerMatchIds.Contains(p.InsurerId));
+                p.Insurers.Any(i => insurerMatchIds.Contains(i.ContactId)));
+        }
+
+        // API-only in v1 (Non-Goal 7): matches a policy naming the contact in ANY of the three contact
+        // collections. The row does not say WHICH — a future filter UI that needs to explain the match
+        // will need a matched-kind projection.
+        var contactFilter = (query.ContactIds ?? []).Distinct().ToList();
+        if (contactFilter.Count > 0)
+        {
+            q = q.Where(p =>
+                p.Insurers.Any(i => contactFilter.Contains(i.ContactId)) ||
+                p.InsuredContacts.Any(i => contactFilter.Contains(i.ContactId)) ||
+                p.Beneficiaries.Any(b => contactFilter.Contains(b.ContactId)));
         }
 
         var typeFilter = (query.Types ?? [])
@@ -112,9 +124,24 @@ public class InsuranceService
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
 
-        // Resolve the insurer (Contact) references in one batched cross-context lookup — the insurer
-        // navigation no longer exists on the entity after the Contact move to OdysseyContext.
-        var insurerIds = policies.Select(p => p.InsurerId).Distinct().ToList();
+        // The three non-insurer collections are COUNTED on the list row, not named — one grouped query
+        // each over the (InsurancePolicyId, TargetId) unique index, so the round-trip count is fixed and
+        // independent of how many links each policy holds. Counts are of link ROWS, never of resolved
+        // names: a count aligned onto resolved names would make a contact whose links are all unnamed
+        // look erasable when it is not (§9).
+        var insuredAccountCounts = await CountLinksAsync(
+            context.InsurancePolicyInsuredAccounts.Where(l => policyIds.Contains(l.InsurancePolicyId)),
+            l => l.InsurancePolicyId, cancellationToken);
+        var insuredContactCounts = await CountLinksAsync(
+            context.InsurancePolicyInsuredContacts.Where(l => policyIds.Contains(l.InsurancePolicyId)),
+            l => l.InsurancePolicyId, cancellationToken);
+        var beneficiaryCounts = await CountLinksAsync(
+            context.InsurancePolicyBeneficiaries.Where(l => policyIds.Contains(l.InsurancePolicyId)),
+            l => l.InsurancePolicyId, cancellationToken);
+
+        // Resolve every insurer contact across the whole page in ONE batched lookup — the insurers are
+        // the one collection the row names rather than counts, because they are on its meta line.
+        var insurerIds = policies.SelectMany(p => p.Insurers.Select(i => i.ContactId)).Distinct().ToList();
         var insurerRefs = await contactLookup.ResolveRefsAsync(insurerIds, cancellationToken);
 
         var items = policies.Select(p =>
@@ -126,7 +153,7 @@ public class InsuranceService
                 Name = p.Name,
                 PolicyNumber = p.PolicyNumber,
                 Type = p.Type.Adapt<DtoInsurancePolicyType>(),
-                Insurer = BuildInsurerReference(p.InsurerId, insurerRefs),
+                Insurers = BuildContactReferences(p.Insurers.Select(i => i.ContactId), insurerRefs),
                 CoverageStatus = coverageStatus,
                 CurrentRenewalEndDate = current?.ToDate,
                 // The boundary dates a row headlines on when there is no current period. Free here:
@@ -139,6 +166,9 @@ public class InsuranceService
                 CurrentCoverageCurrencyCode = current?.CoverageCurrencyCode,
                 RenewalCount = p.Renewals.Count,
                 FileCount = fileCounts.GetValueOrDefault(p.InsurancePolicyId),
+                InsuredAccountCount = insuredAccountCounts.GetValueOrDefault(p.InsurancePolicyId),
+                InsuredContactCount = insuredContactCounts.GetValueOrDefault(p.InsurancePolicyId),
+                BeneficiaryCount = beneficiaryCounts.GetValueOrDefault(p.InsurancePolicyId),
                 Archived = p.Archived,
             };
         });
@@ -172,42 +202,61 @@ public class InsuranceService
             return null;
         }
 
-        var insurer = await ResolveInsurerReference(policy.InsurerId, cancellationToken);
-        var window = (await systemSettingsLookup.GetInsurancePolicySettingsAsync(cancellationToken)).ExpiringSoonWindowDays;
-        return await WithAccruedPremium(ToDto(policy, insurer, Today, window));
+        return await ProjectAsync(policy, cancellationToken);
     }
 
-    public async Task<ExistingInsurancePolicy> Create(NewInsurancePolicy request, CancellationToken cancellationToken = default)
+    public async Task<ExistingInsurancePolicy> Create(
+        NewInsurancePolicy request, string? userId = null, CancellationToken cancellationToken = default)
     {
-        // Hold the per-contact lock across insurer-validate → persist so a concurrent delete of the
-        // insurer can't land between the check and the insert (leaving a dangling required insurer).
-        await using var _ = await mutationLock.AcquireAsync(request.InsurerId, cancellationToken);
-
-        await EnsureInsurerValid(request.InsurerId, cancellationToken);
-        await EnsureInsuredAccountValid(request.InsuredAccountId, cancellationToken);
+        var now = timeProvider.GetUtcNow().UtcDateTime;
 
         var policy = new InsurancePolicy
         {
             Name = request.Name,
             PolicyNumber = request.PolicyNumber,
             Type = request.Type.Adapt<ContextInsurancePolicyType>(),
-            InsurerId = request.InsurerId,
-            InsuredAccountId = request.InsuredAccountId,
             Notes = request.Notes,
             Archived = null,
-            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
+            CreatedAtUtc = now,
         };
+
+        // On create there are no stored links, so "null" and "[]" mean the same thing and every
+        // submitted id is an ADDED id — validated for existence and non-archived state, deduped, and
+        // checked against the live effective cap.
+        var links = await ResolveLinkWriteAsync(
+            storedInsurers: [],
+            storedInsuredAccounts: [],
+            storedInsuredContacts: [],
+            storedBeneficiaries: [],
+            request.InsurerIds,
+            request.InsuredAccountIds,
+            request.InsuredContactIds,
+            request.BeneficiaryIds,
+            cancellationToken);
+
+        foreach (var contactId in links.Insurers.Added)
+            policy.Insurers.Add(new InsurancePolicyInsurer { ContactId = contactId });
+        foreach (var accountId in links.InsuredAccounts.Added)
+            policy.InsuredAccounts.Add(new InsurancePolicyInsuredAccount { AccountId = accountId });
+        foreach (var contactId in links.InsuredContacts.Added)
+            policy.InsuredContacts.Add(new InsurancePolicyInsuredContact { ContactId = contactId });
+        foreach (var contactId in links.Beneficiaries.Added)
+            policy.Beneficiaries.Add(new InsurancePolicyBeneficiary
+            {
+                ContactId = contactId,
+                CreatedByUserId = userId,
+                CreatedAtUtc = now,
+            });
 
         context.InsurancePolicies.Add(policy);
         await context.SaveChangesAsync(cancellationToken);
 
         var loaded = await LoadWithDetails(policy.InsurancePolicyId, cancellationToken);
-        var insurer = await ResolveInsurerReference(loaded!.InsurerId, cancellationToken);
-        var window = (await systemSettingsLookup.GetInsurancePolicySettingsAsync(cancellationToken)).ExpiringSoonWindowDays;
-        return await WithAccruedPremium(ToDto(loaded, insurer, Today, window));
+        return await ProjectAsync(loaded!, cancellationToken);
     }
 
-    public async Task<ExistingInsurancePolicy?> Update(Guid id, UpdateInsurancePolicy request, CancellationToken cancellationToken = default)
+    public async Task<ExistingInsurancePolicy?> Update(
+        Guid id, UpdateInsurancePolicy request, string? userId = null, CancellationToken cancellationToken = default)
     {
         var policy = await LoadWithDetailsForUpdate(id, cancellationToken);
         if (policy is null)
@@ -215,50 +264,69 @@ public class InsuranceService
             return null;
         }
 
-        // Same TOCTOU guard as Create: serialize insurer validate → persist against a concurrent delete
-        // of the (new) insurer. Held across the save even when the insurer is unchanged, which is cheap.
-        await using var _ = await mutationLock.AcquireAsync(request.InsurerId, cancellationToken);
-
-        // Validate the insurer/account references only when they actually change, so an unrelated
-        // edit (e.g. renaming or re-archiving) doesn't 400 just because a still-linked contact
-        // or account was archived in the meantime.
-        if (request.InsurerId != policy.InsurerId)
-        {
-            await EnsureInsurerValid(request.InsurerId, cancellationToken);
-        }
-        if (request.InsuredAccountId != policy.InsuredAccountId)
-        {
-            await EnsureInsuredAccountValid(request.InsuredAccountId, cancellationToken);
-        }
+        var links = await ResolveLinkWriteAsync(
+            policy.Insurers.Select(l => l.ContactId).ToList(),
+            policy.InsuredAccounts.Select(l => l.AccountId).ToList(),
+            policy.InsuredContacts.Select(l => l.ContactId).ToList(),
+            policy.Beneficiaries.Select(l => l.ContactId).ToList(),
+            request.InsurerIds,
+            request.InsuredAccountIds,
+            request.InsuredContactIds,
+            request.BeneficiaryIds,
+            cancellationToken);
 
         policy.Name = request.Name;
         policy.PolicyNumber = request.PolicyNumber;
         policy.Type = request.Type.Adapt<ContextInsurancePolicyType>();
-        policy.InsurerId = request.InsurerId;
-        policy.InsuredAccountId = request.InsuredAccountId;
         policy.Notes = request.Notes;
         // Archive (preserving the original archive stamp) or unarchive per the request.
         policy.Archived = request.Archived
             ? policy.Archived ?? timeProvider.GetUtcNow().UtcDateTime
             : null;
 
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+
+        ApplyDiff(policy.Insurers, links.Insurers, l => l.ContactId,
+            contactId => new InsurancePolicyInsurer { InsurancePolicyId = id, ContactId = contactId });
+        ApplyDiff(policy.InsuredAccounts, links.InsuredAccounts, l => l.AccountId,
+            accountId => new InsurancePolicyInsuredAccount { InsurancePolicyId = id, AccountId = accountId });
+        ApplyDiff(policy.InsuredContacts, links.InsuredContacts, l => l.ContactId,
+            contactId => new InsurancePolicyInsuredContact { InsurancePolicyId = id, ContactId = contactId });
+        // An existing beneficiary row keeps its original author: re-saving a policy never rewrites who
+        // named a beneficiary, so only the newly-inserted rows take the calling user's id.
+        ApplyDiff(policy.Beneficiaries, links.Beneficiaries, l => l.ContactId,
+            contactId => new InsurancePolicyBeneficiary
+            {
+                InsurancePolicyId = id,
+                ContactId = contactId,
+                CreatedByUserId = userId,
+                CreatedAtUtc = now,
+            });
+
+        // The policy scalars and all four link diffs commit in ONE SaveChangesAsync: a partial write is
+        // impossible.
         await context.SaveChangesAsync(cancellationToken);
 
         var reloaded = await LoadWithDetails(id, cancellationToken);
-        var insurer = await ResolveInsurerReference(reloaded!.InsurerId, cancellationToken);
-        var window = (await systemSettingsLookup.GetInsurancePolicySettingsAsync(cancellationToken)).ExpiringSoonWindowDays;
-        return await WithAccruedPremium(ToDto(reloaded, insurer, Today, window));
+        return await ProjectAsync(reloaded!, cancellationToken);
     }
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        // Hard delete: removes the policy and cascades its renewals + file-join rows. The underlying
-        // FileMetadata/blobs are owned by the files API and are left intact (same as detach). Children
-        // are loaded so the cascade also applies under the EF InMemory provider (used by tests), which
-        // does not enforce database-level cascade.
+        // Hard delete: removes the policy and cascades its renewals, file-join rows and the four link
+        // collections. The underlying FileMetadata/blobs are owned by the files API and are left intact
+        // (same as detach). Children are loaded so the cascade also applies under the EF InMemory
+        // provider (used by tests), which enforces no foreign keys and so applies no database cascade.
+        // Tracked removal, never ExecuteDelete — that lives in EntityFrameworkCore.Relational and
+        // throws on InMemory, which is the very tier this Include chain exists to serve.
         var policy = await context.InsurancePolicies
             .Include(p => p.Renewals)
                 .ThenInclude(r => r.Files)
+            .Include(p => p.Insurers)
+            .Include(p => p.InsuredAccounts)
+            .Include(p => p.InsuredContacts)
+            .Include(p => p.Beneficiaries)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.InsurancePolicyId == id, cancellationToken);
         if (policy is null)
         {
@@ -569,34 +637,202 @@ public class InsuranceService
             : (CoverageStatus.Lapsed, null);
     }
 
-    // ── Validation helpers ────────────────────────────────────────────────────────
+    // ── Link collections: validation, diff and cap enforcement (issue #27 §9) ─────
 
-    private async Task EnsureInsurerValid(Guid insurerId, CancellationToken cancellationToken = default)
+    /// <summary>The resolved write plan for one collection: what to add, and what to remove.</summary>
+    private sealed record LinkDiff(IReadOnlyList<Guid> Added, IReadOnlySet<Guid> Removed)
     {
-        // Contact moved to OdysseyContext, so validate via the cross-context lookup instead of a local
-        // Contacts query. Require the contact to exist AND be non-archived.
-        var refs = await contactLookup.ResolveRefsAsync([insurerId], cancellationToken);
-        if (!refs.TryGetValue(insurerId, out var insurer) || insurer.Archived is not null)
+        public static readonly LinkDiff Unchanged = new([], new HashSet<Guid>());
+    }
+
+    private sealed record LinkWrite(
+        LinkDiff Insurers,
+        LinkDiff InsuredAccounts,
+        LinkDiff InsuredContacts,
+        LinkDiff Beneficiaries);
+
+    /// <summary>
+    /// One collection's write field: the problem-details errors key, the noun for a cap message, and
+    /// the routes that actually remove an unnamed member.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="RemovalAdvice"/> is per-collection rather than one shared sentence because the two
+    /// target kinds do not have the same routes. A contact link can be detached wholesale
+    /// (<c>DELETE /api/contacts/{id}?detachInsuranceLinks=true</c>); an <b>account</b> link has no
+    /// such endpoint, so telling that caller to "detach the contact's insurance links" names an
+    /// operation that does not exist for the field they were writing.
+    /// </remarks>
+    private sealed record LinkField(string Property, string Noun, string RemovalAdvice);
+
+    private const string ContactRemovalAdvice =
+        "Detach the contact's insurance links, or unarchive the contact and then remove it.";
+
+    private const string AccountRemovalAdvice =
+        "Unarchive the account and then remove it.";
+
+    private static readonly LinkField InsurersField =
+        new(nameof(UpdateInsurancePolicy.InsurerIds), "insurers", ContactRemovalAdvice);
+    private static readonly LinkField InsuredAccountsField =
+        new(nameof(UpdateInsurancePolicy.InsuredAccountIds), "insured accounts", AccountRemovalAdvice);
+    private static readonly LinkField InsuredContactsField =
+        new(nameof(UpdateInsurancePolicy.InsuredContactIds), "insured contacts", ContactRemovalAdvice);
+    private static readonly LinkField BeneficiariesField =
+        new(nameof(UpdateInsurancePolicy.BeneficiaryIds), "beneficiaries", ContactRemovalAdvice);
+
+    /// <summary>
+    /// Turns the four submitted arrays into four diffs, in a fixed number of round trips: one batched
+    /// contact resolve across the union of all three contact collections, and one account existence
+    /// query.
+    ///
+    /// <para>
+    /// The resolved contact set is <b>added ∪ stored</b>, not added alone — the same single round trip,
+    /// but the diff needs each <i>stored</i> link's current availability and has no other source for it.
+    /// </para>
+    /// </summary>
+    private async Task<LinkWrite> ResolveLinkWriteAsync(
+        IReadOnlyCollection<Guid> storedInsurers,
+        IReadOnlyCollection<Guid> storedInsuredAccounts,
+        IReadOnlyCollection<Guid> storedInsuredContacts,
+        IReadOnlyCollection<Guid> storedBeneficiaries,
+        List<Guid>? requestedInsurers,
+        List<Guid>? requestedInsuredAccounts,
+        List<Guid>? requestedInsuredContacts,
+        List<Guid>? requestedBeneficiaries,
+        CancellationToken cancellationToken)
+    {
+        // Duplicates are de-duplicated rather than rejected, following PhotoService: a set-valued field
+        // is naturally idempotent.
+        var insurers = requestedInsurers?.Distinct().ToList();
+        var insuredAccounts = requestedInsuredAccounts?.Distinct().ToList();
+        var insuredContacts = requestedInsuredContacts?.Distinct().ToList();
+        var beneficiaries = requestedBeneficiaries?.Distinct().ToList();
+
+        var contactIds = (insurers ?? []).Concat(insuredContacts ?? []).Concat(beneficiaries ?? [])
+            .Concat(storedInsurers).Concat(storedInsuredContacts).Concat(storedBeneficiaries)
+            .Distinct()
+            .ToList();
+        var contactRefs = contactIds.Count == 0
+            ? new Dictionary<Guid, ContactRef>()
+            : (IReadOnlyDictionary<Guid, ContactRef>)await contactLookup.ResolveRefsAsync(contactIds, cancellationToken);
+
+        var accountIds = (insuredAccounts ?? []).Concat(storedInsuredAccounts).Distinct().ToList();
+        var liveAccountIds = accountIds.Count == 0
+            ? []
+            : (await context.Accounts
+                .Where(a => accountIds.Contains(a.AccountId) && a.Archived == null)
+                .Select(a => a.AccountId)
+                .ToListAsync(cancellationToken)).ToHashSet();
+
+        bool ContactAvailable(Guid id) => contactRefs.TryGetValue(id, out var c) && c.Archived is null;
+
+        var caps = await systemSettingsLookup.GetRequestCapsAsync(cancellationToken);
+
+        return new LinkWrite(
+            Diff(storedInsurers, insurers, ContactAvailable, InsurersField, caps.MaxLinksPerPolicy),
+            Diff(storedInsuredAccounts, insuredAccounts, liveAccountIds.Contains, InsuredAccountsField, caps.MaxLinksPerPolicy),
+            Diff(storedInsuredContacts, insuredContacts, ContactAvailable, InsuredContactsField, caps.MaxLinksPerPolicy),
+            Diff(storedBeneficiaries, beneficiaries, ContactAvailable, BeneficiariesField, caps.MaxLinksPerPolicy));
+    }
+
+    /// <summary>
+    /// One collection's diff, with every rule §9 states applied in the order they have to be:
+    /// <list type="number">
+    /// <item><c>null</c> leaves the collection untouched; <c>[]</c> clears it.</item>
+    /// <item>Only <b>added</b> ids are validated for existence and archived state, so an unrelated edit
+    /// does not 400 because a still-linked target was archived meanwhile.</item>
+    /// <item>A stored link whose target is not <c>Available</c> at write time is <b>retained</b>, and
+    /// omitting it is <b>refused</b> with a 422 rather than silently ignored or silently honoured.</item>
+    /// <item>The cap is checked against <c>submitted ∪ retained</c> — the resulting ROW count — so a
+    /// collection cannot exceed a limit it would then be unable to round-trip.</item>
+    /// </list>
+    /// </summary>
+    private static LinkDiff Diff(
+        IReadOnlyCollection<Guid> stored,
+        List<Guid>? requested,
+        Func<Guid, bool> isAvailable,
+        LinkField field,
+        int effectiveCap)
+    {
+        if (requested is null)
+        {
+            return LinkDiff.Unchanged;
+        }
+
+        var storedSet = stored.ToHashSet();
+        var requestedSet = requested.ToHashSet();
+
+        foreach (var id in requested.Where(id => !storedSet.Contains(id) && !isAvailable(id)))
         {
             throw new DomainValidationException(
-                $"InsurerId {insurerId} does not reference an existing, non-archived contact.");
+                $"{field.Property} contains {id}, which does not reference an existing, non-archived record.",
+                code: null,
+                field: field.Property);
+        }
+
+        // Retained: a stored link the write cannot remove, because its target is no longer Available
+        // and so was never offered as a removable chip. Stated in terms a stateless PUT can evaluate —
+        // there is no ETag, version token or server-side record of the caller's prior GET.
+        var retained = storedSet.Where(id => !isAvailable(id)).ToHashSet();
+
+        var omittedUnnamed = retained.Where(id => !requestedSet.Contains(id)).ToList();
+        if (omittedUnnamed.Count > 0)
+        {
+            // Refused loudly rather than silently retained: a 200 whose body did not match what was
+            // asked for would misdescribe the write, and it would also swallow a genuinely deliberate
+            // removal in the race where the target was Available at load and archived before the save
+            // landed. The detach path is named FIRST — unarchiving is globally visible and momentarily
+            // re-discloses the name on every policy linking the contact (§10 #5).
+            var ids = string.Join(", ", omittedUnnamed.OrderBy(id => id));
+            throw new DomainUnprocessableException(
+                $"{field.Property} omits {ids}, which cannot be removed here: the linked record is "
+                + "archived or no longer resolves, so it has no name to show and no chip to remove. "
+                + field.RemovalAdvice,
+                field.Property);
+        }
+
+        var resulting = requestedSet.Union(retained).ToHashSet();
+        if (resulting.Count > effectiveCap)
+        {
+            throw new DomainUnprocessableException(
+                $"A policy takes at most {effectiveCap} {field.Noun}; this would leave {resulting.Count}.",
+                field.Property);
+        }
+
+        return new LinkDiff(
+            [.. requested.Where(id => !storedSet.Contains(id))],
+            storedSet.Where(id => !resulting.Contains(id)).ToHashSet());
+    }
+
+    /// <summary>Applies one resolved diff to a tracked link collection.</summary>
+    private void ApplyDiff<TLink>(
+        ICollection<TLink> links,
+        LinkDiff diff,
+        Func<TLink, Guid> targetId,
+        Func<Guid, TLink> create)
+        where TLink : class
+    {
+        if (diff.Removed.Count > 0)
+        {
+            foreach (var link in links.Where(l => diff.Removed.Contains(targetId(l))).ToList())
+            {
+                links.Remove(link);
+                context.Remove(link);
+            }
+        }
+
+        foreach (var id in diff.Added)
+        {
+            links.Add(create(id));
         }
     }
 
-    private async Task EnsureInsuredAccountValid(Guid? insuredAccountId, CancellationToken cancellationToken = default)
-    {
-        if (insuredAccountId is not { } accountId)
-        {
-            return;
-        }
-
-        var exists = await context.Accounts.AnyAsync(a => a.AccountId == accountId && a.Archived == null, cancellationToken);
-        if (!exists)
-        {
-            throw new DomainValidationException(
-                $"InsuredAccountId {accountId} does not reference an existing, non-archived account.");
-        }
-    }
+    private static async Task<Dictionary<Guid, int>> CountLinksAsync<TLink>(
+        IQueryable<TLink> links, System.Linq.Expressions.Expression<Func<TLink, Guid>> policyId,
+        CancellationToken cancellationToken) =>
+        await links
+            .GroupBy(policyId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
 
     private static void ValidateRenewalDates(DateTime fromDate, DateTime toDate)
     {
@@ -626,11 +862,18 @@ public class InsuranceService
         await WithDetails(context.InsurancePolicies)
             .FirstOrDefaultAsync(p => p.InsurancePolicyId == id, cancellationToken);
 
+    // AsSplitQuery: five collection Includes on one query produce a cartesian product. This is what
+    // Draft v1's "single-query shape" claim overlooked — the detail load has always materialised more
+    // than one collection.
     private static IQueryable<InsurancePolicy> WithDetails(IQueryable<InsurancePolicy> policies) => policies
-        .Include(p => p.InsuredAccount)
         .Include(p => p.Renewals)
             .ThenInclude(r => r.Files)
-                .ThenInclude(f => f.FileMetadata);
+                .ThenInclude(f => f.FileMetadata)
+        .Include(p => p.Insurers)
+        .Include(p => p.InsuredAccounts)
+        .Include(p => p.InsuredContacts)
+        .Include(p => p.Beneficiaries)
+        .AsSplitQuery();
 
     /// <summary>
     /// Fills in the accrued-premium figure: every period starting on or before the current period
@@ -685,7 +928,41 @@ public class InsuranceService
         return dto;
     }
 
-    private static ExistingInsurancePolicy ToDto(InsurancePolicy policy, InsurerReference insurer, DateTime today, int windowDays)
+    /// <summary>
+    /// The detail projection: one batched contact resolve for the union of the three contact
+    /// collections, one batched account query for the fourth, then the accrued-premium pass.
+    /// </summary>
+    private async Task<ExistingInsurancePolicy> ProjectAsync(InsurancePolicy policy, CancellationToken cancellationToken)
+    {
+        var contactIds = policy.Insurers.Select(l => l.ContactId)
+            .Concat(policy.InsuredContacts.Select(l => l.ContactId))
+            .Concat(policy.Beneficiaries.Select(l => l.ContactId))
+            .Distinct()
+            .ToList();
+        var contactRefs = contactIds.Count == 0
+            ? new Dictionary<Guid, ContactRef>()
+            : (IReadOnlyDictionary<Guid, ContactRef>)await contactLookup.ResolveRefsAsync(contactIds, cancellationToken);
+
+        var accountIds = policy.InsuredAccounts.Select(l => l.AccountId).Distinct().ToList();
+        var accounts = accountIds.Count == 0
+            ? new Dictionary<Guid, Account>()
+            : await context.Accounts
+                .AsNoTracking()
+                .Where(a => accountIds.Contains(a.AccountId))
+                .ToDictionaryAsync(a => a.AccountId, cancellationToken);
+
+        var window = (await systemSettingsLookup.GetInsurancePolicySettingsAsync(cancellationToken)).ExpiringSoonWindowDays;
+        var dto = ToDto(policy, Today, window);
+
+        dto.Insurers = BuildContactReferences(policy.Insurers.Select(l => l.ContactId), contactRefs);
+        dto.InsuredContacts = BuildContactReferences(policy.InsuredContacts.Select(l => l.ContactId), contactRefs);
+        dto.Beneficiaries = BuildContactReferences(policy.Beneficiaries.Select(l => l.ContactId), contactRefs);
+        dto.InsuredAccounts = BuildAccountReferences(policy.InsuredAccounts.Select(l => l.AccountId), accounts);
+
+        return await WithAccruedPremium(dto, cancellationToken);
+    }
+
+    private static ExistingInsurancePolicy ToDto(InsurancePolicy policy, DateTime today, int windowDays)
     {
         var (status, current) = EvaluateCoverage(policy, today, windowDays);
 
@@ -695,8 +972,6 @@ public class InsuranceService
             Name = policy.Name,
             PolicyNumber = policy.PolicyNumber,
             Type = policy.Type.Adapt<DtoInsurancePolicyType>(),
-            Insurer = insurer,
-            InsuredAccount = policy.InsuredAccount is null ? null : ToInsuredAccountReference(policy.InsuredAccount),
             Notes = policy.Notes,
             CoverageStatus = status,
             CurrentRenewal = current is null ? null : ToRenewalDto(current),
@@ -710,26 +985,61 @@ public class InsuranceService
         };
     }
 
-    private static InsurerReference ToInsurerReference(ContactRef insurer) => new()
-    {
-        ContactId = insurer.ContactId,
-        Name = insurer.Name,
-        Type = insurer.Type,
-    };
+    /// <summary>
+    /// Builds one collection's read references from a batched-resolve result, ordered by resolved
+    /// display name ascending.
+    ///
+    /// <para>
+    /// <b>An archived or unresolvable link keeps its row and loses its name.</b> Neither the former
+    /// <c>"(unknown)"</c> placeholder plus raw GUID nor an outright drop is correct: the first leaks a
+    /// GUID into the UI and keeps disclosing archived names, and the second silently deletes link rows
+    /// — a full-set diff would compute the invisible member as removed and delete it. The name is the
+    /// personal data; the id is what keeps the read-modify-write round trip honest.
+    /// </para>
+    /// <para>
+    /// An unnamed member has no name to sort on, so it sorts last, by id — a stable order rather than
+    /// an arbitrary one.
+    /// </para>
+    /// </summary>
+    private static List<PolicyContactReference> BuildContactReferences(
+        IEnumerable<Guid> contactIds, IReadOnlyDictionary<Guid, ContactRef> refs) =>
+        [.. contactIds
+            .Select(id =>
+            {
+                if (!refs.TryGetValue(id, out var contact))
+                {
+                    // No contact row at all: no name AND no type — ContactType has no zero member
+                    // (Person = 1, Organization = 2), so a non-nullable field would serialize as 0 and
+                    // map to no member.
+                    return new PolicyContactReference
+                    {
+                        ContactId = id,
+                        Name = null,
+                        Type = null,
+                        Availability = LinkAvailability.Unresolvable,
+                    };
+                }
 
-    // Builds the read reference from a batched-resolve result. InsurerId is required/non-null, but the
-    // linked contact may have been deleted since; a missing ref degrades to a stable placeholder rather
-    // than crashing or dropping the policy.
-    private static InsurerReference BuildInsurerReference(Guid insurerId, IReadOnlyDictionary<Guid, ContactRef> refs) =>
-        refs.TryGetValue(insurerId, out var insurer)
-            ? ToInsurerReference(insurer)
-            : new InsurerReference { ContactId = insurerId, Name = "(unknown)", Type = default };
+                var archived = contact.Archived is not null;
+                return new PolicyContactReference
+                {
+                    ContactId = id,
+                    Name = archived ? null : contact.Name,
+                    Type = contact.Type,
+                    Availability = archived ? LinkAvailability.Archived : LinkAvailability.Available,
+                };
+            })
+            .OrderBy(r => r.Name is null)
+            .ThenBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(r => r.ContactId)];
 
-    private async Task<InsurerReference> ResolveInsurerReference(Guid insurerId, CancellationToken cancellationToken)
-    {
-        var refs = await contactLookup.ResolveRefsAsync([insurerId], cancellationToken);
-        return BuildInsurerReference(insurerId, refs);
-    }
+    private static List<InsuredAccountReference> BuildAccountReferences(
+        IEnumerable<Guid> accountIds, IReadOnlyDictionary<Guid, Account> accounts) =>
+        [.. accountIds
+            .Where(accounts.ContainsKey)
+            .Select(id => ToInsuredAccountReference(accounts[id]))
+            .OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(r => r.AccountId)];
 
     private static InsuredAccountReference ToInsuredAccountReference(Account account) => new()
     {

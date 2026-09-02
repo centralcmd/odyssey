@@ -65,11 +65,13 @@ public class CreatedAtRouteControllerTests
     {
         await using var context = TestContextFactory.Create();
         await using var journalContext = TestContextFactory.CreateJournal();
-        var contactService = new ContactService(journalContext, new ContactReferenceGuard(context));
+        var referenceGuard = new ContactReferenceGuard(context);
+        var contactService = new ContactService(journalContext, referenceGuard);
         var controller = new ContactController(
             NullLogger<ContactController>.Instance, contactService,
             new ContactVCardService(
-                journalContext, contactService, new FakeImportExportLimitsLookup(), NullLogger<ContactVCardService>.Instance));
+                journalContext, contactService, new FakeImportExportLimitsLookup(), NullLogger<ContactVCardService>.Instance),
+            referenceGuard);
 
         var missingId = Guid.NewGuid();
         var result = await controller.Put(missingId, new NewContact

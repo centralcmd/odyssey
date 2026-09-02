@@ -1,24 +1,28 @@
 @*
-    OdsTagMultiSelect — the multi-tag picker for the transaction forms
-    (Odyssey Design System · components/TagMultiSelect).
+    OdsTagMultiSelect — the multi-MEMBER picker (Odyssey Design System · components/TagMultiSelect).
 
-    A transaction now carries a list of TransactionTags, so the single "Tag"
-    OdsSelect is replaced by this: a field whose control box shows each selected
-    tag as a removable chip, with an "Add tag" affordance that opens a searchable,
-    checkable list — consistent with the ledger-header OdsMultiSelect filter, but
-    labelled and chip-displaying for data entry. Provide OnCreate to offer an
-    inline "Create …" row for a name that matches nothing.
+    A field whose control box shows each selected member as a removable chip, with a trigger that
+    opens a searchable, checkable list. It backs the transaction-tag fields AND every entity picker
+    built on it — Journal Contacts, Photos People / Albums, and the four Insurance link collections
+    (insurers, insured accounts, insured contacts, beneficiaries). Provide OnCreate to offer an inline
+    "Create …" row for a name that matches nothing.
 
-    Controlled: Value is the selected tag ids; ValueChanged fires the full next
-    set on every add / remove (bind via @bind-Value). Built on MudMenu so the
-    popover is portaled out of any overflow:hidden ancestor (modal body / card /
-    collapsible) and flips above when there isn't room below.
+    Controlled: Value is the selected ids; ValueChanged fires the full next set on every add / remove
+    (bind via @@bind-Value). Built on MudMenu so the popover is portaled out of any overflow:hidden
+    ancestor (modal body / card / collapsible) and flips above when there isn't room below.
+
+    Structure — why the control box is NOT a <button> (issue #27 P0.1): the chips and their remove
+    controls live inside it, so a <button> box would nest interactive elements — invalid HTML with
+    ambiguous activation and inconsistent cross-browser focus. The box is a plain container holding
+    the chip list and a separate focusable trigger, which is what lets each chip carry a real
+    <button aria-label="Remove …"> that is keyboard operable, ≥24 px wide, and moves focus onward
+    when it removes itself.
 *@
 
 <div class="@FieldClass">
     @if (!string.IsNullOrEmpty(Label))
     {
-        <label class="odc-field-label">
+        <label class="odc-field-label" id="@LabelId" for="@TriggerId">
             @Label
             @if (Required)
             {
@@ -41,14 +45,15 @@
                  Disabled="@Disabled"
                  OpenChanged="@(open => _open = open)">
             <ActivatorContent>
-                <button type="button"
-                        class="@ControlClass"
-                        disabled="@Disabled"
-                        id="@Id"
-                        aria-haspopup="listbox"
-                        aria-expanded="@(_open ? "true" : "false")"
-                        aria-label="@(string.IsNullOrEmpty(Label) ? AriaLabel : null)"
-                        @onclick="@context.ToggleAsync">
+                @* The box itself does NOT open the popover — only the trigger button below does.
+                   A click handler here would make every pixel of the box a second, larger pointer
+                   target with a different function, touching each chip's remove button on three of
+                   its four sides. That competing target is what disqualifies WCAG 2.5.8's spacing
+                   exception in the dense grid cell, where the remove button falls short of 24 px
+                   vertically: a pointer user missing the small "x" by two pixels would open the
+                   picker instead of removing the chip. The trigger is a real focusable button, so
+                   dropping the box handler costs a mouse-only convenience and nothing else. *@
+                <div class="@ControlClass">
                     <span class="odc-tagms-chips">
                         @if (Selected.Count == 0)
                         {
@@ -56,67 +61,124 @@
                         }
                         else
                         {
-                            @foreach (var option in Selected)
+                            @for (var i = 0; i < Selected.Count; i++)
                             {
-                                <span class="odc-chip tag odc-tagms-chip">
-                                    @option.Label
-                                    <span class="odc-tagms-x"
-                                          role="button"
-                                          aria-label="@RemoveLabel(option)"
-                                          @onclick="@(() => Remove(option.Value))"
-                                          @onclick:stopPropagation="true">
-                                        <span class="material-icons" aria-hidden="true">close</span>
+                                var index = i;
+                                var option = Selected[i];
+                                if (ChipTemplate is not null)
+                                {
+                                    @* The template owns the chip body AND its styling — the default
+                                       .odc-chip wrapper would double-apply against a chip component
+                                       that brings its own. *@
+                                    <span class="odc-tagms-tchip">
+                                        @ChipTemplate(option.Value)
+                                        @if (!IsLocked(option.Value))
+                                        {
+                                            @RemoveButton(option, index)
+                                        }
                                     </span>
-                                </span>
+                                }
+                                else
+                                {
+                                    <span class="odc-chip entity odc-tagms-chip">
+                                        @if (!string.IsNullOrEmpty(option.Icon))
+                                        {
+                                            <span class="material-icons odc-tagms-chip-ic" aria-hidden="true"
+                                                  style="@IconStyle(option)">@option.Icon</span>
+                                        }
+                                        @LabelOf(option)
+                                        @if (!IsLocked(option.Value))
+                                        {
+                                            @RemoveButton(option, index)
+                                        }
+                                    </span>
+                                }
                             }
                         }
                     </span>
-                    <span class="odc-tagms-add">
+                    <button type="button"
+                            class="odc-tagms-trigger odc-tagms-add"
+                            id="@TriggerId"
+                            @ref="_trigger"
+                            disabled="@Disabled"
+                            aria-haspopup="dialog"
+                            aria-expanded="@(_open ? "true" : "false")"
+                            aria-label="@TriggerAriaLabel"
+                            aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
+                            aria-describedby="@(string.IsNullOrEmpty(Message) ? null : MessageId)"
+                            @onclick="@context.ToggleAsync">
                         <span class="material-icons" aria-hidden="true">@(_open ? "expand_less" : "add")</span>
-                        @if (Selected.Count == 0)
-                        {
-                            <span>@AddLabel</span>
-                        }
-                    </span>
-                </button>
+                        @* The label goes visually-hidden rather than away once there are chips (DS
+                           parity): the glyph is aria-hidden, so dropping it outright would leave the
+                           button with no accessible name at exactly the moment it has chips to
+                           manage — the moment it matters most. *@
+                        <span class="@(Selected.Count == 0 ? null : "sr-only")">@AddLabel</span>
+                    </button>
+                </div>
             </ActivatorContent>
             <ChildContent>
-                <div class="odc-tagms-pop" role="listbox" aria-multiselectable="true">
+                @* A labelled GROUP of checkboxes — not a listbox: these are real
+                   <input type="checkbox"> rows, so role="listbox"/"option" would describe a widget
+                   that isn't here (WCAG 1.3.1, 4.1.2). *@
+                <div class="odc-tagms-pop" role="group" aria-label="@GroupLabel">
                     <div class="odc-tagms-search">
                         <span class="material-icons" aria-hidden="true">search</span>
                         <input value="@_query"
                                @oninput="@(e => _query = e.Value?.ToString() ?? string.Empty)"
                                @onkeydown="OnSearchKeyDown"
-                               placeholder="@SearchPlaceholder"
-                               aria-label="Search tags" />
+                               placeholder="@EffectiveSearchPlaceholder"
+                               aria-label="@SearchLabel" />
                     </div>
                     <div class="odc-tagms-list">
-                        @foreach (var option in Filtered)
+                        @if (Loading)
                         {
-                            <label class="odc-tagms-opt odc-check">
-                                <input type="checkbox"
-                                       checked="@_selected.Contains(option.Value)"
-                                       @onchange="@(() => Toggle(option.Value))" />
-                                <span class="odc-check-box" aria-hidden="true">
-                                    <span class="material-icons">check</span>
-                                </span>
-                                <span class="odc-check-label">@option.Label</span>
-                            </label>
+                            @* Announced, and visually distinct from "no match": options that arrive
+                               asynchronously must never read as an empty address book. *@
+                            <div class="odc-tagms-loading" role="status">
+                                <span class="material-icons" aria-hidden="true">hourglass_top</span>
+                                <span>@LoadingText</span>
+                            </div>
                         }
-                        @if (ShowCreate)
+                        else
                         {
-                            <button type="button" class="odc-tagms-create" @onclick="Create">
-                                <span class="material-icons" aria-hidden="true">add</span>
-                                <span>@CreateRowLabel</span>
-                            </button>
-                        }
-                        @if (!Filtered.Any() && !ShowCreate)
-                        {
-                            <div class="odc-tagms-empty">@EmptyText</div>
+                            @foreach (var option in Filtered)
+                            {
+                                <label class="odc-tagms-opt odc-check">
+                                    <input type="checkbox"
+                                           checked="@_selected.Contains(option.Value)"
+                                           @onchange="@(() => Toggle(option.Value))" />
+                                    <span class="odc-check-box" aria-hidden="true">
+                                        <span class="material-icons">check</span>
+                                    </span>
+                                    <span class="odc-check-label">
+                                        @if (!string.IsNullOrEmpty(option.Icon))
+                                        {
+                                            <span class="material-icons odc-tagms-opt-ic" aria-hidden="true"
+                                                  style="@IconStyle(option)">@option.Icon</span>
+                                        }
+                                        <span>@option.Label</span>
+                                        @if (!string.IsNullOrEmpty(option.Sub))
+                                        {
+                                            <span class="odc-tagms-opt-sub">@option.Sub</span>
+                                        }
+                                    </span>
+                                </label>
+                            }
+                            @if (ShowCreate)
+                            {
+                                <button type="button" class="odc-tagms-create" @onclick="Create">
+                                    <span class="material-icons" aria-hidden="true">add</span>
+                                    <span>@CreateRowLabel</span>
+                                </button>
+                            }
+                            @if (!Filtered.Any() && !ShowCreate)
+                            {
+                                <div class="odc-tagms-empty">@EmptyText</div>
+                            }
                         }
                     </div>
                     <div class="odc-tagms-foot">
-                        <button type="button" class="odc-btn text" @onclick="Clear" disabled="@(_selected.Count == 0)">Clear</button>
+                        <button type="button" class="odc-btn text" @onclick="Clear" disabled="@(!CanClear)">Clear</button>
                         <button type="button" class="odc-btn text" @onclick="Done">Done</button>
                     </div>
                 </div>
@@ -126,6 +188,28 @@
 
     @if (!string.IsNullOrEmpty(Message))
     {
-        <div class="odc-field-help @(string.IsNullOrEmpty(Error) ? null : "error")" role="@(string.IsNullOrEmpty(Error) ? null : "alert")">@Message</div>
+        <div class="odc-field-help @(string.IsNullOrEmpty(Error) ? null : "error")" id="@MessageId"
+             role="@(string.IsNullOrEmpty(Error) ? null : "alert")">@Message</div>
     }
+
+    @* Add / remove / clear are announced with the resulting count. Repeat announcements carry an
+       invisible counter token, because setting an identical string twice does not re-fire a live
+       region. *@
+    <div class="sr-only" role="status" aria-live="polite">@_announcement</div>
 </div>
+
+@code {
+    // An inline render fragment — Razor syntax, so it cannot live in the code-behind. The picker keeps
+    // owning this button even when ChipTemplate fills the chip body: a template that owned the whole
+    // chip would take keyboard removal and focus management down with it, and it is what lets the
+    // picker WITHHOLD the button for a member it must not remove.
+    private RenderFragment RemoveButton(OdsOption option, int index) =>
+        @<button type="button"
+                 class="odc-tagms-x"
+                 @ref="_removeButtons[index]"
+                 aria-label="@RemoveLabel(option)"
+                 @onclick="@(() => Remove(option.Value, index))"
+                 @onclick:stopPropagation="true">
+            <span class="material-icons" aria-hidden="true">close</span>
+        </button>;
+}

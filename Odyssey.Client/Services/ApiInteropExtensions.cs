@@ -97,4 +97,65 @@ public static class ApiInteropExtensions
         snackbar.Add($"{failureLead}: {result.Error}", Severity.Error);
         return false;
     }
+
+    /// <summary>
+    /// Routes a failed write to the form fields that caused it, falling back to a toast when the
+    /// server named none.
+    ///
+    /// <para>
+    /// The reusable half of <c>ApiProblem.Errors</c> → form mapping (issue #27 §11): a dialog whose
+    /// only field errors are client-side pre-checks has no way to show a server rejection on the
+    /// control responsible, so every failure becomes a toast the user then has to translate back into
+    /// a field. <paramref name="assign"/> is called once per field the server named, with the JSON
+    /// property name and the first message; anything it does not recognise (and any failure with no
+    /// field errors at all) is toasted instead, so a rejection can never vanish.
+    /// </para>
+    /// </summary>
+    /// <returns>True on success — the same contract <see cref="Toast(ApiResult, ISnackbar, string, string?)"/> has.</returns>
+    public static bool ToastOrFields(
+        this ApiResult result,
+        ISnackbar snackbar,
+        string failureLead,
+        Func<string, string, bool> assign,
+        string? successMessage = null)
+    {
+        if (result.IsSuccess)
+        {
+            if (!string.IsNullOrEmpty(successMessage))
+                snackbar.Add(successMessage, Severity.Success);
+
+            return true;
+        }
+
+        // Every message the form could not place is toasted — NOT "toast only when nothing was
+        // placed". A response naming two fields where the caller recognises one would otherwise
+        // report the recognised one on its control and drop the other entirely: no toast, no field
+        // marking, no trace. That is the exact vanishing this method's contract rules out.
+        var unassigned = new List<string>();
+        var errors = result.Problem?.Errors ?? new Dictionary<string, string[]>();
+        foreach (var (field, messages) in errors)
+        {
+            if (messages.Length == 0)
+            {
+                continue;
+            }
+
+            if (!assign(field, messages[0]))
+            {
+                unassigned.Add(messages[0]);
+            }
+        }
+
+        if (unassigned.Count > 0)
+        {
+            snackbar.Add($"{failureLead}: {string.Join(" ", unassigned)}", Severity.Error);
+        }
+        else if (errors.Count == 0)
+        {
+            // No field errors at all — the failure has only its top-level detail to report.
+            snackbar.Add($"{failureLead}: {result.Error}", Severity.Error);
+        }
+
+        return false;
+    }
 }

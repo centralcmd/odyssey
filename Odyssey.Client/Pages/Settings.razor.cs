@@ -289,6 +289,16 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.InsuranceMaxFilesPerParent),
                 Load: (p, dto) => p.SetIntLoaded("insuranceMaxFilesPerParent", dto.InsuranceMaxFilesPerParent),
                 Write: (p, req) => req.InsuranceMaxFilesPerParent = p.IntRequest("insuranceMaxFilesPerParent")),
+            new("insuranceMaxLinksPerPolicy", "link", "Max links per policy collection",
+                "Upper limit on insurers, insured accounts, insured contacts or beneficiaries on one "
+                + "policy — counted per collection, not across them. The same limit is enforced by request validation.",
+                SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.InsuranceMaxLinksPerPolicyMin, Max: SystemSettingsBounds.InsuranceMaxLinksPerPolicyMax,
+                Field: nameof(SystemSettingsUpdate.InsuranceMaxLinksPerPolicy),
+                Load: (p, dto) => p.SetIntLoaded("insuranceMaxLinksPerPolicy", dto.InsuranceMaxLinksPerPolicy),
+                Write: (p, req) => req.InsuranceMaxLinksPerPolicy = p.IntRequest("insuranceMaxLinksPerPolicy"),
+                // Tighten-only: the compile-time ceiling on the write DTOs pre-empts the setting, so the
+                // field bounds itself rather than offering a value the API would reject.
+                MaxFrom: dto => dto.InsuranceMaxLinksPerPolicyCeiling),
             new("insurance-max", "format_list_numbered", "Max policies shown in summary",
                 "Upper limit on the policies listed in the summary roll-up.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.InsuranceMaxSummaryPoliciesMin, Max: SystemSettingsBounds.InsuranceMaxSummaryPoliciesMax,

@@ -16,7 +16,11 @@ public sealed record InsurancePolicyListItem
 
     public InsurancePolicyType Type { get; set; }
 
-    public required InsurerReference Insurer { get; set; }
+    /// <summary>
+    /// The policy's insurers, as data-minimised references — the one collection the list row names
+    /// rather than counts, because it is what the row's meta line shows. Possibly empty.
+    /// </summary>
+    public List<PolicyContactReference> Insurers { get; set; } = new();
 
     public CoverageStatus CoverageStatus { get; set; }
 
@@ -53,6 +57,17 @@ public sealed record InsurancePolicyListItem
     /// counted only the policy-level attachments, which no longer exist.
     /// </summary>
     public int FileCount { get; set; }
+
+    /// <summary>Link ROWS, never resolved names — see <see cref="RenewalCount"/> for the pattern.
+    /// Counting resolved names instead would make a contact whose links are all unnamed look erasable
+    /// when it is not (issue #27 §9).</summary>
+    public int InsuredAccountCount { get; set; }
+
+    /// <inheritdoc cref="InsuredAccountCount" />
+    public int InsuredContactCount { get; set; }
+
+    /// <inheritdoc cref="InsuredAccountCount" />
+    public int BeneficiaryCount { get; set; }
 
     public DateTime? Archived { get; set; }
 }

@@ -70,8 +70,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         {
             var rows = await context.SystemSettings.AsNoTracking().ToDictionaryAsync(row => row.Key, row => row);
 
-            // 62 before issue #8, +4 for the mail transport and the public link origin.
-            Assert.Equal(66, rows.Count);
+            // 62 before issue #8, +4 for the mail transport and the public link origin, +1 for the
+            // insurance link cap (issue #27).
+            Assert.Equal(67, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)

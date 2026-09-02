@@ -27,12 +27,35 @@ nothing stopping a write path that forgot to call either. One context makes them
 |---|---|
 | `Transaction.ContactId`, `Subscription.ContactId`, `Account.CustodianId`, `AccountFile.IssuedBy`, `FileAnalysisCandidateTransaction.MatchedContactId` → `Contact` | `SET NULL` |
 | `ContractParty.ContactId` → `Contact` | `CASCADE` |
-| `InsurancePolicy.InsurerId` → `Contact` (required) | `RESTRICT` |
+| `InsurancePolicyInsurer.ContactId`, `InsurancePolicyInsuredContact.ContactId`, `InsurancePolicyBeneficiary.ContactId` → `Contact` | `RESTRICT` |
+| `InsurancePolicyInsuredAccount.AccountId` → `Account` | `CASCADE` |
 | `Photo.FileId`, `JournalEntryAttachment.FileId`, `JournalTaskAttachment.FileId` → `FileMetadata` | `CASCADE` |
 
 They are declared as relationships with **no navigation properties** (`HasOne<Contact>().WithMany()`),
 so the modules stay one-directional in the source — a finance entity still has no `Contact` to
 `Include`, and the Mapster projections are unchanged — while the database gets the real constraint.
+
+### The three insurance contact links are the complete blocker set
+
+Issue #27 replaced `InsurancePolicy.InsurerId` and `.InsuredAccountId` with four link tables. The three
+**contact** ones restrict, widening the posture the single required insurer already had: a contact
+named as an insurer, an insured contact or a beneficiary cannot be deleted, because a beneficiary
+designation vanishing silently on contact deletion would lose it without trace. They are the only
+`RESTRICT` keys to `Contact` in the whole model, so they are the complete set a blocked delete has to
+report — which is what lets `IContactReferenceGuard` answer "why is this refused?" exhaustively.
+
+The **account** link cascades on both sides, and that preserves the former scalar column's behaviour
+rather than changing it: `InsuredAccountId` was `SET NULL`, so deleting the account left the policy
+standing with no insured account — which on a link table is expressed by removing the row. `SET NULL`
+has no meaning here; nulling the only target would leave a row pointing at nothing.
+
+`RESTRICT` alone is not an acceptable answer for a natural person exercising erasure, so
+`DELETE /api/contacts/{id}?detachInsuranceLinks=true` removes every link row and the contact **in one
+transaction**. It composes `contacts.delete` with `insurance.update` rather than adding a claim.
+
+There is **no advisory lock** on any of these paths. `IContactMutationLock` existed only because the
+insurer key had been removed; with three real `RESTRICT` keys back, the database arbitrates the race,
+and its violation maps to a `409` rather than surfacing as a `500`. A source-lint keeps it retired.
 
 ### A library photo and its file are deleted together, both ways
 

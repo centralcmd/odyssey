@@ -36,13 +36,15 @@
                 <OdsTimeField Label="Time" @bind-Value="_time" />
             </div>
             <OdsTagMultiSelect Label="Albums" Value="_albums" ValueChanged="v => _albums = v" Options="AlbumOptions"
-                               Placeholder="Not in any album" AddLabel="Add to album"
+                               Placeholder="Not in any album" AddLabel="Add to album" Noun="album"
+                               SearchLabel="Search albums" SearchPlaceholder="Search albums…"
                                EmptyText="No matching album. Create albums on the Albums page." />
             <OdsTagMultiSelect Label="Tags" Value="_tags" ValueChanged="v => _tags = v" Options="_tagOpts"
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(CanCreateTags ? CreateTagOption : null)" />
             <OdsTagMultiSelect Label="People" Value="_people" ValueChanged="v => _people = v" Options="PeopleOptions"
-                               Placeholder="No one tagged" AddLabel="Tag a person"
+                               Placeholder="No one tagged" AddLabel="Tag a person" Noun="person" NounPlural="people"
+                               SearchLabel="Search people" SearchPlaceholder="Search people…"
                                EmptyText="No matching person. People come from your Person contacts." />
             <OdsField Label="Caption" @bind-Value="_caption" Multiline="true" Rows="2" MaxLength="2000"
                       Placeholder="Write a caption…" />
