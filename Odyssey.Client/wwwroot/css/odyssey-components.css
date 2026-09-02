@@ -105,9 +105,13 @@
 .odc-substatus { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 /* A subscription price is a recurring expense — the amount input reads in the finance-expense hue.
-   Global (not page-scoped) so it applies in both the create dialog and the inline edit form. */
+   Global (not page-scoped) so it applies in both the create dialog and the inline edit form. The
+   dialog's price is an OdsMoneyField now, so the money selectors carry it; the .odc-amount pair
+   stays for the inline edit form. The currency code is deliberately NOT tinted — it is the code,
+   not the amount, and coloring it would read as a second signed figure. */
 .sub-amount-expense .odc-amount-input,
-.sub-amount-expense .odc-amount-adorn { color: var(--finance-expense); }
+.sub-amount-expense .odc-amount-adorn,
+.sub-amount-expense .odc-money-input { color: var(--finance-expense); }
 
 /* ---------- Card composition slots ----------
    OdsCardBody pads a flush OdsCard; OdsCardHeader is the titled header row with a
@@ -906,6 +910,168 @@
 .odc-amount.lg .odc-amount-adorn { font: 500 22px/1 var(--font-sans); }
 .odc-amount.lg .odc-amount-input { font: 400 30px/1 var(--font-mono); letter-spacing: -0.01em; }
 
+/* ---------- MoneyField (amount + ISO currency code as one control) ---------- */
+/* One box owns the border, hover, focus and error states; the amount and the
+   currency segment sit inside it, split by a hairline, so the pair reads as a
+   single control. The code is always the ISO 4217 code, never a symbol. */
+.odc-money {
+  position: relative;
+  display: flex; align-items: stretch;
+  box-sizing: border-box; height: 44px;
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-md);
+  transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+}
+.odc-money:hover { border-color: var(--mud-palette-text-secondary); }
+.odc-money:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
+.odc-money.error { border-color: var(--mud-palette-error); }
+.odc-money.error:focus-within { box-shadow: inset 0 0 0 1px var(--mud-palette-error); }
+.odc-money.disabled { opacity: 0.5; cursor: not-allowed; }
+.odc-money-input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md);
+  font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-primary);
+}
+.odc-money-input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+/* Leading sign for signed amounts (direction owned by the form) + its tone.
+   With Direction + DirectionChanged the same segment becomes a button that
+   flips expense <-> income — the mirror of the currency segment on the right. */
+.odc-money-sign {
+  flex: none; display: grid; place-items: center;
+  width: 18px; margin-left: 12px;
+  font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-money-sign.btn {
+  display: flex; align-items: center; justify-content: center; min-width: 34px;
+  margin: 0; padding: 0 10px; align-self: stretch;
+  appearance: none; background: none; cursor: pointer;
+  border: 0; border-right: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+.odc-money-sign.btn:hover { background: var(--mud-palette-action-default-hover); }
+.odc-money-sign.btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-money-sign.btn:disabled { cursor: not-allowed; }
+.odc-money-dir-sign { font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans); }
+.odc-money-sign + .odc-money-input { padding-left: 6px; }
+.odc-money-sign.btn + .odc-money-input { padding-left: 12px; }
+.odc-money.tone-income .odc-money-sign, .odc-money.tone-income .odc-money-input { color: var(--finance-income); }
+.odc-money.tone-expense .odc-money-sign, .odc-money.tone-expense .odc-money-input { color: var(--finance-expense); }
+.odc-money-input:disabled { cursor: not-allowed; }
+/* Currency segment — static text or a picker trigger. Same metrics either way
+   so locking the currency doesn't shift the layout. */
+.odc-money-cur {
+  flex: none; display: flex; align-items: center; gap: 2px;
+  padding: 0 12px; border-left: 1px solid var(--mud-palette-lines-inputs);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-money-code {
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono);
+  letter-spacing: 0.04em; text-transform: uppercase; font-variant-numeric: tabular-nums;
+}
+/* MudMenu (the popover host) and its activator wrapper default to inline-block, which would
+   drop the currency segment out of the box's stretch and shrink it to text height. Make both
+   transparent to the flex layout so the trigger stays a full-height cell of the control. */
+.odc-money > .mud-menu { display: flex; flex: none; align-self: stretch; }
+.odc-money .mud-menu-activator { display: flex; flex: none; align-self: stretch; }
+.odc-money-cur.btn {
+  appearance: none; background: none; cursor: pointer;
+  border: none; border-left: 1px solid var(--mud-palette-lines-inputs);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding-right: 8px;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-money-cur.btn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-money-cur.btn.open { background: var(--mud-palette-action-default-hover); color: var(--brand-text); }
+.odc-money-cur.btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
+.odc-money-cur.btn:disabled { cursor: not-allowed; }
+.odc-money-chev { font-size: 18px; line-height: 1; transition: transform var(--duration-base) var(--ease-standard); }
+.odc-money-cur.btn.open .odc-money-chev { transform: rotate(180deg); }
+/* The popover is hosted by MudMenu (portaled, flips when there's no room below),
+   so the panel below carries the surface and MudBlazor's own paper is neutralised
+   by .odc-ms-pop-paper. With a long list a sticky filter box sits above the
+   scrolling options; codes stay mono. */
+.odc-money-pop {
+  box-sizing: border-box; min-width: 240px; max-height: 360px;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
+}
+.odc-money-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: var(--space-1); list-style: none; }
+.odc-money-list li { list-style: none; margin: 0; padding: 0; }
+.odc-money-search {
+  flex: none; display: flex; align-items: center; gap: 10px;
+  padding: 0 12px; height: 44px;
+  border-bottom: 1px solid var(--mud-palette-divider);
+}
+.odc-money-search .material-icons { font-size: 20px; color: var(--mud-palette-text-secondary); flex: none; }
+/* Beat any ambient input styling from the host page — the row IS the field. */
+.odc-money-pop .odc-money-search input {
+  flex: 1; min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
+  appearance: none; background: none; border: 0; outline: none; box-shadow: none;
+  margin: 0; padding: 0; border-radius: 0;
+  font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary);
+}
+.odc-money-search input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+.odc-money-empty {
+  padding: 12px; text-align: center;
+  font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+/* One option row: tick · ISO code (mono, fixed gutter so the names line up) · name.
+   justify-content is explicit because MudBlazor's own button reset centers it, which would
+   float each row's content and lose the code gutter the names line up against. */
+.odc-money-opt {
+  display: flex; align-items: center; justify-content: flex-start; gap: 10px;
+  width: 100%; box-sizing: border-box;
+  padding: 7px 8px; border: none; border-radius: var(--radius-sm); cursor: pointer;
+  background: transparent; text-align: left; color: var(--mud-palette-text-primary);
+  font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans);
+}
+.odc-money-opt:hover { background: var(--mud-palette-action-default-hover); }
+.odc-money-opt:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -1px;
+  background: var(--mud-palette-action-default-hover);
+}
+.odc-money-tick { flex: none; width: 18px; display: grid; place-items: center; color: var(--brand-text); }
+.odc-money-tick .material-icons { font-size: 17px; }
+.odc-money-opt-code {
+  flex: none; min-width: 42px;
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); letter-spacing: 0.04em;
+}
+.odc-money-opt-label { color: var(--mud-palette-text-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Recess inside modals, matching .odc-input / .odc-amount. */
+.ods-modal-body .odc-money { background-color: var(--mud-palette-background); }
+/* Hero variant — a large, focal money input. Radius stays at the standard field
+   radius so it sits square with the rest of the form. */
+.odc-money.lg { height: 60px; border-radius: var(--radius-md); background: var(--mud-palette-background); }
+.odc-money.lg .odc-money-input { padding: 0 18px; font: 400 30px/1 var(--font-mono); letter-spacing: -0.01em; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.odc-money.lg .odc-money-cur { padding: 0 16px; }
+.odc-money.lg .odc-money-cur.btn { border-radius: 0 var(--radius-md) var(--radius-md) 0; padding-right: 12px; }
+.odc-money.lg .odc-money-code { font: 500 17px/1 var(--font-mono); }
+.odc-money.lg .odc-money-chev { font-size: 20px; }
+.odc-money.lg .odc-money-sign { width: 22px; margin-left: 18px; font-size: 30px; }
+.odc-money.lg .odc-money-sign + .odc-money-input { padding-left: 8px; }
+.odc-money.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.odc-money.lg .odc-money-dir-sign { font-size: 30px; }
+.odc-money.lg .odc-money-sign.btn + .odc-money-input { padding-left: 16px; }
+
+/* ---------- CurrencySelect (currency-only picker) ----------
+   The standalone counterpart to MoneyField's currency segment, in the standard
+   Select chrome (a MudAutocomplete, so it lines up in a form row and types to
+   filter). The rows are the SAME rows as the money popover — code first in mono,
+   name beside it — reached in MudBlazor's teleported popover, hence the global
+   selectors here rather than a scoped .razor.css. */
+.odc-cursel-item { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.odc-cursel-code {
+  flex: none; min-width: 42px;
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase;
+}
+.odc-cursel-name { color: var(--mud-palette-text-secondary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The trigger's own text is the code plus the name, so the code reads mono there too. */
+.odc-cursel .mud-input-slot { font-family: var(--font-mono); letter-spacing: 0.04em; }
+
 /* ---------- NoteField (multi-line input with character counter) ---------- */
 .odc-field-head { display: flex; align-items: center; gap: 8px; }
 .odc-field-head .odc-field-label { margin: 0; }
@@ -946,22 +1112,22 @@
    the standard `scrollbar-*` properties; WebKit/Blink use ::-webkit-scrollbar.
    The 3px surface-colored border insets the thumb into a rounded pill. */
 .ods-modal-content,
-.odc-ms-pop, .odc-tagms-pop, .odc-smarttags-pop {
+.odc-ms-pop, .odc-tagms-pop, .odc-smarttags-pop, .odc-money-list {
   scrollbar-width: thin;
   scrollbar-color: var(--mud-palette-lines-default) transparent;
 }
 .ods-modal-content::-webkit-scrollbar,
 .odc-ms-pop::-webkit-scrollbar, .odc-tagms-pop::-webkit-scrollbar,
-.odc-smarttags-pop::-webkit-scrollbar { width: 10px; height: 10px; }
+.odc-smarttags-pop::-webkit-scrollbar, .odc-money-list::-webkit-scrollbar { width: 10px; height: 10px; }
 .ods-modal-content::-webkit-scrollbar-thumb,
 .odc-ms-pop::-webkit-scrollbar-thumb, .odc-tagms-pop::-webkit-scrollbar-thumb,
-.odc-smarttags-pop::-webkit-scrollbar-thumb {
+.odc-smarttags-pop::-webkit-scrollbar-thumb, .odc-money-list::-webkit-scrollbar-thumb {
   background: var(--mud-palette-lines-default); border-radius: 5px;
   border: 3px solid var(--mud-palette-surface);
 }
 .ods-modal-content::-webkit-scrollbar-track,
 .odc-ms-pop::-webkit-scrollbar-track, .odc-tagms-pop::-webkit-scrollbar-track,
-.odc-smarttags-pop::-webkit-scrollbar-track { background: transparent; }
+.odc-smarttags-pop::-webkit-scrollbar-track, .odc-money-list::-webkit-scrollbar-track { background: transparent; }
 
 /* ---------- TypeSelect (shared registry type picker) ----------
    Mirrors the DS .odc-select chrome (components.css). The trigger is a custom
@@ -1228,10 +1394,11 @@
 .odc-rec thead th.odc-rec-numeric { font-family: var(--font-sans); }
 .odc-rec td.odc-rec-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 /* Signed-money tone for amount cells / meta tiles (income mint · expense coral).
-   Named .odc-money (not .odc-amount) so it never collides with the AmountField
-   input box (.odc-amount), which is a bordered control, not a colored number. */
-.odc-money.income  { color: var(--finance-income); }
-.odc-money.expense { color: var(--finance-expense); }
+   A client-only class under the ods- prefix: the design system has since claimed
+   .odc-money for MoneyField's control box, and this is a colored number, not a
+   bordered control — so it carries a name the DS can never take. */
+.ods-signed.income  { color: var(--finance-income); }
+.ods-signed.expense { color: var(--finance-expense); }
 .odc-rec tbody tr.expanded { background: color-mix(in oklab, var(--mud-palette-primary) 6%, transparent); }
 .odc-rec tbody tr.expanded > td { border-bottom-color: transparent; }
 
@@ -1590,13 +1757,8 @@
 /* ---- NEW / EDIT ESTIMATE dialog ---- */
 .est-dialog { max-width: 520px; }
 .est-value-block { display: flex; flex-direction: column; gap: 10px; }
-.est-currency-lock {
-  display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px;
-  border: 1px solid var(--mud-palette-divider); border-radius: 8px; background: var(--mud-palette-background); opacity: 0.75;
-}
-.est-currency-lock .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
-.est-currency-lock .code { font: 500 13px/1 var(--font-mono); color: var(--mud-palette-text-primary); }
-.est-currency-lock .note { font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+/* The locked-currency plate (.est-currency-lock) was retired: the account's code now reads inside
+   OdsMoneyField's own currency segment, which is what "locked" looks like there. */
 .est-rec-hint {
   display: flex; align-items: flex-start; gap: 8px;
   font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary);
@@ -3409,7 +3571,7 @@
     font: 600 11px/1 var(--font-sans); letter-spacing: var(--tracking-caps, 0.08em);
     text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none;
 }
-.odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light, var(--mud-palette-divider)); }
+.odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider); }
 .odc-sectiondivider-meta { font: var(--fw-regular) 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
 
 /* Smart tags, bare (AccountSmartTagsSection Chrome="false") — the host supplies the

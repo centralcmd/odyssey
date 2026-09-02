@@ -23,10 +23,10 @@ namespace Odyssey.Client.Tests;
 /// </remarks>
 public class ReferenceDataCacheTests
 {
-    private static ExistingCurrency Currency(string code, bool archived = false) => new()
+    private static ExistingCurrency Currency(string code, bool archived = false, string? name = null) => new()
     {
         CurrencyCode = code,
-        Name = code,
+        Name = name ?? code,
         Symbol = code,
         MinorUnits = 2,
         Archived = archived ? DateTime.UtcNow : null,
@@ -94,7 +94,7 @@ public class ReferenceDataCacheTests
         {
             Assert.Equal(2, (await cache.CurrenciesAsync()).Count);
             await cache.ActiveCurrenciesAsync();
-            await cache.SearchCurrencyCodesAsync("u");
+            await cache.CurrencyOptionsAsync();
         }
 
         harness.Currencies.Verify(
@@ -233,18 +233,32 @@ public class ReferenceDataCacheTests
     }
 
     [Fact]
-    public async Task SearchCurrencyCodes_matches_case_insensitively_and_offers_everything_when_blank()
+    public async Task CurrencyOptions_carry_the_code_as_the_value_and_the_NAME_alone_as_the_label()
+    {
+        // The label must not repeat the code: OdsCurrencySelect / OdsMoneyField render the code
+        // themselves, in its own mono gutter, so a "USD · US Dollar" label would print it twice.
+        var harness = NewHarness();
+        harness.Currencies
+            .Setup(c => c.ListAllAsync(It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(
+                Currency("USD", name: "US Dollar"),
+                Currency("NOK", name: "Norwegian krone"),
+                Currency("SEK", name: "Swedish krona")));
+
+        var options = await harness.Cache.CurrencyOptionsAsync();
+
+        Assert.Equal(["NOK", "SEK", "USD"], options.Select(o => o.Value));
+        Assert.Equal(["Norwegian krone", "Swedish krona", "US Dollar"], options.Select(o => o.Label));
+    }
+
+    [Fact]
+    public async Task CurrencyOptions_offer_only_the_live_currencies()
     {
         var harness = NewHarness();
         harness.Currencies
             .Setup(c => c.ListAllAsync(It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Ok(Currency("USD"), Currency("NOK"), Currency("SEK")));
-        var cache = harness.Cache;
+            .ReturnsAsync(Ok(Currency("USD"), Currency("NOK", archived: true)));
 
-        Assert.Equal(["NOK", "SEK", "USD"], await cache.SearchCurrencyCodesAsync(null));
-        Assert.Equal(["NOK", "SEK", "USD"], await cache.SearchCurrencyCodesAsync("  "));
-        Assert.Equal(["NOK", "SEK"], await cache.SearchCurrencyCodesAsync("k"));
-        Assert.Equal(["USD"], await cache.SearchCurrencyCodesAsync("uS"));
-        Assert.Empty(await cache.SearchCurrencyCodesAsync("zzz"));
+        Assert.Equal(["USD"], (await harness.Cache.CurrencyOptionsAsync()).Select(o => o.Value));
     }
 }

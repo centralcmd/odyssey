@@ -33,12 +33,8 @@
     else
     {
         <OdsFormRow>
-            <MudAutocomplete T="ExistingCurrency" Label="From currency" Variant="Variant.Outlined" Margin="Margin.Dense"
-                             @bind-Value="_from" SearchFunc="@SearchCurrencies" ToStringFunc="@CurrencyLabel"
-                             CoerceValue="false" ResetValueOnEmptyText="true" Dense="true" MaxItems="50" />
-            <MudAutocomplete T="ExistingCurrency" Label="To currency" Variant="Variant.Outlined" Margin="Margin.Dense"
-                             @bind-Value="_to" SearchFunc="@SearchCurrencies" ToStringFunc="@CurrencyLabel"
-                             CoerceValue="false" ResetValueOnEmptyText="true" Dense="true" MaxItems="50" />
+            <OdsCurrencySelect Label="From currency" @bind-Value="_from" Options="_currencyOptions" />
+            <OdsCurrencySelect Label="To currency" @bind-Value="_to" Options="_currencyOptions" />
         </OdsFormRow>
     }
 
@@ -63,9 +59,9 @@
     /// <summary>When set, the dialog edits this rate (currency pair locked). Null = create mode.</summary>
     [Parameter] public ExistingExchangeRate? Rate { get; set; }
 
-    private List<ExistingCurrency> _currencies = [];
-    private ExistingCurrency? _from;
-    private ExistingCurrency? _to;
+    private IReadOnlyList<OdsOption> _currencyOptions = [];
+    private string? _from;
+    private string? _to;
     private decimal _rate = 1m;
     private DateTime? _asOf;
 
@@ -75,8 +71,8 @@
         ? "Correct this entry's rate or effective date. The currency pair can't be changed."
         : "This adds a new entry and becomes the current rate for the pair — to correct an existing entry, edit it instead.";
 
-    private string? FromCode => IsEdit ? Rate!.FromCurrencyCode : _from?.CurrencyCode;
-    private string? ToCode => IsEdit ? Rate!.ToCurrencyCode : _to?.CurrencyCode;
+    private string? FromCode => IsEdit ? Rate!.FromCurrencyCode : _from;
+    private string? ToCode => IsEdit ? Rate!.ToCurrencyCode : _to;
 
     private string RateHelperText =>
         FromCode is not null && ToCode is not null
@@ -98,24 +94,8 @@
         if (!OperatingSystem.IsBrowser() || IsEdit)
             return;
 
-        _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
+        _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
     }
-
-    private Task<IEnumerable<ExistingCurrency>> SearchCurrencies(string? value, CancellationToken token)
-    {
-        IEnumerable<ExistingCurrency> results = _currencies;
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            results = _currencies.Where(currency =>
-                currency.CurrencyCode.Contains(value, StringComparison.OrdinalIgnoreCase)
-                || currency.Name.Contains(value, StringComparison.OrdinalIgnoreCase));
-        }
-
-        return Task.FromResult(results);
-    }
-
-    private static string CurrencyLabel(ExistingCurrency? currency) =>
-        currency is null ? string.Empty : $"{currency.CurrencyCode} — {currency.Name}";
 
     private async Task<bool> SaveAsync()
     {
@@ -128,7 +108,7 @@
             return false;
         }
 
-        if (string.Equals(_from.CurrencyCode, _to.CurrencyCode, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(_from, _to, StringComparison.OrdinalIgnoreCase))
         {
             Snackbar.Add("From and To currencies must differ.", Severity.Error);
             return false;
@@ -142,8 +122,8 @@
 
         var newRate = new NewExchangeRate
         {
-            FromCurrencyCode = _from.CurrencyCode,
-            ToCurrencyCode = _to.CurrencyCode,
+            FromCurrencyCode = _from,
+            ToCurrencyCode = _to,
             Rate = _rate,
             // MudDatePicker yields a local date; treat it as UTC midnight for the AsOf timestamp.
             AsOf = _asOf.HasValue ? DateTime.SpecifyKind(_asOf.Value, DateTimeKind.Utc) : null,

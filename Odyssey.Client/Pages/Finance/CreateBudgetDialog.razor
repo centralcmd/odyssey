@@ -41,21 +41,9 @@
 
     <!-- Base currency -->
     <div class="aam-field">
-        <MudAutocomplete T="string"
-                         Label="Base currency"
-                         Variant="Variant.Outlined"
-                         Margin="Margin.Dense"
-                         Value="@_baseCurrencyCode"
-                         ValueChanged="OnBaseCurrencyChanged"
-                         SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
-                         MinCharacters="0"
-                         MaxItems="10"
-                         Dense="true"
-                         CoerceValue="true"
-                         CoerceText="false"
-                         ResetValueOnEmptyText="false"
-                         HelperText="All planned amounts use this currency."
-                         ToStringFunc="@(code => code ?? string.Empty)" />
+        <OdsCurrencySelect Label="Base currency" Value="@_baseCurrencyCode" ValueChanged="OnBaseCurrencyChanged"
+                           Options="_currencyOptions"
+                           Help="All planned amounts use this currency." />
     </div>
 
     <!-- Description -->
@@ -85,6 +73,7 @@
     private DateTime? _endDate = DateTime.UtcNow.Date.AddMonths(1);
     private string _baseCurrencyCode = string.Empty;
     private List<ExistingCurrency> _currencies = [];
+    private IReadOnlyList<OdsOption> _currencyOptions = [];
 
     private bool _nameError;
     private bool _dateError;
@@ -113,6 +102,7 @@
     private async Task LoadCurrencies()
     {
         _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
+        _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
 
         // Only snap to a live currency while creating — an existing budget keeps its own
         // base currency even if that currency has since been archived.

@@ -1,0 +1,169 @@
+@*
+    OdsCurrencySelect — the currency-ONLY picker
+    (Odyssey Design System · components/CurrencySelect).
+
+    The standalone counterpart to OdsMoneyField's currency segment: pick an ISO 4217 code
+    with no amount attached — an account's currency, a budget's or tax statement's base
+    currency, a rate's From / To. Where there IS an amount, use OdsMoneyField.
+
+    Same list as the money popover — the ISO code first in mono, the currency name beside it,
+    filtered on either — wearing the standard Select chrome so it lines up in a form row. A
+    MudAutocomplete rather than a MudSelect, because that is the MudBlazor primitive that
+    carries the design's search: the query is typed in the trigger instead of a box above the
+    list, which is the one behavioural difference from the DS render.
+
+    Bind via @bind-Value; Value is the ISO code.
+*@
+
+@inject IJSRuntime Js
+
+<MudAutocomplete T="OdsOption"
+                 @ref="_autocomplete"
+                 Value="@Selected"
+                 ValueChanged="OnSelected"
+                 OpenChanged="@(open => _open = open)"
+                 SearchFunc="Search"
+                 ToStringFunc="@TriggerText"
+                 Label="@EffectiveLabel"
+                 Placeholder="@Placeholder"
+                 Variant="@Variant"
+                 Margin="Margin.Dense"
+                 Dense="true"
+                 MaxItems="null"
+                 CoerceValue="false"
+                 CoerceText="false"
+                 ResetValueOnEmptyText="false"
+                 Clearable="false"
+                 Disabled="@Disabled"
+                 Required="@Required"
+                 HelperText="@(string.IsNullOrEmpty(Error) ? Help : null)"
+                 Error="@(!string.IsNullOrEmpty(Error))"
+                 ErrorText="@Error"
+                 InputId="@InputId"
+                 Class="@WrapClass"
+                 @attributes="UserAttributes">
+    <ItemTemplate Context="option">
+        <span class="odc-cursel-item">
+            <span class="odc-cursel-code">@option.Value</span>
+            @if (!string.IsNullOrEmpty(option.Label) && option.Label != option.Value)
+            {
+                <span class="odc-cursel-name">@option.Label</span>
+            }
+        </span>
+    </ItemTemplate>
+    <NoItemsTemplate>
+        <div class="odc-combo-empty" role="status" aria-live="polite">No currency matches</div>
+    </NoItemsTemplate>
+</MudAutocomplete>
+
+@code {
+    /// <summary>Visible label. Defaults to "Currency"; pass an empty string for a label-less cell
+    /// (a dense grid, a settings row) and name it with <see cref="AriaLabel"/> instead.</summary>
+    [Parameter] public string? Label { get; set; } = "Currency";
+
+    /// <summary>Selected ISO 4217 code. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>The selectable currencies — <c>Value</c> is the ISO code, <c>Label</c> its name.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsOption> Options { get; set; } = [];
+
+    [Parameter] public string? Placeholder { get; set; } = "Select a currency…";
+
+    /// <summary>Show the currency name beside the code on the trigger. Default true.</summary>
+    [Parameter] public bool ShowName { get; set; } = true;
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    /// <summary>Mark the field as optional — appends a muted "(optional)" to the label.
+    /// (MudBlazor owns this control's label element, so the marker is folded into the text.)</summary>
+    [Parameter] public bool Optional { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>The input chrome. Outlined (default) matches the form-row fields; Filled matches
+    /// the compact controls on a settings row.</summary>
+    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
+
+    /// <summary>Accessible name for a label-less picker (a dense grid cell, a settings row).
+    /// Applied to the inner input, which is the element that carries the combobox role.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string InputId = default!;
+    private MudAutocomplete<OdsOption>? _autocomplete;
+    private bool _open;
+    private int _shownOptionCount;
+
+    protected override void OnInitialized() => InputId = Id ?? $"odc-cursel-{Guid.NewGuid():N}";
+
+    // The currency list is fetched, so a dialog that opens this picker on its first render can have
+    // the menu up before the options land. MudAutocomplete caches the popup's last search result,
+    // which would leave it reading "No currency matches" until the user typed — re-running the
+    // search is the only way to replace what it is already showing.
+    protected override async Task OnParametersSetAsync()
+    {
+        var count = Options.Count;
+        var arrived = count > _shownOptionCount;
+        _shownOptionCount = count;
+
+        if (arrived && _open && _autocomplete is not null)
+            await _autocomplete.OpenMenuAsync();
+    }
+
+    private string WrapClass => string.IsNullOrEmpty(Class) ? "odc-cursel" : $"odc-cursel {Class}";
+
+    private string? EffectiveLabel =>
+        Optional && !string.IsNullOrEmpty(Label) ? $"{Label} (optional)" : Label;
+
+    private OdsOption? Selected =>
+        Options.FirstOrDefault(o => string.Equals(o.Value, Value, StringComparison.OrdinalIgnoreCase));
+
+    // The trigger reads like the option row: code, then name. ShowName="false" leaves the bare code,
+    // for a cell too narrow to carry it.
+    private string TriggerText(OdsOption? option) =>
+        option is null ? string.Empty
+        : ShowName && !string.IsNullOrEmpty(option.Label) && option.Label != option.Value
+            ? $"{option.Value} · {option.Label}"
+            : option.Value;
+
+    // Matching the code OR the name: "kro" finds NOK and SEK, "NO" finds NOK.
+    private Task<IEnumerable<OdsOption>> Search(string? text, CancellationToken token)
+    {
+        var query = (text ?? string.Empty).Trim();
+        if (query.Length == 0) return Task.FromResult<IEnumerable<OdsOption>>(Options);
+
+        return Task.FromResult<IEnumerable<OdsOption>>(
+            [.. Options.Where(o => o.Value.Contains(query, StringComparison.OrdinalIgnoreCase)
+                                   || o.Label.Contains(query, StringComparison.OrdinalIgnoreCase))]);
+    }
+
+    // MudAutocomplete splats unmatched attributes onto its wrapper, not the inner input, so a
+    // label-less picker's accessible name has to be written onto the input itself.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || string.IsNullOrEmpty(AriaLabel)) return;
+        try { await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-label", AriaLabel); }
+        catch { /* JS unavailable (e.g. prerender / teardown) */ }
+    }
+
+    private async Task OnSelected(OdsOption? option)
+    {
+        // CoerceValue is off, so a cleared or unmatched query leaves the selection alone rather than
+        // silently emptying a required currency.
+        if (option is null) return;
+        Value = option.Value;
+        await ValueChanged.InvokeAsync(option.Value);
+    }
+}

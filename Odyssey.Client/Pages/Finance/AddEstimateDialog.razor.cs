@@ -33,8 +33,6 @@ public partial class AddEstimateDialog
 
     private readonly Dictionary<string, string> _errors = new();
 
-    private string CurrencySymbol => _currencySymbol;
-
     protected override void OnInitialized()
     {
         _recommended = EstimateVisuals.IsRecommended(Account.AccountType);

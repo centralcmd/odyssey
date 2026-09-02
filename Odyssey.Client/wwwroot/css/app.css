@@ -531,28 +531,10 @@ html:not([data-theme='dark']) .mud-elevation-16{ box-shadow: 0 24px 60px rgba(14
 .atm-dialog.mud-dialog { max-width: 880px; }
 
 /* ---- Amount hero ---- */
+/* One control now: <OdsMoneyField Size="lg"> owns the sign segment, the amount and the currency
+   code, so the hand-rolled .atm-amount box and the separate .atm-seg direction toggle are both
+   gone. The block survives only to give the field its own column in the form grid. */
 .atm-amount-block { display: flex; flex-direction: column; gap: 10px; }
-/* The direction toggle is now <OdsSegmentedControl>; its .atm-seg* styles were removed. */
-
-.atm-amount {
-  display: flex; align-items: center; gap: 6px;
-  height: 64px; padding: 0 18px; border-radius: var(--radius-sm);
-  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background);
-  transition: border-color var(--duration-base) var(--ease-standard);
-}
-.atm-amount:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); }
-.atm-amount.has-error { border-color: var(--mud-palette-error); }
-.atm-amount-sign { font-size: 1.875rem; font-weight: 600; line-height: 1; width: 18px; text-align: center; color: var(--mud-palette-text-secondary); }
-.atm-amount.expense .atm-amount-sign { color: var(--finance-expense); }
-.atm-amount.income  .atm-amount-sign { color: var(--finance-income); }
-.atm-amount-cur { font-size: 1.375rem; font-weight: 500; line-height: 1; color: var(--mud-palette-text-secondary); }
-.atm-amount input {
-  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
-  font-family: 'Roboto Mono', monospace; font-variant-numeric: tabular-nums;
-  font-size: 1.875rem; font-weight: 600; line-height: 1; letter-spacing: -0.01em;
-  color: var(--mud-palette-text-primary);
-}
-.atm-amount input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
 
 /* ---- Account picker rows ---- */
 .atm-acct-current { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }

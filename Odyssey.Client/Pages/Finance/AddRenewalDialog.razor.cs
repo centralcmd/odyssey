@@ -29,6 +29,5 @@ public partial class AddRenewalDialog
     private bool _isSaving;
 
     private List<OdsOption> _currencyOptions = [];
-    private Dictionary<string, string> _symbols = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _errors = new();
 }

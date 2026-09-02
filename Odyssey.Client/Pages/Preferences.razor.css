@@ -13,6 +13,13 @@
     flex: none;
 }
 
+/* The currency picker sits in the row's right-hand group, so it is sized here rather than
+   filling the row the way a form-column control would. */
+.pref-currency {
+    min-width: 190px;
+    max-width: 240px;
+}
+
 /* ── Per-row unsaved-change flag ──
    The control and its flag share a right-aligned group. The dot's slot is
    always laid out (flag is flex:none + the group gap), and only its opacity

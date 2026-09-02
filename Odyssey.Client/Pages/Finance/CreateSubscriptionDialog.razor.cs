@@ -60,9 +60,12 @@ public partial class CreateSubscriptionDialog
     private string? _amountError;
     private string? _firstBillingError;
 
-    private string CurrencySymbol => Currencies
-        .FirstOrDefault(c => string.Equals(c.CurrencyCode, _currencyCode, StringComparison.OrdinalIgnoreCase))?.Symbol
-        ?? "$";
+    // The option label is the currency NAME alone — OdsMoneyField renders the ISO code itself, in
+    // mono, so a "USD · US Dollar" label would print the code twice.
+    private IReadOnlyList<OdsOption> CurrencyOptions =>
+        [.. Currencies.Where(c => c.Archived is null)
+            .OrderBy(c => c.CurrencyCode)
+            .Select(c => new OdsOption(c.CurrencyCode, c.Name))];
 
     protected override void OnInitialized()
     {

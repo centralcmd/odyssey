@@ -141,23 +141,27 @@
                             </div>
                         </div>
 
-                        <!-- Amount (signed) -->
+                        @* Amount (signed). The column is too narrow for a labelled OdsMoneyField, so
+                           this stays a bare input — but it follows the same rules: one decimal
+                           separator, a minus only in the lead, and − / + flip the sign rather than
+                           typing a character. *@
                         <div class="fan-cell">
                             <div class="fan-amount @(row.Amount < 0 ? "expense" : "income")">
-                                <input class="fan-input ta-r mono" inputmode="decimal" value="@FileAnalysisSession.FormatAmount(row.Amount)"
-                                       @onchange="@(e => FileAnalysisSession.SetAmount(row, e.Value?.ToString()))" aria-label="Amount" />
+                                <input class="fan-input ta-r mono" id="@AmountInputId(row)" inputmode="decimal"
+                                       value="@row.AmountText"
+                                       @onkeydown="@(e => OnAmountKeyDownAsync(row, e))"
+                                       @oninput="@(e => OnAmountInputAsync(row, e))" aria-label="Amount" />
                             </div>
                         </div>
 
                         <!-- Currency -->
                         <div class="fan-cell fan-cur">
-                            <select class="fan-select" value="@row.Currency"
-                                    @onchange="@(e => row.Currency = e.Value?.ToString() ?? row.Currency)" aria-label="Currency">
-                                @foreach (var c in Session.CurrencyOptions(row.Currency))
-                                {
-                                    <option value="@c">@c</option>
-                                }
-                            </select>
+                            @* Code only — the cell has no room for a name, and every row already
+                               reads as one currency. *@
+                            <OdsCurrencySelect Label="" AriaLabel="Currency" ShowName="false"
+                                               Value="@row.Currency"
+                                               ValueChanged="@(v => row.Currency = v)"
+                                               Options="@Session.CurrencyPickerOptions(row.Currency)" />
                         </div>
 
                         <!-- Confidence (read-only meter) -->

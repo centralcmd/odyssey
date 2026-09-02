@@ -12,6 +12,7 @@ public partial class Preferences
     // (after injection, before render) so the page opens on the right values, no flash.
     private bool _isDarkMode;
     private bool _savedDarkMode;
+    private IReadOnlyList<OdsOption> _currencyOptions = [];
     private string _currencyCode = string.Empty;
     private string _mainCurrencyCode = string.Empty;
     private string _savedCurrencyCode = string.Empty;
@@ -120,6 +121,7 @@ public partial class Preferences
     private async Task LoadCurrencies()
     {
         _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
+        _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
 
         if (_currencies.Count > 0 && _currencies.All(c => !string.Equals(c.CurrencyCode, _currencyCode, StringComparison.OrdinalIgnoreCase)))
             _currencyCode = _currencies[0].CurrencyCode;

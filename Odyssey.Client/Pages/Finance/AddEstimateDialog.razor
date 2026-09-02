@@ -21,35 +21,29 @@
     <ChildContent>
         <div class="ods-modal-body">
 
-            @* Value — the hero money input *@
+            @* Value — the hero money input, its currency locked to the account's *@
             <div class="est-value-block">
-                <OdsAmountField Label="Estimated value" Size="lg" Prefix="@CurrencySymbol"
-                                Value="@_valueStr" ValueChanged="OnValueChanged"
-                                Error="@(_errors.TryGetValue("value", out var valErr) ? valErr : null)">
+                <OdsMoneyField Label="Estimated value" Size="lg" AllowNegative="false"
+                               Value="@_valueStr" ValueChanged="OnValueChanged"
+                               Currency="@Account.CurrencyCode" CurrencyEditable="false"
+                               Error="@(_errors.TryGetValue("value", out var valErr) ? valErr : null)">
                     <HelpContent>
                         @if (Preview is null)
                         {
-                            <text>Amount in <b>@Account.CurrencyCode</b></text>
+                            <text>Account currency · <b>@Account.CurrencyCode</b></text>
                         }
                         else
                         {
                             <text>Recorded as <b>@Preview</b></text>
                         }
                     </HelpContent>
-                </OdsAmountField>
+                </OdsMoneyField>
             </div>
 
-            @* Currency (locked to account currency) + effective date *@
+            @* Effective date — the currency now reads inside the money field *@
             <OdsFormRow>
-                <div class="trm-field">
-                    <div class="trm-label">Currency</div>
-                    <div class="est-currency-lock">
-                        <span class="material-icons">lock</span>
-                        <span class="code">@Account.CurrencyCode</span>
-                        <span class="note">Account currency</span>
-                    </div>
-                </div>
-                <OdsDatePicker Value="_effectiveFrom" ValueChanged="OnEffectiveFromChanged" Label="Effective from" />
+                <OdsDatePicker Value="_effectiveFrom" ValueChanged="OnEffectiveFromChanged" Label="Effective from"
+                               HelperText="When this value takes effect" />
             </OdsFormRow>
             @if (_errors.TryGetValue("effectiveFrom", out var dateErr))
             {

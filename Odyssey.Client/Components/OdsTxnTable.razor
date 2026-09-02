@@ -103,7 +103,7 @@
         {
             Key = "amount", HeaderText = "Amount", Sortable = true, Align = OdsAlign.End, SortType = OdsSortType.Number,
             SortValue = t => t.Amount,
-            Cell = (t, ctx) => @<span class="odc-money @(t.Amount >= 0 ? "income" : "expense")">@SignedAmount(t)</span>
+            Cell = (t, ctx) => @<span class="ods-signed @(t.Amount >= 0 ? "income" : "expense")">@SignedAmount(t)</span>
         });
 
         columns.Add(new()

@@ -1,3 +1,4 @@
+@using System.Globalization
 @using Odyssey.Client.Authorization
 @using Odyssey.Dtos.Finance
 
@@ -31,15 +32,12 @@
         <!-- Category + Planned amount -->
         <OdsFormRow>
             <OdsBudgetCategoryTypeSelect Label="Category" @bind-Value="_categoryType" />
-            <MudNumericField T="decimal?"
-                             @bind-Value="_plannedAmount"
-                             Label="Planned amount"
-                             Placeholder="0.00"
-                             Variant="Variant.Outlined"
-                             Margin="Margin.Dense"
-                             HideSpinButtons="true"
-                             Error="@_plannedError"
-                             ErrorText="Enter a planned amount." />
+            @* A planned amount is money, and the budget's base currency is the only one it can be
+               in — so the code rides inside the control, locked. *@
+            <OdsMoneyField Label="Planned amount" @bind-Value="_plannedAmountText" AllowNegative="false"
+                           Currency="@BudgetCurrencyCode" CurrencyEditable="false"
+                           Error="@(_plannedError ? "Enter a planned amount." : null)"
+                           Help="@(_plannedError ? null : "Budget currency")" />
         </OdsFormRow>
 
         <!-- Transaction tag -->
@@ -84,6 +82,11 @@
     [Parameter]
     public string? BudgetName { get; set; }
 
+    /// <summary>The budget's base currency — the only currency a planned amount can be in, so the
+    /// money editor shows it locked rather than offering a picker.</summary>
+    [Parameter]
+    public string BudgetCurrencyCode { get; set; } = "USD";
+
     [Parameter]
     public List<ExistingTransactionTag> TransactionTags { get; set; } = [];
 
@@ -100,7 +103,9 @@
     private string? _description;
     private BudgetCategoryType _categoryType = BudgetCategoryType.Expense;
     private ExistingTransactionTag? _selectedTag;
-    private decimal? _plannedAmount;
+    // Held as text, not decimal?: OdsMoneyField is a string control, and round-tripping through
+    // decimal? on every keystroke would rewrite a partial entry ("1250.") the moment it was typed.
+    private string? _plannedAmountText;
 
     private bool _nameError;
     private bool _plannedError;
@@ -113,7 +118,7 @@
         _name = ExistingItem.Name;
         _description = ExistingItem.Description;
         _categoryType = ExistingItem.CategoryType;
-        _plannedAmount = ExistingItem.PlannedAmount;
+        _plannedAmountText = ExistingItem.PlannedAmount.ToString(CultureInfo.InvariantCulture);
         _selectedTag = TransactionTags.FirstOrDefault(t => t.TransactionTagId == ExistingItem.TransactionTagId);
     }
 
@@ -124,10 +129,21 @@
             .Where(tag => tag.Archived is null)
             .OrderBy(tag => tag.Name);
 
+    // A trailing separator is a half-finished number, not a malformed one — "1 250," reads as 1250
+    // rather than failing the field the user is still typing into.
+    private static decimal? ParsePlanned(string? text)
+    {
+        var body = (text ?? string.Empty).Replace(" ", string.Empty).Replace(',', '.').TrimEnd('.');
+        return decimal.TryParse(body, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value
+            : null;
+    }
+
     private async Task<bool> SaveAsync()
     {
+        var planned = ParsePlanned(_plannedAmountText);
         _nameError = string.IsNullOrWhiteSpace(_name);
-        _plannedError = _plannedAmount is null;
+        _plannedError = planned is null;
         if (_nameError || _plannedError)
             return false;
 
@@ -137,7 +153,7 @@
             Name = _name!.Trim(),
             Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
             CategoryType = _categoryType,
-            PlannedAmount = _plannedAmount!.Value,
+            PlannedAmount = planned!.Value,
             TransactionTagId = _selectedTag?.TransactionTagId,
         };
 

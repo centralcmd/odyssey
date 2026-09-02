@@ -1,0 +1,155 @@
+@*
+    OdsMoneyField — the canonical money editor: an amount and its ISO 4217 currency code
+    as ONE control (Odyssey Design System · components/MoneyField).
+
+    The amount is typed on the left, the code sits on the right inside the same box — no
+    separate field, no symbol. Odyssey is multi-currency and several currencies share a
+    glyph ($, kr), so the code is always shown: it is unambiguous, and it matches how
+    amounts are rendered read-only across the app.
+
+    Currency editing is optional. CurrencyOptions + CurrencyChanged make the code a picker
+    (a MudMenu popover, portaled out of the modal body and flipping when there is no room
+    below); CurrencyEditable="false" — or no options / no handler — renders it as static
+    text (the account's currency, a locked base currency). The metrics are identical either
+    way, so locking never shifts a row.
+
+    A leading Sign (− / +) and a Tone of "income" / "expense" let a signed amount read as one
+    control with the direction owned by the form. Pass Direction + DirectionChanged instead
+    and that leading segment becomes a BUTTON that flips expense ↔ income. For a plain signed
+    amount with no income/expense meaning, SignEditable makes it toggle the value's own minus
+    — picked, never typed.
+
+    Controlled: bind via @bind-Value. The value stays a string so partial entries ("3.", "1,2")
+    survive. Invalid keystrokes are blocked as typed — letters are dropped, and a second
+    decimal separator (or a non-leading minus) is rejected outright, so nothing is silently
+    rewritten later. Parse on submit. For a NON-money numeric (a rate, a percentage, a unit)
+    use OdsAmountField.
+*@
+
+@inject IJSRuntime Js
+
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+               Help="@Help" HelpContent="@HelpContent" Error="@Error" Class="@Class">
+    <div class="@BoxClass">
+        @if (DirectionMode || SignMode)
+        {
+            @* One button, two meanings: with Direction it flips expense ↔ income; with
+               SignEditable it flips the value's own sign. Either way the glyph is
+               aria-hidden and the button carries the state in its accessible name. *@
+            <button type="button"
+                    class="odc-money-sign btn"
+                    disabled="@Disabled"
+                    aria-label="@SignAriaLabel"
+                    title="@SignTitle"
+                    @onclick="FlipSignAsync">
+                <span class="odc-money-dir-sign" aria-hidden="true">@SignGlyph</span>
+            </button>
+        }
+        else if (!string.IsNullOrEmpty(SignGlyph))
+        {
+            <span class="odc-money-sign" aria-hidden="true">@SignGlyph</span>
+        }
+
+        <input id="@FieldId"
+               class="odc-money-input"
+               inputmode="decimal"
+               type="text"
+               value="@DisplayValue"
+               placeholder="@Placeholder"
+               disabled="@Disabled"
+               autofocus="@AutoFocus"
+               style="@(Align == "right" ? "text-align:right" : null)"
+               aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
+               aria-describedby="@DescribedBy"
+               @oninput="OnAmountInputAsync"
+               @onkeydown="OnAmountKeyDownAsync"
+               @attributes="UserAttributes" />
+
+        @if (CurrencyPickable)
+        {
+            <MudMenu @ref="_menu"
+                     AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     PopoverClass="odc-ms-pop-paper"
+                     ListClass="pa-0"
+                     Disabled="@(Disabled || CurrencyDisabled)"
+                     OpenChanged="OnMenuOpenChanged">
+                <ActivatorContent>
+                    @* MudMenu does not auto-wire a custom activator — forward the click to
+                       ToggleAsync or the popover never opens. *@
+                    <button type="button"
+                            id="@TriggerId"
+                            class="@TriggerClass"
+                            disabled="@(Disabled || CurrencyDisabled)"
+                            aria-haspopup="listbox"
+                            aria-expanded="@(_open ? "true" : "false")"
+                            aria-label="@CurrencyAriaLabel"
+                            @onclick="@context.ToggleAsync">
+                        <span class="odc-money-code">@CurrencyCode</span>
+                        <span class="material-icons odc-money-chev" aria-hidden="true">expand_more</span>
+                    </button>
+                </ActivatorContent>
+                <ChildContent>
+                    <div class="odc-money-pop">
+                        @if (Searchable)
+                        {
+                            @* A short list is faster to scan than to type into; a long one
+                               (the full ISO registry) needs the filter. *@
+                            <div class="odc-money-search">
+                                <span class="material-icons" aria-hidden="true">search</span>
+                                <input type="text"
+                                       id="@SearchId"
+                                       value="@_query"
+                                       placeholder="Search code or name"
+                                       aria-label="Search currencies"
+                                       aria-controls="@ListId"
+                                       autocomplete="off"
+                                       @oninput="@(e => _query = e.Value?.ToString() ?? string.Empty)"
+                                       @onkeydown="OnSearchKeyDownAsync" />
+                            </div>
+                        }
+                        <ul id="@ListId" role="listbox" aria-label="Currency" class="odc-money-list"
+                            @onkeydown="OnListKeyDownAsync">
+                            @for (var i = 0; i < Shown.Count; i++)
+                            {
+                                var index = i;
+                                var option = Shown[i];
+                                var on = string.Equals(option.Value, Currency, StringComparison.OrdinalIgnoreCase);
+                                <li>
+                                    <button type="button"
+                                            id="@OptionId(index)"
+                                            role="option"
+                                            aria-selected="@(on ? "true" : "false")"
+                                            class="odc-money-opt"
+                                            @onclick="@(() => PickAsync(option.Value))">
+                                        <span class="odc-money-tick" aria-hidden="true">
+                                            @if (on)
+                                            {
+                                                <span class="material-icons">check</span>
+                                            }
+                                        </span>
+                                        <span class="odc-money-opt-code">@option.Value</span>
+                                        @if (!string.IsNullOrEmpty(option.Label) && option.Label != option.Value)
+                                        {
+                                            <span class="odc-money-opt-label">@option.Label</span>
+                                        }
+                                    </button>
+                                </li>
+                            }
+                            @if (Shown.Count == 0)
+                            {
+                                <li class="odc-money-empty">No currency matches “@_query.Trim()”</li>
+                            }
+                        </ul>
+                    </div>
+                </ChildContent>
+            </MudMenu>
+        }
+        else
+        {
+            <span class="odc-money-cur">
+                <span class="odc-money-code">@CurrencyCode</span>
+            </span>
+        }
+    </div>
+</OdsFieldShell>

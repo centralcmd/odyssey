@@ -38,6 +38,20 @@ public sealed class FileAnalysisRow
     public string? CategoryHint { get; set; }
     public List<string> TagIds { get; set; } = [];
     public decimal Amount { get; set; }
+
+    /// <summary>
+    /// What is IN the amount cell. Held separately from <see cref="Amount"/> so a partial entry
+    /// ("12.", "-") survives a re-render instead of being rewritten by the number's own formatting;
+    /// it falls back to the formatted amount until the cell is first edited.
+    /// </summary>
+    public string AmountText
+    {
+        get => amountText ?? FileAnalysisSession.FormatAmount(Amount);
+        set => amountText = value;
+    }
+
+    private string? amountText;
+
     public string Currency { get; set; } = string.Empty;
     public string Reference { get; set; } = string.Empty;
     public decimal? LlmConfidence { get; init; }
@@ -154,6 +168,11 @@ public sealed class FileAnalysisSession
         !string.IsNullOrWhiteSpace(current) && !currencyCodes.Contains(current, StringComparer.OrdinalIgnoreCase)
             ? currencyCodes.Prepend(current)
             : currencyCodes;
+
+    /// <summary>The same codes shaped for <c>OdsCurrencySelect</c>. Code-only options: the reference
+    /// list this session carries is codes, and the grid's currency column shows no name anyway.</summary>
+    public IReadOnlyList<OdsOption> CurrencyPickerOptions(string current) =>
+        [.. CurrencyOptions(current).Select(OdsOption.From)];
 
     private static OdsOption ContactOption(Guid id, string name) =>
         new(id.ToString(), name) { Icon = "storefront" };
@@ -378,9 +397,35 @@ public sealed class FileAnalysisSession
 
     public static void SetAmount(FileAnalysisRow row, string? value)
     {
+        row.AmountText = value ?? string.Empty;
         var normalized = (value ?? string.Empty).Replace(",", string.Empty);
         if (decimal.TryParse(normalized, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
             row.Amount = parsed;
+    }
+
+    /// <summary>
+    /// The amount cell's keystroke rules, the same ones <c>OdsMoneyField</c> applies in a labelled
+    /// form: characters that are never part of an amount are dropped, and a second decimal separator
+    /// or a minus that isn't leading is REJECTED (<c>null</c>) rather than rewritten — the caller puts
+    /// the cell back to what it held. The grid keeps a bare input here because the column is too
+    /// narrow for a labelled control, not because the rules differ.
+    /// </summary>
+    public static string? SanitizeAmount(string? raw)
+    {
+        var kept = new string([.. (raw ?? string.Empty)
+            .Where(ch => char.IsAsciiDigit(ch) || ch is '.' or ',' or '-' || char.IsWhiteSpace(ch))]);
+
+        if (kept.Count(ch => ch is '.' or ',') > 1) return null;
+        if (kept.IndexOf('-') > 0) return null;
+        return kept;
+    }
+
+    /// <summary>Sets the amount's sign without touching its magnitude — typing − / + in the cell
+    /// picks the direction rather than inserting a character.</summary>
+    public static void SetAmountSign(FileAnalysisRow row, bool negative)
+    {
+        var magnitude = row.AmountText.TrimStart().TrimStart('-');
+        SetAmount(row, (negative ? "-" : string.Empty) + magnitude);
     }
 
     // ── Match state (merchant → contact) ──────────────────────────────────────

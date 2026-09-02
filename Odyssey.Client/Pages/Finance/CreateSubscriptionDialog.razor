@@ -4,7 +4,6 @@
 @using Odyssey.Dtos.Finance
 @inject ISnackbar Snackbar
 @inject IUserPreferenceService UserPreferences
-@inject IReferenceDataCache ReferenceData
 @inject ISubscriptionApiClient Subscriptions
 
 @*
@@ -46,30 +45,19 @@
                       Placeholder="Open-ended" Error="@_endError" />
     </OdsFormRow>
 
+    @* Price and its currency are one control, which frees the second column for the cadence. *@
     <OdsFormRow>
-        <OdsAmountField Label="Price" Required="true" Prefix="@CurrencySymbol" @bind-Value="_amount"
-                        Error="@_amountError" Class="sub-amount-expense" />
-        <MudAutocomplete T="string"
-                         Label="Currency"
-                         Variant="Variant.Outlined"
-                         Margin="Margin.Dense"
-                         Value="@_currencyCode"
-                         ValueChanged="OnCurrencyChanged"
-                         SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
-                         MinCharacters="0"
-                         MaxItems="10"
-                         Dense="true"
-                         CoerceValue="true"
-                         CoerceText="false"
-                         ResetValueOnEmptyText="false"
-                         ToStringFunc="@(code => code ?? string.Empty)" />
-    </OdsFormRow>
-
-    <OdsFormRow Cols="3">
+        <OdsMoneyField Label="Price" Required="true" AllowNegative="false" @bind-Value="_amount"
+                       Currency="@_currencyCode" CurrencyChanged="OnCurrencyChanged"
+                       CurrencyOptions="CurrencyOptions" CurrencySearchThreshold="0"
+                       Error="@_amountError" Class="sub-amount-expense" />
         <OdsBillingIntervalSelect Value="@_interval"
                                   ValueChanged="OnIntervalChanged"
                                   Placeholder="Choose a cadence…" Error="@_intervalError"
                                   Help="@(_intervalError is null ? "How often it bills." : null)" />
+    </OdsFormRow>
+
+    <OdsFormRow>
         <OdsNumberField Label="Every" Min="1" Step="1" Value="_intervalCount"
                         ValueChanged="OnIntervalCountChanged" Help="@EveryHelpText" />
         <OdsDateField Label="First billing date" Required="true" @bind-Value="_firstBillingDate"

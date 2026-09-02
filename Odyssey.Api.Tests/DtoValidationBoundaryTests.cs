@@ -487,25 +487,39 @@ public class DtoValidationBoundaryTests
     }
 
     // ── NewPolicyRenewal ───────────────────────────────────────────────────────
-    // Premium/CoverageAmount carry [Range(0, ...)] and the currency codes a [StringLength(3, Min = 3)].
+    // The currency codes carry [StringLength(3, Min = 3)] and Notes a [StringLength(512)].
+    // Premium/CoverageAmount deliberately carry NO lower bound — a refund or a correction to a
+    // period already recorded is a real figure — so the two cases below are the negative controls
+    // for that: they assert a negative amount gets PAST model validation, which the 404 (the policy
+    // id is unseeded, and that lookup runs after binding) is the only available proof of.
     // No positive control: a successful add needs a seeded policy; the annotation 400 precedes it.
 
     private static readonly string RenewalsPath = $"/api/insurance-policies/{Guid.NewGuid()}/renewals";
 
-    [Fact]
-    public async Task AddRenewal_NegativePremium_Returns400()
+    private static async Task PostExpectingPastModelValidation(string path, object body)
     {
-        var body = ValidRenewal();
-        body.Premium = -1m; // [Range(0, double.MaxValue)]
-        await PostExpectingBadRequest(RenewalsPath, body);
+        await using var factory = new ApiFactory(CreateClaims);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(path, body);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
-    public async Task AddRenewal_NegativeCoverageAmount_Returns400()
+    public async Task AddRenewal_NegativePremium_PassesModelValidation()
     {
         var body = ValidRenewal();
-        body.CoverageAmount = -1m; // [Range(0, double.MaxValue)]
-        await PostExpectingBadRequest(RenewalsPath, body);
+        body.Premium = -1m; // no [Range] — negatives are a supported premium figure
+        await PostExpectingPastModelValidation(RenewalsPath, body);
+    }
+
+    [Fact]
+    public async Task AddRenewal_NegativeCoverageAmount_PassesModelValidation()
+    {
+        var body = ValidRenewal();
+        body.CoverageAmount = -1m; // no [Range] — a correcting term may reduce recorded cover
+        await PostExpectingPastModelValidation(RenewalsPath, body);
     }
 
     [Fact]
