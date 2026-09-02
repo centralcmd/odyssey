@@ -197,20 +197,10 @@ public partial class OdsMoneyField
     // ---- amount input ---------------------------------------------------------------------
 
     /// <summary>
-    /// Drops characters that are never part of an amount, and returns <c>null</c> for a keystroke
-    /// that must be REJECTED outright — a second decimal separator, or a minus that isn't leading.
-    /// Rejecting beats rewriting: the caller restores what was there, so a stray key never silently
-    /// relocates the separator later.
+    /// The keystroke rules, shared with the file-analysis grid's inline amount cell so the two can
+    /// never disagree — see <see cref="OdsMoneyText"/>.
     /// </summary>
-    private string? Sanitize(string raw)
-    {
-        var kept = new string([.. raw.Where(ch =>
-            char.IsAsciiDigit(ch) || ch is '.' or ',' || char.IsWhiteSpace(ch) || (AllowNegative && ch == '-'))]);
-
-        if (kept.Count(ch => ch is '.' or ',') > 1) return null;
-        if (kept.IndexOf('-') > 0) return null;
-        return kept;
-    }
+    private string? Sanitize(string raw) => OdsMoneyText.Sanitize(raw, AllowNegative);
 
     private async Task OnAmountInputAsync(ChangeEventArgs e)
     {

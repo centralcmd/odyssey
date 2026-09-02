@@ -115,8 +115,9 @@
     private void OnCoverageChanged(string value) { _coverageStr = value; _errors.Remove("coverage"); }
     private void OnNotesChanged(string value) => _notes = value;
 
-    private static decimal? Parse(string s) =>
-        decimal.TryParse(s.Replace(",", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+    // OdsMoneyText.Parse, not a local Replace(",", "") — the money editor accepts a lone comma as a
+    // DECIMAL separator, so stripping it here read "1234,56" as 123456.
+    private static decimal? Parse(string s) => OdsMoneyText.Parse(s);
 
     private async Task CloseAsync() => await OpenChanged.InvokeAsync(false);
 

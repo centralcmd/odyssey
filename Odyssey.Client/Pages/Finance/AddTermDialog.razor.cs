@@ -165,7 +165,7 @@ public partial class AddTermDialog
     }
 
     private decimal? ParseValue() =>
-        decimal.TryParse(_valueStr.Replace(",", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+        OdsMoneyText.Parse(_valueStr);
 
     private async Task CloseAsync() => await OpenChanged.InvokeAsync(false);
 

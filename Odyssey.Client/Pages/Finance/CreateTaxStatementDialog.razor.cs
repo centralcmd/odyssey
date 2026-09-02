@@ -97,16 +97,7 @@ public partial class CreateTaxStatementDialog
     private static string MoneyText(decimal? value) =>
         value?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
 
-    /// <summary>Parses what was typed. Spaces are group separators, a comma is a decimal point, and a
-    /// trailing separator is a half-finished number rather than a malformed one — so "1 250," reads as
-    /// 1250 rather than falling to null and silently clearing the figure.</summary>
-    private static decimal? ParseMoney(string? text)
-    {
-        var body = (text ?? string.Empty).Replace(" ", string.Empty).Replace(',', '.').TrimEnd('.');
-        return decimal.TryParse(body, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
-            ? value
-            : null;
-    }
+    private static decimal? ParseMoney(string? text) => OdsMoneyText.Parse(text);
 
     private async Task LoadTags()
     {

@@ -352,11 +352,12 @@ public partial class CreateTransactionDialog
         _pendingFiles = kept;
     }
 
+    // OdsMoneyText.Parse, not a local Replace(",", "") — the money editor accepts a lone comma as a
+    // DECIMAL separator, so stripping it here read "1234,56" as 123456.
     private bool TryParseAmount(out decimal magnitude)
     {
-        var normalized = (_amountText ?? string.Empty).Replace(",", string.Empty);
-        return decimal.TryParse(normalized, System.Globalization.NumberStyles.Number,
-            System.Globalization.CultureInfo.InvariantCulture, out magnitude) && magnitude > 0;
+        magnitude = OdsMoneyText.Parse(_amountText) ?? 0m;
+        return magnitude > 0;
     }
 
     // Resolve the selected contact id to a real Guid, mapping an optimistic temp id through the

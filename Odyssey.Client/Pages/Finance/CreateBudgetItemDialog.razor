@@ -129,15 +129,7 @@
             .Where(tag => tag.Archived is null)
             .OrderBy(tag => tag.Name);
 
-    // A trailing separator is a half-finished number, not a malformed one — "1 250," reads as 1250
-    // rather than failing the field the user is still typing into.
-    private static decimal? ParsePlanned(string? text)
-    {
-        var body = (text ?? string.Empty).Replace(" ", string.Empty).Replace(',', '.').TrimEnd('.');
-        return decimal.TryParse(body, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
-            ? value
-            : null;
-    }
+    private static decimal? ParsePlanned(string? text) => OdsMoneyText.Parse(text);
 
     private async Task<bool> SaveAsync()
     {

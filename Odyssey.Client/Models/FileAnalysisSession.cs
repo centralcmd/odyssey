@@ -398,27 +398,17 @@ public sealed class FileAnalysisSession
     public static void SetAmount(FileAnalysisRow row, string? value)
     {
         row.AmountText = value ?? string.Empty;
-        var normalized = (value ?? string.Empty).Replace(",", string.Empty);
-        if (decimal.TryParse(normalized, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+        if (OdsMoneyText.Parse(value) is { } parsed)
             row.Amount = parsed;
     }
 
     /// <summary>
     /// The amount cell's keystroke rules, the same ones <c>OdsMoneyField</c> applies in a labelled
-    /// form: characters that are never part of an amount are dropped, and a second decimal separator
-    /// or a minus that isn't leading is REJECTED (<c>null</c>) rather than rewritten — the caller puts
-    /// the cell back to what it held. The grid keeps a bare input here because the column is too
-    /// narrow for a labelled control, not because the rules differ.
+    /// form — one shared implementation, so the grid and the field can never drift apart. The grid
+    /// keeps a bare input because the column is too narrow for a labelled control, not because the
+    /// rules differ. Returns <c>null</c> to reject the keystroke; the caller puts the cell back.
     /// </summary>
-    public static string? SanitizeAmount(string? raw)
-    {
-        var kept = new string([.. (raw ?? string.Empty)
-            .Where(ch => char.IsAsciiDigit(ch) || ch is '.' or ',' or '-' || char.IsWhiteSpace(ch))]);
-
-        if (kept.Count(ch => ch is '.' or ',') > 1) return null;
-        if (kept.IndexOf('-') > 0) return null;
-        return kept;
-    }
+    public static string? SanitizeAmount(string? raw) => OdsMoneyText.Sanitize(raw, allowNegative: true);
 
     /// <summary>Sets the amount's sign without touching its magnitude — typing − / + in the cell
     /// picks the direction rather than inserting a character.</summary>
