@@ -5,6 +5,24 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0](https://github.com/centralcmd/odyssey/compare/v0.21.0...v0.22.0) (2026-09-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* a policy party is written one at a time and carries its term
+* an insurance policy carries four link collections
+
+### Features
+
+* a policy party is written one at a time and carries its term ([8513433](https://github.com/centralcmd/odyssey/commit/851343378813b0e950eb57139c55edf07dc00d56))
+* an insurance policy carries four link collections ([0cbc3cf](https://github.com/centralcmd/odyssey/commit/0cbc3cfdfae7727a6796e2f68582d98f7747d24a))
+
+
+### Documentation
+
+* update design system ([16a3c3b](https://github.com/centralcmd/odyssey/commit/16a3c3b84550fb278f99fb02a168db918ef1415b))
+
 ## [0.21.0](https://github.com/centralcmd/odyssey/compare/v0.20.0...v0.21.0) (2026-09-01)
 
 
