@@ -153,7 +153,7 @@ public class InsuranceService
                 Name = p.Name,
                 PolicyNumber = p.PolicyNumber,
                 Type = p.Type.Adapt<DtoInsurancePolicyType>(),
-                Insurers = BuildContactReferences(p.Insurers.Select(i => i.ContactId), insurerRefs),
+                Insurers = BuildContactReferences(p.Insurers.Select(i => new LinkTerm(i.ContactId, i.FromDate, i.ToDate)), insurerRefs),
                 CoverageStatus = coverageStatus,
                 CurrentRenewalEndDate = current?.ToDate,
                 // The boundary dates a row headlines on when there is no current period. Free here:
@@ -340,6 +340,322 @@ public class InsuranceService
 
     public async Task<bool> Exists(Guid id, CancellationToken cancellationToken = default) =>
         await context.InsurancePolicies.AnyAsync(p => p.InsurancePolicyId == id, cancellationToken);
+
+    // ── Parties: one link at a time (design system, AddPolicyPartyModal) ──────────
+
+    /// <summary>
+    /// Links ONE contact or account to the policy in one of its four roles, with an optional term.
+    /// The full-set <see cref="Update"/> path is untouched and still works; this is the write the
+    /// New party dialog makes, and the only one that can carry a term.
+    /// </summary>
+    public async Task<ExistingInsurancePolicy?> AddParty(
+        Guid policyId, InsurancePolicyPartyRequest request, string? userId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var policy = await LoadWithDetailsForUpdate(policyId, cancellationToken);
+        if (policy is null)
+        {
+            return null;
+        }
+
+        await WritePartyAsync(policy, request, existing: null, userId, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        var reloaded = await LoadWithDetails(policyId, cancellationToken);
+        return await ProjectAsync(reloaded!, cancellationToken);
+    }
+
+    /// <summary>
+    /// Re-writes ONE existing party — its role, its target, its dates, or any combination. The route
+    /// names the link as it stands and the body names what it should become, so a party moved between
+    /// roles stays ONE party: the old row is dropped and the new one written in the same
+    /// <c>SaveChangesAsync</c>, never left as two.
+    /// </summary>
+    public async Task<ExistingInsurancePolicy?> UpdateParty(
+        Guid policyId, InsurancePartyRole role, Guid targetId, InsurancePolicyPartyRequest request,
+        string? userId = null, CancellationToken cancellationToken = default)
+    {
+        var policy = await LoadWithDetailsForUpdate(policyId, cancellationToken);
+        if (policy is null)
+        {
+            return null;
+        }
+
+        var existing = FindParty(policy, role, targetId);
+        if (existing is null)
+        {
+            throw new DomainNotFoundException(
+                $"Policy {policyId} has no {PartyNoun(role)} party for {targetId}.");
+        }
+
+        await WritePartyAsync(policy, request, existing, userId, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        var reloaded = await LoadWithDetails(policyId, cancellationToken);
+        return await ProjectAsync(reloaded!, cancellationToken);
+    }
+
+    /// <summary>
+    /// Detaches ONE party. The linked contact or account is never touched — a party is a link, so this
+    /// removes the link row and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// Unlike an omission from the full-set <see cref="Update"/>, this is allowed even when the target
+    /// is archived or unresolvable. §9's 422 exists because an omission cannot be told apart from a
+    /// caller that never saw the member; a DELETE that names the link says exactly what it means. The
+    /// UI still withholds the affordance on an unnamed member, because its record is not in the picker
+    /// and the edit dialog could not round-trip it.
+    /// </remarks>
+    public async Task<bool> RemoveParty(
+        Guid policyId, InsurancePartyRole role, Guid targetId, CancellationToken cancellationToken = default)
+    {
+        var policy = await LoadWithDetailsForUpdate(policyId, cancellationToken);
+        var existing = policy is null ? null : FindParty(policy, role, targetId);
+        if (existing is null)
+        {
+            return false;
+        }
+
+        RemoveParty(policy!, role, existing);
+        await context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// The shared body of the add and the edit: validate the desired link, drop the row being replaced
+    /// (if any), and insert the new one. Nothing is saved here — the caller commits, so a role move is
+    /// one transaction.
+    /// </summary>
+    private async Task WritePartyAsync(
+        InsurancePolicy policy, InsurancePolicyPartyRequest request, object? existing, string? userId,
+        CancellationToken cancellationToken)
+    {
+        var role = request.Role;
+        ValidatePartyTerm(policy, request);
+
+        // A target already in the requested role is a duplicate — unless it IS the row being edited,
+        // which is a date-only change.
+        var duplicate = FindParty(policy, role, request.TargetId);
+        if (duplicate is not null && !ReferenceEquals(duplicate, existing))
+        {
+            throw new DomainConflictException(
+                $"That {PartyNoun(role)} is already linked to this policy.");
+        }
+
+        // Only a NEW target is validated for existence and archived state — re-dating a party whose
+        // contact was archived meanwhile must not fail, the same rule the full-set diff applies.
+        var alreadyLinked = existing is not null && PartyTargetId(existing) == request.TargetId;
+        if (!alreadyLinked)
+        {
+            await EnsurePartyTargetAvailable(role, request.TargetId, cancellationToken);
+        }
+
+        var field = PartyField(role);
+        var caps = await systemSettingsLookup.GetRequestCapsAsync(cancellationToken);
+        // The resulting ROW count: the collection's current size, plus one unless this write is
+        // re-using a row already in it.
+        var resulting = PartyCount(policy, role) + (duplicate is not null ? 0 : 1);
+        if (resulting > caps.MaxLinksPerPolicy)
+        {
+            // Keyed on TargetId, not on the bulk DTO's collection property: ApiProblem.Errors joins on
+            // the property name of the request that was actually SENT, and a per-party write has no
+            // InsurerIds field for a client to mark. The collection is still named in the message,
+            // where it reads as the role rather than as a field the caller is expected to find.
+            throw new DomainUnprocessableException(
+                $"A policy takes at most {caps.MaxLinksPerPolicy} {field.Noun}; this would leave {resulting}.",
+                nameof(InsurancePolicyPartyRequest.TargetId));
+        }
+
+        // The old row goes first, so a party moved between roles is one party rather than two.
+        string? beneficiaryAuthor = null;
+        DateTime? beneficiaryStamp = null;
+        if (existing is not null)
+        {
+            if (existing is InsurancePolicyBeneficiary previous)
+            {
+                // A beneficiary that stays a beneficiary keeps its original author: re-dating a
+                // designation never rewrites who named it.
+                beneficiaryAuthor = previous.CreatedByUserId;
+                beneficiaryStamp = previous.CreatedAtUtc;
+            }
+
+            RemoveParty(policy, PartyRoleOf(existing), existing);
+        }
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var policyId = policy.InsurancePolicyId;
+        switch (role)
+        {
+            case InsurancePartyRole.Insurer:
+                policy.Insurers.Add(new InsurancePolicyInsurer
+                {
+                    InsurancePolicyId = policyId,
+                    ContactId = request.TargetId,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                });
+                break;
+            case InsurancePartyRole.InsuredAccount:
+                policy.InsuredAccounts.Add(new InsurancePolicyInsuredAccount
+                {
+                    InsurancePolicyId = policyId,
+                    AccountId = request.TargetId,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                });
+                break;
+            case InsurancePartyRole.InsuredContact:
+                policy.InsuredContacts.Add(new InsurancePolicyInsuredContact
+                {
+                    InsurancePolicyId = policyId,
+                    ContactId = request.TargetId,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                });
+                break;
+            default:
+                policy.Beneficiaries.Add(new InsurancePolicyBeneficiary
+                {
+                    InsurancePolicyId = policyId,
+                    ContactId = request.TargetId,
+                    CreatedByUserId = beneficiaryAuthor ?? userId,
+                    CreatedAtUtc = beneficiaryStamp ?? now,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                });
+                break;
+        }
+    }
+
+    /// <summary>
+    /// A party's term is its own fact, with one tie to the policy: it cannot begin before cover ever
+    /// did. Both dates are optional, and null is the default term — the policy's own extent — not an
+    /// unset value.
+    /// </summary>
+    private static void ValidatePartyTerm(InsurancePolicy policy, InsurancePolicyPartyRequest request)
+    {
+        if (request.FromDate is { } from && request.ToDate is { } to && to.Date < from.Date)
+        {
+            throw new DomainValidationException(
+                "ToDate must be on or after FromDate.",
+                code: null,
+                field: nameof(InsurancePolicyPartyRequest.ToDate));
+        }
+
+        if (request.FromDate is { } start && policy.Renewals.Count > 0)
+        {
+            var coverBegan = policy.Renewals.Min(r => r.FromDate).Date;
+            if (start.Date < coverBegan)
+            {
+                throw new DomainValidationException(
+                    $"Cover began {coverBegan:yyyy-MM-dd} — a party cannot be in the role before that.",
+                    code: null,
+                    field: nameof(InsurancePolicyPartyRequest.FromDate));
+            }
+        }
+    }
+
+    private async Task EnsurePartyTargetAvailable(
+        InsurancePartyRole role, Guid targetId, CancellationToken cancellationToken)
+    {
+        if (role == InsurancePartyRole.InsuredAccount)
+        {
+            var live = await context.Accounts
+                .AnyAsync(a => a.AccountId == targetId && a.Archived == null, cancellationToken);
+            if (!live)
+            {
+                throw Unavailable(targetId, role);
+            }
+
+            return;
+        }
+
+        var refs = await contactLookup.ResolveRefsAsync([targetId], cancellationToken);
+        if (!refs.TryGetValue(targetId, out var contact) || contact.Archived is not null)
+        {
+            throw Unavailable(targetId, role);
+        }
+    }
+
+    /// <summary>
+    /// The rejection for a target that does not exist or is archived. Names the ROLE rather than the
+    /// bulk DTO's collection property — a per-party write does not carry one — and keys on
+    /// <see cref="InsurancePolicyPartyRequest.TargetId"/>, the field the client can actually mark.
+    /// </summary>
+    private static DomainValidationException Unavailable(Guid targetId, InsurancePartyRole role) =>
+        new($"{targetId} is not an existing, non-archived record, so it cannot be linked as "
+            + $"{PartyNoun(role)}.",
+            code: null,
+            field: nameof(InsurancePolicyPartyRequest.TargetId));
+
+    private static object? FindParty(InsurancePolicy policy, InsurancePartyRole role, Guid targetId) => role switch
+    {
+        InsurancePartyRole.Insurer => policy.Insurers.FirstOrDefault(l => l.ContactId == targetId),
+        InsurancePartyRole.InsuredAccount => policy.InsuredAccounts.FirstOrDefault(l => l.AccountId == targetId),
+        InsurancePartyRole.InsuredContact => policy.InsuredContacts.FirstOrDefault(l => l.ContactId == targetId),
+        _ => policy.Beneficiaries.FirstOrDefault(l => l.ContactId == targetId),
+    };
+
+    private void RemoveParty(InsurancePolicy policy, InsurancePartyRole role, object link)
+    {
+        switch (role)
+        {
+            case InsurancePartyRole.Insurer:
+                policy.Insurers.Remove((InsurancePolicyInsurer)link);
+                break;
+            case InsurancePartyRole.InsuredAccount:
+                policy.InsuredAccounts.Remove((InsurancePolicyInsuredAccount)link);
+                break;
+            case InsurancePartyRole.InsuredContact:
+                policy.InsuredContacts.Remove((InsurancePolicyInsuredContact)link);
+                break;
+            default:
+                policy.Beneficiaries.Remove((InsurancePolicyBeneficiary)link);
+                break;
+        }
+
+        context.Remove(link);
+    }
+
+    private static InsurancePartyRole PartyRoleOf(object link) => link switch
+    {
+        InsurancePolicyInsurer => InsurancePartyRole.Insurer,
+        InsurancePolicyInsuredAccount => InsurancePartyRole.InsuredAccount,
+        InsurancePolicyInsuredContact => InsurancePartyRole.InsuredContact,
+        _ => InsurancePartyRole.Beneficiary,
+    };
+
+    private static Guid PartyTargetId(object link) => link switch
+    {
+        InsurancePolicyInsurer insurer => insurer.ContactId,
+        InsurancePolicyInsuredAccount account => account.AccountId,
+        InsurancePolicyInsuredContact insured => insured.ContactId,
+        _ => ((InsurancePolicyBeneficiary)link).ContactId,
+    };
+
+    private static int PartyCount(InsurancePolicy policy, InsurancePartyRole role) => role switch
+    {
+        InsurancePartyRole.Insurer => policy.Insurers.Count,
+        InsurancePartyRole.InsuredAccount => policy.InsuredAccounts.Count,
+        InsurancePartyRole.InsuredContact => policy.InsuredContacts.Count,
+        _ => policy.Beneficiaries.Count,
+    };
+
+    private static LinkField PartyField(InsurancePartyRole role) => role switch
+    {
+        InsurancePartyRole.Insurer => InsurersField,
+        InsurancePartyRole.InsuredAccount => InsuredAccountsField,
+        InsurancePartyRole.InsuredContact => InsuredContactsField,
+        _ => BeneficiariesField,
+    };
+
+    private static string PartyNoun(InsurancePartyRole role) => role switch
+    {
+        InsurancePartyRole.Insurer => "insurer",
+        InsurancePartyRole.InsuredAccount => "insured account",
+        InsurancePartyRole.InsuredContact => "insured contact",
+        _ => "beneficiary",
+    };
 
     // ── Renewals ──────────────────────────────────────────────────────────────
 
@@ -954,10 +1270,14 @@ public class InsuranceService
         var window = (await systemSettingsLookup.GetInsurancePolicySettingsAsync(cancellationToken)).ExpiringSoonWindowDays;
         var dto = ToDto(policy, Today, window);
 
-        dto.Insurers = BuildContactReferences(policy.Insurers.Select(l => l.ContactId), contactRefs);
-        dto.InsuredContacts = BuildContactReferences(policy.InsuredContacts.Select(l => l.ContactId), contactRefs);
-        dto.Beneficiaries = BuildContactReferences(policy.Beneficiaries.Select(l => l.ContactId), contactRefs);
-        dto.InsuredAccounts = BuildAccountReferences(policy.InsuredAccounts.Select(l => l.AccountId), accounts);
+        dto.Insurers = BuildContactReferences(
+            policy.Insurers.Select(l => new LinkTerm(l.ContactId, l.FromDate, l.ToDate)), contactRefs);
+        dto.InsuredContacts = BuildContactReferences(
+            policy.InsuredContacts.Select(l => new LinkTerm(l.ContactId, l.FromDate, l.ToDate)), contactRefs);
+        dto.Beneficiaries = BuildContactReferences(
+            policy.Beneficiaries.Select(l => new LinkTerm(l.ContactId, l.FromDate, l.ToDate)), contactRefs);
+        dto.InsuredAccounts = BuildAccountReferences(
+            policy.InsuredAccounts.Select(l => new LinkTerm(l.AccountId, l.FromDate, l.ToDate)), accounts);
 
         return await WithAccruedPremium(dto, cancellationToken);
     }
@@ -1002,31 +1322,37 @@ public class InsuranceService
     /// </para>
     /// </summary>
     private static List<PolicyContactReference> BuildContactReferences(
-        IEnumerable<Guid> contactIds, IReadOnlyDictionary<Guid, ContactRef> refs) =>
-        [.. contactIds
-            .Select(id =>
+        IEnumerable<LinkTerm> links, IReadOnlyDictionary<Guid, ContactRef> refs) =>
+        [.. links
+            .Select(link =>
             {
-                if (!refs.TryGetValue(id, out var contact))
+                if (!refs.TryGetValue(link.TargetId, out var contact))
                 {
                     // No contact row at all: no name AND no type — ContactType has no zero member
                     // (Person = 1, Organization = 2), so a non-nullable field would serialize as 0 and
                     // map to no member.
                     return new PolicyContactReference
                     {
-                        ContactId = id,
+                        ContactId = link.TargetId,
                         Name = null,
                         Type = null,
                         Availability = LinkAvailability.Unresolvable,
+                        FromDate = link.FromDate,
+                        ToDate = link.ToDate,
                     };
                 }
 
                 var archived = contact.Archived is not null;
                 return new PolicyContactReference
                 {
-                    ContactId = id,
+                    ContactId = link.TargetId,
                     Name = archived ? null : contact.Name,
                     Type = contact.Type,
                     Availability = archived ? LinkAvailability.Archived : LinkAvailability.Available,
+                    // The TERM survives an unnamed link: it is the link row's own fact, not the
+                    // contact's, so withholding it would lose data the name rule never covered.
+                    FromDate = link.FromDate,
+                    ToDate = link.ToDate,
                 };
             })
             .OrderBy(r => r.Name is null)
@@ -1034,19 +1360,28 @@ public class InsuranceService
             .ThenBy(r => r.ContactId)];
 
     private static List<InsuredAccountReference> BuildAccountReferences(
-        IEnumerable<Guid> accountIds, IReadOnlyDictionary<Guid, Account> accounts) =>
-        [.. accountIds
-            .Where(accounts.ContainsKey)
-            .Select(id => ToInsuredAccountReference(accounts[id]))
+        IEnumerable<LinkTerm> links, IReadOnlyDictionary<Guid, Account> accounts) =>
+        [.. links
+            .Where(link => accounts.ContainsKey(link.TargetId))
+            .Select(link => ToInsuredAccountReference(accounts[link.TargetId], link))
             .OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(r => r.AccountId)];
 
-    private static InsuredAccountReference ToInsuredAccountReference(Account account) => new()
+    private static InsuredAccountReference ToInsuredAccountReference(Account account, LinkTerm link) => new()
     {
         AccountId = account.AccountId,
         Name = account.Name,
         Type = account.AccountType.Adapt<DtoAccountType>(),
+        FromDate = link.FromDate,
+        ToDate = link.ToDate,
     };
+
+    /// <summary>
+    /// One link row reduced to what the read path needs: its target and the term it carries. Lets the
+    /// two reference builders take the term without either of them knowing which of the four link
+    /// entities produced it.
+    /// </summary>
+    private readonly record struct LinkTerm(Guid TargetId, DateTime? FromDate, DateTime? ToDate);
 
     private static ExistingPolicyRenewal ToRenewalDto(PolicyRenewal renewal) => new()
     {

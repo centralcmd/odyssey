@@ -17,7 +17,7 @@ namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// CRUD for contracts plus party- and file-link management, derived-status computation and the summary
-/// rollup (issue #174). Owns all business validation — the one-of-three (XOR) party invariant, the
+/// rollup (issue #174). Owns all business validation — the one-of-two (XOR) party invariant, the
 /// archive guard, defensive caps and the data-minimised read projections; the controller owns claim
 /// authorization and the file content-type allow-list.
 ///
@@ -296,15 +296,14 @@ public class ContractService
                 $"Contract {contractId} is archived; unarchive it before adding parties.");
         }
 
-        // One-of-three (XOR): exactly one target id must be set.
+        // One-of-two (XOR): exactly one target id must be set.
         var setCount =
             (request.AccountId is not null ? 1 : 0) +
-            (request.ContactId is not null ? 1 : 0) +
-            (request.InsurancePolicyId is not null ? 1 : 0);
+            (request.ContactId is not null ? 1 : 0);
         if (setCount != 1)
         {
             throw new DomainValidationException(
-                "Exactly one of accountId, contactId or insurancePolicyId must be set.");
+                "Exactly one of accountId or contactId must be set.");
         }
 
         await EnsureTargetExists(request, cancellationToken);
@@ -323,7 +322,6 @@ public class ContractService
             ContractId = contractId,
             AccountId = request.AccountId,
             ContactId = request.ContactId,
-            InsurancePolicyId = request.InsurancePolicyId,
         };
 
         context.ContractParties.Add(party);
@@ -515,13 +513,6 @@ public class ContractService
                 throw new DomainNotFoundException($"Contact ID {contactId} not found.");
             }
         }
-        else if (request.InsurancePolicyId is { } policyId)
-        {
-            if (!await context.InsurancePolicies.AnyAsync(p => p.InsurancePolicyId == policyId, cancellationToken))
-            {
-                throw new DomainNotFoundException($"Insurance policy ID {policyId} not found.");
-            }
-        }
     }
 
     private async Task EnsureNotDuplicateParty(Guid contractId, AddContractPartyRequest request, CancellationToken cancellationToken = default)
@@ -529,8 +520,7 @@ public class ContractService
         var duplicate = await context.ContractParties.AnyAsync(p =>
             p.ContractId == contractId &&
             ((request.AccountId != null && p.AccountId == request.AccountId) ||
-             (request.ContactId != null && p.ContactId == request.ContactId) ||
-             (request.InsurancePolicyId != null && p.InsurancePolicyId == request.InsurancePolicyId)), cancellationToken);
+             (request.ContactId != null && p.ContactId == request.ContactId)), cancellationToken);
         if (duplicate)
         {
             throw new DomainConflictException(
@@ -544,7 +534,6 @@ public class ContractService
     {
         return await context.Contracts
             .Include(c => c.Parties).ThenInclude(p => p.Account)
-            .Include(c => c.Parties).ThenInclude(p => p.InsurancePolicy)
             .Include(c => c.Files).ThenInclude(f => f.FileMetadata)
             .FirstOrDefaultAsync(c => c.ContractId == id, cancellationToken);
     }
@@ -553,7 +542,6 @@ public class ContractService
     {
         return await context.ContractParties
             .Include(p => p.Account)
-            .Include(p => p.InsurancePolicy)
             .FirstOrDefaultAsync(p => p.ContractPartyId == partyId, cancellationToken);
     }
 
@@ -594,8 +582,8 @@ public class ContractService
         };
     }
 
-    // Explicit member mapping (never a permissive Adapt) so a future field added to Account/
-    // Contact/InsurancePolicy cannot silently re-leak into this cross-claim projection (§9/§10 #2).
+    // Explicit member mapping (never a permissive Adapt) so a future field added to Account or
+    // Contact cannot silently re-leak into this cross-claim projection (§9/§10 #2).
     private static ExistingContractParty ToPartyDto(ContractParty party, IReadOnlyDictionary<Guid, ContactRef> contacts)
     {
         if (party.AccountId is not null)
@@ -614,12 +602,11 @@ public class ContractService
             };
         }
 
-        if (party.ContactId is { } contactId)
         {
             // Resolve via the batched lookup (Contact lives in OdysseyContext). An unresolved link
             // (contact deleted across the context boundary) nulls the reference, as the read path
             // does for any missing link.
-            var contact = contacts.GetValueOrDefault(contactId);
+            var contact = party.ContactId is { } contactId ? contacts.GetValueOrDefault(contactId) : null;
             return new ExistingContractParty
             {
                 ContractPartyId = party.ContractPartyId,
@@ -629,25 +616,12 @@ public class ContractService
                 {
                     ContactId = contact.ContactId,
                     Name = contact.Name,
-                    // No .Adapt here (unlike Account/InsurancePolicy): ContactRef already declares
-                    // Type as the Dtos ContactType, so this is a same-type assignment.
+                    // No .Adapt here (unlike Account): ContactRef already declares Type as the Dtos
+                    // ContactType, so this is a same-type assignment.
                     Type = contact.Type,
                 },
             };
         }
-
-        return new ExistingContractParty
-        {
-            ContractPartyId = party.ContractPartyId,
-            ContractId = party.ContractId,
-            Kind = ContractPartyKind.InsurancePolicy,
-            InsurancePolicy = party.InsurancePolicy is null ? null : new ContractPolicyReference
-            {
-                InsurancePolicyId = party.InsurancePolicy.InsurancePolicyId,
-                Name = party.InsurancePolicy.Name,
-                Type = party.InsurancePolicy.Type.Adapt<DtoInsurancePolicyType>(),
-            },
-        };
     }
 
     private static ExistingContractFile ToFileDto(ContractFile file) => new()

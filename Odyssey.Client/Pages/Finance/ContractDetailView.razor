@@ -6,8 +6,12 @@
 
 @*
     ContractDetailView — the SECTIONS of an expanded contract record (issue #174): the parties (one
-    row per typed link — Account / Contact / Insurance policy, the minimal projection) and the
-    documents. Mirrors the design system's ContractDetail.
+    InfoTile per typed link — Account / Contact, the minimal projection) and the documents. Mirrors
+    the design system's ContractDetail.
+
+    A party tile is the same shape a policy's Parties section uses, so the two surfaces read alike:
+    the referenced record's own icon and colour, the kind as the overline, the target's own type as
+    the caption, and the detach action riding on the tile, revealed on hover / focus-within.
 
     The contract's fact tiles and description are NOT here: they belong to the record card's Details
     and Content slots, whose order the card fixes, and ContractsCard renders them there. What is left
@@ -15,7 +19,7 @@
     OdsSectionDivider, in the same order as the header's counts.
 
     Sections do not collapse and carry no action slot: the body already opens as a whole, and every
-    section-level action ("Add party", "Upload document") lives in the row action menu, where a reader
+    section-level action ("New party", "Upload document") lives in the row action menu, where a reader
     looks for actions on this record. A section header labels; it does not act.
 *@
 
@@ -23,44 +27,34 @@
     <OdsSectionDivider Label="Parties" Meta="@($"{Contract.Parties.Count} linked")" />
     @if (Contract.Parties.Count > 0)
     {
-        <div class="con-parties">
+        <OdsInfoTileGrid>
             @foreach (var party in Contract.Parties)
             {
-                var r = Resolve(party);
-                <div class="con-party">
+                var p = party;
+                var r = Resolve(p);
+                <div class="con-party-tile">
                     @* A referenced record is drawn in ITS OWN type icon and colour — the same mark it
                        carries on its own page — so it stays recognisable as that record rather than
                        as part of this one. *@
-                    <span class="con-party-av" style="background:@(r.Soft ?? "var(--mud-palette-action-default-hover)");color:@(r.Color ?? "var(--mud-palette-text-secondary)");">
-                        <span class="material-icons" aria-hidden="true">@r.Icon</span>
-                    </span>
-                    @* One line: the name, then the kind chip and target type beside it. *@
-                    <div class="con-party-main">
-                        <span class="con-party-name">@r.Name</span>
-                        <span class="con-party-meta">
-                            <span class="con-party-kind"><span class="material-icons" aria-hidden="true">@r.Icon</span>@r.KindLabel</span>
-                            @if (!string.IsNullOrEmpty(r.TypeLabel))
-                            {
-                                <span class="con-party-dot">·</span>
-                                <span>@r.TypeLabel</span>
-                            }
-                        </span>
-                    </div>
+                    <OdsInfoTile Icon="@r.Icon" IconColor="@r.Color" IconSoft="@r.Soft"
+                                 Label="@r.KindLabel" ValueVariant="OdsInfoTileVariant.Text" WrapValue
+                                 Value="@(b => b.AddContent(0, r.Name))"
+                                 Foot="@OdsInfoTile.Caption(r.TypeLabel)" />
                     @if (CanWrite)
                     {
                         <span class="con-party-detach">
-                            <OdsIconButton Icon="@Icons.Material.Filled.LinkOff" AriaLabel="@($"Detach {r.Name}")" Size="OdsSize.Sm" OnClick="@(() => DetachPartyAsync(party))" />
+                            <OdsIconButton Icon="@Icons.Material.Filled.LinkOff" AriaLabel="@($"Detach {r.Name}")" Size="OdsSize.Sm" OnClick="@(() => DetachPartyAsync(p))" />
                         </span>
                     }
                 </div>
             }
-        </div>
+        </OdsInfoTileGrid>
     }
     else
     {
         <div class="con-empty-line">
             <span class="material-icons" aria-hidden="true">diversity_3</span>
-            <div style="flex:1;">No parties yet — link the account, contact, or insurance policy this contract relates to.</div>
+            <div style="flex:1;">No parties yet — link the account or contact this contract relates to.</div>
         </div>
     }
 </div>
@@ -108,11 +102,6 @@
             {
                 var m = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
                 return new PartyVisual("Contact", c.Name, m.Label, m.Icon, m.Color, m.Soft);
-            }
-            case ContractPartyKind.InsurancePolicy when party.InsurancePolicy is { } p:
-            {
-                var m = OdsTypeRegistries.InsurancePolicyTypeOf(p.Type);
-                return new PartyVisual("Insurance policy", p.Name, m.Label, m.Icon, m.Color, m.Soft);
             }
             default:
                 return new PartyVisual("Party", "—", null, "help", null, null);

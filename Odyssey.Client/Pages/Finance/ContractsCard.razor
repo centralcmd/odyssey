@@ -12,7 +12,6 @@
 @inject IScrollManager ScrollManager
 @inject Odyssey.Client.Services.IPageStateService PageState
 @inject IReferenceDataCache ReferenceData
-@inject IInsuranceApiClient Insurance
 @inject IAccountsApiClient Accounts
 
 <PageTitle>Contracts</PageTitle>
@@ -264,7 +263,6 @@
                             Contract="_partyContract"
                             Accounts="_accountOptions"
                             Institutions="_institutionOptions"
-                            Policies="_policyOptions"
                             OnSaved="@(() => ReloadContract(_partyContract.ContractId))" />
 }
 

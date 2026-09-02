@@ -193,6 +193,44 @@ Three rules that are easy to get backwards, and that the tests pin:
   the `contactIds` filter and the read collections all count the same thing. Aligning a display count
   onto resolved names would make a contact whose links are all unnamed look erasable when it is not.
 
+**A party carries a TERM, and that is why parties are written one at a time.** Each of the four link
+rows has an optional `FromDate`/`ToDate`. Both null is the **default** term — the policy's own extent —
+not an unset value, so a party added with the defaults follows the policy for its whole lifetime and a
+later renewal never re-dates it; only a *non*-default term is captioned in the UI. The one tie to the
+policy is that a term cannot begin before cover ever did.
+
+The full-set `PUT /api/insurance-policies/{id}` is unchanged and still works (`null` = unchanged,
+`[]` = clear), but it has nowhere to put a term, so the write path the UI uses is per party:
+
+| | |
+|---|---|
+| `POST …/parties` | `{ role, targetId, fromDate?, toDate? }` |
+| `PUT …/parties/{role}/{targetId}` | the route names the link as it stands, the body what it should become |
+| `DELETE …/parties/{role}/{targetId}` | detaches the link; the contact or account is untouched |
+
+Three things about that split are easy to get wrong:
+
+- **A party is addressed by `(role, targetId)`, never by a link-row id.** That pair is the unique index
+  on each of the four tables and it is what the read model already hands the caller, so no link-row id
+  has to be exposed.
+- **A role move is one write, not two.** `PUT` drops the old row and inserts the new one in a single
+  `SaveChangesAsync`, so a party moved between roles stays one party — and a beneficiary that stays a
+  beneficiary keeps its original `CreatedByUserId`, because re-dating a designation must never rewrite
+  who named it.
+- **An explicit `DELETE` works on an unnamed link; an omission still does not.** The `422` above exists
+  because an omission cannot be told apart from a caller that never saw the member. A `DELETE` naming
+  the link says exactly what it means. The UI still withholds the per-tile edit on an unnamed member,
+  because its record is not in the picker and the dialog could not round-trip it.
+
+Consequently **`CreateInsurancePolicyDialog` no longer edits the four collections at all** — it omits
+them, which the update DTO reads as "leave unchanged". Parties are added, re-dated and removed from the
+policy's own **New party** action and its party tiles.
+
+**A contract party is one-of-TWO** — an `Account` or a `Contact` ("Institution"). The third target,
+`ContractParty.InsurancePolicyId`, was dropped: a contract naming a policy is expressed the other way
+round now, through the policy's own party collections. `ContractPartyKind` keeps the surviving ordinals
+(`Account = 0`, `Institution = 1`), so no persisted or wire value shifted meaning.
+
 `DELETE /api/contacts/{id}?detachInsuranceLinks=true` is the supported release valve: it removes every
 insurance link naming the contact and deletes it **in one transaction**, composing `contacts.delete`
 with `insurance.update` rather than adding a claim. Its `409` counterpart is **claim-conditional**, and

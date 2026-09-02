@@ -37,7 +37,11 @@
                 <span class="material-icons" aria-hidden="true">@Icon</span>
             </span>
         }
-        @if (!string.IsNullOrEmpty(Label))
+        @if (LabelContent is not null)
+        {
+            <span class="odc-infotile-k">@LabelContent</span>
+        }
+        else if (!string.IsNullOrEmpty(Label))
         {
             <span class="odc-infotile-k">@Label</span>
         }
@@ -61,6 +65,13 @@
 
     /// <summary>Uppercase overline label.</summary>
     [Parameter] public string? Label { get; set; }
+
+    /// <summary>
+    /// The overline as markup, for the rare tile whose label carries something besides text — a
+    /// per-member term line, a tile-local action. Takes precedence over <see cref="Label"/>, which
+    /// stays the parameter every ordinary tile uses: a plain string cannot be styled wrong.
+    /// </summary>
+    [Parameter] public RenderFragment? LabelContent { get; set; }
 
     /// <summary>Headline value.</summary>
     [Parameter] public RenderFragment? Value { get; set; }

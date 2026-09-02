@@ -209,10 +209,14 @@
                                 <div class="ins-section">
                                     <OdsSectionDivider Label="Parties" Meta="@($"{partyCount} link{(partyCount == 1 ? "" : "s")}")" />
                                     <OdsInfoTileGrid>
-                                        <InsurancePolicyLinkTiles Members="ContactMembers(detail.Insurers)" Label="Insurer" FallbackIcon="groups" />
-                                        <InsurancePolicyLinkTiles Members="AccountMembers(detail.InsuredAccounts)" Label="Insured" FallbackIcon="account_balance_wallet" />
-                                        <InsurancePolicyLinkTiles Members="ContactMembers(detail.InsuredContacts)" Label="Insured" FallbackIcon="person" />
-                                        <InsurancePolicyLinkTiles Members="ContactMembers(detail.Beneficiaries)" Label="Beneficiary" FallbackIcon="volunteer_activism" />
+                                        <InsurancePolicyLinkTiles Members="ContactMembers(detail.Insurers)" Label="Insurer" FallbackIcon="groups"
+                                                                  Role="InsurancePartyRole.Insurer" OnEditParty="@(l => EditParty(p.InsurancePolicyId, l.Role, l.TargetId))" />
+                                        <InsurancePolicyLinkTiles Members="AccountMembers(detail.InsuredAccounts)" Label="Insured" FallbackIcon="account_balance_wallet"
+                                                                  Role="InsurancePartyRole.InsuredAccount" OnEditParty="@(l => EditParty(p.InsurancePolicyId, l.Role, l.TargetId))" />
+                                        <InsurancePolicyLinkTiles Members="ContactMembers(detail.InsuredContacts)" Label="Insured" FallbackIcon="person"
+                                                                  Role="InsurancePartyRole.InsuredContact" OnEditParty="@(l => EditParty(p.InsurancePolicyId, l.Role, l.TargetId))" />
+                                        <InsurancePolicyLinkTiles Members="ContactMembers(detail.Beneficiaries)" Label="Beneficiary" FallbackIcon="volunteer_activism"
+                                                                  Role="InsurancePartyRole.Beneficiary" OnEditParty="@(l => EditParty(p.InsurancePolicyId, l.Role, l.TargetId))" />
                                     </OdsInfoTileGrid>
                                 </div>
                             }
@@ -253,11 +257,6 @@
 {
     <CreateInsurancePolicyDialog @key="_createKey"
                                  @bind-Open="_createOpen"
-                                 Contacts="_contactOptions"
-                                 ContactTypes="_contactTypes"
-                                 Accounts="_accountOptions"
-                                 OptionsLoading="_optionsLoading"
-                                 OnStaleOptions="ReloadReferenceOptions"
                                  OnSaved="OnPolicyCreated" />
 }
 
@@ -266,12 +265,20 @@
     <CreateInsurancePolicyDialog @key="_editPolicyKey"
                                  @bind-Open="_editPolicyOpen"
                                  InsurancePolicy="_editPolicy"
-                                 Contacts="_contactOptions"
-                                 ContactTypes="_contactTypes"
-                                 Accounts="_accountOptions"
-                                 OptionsLoading="_optionsLoading"
-                                 OnStaleOptions="ReloadReferenceOptions"
                                  OnSaved="OnPolicyEdited" />
+}
+
+@if (_partyPolicy is not null)
+{
+    <AddPolicyPartyDialog @key="_partyKey"
+                          @bind-Open="_partyOpen"
+                          Policy="_partyPolicy"
+                          Party="_editingParty"
+                          Contacts="_contactOptions"
+                          Accounts="_accountOptions"
+                          OptionsLoading="_optionsLoading"
+                          OnStaleOptions="ReloadReferenceOptions"
+                          OnSaved="@(() => ReloadPolicy(_partyPolicy.InsurancePolicyId))" />
 }
 
 @if (_renewalPolicy is not null)

@@ -334,21 +334,18 @@ public class ContractsApiTests
     public async Task Get_PartyReferences_OmitCrossClaimFields()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, contactId, policyId) = await SeedTargetsAsync(factory);
+        var (accountId, contactId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
         await client.PostAsJsonAsync($"{Path}/{id}/parties", new AddContractPartyRequest { AccountId = accountId });
         await client.PostAsJsonAsync($"{Path}/{id}/parties", new AddContractPartyRequest { ContactId = contactId });
-        await client.PostAsJsonAsync($"{Path}/{id}/parties", new AddContractPartyRequest { InsurancePolicyId = policyId });
 
         // Inspect the raw JSON: none of the cross-claim sensitive values should be present.
         var raw = await client.GetStringAsync($"{Path}/{id}");
         Assert.DoesNotContain("ACC-SECRET-001", raw);   // Account.AccountNumber
         Assert.DoesNotContain("ORG-12345", raw);        // Contact.OrganizationNumber
         Assert.DoesNotContain("secret contact notes", raw); // Contact.Description
-        Assert.DoesNotContain("POL-SECRET-9", raw);     // InsurancePolicy.PolicyNumber
-        Assert.DoesNotContain("secret policy notes", raw); // InsurancePolicy.Notes
 
         // But the minimal reference fields (names) are present.
         Assert.Contains("Acme Corp", raw);

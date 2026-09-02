@@ -25,11 +25,7 @@ public partial class InsuranceCard
     // beneficiaries all choose from the whole address book (no contact-type restriction: a trust is a
     // legitimate beneficiary, a company a legitimate insured).
     private IReadOnlyList<OdsOption> _contactOptions = [];
-    // The domain type behind each contact option, for the dialog's chips. Built in the same pass as
-    // the options so the two cannot describe different sets.
-    private Dictionary<string, ContactType> _contactTypes = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<OdsOption> _accountOptions = [];
-    private Dictionary<Guid, AccountType> _accountTypes = new();
     // True until both option lists have arrived. The dialog's pickers show their loading row rather
     // than "No contacts match", which would be indistinguishable from an empty address book.
     private bool _optionsLoading = true;
@@ -228,8 +224,6 @@ public partial class InsuranceCard
     {
         var contacts = await ReferenceData.ContactsAsync();
         var active = contacts.Where(c => c.Archived is null).ToList();
-        _contactTypes = active.ToDictionary(
-            c => c.ContactId.ToString(), c => c.Type, StringComparer.OrdinalIgnoreCase);
         _contactOptions =
         [
             .. active
@@ -237,7 +231,7 @@ public partial class InsuranceCard
                 .Select(c =>
                 {
                     var meta = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
-                    // Sub carries the type in TEXT beside the name: three of the four pickers choose
+                    // Sub carries the type in TEXT beside the name: three of the four roles choose
                     // from the whole address book, where two records can share a display name and the
                     // glyph alone cannot tell a person from an organisation.
                     return new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName)
@@ -280,7 +274,6 @@ public partial class InsuranceCard
     {
         var accounts = (await Accounts.ListAllAsync()).ItemsOrToast(Snackbar, "accounts");
         var active = accounts.Where(a => a.Archived is null).ToList();
-        _accountTypes = active.ToDictionary(a => a.AccountId, a => a.AccountType);
         _accountOptions =
         [
             .. active
@@ -344,6 +337,9 @@ public partial class InsuranceCard
                 Icon = meta?.Icon,
                 IconColor = meta?.Color,
                 IconSoft = meta?.Soft,
+                // The term survives an unnamed link: it is the link row's own fact, not the
+                // contact's, so the name rule never covered it.
+                Term = InsurancePartyTerm.Format(reference.FromDate, reference.ToDate),
                 State = reference.Availability,
             };
         })
@@ -360,6 +356,7 @@ public partial class InsuranceCard
             Icon = AccountTypeVisuals.MaterialIcon(reference.Type),
             IconColor = AccountTypeVisuals.FgColor(reference.Type),
             IconSoft = AccountTypeVisuals.BgColor(reference.Type),
+            Term = InsurancePartyTerm.Format(reference.FromDate, reference.ToDate),
         })
     ];
 
@@ -532,6 +529,36 @@ public partial class InsuranceCard
     }
 
     private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Policy ID copied.");
+
+    // ── Party dialog ───────────────────────────────────────────────────────────
+    // One link at a time. The full-set pickers are gone from Edit policy: a party carries a TERM,
+    // which that dialog has nowhere to put, so it now reads the four collections and leaves them
+    // exactly as it found them.
+    private ExistingInsurancePolicy? _partyPolicy;
+    private AddPolicyPartyDialog.PartyLink? _editingParty;
+    private Guid _partyKey;
+    private bool _partyOpen;
+
+    private async Task AddParty(Guid policyId)
+    {
+        if (!_canUpdate) return;
+        await EnsureDetail(policyId);
+        if (!_details.TryGetValue(policyId, out var d)) return;
+        _expandedId = policyId;
+        _partyPolicy = d;
+        _editingParty = null;
+        _partyKey = Guid.NewGuid();
+        _partyOpen = true;
+    }
+
+    private void EditParty(Guid policyId, InsurancePartyRole role, Guid targetId)
+    {
+        if (!_canUpdate || !_details.TryGetValue(policyId, out var d)) return;
+        _partyPolicy = d;
+        _editingParty = new AddPolicyPartyDialog.PartyLink(role, targetId);
+        _partyKey = Guid.NewGuid();
+        _partyOpen = true;
+    }
 
     // ── Renewal dialog ─────────────────────────────────────────────────────────
     private ExistingInsurancePolicy? _renewalPolicy;
@@ -732,6 +759,12 @@ public partial class InsuranceCard
                 Icon = "edit",
                 Label = "Edit policy",
                 OnClick = EventCallback.Factory.Create(this, () => EditClicked(p)),
+            });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "group_add",
+                Label = "New party",
+                OnClick = EventCallback.Factory.Create(this, () => AddParty(p.InsurancePolicyId)),
             });
             items.Add(new OdsMenuItem
             {

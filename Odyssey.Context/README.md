@@ -49,6 +49,11 @@ rather than changing it: `InsuredAccountId` was `SET NULL`, so deleting the acco
 standing with no insured account — which on a link table is expressed by removing the row. `SET NULL`
 has no meaning here; nulling the only target would leave a row pointing at nothing.
 
+All four carry an optional `FromDate`/`ToDate` — the party's term in the role. Both null is the
+**default** (the policy's own extent), not an unset value, so a renewal never re-dates a party. The
+columns are on the link row rather than anywhere else because the term is the *relationship's* fact,
+not the contact's or the account's.
+
 `RESTRICT` alone is not an acceptable answer for a natural person exercising erasure, so
 `DELETE /api/contacts/{id}?detachInsuranceLinks=true` removes every link row and the contact **in one
 transaction**. It composes `contacts.delete` with `insurance.update` rather than adding a claim.

@@ -310,6 +310,331 @@ public class InsuranceServiceTests
         Assert.Contains(nameof(UpdateInsurancePolicy.BeneficiaryIds), error.Errors!.Keys);
     }
 
+    // ── Parties: one link at a time, with a term ────────────────────────────────
+    // The API tier drives these over HTTP too. They are re-asserted here for the same reason the link
+    // diff above is: WritePartyAsync/ValidatePartyTerm is where the term rules, the role move and the
+    // beneficiary-attribution carry actually live, and a direct call names the exception type and the
+    // offending field rather than a status code.
+
+    /// <summary>
+    /// Both dates absent is the DEFAULT term — the policy's own extent — not an unset value. A party
+    /// added with the defaults must therefore round-trip as null rather than being filled in from the
+    /// policy's periods, which is what lets a later renewal leave it alone.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_WithoutDates_KeepsTheDefaultTerm()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(NewPolicy(await SeedInsurer()));
+        await service.AddRenewal(created.InsurancePolicyId,
+            NewRenewal(FixedToday.AddDays(-30), FixedToday.AddDays(300)));
+
+        var updated = await service.AddParty(created.InsurancePolicyId, new InsurancePolicyPartyRequest
+        {
+            Role = InsurancePartyRole.Beneficiary,
+            TargetId = insurerId,
+        });
+
+        var beneficiary = Assert.Single(updated!.Beneficiaries);
+        Assert.Null(beneficiary.FromDate);
+        Assert.Null(beneficiary.ToDate);
+    }
+
+    [Fact]
+    public async Task AddParty_WithDates_RoundTripsTheTerm()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var accountId = await SeedAccount(context);
+        var created = await service.Create(NewPolicy(await SeedInsurer()));
+
+        var from = FixedToday.AddDays(10);
+        var to = FixedToday.AddDays(200);
+        var updated = await service.AddParty(created.InsurancePolicyId, new InsurancePolicyPartyRequest
+        {
+            Role = InsurancePartyRole.InsuredAccount,
+            TargetId = accountId,
+            FromDate = from,
+            ToDate = to,
+        });
+
+        var insured = Assert.Single(updated!.InsuredAccounts);
+        Assert.Equal(from, insured.FromDate);
+        Assert.Equal(to, insured.ToDate);
+    }
+
+    /// <summary>
+    /// The one tie between a party's own term and the policy's: it cannot begin before cover ever
+    /// did. The failure names <c>FromDate</c>, so the dialog can mark that field rather than the form.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_FromBeforeCoverBegan_ThrowsNamingFromDate()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(NewPolicy(await SeedInsurer()));
+        var coverBegan = FixedToday.AddDays(-30);
+        await service.AddRenewal(created.InsurancePolicyId, NewRenewal(coverBegan, FixedToday.AddDays(300)));
+
+        var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
+            service.AddParty(created.InsurancePolicyId, new InsurancePolicyPartyRequest
+            {
+                Role = InsurancePartyRole.Insurer,
+                TargetId = insurerId,
+                FromDate = coverBegan.AddDays(-1),
+            }));
+
+        Assert.Contains(nameof(InsurancePolicyPartyRequest.FromDate), error.Errors!.Keys);
+    }
+
+    /// <summary>A policy with no period yet has no floor to check against, so a back-dated term is
+    /// accepted — the rule is about cover, not about the clock.</summary>
+    [Fact]
+    public async Task AddParty_BackDatedOnAPolicyWithNoPeriods_IsAccepted()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(new NewInsurancePolicy { Name = "Draft" });
+
+        var updated = await service.AddParty(created.InsurancePolicyId, new InsurancePolicyPartyRequest
+        {
+            Role = InsurancePartyRole.Insurer,
+            TargetId = insurerId,
+            FromDate = FixedToday.AddYears(-5),
+        });
+
+        Assert.Equal(FixedToday.AddYears(-5), Assert.Single(updated!.Insurers).FromDate);
+    }
+
+    [Fact]
+    public async Task AddParty_ToBeforeFrom_ThrowsNamingToDate()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(new NewInsurancePolicy { Name = "Draft" });
+
+        var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
+            service.AddParty(created.InsurancePolicyId, new InsurancePolicyPartyRequest
+            {
+                Role = InsurancePartyRole.Insurer,
+                TargetId = insurerId,
+                FromDate = FixedToday.AddDays(90),
+                ToDate = FixedToday.AddDays(30),
+            }));
+
+        Assert.Contains(nameof(InsurancePolicyPartyRequest.ToDate), error.Errors!.Keys);
+    }
+
+    [Fact]
+    public async Task AddParty_ArchivedContact_ThrowsNamingTheTarget()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var archived = await SeedInsurer(archived: FixedToday.AddDays(-1));
+        var created = await service.Create(new NewInsurancePolicy { Name = "Draft" });
+
+        var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
+            service.AddParty(created.InsurancePolicyId, new InsurancePolicyPartyRequest
+            {
+                Role = InsurancePartyRole.Insurer,
+                TargetId = archived,
+            }));
+
+        Assert.Contains(nameof(InsurancePolicyPartyRequest.TargetId), error.Errors!.Keys);
+    }
+
+    [Fact]
+    public async Task AddParty_SameTargetTwiceInOneRole_ThrowsConflict()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(new NewInsurancePolicy { Name = "Draft" });
+        await service.AddParty(created.InsurancePolicyId,
+            new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Insurer, TargetId = insurerId });
+
+        await Assert.ThrowsAsync<DomainConflictException>(() =>
+            service.AddParty(created.InsurancePolicyId,
+                new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Insurer, TargetId = insurerId }));
+    }
+
+    /// <summary>
+    /// A party moved to another role stays ONE party: the old row is dropped and the new one written,
+    /// never left as two. Asserted on both collections, because a half-applied move would show up as
+    /// a duplicate rather than as an error.
+    /// </summary>
+    [Fact]
+    public async Task UpdateParty_IntoAnotherRole_MovesRatherThanDuplicating()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var contactId = await SeedInsurer();
+        var created = await service.Create(new NewInsurancePolicy { Name = "Term life" });
+        await service.AddParty(created.InsurancePolicyId,
+            new InsurancePolicyPartyRequest { Role = InsurancePartyRole.InsuredContact, TargetId = contactId });
+
+        var updated = await service.UpdateParty(
+            created.InsurancePolicyId, InsurancePartyRole.InsuredContact, contactId,
+            new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Beneficiary, TargetId = contactId });
+
+        Assert.Empty(updated!.InsuredContacts);
+        Assert.Equal(contactId, Assert.Single(updated.Beneficiaries).ContactId);
+    }
+
+    /// <summary>
+    /// Re-dating a beneficiary never rewrites who named it. The designation's author is written once,
+    /// at insert — the question a beneficiary dispute actually asks — so an edit by anyone else must
+    /// carry it across rather than stamp itself.
+    /// </summary>
+    [Fact]
+    public async Task UpdateParty_ReDatingABeneficiary_KeepsTheOriginalAuthor()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var contactId = await SeedInsurer();
+        var created = await service.Create(new NewInsurancePolicy { Name = "Term life" });
+        await service.AddParty(
+            created.InsurancePolicyId,
+            new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Beneficiary, TargetId = contactId },
+            userId: "author");
+
+        await service.UpdateParty(
+            created.InsurancePolicyId, InsurancePartyRole.Beneficiary, contactId,
+            new InsurancePolicyPartyRequest
+            {
+                Role = InsurancePartyRole.Beneficiary,
+                TargetId = contactId,
+                ToDate = FixedToday.AddYears(1),
+            },
+            userId: "someone-else");
+
+        var link = Assert.Single(context.InsurancePolicyBeneficiaries
+            .Where(b => b.InsurancePolicyId == created.InsurancePolicyId));
+        Assert.Equal("author", link.CreatedByUserId);
+    }
+
+    /// <summary>
+    /// Removing a party detaches the link and nothing else — the contact is untouched. A party IS the
+    /// link, so this is the one operation on it that is not a delete of a record.
+    /// </summary>
+    [Fact]
+    public async Task RemoveParty_DropsTheLinkAndLeavesTheContact()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(new NewInsurancePolicy { Name = "Draft" });
+        await service.AddParty(created.InsurancePolicyId,
+            new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Insurer, TargetId = insurerId });
+
+        Assert.True(await service.RemoveParty(created.InsurancePolicyId, InsurancePartyRole.Insurer, insurerId));
+
+        Assert.Empty((await service.Get(created.InsurancePolicyId))!.Insurers);
+        Assert.NotNull(await journal.Contacts.FindAsync(insurerId));
+    }
+
+    /// <summary>
+    /// The counterpart of the full-set write's 422: an explicit remove naming an archived link
+    /// succeeds. The 422 exists because an OMISSION cannot be told apart from a caller that never saw
+    /// the member — a remove that names it has no such ambiguity.
+    /// </summary>
+    [Fact]
+    public async Task RemoveParty_WhoseContactIsArchived_Succeeds()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+        var created = await service.Create(new NewInsurancePolicy { Name = "Draft" });
+        await service.AddParty(created.InsurancePolicyId,
+            new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Insurer, TargetId = insurerId });
+
+        var contact = await journal.Contacts.FindAsync(insurerId);
+        contact!.Archived = FixedToday;
+        await journal.SaveChangesAsync();
+
+        Assert.True(await service.RemoveParty(created.InsurancePolicyId, InsurancePartyRole.Insurer, insurerId));
+        Assert.Empty((await service.Get(created.InsurancePolicyId))!.Insurers);
+    }
+
+    [Fact]
+    public async Task RemoveParty_ThatIsNotLinked_ReturnsFalse()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var created = await service.Create(new NewInsurancePolicy { Name = "Draft" });
+
+        Assert.False(await service.RemoveParty(
+            created.InsurancePolicyId, InsurancePartyRole.Beneficiary, Guid.NewGuid()));
+    }
+
+    /// <summary>
+    /// The per-party cap names <see cref="InsurancePolicyPartyRequest.TargetId"/> — the field the
+    /// request actually carries — not the bulk DTO's collection property, which a per-party caller has
+    /// no field to mark. The collection is still named in the MESSAGE, where it reads as the role.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_OverTheEffectiveCap_ThrowsUnprocessableNamingTheTarget()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context, new FixedSystemSettingsLookup
+        {
+            Caps = new FinanceRequestCaps(
+                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
+                MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 50, MaxLinksPerPolicy: 1),
+        });
+        var first = await SeedInsurer();
+        var second = await SeedInsurer();
+        var created = await service.Create(NewPolicy(first));
+
+        var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
+            service.AddParty(created.InsurancePolicyId,
+                new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Insurer, TargetId = second }));
+
+        Assert.Contains(nameof(InsurancePolicyPartyRequest.TargetId), error.Errors!.Keys);
+        Assert.DoesNotContain(nameof(UpdateInsurancePolicy.InsurerIds), error.Errors.Keys);
+        Assert.Contains("insurers", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The full-set write and the per-party write agree on one set of rows: a member the full set
+    /// retains keeps the term the per-party write gave it, and one it drops takes its term with it.
+    /// </summary>
+    [Fact]
+    public async Task Update_KeepsTheTermOfARetainedMember_AndDropsItWithARemovedOne()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var kept = await SeedInsurer();
+        var dropped = await SeedInsurer();
+        var created = await service.Create(new NewInsurancePolicy { Name = "Home cover" });
+
+        var to = FixedToday.AddDays(120);
+        await service.AddParty(created.InsurancePolicyId, new InsurancePolicyPartyRequest
+        {
+            Role = InsurancePartyRole.Insurer,
+            TargetId = kept,
+            ToDate = to,
+        });
+        await service.AddParty(created.InsurancePolicyId,
+            new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Insurer, TargetId = dropped });
+
+        var updated = await service.Update(created.InsurancePolicyId, new UpdateInsurancePolicy
+        {
+            Name = "Home cover",
+            Type = created.Type,
+            InsurerIds = [kept],
+        });
+
+        var insurer = Assert.Single(updated!.Insurers);
+        Assert.Equal(kept, insurer.ContactId);
+        Assert.Equal(to, insurer.ToDate);
+    }
+
     // ── Seed helpers ────────────────────────────────────────────────────────────
 
     private async Task<Guid> SeedInsurer(DateTime? archived = null)

@@ -12,4 +12,10 @@ public sealed record InsuredAccountReference
     public required string Name { get; set; }
 
     public AccountType Type { get; set; }
+
+    /// <inheritdoc cref="PolicyContactReference.FromDate" />
+    public DateTime? FromDate { get; set; }
+
+    /// <inheritdoc cref="PolicyContactReference.ToDate" />
+    public DateTime? ToDate { get; set; }
 }

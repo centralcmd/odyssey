@@ -1,0 +1,110 @@
+@using System.Globalization
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.InsuranceUpdate)]
+@inject IInsuranceApiClient Insurance
+@inject ISnackbar Snackbar
+
+@*
+    AddPolicyPartyDialog — add ONE party to an existing policy, the insurance sibling of
+    AddContractPartyDialog (the Insurance row action "New party"). Mirrors the design system's
+    AddPolicyPartyModal.
+
+    The same accessible two-step picker:
+      1. choose the party ROLE — Insurer / Insured account / Insured contact / Beneficiary (the
+         policy's four link collections)
+      2. pick the record from a type-to-filter OdsCombobox whose options are PRE-LOADED for the
+         chosen role.
+
+    The save carries a SCALAR ID and the collection it belongs to — never a nested Contact or Account
+    (the §6/§10 mass-assignment invariant), so adding a party can never create or rename the linked
+    record. Already-linked records are filtered out, so the same record cannot be attached twice in
+    the same role.
+
+    With a Party set, the same dialog EDITS that link — the hover action on a party tile. Role and
+    record stay editable: a party moved to another role, or pointed at another record, is the same
+    correction as a re-typed date, and the route carries the old link so the server replaces rather
+    than duplicating.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="group_add" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="ins-dialog">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <div class="odc-field">
+                <label class="odc-field-label" id="ins-party-role-label">Role</label>
+                <div class="ins-kind-seg" role="radiogroup" aria-labelledby="ins-party-role-label">
+                    @for (var i = 0; i < Roles.Count; i++)
+                    {
+                        var index = i;
+                        var def = Roles[index];
+                        <button type="button" role="radio" aria-checked="@(_role == def.Role ? "true" : "false")"
+                                tabindex="@(_role == def.Role ? 0 : -1)"
+                                @ref="_roleRefs[index]"
+                                class="ins-kind-opt @(_role == def.Role ? "on" : "")"
+                                @onclick="@(() => PickRole(def.Role))"
+                                @onkeydown="@(e => OnRoleKeyAsync(e, index))">
+                            <span class="material-icons" aria-hidden="true">@def.Icon</span>
+                            <span class="ins-kind-lab">@def.Label</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @* OdsFieldShell owns the label association AND the helper/error ids — the hand-rolled
+               .odc-field markup this replaced had neither, so a screen-reader user never heard the
+               available-count hint or the reason a save was refused. The visible label owns the
+               accessible name, so NO AriaLabel here: OdsCombobox renders its own sr-only
+               <label for> whenever AriaLabel and InputId are both set, which would name the field
+               twice. Help and Error are mutually exclusive below, so the error reuses HelpId and one
+               AriaDescribedBy covers both states. *@
+            <OdsFieldShell Label="@Current.Label" HtmlFor="ins-party-pick"
+                           Help="@(_error is null ? PickerHelp : null)" Error="@_error">
+                <OdsCombobox InputId="ins-party-pick" Value="@_value" ValueChanged="OnValueChanged"
+                             Options="Available" Loading="OptionsLoading"
+                             Placeholder="@($"Search {Current.Noun}s…")"
+                             AriaDescribedBy="ins-party-pick-help" Error="@(_error is not null)" />
+            </OdsFieldShell>
+
+            @* The term is the party's own fact, not the policy's: left as it lands, the party is on
+               the policy for its whole life. *@
+            <OdsSectionDivider Label="In the role" Meta="optional" />
+            <OdsFormRow>
+                <OdsDatePicker Value="_fromDate" ValueChanged="OnFromChanged" Clearable="true"
+                               Label="From"
+                               Error="@_errors.ContainsKey("fromDate")"
+                               ErrorText="@_errors.GetValueOrDefault("fromDate")"
+                               HelperText="@FromHelp" />
+                <OdsDatePicker Value="_toDate" ValueChanged="OnToChanged" Clearable="true"
+                               Label="To"
+                               Error="@_errors.ContainsKey("toDate")"
+                               ErrorText="@_errors.GetValueOrDefault("toDate")"
+                               HelperText="Leave empty while the party is still in the role." />
+            </OdsFormRow>
+        </div>
+    </ChildContent>
+    <Footer>
+        @* Removing the party detaches the record from the policy — the record itself is untouched,
+           so this is not a delete. It sits apart from the Cancel / Save pair. *@
+        @if (IsEdit)
+        {
+            <OdsButton Variant="OdsButtonVariant.Danger" Icon="link_off" Class="ins-remove-party"
+                       Loading="_isRemoving" OnClick="RemoveAsync">Remove party</OdsButton>
+        }
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")"
+                   Loading="_isSaving" OnClick="SubmitAsync">
+            @(IsEdit ? "Save changes" : "Create party")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    // The title and subtitle are inline render fragments — Razor syntax, so they cannot live in the
+    // code-behind. Everything else does.
+    private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit party" : "New party")</text>;
+    private RenderFragment SubtitleFragment => IsEdit
+        ? @<text>Change the role, the linked record, or the dates this party is in the role.</text>
+        : @<text>Link a contact or account to this policy in one of its four roles.</text>;
+}

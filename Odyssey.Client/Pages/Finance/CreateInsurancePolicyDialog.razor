@@ -7,30 +7,24 @@
 @*
     CreateInsurancePolicyDialog — the "New policy" dialog (issue #175), reused in edit mode
     when an InsurancePolicy is supplied. Fields mirror the NewInsurancePolicy /
-    UpdateInsurancePolicy DTOs: name (required), policy number (optional), type, the four link
-    collections (issue #27) and notes.
+    UpdateInsurancePolicy DTOs: name (required), policy number (optional), type and notes.
 
-    All four collections are OPTIONAL — a policy drafted before the insurer is known is a valid,
-    healthy record, so nothing here is required but the name and the type. Each save carries the
-    complete desired SET for each collection. Scalar ids only, at any depth (the §6/§10
-    mass-assignment invariant): the dialog never sends a nested Contact or Account object, so a
-    policy write can never create or rename a linked record.
+    The four link collections (issue #27) are NOT edited here. A party is added, re-dated and removed
+    one at a time from the policy's own "New party" action and its party tiles, which carry the
+    member's TERM in the role — a fact this dialog has nowhere to put. So it leaves all four
+    untouched: a policy edit can neither add nor drop a party.
 
-    Chip order follows the picker's own model while editing (parent order, new ids appended); the
-    server orders by resolved display name, so the dialog RE-SORTS ON LOAD only — the user never
-    sees a reorder mid-edit.
-
-    An UNNAMED member (its contact archived, or no longer resolvable) has no name in the read model,
-    so it renders through OdsContactChip's Archived / Unavailable state and carries NO remove
-    control: an ordinary write cannot remove it, so an affordance would silently no-op. The field
-    help then names the two routes that do work, detach first.
+    Untouched is expressed by OMITTING them, which is what null means on UpdateInsurancePolicy. The
+    design system's prototype reads the sets in and writes the same sets back because it has no
+    server; here that round trip would only create a race — a party added in another tab between load
+    and save would be computed as removed.
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
                Icon="shield" Title="@(IsEdit ? "Edit insurance policy" : "New insurance policy")"
                Subtitle="@(IsEdit
-                   ? "Update the policy details and who is on it. Renewal periods and documents are managed from the policy."
-                   : "Record the policy details and who is on it, then add renewal periods and documents from the policy.")"
+                   ? "Update the policy details. Parties, renewal periods and documents are managed from the policy."
+                   : "Record the policy details, then add parties, renewal periods and documents from the policy.")"
                SubmitLabel="@(IsEdit ? "Save changes" : "Create policy")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
@@ -45,93 +39,6 @@
                                       Placeholder="Choose a type…" Error="@_typeError" />
     </OdsFormRow>
 
-    @* The four collections read as four form fields — homogeneous per field, each a set of ids, all
-       optional. The divider keeps a now-eight-field dialog scannable without hiding anything behind
-       a disclosure. *@
-    <OdsSectionDivider Label="Parties & insured assets" Meta="all optional" HeadingLevel="0" />
-
-    <OdsTagMultiSelect @ref="_insurersPicker"
-                       Id="@FieldId("insurers")"
-                       Label="Insurers" Optional="true"
-                       Value="_insurerIds" ValueChanged="@(v => Set(ref _insurerIds, v, nameof(UpdateInsurancePolicy.InsurerIds)))"
-                       Options="Contacts" Loading="OptionsLoading"
-                       Placeholder="No insurers" AddLabel="Add insurer"
-                       Noun="insurer"
-                       SearchLabel="Search contacts" SearchPlaceholder="Search contacts…"
-                       EmptyText="No contacts match"
-                       UnknownLabel="Unavailable"
-                       ChipTemplate="ContactChip" PreserveOnClear="IsUnnamedContact"
-                       Error="@Error(nameof(UpdateInsurancePolicy.InsurerIds))"
-                       Help="@InsurersHelp" />
-
-    <OdsTagMultiSelect @ref="_insuredAccountsPicker"
-                       Id="@FieldId("insured-accounts")"
-                       Label="Insured accounts" Optional="true"
-                       Value="_insuredAccountIds" ValueChanged="@(v => Set(ref _insuredAccountIds, v, nameof(UpdateInsurancePolicy.InsuredAccountIds)))"
-                       Options="Accounts" Loading="OptionsLoading"
-                       Placeholder="No insured accounts" AddLabel="Add account"
-                       Noun="account"
-                       SearchLabel="Search accounts" SearchPlaceholder="Search accounts…"
-                       EmptyText="No accounts match"
-                       Error="@Error(nameof(UpdateInsurancePolicy.InsuredAccountIds))"
-                       Help="The accounts representing the insured assets — a house and an outbuilding, two vehicles." />
-
-    <OdsTagMultiSelect @ref="_insuredContactsPicker"
-                       Id="@FieldId("insured-contacts")"
-                       Label="Insured contacts" Optional="true"
-                       Value="_insuredContactIds" ValueChanged="@(v => Set(ref _insuredContactIds, v, nameof(UpdateInsurancePolicy.InsuredContactIds)))"
-                       Options="Contacts" Loading="OptionsLoading"
-                       Placeholder="No insured contacts" AddLabel="Add contact"
-                       Noun="contact"
-                       SearchLabel="Search contacts" SearchPlaceholder="Search contacts…"
-                       EmptyText="No contacts match"
-                       UnknownLabel="Unavailable"
-                       ChipTemplate="ContactChip" PreserveOnClear="IsUnnamedContact"
-                       Error="@Error(nameof(UpdateInsurancePolicy.InsuredContactIds))"
-                       Help="@InsuredContactsHelp" />
-
-    <OdsTagMultiSelect @ref="_beneficiariesPicker"
-                       Id="@FieldId("beneficiaries")"
-                       Label="Beneficiaries" Optional="true"
-                       Value="_beneficiaryIds" ValueChanged="@(v => Set(ref _beneficiaryIds, v, nameof(UpdateInsurancePolicy.BeneficiaryIds)))"
-                       Options="Contacts" Loading="OptionsLoading"
-                       Placeholder="No beneficiaries" AddLabel="Add beneficiary"
-                       Noun="beneficiary" NounPlural="beneficiaries"
-                       SearchLabel="Search contacts" SearchPlaceholder="Search contacts…"
-                       EmptyText="No contacts match"
-                       UnknownLabel="Unavailable"
-                       ChipTemplate="ContactChip" PreserveOnClear="IsUnnamedContact"
-                       Error="@Error(nameof(UpdateInsurancePolicy.BeneficiaryIds))"
-                       Help="@BeneficiariesHelp" />
-
     <OdsNoteField Label="Notes" Optional="true" MaxLength="1024" @bind-Value="_notes"
                   Placeholder="What this policy covers, excess, claims history…" />
 </OdsFormDialog>
-
-@code {
-    // The chip BODY for a contact link — OdsContactChip, which already carries the Archived
-    // ("(archived)") and Unavailable (link_off) states in TEXT with a settled accessible name. An
-    // inline render fragment is Razor syntax, so it cannot live in the code-behind. The picker keeps
-    // owning the remove button, and withholds it for a member this returns an unnamed chip for.
-    private RenderFragment<string> ContactChip => id =>
-        @<span>
-            @{
-                var link = LinkFor(id);
-            }
-            @if (link is null || link.Availability == LinkAvailability.Unresolvable)
-            {
-                @* No contact row at all: no name AND no type to show. *@
-                <OdsContactChip Unavailable="true" Compact="true" />
-            }
-            else if (link.Availability == LinkAvailability.Archived)
-            {
-                @* The read model carries no name for an archived link, so the chip states the STATE
-                   where a name would go — never the archived contact's name, never a GUID. *@
-                <OdsContactChip Name="Archived contact" Type="@link.Type?.ToString()" Archived="true" Compact="true" />
-            }
-            else
-            {
-                <OdsContactChip Name="@link.Name" Type="@link.Type?.ToString()" Compact="true" />
-            }
-        </span>;
-}
