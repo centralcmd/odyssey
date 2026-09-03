@@ -59,6 +59,7 @@
                disabled="@Disabled"
                autofocus="@AutoFocus"
                style="@(Align == "right" ? "text-align:right" : null)"
+               aria-label="@AmountAriaLabel"
                aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
                aria-describedby="@DescribedBy"
                @oninput="OnAmountInputAsync"
@@ -120,6 +121,7 @@
                                             id="@OptionId(index)"
                                             role="option"
                                             aria-selected="@(on ? "true" : "false")"
+                                            tabindex="-1"
                                             class="odc-money-opt"
                                             @onclick="@(() => PickAsync(option.Value))">
                                         <span class="odc-money-tick" aria-hidden="true">
@@ -138,7 +140,7 @@
                             }
                             @if (Shown.Count == 0)
                             {
-                                <li class="odc-money-empty">No currency matches “@_query.Trim()”</li>
+                                <li class="odc-money-empty" role="status" aria-live="polite">No currency matches “@_query.Trim()”</li>
                             }
                         </ul>
                     </div>

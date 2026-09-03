@@ -1360,6 +1360,32 @@ public class InsuranceServiceTests
     }
 
     [Fact]
+    public async Task AddRenewal_AcceptsANegativePremium_AndTheSummarySUBTRACTSIt()
+    {
+        // The renewal DTOs carry no lower bound on Premium/CoverageAmount, because a refund or a
+        // correction to a recorded period is a real figure. Nothing narrows that to a PAST period, so
+        // a negative on the CURRENT one reaches the portfolio rollup — and the rollup subtracts it,
+        // which is what a refund means. Pinned because the alternative reading (clamp it, or exclude
+        // it from the sums) would silently disagree with the ledger it is summarising.
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var insurerId = await SeedInsurer();
+
+        var refunded = await service.Create(NewPolicy(insurerId));
+        await service.AddRenewal(refunded.InsurancePolicyId,
+            NewRenewal(FixedToday.AddDays(-10), FixedToday.AddDays(100), premium: -40m));
+
+        var ordinary = await service.Create(NewPolicy(insurerId));
+        await service.AddRenewal(ordinary.InsurancePolicyId,
+            NewRenewal(FixedToday.AddDays(-10), FixedToday.AddDays(100), premium: 100m));
+
+        var summary = await service.GetSummary(null);
+
+        var premium = Assert.Single(summary.PremiumByCurrency);
+        Assert.Equal(60m, premium.Amount);
+    }
+
+    [Fact]
     public async Task GetSummary_WithBaseCurrency_ConvertsAndReportsUnconverted()
     {
         await using var context = TestContextFactory.Create();

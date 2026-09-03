@@ -142,7 +142,14 @@
     private Task<IEnumerable<OdsOption>> Search(string? text, CancellationToken token)
     {
         var query = (text ?? string.Empty).Trim();
-        if (query.Length == 0) return Task.FromResult<IEnumerable<OdsOption>>(Options);
+
+        // Opening the picker runs the search with whatever the box already shows, which is the current
+        // selection's own caption ("NOK · Norwegian krone") — a string no option's code or name
+        // contains, so the list came up EMPTY for anyone who had already chosen a currency. Reading
+        // the untouched caption as "no query" is what makes the picker open on the full list, the way
+        // every other Select does.
+        if (query.Length == 0 || query == TriggerText(Selected))
+            return Task.FromResult<IEnumerable<OdsOption>>(Options);
 
         return Task.FromResult<IEnumerable<OdsOption>>(
             [.. Options.Where(o => o.Value.Contains(query, StringComparison.OrdinalIgnoreCase)

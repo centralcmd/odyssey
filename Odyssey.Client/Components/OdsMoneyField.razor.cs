@@ -86,6 +86,13 @@ public partial class OdsMoneyField
 
     [Parameter] public bool AutoFocus { get; set; }
 
+    /// <summary>
+    /// Accessible name for the amount input where no visible <see cref="Label"/> is set — a hero whose
+    /// caption is a separate heading, a dense cell. Without it such a field has NO programmatic name:
+    /// a nearby <c>&lt;div&gt;</c> is not a label, and the currency segment names only itself.
+    /// </summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
     [Parameter] public string? Class { get; set; }
 
     [Parameter] public string? Id { get; set; }
@@ -181,6 +188,10 @@ public partial class OdsMoneyField
         }.Where(value => !string.IsNullOrEmpty(value)));
 
     private string TriggerClass => _open ? "odc-money-cur btn open" : "odc-money-cur btn";
+
+    // A visible label already names the input through OdsFieldShell's <label for>, so an aria-label
+    // would override it with a second, competing name.
+    private string? AmountAriaLabel => string.IsNullOrEmpty(Label) ? AriaLabel : null;
 
     private string? DescribedBy
     {
@@ -309,6 +320,9 @@ public partial class OdsMoneyField
                 var first = Shown.FirstOrDefault();
                 if (first is not null) await PickAsync(first.Value);
                 break;
+            case "Tab":
+                if (_menu is not null) await _menu.CloseMenuAsync();
+                break;
             case "Escape":
                 if (_menu is not null) await _menu.CloseMenuAsync();
                 await FocusAsync(TriggerId);
@@ -335,6 +349,11 @@ public partial class OdsMoneyField
                 break;
             case "End":
                 await FocusAsync(OptionId(Shown.Count - 1));
+                break;
+            case "Tab":
+                // The options are out of the tab order, so Tab is leaving the list — close behind it
+                // rather than stranding an open popover over the form.
+                if (_menu is not null) await _menu.CloseMenuAsync();
                 break;
             case "Escape":
                 if (_menu is not null) await _menu.CloseMenuAsync();

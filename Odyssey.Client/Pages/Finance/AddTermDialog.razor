@@ -87,8 +87,11 @@
                    amount is money, and money carries its code inside the control. *@
                 @if (IsPercentage)
                 {
+                    @* The caption is the "Value" heading above, beside the unit toggle — not a label
+                       element — so the input carries its own accessible name. *@
                     <OdsAmountField Size="lg" AllowNegative="true" Suffix="%"
                                     Value="@_valueStr" ValueChanged="OnValueChanged"
+                                    aria-label="Value"
                                     Error="@(_errors.TryGetValue("value", out var pctErr) ? pctErr : null)">
                         <HelpContent>
                             <text>Stored as a fraction: <b>@PreviewFraction</b>@(IsRate ? " · annual" : "")</text>
@@ -97,10 +100,16 @@
                 }
                 else
                 {
-                    <OdsMoneyField Size="lg" AllowNegative="true" SignEditable="true"
+                    @* No sign affordance here, which diverges from the DS's prop set on purpose: a fee
+                       amount can't be negative (this dialog rejects it, and so does the service), so a
+                       −/+ toggle would offer a state the form always refuses. The DS kit carries the
+                       same contradiction — its own submit() rejects a negative fee. The rate branch
+                       above keeps its sign, where a negative genuinely means something. *@
+                    <OdsMoneyField Size="lg" AllowNegative="false"
                                    Value="@_valueStr" ValueChanged="OnValueChanged"
                                    Currency="@_currency" CurrencyChanged="OnCurrencyChanged"
                                    CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
+                                   AriaLabel="Value"
                                    Error="@(_errors.TryGetValue("value", out var valErr) ? valErr : null)">
                         <HelpContent>
                             <text>Flat amount in <b>@_currency</b>@BillingSuffixHint</text>
