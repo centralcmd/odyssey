@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"c0ff965931f8","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"405e74b88332","components/ContactChip.jsx":"595200f6059a","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"d3a9026394fa","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"fc773cfaf6b8","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"806ae364ec54","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"63773ec5d23e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"bf69671bfea5","ui_kits/web/AddAccountModal.jsx":"b19baa5c9166","ui_kits/web/AddBudgetItemModal.jsx":"8dc5d7b427ba","ui_kits/web/AddBudgetModal.jsx":"44cfa55f8440","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"3833b7a19a10","ui_kits/web/AddEstimateModal.jsx":"4e2dd58b032a","ui_kits/web/AddFileModal.jsx":"35a97b29e621","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"5af0bf6bd424","ui_kits/web/AddRenewalModal.jsx":"465143ecc3bf","ui_kits/web/AddSubscriptionModal.jsx":"29f8104f027b","ui_kits/web/AddTaxStatementModal.jsx":"7644d3ab69f1","ui_kits/web/AddTermModal.jsx":"4a9ce4542ade","ui_kits/web/AddTransactionModal.jsx":"e92215161049","ui_kits/web/AnalyzeFileModal.jsx":"d45f26f5e580","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"f4010640760d","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"8000224353ab","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c388d4828996","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"d933de61fd4f","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"db3f18a11ae0","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"f13761a94a44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7033ff0bc236","ui_kits/web/Preferences.jsx":"c56b25306430","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"bd7a50a736b5","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"acffb8e12396","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"c98d7395c179","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"c0ff965931f8","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"405e74b88332","components/ContactChip.jsx":"595200f6059a","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"d3a9026394fa","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"fc773cfaf6b8","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"806ae364ec54","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"63773ec5d23e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"bf69671bfea5","ui_kits/web/AddAccountModal.jsx":"6754b62d87e8","ui_kits/web/AddBudgetItemModal.jsx":"987e1fdecb12","ui_kits/web/AddBudgetModal.jsx":"9bf3e6a081f8","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"3833b7a19a10","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"35a97b29e621","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"5af0bf6bd424","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"1da025db23eb","ui_kits/web/AddTaxStatementModal.jsx":"5fdd74bd79ec","ui_kits/web/AddTermModal.jsx":"dc6bf97cb769","ui_kits/web/AddTransactionModal.jsx":"9b6e577331a3","ui_kits/web/AnalyzeFileModal.jsx":"caf08d9633a7","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"f4010640760d","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"fc153733f0b3","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c388d4828996","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"db3f18a11ae0","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"f13761a94a44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7033ff0bc236","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"bd7a50a736b5","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"acffb8e12396","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"c98d7395c179","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -3782,6 +3782,393 @@ function CoverageStatusChip({
 Object.assign(__ds_scope, { COVERAGE_STATUSES, CoverageStatusChip });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/CoverageStatusChip.jsx", error: String((e && e.message) || e) }); }
 
+// components/CurrencySelect.jsx
+try { (() => {
+/**
+ * Odyssey DS — CurrencySelect
+ * The standalone counterpart to MoneyField's currency segment: pick an ISO 4217
+ * currency with no amount attached (an account's currency, a budget's or tax
+ * statement's base currency, a report's reporting currency).
+ *
+ * Same behaviour as the picker inside MoneyField — ISO code first in mono, the
+ * currency name beside it, a search box once the list passes
+ * `searchThreshold` (matching code or name), and the listbox keyboard pattern.
+ * Chrome is the standard `.odc-select-trigger`, so it lines up with every other
+ * Select in a form row.
+ */
+function CurrencySelect({
+  label = 'Currency',
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Select a currency…',
+  searchThreshold = 8,
+  showName = true,
+  help,
+  error,
+  required = false,
+  optional = false,
+  disabled = false,
+  className = '',
+  id
+}) {
+  const {
+    useState,
+    useRef,
+    useEffect
+  } = React;
+  const autoId = React.useId();
+  const fieldId = id || autoId;
+  const helpId = `${fieldId}-help`;
+  const listId = `${fieldId}-listbox`;
+  const msg = error || help;
+  const opts = (options || []).map(o => typeof o === 'string' ? {
+    value: o,
+    label: o
+  } : o);
+  const sel = opts.find(o => o.value === value);
+  const searchable = opts.length > (searchThreshold || 0);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const [query, setQuery] = useState('');
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const listRef = useRef(null);
+  const searchRef = useRef(null);
+  const q = query.trim().toLowerCase();
+  const shown = q ? opts.filter(o => o.value.toLowerCase().includes(q) || String(o.label || '').toLowerCase().includes(q)) : opts;
+  const openMenu = () => {
+    setQuery('');
+    const el = btnRef.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      const gap = 6;
+      const spaceBelow = window.innerHeight - r.bottom - gap - 12;
+      const spaceAbove = r.top - gap - 12;
+      const flipUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(180, Math.min(360, flipUp ? spaceAbove : spaceBelow));
+      setPos(flipUp ? {
+        bottom: window.innerHeight - r.top + gap,
+        left: r.left,
+        width: r.width,
+        maxHeight
+      } : {
+        top: r.bottom + gap,
+        left: r.left,
+        width: r.width,
+        maxHeight
+      });
+    }
+    setOpen(true);
+  };
+  const close = restore => {
+    setOpen(false);
+    if (restore && btnRef.current) btnRef.current.focus();
+  };
+  const optButtons = () => listRef.current ? Array.from(listRef.current.querySelectorAll('.odc-select-opt:not([disabled])')) : [];
+  useEffect(() => {
+    if (!open) return;
+    if (searchable && searchRef.current) {
+      searchRef.current.focus();
+      return;
+    }
+    const btns = optButtons();
+    if (!btns.length) return;
+    const idx = opts.findIndex(o => o.value === value);
+    (btns[idx >= 0 ? idx : 0] || btns[0]).focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = e => {
+      if (wrapRef.current && wrapRef.current.contains(e.target)) return;
+      if (listRef.current && listRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    const onScroll = e => {
+      if (wrapRef.current && wrapRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    const onResize = () => setOpen(false);
+    const onKey = e => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        close(true);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('keydown', onKey, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  const focusAt = i => {
+    const btns = optButtons();
+    if (!btns.length) return;
+    btns[Math.min(Math.max(i, 0), btns.length - 1)].focus();
+  };
+  const pick = (o, e) => {
+    if (onChange) onChange(o.value, e);
+    close(true);
+  };
+  const onListKey = e => {
+    const btns = optButtons();
+    const idx = btns.indexOf(document.activeElement);
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        focusAt(idx + 1);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        if (idx === 0 && searchable && searchRef.current) searchRef.current.focus();else focusAt(idx - 1);
+        break;
+      case 'Home':
+        e.preventDefault();
+        focusAt(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        focusAt(btns.length - 1);
+        break;
+      case 'Escape':
+        e.preventDefault();
+        e.stopPropagation();
+        close(true);
+        break;
+      case 'Tab':
+        close(false);
+        break;
+      default:
+        break;
+    }
+  };
+  const onSearchKey = e => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        focusAt(0);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (shown.length) pick(shown[0], e);
+        break;
+      case 'Escape':
+        e.preventDefault();
+        e.stopPropagation();
+        close(true);
+        break;
+      case 'Tab':
+        close(false);
+        break;
+      default:
+        break;
+    }
+  };
+  const onTriggerKey = e => {
+    if (disabled) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) openMenu();
+    }
+  };
+  const codeStyle = {
+    font: 'var(--fw-medium) var(--fs-body2)/1 var(--font-mono)',
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    flex: 'none'
+  };
+  const control = /*#__PURE__*/React.createElement("div", {
+    className: "odc-select odc-cursel",
+    ref: wrapRef
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    id: fieldId,
+    ref: btnRef,
+    className: `odc-select-trigger${open ? ' open' : ''}${sel ? '' : ' placeholder'}`,
+    disabled: disabled,
+    "aria-haspopup": "listbox",
+    "aria-expanded": open,
+    "aria-controls": open ? listId : undefined,
+    "aria-invalid": error ? true : undefined,
+    "aria-describedby": msg ? helpId : undefined,
+    onClick: () => open ? setOpen(false) : openMenu(),
+    onKeyDown: onTriggerKey
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-select-trigger-main",
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      minWidth: 0
+    }
+  }, sel ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    style: codeStyle
+  }, sel.value), showName && sel.label && sel.label !== sel.value ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-select-val",
+    style: {
+      color: 'var(--mud-palette-text-secondary)'
+    }
+  }, sel.label) : null) : /*#__PURE__*/React.createElement("span", {
+    className: "odc-select-val"
+  }, placeholder)), /*#__PURE__*/React.createElement("span", {
+    className: "material-icons odc-select-chev",
+    "aria-hidden": "true"
+  }, "expand_more")), open && pos ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-select-pop odc-cursel-pop",
+    ref: listRef,
+    style: {
+      top: pos.top,
+      bottom: pos.bottom,
+      left: pos.left,
+      minWidth: Math.max(pos.width || 0, 240),
+      maxHeight: pos.maxHeight,
+      display: 'flex',
+      flexDirection: 'column',
+      padding: 0,
+      overflow: 'hidden'
+    },
+    onKeyDown: onListKey
+  }, searchable ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-money-search",
+    style: {
+      flex: 'none',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      height: 44,
+      padding: '0 12px',
+      boxSizing: 'border-box',
+      borderBottom: '1px solid var(--mud-palette-divider)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true",
+    style: {
+      fontSize: 20,
+      lineHeight: 1,
+      flex: 'none',
+      color: 'var(--mud-palette-text-secondary)'
+    }
+  }, "search"), /*#__PURE__*/React.createElement("input", {
+    ref: searchRef,
+    type: "text",
+    value: query,
+    placeholder: "Search code or name",
+    "aria-label": "Search currencies",
+    "aria-controls": listId,
+    autoComplete: "off",
+    style: {
+      flex: 1,
+      minWidth: 0,
+      width: '100%',
+      height: '100%',
+      boxSizing: 'border-box',
+      appearance: 'none',
+      background: 'none',
+      border: 0,
+      outline: 'none',
+      boxShadow: 'none',
+      margin: 0,
+      padding: 0,
+      borderRadius: 0,
+      font: 'var(--fw-regular) var(--fs-body2)/1 var(--font-sans)',
+      color: 'var(--mud-palette-text-primary)'
+    },
+    onChange: e => setQuery(e.target.value),
+    onKeyDown: onSearchKey
+  })) : null, /*#__PURE__*/React.createElement("ul", {
+    id: listId,
+    role: "listbox",
+    "aria-label": typeof label === 'string' ? label : 'Currency',
+    style: {
+      flex: 1,
+      minHeight: 0,
+      overflowY: 'auto',
+      margin: 0,
+      padding: 4,
+      listStyle: 'none'
+    }
+  }, shown.map(o => {
+    const on = o.value === value;
+    return /*#__PURE__*/React.createElement("li", {
+      key: o.value,
+      style: {
+        listStyle: 'none',
+        margin: 0,
+        padding: 0
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      role: "option",
+      "aria-selected": on,
+      tabIndex: -1,
+      className: `odc-select-opt${on ? ' selected' : ''}`,
+      onClick: e => pick(o, e)
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "odc-select-tick"
+    }, on ? /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, "check") : null), /*#__PURE__*/React.createElement("span", {
+      className: "odc-money-opt-code",
+      style: {
+        ...codeStyle,
+        minWidth: 42
+      }
+    }, o.value), o.label && o.label !== o.value ? /*#__PURE__*/React.createElement("span", {
+      className: "odc-select-opt-label",
+      style: {
+        color: 'var(--mud-palette-text-secondary)'
+      }
+    }, o.label) : null));
+  }), !shown.length ? /*#__PURE__*/React.createElement("li", {
+    style: {
+      listStyle: 'none',
+      padding: 12,
+      textAlign: 'center',
+      font: 'var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans)',
+      color: 'var(--mud-palette-text-secondary)'
+    }
+  }, "No currency matches \u201C", query.trim(), "\u201D") : null)) : null);
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const FieldShell = NS.FieldShell;
+  if (FieldShell) {
+    return /*#__PURE__*/React.createElement(FieldShell, {
+      label: label,
+      htmlFor: fieldId,
+      required: required,
+      optional: optional,
+      help: help,
+      error: error,
+      className: className
+    }, control);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-field${error ? ' error' : ''}${className ? ' ' + className : ''}`
+  }, label ? /*#__PURE__*/React.createElement("label", {
+    className: "odc-field-label",
+    htmlFor: fieldId
+  }, label, required ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-req",
+    "aria-hidden": "true"
+  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-opt"
+  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-field-help",
+    id: helpId,
+    role: error ? 'alert' : undefined
+  }, msg) : null);
+}
+Object.assign(__ds_scope, { CurrencySelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/CurrencySelect.jsx", error: String((e && e.message) || e) }); }
+
 // components/CustodianChip.jsx
 try { (() => {
 /**
@@ -7345,6 +7732,491 @@ function Modal({
 }
 Object.assign(__ds_scope, { Modal });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/Modal.jsx", error: String((e && e.message) || e) }); }
+
+// components/MoneyField.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/**
+ * Odyssey DS — MoneyField
+ * The canonical control for editing a money value: an amount and its ISO
+ * currency code as ONE control. The amount is typed on the left, the currency
+ * code sits on the right inside the same box — no separate field, no symbol.
+ *
+ * Why ISO codes, not symbols: Odyssey is multi-currency and several currencies
+ * share a glyph ($, kr). The code is unambiguous, and it matches how amounts
+ * are rendered read-only across the app ("kr 12 400").
+ *
+ * Currency editing is optional:
+ *   • `currencyOptions` + `onCurrencyChange` → the code becomes a picker
+ *     (popover listbox, same chrome as Select).
+ *   • `currencyEditable={false}`, or no options / no handler → the code renders
+ *     as static text (the account's currency, a locked base currency, …).
+ *
+ * A leading `sign` (− / +) and a `tone` of "income" / "expense" let a signed
+ * amount read as one control, with the direction owned by the form. Pass
+ * `direction` + `onDirectionChange` instead and that leading segment becomes a
+ * BUTTON that flips expense ↔ income — direction, amount and currency in one
+ * control, so a form needs no separate segmented toggle. For a plain signed
+ * amount (no income/expense meaning) pass `signEditable` and the segment toggles
+ * the value's own minus — picked, never typed.
+ *
+ * Controlled: `value` is a string so partial entries ("3.", "1,2") survive.
+ * Invalid keystrokes are blocked as typed — letters and stray symbols are
+ * dropped, and a second decimal separator (or a non-leading minus) is rejected
+ * outright, so nothing is silently rewritten later. A leading minus IS accepted
+ * (refunds, corrections, negative adjustments); pass `allowNegative={false}` on
+ * fields where a negative is meaningless. Parse on submit. Shares the label /
+ * help / error chrome with Field via FieldShell.
+ */
+function MoneyField({
+  label,
+  value = '',
+  onChange,
+  currency,
+  onCurrencyChange,
+  currencyOptions = [],
+  currencyEditable = true,
+  currencyPlaceholder = '—',
+  currencySearchThreshold = 8,
+  placeholder = '0.00',
+  size = 'md',
+  align = 'left',
+  sign,
+  tone,
+  direction,
+  onDirectionChange,
+  signEditable = false,
+  allowNegative = true,
+  help,
+  error,
+  required = false,
+  optional = false,
+  disabled = false,
+  currencyDisabled = false,
+  autoFocus = false,
+  className = '',
+  id,
+  ...rest
+}) {
+  const {
+    useState,
+    useRef,
+    useEffect
+  } = React;
+  const autoId = React.useId();
+  const fieldId = id || autoId;
+  const helpId = `${fieldId}-help`;
+  const listId = `${fieldId}-currency-listbox`;
+  const msg = error || help;
+  const re = allowNegative ? /[^0-9.,\-\s]/g : /[^0-9.,\s]/g;
+  // Disallowed characters never make it in: a second decimal separator, or a
+  // minus that isn't leading, rejects that keystroke outright (the value stays
+  // as it was) rather than being rewritten elsewhere in the string.
+  const sanitize = raw => {
+    const s = raw.replace(re, '');
+    if ((s.match(/[.,]/g) || []).length > 1) return null;
+    if (allowNegative ? /(?!^)-/.test(s) : /-/.test(s)) return null;
+    return s;
+  };
+  const opts = (currencyOptions || []).map(o => typeof o === 'string' ? {
+    value: o,
+    label: o
+  } : o);
+  const editable = currencyEditable && !disabled && !currencyDisabled && opts.length > 0 && !!onCurrencyChange;
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const [query, setQuery] = useState('');
+  const btnRef = useRef(null);
+  const listRef = useRef(null);
+  const searchRef = useRef(null);
+  // A short list is faster to scan than to type into; a long one (the full ISO
+  // registry) needs the filter.
+  const searchable = opts.length > (currencySearchThreshold || 0);
+  const q = query.trim().toLowerCase();
+  const shown = q ? opts.filter(o => o.value.toLowerCase().startsWith(q) || o.value.toLowerCase().includes(q) || String(o.label || '').toLowerCase().includes(q)) : opts;
+  const openMenu = () => {
+    setQuery('');
+    const el = btnRef.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      const gap = 6;
+      const spaceBelow = window.innerHeight - r.bottom - gap - 12;
+      const spaceAbove = r.top - gap - 12;
+      const flipUp = spaceBelow < 200 && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(160, Math.min(360, flipUp ? spaceAbove : spaceBelow));
+      // Anchor against clientWidth, not innerWidth — a fixed-position popover is
+      // laid out inside the viewport minus any vertical scrollbar.
+      const right = document.documentElement.clientWidth - r.right;
+      setPos(flipUp ? {
+        bottom: window.innerHeight - r.top + gap,
+        right,
+        maxHeight
+      } : {
+        top: r.bottom + gap,
+        right,
+        maxHeight
+      });
+    }
+    setOpen(true);
+  };
+  const close = restore => {
+    setOpen(false);
+    if (restore && btnRef.current) btnRef.current.focus();
+  };
+  const optButtons = () => listRef.current ? Array.from(listRef.current.querySelectorAll('.odc-select-opt:not([disabled])')) : [];
+  useEffect(() => {
+    if (!open) return;
+    if (searchable && searchRef.current) {
+      searchRef.current.focus();
+      return;
+    }
+    const btns = optButtons();
+    if (!btns.length) return;
+    const idx = opts.findIndex(o => o.value === currency);
+    (btns[idx >= 0 ? idx : 0] || btns[0]).focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = e => {
+      if (btnRef.current && btnRef.current.contains(e.target)) return;
+      if (listRef.current && listRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    const onScroll = () => setOpen(false);
+    const onResize = () => setOpen(false);
+    const onKey = e => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        close(true);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('keydown', onKey, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  const focusAt = i => {
+    const btns = optButtons();
+    if (!btns.length) return;
+    btns[Math.min(Math.max(i, 0), btns.length - 1)].focus();
+  };
+  const onListKey = e => {
+    const btns = optButtons();
+    const idx = btns.indexOf(document.activeElement);
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        focusAt(idx + 1);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        if (idx === 0 && searchable && searchRef.current) searchRef.current.focus();else focusAt(idx - 1);
+        break;
+      case 'Home':
+        e.preventDefault();
+        focusAt(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        focusAt(btns.length - 1);
+        break;
+      case 'Escape':
+        e.preventDefault();
+        e.stopPropagation();
+        close(true);
+        break;
+      case 'Tab':
+        close(false);
+        break;
+      default:
+        break;
+    }
+  };
+  const onSearchKey = e => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        focusAt(0);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (shown.length) {
+          onCurrencyChange(shown[0].value, e);
+          close(true);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        e.stopPropagation();
+        close(true);
+        break;
+      case 'Tab':
+        close(false);
+        break;
+      default:
+        break;
+    }
+  };
+  const onTriggerKey = e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) openMenu();
+    }
+  };
+  const handle = e => {
+    if (!onChange) return;
+    const next = sanitize(e.target.value);
+    // React won't re-render on a rejected keystroke (the value prop is
+    // unchanged), so the character would linger in the DOM — put it back.
+    if (next === null) {
+      e.target.value = signMode ? magnitude : value;
+      return;
+    }
+    if (next !== e.target.value) e.target.value = next;
+    if (signMode) {
+      setSigned(negative, next.replace(/^\s*-/, ''), e);
+      return;
+    }
+    onChange(next, e);
+  };
+  const code = currency || currencyPlaceholder;
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const FieldShell = NS.FieldShell;
+  const dirMode = !!(direction && onDirectionChange);
+  // Generic signed amount: the leading segment toggles the value's own sign, so
+  // the minus is picked, never typed. The input shows the magnitude; `value`
+  // stays signed for the form.
+  const signMode = !dirMode && signEditable && !!onChange;
+  const negative = /^\s*-/.test(String(value || ''));
+  const magnitude = signMode ? String(value || '').replace(/^\s*-/, '') : value;
+  const setSigned = (neg, mag, e) => onChange((neg ? '-' : '') + mag, e);
+  const flipSign = e => setSigned(!negative, String(value || '').replace(/^\s*-/, ''), e);
+  const dirTone = tone || (dirMode ? direction : undefined);
+  const dirSign = sign || (direction ? direction === 'expense' ? '−' : '+' : signMode ? negative ? '−' : '+' : undefined);
+  const flipDir = e => onDirectionChange(direction === 'expense' ? 'income' : 'expense', e);
+  // Typing a sign in the amount sets the direction / sign rather than the value.
+  const onAmountKey = e => {
+    if (dirMode) {
+      if (e.key === '-' || e.key === '−') {
+        e.preventDefault();
+        onDirectionChange('expense', e);
+      } else if (e.key === '+') {
+        e.preventDefault();
+        onDirectionChange('income', e);
+      }
+      return;
+    }
+    if (!signMode) return;
+    if (e.key === '-' || e.key === '−') {
+      e.preventDefault();
+      setSigned(true, magnitude, e);
+    } else if (e.key === '+') {
+      e.preventDefault();
+      setSigned(false, magnitude, e);
+    }
+  };
+  const control = /*#__PURE__*/React.createElement("div", {
+    className: `odc-money${size === 'lg' ? ' lg' : ''}${dirTone ? ` tone-${dirTone}` : ''}${error ? ' error' : ''}${disabled ? ' disabled' : ''}`
+  }, dirMode || signMode ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "odc-money-sign btn",
+    disabled: disabled,
+    "aria-label": dirMode ? `${direction === 'expense' ? 'Expense' : 'Income'} — switch to ${direction === 'expense' ? 'income' : 'expense'}` : `${negative ? 'Negative' : 'Positive'} — switch to ${negative ? 'positive' : 'negative'}`,
+    title: dirMode ? `${direction === 'expense' ? 'Expense' : 'Income'} — click to switch` : `${negative ? 'Negative' : 'Positive'} — click to switch`,
+    onClick: dirMode ? flipDir : flipSign
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-money-dir-sign",
+    "aria-hidden": "true"
+  }, dirSign)) : dirSign ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-money-sign",
+    "aria-hidden": "true"
+  }, dirSign) : null, /*#__PURE__*/React.createElement("input", _extends({
+    id: fieldId,
+    className: "odc-money-input",
+    inputMode: "decimal",
+    type: "text",
+    value: signMode ? magnitude : value,
+    placeholder: placeholder,
+    disabled: disabled,
+    autoFocus: autoFocus,
+    style: align === 'right' ? {
+      textAlign: 'right'
+    } : undefined,
+    "aria-invalid": error ? true : undefined,
+    "aria-describedby": msg ? helpId : undefined,
+    onChange: handle,
+    onKeyDown: onAmountKey
+  }, rest)), editable ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    ref: btnRef,
+    className: `odc-money-cur btn${open ? ' open' : ''}`,
+    "aria-haspopup": "listbox",
+    "aria-expanded": open,
+    "aria-controls": open ? listId : undefined,
+    "aria-label": `Currency${currency ? `: ${currency}` : ''}`,
+    onClick: () => open ? setOpen(false) : openMenu(),
+    onKeyDown: onTriggerKey
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-money-code"
+  }, code), /*#__PURE__*/React.createElement("span", {
+    className: "material-icons odc-money-chev",
+    "aria-hidden": "true"
+  }, "expand_more")) : /*#__PURE__*/React.createElement("span", {
+    className: "odc-money-cur"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-money-code"
+  }, code)), open && pos ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-select-pop odc-money-pop",
+    ref: listRef,
+    style: {
+      top: pos.top,
+      bottom: pos.bottom,
+      right: pos.right,
+      maxHeight: pos.maxHeight,
+      minWidth: 240,
+      display: 'flex',
+      flexDirection: 'column',
+      padding: 0,
+      overflow: 'hidden'
+    },
+    onKeyDown: onListKey
+  }, searchable ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-money-search",
+    style: {
+      flex: 'none',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      height: 44,
+      padding: '0 12px',
+      boxSizing: 'border-box',
+      borderBottom: '1px solid var(--mud-palette-divider)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true",
+    style: {
+      fontSize: 20,
+      lineHeight: 1,
+      flex: 'none',
+      color: 'var(--mud-palette-text-secondary)'
+    }
+  }, "search"), /*#__PURE__*/React.createElement("input", {
+    ref: searchRef,
+    type: "text",
+    value: query,
+    placeholder: "Search code or name",
+    "aria-label": "Search currencies",
+    "aria-controls": listId,
+    autoComplete: "off",
+    style: {
+      flex: 1,
+      minWidth: 0,
+      width: '100%',
+      height: '100%',
+      boxSizing: 'border-box',
+      appearance: 'none',
+      background: 'none',
+      border: 0,
+      outline: 'none',
+      boxShadow: 'none',
+      margin: 0,
+      padding: 0,
+      borderRadius: 0,
+      font: 'var(--fw-regular) var(--fs-body2)/1 var(--font-sans)',
+      color: 'var(--mud-palette-text-primary)'
+    },
+    onChange: e => setQuery(e.target.value),
+    onKeyDown: onSearchKey
+  })) : null, /*#__PURE__*/React.createElement("ul", {
+    id: listId,
+    role: "listbox",
+    "aria-label": "Currency",
+    className: "odc-money-list",
+    style: {
+      flex: 1,
+      minHeight: 0,
+      overflowY: 'auto',
+      margin: 0,
+      padding: 4,
+      listStyle: 'none'
+    }
+  }, shown.map(o => {
+    const on = o.value === currency;
+    return /*#__PURE__*/React.createElement("li", {
+      key: o.value,
+      style: {
+        listStyle: 'none',
+        margin: 0,
+        padding: 0
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      role: "option",
+      "aria-selected": on,
+      tabIndex: -1,
+      className: `odc-select-opt${on ? ' selected' : ''}`,
+      onClick: e => {
+        onCurrencyChange(o.value, e);
+        close(true);
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "odc-select-tick"
+    }, on ? /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, "check") : null), /*#__PURE__*/React.createElement("span", {
+      className: "odc-money-opt-code"
+    }, o.value), o.label && o.label !== o.value ? /*#__PURE__*/React.createElement("span", {
+      className: "odc-select-opt-label"
+    }, o.label) : null));
+  }), !shown.length ? /*#__PURE__*/React.createElement("li", {
+    className: "odc-money-empty",
+    style: {
+      listStyle: 'none',
+      padding: 12,
+      textAlign: 'center',
+      font: 'var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans)',
+      color: 'var(--mud-palette-text-secondary)'
+    }
+  }, "No currency matches \u201C", query.trim(), "\u201D") : null)) : null);
+  if (FieldShell) {
+    return /*#__PURE__*/React.createElement(FieldShell, {
+      label: label,
+      htmlFor: fieldId,
+      required: required,
+      optional: optional,
+      help: help,
+      error: error,
+      className: className
+    }, control);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-field${error ? ' error' : ''}${className ? ' ' + className : ''}`
+  }, label ? /*#__PURE__*/React.createElement("label", {
+    className: "odc-field-label",
+    htmlFor: fieldId
+  }, label, required ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-req",
+    "aria-hidden": "true"
+  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-opt"
+  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-field-help",
+    id: helpId,
+    role: error ? 'alert' : undefined
+  }, msg) : null);
+}
+Object.assign(__ds_scope, { MoneyField });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/MoneyField.jsx", error: String((e && e.message) || e) }); }
 
 // components/MultiSelect.jsx
 try { (() => {
@@ -19597,9 +20469,9 @@ try { (() => {
    closed / archived are NOT part of creation — a new account is always active. */
 
 const AAM_TYPES = (window.OdysseyData || {}).accountTypes || [];
-const AAM_CURRENCIES = ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD'].map(c => ({
-  value: c,
-  label: c
+const AAM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
+  value: c.code,
+  label: c.name
 }));
 const AAM_TODAY = (() => {
   const d = new Date();
@@ -19723,11 +20595,11 @@ const AddAccountModal = ({
     className: "aam-group-note"
   }, /*#__PURE__*/React.createElement("span", {
     className: `aam-group-pill ${selType.group}`
-  }, selType.group === 'asset' ? 'Asset' : 'Liability'), /*#__PURE__*/React.createElement("span", null, selType.group === 'asset' ? 'Counts toward your total assets.' : 'Counts toward what you owe.')), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(Select, {
-    label: "Currency",
+  }, selType.group === 'asset' ? 'Asset' : 'Liability'), /*#__PURE__*/React.createElement("span", null, selType.group === 'asset' ? 'Counts toward your total assets.' : 'Counts toward what you owe.')), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(CurrencySelect, {
     value: draft.currency,
     onChange: set('currency'),
-    options: AAM_CURRENCIES
+    options: AAM_CURRENCIES,
+    searchThreshold: 0
   }), /*#__PURE__*/React.createElement(DateField, {
     label: "Opened",
     value: draft.opened,
@@ -19861,13 +20733,16 @@ const AddBudgetItemModal = ({
     label: "Category",
     value: draft.categoryType,
     onChange: set('categoryType')
-  }), /*#__PURE__*/React.createElement(Field, {
+  }), /*#__PURE__*/React.createElement(MoneyField, {
     label: "Planned amount",
-    type: "number",
     value: draft.planned,
     onChange: set('planned'),
+    currency: budget.currency,
+    currencyEditable: false,
+    allowNegative: false,
     placeholder: "0.00",
-    error: errors.planned
+    error: errors.planned,
+    helper: errors.planned ? undefined : 'Budget currency'
   })), /*#__PURE__*/React.createElement(Select, {
     label: "Transaction tag",
     value: draft.tagId,
@@ -19900,9 +20775,9 @@ try { (() => {
    Archived is NOT part of creation — a new budget is always active. Items are
    added afterwards from the budget's detail. */
 
-const ABM_CURRENCIES = ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD'].map(c => ({
-  value: c,
-  label: c
+const ABM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
+  value: c.code,
+  label: c.name
 }));
 const ABM_ISO = d => {
   const p = n => String(n).padStart(2, '0');
@@ -19995,11 +20870,12 @@ const AddBudgetModal = ({
     onChange: set('endDate'),
     help: "Defaults to +1 month",
     error: errors.endDate
-  })), /*#__PURE__*/React.createElement(Select, {
+  })), /*#__PURE__*/React.createElement(CurrencySelect, {
     label: "Base currency",
     value: draft.currency,
     onChange: set('currency'),
     options: ABM_CURRENCIES,
+    searchThreshold: 0,
     helper: "All planned amounts use this currency."
   }), /*#__PURE__*/React.createElement(Field, {
     label: "Description",
@@ -20968,31 +21844,20 @@ const AddEstimateModal = ({
     }, isEdit ? 'Save changes' : 'Create estimate'))
   }, /*#__PURE__*/React.createElement("div", {
     className: "est-value-block"
-  }, /*#__PURE__*/React.createElement(AmountField, {
+  }, /*#__PURE__*/React.createElement(MoneyField, {
     label: "Estimated value",
     size: "lg",
-    prefix: sym,
+    allowNegative: false,
     autoFocus: true,
     value: draft.valueStr,
     onChange: set('valueStr'),
+    currency: currency,
+    currencyEditable: false,
     error: errors.value,
-    help: preview == null ? /*#__PURE__*/React.createElement(React.Fragment, null, "Amount in ", /*#__PURE__*/React.createElement("b", null, currency)) : /*#__PURE__*/React.createElement(React.Fragment, null, "Recorded as ", /*#__PURE__*/React.createElement("b", null, preview))
+    help: preview == null ? /*#__PURE__*/React.createElement(React.Fragment, null, "Account currency \xB7 ", /*#__PURE__*/React.createElement("b", null, currency)) : /*#__PURE__*/React.createElement(React.Fragment, null, "Recorded as ", /*#__PURE__*/React.createElement("b", null, preview))
   })), /*#__PURE__*/React.createElement("div", {
     className: "est-row2"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "field"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "label"
-  }, "Currency"), /*#__PURE__*/React.createElement("div", {
-    className: "est-currency-lock"
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "lock",
-    size: 16
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "code"
-  }, currency), /*#__PURE__*/React.createElement("span", {
-    className: "note"
-  }, "Account currency"))), /*#__PURE__*/React.createElement(DateField, {
+  }, /*#__PURE__*/React.createElement(DateField, {
     label: "Effective from",
     value: draft.effectiveFrom,
     onChange: set('effectiveFrom'),
@@ -21633,8 +22498,8 @@ try { (() => {
    of a policy). Opened from the renewal-history section + the policy ActionMenu.
    Field set mirrors the NewPolicyRenewal DTO and enforces the spec's validation:
      • FromDate / ToDate          — both required; ToDate ≥ FromDate
-     • Premium + currency         — required; ≥ 0; currency = existing 3-letter code
-     • CoverageAmount + currency  — required; ≥ 0; currency independent of premium
+     • Premium + currency         — required; negatives allowed (refunds, corrections); currency = existing 3-letter code
+     • CoverageAmount + currency  — required; negatives allowed; currency independent of premium
      • Notes                      — optional, ≤ 512
    Overlaps with other periods are PERMITTED (not rejected) — current-renewal
    selection stays deterministic via the §5 tie-break. On confirm, onSave(dto, id?)
@@ -21642,34 +22507,8 @@ try { (() => {
 
 const ARN_CURRENCIES = window.OdysseyData.currencies.filter(c => !c.archived).map(c => ({
   value: c.code,
-  label: `${c.code} · ${c.name}`
+  label: c.name
 }));
-const ARN_SYM = code => (window.OdysseyData.currencyByCode[code] || {}).symbol || code;
-const ARN_MoneyField = ({
-  label,
-  value,
-  onChange,
-  currency,
-  onCurrency,
-  error,
-  help
-}) => /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(AmountField, {
-  label: label,
-  size: "lg",
-  prefix: ARN_SYM(currency),
-  value: value,
-  onChange: onChange,
-  error: error,
-  help: help
-}), /*#__PURE__*/React.createElement("div", {
-  style: {
-    marginTop: 8
-  }
-}, /*#__PURE__*/React.createElement(Select, {
-  value: currency,
-  onChange: onCurrency,
-  options: ARN_CURRENCIES
-})));
 const AddRenewalModal = ({
   policy,
   renewal,
@@ -21711,8 +22550,8 @@ const AddRenewalModal = ({
     if (draft.fromDate && draft.toDate && draft.toDate < draft.fromDate) next.toDate = 'End date can’t be before the start date.';
     const prem = parseFloat(String(draft.premium).replace(/,/g, ''));
     const cov = parseFloat(String(draft.coverageAmount).replace(/,/g, ''));
-    if (draft.premium === '' || isNaN(prem) || prem < 0) next.premium = 'Enter a premium of 0 or more.';
-    if (draft.coverageAmount === '' || isNaN(cov) || cov < 0) next.coverageAmount = 'Enter a coverage amount of 0 or more.';
+    if (draft.premium === '' || isNaN(prem)) next.premium = 'Enter a premium amount.';
+    if (draft.coverageAmount === '' || isNaN(cov)) next.coverageAmount = 'Enter a coverage amount.';
     if (draft.notes.length > 512) next.notes = 'Keep the note under 512 characters.';
     if (Object.keys(next).length) {
       setErrors(next);
@@ -21754,20 +22593,26 @@ const AddRenewalModal = ({
     onChange: set('toDate'),
     help: "End of this period\u2019s cover.",
     error: errors.toDate
-  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ARN_MoneyField, {
+  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(MoneyField, {
     label: "Premium",
     value: draft.premium,
     onChange: set('premium'),
     currency: draft.premiumCurrencyCode,
-    onCurrency: set('premiumCurrencyCode'),
+    onCurrencyChange: set('premiumCurrencyCode'),
+    currencyOptions: ARN_CURRENCIES,
+    currencySearchThreshold: 0,
+    signEditable: true,
     error: errors.premium,
     help: "Premium for this term, as stored (not annualized)."
-  }), /*#__PURE__*/React.createElement(ARN_MoneyField, {
+  }), /*#__PURE__*/React.createElement(MoneyField, {
     label: "Coverage amount",
     value: draft.coverageAmount,
     onChange: set('coverageAmount'),
     currency: draft.coverageCurrencyCode,
-    onCurrency: set('coverageCurrencyCode'),
+    onCurrencyChange: set('coverageCurrencyCode'),
+    currencyOptions: ARN_CURRENCIES,
+    currencySearchThreshold: 0,
+    signEditable: true,
     error: errors.coverageAmount,
     help: "Insured sum for this term."
   })), /*#__PURE__*/React.createElement(NoteField, {
@@ -21796,7 +22641,7 @@ try { (() => {
 
 const SUB_CURRENCY_OPTIONS = () => (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
   value: c.code,
-  label: `${c.code} · ${c.name}`
+  label: c.name
 }));
 const SUB_CONTACT_OPTIONS = () => {
   const reg = window.OdysseyData && window.OdysseyData.contactTypeByKey || {};
@@ -21956,29 +22801,26 @@ const AddSubscriptionModal = ({
     min: draft.startDate || undefined,
     error: errors.endDate,
     help: "Leave blank if ongoing."
-  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(AmountField, {
+  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(MoneyField, {
     label: "Price",
     value: draft.amount,
     onChange: set('amount'),
     required: true,
-    prefix: (window.OdysseyData.currencyByCode[draft.currencyCode] || {}).symbol || '$',
+    allowNegative: false,
+    currency: draft.currencyCode,
+    onCurrencyChange: set('currencyCode'),
+    currencyOptions: SUB_CURRENCY_OPTIONS(),
+    currencySearchThreshold: 0,
     error: errors.amount,
     placeholder: "0.00",
     className: "sub-amount-expense"
-  }), /*#__PURE__*/React.createElement(Select, {
-    label: "Currency",
-    value: draft.currencyCode,
-    onChange: set('currencyCode'),
-    options: SUB_CURRENCY_OPTIONS()
-  })), /*#__PURE__*/React.createElement(FormRow, {
-    cols: 3
-  }, /*#__PURE__*/React.createElement(BillingIntervalSelect, {
+  }), /*#__PURE__*/React.createElement(BillingIntervalSelect, {
     value: draft.interval,
     onChange: set('interval'),
     error: errors.interval,
     placeholder: "Choose a cadence\u2026",
     helper: errors.interval ? undefined : 'How often it bills.'
-  }), /*#__PURE__*/React.createElement(NumberField, {
+  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(NumberField, {
     label: "Every",
     value: draft.intervalCount,
     onChange: v => set('intervalCount')(v),
@@ -22026,7 +22868,7 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 
 const ATS_CURRENCIES = window.OdysseyData.currencies.filter(c => !c.archived).map(c => ({
   value: c.code,
-  label: `${c.code} · ${c.name}`
+  label: c.name
 }));
 const ATS_NumField = ({
   help,
@@ -22034,6 +22876,45 @@ const ATS_NumField = ({
 }) => /*#__PURE__*/React.createElement(NumberField, _extends({
   helper: help
 }, props));
+
+/* Declared figures are money, so they use MoneyField with the code locked to the
+   statement's base currency. The draft keeps them as numbers (the DTO shape), so
+   this holds the typed magnitude and its sign locally and reports the parsed
+   number up — a partial entry ("1 250,") still reads as 1250 rather than null. */
+const ATS_Money = ({
+  label,
+  value,
+  onChange,
+  currency,
+  help,
+  signEditable = false
+}) => {
+  const [mag, setMag] = React.useState(value == null ? '' : String(Math.abs(value)));
+  const [neg, setNeg] = React.useState(value != null && value < 0);
+  const report = (isNeg, m) => {
+    const body = m.replace(/\s/g, '').replace(',', '.').replace(/[.]$/, '');
+    const n = parseFloat(body);
+    onChange(body === '' || isNaN(n) ? null : isNeg ? -n : n);
+  };
+  const handle = next => {
+    const isNeg = /^\s*-/.test(next);
+    const m = next.replace(/^\s*-/, '');
+    setNeg(isNeg);
+    setMag(m);
+    report(isNeg, m);
+  };
+  return /*#__PURE__*/React.createElement(MoneyField, {
+    label: label,
+    value: (neg ? '-' : '') + mag,
+    onChange: handle,
+    currency: currency,
+    currencyEditable: false,
+    signEditable: signEditable,
+    allowNegative: signEditable,
+    placeholder: "0.00",
+    help: help
+  });
+};
 const AddTaxStatementModal = ({
   onClose,
   onCreate,
@@ -22067,14 +22948,22 @@ const AddTaxStatementModal = ({
     startDate: `${defaultYear}-01-01`,
     endDate: `${defaultYear}-12-31`,
     baseCurrency: 'NOK',
+    notes: '',
+    taxTags: [],
+    incomeTags: [],
+    filedAtUtc: '',
+    taxOfficeApprovedAtUtc: '',
     declared: {
+      totalAssets: null,
+      totalLiabilities: null,
+      netWorth: null,
       totalIncome: null,
       assessedTax: null,
-      netWorth: null
+      settlementAmount: null,
+      settledAtUtc: ''
     }
   });
   const [errors, setErrors] = useState({});
-  const [showFigures, setShowFigures] = useState(false);
   const set = k => v => {
     setDraft(d => ({
       ...d,
@@ -22159,21 +23048,16 @@ const AddTaxStatementModal = ({
       status: 'New',
       statusComment: null,
       statusChangedAt: new Date().toISOString(),
-      filedAtUtc: null,
-      taxOfficeApprovedAtUtc: null,
-      notes: '',
+      filedAtUtc: draft.filedAtUtc || null,
+      taxOfficeApprovedAtUtc: draft.taxOfficeApprovedAtUtc || null,
+      notes: draft.notes,
       archived: null,
       createdAtUtc: new Date().toISOString(),
       declared: {
-        totalAssets: null,
-        totalLiabilities: null,
-        netWorth: d.netWorth,
-        totalIncome: d.totalIncome,
-        assessedTax: d.assessedTax,
-        settlementAmount: null,
-        settledAtUtc: null
+        ...d,
+        settledAtUtc: d.settledAtUtc || null
       },
-      // No account-balance sync and no tags yet → derived not available, sums 0.
+      // No account-balance sync yet → derived not available, sums 0.
       derived: {
         available: false,
         totalAssets: null,
@@ -22182,8 +23066,8 @@ const AddTaxStatementModal = ({
         paidTax: 0,
         actualIncome: 0
       },
-      taxTags: [],
-      incomeTags: [],
+      taxTags: draft.taxTags,
+      incomeTags: draft.incomeTags,
       files: [],
       excludedTransactionCount: 0,
       excludedCurrencies: {}
@@ -22215,11 +23099,12 @@ const AddTaxStatementModal = ({
     value: draft.fiscalYear,
     onChange: editing ? v => set('fiscalYear')(v ? Math.round(v) : draft.fiscalYear) : setYear,
     help: errors.fiscalYear || 'The income year.'
-  }), /*#__PURE__*/React.createElement(Select, {
+  }), /*#__PURE__*/React.createElement(CurrencySelect, {
     label: "Base currency",
     value: draft.baseCurrency,
     onChange: set('baseCurrency'),
     options: ATS_CURRENCIES,
+    searchThreshold: 0,
     helper: "Derived sums include only this currency."
   })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
     label: "Period start",
@@ -22231,41 +23116,42 @@ const AddTaxStatementModal = ({
     onChange: set('endDate'),
     help: "Defaults to the calendar year.",
     error: errors.endDate
-  })), editing ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "tx-section-h",
-    style: {
-      marginTop: 6
-    }
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "receipt_long",
-    size: 18
-  }), "Declared figures", /*#__PURE__*/React.createElement("span", {
-    className: "tx-section-cap"
-  }, "From the official statement \u2014 all optional")), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ATS_NumField, {
+  })), /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Declared figures",
+    meta: "from the official statement \xB7 all optional"
+  }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ATS_Money, {
     label: "Total assets",
     value: draft.declared.totalAssets,
-    onChange: setDec('totalAssets')
-  }), /*#__PURE__*/React.createElement(ATS_NumField, {
+    onChange: setDec('totalAssets'),
+    currency: draft.baseCurrency
+  }), /*#__PURE__*/React.createElement(ATS_Money, {
     label: "Total liabilities",
     value: draft.declared.totalLiabilities,
-    onChange: setDec('totalLiabilities')
-  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ATS_NumField, {
+    onChange: setDec('totalLiabilities'),
+    currency: draft.baseCurrency
+  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ATS_Money, {
     label: "Net worth",
     value: draft.declared.netWorth,
     onChange: setDec('netWorth'),
+    currency: draft.baseCurrency,
+    signEditable: true,
     help: "Stated directly \u2014 may differ from assets \u2212 liabilities."
-  }), /*#__PURE__*/React.createElement(ATS_NumField, {
+  }), /*#__PURE__*/React.createElement(ATS_Money, {
     label: "Total income",
     value: draft.declared.totalIncome,
-    onChange: setDec('totalIncome')
-  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ATS_NumField, {
+    onChange: setDec('totalIncome'),
+    currency: draft.baseCurrency
+  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ATS_Money, {
     label: "Assessed tax",
     value: draft.declared.assessedTax,
-    onChange: setDec('assessedTax')
-  }), /*#__PURE__*/React.createElement(ATS_NumField, {
+    onChange: setDec('assessedTax'),
+    currency: draft.baseCurrency
+  }), /*#__PURE__*/React.createElement(ATS_Money, {
     label: "Settlement amount",
     value: draft.declared.settlementAmount,
     onChange: setDec('settlementAmount'),
+    currency: draft.baseCurrency,
+    signEditable: true,
     help: "Positive = additional tax owed \xB7 negative = refund."
   })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
     label: "Settlement paid",
@@ -22286,17 +23172,10 @@ const AddTaxStatementModal = ({
     value: draft.notes,
     onChange: set('notes'),
     placeholder: "Anything worth remembering about this statement\u2026"
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "tx-section-h",
-    style: {
-      marginTop: 6
-    }
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "local_offer",
-    size: 18
-  }), "Derivation tags", /*#__PURE__*/React.createElement("span", {
-    className: "tx-section-cap"
-  }, "Which transaction tags feed the derived figures")), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(FieldShell, {
+  }), /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Derivation tags",
+    meta: "tags feeding the derived figures"
+  }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(FieldShell, {
     label: "Tax-payment tags",
     helper: "Sum into derived advance tax paid (within the year)."
   }, /*#__PURE__*/React.createElement(MultiSelect, {
@@ -22312,36 +23191,6 @@ const AddTaxStatementModal = ({
     value: draft.incomeTags,
     onChange: set('incomeTags'),
     options: incOpts
-  })))) :
-  /*#__PURE__*/
-  /* optional declared figures — collapsible to keep the create path light */
-  React.createElement("div", {
-    className: "atm-adv"
-  }, /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: "atm-adv-toggle",
-    onClick: () => setShowFigures(v => !v)
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "expand_more",
-    size: 20,
-    className: `chev ${showFigures ? 'open' : ''}`
-  }), "Declared figures", /*#__PURE__*/React.createElement("span", {
-    className: "atm-adv-hint"
-  }, "Optional \u2014 add now or later")), showFigures && /*#__PURE__*/React.createElement("div", {
-    className: "atm-adv-body"
-  }, /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ATS_NumField, {
-    label: "Total income",
-    value: draft.declared.totalIncome,
-    onChange: setDec('totalIncome')
-  }), /*#__PURE__*/React.createElement(ATS_NumField, {
-    label: "Assessed tax",
-    value: draft.declared.assessedTax,
-    onChange: setDec('assessedTax')
-  })), /*#__PURE__*/React.createElement(ATS_NumField, {
-    label: "Net worth",
-    value: draft.declared.netWorth,
-    onChange: setDec('netWorth'),
-    help: "Stated on the assessment \u2014 may differ from assets \u2212 liabilities."
   }))));
 };
 Object.assign(window, {
@@ -22381,9 +23230,9 @@ const TRM_SYM = window.ATM_CURRENCY_SYMBOL || {
   SEK: 'kr',
   CAD: '$'
 };
-const TRM_CURRENCIES = window.ATM_CURRENCIES || ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD'].map(c => ({
-  value: c,
-  label: c
+const TRM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
+  value: c.code,
+  label: c.name
 }));
 
 /* sensible default billing period per fee kind */
@@ -22482,7 +23331,7 @@ const AddTermModal = ({
       note: draft.note.trim() || null
     }, term && term.id);
   };
-  const sym = TRM_SYM[draft.currency] || draft.currency;
+  const sym = TRM_SYM[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
   const previewFrac = (() => {
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     return isNaN(raw) ? null : raw / 100;
@@ -22601,22 +23450,31 @@ const AddTermModal = ({
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: "payments",
     size: 15
-  }), "Amount"))), /*#__PURE__*/React.createElement(AmountField, {
+  }), "Amount"))), isPct ? /*#__PURE__*/React.createElement(AmountField, {
     size: "lg",
-    prefix: !isPct ? sym : undefined,
-    suffix: isPct ? '%' : undefined,
+    suffix: "%",
     allowNegative: true,
     autoFocus: true,
     value: draft.valueStr,
     onChange: set('valueStr'),
     error: errors.value,
-    help: isPct ? /*#__PURE__*/React.createElement(React.Fragment, null, "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), isRate ? ' · annual' : '') : /*#__PURE__*/React.createElement(React.Fragment, null, "Flat amount in ", /*#__PURE__*/React.createElement("b", null, draft.currency), draft.billingPeriod && draft.billingPeriod !== 'OneTime' ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", (H.billingInfo(draft.billingPeriod) || {}).label) : '')
-  })), /*#__PURE__*/React.createElement(FormRow, null, !isPct ? /*#__PURE__*/React.createElement(Select, {
-    label: "Currency",
-    value: draft.currency,
-    onChange: set('currency'),
-    options: TRM_CURRENCIES
-  }) : /*#__PURE__*/React.createElement("div", {
+    help: /*#__PURE__*/React.createElement(React.Fragment, null, "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), isRate ? ' · annual' : '')
+  }) : /*#__PURE__*/React.createElement(MoneyField, {
+    size: "lg",
+    allowNegative: true,
+    signEditable: true,
+    autoFocus: true,
+    value: draft.valueStr,
+    onChange: set('valueStr'),
+    currency: draft.currency,
+    onCurrencyChange: set('currency'),
+    currencyOptions: TRM_CURRENCIES,
+    currencySearchThreshold: 0,
+    error: errors.value,
+    help: /*#__PURE__*/React.createElement(React.Fragment, null, "Flat amount in ", /*#__PURE__*/React.createElement("b", null, draft.currency), draft.billingPeriod && draft.billingPeriod !== 'OneTime' ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", (H.billingInfo(draft.billingPeriod) || {}).label) : '')
+  })), /*#__PURE__*/React.createElement(FormRow, {
+    cols: isPct ? 2 : 1
+  }, isPct ? /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement("div", {
     className: "label"
@@ -22640,7 +23498,7 @@ const AddTermModal = ({
       fontWeight: 400,
       color: 'var(--mud-palette-text-secondary)'
     }
-  }, "Not used for a rate"))), /*#__PURE__*/React.createElement(DateField, {
+  }, "Not used for a rate"))) : null, /*#__PURE__*/React.createElement(DateField, {
     label: "Effective from",
     value: draft.effectiveFrom,
     onChange: set('effectiveFrom'),
@@ -22706,9 +23564,9 @@ try { (() => {
 
    onCreate(newTransaction) receives the assembled DTO-shaped object. */
 
-const ATM_CURRENCIES = ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD'].map(c => ({
-  value: c,
-  label: c
+const ATM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
+  value: c.code,
+  label: c.name
 }));
 const ATM_CURRENCY_SYMBOL = {
   USD: '$',
@@ -23014,7 +23872,8 @@ const AddTransactionModal = ({
     setExtraTags(prev => [...prev, opt]);
     return opt.value;
   };
-  const sym = ATM_CURRENCY_SYMBOL[draft.currency] || draft.currency;
+  const sym = ATM_CURRENCY_SYMBOL[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
+
   const submit = () => {
     const next = {};
     if (!draft.account) next.account = 'Choose which account this belongs to.';
@@ -23102,51 +23961,23 @@ const AddTransactionModal = ({
     className: "odc-form-grid"
   }, /*#__PURE__*/React.createElement("div", {
     className: "atm-amount-block odc-form-grid-wide"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "atm-seg",
-    role: "radiogroup",
-    "aria-label": "Direction"
-  }, /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    role: "radio",
-    "aria-checked": draft.dir === 'expense',
-    className: `atm-seg-btn ${draft.dir === 'expense' ? 'on expense' : ''}`,
-    onClick: () => set('dir')('expense')
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "south_west",
-    size: 16
-  }), "Expense"), /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    role: "radio",
-    "aria-checked": draft.dir === 'income',
-    className: `atm-seg-btn ${draft.dir === 'income' ? 'on income' : ''}`,
-    onClick: () => set('dir')('income')
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "north_east",
-    size: 16
-  }), "Income")), /*#__PURE__*/React.createElement("div", {
-    className: `atm-amount ${draft.dir} ${errors.amount ? 'has-error' : ''}`
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "atm-amount-sign"
-  }, draft.dir === 'expense' ? '−' : '+'), /*#__PURE__*/React.createElement("span", {
-    className: "atm-amount-cur"
-  }, sym), /*#__PURE__*/React.createElement("input", {
-    inputMode: "decimal",
+  }, /*#__PURE__*/React.createElement(MoneyField, {
+    label: "Amount",
+    size: "lg",
+    direction: draft.dir,
+    onDirectionChange: set('dir'),
+    allowNegative: false,
+    autoFocus: true,
     placeholder: "0.00",
     value: draft.amount,
-    autoFocus: true,
-    onChange: e => {
-      const v = e.target.value.replace(/[^0-9.,]/g, '');
-      set('amount')(v);
-    }
-  })), errors.amount && /*#__PURE__*/React.createElement("div", {
-    className: "helper aam-err"
-  }, errors.amount)), /*#__PURE__*/React.createElement(Select, {
-    label: "Currency",
-    value: draft.currency,
-    onChange: set('currency'),
-    options: ATM_CURRENCIES
-  }), /*#__PURE__*/React.createElement(DateField, {
+    onChange: set('amount'),
+    currency: draft.currency,
+    onCurrencyChange: set('currency'),
+    currencyOptions: ATM_CURRENCIES,
+    currencySearchThreshold: 0,
+    error: errors.amount,
+    help: draft.dir === 'expense' ? 'Expense — click the sign, or type + in the amount, for income.' : 'Income — click the sign, or type − in the amount, for expense.'
+  })), /*#__PURE__*/React.createElement(DateField, {
     label: "Date",
     value: draft.date,
     onChange: set('date'),
@@ -23498,17 +24329,37 @@ const FanCandidateRow = ({
     inputMode: "decimal",
     value: row.amount,
     "aria-label": "Amount",
-    onChange: e => onChange(row.uid, {
-      amount: e.target.value.replace(/[^0-9.,\-]/g, '')
-    })
+    onKeyDown: e => {
+      if (e.key !== '-' && e.key !== '−' && e.key !== '+') return;
+      e.preventDefault();
+      const mag = String(row.amount).replace(/^\s*-/, '');
+      onChange(row.uid, {
+        amount: (e.key === '+' ? '' : '-') + mag
+      });
+    },
+    onChange: e => {
+      const raw = e.target.value.replace(/[^0-9.,\-\s]/g, '');
+      const neg = /^\s*-/.test(raw);
+      const body = raw.replace(/-/g, '');
+      if ((body.match(/[.,]/g) || []).length > 1) {
+        e.target.value = row.amount;
+        return;
+      }
+      onChange(row.uid, {
+        amount: (neg ? '-' : '') + body
+      });
+    }
   }))), /*#__PURE__*/React.createElement("div", {
     className: "fan-cell fan-cur"
-  }, /*#__PURE__*/React.createElement(Select, {
+  }, /*#__PURE__*/React.createElement(CurrencySelect, {
+    label: null,
     value: row.currency,
     onChange: v => onChange(row.uid, {
       currency: v
     }),
-    options: FAN_CURRENCIES
+    options: FAN_CURRENCIES,
+    searchThreshold: 0,
+    showName: false
   })), /*#__PURE__*/React.createElement("div", {
     className: "fan-cell ro fan-conf-cell"
   }, /*#__PURE__*/React.createElement(FanConfidence, {
@@ -27593,6 +28444,59 @@ const AmountField = ({
   }, msg) : null);
 };
 
+// MoneyField — amount + ISO currency code as one control (the canonical money
+// editor). Falls back to AmountField + a separate Select until the bundle
+// carries it.
+const MoneyField = ({
+  helper,
+  ...props
+}) => {
+  if (DS.MoneyField) return /*#__PURE__*/React.createElement(DS.MoneyField, _extends({
+    help: helper
+  }, props));
+  const {
+    label,
+    currency,
+    onCurrencyChange,
+    currencyOptions = [],
+    currencyEditable = true,
+    ...amt
+  } = props;
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(AmountField, _extends({
+    label: label,
+    helper: helper
+  }, amt)), currencyEditable && onCurrencyChange ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement(Select, {
+    value: currency,
+    onChange: onCurrencyChange,
+    options: currencyOptions
+  })) : null);
+};
+
+// CurrencySelect — currency-only picker (same list + search as MoneyField's
+// segment). Falls back to a plain Select until the bundle carries it.
+const CurrencySelect = ({
+  helper,
+  ...props
+}) => {
+  if (DS.CurrencySelect) return /*#__PURE__*/React.createElement(DS.CurrencySelect, _extends({
+    help: helper
+  }, props));
+  const {
+    label = 'Currency',
+    options = [],
+    ...rest
+  } = props;
+  return /*#__PURE__*/React.createElement(Select, _extends({
+    label: label,
+    options: options,
+    helper: helper
+  }, rest));
+};
+
 // NoteField — the canonical multi-line note / description field with a live
 // character counter, replacing the kit's hand-rolled .field + .atm-textarea +
 // .*-charcount pattern. Typed DS component with a shipped-markup fallback.
@@ -29662,6 +30566,8 @@ Object.assign(window, {
   SearchField,
   Select,
   AmountField,
+  MoneyField,
+  CurrencySelect,
   NoteField,
   NumberField,
   FieldShell,
@@ -33913,7 +34819,7 @@ const RecordRateModal = ({
   const editing = !!editRate;
   const codeOptions = d.currencies.filter(c => !c.archived).map(c => ({
     value: c.code,
-    label: `${c.code} · ${c.name}`
+    label: c.name
   }));
   const [draft, setDraft] = useState({
     from: editRate?.from || initial && initial.from || 'USD',
@@ -33974,17 +34880,19 @@ const RecordRateModal = ({
       icon: editing ? 'check' : 'add',
       onClick: submit
     }, editing ? 'Save changes' : 'Create rate'))
-  }, /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(Select, {
+  }, /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(CurrencySelect, {
     label: "From currency",
     value: draft.from,
     onChange: set('from'),
     options: codeOptions,
+    searchThreshold: 0,
     disabled: editing
-  }), /*#__PURE__*/React.createElement(Select, {
+  }), /*#__PURE__*/React.createElement(CurrencySelect, {
     label: "To currency",
     value: draft.to,
     onChange: set('to'),
     options: codeOptions,
+    searchThreshold: 0,
     helper: errors.to,
     placeholder: "Select\u2026",
     disabled: editing
@@ -42619,28 +43527,28 @@ try { (() => {
 
 const CURRENCIES = [{
   value: 'USD',
-  label: 'USD · US Dollar'
+  label: 'US Dollar'
 }, {
   value: 'EUR',
-  label: 'EUR · Euro'
+  label: 'Euro'
 }, {
   value: 'GBP',
-  label: 'GBP · British Pound'
+  label: 'British Pound'
 }, {
   value: 'JPY',
-  label: 'JPY · Japanese Yen'
+  label: 'Japanese Yen'
 }, {
   value: 'CAD',
-  label: 'CAD · Canadian Dollar'
+  label: 'Canadian Dollar'
 }, {
   value: 'AUD',
-  label: 'AUD · Australian Dollar'
+  label: 'Australian Dollar'
 }, {
   value: 'CHF',
-  label: 'CHF · Swiss Franc'
+  label: 'Swiss Franc'
 }, {
   value: 'SEK',
-  label: 'SEK · Swedish Krona'
+  label: 'Swedish Krona'
 }];
 
 // One source of truth for the cards — drives both render and search.
@@ -42706,10 +43614,12 @@ function PreferencesPage({
     const set = d.key === 'defaultCurrency' ? setDefaultCurrency : setMainCurrency;
     return /*#__PURE__*/React.createElement("div", {
       className: "pref-select"
-    }, /*#__PURE__*/React.createElement(Select, {
+    }, /*#__PURE__*/React.createElement(CurrencySelect, {
+      label: null,
       value: val,
       onChange: set,
-      options: CURRENCIES
+      options: CURRENCIES,
+      searchThreshold: 0
     }));
   };
   const save = () => {
@@ -58761,6 +59671,8 @@ __ds_ns.COVERAGE_STATUSES = __ds_scope.COVERAGE_STATUSES;
 
 __ds_ns.CoverageStatusChip = __ds_scope.CoverageStatusChip;
 
+__ds_ns.CurrencySelect = __ds_scope.CurrencySelect;
+
 __ds_ns.CustodianChip = __ds_scope.CustodianChip;
 
 __ds_ns.CustodianSelect = __ds_scope.CustodianSelect;
@@ -58818,6 +59730,8 @@ __ds_ns.Menu = __ds_scope.Menu;
 __ds_ns.MetaTile = __ds_scope.MetaTile;
 
 __ds_ns.Modal = __ds_scope.Modal;
+
+__ds_ns.MoneyField = __ds_scope.MoneyField;
 
 __ds_ns.MultiSelect = __ds_scope.MultiSelect;
 

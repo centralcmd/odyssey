@@ -10,8 +10,9 @@
    Archived is NOT part of creation — a new budget is always active. Items are
    added afterwards from the budget's detail. */
 
-const ABM_CURRENCIES = ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD']
-  .map(c => ({ value: c, label: c }));
+const ABM_CURRENCIES = (window.OdysseyData.currencies || [])
+  .filter(c => !c.archived)
+  .map(c => ({ value: c.code, label: c.name }));
 
 const ABM_ISO = (d) => {
   const p = (n) => String(n).padStart(2, '0');
@@ -81,7 +82,7 @@ const AddBudgetModal = ({ onClose, onCreate, onSave, budget = null }) => {
         <DateField label="End date" value={draft.endDate} onChange={set('endDate')} help="Defaults to +1 month" error={errors.endDate} />
       </FormRow>
 
-      <Select label="Base currency" value={draft.currency} onChange={set('currency')} options={ABM_CURRENCIES} helper="All planned amounts use this currency." />
+      <CurrencySelect label="Base currency" value={draft.currency} onChange={set('currency')} options={ABM_CURRENCIES} searchThreshold={0} helper="All planned amounts use this currency." />
 
       <Field
         label="Description"

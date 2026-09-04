@@ -52,16 +52,13 @@
 .fan-amount.expense .fan-input { color: var(--finance-expense); }
 .fan-amount.income  .fan-input { color: var(--finance-income); }
 
-/* native select styled like the inputs (category + currency) */
-.fan-select {
-  width: 100%; box-sizing: border-box; height: 34px; background: var(--mud-palette-surface); color: var(--mud-palette-text-primary);
-  border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px;
-  padding: 7px 28px 7px 9px; font-size: 0.78rem; line-height: 1.2; outline: none; cursor: pointer;
-  appearance: none; -webkit-appearance: none; -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%2398A4BC'%3E%3Cpath d='M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 6px center;
-}
-.fan-select:focus { border: 2px solid var(--focus-ring, var(--mud-palette-primary)); padding: 6px 27px 6px 8px; }
+/* The currency cell is an OdsCurrencySelect now, so the bespoke native-select chrome
+   (.fan-select) was retired with the last <select> in the grid. What it still needs is the
+   grid's own metrics: the picker is a MudBlazor field, which is taller and denser by default
+   than the 34px inline inputs it sits beside. */
+.fan-cur ::deep .mud-input-control { margin-top: 0; }
+.fan-cur ::deep .mud-input.mud-input-outlined { height: 34px; min-height: 34px; }
+.fan-cur ::deep .mud-input-slot { font-size: 0.78rem; padding-top: 0; padding-bottom: 0; }
 
 /* The merchant cell is an OdsCombobox, so the bespoke .fan-merch chrome was retired.
    "fan-merch" survives in FileAnalysisDialog only as an element *id* prefix

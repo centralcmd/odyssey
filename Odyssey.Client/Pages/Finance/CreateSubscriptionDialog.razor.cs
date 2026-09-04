@@ -60,9 +60,12 @@ public partial class CreateSubscriptionDialog
     private string? _amountError;
     private string? _firstBillingError;
 
-    private string CurrencySymbol => Currencies
-        .FirstOrDefault(c => string.Equals(c.CurrencyCode, _currencyCode, StringComparison.OrdinalIgnoreCase))?.Symbol
-        ?? "$";
+    // The option label is the currency NAME alone — OdsMoneyField renders the ISO code itself, in
+    // mono, so a "USD · US Dollar" label would print the code twice.
+    private IReadOnlyList<OdsOption> CurrencyOptions =>
+        [.. Currencies.Where(c => c.Archived is null)
+            .OrderBy(c => c.CurrencyCode)
+            .Select(c => new OdsOption(c.CurrencyCode, c.Name))];
 
     protected override void OnInitialized()
     {
@@ -106,9 +109,11 @@ public partial class CreateSubscriptionDialog
             ? "End date must be on or after the start date."
             : null;
 
-        var parsedAmount = decimal.TryParse(_amount, System.Globalization.NumberStyles.Number,
-            System.Globalization.CultureInfo.InvariantCulture, out var amount);
-        _amountError = !parsedAmount || amount < 0 ? "Enter a valid, non-negative price." : null;
+        // NumberStyles.Number allowed thousands separators, so the decimal comma the money editor
+        // accepts ("1234,56") was read as a group separator — 123456.
+        var parsed = OdsMoneyText.Parse(_amount);
+        var amount = parsed ?? 0m;
+        _amountError = parsed is null || amount < 0 ? "Enter a valid, non-negative price." : null;
 
         if (_nameError is not null || _intervalError is not null || _startError is not null
             || _firstBillingError is not null || _endError is not null || _amountError is not null)

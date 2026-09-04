@@ -2,8 +2,8 @@
    of a policy). Opened from the renewal-history section + the policy ActionMenu.
    Field set mirrors the NewPolicyRenewal DTO and enforces the spec's validation:
      • FromDate / ToDate          — both required; ToDate ≥ FromDate
-     • Premium + currency         — required; ≥ 0; currency = existing 3-letter code
-     • CoverageAmount + currency  — required; ≥ 0; currency independent of premium
+     • Premium + currency         — required; negatives allowed (refunds, corrections); currency = existing 3-letter code
+     • CoverageAmount + currency  — required; negatives allowed; currency independent of premium
      • Notes                      — optional, ≤ 512
    Overlaps with other periods are PERMITTED (not rejected) — current-renewal
    selection stays deterministic via the §5 tie-break. On confirm, onSave(dto, id?)
@@ -11,17 +11,7 @@
 
 const ARN_CURRENCIES = window.OdysseyData.currencies
   .filter(c => !c.archived)
-  .map(c => ({ value: c.code, label: `${c.code} · ${c.name}` }));
-const ARN_SYM = (code) => (window.OdysseyData.currencyByCode[code] || {}).symbol || code;
-
-const ARN_MoneyField = ({ label, value, onChange, currency, onCurrency, error, help }) => (
-  <div>
-    <AmountField label={label} size="lg" prefix={ARN_SYM(currency)} value={value} onChange={onChange} error={error} help={help} />
-    <div style={{ marginTop: 8 }}>
-      <Select value={currency} onChange={onCurrency} options={ARN_CURRENCIES} />
-    </div>
-  </div>
-);
+  .map(c => ({ value: c.code, label: c.name }));
 
 const AddRenewalModal = ({ policy, renewal, onClose, onSave }) => {
   const { useState } = React;
@@ -50,8 +40,8 @@ const AddRenewalModal = ({ policy, renewal, onClose, onSave }) => {
     if (draft.fromDate && draft.toDate && draft.toDate < draft.fromDate) next.toDate = 'End date can’t be before the start date.';
     const prem = parseFloat(String(draft.premium).replace(/,/g, ''));
     const cov = parseFloat(String(draft.coverageAmount).replace(/,/g, ''));
-    if (draft.premium === '' || isNaN(prem) || prem < 0) next.premium = 'Enter a premium of 0 or more.';
-    if (draft.coverageAmount === '' || isNaN(cov) || cov < 0) next.coverageAmount = 'Enter a coverage amount of 0 or more.';
+    if (draft.premium === '' || isNaN(prem)) next.premium = 'Enter a premium amount.';
+    if (draft.coverageAmount === '' || isNaN(cov)) next.coverageAmount = 'Enter a coverage amount.';
     if (draft.notes.length > 512) next.notes = 'Keep the note under 512 characters.';
     if (Object.keys(next).length) { setErrors(next); return; }
 
@@ -85,11 +75,13 @@ const AddRenewalModal = ({ policy, renewal, onClose, onSave }) => {
       </FormRow>
 
       <FormRow>
-        <ARN_MoneyField label="Premium" value={draft.premium} onChange={set('premium')}
-          currency={draft.premiumCurrencyCode} onCurrency={set('premiumCurrencyCode')}
+        <MoneyField label="Premium" value={draft.premium} onChange={set('premium')}
+          currency={draft.premiumCurrencyCode} onCurrencyChange={set('premiumCurrencyCode')}
+          currencyOptions={ARN_CURRENCIES} currencySearchThreshold={0} signEditable
           error={errors.premium} help="Premium for this term, as stored (not annualized)." />
-        <ARN_MoneyField label="Coverage amount" value={draft.coverageAmount} onChange={set('coverageAmount')}
-          currency={draft.coverageCurrencyCode} onCurrency={set('coverageCurrencyCode')}
+        <MoneyField label="Coverage amount" value={draft.coverageAmount} onChange={set('coverageAmount')}
+          currency={draft.coverageCurrencyCode} onCurrencyChange={set('coverageCurrencyCode')}
+          currencyOptions={ARN_CURRENCIES} currencySearchThreshold={0} signEditable
           error={errors.coverageAmount} help="Insured sum for this term." />
       </FormRow>
 

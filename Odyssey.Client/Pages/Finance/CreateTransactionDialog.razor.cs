@@ -34,13 +34,6 @@ public partial class CreateTransactionDialog
 
     private bool IsEdit => Transaction is not null;
 
-    // Direction toggle options for the amount hero (drives the sign of the posted Amount).
-    private static readonly IReadOnlyList<OdsSegmentedOption> DirectionOptions =
-    [
-        new() { Value = "expense", Label = "Expense", Icon = "south_west", Tone = OdsChipTone.Expense },
-        new() { Value = "income",  Label = "Income",  Icon = "north_east", Tone = OdsChipTone.Income },
-    ];
-
     // ── Form state ───────────────────────────────────────────────────────────
     private string? _description;
     private string _amountText = string.Empty;
@@ -73,6 +66,7 @@ public partial class CreateTransactionDialog
     private List<ExistingTransactionTag> _tags = [];
     private List<ExistingContact> _contacts = [];
     private List<ExistingCurrency> _currencies = [];
+    private IReadOnlyList<OdsOption> _currencyOptions = [];
 
     private ExistingAccount? _selectedAccount;
     private IReadOnlyCollection<string> _selectedTagIds = [];
@@ -99,19 +93,11 @@ public partial class CreateTransactionDialog
     private const int MaxFileCount = 64;
     private static readonly string[] AllowedExtensions = [".pdf", ".jpg", ".jpeg", ".png"];
 
-    private static readonly Dictionary<string, string> CurrencySymbols = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["USD"] = "$",
-        ["EUR"] = "€",
-        ["GBP"] = "£",
-        ["JPY"] = "¥",
-        ["NOK"] = "kr",
-        ["SEK"] = "kr",
-        ["CAD"] = "$",
-    };
-
-    private string CurrencySymbol =>
-        CurrencySymbols.TryGetValue(_currencyCode ?? string.Empty, out var sym) ? sym : (_currencyCode ?? string.Empty);
+    // The hero's own helper line, which is where the direction affordance is explained — the sign
+    // segment is a button, and typing − / + in the amount flips it too.
+    private string DirectionHint => _isExpense
+        ? "Expense — click the sign, or type + in the amount, for income."
+        : "Income — click the sign, or type − in the amount, for expense.";
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     // The cap is admin-editable (issue #421 Wave 4) and OnFilesChanged is a synchronous handler, so it
@@ -205,6 +191,7 @@ public partial class CreateTransactionDialog
     private async Task LoadCurrencies()
     {
         _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
+        _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
     }
 
     private void ResolveCurrencyFallback()
@@ -217,14 +204,16 @@ public partial class CreateTransactionDialog
     }
 
     // ── Field handlers ──────────────────────────────────────────────────────────
-    private void OnAmountInput(ChangeEventArgs e)
+    // OdsMoneyField has already sanitized the text (and AllowNegative="false" keeps the sign out of
+    // it — the direction owns that).
+    private void OnAmountChanged(string value)
     {
-        var raw = e.Value?.ToString() ?? string.Empty;
-        // Keep digits, separators only — the sign comes from the direction toggle.
-        _amountText = new string(raw.Where(c => char.IsDigit(c) || c is '.' or ',').ToArray());
+        _amountText = value;
         if (_amountError && TryParseAmount(out _))
             _amountError = false;
     }
+
+    private void OnDirectionChanged(string direction) => _isExpense = direction == "expense";
 
     private void SelectAccount(ExistingAccount account)
     {
@@ -363,11 +352,12 @@ public partial class CreateTransactionDialog
         _pendingFiles = kept;
     }
 
+    // OdsMoneyText.Parse, not a local Replace(",", "") — the money editor accepts a lone comma as a
+    // DECIMAL separator, so stripping it here read "1234,56" as 123456.
     private bool TryParseAmount(out decimal magnitude)
     {
-        var normalized = (_amountText ?? string.Empty).Replace(",", string.Empty);
-        return decimal.TryParse(normalized, System.Globalization.NumberStyles.Number,
-            System.Globalization.CultureInfo.InvariantCulture, out magnitude) && magnitude > 0;
+        magnitude = OdsMoneyText.Parse(_amountText) ?? 0m;
+        return magnitude > 0;
     }
 
     // Resolve the selected contact id to a real Guid, mapping an optimistic temp id through the

@@ -12,8 +12,9 @@
    closed / archived are NOT part of creation — a new account is always active. */
 
 const AAM_TYPES = (window.OdysseyData || {}).accountTypes || [];
-const AAM_CURRENCIES = ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD']
-  .map(c => ({ value: c, label: c }));
+const AAM_CURRENCIES = (window.OdysseyData.currencies || [])
+  .filter(c => !c.archived)
+  .map(c => ({ value: c.code, label: c.name }));
 const AAM_TODAY = (() => {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
@@ -107,7 +108,7 @@ const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
       )}
 
       <FormRow>
-        <Select label="Currency" value={draft.currency} onChange={set('currency')} options={AAM_CURRENCIES} />
+        <CurrencySelect value={draft.currency} onChange={set('currency')} options={AAM_CURRENCIES} searchThreshold={0} />
         <DateField label="Opened" value={draft.opened} onChange={set('opened')} help="Defaults to today" />
       </FormRow>
 

@@ -92,6 +92,21 @@
             if (!el) return;
             if (value == null) el.removeAttribute(name); else el.setAttribute(name, value);
         };
+        window.odsSetInputValue = function (id, value) {
+            // Put an input's DOM value back to what the component holds. A keystroke the component
+            // REJECTS leaves its bound value unchanged, so Blazor's diff has nothing to write and the
+            // stray character would linger in the field — this is the only way to take it back out
+            // (OdsMoneyField: a second decimal separator, a non-leading minus, a typed sign).
+            const el = document.getElementById(id);
+            if (el && el.value !== value) el.value = value;
+        };
+        window.odsActiveElementId = function () {
+            // Id of whatever currently has focus, or null — lets a Blazor keydown handler work out
+            // where a roving-focus list is without holding element references (OdsMoneyField's
+            // currency listbox).
+            const el = document.activeElement;
+            return el && el.id ? el.id : null;
+        };
         window.odsSetIndeterminate = function (el, value) {
             // The checkbox "mixed" (select-all) state is a DOM property, not an attribute, so Blazor
             // can't set it declaratively — reflect it here so assistive tech announces "mixed".

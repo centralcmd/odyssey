@@ -14,14 +14,14 @@
    the body collapses to a single "no matches" surface. */
 
 const CURRENCIES = [
-  { value: 'USD', label: 'USD · US Dollar' },
-  { value: 'EUR', label: 'EUR · Euro' },
-  { value: 'GBP', label: 'GBP · British Pound' },
-  { value: 'JPY', label: 'JPY · Japanese Yen' },
-  { value: 'CAD', label: 'CAD · Canadian Dollar' },
-  { value: 'AUD', label: 'AUD · Australian Dollar' },
-  { value: 'CHF', label: 'CHF · Swiss Franc' },
-  { value: 'SEK', label: 'SEK · Swedish Krona' },
+  { value: 'USD', label: 'US Dollar' },
+  { value: 'EUR', label: 'Euro' },
+  { value: 'GBP', label: 'British Pound' },
+  { value: 'JPY', label: 'Japanese Yen' },
+  { value: 'CAD', label: 'Canadian Dollar' },
+  { value: 'AUD', label: 'Australian Dollar' },
+  { value: 'CHF', label: 'Swiss Franc' },
+  { value: 'SEK', label: 'Swedish Krona' },
 ];
 
 // One source of truth for the cards — drives both render and search.
@@ -64,7 +64,7 @@ function PreferencesPage({ darkMode, onToggleDark }) {
     const set = d.key === 'defaultCurrency' ? setDefaultCurrency : setMainCurrency;
     return (
       <div className="pref-select">
-        <Select value={val} onChange={set} options={CURRENCIES} />
+        <CurrencySelect label={null} value={val} onChange={set} options={CURRENCIES} searchThreshold={0} />
       </div>
     );
   };

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.Client.Components;
@@ -26,12 +27,15 @@ public partial class CreateTaxStatementDialog
     private DateTime? _endDate;
     private string _baseCurrencyCode = string.Empty;
 
-    private decimal? _totalAssets;
-    private decimal? _totalLiabilities;
-    private decimal? _totalIncome;
-    private decimal? _assessedTax;
-    private decimal? _netWorth;
-    private decimal? _settlementAmount;
+    // The declared figures are held as TEXT, not decimal?, because OdsMoneyField is a string control:
+    // round-tripping through decimal? on every keystroke would rewrite a partial entry ("1250.") the
+    // moment it was typed. They are parsed once, on submit.
+    private string? _totalAssetsText;
+    private string? _totalLiabilitiesText;
+    private string? _totalIncomeText;
+    private string? _assessedTaxText;
+    private string? _netWorthText;
+    private string? _settlementAmountText;
     private DateTime? _settledAtUtc;
     private DateTime? _filedAtUtc;
     private DateTime? _taxOfficeApprovedAtUtc;
@@ -41,6 +45,7 @@ public partial class CreateTaxStatementDialog
     private IReadOnlyList<OdsOption> _tagOptions = [];
 
     private List<ExistingCurrency> _currencies = [];
+    private IReadOnlyList<OdsOption> _currencyOptions = [];
     private bool _nameError;
     private bool _dateError;
 
@@ -53,12 +58,12 @@ public partial class CreateTaxStatementDialog
             _startDate = statement.StartDate;
             _endDate = statement.EndDate;
             _baseCurrencyCode = statement.BaseCurrencyCode;
-            _totalAssets = statement.DeclaredTotalAssets;
-            _totalLiabilities = statement.DeclaredTotalLiabilities;
-            _netWorth = statement.DeclaredNetWorth;
-            _totalIncome = statement.DeclaredTotalIncome;
-            _assessedTax = statement.AssessedTax;
-            _settlementAmount = statement.SettlementAmount;
+            _totalAssetsText = MoneyText(statement.DeclaredTotalAssets);
+            _totalLiabilitiesText = MoneyText(statement.DeclaredTotalLiabilities);
+            _netWorthText = MoneyText(statement.DeclaredNetWorth);
+            _totalIncomeText = MoneyText(statement.DeclaredTotalIncome);
+            _assessedTaxText = MoneyText(statement.AssessedTax);
+            _settlementAmountText = MoneyText(statement.SettlementAmount);
             _settledAtUtc = statement.SettledAtUtc;
             _filedAtUtc = statement.FiledAtUtc;
             _taxOfficeApprovedAtUtc = statement.TaxOfficeApprovedAtUtc;
@@ -87,6 +92,13 @@ public partial class CreateTaxStatementDialog
         }
     }
 
+    /// <summary>Renders a stored figure for the money editor — invariant, so it round-trips through
+    /// <see cref="ParseMoney"/> unchanged whatever the browser's culture.</summary>
+    private static string MoneyText(decimal? value) =>
+        value?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private static decimal? ParseMoney(string? text) => OdsMoneyText.Parse(text);
+
     private async Task LoadTags()
     {
         var tags = await ReferenceData.TransactionTagsAsync();
@@ -98,6 +110,7 @@ public partial class CreateTaxStatementDialog
     private async Task LoadCurrencies()
     {
         _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
+        _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
 
         if (!string.IsNullOrEmpty(_baseCurrencyCode) && _currencies.Count > 0
             && _currencies.All(c => !string.Equals(c.CurrencyCode, _baseCurrencyCode, StringComparison.OrdinalIgnoreCase)))
@@ -162,12 +175,12 @@ public partial class CreateTaxStatementDialog
                 StartDate = _startDate.Value,
                 EndDate = _endDate.Value,
                 BaseCurrencyCode = _baseCurrencyCode.Trim().ToUpperInvariant(),
-                DeclaredTotalAssets = _totalAssets,
-                DeclaredTotalLiabilities = _totalLiabilities,
-                DeclaredNetWorth = _netWorth,
-                DeclaredTotalIncome = _totalIncome,
-                AssessedTax = _assessedTax,
-                SettlementAmount = _settlementAmount,
+                DeclaredTotalAssets = ParseMoney(_totalAssetsText),
+                DeclaredTotalLiabilities = ParseMoney(_totalLiabilitiesText),
+                DeclaredNetWorth = ParseMoney(_netWorthText),
+                DeclaredTotalIncome = ParseMoney(_totalIncomeText),
+                AssessedTax = ParseMoney(_assessedTaxText),
+                SettlementAmount = ParseMoney(_settlementAmountText),
                 SettledAtUtc = _settledAtUtc,
                 FiledAtUtc = _filedAtUtc,
                 TaxOfficeApprovedAtUtc = _taxOfficeApprovedAtUtc,
@@ -198,9 +211,16 @@ public partial class CreateTaxStatementDialog
             StartDate = _startDate.Value,
             EndDate = _endDate.Value,
             BaseCurrencyCode = _baseCurrencyCode.Trim().ToUpperInvariant(),
-            DeclaredTotalIncome = _totalIncome,
-            AssessedTax = _assessedTax,
-            DeclaredNetWorth = _netWorth,
+            DeclaredTotalAssets = ParseMoney(_totalAssetsText),
+            DeclaredTotalLiabilities = ParseMoney(_totalLiabilitiesText),
+            DeclaredNetWorth = ParseMoney(_netWorthText),
+            DeclaredTotalIncome = ParseMoney(_totalIncomeText),
+            AssessedTax = ParseMoney(_assessedTaxText),
+            SettlementAmount = ParseMoney(_settlementAmountText),
+            SettledAtUtc = _settledAtUtc,
+            FiledAtUtc = _filedAtUtc,
+            TaxOfficeApprovedAtUtc = _taxOfficeApprovedAtUtc,
+            Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes!.Trim(),
         };
 
         return (await TaxStatements.CreateAsync(newStatement)).Toast(Snackbar, "Unable to create tax statement", "Tax statement created.");

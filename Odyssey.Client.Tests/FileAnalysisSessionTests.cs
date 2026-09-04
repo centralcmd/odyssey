@@ -537,15 +537,30 @@ public class FileAnalysisSessionTests
 
     [Theory]
     [InlineData("1234.50", 1234.50)]
-    [InlineData("1,234.50", 1234.50)]
+    [InlineData("1 234,50", 1234.50)]
     [InlineData("-42", -42)]
-    public void Amounts_parse_invariantly_with_thousands_separators_stripped(string typed, double expected)
+    public void Amounts_parse_invariantly_with_spaces_grouping_and_a_comma_decimating(string typed, double expected)
     {
         var row = new FileAnalysisRow { Amount = 1m };
 
         FileAnalysisSession.SetAmount(row, typed);
 
         Assert.Equal((decimal)expected, row.Amount);
+    }
+
+    [Fact]
+    public void An_amount_carrying_TWO_separators_is_ambiguous_and_leaves_the_row_untouched()
+    {
+        // "1,234.50" used to read as 1234.50 by stripping the comma as a thousands separator. That is
+        // what made a typed decimal comma ("1234,56") land as 123456, so the comma is now a decimal
+        // point everywhere and a string with both separators is refused rather than guessed at. The
+        // cell cannot produce one anyway — SanitizeAmount rejects the second separator as it is typed.
+        var row = new FileAnalysisRow { Amount = 7m };
+
+        Assert.Null(FileAnalysisSession.SanitizeAmount("1,234.50"));
+        FileAnalysisSession.SetAmount(row, "1,234.50");
+
+        Assert.Equal(7m, row.Amount);
     }
 
     [Theory]
@@ -559,6 +574,73 @@ public class FileAnalysisSessionTests
         FileAnalysisSession.SetAmount(row, typed);
 
         Assert.Equal(7m, row.Amount);
+    }
+
+    [Theory]
+    [InlineData("12a34", "1234")]          // letters are never part of an amount
+    [InlineData("1 234.50", "1 234.50")]   // a space is a group separator, kept
+    [InlineData("-42", "-42")]             // a LEADING minus is allowed
+    public void A_stray_character_is_dropped_from_the_amount_cell(string typed, string expected) =>
+        Assert.Equal(expected, FileAnalysisSession.SanitizeAmount(typed));
+
+    [Theory]
+    [InlineData("1.2.3")]  // a second decimal separator
+    [InlineData("1,2.3")]  // …in either notation
+    [InlineData("4-2")]    // a minus that isn't leading
+    public void A_second_separator_or_a_trailing_minus_is_REJECTED_not_rewritten(string typed) =>
+        // null, not a repaired string: the caller puts the cell back to what it held, so a stray key
+        // never silently relocates the separator later.
+        Assert.Null(FileAnalysisSession.SanitizeAmount(typed));
+
+    [Theory]
+    [InlineData("--5")]
+    [InlineData("---")]
+    public void A_second_leading_minus_is_rejected_in_the_amount_cell(string typed) =>
+        // The grid lets the raw keystroke reach the DOM and relies on sanitize+restore to undo it, so
+        // a value that slips through here leaves the cell stuck showing it.
+        Assert.Null(FileAnalysisSession.SanitizeAmount(typed));
+
+    [Fact]
+    public void A_comma_amount_reads_as_a_decimal_in_the_amount_cell()
+    {
+        var row = new FileAnalysisRow { Amount = 1m };
+
+        FileAnalysisSession.SetAmount(row, "1234,56");
+
+        Assert.Equal(1234.56m, row.Amount);
+    }
+
+    [Fact]
+    public void Typing_a_sign_sets_the_direction_and_leaves_the_magnitude_alone()
+    {
+        var row = new FileAnalysisRow { Amount = 12.5m };
+
+        FileAnalysisSession.SetAmountSign(row, negative: true);
+        Assert.Equal(-12.5m, row.Amount);
+        Assert.Equal("-12.5", row.AmountText);
+
+        FileAnalysisSession.SetAmountSign(row, negative: false);
+        Assert.Equal(12.5m, row.Amount);
+        Assert.Equal("12.5", row.AmountText);
+    }
+
+    [Fact]
+    public void A_partial_entry_survives_in_the_cell_even_though_it_does_not_parse()
+    {
+        // "12." is half-typed, not malformed — rewriting the cell from Amount would delete the "."
+        // the moment it was pressed.
+        var row = new FileAnalysisRow { Amount = 12m };
+
+        FileAnalysisSession.SetAmount(row, "12.");
+
+        Assert.Equal("12.", row.AmountText);
+        Assert.Equal(12m, row.Amount);
+    }
+
+    [Fact]
+    public void An_unedited_cell_reads_from_the_amount_itself()
+    {
+        Assert.Equal("12.5", new FileAnalysisRow { Amount = 12.5m }.AmountText);
     }
 
     [Fact]

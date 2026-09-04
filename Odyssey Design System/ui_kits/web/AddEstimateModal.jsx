@@ -82,30 +82,26 @@ const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, l
         </React.Fragment>
       }>
 
-      {/* Value — the hero money input */}
+      {/* Value — the hero money input (currency locked to the account's) */}
       <div className="est-value-block">
-        <AmountField
+        <MoneyField
           label="Estimated value"
           size="lg"
-          prefix={sym}
+          allowNegative={false}
           autoFocus
           value={draft.valueStr}
           onChange={set('valueStr')}
+          currency={currency}
+          currencyEditable={false}
           error={errors.value}
-          help={preview == null ? <React.Fragment>Amount in <b>{currency}</b></React.Fragment> : <React.Fragment>Recorded as <b>{preview}</b></React.Fragment>}
+          help={preview == null
+            ? <React.Fragment>Account currency · <b>{currency}</b></React.Fragment>
+            : <React.Fragment>Recorded as <b>{preview}</b></React.Fragment>}
         />
       </div>
 
-      {/* Currency (locked) + Effective date */}
+      {/* Effective date — the currency now reads inside the money field */}
       <div className="est-row2">
-        <div className="field">
-          <div className="label">Currency</div>
-          <div className="est-currency-lock">
-            <MIcon name="lock" size={16} />
-            <span className="code">{currency}</span>
-            <span className="note">Account currency</span>
-          </div>
-        </div>
         <DateField label="Effective from" value={draft.effectiveFrom} onChange={set('effectiveFrom')}
           helper={errors.effectiveFrom ? undefined : 'When this value takes effect'} />
       </div>

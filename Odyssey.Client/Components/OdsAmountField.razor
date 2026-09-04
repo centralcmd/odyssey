@@ -1,12 +1,13 @@
 @*
-    OdsAmountField — a money / numeric input with a fixed adornment
+    OdsAmountField — a numeric input with a fixed adornment
     (Odyssey Design System · components/AmountField).
 
-    Consolidates the hand-rolled hero money inputs (the old .est-value / .trm-value /
-    .atm-amount markup) into one labelled control built on OdsFieldShell. The
-    adornment sits inside the box: Prefix on the left (e.g. "$"), Suffix on the right
-    (e.g. "%"). The numeric text is monospaced + tabular so digits line up. Two sizes:
-    default (data-entry rows) and "lg" (a hero amount input, e.g. an Estimate value).
+    For NON-MONEY numerics — rates, percentages, units. A money value carries its ISO
+    currency code, so it belongs in OdsMoneyField, which owns the amount and the code as
+    one control; this one keeps the fixed-adornment shape for everything else: Prefix on
+    the left, Suffix on the right (e.g. "%"). One labelled control built on OdsFieldShell.
+    The numeric text is monospaced + tabular so digits line up. Two sizes: default
+    (data-entry rows) and "lg" (a hero input, e.g. a term's rate).
 
     Controlled: bind via @bind-Value. Input is kept as a string so partial entries
     ("3.", "1,2") aren't clobbered; characters are sanitized to digits, separators and
@@ -49,7 +50,7 @@
 
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
-    /// <summary>Adornment shown to the left of the number (e.g. a currency symbol).</summary>
+    /// <summary>Adornment shown to the left of the number.</summary>
     [Parameter] public string? Prefix { get; set; }
 
     /// <summary>Adornment shown to the right of the number (e.g. "%").</summary>

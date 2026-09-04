@@ -7,7 +7,7 @@
 
 const SUB_CURRENCY_OPTIONS = () => (window.OdysseyData.currencies || [])
   .filter((c) => !c.archived)
-  .map((c) => ({ value: c.code, label: `${c.code} · ${c.name}` }));
+  .map((c) => ({ value: c.code, label: c.name }));
 
 const SUB_CONTACT_OPTIONS = () => {
   const reg = (window.OdysseyData && window.OdysseyData.contactTypeByKey) || {};
@@ -116,16 +116,15 @@ const AddSubscriptionModal = ({ onClose, onCreate, onSave, subscription = null }
       </FormRow>
 
       <FormRow>
-        <AmountField label="Price" value={draft.amount} onChange={set('amount')}
-          required prefix={(window.OdysseyData.currencyByCode[draft.currencyCode] || {}).symbol || '$'}
+        <MoneyField label="Price" value={draft.amount} onChange={set('amount')}
+          required allowNegative={false} currency={draft.currencyCode} onCurrencyChange={set('currencyCode')}
+          currencyOptions={SUB_CURRENCY_OPTIONS()} currencySearchThreshold={0}
           error={errors.amount} placeholder="0.00" className="sub-amount-expense" />
-        <Select label="Currency" value={draft.currencyCode} onChange={set('currencyCode')}
-          options={SUB_CURRENCY_OPTIONS()} />
-      </FormRow>
-
-      <FormRow cols={3}>
         <BillingIntervalSelect value={draft.interval} onChange={set('interval')}
           error={errors.interval} placeholder="Choose a cadence…" helper={errors.interval ? undefined : 'How often it bills.'} />
+      </FormRow>
+
+      <FormRow>
         <NumberField label="Every" value={draft.intervalCount} onChange={(v) => set('intervalCount')(v)}
           min={1} step={1} placeholder="1"
           helper={subEveryHelp(draft)} />

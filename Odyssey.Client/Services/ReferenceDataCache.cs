@@ -1,5 +1,6 @@
 using MudBlazor;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Components;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 
@@ -42,10 +43,11 @@ public interface IReferenceDataCache
     Task<IReadOnlyList<ExistingCurrency>> ActiveCurrenciesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// The single <c>SearchFunc</c> behind every currency-code autocomplete: the live codes, narrowed
-    /// by a case-insensitive substring match. Shaped to <c>MudAutocomplete.SearchFunc</c>.
+    /// The live currencies as picker options for <c>OdsCurrencySelect</c> / <c>OdsMoneyField</c>: the
+    /// ISO code as the value, the currency NAME alone as the label. Both controls render the code
+    /// themselves, in mono and in its own gutter, so a "USD · US Dollar" label would print it twice.
     /// </summary>
-    Task<IEnumerable<string>> SearchCurrencyCodesAsync(string? value, CancellationToken ct = default);
+    Task<IReadOnlyList<OdsOption>> CurrencyOptionsAsync(CancellationToken ct = default);
 
     /// <summary>Every transaction tag, archived included — call sites filter to taste.</summary>
     Task<IReadOnlyList<ExistingTransactionTag>> TransactionTagsAsync(CancellationToken ct = default);
@@ -86,13 +88,8 @@ public sealed class ReferenceDataCache(
             .Where(currency => currency.Archived is null)
             .OrderBy(currency => currency.CurrencyCode, StringComparer.OrdinalIgnoreCase)];
 
-    public async Task<IEnumerable<string>> SearchCurrencyCodesAsync(string? value, CancellationToken ct = default)
-    {
-        var codes = (await ActiveCurrenciesAsync(ct)).Select(currency => currency.CurrencyCode);
-        return string.IsNullOrWhiteSpace(value)
-            ? codes
-            : codes.Where(code => code.Contains(value, StringComparison.OrdinalIgnoreCase));
-    }
+    public async Task<IReadOnlyList<OdsOption>> CurrencyOptionsAsync(CancellationToken ct = default) =>
+        [.. (await ActiveCurrenciesAsync(ct)).Select(currency => new OdsOption(currency.CurrencyCode, currency.Name))];
 
     public Task<IReadOnlyList<ExistingTransactionTag>> TransactionTagsAsync(CancellationToken ct = default) =>
         Load(tagSlot, async () =>

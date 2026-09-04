@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 
@@ -32,8 +33,6 @@ public partial class AddEstimateDialog
     private string _currencySymbol = "$";
 
     private readonly Dictionary<string, string> _errors = new();
-
-    private string CurrencySymbol => _currencySymbol;
 
     protected override void OnInitialized()
     {
@@ -81,7 +80,7 @@ public partial class AddEstimateDialog
     }
 
     private decimal? ParseValue() =>
-        decimal.TryParse(_valueStr.Replace(",", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+        OdsMoneyText.Parse(_valueStr);
 
     private string? Preview
     {

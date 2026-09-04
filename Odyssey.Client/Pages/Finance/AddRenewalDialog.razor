@@ -29,26 +29,22 @@
                                HelperText="End of this period's cover." />
             </OdsFormRow>
 
+            @* Amount and currency are one control per figure, and the two currencies stay
+               independent — a policy may insure in one currency and bill in another. *@
             <OdsFormRow>
-                <div>
-                    <OdsAmountField Label="Premium" Size="lg" Prefix="@Symbol(_premiumCurrency)"
-                                    Value="@_premiumStr" ValueChanged="OnPremiumChanged"
-                                    Error="@_errors.GetValueOrDefault("premium")"
-                                    Help="Premium for this term, as stored (not annualized)." />
-                    <div style="margin-top:8px;">
-                        <OdsSelect Value="@_premiumCurrency" ValueChanged="@(v => _premiumCurrency = v)" Options="_currencyOptions" />
-                    </div>
-                </div>
+                <OdsMoneyField Label="Premium" SignEditable="true"
+                               Value="@_premiumStr" ValueChanged="OnPremiumChanged"
+                               Currency="@_premiumCurrency" CurrencyChanged="@(v => _premiumCurrency = v)"
+                               CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
+                               Error="@_errors.GetValueOrDefault("premium")"
+                               Help="Premium for this term, as stored (not annualized)." />
 
-                <div>
-                    <OdsAmountField Label="Coverage amount" Size="lg" Prefix="@Symbol(_coverageCurrency)"
-                                    Value="@_coverageStr" ValueChanged="OnCoverageChanged"
-                                    Error="@_errors.GetValueOrDefault("coverage")"
-                                    Help="Insured sum for this term." />
-                    <div style="margin-top:8px;">
-                        <OdsSelect Value="@_coverageCurrency" ValueChanged="@(v => _coverageCurrency = v)" Options="_currencyOptions" />
-                    </div>
-                </div>
+                <OdsMoneyField Label="Coverage amount" SignEditable="true"
+                               Value="@_coverageStr" ValueChanged="OnCoverageChanged"
+                               Currency="@_coverageCurrency" CurrencyChanged="@(v => _coverageCurrency = v)"
+                               CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
+                               Error="@_errors.GetValueOrDefault("coverage")"
+                               Help="Insured sum for this term." />
             </OdsFormRow>
 
             <OdsNoteField Label="Notes" Optional="true" MaxLength="512"
@@ -102,9 +98,9 @@
         if (!OperatingSystem.IsBrowser()) return;
 
         var active = await ReferenceData.ActiveCurrenciesAsync();
-        _currencyOptions = [.. active.Select(c => new OdsOption(c.CurrencyCode, $"{c.CurrencyCode} · {c.Name}"))];
-        _symbols = active.GroupBy(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().Symbol, StringComparer.OrdinalIgnoreCase);
+        // The option label is the currency NAME alone — OdsMoneyField renders the ISO code itself,
+        // in mono, so a "USD · US Dollar" label would print the code twice.
+        _currencyOptions = [.. active.Select(c => new OdsOption(c.CurrencyCode, c.Name))];
 
         foreach (var code in new[] { _premiumCurrency, _coverageCurrency })
         {
@@ -115,15 +111,13 @@
         StateHasChanged();
     }
 
-    private string Symbol(string code) =>
-        _symbols.TryGetValue(code, out var s) && !string.IsNullOrWhiteSpace(s) ? s : code;
-
     private void OnPremiumChanged(string value) { _premiumStr = value; _errors.Remove("premium"); }
     private void OnCoverageChanged(string value) { _coverageStr = value; _errors.Remove("coverage"); }
     private void OnNotesChanged(string value) => _notes = value;
 
-    private static decimal? Parse(string s) =>
-        decimal.TryParse(s.Replace(",", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+    // OdsMoneyText.Parse, not a local Replace(",", "") — the money editor accepts a lone comma as a
+    // DECIMAL separator, so stripping it here read "1234,56" as 123456.
+    private static decimal? Parse(string s) => OdsMoneyText.Parse(s);
 
     private async Task CloseAsync() => await OpenChanged.InvokeAsync(false);
 
@@ -137,10 +131,12 @@
         if (_fromDate is { } f && _toDate is { } t && t.Date < f.Date)
             _errors["toDate"] = "End date can't be before the start date.";
 
+        // Negatives are accepted here — a refund or a correction to a period already recorded is a
+        // real premium figure, and the DTO's own bound was relaxed with this.
         var premium = Parse(_premiumStr);
         var coverage = Parse(_coverageStr);
-        if (premium is null || premium < 0) _errors["premium"] = "Enter a premium of 0 or more.";
-        if (coverage is null || coverage < 0) _errors["coverage"] = "Enter a coverage amount of 0 or more.";
+        if (premium is null) _errors["premium"] = "Enter a premium amount.";
+        if (coverage is null) _errors["coverage"] = "Enter a coverage amount.";
         if ((_notes?.Length ?? 0) > 512) _errors["notes"] = "Keep the note under 512 characters.";
 
         if (_errors.Count > 0)

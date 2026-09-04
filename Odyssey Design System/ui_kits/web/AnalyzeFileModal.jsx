@@ -156,17 +156,31 @@ const FanCandidateRow = ({ row, tagOptions, cpOptions, canCreate, onChange, merc
           onChange={category.onChange} onApply={category.onApply} onDismiss={category.onDismiss} />
       </div>
 
-      {/* Editable: amount (signed) → Amount */}
+      {/* Editable: amount (signed) → Amount. Compact grid cell, so this stays an
+         inline input rather than a labelled MoneyField — but it follows the same
+         rules: one decimal separator, minus only leading, and −/+ flip the sign. */}
       <div className="fan-cell">
         <div className={`fan-amount ${dir}`}>
           <input className="fan-input ta-r mono" inputMode="decimal" value={row.amount} aria-label="Amount"
-            onChange={(e) => onChange(row.uid, { amount: e.target.value.replace(/[^0-9.,\-]/g, '') })} />
+            onKeyDown={(e) => {
+              if (e.key !== '-' && e.key !== '−' && e.key !== '+') return;
+              e.preventDefault();
+              const mag = String(row.amount).replace(/^\s*-/, '');
+              onChange(row.uid, { amount: (e.key === '+' ? '' : '-') + mag });
+            }}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/[^0-9.,\-\s]/g, '');
+              const neg = /^\s*-/.test(raw);
+              const body = raw.replace(/-/g, '');
+              if ((body.match(/[.,]/g) || []).length > 1) { e.target.value = row.amount; return; }
+              onChange(row.uid, { amount: (neg ? '-' : '') + body });
+            }} />
         </div>
       </div>
 
       {/* Editable: currency → CurrencyCode */}
       <div className="fan-cell fan-cur">
-        <Select value={row.currency} onChange={(v) => onChange(row.uid, { currency: v })} options={FAN_CURRENCIES} />
+        <CurrencySelect label={null} value={row.currency} onChange={(v) => onChange(row.uid, { currency: v })} options={FAN_CURRENCIES} searchThreshold={0} showName={false} />
       </div>
 
       {/* Read-only: EXTRACTION confidence (is this a real transaction) — distinct

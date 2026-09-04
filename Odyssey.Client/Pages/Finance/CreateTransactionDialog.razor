@@ -24,41 +24,22 @@
         <div class="ods-modal-body">
           <div class="odc-form-grid">
 
-                <!-- Amount hero (wide): direction toggle drives the sign of the posted Amount -->
+                <!-- Amount hero (wide): direction, amount and currency as ONE control. The leading
+                     segment flips expense ↔ income and drives the sign of the posted Amount, so the
+                     form needs no separate segmented toggle. -->
                 <div class="atm-amount-block odc-form-grid-wide">
-                    <div class="align-self-start">
-                        <OdsSegmentedControl Options="DirectionOptions"
-                                             Value="@(_isExpense ? "expense" : "income")"
-                                             ValueChanged="@(v => _isExpense = v == "expense")"
-                                             AriaLabel="Direction" />
-                    </div>
-                    <div class="atm-amount @(_isExpense ? "expense" : "income") @(_amountError ? "has-error" : "")">
-                        <span class="atm-amount-sign">@(_isExpense ? "−" : "+")</span>
-                        <span class="atm-amount-cur">@CurrencySymbol</span>
-                        <input inputmode="decimal" placeholder="0.00"
-                               value="@_amountText" @oninput="OnAmountInput" aria-label="Amount" />
-                    </div>
-                    @if (_amountError)
-                    {
-                        <div class="aam-err-text">Enter an amount greater than zero.</div>
-                    }
+                    <OdsMoneyField Label="Amount" Size="lg" AllowNegative="false"
+                                   Direction="@(_isExpense ? "expense" : "income")"
+                                   DirectionChanged="OnDirectionChanged"
+                                   Value="@_amountText" ValueChanged="OnAmountChanged"
+                                   Currency="@_currencyCode" CurrencyChanged="OnCurrencyChanged"
+                                   CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
+                                   Placeholder="0.00"
+                                   Error="@(_amountError ? "Enter an amount greater than zero." : null)"
+                                   Help="@DirectionHint" />
                 </div>
 
-                <!-- Currency + Date -->
-                <MudAutocomplete T="string"
-                                 Label="Currency"
-                                 Variant="Variant.Outlined"
-                                 Margin="Margin.Dense"
-                                 Value="@_currencyCode"
-                                 ValueChanged="OnCurrencyChanged"
-                                 SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
-                                 MinCharacters="0"
-                                 MaxItems="10"
-                                 Dense="true"
-                                 CoerceValue="true"
-                                 CoerceText="false"
-                                 ResetValueOnEmptyText="false"
-                                 ToStringFunc="@(code => code ?? string.Empty)" />
+                <!-- Date -->
                 <OdsDatePicker @bind-Value="_timeStamp"
                                Label="Date"
                                HelperText="Defaults to today" />

@@ -68,20 +68,13 @@
                 <OdsSettingRow Icon="attach_money" Title="Default currency"
                                Desc="Currency used by default for new transactions">
                     <div class="pref-right">
-                        <div class="pref-control">
-                            <MudAutocomplete T="string"
-                                             Variant="Variant.Filled"
-                                             Style="min-width: 140px; max-width: 200px;"
-                                             Value="@_currencyCode"
-                                             ValueChanged="OnCurrencyChanged"
-                                             SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
-                                             MinCharacters="0"
-                                             MaxItems="10"
-                                             Dense="true"
-                                             CoerceValue="true"
-                                             CoerceText="false"
-                                             ResetValueOnEmptyText="false"
-                                             ToStringFunc="@(code => code ?? string.Empty)" />
+                        <div class="pref-control pref-currency">
+                            @* The row title names the control, so the picker carries no visible label
+                               of its own — only the accessible one. *@
+                            <OdsCurrencySelect Label="" AriaLabel="Default currency"
+                                               Variant="Variant.Filled"
+                                               Value="@_currencyCode" ValueChanged="OnCurrencyChanged"
+                                               Options="_currencyOptions" />
                         </div>
                         <span class="pref-flag @(DefaultCurrencyDirty ? "on" : "")" title="Unsaved change" aria-hidden="true"></span>
                     </div>
@@ -93,20 +86,11 @@
                 <OdsSettingRow Icon="account_balance" Title="Main currency"
                                Desc="Currency used to display total net worth, assets and liabilities">
                     <div class="pref-right">
-                        <div class="pref-control">
-                            <MudAutocomplete T="string"
-                                             Variant="Variant.Filled"
-                                             Style="min-width: 140px; max-width: 200px;"
-                                             Value="@_mainCurrencyCode"
-                                             ValueChanged="OnMainCurrencyChanged"
-                                             SearchFunc="ReferenceData.SearchCurrencyCodesAsync"
-                                             MinCharacters="0"
-                                             MaxItems="10"
-                                             Dense="true"
-                                             CoerceValue="true"
-                                             CoerceText="false"
-                                             ResetValueOnEmptyText="false"
-                                             ToStringFunc="@(code => code ?? string.Empty)" />
+                        <div class="pref-control pref-currency">
+                            <OdsCurrencySelect Label="" AriaLabel="Main currency"
+                                               Variant="Variant.Filled"
+                                               Value="@_mainCurrencyCode" ValueChanged="OnMainCurrencyChanged"
+                                               Options="_currencyOptions" />
                         </div>
                         <span class="pref-flag @(MainCurrencyDirty ? "on" : "")" title="Unsaved change" aria-hidden="true"></span>
                     </div>

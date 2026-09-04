@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using Odyssey.Client.Components;
 using Odyssey.Client.Models;
@@ -32,6 +33,46 @@ public partial class FileAnalysisReviewGrid
 
     /// <summary>Speak a discrete outcome on the dialog's polite live region.</summary>
     [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+
+    // ── Amount cell ───────────────────────────────────────────────────────────
+    // The rules OdsMoneyField applies in a labelled form, applied here to a bare grid input. A
+    // rejected keystroke leaves the row's text unchanged, so Blazor's diff has nothing to write and
+    // the character would linger in the DOM — odsSetInputValue takes it back out.
+
+    private static string AmountInputId(FileAnalysisRow row) => $"fan-amount-{row.CandidateId:N}";
+
+    private async Task OnAmountInputAsync(FileAnalysisRow row, ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? string.Empty;
+        var next = FileAnalysisSession.SanitizeAmount(raw);
+
+        if (next is null)
+        {
+            await RestoreAmountAsync(row);
+            return;
+        }
+
+        FileAnalysisSession.SetAmount(row, next);
+        if (next != raw)
+            await RestoreAmountAsync(row);
+    }
+
+    // A typed sign picks the direction instead of inserting a character: the sign lands on the value
+    // here, and the keystroke itself is rejected a moment later by OnAmountInputAsync.
+    private Task OnAmountKeyDownAsync(FileAnalysisRow row, KeyboardEventArgs e)
+    {
+        if (e.Key is not ("-" or "\u2212" or "+"))
+            return Task.CompletedTask;
+
+        FileAnalysisSession.SetAmountSign(row, negative: e.Key != "+");
+        return Task.CompletedTask;
+    }
+
+    private async Task RestoreAmountAsync(FileAnalysisRow row)
+    {
+        try { await JS.InvokeVoidAsync("odsSetInputValue", AmountInputId(row), row.AmountText); }
+        catch { /* JS unavailable (e.g. prerender / teardown) */ }
+    }
 
     // ── Inline merchant create ────────────────────────────────────────────────
     // Synchronous, because OdsCombobox's OnCreate must hand back the new option immediately. The

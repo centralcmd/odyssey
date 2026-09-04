@@ -45,7 +45,6 @@ public partial class AddTermDialog
     private IReadOnlyList<TermKind> _eligibleKinds = [];
     private List<OdsOption> _currencyOptions = [];
     private List<OdsOption> _billingOptions = [];
-    private Dictionary<string, string> _currencySymbols = new();
     private readonly Dictionary<string, string> _errors = new();
 
     // Sensible default billing period per fee kind (mirrors the design-system dialog).
@@ -98,11 +97,10 @@ public partial class AddTermDialog
             _currencyOptions = currencies
                 .Where(c => c.Archived is null)
                 .OrderBy(c => c.CurrencyCode)
-                .Select(c => new OdsOption(c.CurrencyCode, $"{c.CurrencyCode} · {c.Name}"))
+                // The label is the currency NAME alone — OdsMoneyField renders the ISO code itself,
+                // in mono, so a "USD · US Dollar" label would print the code twice.
+                .Select(c => new OdsOption(c.CurrencyCode, c.Name))
                 .ToList();
-            _currencySymbols = currencies
-                .GroupBy(c => c.CurrencyCode)
-                .ToDictionary(g => g.Key, g => g.First().Symbol);
         }
 
         // Guarantee the account's own currency is selectable even if the list failed to load.
@@ -147,9 +145,6 @@ public partial class AddTermDialog
         _errors.Remove("effectiveFrom");
     }
 
-    private string CurrencySymbol(string code) =>
-        _currencySymbols.TryGetValue(code, out var sym) && !string.IsNullOrWhiteSpace(sym) ? sym : code;
-
     private string PreviewFraction
     {
         get
@@ -170,7 +165,7 @@ public partial class AddTermDialog
     }
 
     private decimal? ParseValue() =>
-        decimal.TryParse(_valueStr.Replace(",", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+        OdsMoneyText.Parse(_valueStr);
 
     private async Task CloseAsync() => await OpenChanged.InvokeAsync(false);
 

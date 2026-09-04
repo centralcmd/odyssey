@@ -90,7 +90,7 @@ const RecordRateModal = ({ onClose, onCreate, onSave, rate: editRate, initial })
   const { useState } = React;
   const d = window.OdysseyData;
   const editing = !!editRate;
-  const codeOptions = d.currencies.filter(c => !c.archived).map(c => ({ value: c.code, label: `${c.code} · ${c.name}` }));
+  const codeOptions = d.currencies.filter(c => !c.archived).map(c => ({ value: c.code, label: c.name }));
   const [draft, setDraft] = useState({
     from: editRate?.from || (initial && initial.from) || 'USD',
     to: editRate?.to || (initial && initial.to) || '',
@@ -146,8 +146,8 @@ const RecordRateModal = ({ onClose, onCreate, onSave, rate: editRate, initial })
         </React.Fragment>
       }>
       <FormRow>
-        <Select label="From currency" value={draft.from} onChange={set('from')} options={codeOptions} disabled={editing} />
-        <Select label="To currency" value={draft.to} onChange={set('to')} options={codeOptions} helper={errors.to} placeholder="Select…" disabled={editing} />
+        <CurrencySelect label="From currency" value={draft.from} onChange={set('from')} options={codeOptions} searchThreshold={0} disabled={editing} />
+        <CurrencySelect label="To currency" value={draft.to} onChange={set('to')} options={codeOptions} searchThreshold={0} helper={errors.to} placeholder="Select…" disabled={editing} />
       </FormRow>
       <Field label="Rate" value={draft.rate} onChange={set('rate')}
         placeholder="e.g. 0.9218" error={errors.rate}
