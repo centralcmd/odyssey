@@ -5,6 +5,19 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0](https://github.com/centralcmd/odyssey/compare/v0.22.0...v0.23.0) (2026-09-06)
+
+
+### Features
+
+* a money value is edited as one control with its currency ([bcfa9b1](https://github.com/centralcmd/odyssey/commit/bcfa9b10baf0b69d69722e82b8a906c297a518f0))
+
+
+### CI/CD
+
+* bump anthropics/claude-code-action in the actions group ([cd24b96](https://github.com/centralcmd/odyssey/commit/cd24b96979361297cd064bc0d83d4a8ab86d63bc))
+* bump nginxinc/nginx-unprivileged ([eb60a5c](https://github.com/centralcmd/odyssey/commit/eb60a5c01105e580b29c1690029236303cb244f2))
+
 ## [0.22.0](https://github.com/centralcmd/odyssey/compare/v0.21.0...v0.22.0) (2026-09-02)
 
 
