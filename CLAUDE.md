@@ -46,6 +46,15 @@ up with a port-remap override and **never** `docker compose down -v` / delete th
 Full recipe (override file, seeded logins, dev-server pitfalls) in
 [`docs/running-locally-alongside-a-live-stack.md`](docs/running-locally-alongside-a-live-stack.md).
 
+**The Aspire dashboard's dev-certificate banner on Linux.** The AppHost's default launch profile
+serves the *dashboard* over HTTPS, so `No trusted development certificate was found` appears until
+the certificate is trusted in all three of the .NET, OpenSSL (`SSL_CERT_DIR`) and NSS (`certutil`)
+stores — `dotnet dev-certs https --trust` alone does not finish the job on Linux, and the check is
+all-or-nothing, so two green legs still show the banner. The stack runs fine regardless; the API and
+client are HTTP and need no certificate. Procedure in
+[`docs/https-dev-certificate-on-linux.md`](docs/https-dev-certificate-on-linux.md), or use
+`dotnet run --project Odyssey.AppHost --launch-profile http` to avoid it entirely.
+
 ## Architecture
 
 **Three-tier stack:**
