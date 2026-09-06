@@ -401,7 +401,7 @@ This starts the Aspire dashboard and launches all required resources. The AppHos
 ### Notes
 
 - Aspire binds MariaDB to host port `3307`, so ensure that port is available.
-- Aspire runs the API/client on HTTP, so no local HTTPS development certificate is required. The API endpoint is fixed at `http://localhost:5188` (hardcoded in `Odyssey.AppHost/AppHost.cs`, matching Docker Compose and the client's Debug fallback); the client gets a dynamic port.
+- Aspire runs the API/client on HTTP, so no local HTTPS development certificate is required for them. The API endpoint is fixed at `http://localhost:5188` (hardcoded in `Odyssey.AppHost/AppHost.cs`, matching Docker Compose and the client's Debug fallback); the client gets a dynamic port. The **dashboard** is a separate matter: its default launch profile is HTTPS, so on Linux it shows a `No trusted development certificate was found` banner until the certificate is trusted in all three of the .NET, OpenSSL and NSS stores — see [`docs/https-dev-certificate-on-linux.md`](docs/https-dev-certificate-on-linux.md), or run `--launch-profile http` to skip it.
 - If you already have the Docker Compose stack running, stop it first to avoid port conflicts.
 - MariaDB is a container with a persistent volume, so a credential you change after the first run does not re-initialise the existing database — remove the `mariadb-data` volume to start over.
 - For full containerized deployment scenarios, `docker-compose.yml` remains available.
