@@ -234,7 +234,7 @@ public partial class ContactsCard
 
         if (_canUpdate)
         {
-            items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)) });
+            items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit contact", OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)) });
         }
 
         // Per-row vCard export (issue #338 §7.1) — requires only contacts.read, so it's always

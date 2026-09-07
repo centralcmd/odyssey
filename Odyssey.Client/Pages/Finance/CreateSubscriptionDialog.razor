@@ -37,7 +37,7 @@
                   Placeholder="Optional — membership / account no." />
         <OdsContactSelect Id="@CompanyFieldId" Label="Company" Optional
                           Value="@_contactId" ValueChanged="@(v => _contactId = v)"
-                          Options="_companyOptions" AriaLabel="Company"
+                          Options="_companyOptions"
                           AllowCreate="@_canCreateContact" OnCreate="CreateContactOption"
                           Help="@CompanyHelp" />
     </OdsFormRow>
