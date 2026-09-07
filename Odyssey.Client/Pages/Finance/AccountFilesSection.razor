@@ -4,6 +4,8 @@
 @inject IReferenceDataCache ReferenceData
 @inject IAccountsApiClient Accounts
 @inject IFileAnalysisDisclosureCache Disclosures
+@inject AuthenticationStateProvider AuthenticationState
+@inject IContactQuickCreate ContactCreator
 
 <OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="attach_file">
     <Title>Files</Title>
@@ -65,6 +67,7 @@
                                    TypeFor="@(row => KindMeta(FileById(row.Id).FileType))"
                                    Actions="@(row => BuildMenu(FileById(row.Id)))"
                                    Issuers="_issuerOptions"
+                                   OnCreateContact="@(_canCreateContact ? CreateContactOption : null)"
                                    ValidityColumns="true"
                                    IssuerFor="@(row => IssuerName(FileById(row.Id).IssuedBy))"
                                    OnSave="@SaveAction"

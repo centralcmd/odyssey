@@ -1,10 +1,16 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Odyssey.ApiClient.Resources
 @using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Authorization
+@using Odyssey.Dtos.Journal
 @using Odyssey.Client.Components
 @using Odyssey.Client.Services
 @inject IFilesApiClient Files
 @inject ISnackbar Snackbar
 @inject ITaskApiClient Tasks
 @inject Odyssey.Client.Services.IUploadLimitsCache UploadLimits
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ITagQuickCreate<ExistingJournalTaskTag> TagCreator
 
 @*
     CreateTaskDialog — the "New task" / "Edit task" dialog (issue #311). Mirrors the NewJournalTask /
@@ -31,9 +37,12 @@
         }
     </OdsFormRow>
 
+    @* The create row mints a TASK tag — a field only offers the vocabulary it searches. *@
     <OdsTagMultiSelect Label="Tags" Optional="true" Value="_draft.TagIds"
-                       ValueChanged="@(v => _draft.TagIds = v)" Options="TagOptions"
-                       Placeholder="No tags" AddLabel="Add tag" />
+                       ValueChanged="@(v => _draft.TagIds = v)" Options="_tagOpts"
+                       Placeholder="No tags" AddLabel="Add tag"
+                       OnCreate="@(_canCreateTag ? CreateTagOption : null)"
+                       CreateKinds="OdsTypeRegistries.TagCreateKinds.Task" />
 
     <OdsNoteField Label="Content" Optional="true" MaxLength="4096" Rows="4"
                   Value="@_draft.Content" ValueChanged="@(v => _draft.Content = v)" Placeholder="Optional details" />
@@ -70,17 +79,50 @@
 
     private static readonly IReadOnlyList<OdsOption> _statusOptions = JournalTaskUi.StatusOptions;
 
+    private bool _canCreateTag;
+
+    // Tags created inline, ahead of the host's option-list refresh, so their chips resolve at once.
+    private readonly List<OdsOption> _createdTags = [];
+
+    private IReadOnlyList<OdsOption> _tagOpts => _createdTags.Count == 0
+        ? TagOptions
+        : [.. _createdTags.Where(c => TagOptions.All(o => o.Value != c.Value)), .. TagOptions];
+
     protected override async Task OnInitializedAsync()
     {
+        TagCreator.CreateFailed += OnTagCreateFailed;
         _editing = Task is not null;
         _draft = Task is not null ? JournalTaskDraft.From(Task, AttachmentUploads) : new JournalTaskDraft();
         _maxUploadMb = (await UploadLimits.GetAsync()).MaxUploadMegabytes;
+
+        var user = await AuthenticationStateProvider.GetUserAsync();
+        _canCreateTag = user.HasPermission(PermissionClaims.TaskTagsCreate);
+    }
+
+    private OdsOption? CreateTagOption(string text, string? kind)
+    {
+        var option = TagCreator.Begin(text);
+        if (option is not null)
+            _createdTags.Add(option);
+        return option;
+    }
+
+    private void OnTagCreateFailed(string tempId)
+    {
+        _createdTags.RemoveAll(o => o.Value == tempId);
+        _draft.TagIds = [.. _draft.TagIds.Where(id => id != tempId)];
+        StateHasChanged();
     }
 
     private async Task<bool> SaveAsync()
     {
         if (!_draft.Validate())
             return false;
+
+        // Let any in-flight inline tag create land, then map staged ids to the real ones; a failed
+        // create resolves to null and is dropped rather than posted.
+        await TagCreator.WhenSettledAsync();
+        _draft.TagIds = [.. _draft.TagIds.Select(TagCreator.Resolve).Where(id => id is not null).Select(id => id!)];
 
         try
         {

@@ -1,3 +1,5 @@
+using Odyssey.Client.Authorization;
+using Odyssey.Dtos.Authorization;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
@@ -43,6 +45,31 @@ public partial class CreateTaxStatementDialog
     private IReadOnlyCollection<string> _taxTags = [];
     private IReadOnlyCollection<string> _incomeTags = [];
     private IReadOnlyList<OdsOption> _tagOptions = [];
+    private bool _canCreateTag;
+
+    // Tags created inline from either derivation field, ahead of the reference-cache refresh, so both
+    // fields see the new tag at once.
+    private readonly List<OdsOption> _createdTags = [];
+
+    private IReadOnlyList<OdsOption> _tagOpts => _createdTags.Count == 0
+        ? _tagOptions
+        : [.. _createdTags.Where(c => _tagOptions.All(o => o.Value != c.Value)), .. _tagOptions];
+
+    private OdsOption? CreateTagOption(string text, string? kind)
+    {
+        var option = TagCreator.Begin(text);
+        if (option is not null)
+            _createdTags.Add(option);
+        return option;
+    }
+
+    private void OnTagCreateFailed(string tempId)
+    {
+        _createdTags.RemoveAll(o => o.Value == tempId);
+        _taxTags = [.. _taxTags.Where(id => id != tempId)];
+        _incomeTags = [.. _incomeTags.Where(id => id != tempId)];
+        StateHasChanged();
+    }
 
     private List<ExistingCurrency> _currencies = [];
     private IReadOnlyList<OdsOption> _currencyOptions = [];
@@ -51,6 +78,13 @@ public partial class CreateTaxStatementDialog
 
     protected override async Task OnInitializedAsync()
     {
+        TagCreator.CreateFailed += OnTagCreateFailed;
+        if (OperatingSystem.IsBrowser())
+        {
+            var user = await AuthenticationStateProvider.GetUserAsync();
+            _canCreateTag = user.HasPermission(PermissionClaims.TransactionTagsCreate);
+        }
+
         if (Statement is { } statement)
         {
             _name = statement.Name;
@@ -143,6 +177,11 @@ public partial class CreateTaxStatementDialog
         _fiscalYear = year;
     }
 
+    private IEnumerable<Guid> ResolveTagIds(IReadOnlyCollection<string> ids) => ids
+        .Select(id => Guid.TryParse(TagCreator.Resolve(id), out var tagId) ? tagId : (Guid?)null)
+        .Where(id => id is not null)
+        .Select(id => id!.Value);
+
     private async Task<bool> SaveAsync()
     {
         _nameError = string.IsNullOrWhiteSpace(_name);
@@ -192,10 +231,13 @@ public partial class CreateTaxStatementDialog
             if (!(await TaxStatements.UpdateAsync(Statement.TaxStatementId, update)).Toast(Snackbar, "Update failed"))
                 return false;
 
+            // Let any in-flight inline tag create land, then map staged ids to the real ones; a create
+            // that failed resolves to null and is dropped rather than posted.
+            await TagCreator.WhenSettledAsync();
             var tags = new UpdateTaxStatementTags
             {
-                TaxTagIds = [.. _taxTags.Select(Guid.Parse)],
-                IncomeTagIds = [.. _incomeTags.Select(Guid.Parse)],
+                TaxTagIds = [.. ResolveTagIds(_taxTags)],
+                IncomeTagIds = [.. ResolveTagIds(_incomeTags)],
             };
             if (!(await TaxStatements.UpdateTagsAsync(Statement.TaxStatementId, tags)).Toast(Snackbar, "Tag update failed"))
                 return false;

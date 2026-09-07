@@ -9,10 +9,15 @@
 
     Per spec FE-1 this is NOT a new widget — it reuses OdsCombobox (a searchable
     single-select over MudAutocomplete), wrapped in the standard label-above /
-    help / error field chrome. No inline contact create (Non-Goal 1) and no
-    ContactType restriction (Non-Goal 4). Options are the active
-    (non-archived) contacts only (FE-6 / §9); a currently-linked value that
-    has since been archived is still surfaced so its name stays visible.
+    help / error field chrome, and applies no ContactType restriction (Non-Goal 4
+    — any contact is eligible). Options are the active (non-archived) contacts
+    only (FE-6 / §9); a currently-linked value that has since been archived is
+    still surfaced so its name stays visible.
+
+    Inline create is available here like on every other contact picker: pass
+    OnCreate(name, kind) — gated on contacts.create — and the popover offers the
+    standard typed create rows, so naming a bank that isn't in Contacts yet doesn't
+    send the user off to another screen. Omit it and the field stays pick-only.
 
     Accessibility (the picker half of the WCAG 2.2 AA contract):
       • A11Y-1 — a persistent "Custodian" label, associated to the inner input by a
@@ -44,8 +49,13 @@
                  Options="_options"
                  Placeholder="@Placeholder"
                  Disabled="@PickerDisabled"
+                 Loading="@Loading"
+                 EmptyText="@EffectiveEmptyText"
                  InputId="@_inputId"
                  Error="@HasError"
+                 OnCreate="@(OnCreate is null ? null : HandleCreate)"
+                 CreateLabel="@CreateLabel"
+                 CreateKinds="@(OnCreate is null ? null : EffectiveCreateKinds)"
                  aria-describedby="@_describedBy" />
 
     @* Both regions are ALWAYS mounted (empty when idle) so a later text change is announced — a
@@ -87,6 +97,20 @@
 
     [Parameter] public bool Disabled { get; set; }
 
+    /// <summary>
+    /// Create a contact from the inline create rows and return the option to select:
+    /// <c>(name, kind) =&gt; option</c>, where <c>kind</c> is the ContactType key of the row that was
+    /// picked. Supplying it turns the create rows on (gate on <c>contacts.create</c>); omit it for a
+    /// pick-only field.
+    /// </summary>
+    [Parameter] public Func<string, string, OdsOption?>? OnCreate { get; set; }
+
+    /// <summary>Prefix on the create rows.</summary>
+    [Parameter] public string CreateLabel { get; set; } = "Add";
+
+    /// <summary>Override the create rows. Defaults to Organization, then Person.</summary>
+    [Parameter] public IReadOnlyList<OdsCreateKind>? CreateKinds { get; set; }
+
     [Parameter] public string? Class { get; set; }
 
     private readonly string _inputId = $"custodian-input-{Guid.NewGuid():N}";
@@ -94,6 +118,11 @@
     private readonly string _alertId = $"custodian-alert-{Guid.NewGuid():N}";
 
     private const string EmptyHint = "No contacts yet — create one first to link a custodian.";
+    private const string EmptyCreateHint = "No contacts yet — type a name to add one.";
+
+    // Contacts created here that the parent's list hasn't picked up yet, so the trigger can still
+    // resolve the value the create row just handed it.
+    private readonly List<OdsOption> _created = [];
 
     private IReadOnlyList<OdsOption> _options = [];
     private bool _isEmpty;
@@ -106,14 +135,35 @@
     // Both regions are always referenced so the association is stable as their text comes and goes.
     private string _describedBy => $"{_statusId} {_alertId}";
 
-    private bool PickerDisabled => Disabled || Loading || (_isEmpty && string.IsNullOrEmpty(Value));
+    // An empty list is still operable when a contact can be created from it — disabling the field
+    // would make the create row unreachable, which is the dead end inline create exists to close.
+    private bool PickerDisabled => Disabled || Loading || (_isEmpty && string.IsNullOrEmpty(Value) && OnCreate is null);
+
+    private IReadOnlyList<OdsCreateKind> EffectiveCreateKinds =>
+        CreateKinds is { Count: > 0 } kinds ? kinds : OdsTypeRegistries.ContactCreateKinds;
+
+    private string EffectiveEmptyText => OnCreate is null ? "No contacts match" : "No matches — type to add one";
+
+    private OdsOption? HandleCreate(string text, string? kind)
+    {
+        if (OnCreate is null)
+            return null;
+
+        var created = OnCreate(text, kind ?? EffectiveCreateKinds[0].Key);
+        if (created is null)
+            return null;
+
+        if (!_created.Any(o => string.Equals(o.Value, created.Value, StringComparison.Ordinal)))
+            _created.Add(created);
+        return created;
+    }
 
     // Non-error status (loading / empty-list hint / helper text) → the polite live region.
     private string StatusMessage =>
         HasError ? string.Empty
         : Loading ? "Loading contacts…"
         : !string.IsNullOrWhiteSpace(Help) ? Help!
-        : _isEmpty ? EmptyHint
+        : _isEmpty ? (OnCreate is null ? EmptyHint : EmptyCreateHint)
         : string.Empty;
 
     // The validation error → the assertive (role="alert") live region.
@@ -122,11 +172,10 @@
     protected override void OnParametersSet()
     {
         var active = Contacts.Where(c => c.Archived is null).ToList();
-        _isEmpty = active.Count == 0;
 
         var options = active
             .OrderBy(c => c.ResolvedDisplayName, StringComparer.CurrentCultureIgnoreCase)
-            .Select(ToOption)
+            .Select(OdsContactOptions.From)
             .ToList();
 
         // Keep a linked-but-now-archived value resolvable so the trigger still shows its name.
@@ -134,20 +183,17 @@
         {
             var linked = Contacts.FirstOrDefault(c => c.ContactId.ToString() == Value);
             if (linked is not null)
-                options.Insert(0, ToOption(linked));
+                options.Insert(0, OdsContactOptions.From(linked));
         }
 
-        _options = options;
-    }
-
-    private static OdsOption ToOption(ExistingContact contact)
-    {
-        var meta = OdsTypeRegistries.ContactTypeOf(contact.Type.ToString());
-        return new OdsOption(contact.ContactId.ToString(), contact.ResolvedDisplayName)
+        if (_created.Count > 0)
         {
-            Icon = meta.Icon,
-            IconColor = meta.Color,
-        };
+            var known = options.Select(o => o.Value).ToHashSet(StringComparer.Ordinal);
+            options.InsertRange(0, _created.Where(o => !known.Contains(o.Value)));
+        }
+
+        _isEmpty = options.Count == 0;
+        _options = options;
     }
 
     private Task OnValueChanged(string? value) => ValueChanged.InvokeAsync(value);

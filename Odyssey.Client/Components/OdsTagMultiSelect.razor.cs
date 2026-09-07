@@ -31,13 +31,22 @@ public partial class OdsTagMultiSelect
     [Parameter] public string AddLabel { get; set; } = "Add tag";
 
     /// <summary>
-    /// Enables an inline "Create …" row when the query matches no option.
-    /// Receives the typed text; return the new option (or null to skip).
+    /// Enables an inline "Create …" row when the query matches no option. Receives the typed text and
+    /// — with <see cref="CreateKinds"/> — the key of the kind whose row was picked (null for the
+    /// single unqualified row). Return the new option, or null to skip.
     /// </summary>
-    [Parameter] public Func<string, OdsOption?>? OnCreate { get; set; }
+    [Parameter] public Func<string, string?, OdsOption?>? OnCreate { get; set; }
 
     /// <summary>Prefix for the create row label.</summary>
     [Parameter] public string CreateLabel { get; set; } = "Create";
+
+    /// <summary>
+    /// What the create rows create: one row per kind, each reading <c>Create "‹text›"</c> with the kind
+    /// as a muted trailing icon + label. The picked key reaches <see cref="OnCreate"/>. A field offers
+    /// only the kinds it can create — a transaction-tag field offers "Transaction tag"; a contact
+    /// collection offers Organization and Person. Omit for one plain row.
+    /// </summary>
+    [Parameter] public IReadOnlyList<OdsCreateKind>? CreateKinds { get; set; }
 
     /// <summary>Helper text below the control (replaced by <see cref="Error"/> when set).</summary>
     [Parameter] public string? Help { get; set; }
@@ -222,6 +231,11 @@ public partial class OdsTagMultiSelect
 
     private string CreateRowLabel => $"{CreateLabel} \"{_query.Trim()}\"";
 
+    // The create rows to render: one per kind, or a single unqualified row (the null entry) when the
+    // caller named no kinds.
+    private IReadOnlyList<OdsCreateKind?> CreateRows =>
+        CreateKinds is { Count: > 0 } kinds ? [.. kinds] : [null];
+
     private bool IsLocked(string value) => PreserveOnClear?.Invoke(value) == true;
 
     private bool CanClear => Value.Any(v => !IsLocked(v));
@@ -319,12 +333,12 @@ public partial class OdsTagMultiSelect
         return Emit();
     }
 
-    private Task Create()
+    private Task Create(OdsCreateKind? kind)
     {
         if (OnCreate is null || string.IsNullOrWhiteSpace(_query))
             return Task.CompletedTask;
 
-        var created = OnCreate(_query.Trim());
+        var created = OnCreate(_query.Trim(), kind?.Key);
         _query = string.Empty;
         if (created is null)
             return Task.CompletedTask;
@@ -336,8 +350,10 @@ public partial class OdsTagMultiSelect
 
     private Task OnSearchKeyDown(KeyboardEventArgs e)
     {
+        // Enter takes the FIRST create row — the same row the popover leads with, so the keyboard and
+        // the pointer land on one kind rather than two.
         if (e.Key == "Enter" && ShowCreate)
-            return Create();
+            return Create(CreateRows[0]);
         return Task.CompletedTask;
     }
 

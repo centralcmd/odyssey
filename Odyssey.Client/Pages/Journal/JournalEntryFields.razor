@@ -4,6 +4,10 @@
     Used by both CreateJournalEntryDialog and the inline edit form so create + edit stay identical.
     Links are chosen as scalar ids (OdsTagMultiSelect for both tags and contacts, per FE #4/#5);
     photos + files go through OdsFileUpload (image-only for photos). Content is plain text.
+
+    Both member pickers can create, and their create rows name what they make: Tags mints a journal
+    tag (never a transaction one — a field only offers the vocabulary it searches), Contacts mints a
+    contact, so the rows there are the contact types and the created record carries a real one.
 *@
 
 <OdsField Label="Title" Value="@Draft.Title" MaxLength="200" AutoFocus="@AutoFocus"
@@ -19,12 +23,16 @@
 <OdsFormRow>
     <OdsTagMultiSelect Label="Tags" Optional="true" Value="Draft.TagIds"
                        ValueChanged="@(v => Draft.TagIds = v)" Options="TagOptions"
-                       Placeholder="No tags" AddLabel="Add tag" />
+                       Placeholder="No tags" AddLabel="Add tag"
+                       OnCreate="OnCreateTag" CreateKinds="OdsTypeRegistries.TagCreateKinds.Journal" />
     <OdsTagMultiSelect Label="Contacts" Optional="true" Value="Draft.ContactIds"
                        ValueChanged="@(v => Draft.ContactIds = v)" Options="ContactOptions"
                        Placeholder="No linked contacts" AddLabel="Link contact" Noun="contact"
-                       SearchLabel="Search contacts" SearchPlaceholder="Search contacts…"
-                       EmptyText="No contacts match" />
+                       SearchLabel="Search contacts"
+                       SearchPlaceholder="@(OnCreateContact is null ? "Search contacts…" : "Search or add a contact…")"
+                       OnCreate="OnCreateContact" CreateLabel="Add"
+                       CreateKinds="OdsTypeRegistries.ContactCreateKinds"
+                       EmptyText="@(OnCreateContact is null ? "No contacts match" : "No matches — type to add one")" />
 </OdsFormRow>
 
 <OdsNoteField Label="Content" Value="@Draft.Content" MaxLength="4096" Rows="6"
@@ -59,6 +67,17 @@
 
     /// <summary>Active contact options (id → name).</summary>
     [Parameter] public IReadOnlyList<OdsOption> ContactOptions { get; set; } = [];
+
+    /// <summary>
+    /// Stage a journal tag from the Tags picker's create row, or null to withhold the row (the host
+    /// gates it on <c>journal.tags.create</c>). The host owns the POST and the id reconcile, because
+    /// it owns the save.
+    /// </summary>
+    [Parameter] public Func<string, string?, OdsOption?>? OnCreateTag { get; set; }
+
+    /// <summary>Stage a contact from the Contacts picker's create rows, or null to withhold them
+    /// (gated on <c>contacts.create</c>).</summary>
+    [Parameter] public Func<string, string?, OdsOption?>? OnCreateContact { get; set; }
 
     /// <summary>Focus the Title field on first render (create dialog / entering edit).</summary>
     [Parameter] public bool AutoFocus { get; set; }

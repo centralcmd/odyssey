@@ -45,6 +45,32 @@ public sealed record OdsTypeOption
 /// <c>OdsTypeSelect</c> (e.g. Assets / Liabilities).</summary>
 public sealed record OdsTypeSelectGroup(string Label, IReadOnlyList<OdsTypeOption> Items);
 
+/// <summary>
+/// The one projection of a contact record to a picker option (Odyssey Design System ·
+/// <c>ContactSelect</c>): the id as the value, the resolved display name as the label, and the leading
+/// glyph + colour read off <see cref="OdsTypeRegistries.ContactTypes"/> — never re-hardcoded per
+/// surface, which is how a contact list ends up reading as merchants only.
+/// </summary>
+public static class OdsContactOptions
+{
+    public static OdsOption From(Odyssey.Dtos.Journal.ExistingContact contact)
+    {
+        var meta = OdsTypeRegistries.ContactTypeOf(contact.Type.ToString());
+        return new OdsOption(contact.ContactId.ToString(), contact.ResolvedDisplayName)
+        {
+            Icon = meta.Icon,
+            IconColor = meta.Color,
+        };
+    }
+
+    /// <summary>The ACTIVE contacts as options, name-ordered — an archived contact must not be
+    /// linkable, so it never reaches a picker's list.</summary>
+    public static IReadOnlyList<OdsOption> Active(IEnumerable<Odyssey.Dtos.Journal.ExistingContact> contacts) =>
+        [.. contacts.Where(c => c.Archived is null)
+            .OrderBy(c => c.ResolvedDisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .Select(From)];
+}
+
 /// <summary>The canonical domain type registries and their <see cref="OdsOption"/> projections.</summary>
 public static class OdsTypeRegistries
 {
@@ -256,6 +282,46 @@ public static class OdsTypeRegistries
     /// <summary>The TaxStatementFileType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption TaxStatementFileTypeOf(TaxStatementFileType kind) =>
         TaxStatementFileTypes.FirstOrDefault(t => t.Key == kind.ToString()) ?? TaxStatementFileTypes[^1];
+
+    /// <summary>
+    /// The single create row each tag picker offers — one per vocabulary, because a field can only
+    /// ever mint the tags it searches (a journal-tag field cannot create a transaction tag). The row
+    /// names what it makes: <c>Create "AA" · Transaction tag</c>.
+    /// </summary>
+    public static class TagCreateKinds
+    {
+        public static readonly IReadOnlyList<OdsCreateKind> Transaction =
+            [new("transaction", "Transaction tag") { Icon = "local_offer" }];
+
+        public static readonly IReadOnlyList<OdsCreateKind> Journal =
+            [new("journal", "Journal tag") { Icon = "menu_book" }];
+
+        public static readonly IReadOnlyList<OdsCreateKind> Task =
+            [new("task", "Task tag") { Icon = "checklist" }];
+
+        public static readonly IReadOnlyList<OdsCreateKind> Photo =
+            [new("photo", "Photo tag") { Icon = "photo" }];
+    }
+
+    /// <summary>Project a registry to the inline-create rows a picker offers (Odyssey Design System ·
+    /// <c>CONTACT_CREATE_KINDS</c>) — one row per member, in the registry's own order.</summary>
+    public static IReadOnlyList<OdsCreateKind> ToCreateKinds(IReadOnlyList<OdsTypeOption> types) =>
+        [.. types.Select(t => new OdsCreateKind(t.Key, t.Label) { Icon = t.Icon })];
+
+    /// <summary>
+    /// The create rows every contact picker offers — <b>Organization first</b>, then Person.
+    ///
+    /// <para>A contact linked from a transaction, a file, a subscription or a statement merchant is a
+    /// company far more often than a person, so the organization row leads and is what a one-click
+    /// "create from the extracted name" affordance uses. The order is the design system's
+    /// <c>CONTACT_CREATE_KINDS</c>, not <see cref="ContactTypes"/>'s (which reads Person first for
+    /// the <i>type</i> picker on the contact record itself).</para>
+    /// </summary>
+    public static readonly IReadOnlyList<OdsCreateKind> ContactCreateKinds =
+    [
+        new("Organization", "Organization") { Icon = ContactTypeOf("Organization").Icon },
+        new("Person", "Person") { Icon = ContactTypeOf("Person").Icon },
+    ];
 
     /// <summary>Project a registry to <see cref="OdsOption"/>s carrying each member's leading glyph + color.</summary>
     public static IReadOnlyList<OdsOption> ToOptions(IReadOnlyList<OdsTypeOption> types) =>

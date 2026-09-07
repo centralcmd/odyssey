@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using Odyssey.Client.Components;
 using Odyssey.Client.Models;
+using Odyssey.Dtos;
 
 namespace Odyssey.Client.Pages.Finance;
 
@@ -30,6 +31,12 @@ public partial class FileAnalysisReviewGrid
     /// dialog owns the POST and the reconcile/rollback that follows.
     /// </summary>
     [Parameter] public EventCallback<FileAnalysisPendingContact> OnCreateContact { get; set; }
+
+    /// <summary>
+    /// A transaction tag was optimistically staged in the session and now needs creating server-side.
+    /// The dialog owns the POST and the reconcile/rollback that follows.
+    /// </summary>
+    [Parameter] public EventCallback<FileAnalysisPendingTag> OnCreateTag { get; set; }
 
     /// <summary>Speak a discrete outcome on the dialog's polite live region.</summary>
     [Parameter] public EventCallback<string> OnAnnounce { get; set; }
@@ -74,22 +81,35 @@ public partial class FileAnalysisReviewGrid
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 
-    // ── Inline merchant create ────────────────────────────────────────────────
-    // Synchronous, because OdsCombobox's OnCreate must hand back the new option immediately. The
+    // ── Inline merchant / category create ─────────────────────────────────────
+    // Synchronous, because the pickers' OnCreate must hand back the new option immediately. The
     // session stages it optimistically; the server round-trip is the dialog's job.
-    private OdsOption? BeginCreateContact(FileAnalysisRow row, string text)
+    private OdsOption? BeginCreateContact(FileAnalysisRow row, string text, string? kind)
     {
-        var option = Session.BeginCreateContact(row, text, out var tempId);
+        var type = kind == nameof(ContactType.Person) ? ContactType.Person : ContactType.Organization;
+        var option = Session.BeginCreateContact(row, text, type, out var tempId);
         if (option is not null)
-            _ = OnCreateContact.InvokeAsync(new FileAnalysisPendingContact(tempId, option.Label));
+            _ = OnCreateContact.InvokeAsync(new FileAnalysisPendingContact(tempId, option.Label, type));
         return option;
     }
 
-    /// <summary>Create a contact straight from the extracted merchant string (no retyping) and link it.</summary>
+    private OdsOption? BeginCreateTag(FileAnalysisRow row, string text)
+    {
+        var option = Session.BeginCreateTag(row, text, out var tempId);
+        if (option is not null)
+            _ = OnCreateTag.InvokeAsync(new FileAnalysisPendingTag(tempId, option.Label));
+        return option;
+    }
+
+    /// <summary>
+    /// Create a contact straight from the extracted merchant string (no retyping) and link it — as an
+    /// <b>Organization</b>: a merchant read off a statement is a company far more often than a person,
+    /// and the picker's create rows are where a Person is chosen instead.
+    /// </summary>
     private async Task CreateMerchantFromExtractedAsync(FileAnalysisRow row)
     {
         var name = row.Merchant;
-        BeginCreateContact(row, name);
+        BeginCreateContact(row, name, nameof(ContactType.Organization));
         await AnnounceAndRefocusAsync($"Created and linked merchant {name}.", MerchantInputId(row));
     }
 

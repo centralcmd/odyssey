@@ -2,15 +2,18 @@
 @using Odyssey.Client.Components
 @using Odyssey.Client.Theme
 @using Odyssey.Dtos.Finance
+@using Microsoft.AspNetCore.Components.Authorization
 @inject ISnackbar Snackbar
 @inject IUserPreferenceService UserPreferences
 @inject ISubscriptionApiClient Subscriptions
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IContactQuickCreate ContactCreator
 
 @*
     CreateSubscriptionDialog — the create/edit subscription dialog (issue #293). Per the design-system
     update, a record's Edit action reuses this dialog in edit mode instead of an inline expand-to-edit
     panel. Fields mirror the NewSubscription / UpdateSubscription DTOs: name (required), external id
-    (optional), company (optional → Contact, OdsCombobox, scalar id only), a start/end window,
+    (optional), company (optional → Contact, OdsContactSelect with inline create, scalar id only), a start/end window,
     price (amount + currency), billing interval and the first-billing-date anchor, plus notes. Dates
     bind DateTime? in the UI and convert to DateOnly at the DTO boundary. Scalar contact id only
     (the §Security mass-assignment invariant). Pause / archive stay row actions — edit mode preserves
@@ -32,11 +35,11 @@
     <OdsFormRow>
         <OdsField Label="External id" @bind-Value="_externalId" MaxLength="128"
                   Placeholder="Optional — membership / account no." />
-        <OdsFieldShell Label="Company" HtmlFor="@CompanyFieldId" Optional="true"
-                       Help="The company that bills this subscription, if tracked.">
-            <OdsCombobox InputId="@CompanyFieldId" Value="@_contactId" ValueChanged="@(v => _contactId = v)"
-                         Options="Companies" Placeholder="Search contacts…" />
-        </OdsFieldShell>
+        <OdsContactSelect Id="@CompanyFieldId" Label="Company" Optional
+                          Value="@_contactId" ValueChanged="@(v => _contactId = v)"
+                          Options="_companyOptions" AriaLabel="Company"
+                          AllowCreate="@_canCreateContact" OnCreate="CreateContactOption"
+                          Help="@CompanyHelp" />
     </OdsFormRow>
 
     <OdsFormRow>

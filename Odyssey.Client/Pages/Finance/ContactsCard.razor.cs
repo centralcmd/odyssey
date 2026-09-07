@@ -21,10 +21,15 @@ public partial class ContactsCard
     private bool _loadError;
     private string _announce = "";
 
-    // Server pagination (OdsPager): 1-based page + rows-per-page; TotalCount from the PagedResult.
-    private int _page = 1;
-    private int _pageSize = OdsPageSizes.Default[0];
+    // Card-list windowing (OdsInfiniteList): the "Load N at a time" batch size. The list itself is
+    // the whole filtered set — search, filters and sort stay server-side; only the windowing is local,
+    // as on every other record-card page.
+    private int _batch = OdsPageSizes.Batch[0];
     private int _totalCount;
+
+    // The list owns ONE open card: expanding a record collapses its siblings, so the page never turns
+    // into a wall of open bodies the user has to scroll past.
+    private Guid? _openId;
 
     private bool _canCreate;
     private bool _canUpdate;
@@ -110,7 +115,7 @@ public partial class ContactsCard
         _typeFilter = state.TypeFilter ?? [];
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
         _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
-        _pageSize = OdsPageSizes.Restore(state.PageSize);
+        _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
 
     private ContactsPageState BuildPageState() => new()
@@ -122,7 +127,7 @@ public partial class ContactsCard
         StatusFilter = [.. _statusFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
-        PageSize = _pageSize,
+        BatchSize = _batch,
     };
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
@@ -143,7 +148,7 @@ public partial class ContactsCard
         public List<string> StatusFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
-        public int PageSize { get; set; } = OdsPageSizes.Default[0];
+        public int BatchSize { get; set; } = OdsPageSizes.Batch[0];
     }
 
     private async Task LoadPermissionsAsync()
@@ -166,8 +171,10 @@ public partial class ContactsCard
             StateHasChanged();
         }
 
+        // One window rather than a page: the card list windows on scroll, so the whole filtered set is
+        // fetched and the batch size only governs how much of it is mounted at a time.
         var result = await Contacts.ListAsync(
-            _page, _pageSize,
+            page: 1, pageSize: OdsPageSizes.All,
             search: _search,
             types: _typeFilter,
             status: _statusFilter,
@@ -181,7 +188,11 @@ public partial class ContactsCard
             _totalCount = load.TotalCount;
             _loadError = false;
             _announce = _totalCount == 0 ? "No contacts match your filters."
-                : $"Showing {OdsPagerMath.FirstShown(_page, _pageSize, _totalCount)}–{OdsPagerMath.LastShown(_page, _pageSize, _totalCount)} of {_totalCount} contact{(_totalCount == 1 ? "" : "s")}.";
+                : $"Showing {_totalCount} contact{(_totalCount == 1 ? "" : "s")}.";
+
+            // A card that scrolled out of the filtered set must not stay open behind the filter.
+            if (_openId is { } open && _contacts.All(c => c.ContactId != open))
+                _openId = null;
         }
         else
         {
@@ -194,27 +205,17 @@ public partial class ContactsCard
         StateHasChanged();
     }
 
-    // Reset to page 1, then fetch — for any search / filter / sort / size change. Page navigation
-    // calls GetContacts directly so it keeps the requested page.
-    private Task ReloadAsync()
-    {
-        _page = 1;
-        return GetContacts();
-    }
+    private Task ReloadAsync() => GetContacts();
 
-    private Task OnPageChanged(int page)
+    // The batch size only changes how much of the already-fetched set is mounted, so it never refetches.
+    private void OnBatchChanged(int size)
     {
-        _page = page;
-        return GetContacts();
-    }
-
-    private Task OnPageSizeChanged(int size)
-    {
-        _pageSize = size;
-        _page = 1;
+        _batch = size;
         PersistPageState();
-        return GetContacts();
+        StateHasChanged();
     }
+
+    private void ToggleExpand(Guid contactId, bool open) => _openId = open ? contactId : null;
 
     private async Task ClearFilters()
     {
@@ -225,19 +226,11 @@ public partial class ContactsCard
         await ReloadAsync();
     }
 
-    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingContact c, OdsRecordActionContext ctx)
+    // The card header already carries its own expand control, so the menu does not repeat it — unlike
+    // the table row it replaced, whose only disclosure was this item.
+    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingContact c)
     {
         var items = new List<OdsMenuItem>();
-
-        if (!ctx.Editing)
-        {
-            items.Add(new OdsMenuItem
-            {
-                Icon = ctx.Expanded ? "close" : "expand_more",
-                Label = ctx.Expanded ? "Collapse" : "View details",
-                OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
-            });
-        }
 
         if (_canUpdate)
         {
@@ -252,9 +245,9 @@ public partial class ContactsCard
         if (_canCreate && c.Archived is null)
         {
             items.Add(new OdsMenuItem { Divider = true });
-            items.Add(new OdsMenuItem { Icon = "add_location_alt", Label = "New address", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, ctx, "address")) });
-            items.Add(new OdsMenuItem { Icon = "alternate_email", Label = "New email", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, ctx, "email")) });
-            items.Add(new OdsMenuItem { Icon = "add_call", Label = "New phone number", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, ctx, "phone")) });
+            items.Add(new OdsMenuItem { Icon = "add_location_alt", Label = "New address", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, "address")) });
+            items.Add(new OdsMenuItem { Icon = "alternate_email", Label = "New email", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, "email")) });
+            items.Add(new OdsMenuItem { Icon = "add_call", Label = "New phone number", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, "phone")) });
         }
 
         if (_canUpdate)
@@ -273,7 +266,7 @@ public partial class ContactsCard
         if (_canDelete)
         {
             items.Add(new OdsMenuItem { Divider = true });
-            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, ctx.Remove) });
+            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, () => HandleDelete(c)) });
         }
 
         return items;
@@ -283,13 +276,9 @@ public partial class ContactsCard
     // nonce each time so re-picking the same kind re-triggers the form.
     private (Guid Id, string Kind, Guid Nonce)? _addRequest;
 
-    private void RequestAddContact(ExistingContact c, OdsRecordActionContext ctx, string kind)
+    private void RequestAddContact(ExistingContact c, string kind)
     {
-        if (!ctx.Expanded)
-        {
-            ctx.Toggle();
-        }
-
+        _openId = c.ContactId;
         _addRequest = (c.ContactId, kind, Guid.NewGuid());
         StateHasChanged();
     }
@@ -383,18 +372,14 @@ public partial class ContactsCard
         }
     }
 
-    private async Task HandleDelete(object key)
+    private async Task HandleDelete(ExistingContact contact)
     {
         if (!_canDelete)
             return;
 
-        var contact = _contacts.FirstOrDefault(c => c.ContactId.Equals(key));
-        if (contact is null)
-            return;
-
-        // On success, a full refresh rather than a local Remove: the delete changes the total, so the
-        // pager and the current page have to be re-fetched or the page renders short against a stale
-        // count. A refusal may instead be a recoverable insurance one — see ShowInsuranceBlockers.
+        // On success, a full refresh rather than a local Remove: the delete changes the header counts
+        // and the overview breakdowns, which read the unfiltered set. A refusal may instead be a
+        // recoverable insurance one — see ShowInsuranceBlockers.
         var result = await Contacts.DeleteAsync(contact.ContactId);
         if (!ShowInsuranceBlockers(contact, result)
             && result.Toast(Snackbar, "Delete failed", "Contact deleted."))

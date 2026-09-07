@@ -279,16 +279,7 @@ public partial class SubscriptionCard
     {
         var contacts = await ReferenceData.ContactsAsync();
         _companyOptions =
-        [
-            .. contacts
-                .Where(c => c.Archived is null)
-                .OrderBy(c => c.ResolvedDisplayName, StringComparer.CurrentCultureIgnoreCase)
-                .Select(c =>
-                {
-                    var meta = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
-                    return new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName) { Icon = meta.Icon, IconColor = meta.Color };
-                })
-        ];
+            OdsContactOptions.Active(contacts);
     }
 
     private async Task LoadCurrencies()

@@ -106,7 +106,7 @@ public class FileAnalysisSessionTests
     {
         var session = SeededSession(out var row);
 
-        var option = session.BeginCreateContact(row, "  Kiwi Minipris  ", out var tempId);
+        var option = session.BeginCreateContact(row, "  Kiwi Minipris  ", ContactType.Organization, out var tempId);
 
         Assert.NotNull(option);
         Assert.NotEqual(Guid.Empty, tempId);
@@ -134,7 +134,7 @@ public class FileAnalysisSessionTests
         session.SeedRows();
         var (first, second) = (session.Rows[0], session.Rows[1]);
 
-        session.BeginCreateContact(first, "Kiwi", out var tempId);
+        session.BeginCreateContact(first, "Kiwi", ContactType.Organization, out var tempId);
         // The same staged contact is then picked on a second row.
         session.SelectContact(second, tempId.ToString());
         Assert.Equal(tempId, second.ContactId);
@@ -163,8 +163,8 @@ public class FileAnalysisSessionTests
         session.SeedRows();
         var (doomed, survivor) = (session.Rows[0], session.Rows[1]);
 
-        session.BeginCreateContact(doomed, "Doomed", out var doomedId);
-        session.BeginCreateContact(survivor, "Survivor", out var survivorId);
+        session.BeginCreateContact(doomed, "Doomed", ContactType.Organization, out var doomedId);
+        session.BeginCreateContact(survivor, "Survivor", ContactType.Organization, out var survivorId);
 
         session.RollbackCreatedContact(doomedId);
 
@@ -181,7 +181,7 @@ public class FileAnalysisSessionTests
         var session = SeededSession(out var row);
         Assert.True(session.CanQuickCreateMerchant(row));
 
-        session.BeginCreateContact(row, row.Merchant, out var tempId);
+        session.BeginCreateContact(row, row.Merchant, ContactType.Organization, out var tempId);
         Assert.False(session.CanQuickCreateMerchant(row)); // already linked
 
         session.RollbackCreatedContact(tempId);
@@ -193,7 +193,7 @@ public class FileAnalysisSessionTests
     public void Reconcile_swaps_the_temp_id_for_the_server_id_everywhere_it_landed()
     {
         var session = SeededSession(out var row);
-        session.BeginCreateContact(row, "Kiwi", out var tempId);
+        session.BeginCreateContact(row, "Kiwi", ContactType.Organization, out var tempId);
         var realId = Guid.NewGuid();
 
         session.ReconcileCreatedContact(tempId, realId, "Kiwi");
@@ -213,7 +213,7 @@ public class FileAnalysisSessionTests
     public void A_reconciled_contact_is_still_attributed_as_created_here()
     {
         var session = SeededSession(out var row);
-        session.BeginCreateContact(row, "Kiwi", out var tempId);
+        session.BeginCreateContact(row, "Kiwi", ContactType.Organization, out var tempId);
         var realId = Guid.NewGuid();
         session.ReconcileCreatedContact(tempId, realId, "Kiwi");
 
@@ -230,7 +230,7 @@ public class FileAnalysisSessionTests
     {
         var session = SeededSession(out var row);
 
-        var option = session.BeginCreateContact(row, text, out var tempId);
+        var option = session.BeginCreateContact(row, text, ContactType.Organization, out var tempId);
 
         Assert.Null(option);
         Assert.Equal(Guid.Empty, tempId);
@@ -243,7 +243,7 @@ public class FileAnalysisSessionTests
     {
         var session = SeededSession(out var row);
 
-        var option = session.BeginCreateContact(row, new string('x', 400), out _);
+        var option = session.BeginCreateContact(row, new string('x', 400), ContactType.Organization, out _);
 
         Assert.Equal(FileAnalysisSession.MaxContactNameLength, option!.Label.Length);
         Assert.Equal(option.Label, row.Merchant);
@@ -410,7 +410,7 @@ public class FileAnalysisSessionTests
         var chosenId = Guid.NewGuid();
         session.SetContacts([Contact(chosenId, "Chosen By Hand")]);
         session.SelectContact(manual, chosenId.ToString());
-        session.BeginCreateContact(created, "Created Here", out var createdId);
+        session.BeginCreateContact(created, "Created Here", ContactType.Organization, out var createdId);
 
         // The server re-matched and now proposes a different contact for every row.
         var proposed = Guid.NewGuid();

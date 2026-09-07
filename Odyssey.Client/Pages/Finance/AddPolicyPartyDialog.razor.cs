@@ -1,8 +1,10 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -64,8 +66,24 @@ public partial class AddPolicyPartyDialog
 
     private RoleDef Current => Roles.First(r => r.Role == _role);
 
-    protected override void OnInitialized()
+    /// <summary>Three of the four roles link a CONTACT; only Insured account links an account.</summary>
+    private bool IsContactRole => _role != InsurancePartyRole.InsuredAccount;
+
+    private bool _canCreateContact;
+
+    // Contacts created inline, ahead of the host's option-cache refresh, so the picker can still
+    // resolve the value it was just handed.
+    private readonly List<OdsOption> _createdContacts = [];
+
+    protected override async Task OnInitializedAsync()
     {
+        ContactCreator.CreateFailed += OnContactCreateFailed;
+        if (OperatingSystem.IsBrowser())
+        {
+            var user = await AuthenticationStateProvider.GetUserAsync();
+            _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
+        }
+
         if (Party is { } link)
         {
             _role = link.Role;
@@ -106,8 +124,29 @@ public partial class AddPolicyPartyDialog
         ? $"Leave empty to start with the policy ({began.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)})."
         : "Leave empty to start with the policy.";
 
-    private IReadOnlyList<OdsOption> AllForRole =>
-        _role == InsurancePartyRole.InsuredAccount ? Accounts : Contacts;
+    private IReadOnlyList<OdsOption> AllForRole => _role == InsurancePartyRole.InsuredAccount
+        ? Accounts
+        : _createdContacts.Count == 0
+            ? Contacts
+            : [.. _createdContacts.Where(c => Contacts.All(o => o.Value != c.Value)), .. Contacts];
+
+    // The picker hands its option back synchronously; the shared creator POSTs behind it and the temp
+    // id is mapped at save. A failed create drops the option and the selection with it.
+    private OdsOption? CreateContactOption(string text, string kind)
+    {
+        var option = ContactCreator.Begin(text, kind);
+        if (option is not null)
+            _createdContacts.Add(option);
+        return option;
+    }
+
+    private void OnContactCreateFailed(string tempId)
+    {
+        _createdContacts.RemoveAll(o => o.Value == tempId);
+        if (_value == tempId)
+            _value = null;
+        StateHasChanged();
+    }
 
     /// <summary>
     /// Ids already in the chosen role. The party BEING EDITED is not "already linked" as far as its
@@ -138,7 +177,8 @@ public partial class AddPolicyPartyDialog
     /// </summary>
     private string PickerHelp => Available.Count > 0
         ? $"{Current.Help} {Available.Count} {Current.Noun}{(Available.Count == 1 ? "" : "s")} available to link."
-        : $"Every {Current.Noun} is already linked to this policy in this role.";
+        : $"Every {Current.Noun} is already linked to this policy in this role"
+          + (IsContactRole && _canCreateContact ? " — or add a new one below." : ".");
 
     private void PickRole(InsurancePartyRole role)
     {
@@ -196,7 +236,13 @@ public partial class AddPolicyPartyDialog
         _error = null;
         _errors.Clear();
 
-        if (!Guid.TryParse(_value, out var targetId))
+        // Let any in-flight inline contact create land, then map the staged id to the real one; a
+        // create that failed resolves to null and is reported as "nothing selected" rather than
+        // posting an id no server issued.
+        if (IsContactRole)
+            await ContactCreator.WhenSettledAsync();
+
+        if (!Guid.TryParse(IsContactRole ? ContactCreator.Resolve(_value) : _value, out var targetId))
         {
             _error = $"Select {(Current.Noun[0] is 'a' or 'e' or 'i' or 'o' or 'u' ? "an" : "a")} {Current.Noun} to link.";
             return;

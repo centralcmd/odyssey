@@ -18,7 +18,6 @@ public partial class ContactDetailPanel
     /// <summary>Raised once an <see cref="AddRequest"/> has been consumed so the host can clear it.</summary>
     [Parameter] public EventCallback OnAddConsumed { get; set; }
 
-    private OdsTypeOption _typeMeta = OdsTypeRegistries.ContactTypeOf(null);
     private List<ExistingAddress> _addresses = new();
     private List<ExistingEmailAddress> _emails = new();
     private List<ExistingPhoneNumber> _phones = new();
@@ -36,7 +35,6 @@ public partial class ContactDetailPanel
 
     protected override async Task OnParametersSetAsync()
     {
-        _typeMeta = OdsTypeRegistries.ContactTypeOf(Contact.Type.ToString());
         if (_loadedId != Contact.ContactId)
         {
             _loadedId = Contact.ContactId;
@@ -198,14 +196,6 @@ public partial class ContactDetailPanel
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
-    private static string Dash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
-
-    private static string? WebsiteHref(string? website) =>
-        !string.IsNullOrWhiteSpace(website)
-        && (website.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || website.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            ? website
-            : null;
-
     private static string AddressSummary(ExistingAddress a)
     {
         var cityLine = string.Join(' ', new[] { a.PostalCode, a.City }.Where(v => !string.IsNullOrWhiteSpace(v)));

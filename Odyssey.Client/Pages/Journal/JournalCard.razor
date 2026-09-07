@@ -314,4 +314,5 @@
 <EditPhotoDialog @key="_editPhotoId" Open="_editPhotoId is not null" OpenChanged="v => { if (!v) _editPhotoId = null; }"
                  PhotoId="@(_editPhotoId ?? Guid.Empty)"
                  TagOptions="_photoTagOptions" PeopleOptions="_photoPeopleOptions" AlbumOptions="_photoAlbumOptions"
-                 CanCreateTags="_canCreatePhotoTags" CanRenameFile="_canRenameFile" OnSaved="OnPhotoSaved" />
+                 CanCreateTags="_canCreatePhotoTags" CanCreateContacts="_canCreateContacts"
+                 CanRenameFile="_canRenameFile" OnSaved="OnPhotoSaved" />

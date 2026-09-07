@@ -88,6 +88,27 @@ public sealed record OdsOption(string Value, string Label)
     public string? Sub { get; init; }
 }
 
+/// <summary>
+/// One inline-<b>create</b> row offered by <see cref="OdsCombobox"/> / <see cref="OdsTagMultiSelect"/>
+/// (Odyssey Design System · <c>ComboboxCreateKind</c>).
+///
+/// <para>
+/// A record whose <i>type</i> has to be chosen at creation — a contact is a person <b>or</b> a
+/// company — gets one create row per kind rather than one unqualified row, so the reviewer states
+/// the type up front instead of the picker guessing it after the fact. The row reads
+/// <c>Add "‹query›"</c> with <see cref="Label"/> and <see cref="Icon"/> as a muted trailing caption,
+/// and <see cref="Key"/> is what the picker hands back to its <c>OnCreate</c>.
+/// </para>
+///
+/// <para>A field only ever offers the vocabulary it searches — a journal-tag field cannot mint a
+/// transaction tag — so the kinds are the caller's, not the component's.</para>
+/// </summary>
+public sealed record OdsCreateKind(string Key, string Label)
+{
+    /// <summary>Muted trailing Material Icons ligature naming the type being created.</summary>
+    public string? Icon { get; init; }
+}
+
 /// <summary>One option in a <see cref="OdsRadioGroup"/>.</summary>
 public sealed record OdsRadioOption(string Value, string Label)
 {

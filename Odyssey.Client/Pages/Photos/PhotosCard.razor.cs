@@ -36,6 +36,7 @@ public partial class PhotosCard
     private IReadOnlyList<OdsOption> _tagOptions = [];
     private IReadOnlyList<OdsOption> _albumOptions = [];
     private IReadOnlyList<OdsOption> _peopleOptions = [];
+    private bool _canCreateContacts;
     private Dictionary<Guid, string> _tagNames = [];
     private Dictionary<Guid, string> _albumNames = [];
     private Dictionary<Guid, string> _personNames = [];
@@ -90,6 +91,7 @@ public partial class PhotosCard
         _canManageAlbums = user.HasPermission(PermissionClaims.PhotoAlbumsUpdate);
         _canCreateTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
         _canRenameFile = user.HasPermission(PermissionClaims.FilesUpdate);
+        _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
 
         await LoadOptionsAsync();
         await PageState.RestoreOrSeedAsync<PhotosPageState>(PageStateKey, ApplyPageState, BuildPageState);
@@ -116,7 +118,7 @@ public partial class PhotosCard
 
         // People come from the caller's Person contacts (requires contacts.read; degrades to empty).
         var people = (await Contacts.ListAllAsync(types: ["Person"])).ItemsOrToast(Snackbar, "people");
-        _peopleOptions = [.. people.Select(c => new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName))];
+        _peopleOptions = OdsContactOptions.Active(people);
         _personNames = people.ToDictionary(c => c.ContactId, c => c.ResolvedDisplayName);
     }
 

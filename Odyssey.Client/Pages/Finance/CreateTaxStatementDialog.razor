@@ -1,12 +1,17 @@
 @using Odyssey.Client.Authorization
 @using Odyssey.Client.Theme
 @using Odyssey.Dtos.Finance
+@using Microsoft.AspNetCore.Components.Authorization
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Dtos.Authorization
 
 
 @inject ISnackbar Snackbar
 @inject IUserPreferenceService UserPreferences
 @inject IReferenceDataCache ReferenceData
 @inject ITaxStatementsApiClient TaxStatements
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ITagQuickCreate<ExistingTransactionTag> TagCreator
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
                Icon="request_quote" Title="@(IsEdit ? "Edit tax statement" : "New tax statement")"
@@ -91,17 +96,21 @@
     @if (IsEdit)
     {
         <OdsSectionDivider Label="Derivation tags" Meta="tags feeding the derived figures" HeadingLevel="0" />
+        @* The picker is the tag FORM control (chips + a searchable list), not the ledger header's
+           filter — and it can create, naming the vocabulary it mints: a transaction tag. *@
         <OdsFormRow>
-            <OdsFieldShell Label="Tax-payment tags" HtmlFor="tax-statement-tax-tags"
-                           Help="Sum into derived advance tax paid (within the year).">
-                <OdsMultiSelect Id="tax-statement-tax-tags" DescribedBy="tax-statement-tax-tags-help"
-                                Label="Select tags…" Values="_taxTags" ValuesChanged="@(v => _taxTags = v)" Options="_tagOptions" />
-            </OdsFieldShell>
-            <OdsFieldShell Label="Income tags" HtmlFor="tax-statement-income-tags"
-                           Help="Sum into derived actual income.">
-                <OdsMultiSelect Id="tax-statement-income-tags" DescribedBy="tax-statement-income-tags-help"
-                                Label="Select tags…" Values="_incomeTags" ValuesChanged="@(v => _incomeTags = v)" Options="_tagOptions" />
-            </OdsFieldShell>
+            <OdsTagMultiSelect Id="tax-statement-tax-tags" Label="Tax-payment tags" Optional
+                               Value="_taxTags" ValueChanged="@(v => _taxTags = v)" Options="_tagOpts"
+                               Placeholder="No tags" AddLabel="Add tag"
+                               OnCreate="@(_canCreateTag ? CreateTagOption : null)"
+                               CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                               Help="Sum into derived advance tax paid (within the year)." />
+            <OdsTagMultiSelect Id="tax-statement-income-tags" Label="Income tags" Optional
+                               Value="_incomeTags" ValueChanged="@(v => _incomeTags = v)" Options="_tagOpts"
+                               Placeholder="No tags" AddLabel="Add tag"
+                               OnCreate="@(_canCreateTag ? CreateTagOption : null)"
+                               CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                               Help="Sum into derived actual income." />
         </OdsFormRow>
     }
 </OdsFormDialog>

@@ -1,3 +1,5 @@
+using Odyssey.Client.Authorization;
+using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.ApiClient;
@@ -155,8 +157,26 @@ public partial class AccountFilesSection
     private List<ExistingContact> _contacts = [];
     private IReadOnlyList<OdsOption> _issuerOptions = [];
 
+    private bool _canCreateContact;
+
     private string? IssuerName(Guid? issuedBy) =>
         issuedBy is null ? null : _contacts.FirstOrDefault(c => c.ContactId == issuedBy)?.ResolvedDisplayName;
+
+    // Issued-by can add a missing issuer inline. The edit dialog commits its patch synchronously, so
+    // the staged id is awaited and mapped in SaveAsync before the file update is posted.
+    private OdsOption? CreateContactOption(string text, string kind)
+    {
+        var option = ContactCreator.Begin(text, kind);
+        if (option is not null)
+            _issuerOptions = [.. _issuerOptions, option];
+        return option;
+    }
+
+    private void OnContactCreateFailed(string tempId)
+    {
+        _issuerOptions = [.. _issuerOptions.Where(o => o.Value != tempId)];
+        StateHasChanged();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -165,9 +185,11 @@ public partial class AccountFilesSection
             return;
 
         _contacts = [.. await ReferenceData.ContactsAsync()];
-        _issuerOptions = [.. _contacts
-            .Where(c => c.Archived is null)
-            .Select(c => new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName))];
+        _issuerOptions = OdsContactOptions.Active(_contacts);
+
+        var user = await AuthenticationState.GetUserAsync();
+        _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
+        ContactCreator.CreateFailed += OnContactCreateFailed;
 
         await LoadResumableMapAsync();
         await LoadAnalysisAvailabilityAsync();
@@ -274,13 +296,21 @@ public partial class AccountFilesSection
         if (file is null)
             return;
 
+        // Let any in-flight inline issuer create land, then map the staged id to the one the server
+        // issued; a create that failed resolves to null and clears the link rather than posting an id
+        // no server issued.
+        await ContactCreator.WhenSettledAsync();
+        var issuedBy = Guid.TryParse(ContactCreator.Resolve(patch.IssuedBy?.ToString()), out var issuer)
+            ? issuer
+            : (Guid?)null;
+
         var newName = patch.Name.Trim();
         var newType = Enum.TryParse<AccountFileType>(patch.Kind, out var parsed) ? parsed : file.FileType;
         var nameChanged = !string.Equals(newName, file.FileMetadata.FileName, StringComparison.Ordinal);
         var typeChanged = newType != file.FileType;
         var validityChanged =
             patch.ValidFrom != file.ValidFrom || patch.ValidTo != file.ValidTo
-            || patch.IssuedAt != file.IssuedAt || patch.IssuedBy != file.IssuedBy;
+            || patch.IssuedAt != file.IssuedAt || issuedBy != file.IssuedBy;
 
         if (!nameChanged && !typeChanged && !validityChanged)
             return;
@@ -305,7 +335,7 @@ public partial class AccountFilesSection
                     ValidFrom = patch.ValidFrom,
                     ValidTo = patch.ValidTo,
                     IssuedAt = patch.IssuedAt,
-                    IssuedBy = patch.IssuedBy,
+                    IssuedBy = issuedBy,
                 })).Toast(Snackbar, "Unable to update document type"))
             return;
 

@@ -5,8 +5,11 @@ using Moq;
 using MudBlazor;
 using MudBlazor.Services;
 using Odyssey.ApiClient.Resources;
+using Microsoft.AspNetCore.Components.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
+using Odyssey.Client.Services;
+using System.Security.Claims;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -61,6 +64,11 @@ public class AddPolicyPartyDialogTests
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(Mock.Of<IInsuranceApiClient>());
+        // The picker offers inline contact create now, so the dialog resolves the shared creator and
+        // the claim behind it. Neither is exercised here — the tests are about which records a role
+        // offers — so both are stubbed with the "cannot create" posture.
+        ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());
+        ctx.Services.AddSingleton<AuthenticationStateProvider>(new AnonymousAuthenticationStateProvider());
 
         return ctx.Render<DialogHost>(p => p
             .Add(h => h.Policy, policy)
@@ -200,5 +208,12 @@ public class AddPolicyPartyDialogTests
             builder.AddComponentParameter(6, nameof(AddPolicyPartyDialog.Open), true);
             builder.CloseComponent();
         }
+    }
+
+    /// <summary>A signed-out principal — the dialog reads no permission from it, so no create row.</summary>
+    private sealed class AnonymousAuthenticationStateProvider : AuthenticationStateProvider
+    {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
     }
 }

@@ -72,14 +72,16 @@ public partial class CreateTransactionDialog
     private IReadOnlyCollection<string> _selectedTagIds = [];
     private IReadOnlyList<OdsOption> _tagOptions = [];
 
-    // Contact combobox — selection is the option value (a contact id string), and
-    // inline-created contacts get an optimistic temp id reconciled to the real one on save.
+    // Contact picker — selection is the option value (a contact id string); an inline-created contact
+    // carries an optimistic temp id that ContactCreator maps to the real one on save.
     private string? _contactId;
     private List<OdsOption> _cpOptions = [];
     private bool _canCreateContact;
-    private readonly Dictionary<string, string> _cpReconcile = new();   // tempId → realId
-    private readonly HashSet<string> _createdTempIds = [];              // optimistic ids from inline create
-    private readonly List<Task> _pendingCpCreates = [];
+    private bool _canCreateTag;
+
+    private string ContactHelp => _canCreateContact
+        ? "Search an existing contact, or type a new name to add it as a company or a person."
+        : "Search an existing contact.";
 
     private List<OdsUploadFile> _pendingFiles = [];
 
@@ -113,6 +115,9 @@ public partial class CreateTransactionDialog
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
+        _canCreateTag = user.HasPermission(PermissionClaims.TransactionTagsCreate);
+        ContactCreator.CreateFailed += OnContactCreateFailed;
+        TagCreator.CreateFailed += OnTagCreateFailed;
 
         _currencyCode = UserPreferences.DefaultCurrency ?? string.Empty;
         await Task.WhenAll(LoadAccounts(), LoadTransactionTags(), LoadContacts(), LoadCurrencies());
@@ -174,18 +179,12 @@ public partial class CreateTransactionDialog
     {
         var contacts = await ReferenceData.ContactsAsync();
         _contacts = contacts.Where(c => c.Archived is null).OrderBy(c => c.ResolvedDisplayName).ToList();
-        _cpOptions = _contacts.Select(ToContactOption).ToList();
+        _cpOptions = _contacts.Select(OdsContactOptions.From).ToList();
 
         // Edit mode: the transaction's own contact still needs an option to display its name
         // even if it has since been archived.
         if (Transaction?.Contact is { } existingCp && _cpOptions.All(o => o.Value != existingCp.ContactId.ToString()))
-            _cpOptions.Add(ToContactOption(existingCp));
-    }
-
-    private static OdsOption ToContactOption(ExistingContact cp)
-    {
-        var meta = OdsTypeRegistries.ContactTypeOf(cp.Type.ToString());
-        return new OdsOption(cp.ContactId.ToString(), cp.ResolvedDisplayName) { Icon = meta.Icon, IconColor = meta.Color };
+            _cpOptions.Add(OdsContactOptions.From(existingCp));
     }
 
     private async Task LoadCurrencies()
@@ -245,80 +244,37 @@ public partial class CreateTransactionDialog
         await _statusRefs[next].FocusAsync();
     }
 
-    // Inline contact create (claim-gated) — mirrors the file-analysis merchant flow: return an
-    // optimistic option with a temp id now, POST in the background, reconcile the temp id to the real
-    // one when the server responds (and await any in-flight create before saving the transaction).
-    private OdsOption? CreateContactOption(string text)
+    // ── Inline create (claim-gated) ─────────────────────────────────────────────
+    // Both pickers hand back their option synchronously; the shared creators POST behind them and
+    // reconcile the temp id on save. A failed create drops its option so no phantom row lingers.
+    private OdsOption? CreateContactOption(string text, string kind)
     {
-        var name = (text ?? string.Empty).Trim();
-        if (name.Length == 0)
-            return null;
-        if (name.Length > 128)
-            name = name[..128];
-
-        var tempId = Guid.NewGuid().ToString();
-        var meta = OdsTypeRegistries.ContactTypeOf(nameof(ContactType.Organization));
-        var option = new OdsOption(tempId, name) { Icon = meta.Icon, IconColor = meta.Color };
-        _cpOptions = _cpOptions.Append(option).ToList();
-        _createdTempIds.Add(tempId);
-        _pendingCpCreates.Add(CreateContactAsync(name, tempId));
+        var option = ContactCreator.Begin(text, kind);
+        if (option is not null)
+            _cpOptions = [.. _cpOptions, option];
         return option;
     }
 
-    private async Task CreateContactAsync(string name, string tempId)
+    private OdsOption? CreateTagOption(string text, string? kind)
     {
-        try
-        {
-            // Quick-create defaults to an Organization with the typed text as its legal name (issue
-            // #325 §13 — mirrors the migration's Organization-as-fallback for ambiguous legacy types).
-            var body = new NewContact
-            {
-                Type = ContactType.Organization,
-                Archived = false,
-                OrganizationDetails = new OrganizationDetailsDto { LegalName = name },
-            };
-            var result = await Contacts.CreateAsync(body);
-            if (result.IsSuccess)
-            {
-                // The session-wide contact cache is now stale — the next picker must re-fetch.
-                ReferenceData.InvalidateContacts();
-                if (result.CreatedId is { } id)
-                    _cpReconcile[tempId] = id.ToString();
-                return;
-            }
-
-            // A duplicate name (409) means the contact already exists — link the optimistic
-            // option to the existing record by name instead of failing the whole transaction.
-            if (result.Status == System.Net.HttpStatusCode.Conflict)
-            {
-                var existing = _contacts.FirstOrDefault(c => string.Equals(c.ResolvedDisplayName, name, StringComparison.OrdinalIgnoreCase))
-                    ?? (await ReferenceData.ContactsAsync())
-                        .FirstOrDefault(c => c.Archived is null && string.Equals(c.ResolvedDisplayName, name, StringComparison.OrdinalIgnoreCase));
-                if (existing is not null)
-                {
-                    _cpReconcile[tempId] = existing.ContactId.ToString();
-                    return;
-                }
-            }
-
-            Snackbar.Add($"Couldn’t create “{name}”: {result.Error}", Severity.Error);
-            RollbackCreatedContact(tempId);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Couldn’t create “{name}”: {ex.Message}", Severity.Error);
-            RollbackCreatedContact(tempId);
-        }
+        var option = TagCreator.Begin(text);
+        if (option is not null)
+            _tagOptions = [.. _tagOptions, option];
+        return option;
     }
 
-    // Drop a failed optimistic contact: remove its option and clear the selection if it was picked,
-    // so no phantom row lingers. The temp id stays in _createdTempIds so ResolveContactId still
-    // treats any late reference as unresolved (never posts the bogus id).
-    private void RollbackCreatedContact(string tempId)
+    private void OnContactCreateFailed(string tempId)
     {
         _cpOptions = _cpOptions.Where(o => o.Value != tempId).ToList();
         if (_contactId == tempId)
             _contactId = null;
+        StateHasChanged();
+    }
+
+    private void OnTagCreateFailed(string tempId)
+    {
+        _tagOptions = _tagOptions.Where(o => o.Value != tempId).ToList();
+        _selectedTagIds = _selectedTagIds.Where(id => id != tempId).ToList();
         StateHasChanged();
     }
 
@@ -360,20 +316,12 @@ public partial class CreateTransactionDialog
         return magnitude > 0;
     }
 
-    // Resolve the selected contact id to a real Guid, mapping an optimistic temp id through the
-    // reconcile table. Returns null when nothing is selected, or when an inline create was selected
-    // but never reconciled (it failed) — so a failed create drops the contact rather than posting
-    // a bogus id that the FK would reject and sink the whole transaction.
-    private Guid? ResolveContactId()
-    {
-        if (string.IsNullOrEmpty(_contactId))
-            return null;
-        if (_cpReconcile.TryGetValue(_contactId, out var real))
-            return Guid.TryParse(real, out var reconciled) ? reconciled : null;
-        if (_createdTempIds.Contains(_contactId))
-            return null;
-        return Guid.TryParse(_contactId, out var parsed) ? parsed : null;
-    }
+    // Map the selected contact id through the creator: a real id passes straight through, an
+    // optimistic temp id becomes the id the server issued, and a temp id whose create FAILED becomes
+    // null — so a failed create drops the contact rather than posting a bogus id that the FK would
+    // reject and sink the whole transaction.
+    private Guid? ResolveContactId() =>
+        Guid.TryParse(ContactCreator.Resolve(_contactId), out var parsed) ? parsed : null;
 
     // ── Submit ───────────────────────────────────────────────────────────────────
     private Task CancelClicked() => OpenChanged.InvokeAsync(false);
@@ -388,7 +336,7 @@ public partial class CreateTransactionDialog
             TimeStamp = _timeStamp,
             AccountId = _selectedAccount!.AccountId,
             TransactionTagIds = _selectedTagIds
-                .Select(id => Guid.TryParse(id, out var tagId) ? tagId : (Guid?)null)
+                .Select(id => Guid.TryParse(TagCreator.Resolve(id), out var tagId) ? tagId : (Guid?)null)
                 .Where(id => id is not null)
                 .Select(id => id!.Value)
                 .ToList(),
@@ -422,9 +370,8 @@ public partial class CreateTransactionDialog
         _isSaving = true;
         try
         {
-            // Let any in-flight inline contact creates land so we post the real id, not a temp one.
-            if (_pendingCpCreates.Count > 0)
-                await Task.WhenAll(_pendingCpCreates);
+            // Let any in-flight inline creates land so we post real ids, not temp ones.
+            await Task.WhenAll(ContactCreator.WhenSettledAsync(), TagCreator.WhenSettledAsync());
 
             if (IsEdit)
             {

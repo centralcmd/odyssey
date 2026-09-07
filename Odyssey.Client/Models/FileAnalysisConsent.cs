@@ -1,3 +1,5 @@
+using Odyssey.Dtos;
+
 namespace Odyssey.Client.Models;
 
 /// <summary>
@@ -37,4 +39,7 @@ public static class FileAnalysisConsent
 /// </summary>
 /// <param name="TempId">The client-side id linked to the row until the real one arrives.</param>
 /// <param name="Name">The typed (or extracted) name to create the contact under.</param>
-public sealed record FileAnalysisPendingContact(Guid TempId, string Name);
+public sealed record FileAnalysisPendingContact(Guid TempId, string Name, ContactType Type);
+
+/// <summary>A transaction tag staged optimistically by the review grid, awaiting its POST.</summary>
+public sealed record FileAnalysisPendingTag(Guid TempId, string Name);

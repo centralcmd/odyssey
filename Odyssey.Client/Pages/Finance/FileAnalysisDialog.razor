@@ -1,3 +1,4 @@
+@using Odyssey.Dtos.Finance
 @using Odyssey.Client.Models
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
@@ -7,6 +8,7 @@
 @inject IReferenceDataCache ReferenceData
 @inject IFileAnalysisDisclosureCache Disclosures
 @inject IContactsApiClient Contacts
+@inject ITagsApiClient<ExistingTransactionTag> TransactionTags
 @* Analyze/import/match go through the typed clients and branch on ApiResult.Status: 503 means the
    file-analysis feature flag is off (Phase.Disabled), 400 means the consent gate rejected the request
    (Phase.Blocked), anything else is a genuine failure (Phase.Failed).
@@ -190,6 +192,7 @@
                     <FileAnalysisReviewGrid Session="_session" FileName="@FileName" AccountName="@AccountName"
                                             OnReMatch="ReMatchAsync" OnReanalyze="ReanalyzeAsync"
                                             OnCreateContact="CreateContactAsync"
+                                            OnCreateTag="CreateTagAsync"
                                             OnAnnounce="OnGridAnnounce" />
                 }
             </div>

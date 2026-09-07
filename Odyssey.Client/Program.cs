@@ -92,6 +92,10 @@ builder.Services.AddScoped<Odyssey.Client.Services.IImportLimitsCache, Odyssey.C
 builder.Services.AddScoped<Odyssey.Client.Services.IUploadLimitsCache, Odyssey.Client.Services.UploadLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IAccountLimitsCache, Odyssey.Client.Services.AccountLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IFileAnalysisDisclosureCache, Odyssey.Client.Services.FileAnalysisDisclosureCache>();
+// Transient: one creator per dialog — the temporary ids it hands out are only meaningful to the
+// surface holding them.
+builder.Services.AddTransient<Odyssey.Client.Services.IContactQuickCreate, Odyssey.Client.Services.ContactQuickCreate>();
+builder.Services.AddTransient(typeof(Odyssey.Client.Services.ITagQuickCreate<>), typeof(Odyssey.Client.Services.TagQuickCreate<>));
 
 builder.Services.AddAuthorizationCore(options =>
 {
