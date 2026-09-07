@@ -71,15 +71,26 @@ const AddContractPartyModal = ({ contract, onClose, onAdd }) => {
         </div>
       </FieldShell>
 
-      <FieldShell label={def.label} htmlFor="acp-target" error={error}
-        helper={error ? undefined : (options.length
-          ? `${options.length} ${def.label.toLowerCase()}${options.length === 1 ? '' : 's'} available to link.`
-          : `Every ${def.label.toLowerCase()} is already linked to this contract.`)}>
-        <Combobox id="acp-target" value={value} onChange={(v) => { setValue(v || ''); if (error) setError(null); }}
-          options={options}
-          placeholder={`Search ${def.label.toLowerCase()}s…`}
-          ariaLabel={def.label} invalid={!!error} />
-      </FieldShell>
+      {/* The Contact kind uses the canonical ContactSelect, create rows and all;
+          the Account kind keeps the plain Combobox over accounts. */}
+      {kind === 'contact' ? (
+        <ContactSelect id="acp-target" label={def.label} error={error} allowCreate
+          help={error ? undefined : (options.length
+            ? `${options.length} contact${options.length === 1 ? '' : 's'} available to link.`
+            : 'Every contact is already linked to this contract — or add a new one below.')}
+          value={value} onChange={(v) => { setValue(v || ''); if (error) setError(null); }}
+          options={options} placeholder="Search contacts…" ariaLabel={def.label} />
+      ) : (
+        <FieldShell label={def.label} htmlFor="acp-target" error={error}
+          helper={error ? undefined : (options.length
+            ? `${options.length} ${def.label.toLowerCase()}${options.length === 1 ? '' : 's'} available to link.`
+            : `Every ${def.label.toLowerCase()} is already linked to this contract.`)}>
+          <Combobox id="acp-target" value={value} onChange={(v) => { setValue(v || ''); if (error) setError(null); }}
+            options={options}
+            placeholder={`Search ${def.label.toLowerCase()}s…`}
+            ariaLabel={def.label} invalid={!!error} />
+        </FieldShell>
+      )}
     </Modal>
   );
 };

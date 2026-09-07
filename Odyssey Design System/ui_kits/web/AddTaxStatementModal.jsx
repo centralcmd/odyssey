@@ -210,12 +210,18 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
 
       <SectionDivider label="Derivation tags" meta="tags feeding the derived figures" />
       <FormRow>
-        <FieldShell label="Tax-payment tags" helper="Sum into derived advance tax paid (within the year).">
-          <MultiSelect allLabel="Select tags…" value={draft.taxTags} onChange={set('taxTags')} options={taxOpts} />
-        </FieldShell>
-        <FieldShell label="Income tags" helper="Sum into derived actual income.">
-          <MultiSelect allLabel="Select tags…" value={draft.incomeTags} onChange={set('incomeTags')} options={incOpts} />
-        </FieldShell>
+        <TagMultiSelect label="Tax-payment tags" optional
+          value={draft.taxTags} onChange={set('taxTags')} options={taxOpts}
+          placeholder="No tags" addLabel="Add tag"
+          onCreate={(name) => window.OdysseyData.createTag('transaction', name)}
+          createKinds={window.OdysseyData.tagCreateKinds('transaction')}
+          help="Sum into derived advance tax paid (within the year)." />
+        <TagMultiSelect label="Income tags" optional
+          value={draft.incomeTags} onChange={set('incomeTags')} options={incOpts}
+          placeholder="No tags" addLabel="Add tag"
+          onCreate={(name) => window.OdysseyData.createTag('transaction', name)}
+          createKinds={window.OdysseyData.tagCreateKinds('transaction')}
+          help="Sum into derived actual income." />
       </FormRow>
     </Modal>
   );

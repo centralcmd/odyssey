@@ -1254,8 +1254,7 @@ html, body, #root {
 .atm-cp-create .aam-type-lab { color: var(--mud-palette-primary); font-weight: 500; }
 .atm-cp-empty {
   padding: 16px 12px; text-align: center;
-  font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
-}
+  font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);}
 
 /* ---- Advanced (status + ids) ---- */
 .atm-adv {

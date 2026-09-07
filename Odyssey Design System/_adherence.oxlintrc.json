@@ -231,6 +231,10 @@
         "message": "<ContactTypeMeta> doesn't accept that prop. Declared props: key, label, icon, color, soft."
       },
       {
+        "selector": "JSXOpeningElement[name.name='ContactSelectContact'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|contactId|name|type|archived|key|ref|className|style|children)$/]",
+        "message": "<ContactSelectContact> doesn't accept that prop. Declared props: id, contactId, name, type, archived."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='ContactTypeMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|onChange|label|icon|align|types|key|ref|className|style|children)$/]",
         "message": "<ContactTypeMultiSelect> doesn't accept that prop. Declared props: value, onChange, label, icon, align, types."
       },
@@ -824,6 +828,9 @@
         "replaces": []
       },
       "ContactTypeMeta": {
+        "replaces": []
+      },
+      "ContactSelectContact": {
         "replaces": []
       },
       "ContactTypeMultiSelect": {

@@ -93,10 +93,10 @@ function FTDateField({ label, value, onChange, min, max }) {
    surfaces that track it — i.e. when `issuers` is supplied. File bytes are
    immutable; you replace a file by re-uploading. Uses the standard DS Modal so
    the surface matches every other create/edit dialog in the kit. ---- */
-function FTEditModal({ f, kinds, issuers, onSave, onClose }) {
+function FTEditModal({ f, kinds, issuers, onCreateContact, onSave, onClose }) {
   const { useState } = React;
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
-  const { Field, Button, Modal, TypeSelect, AccountFileTypeSelect, Select } = NS;
+  const { Field, Button, Modal, TypeSelect, AccountFileTypeSelect, ContactSelect } = NS;
   const [name, setName] = useState(f.name);
   const [kind, setKind] = useState(f.kind);
   const [validFrom, setValidFrom] = useState(f.validFrom || null);
@@ -154,10 +154,11 @@ function FTEditModal({ f, kinds, issuers, onSave, onClose }) {
             </div>
           )}
           <FTDateField label="Issued" value={issuedAt} onChange={setIssuedAt} />
-          {Select && (
-            <Select label="Issued by" value={issuedBy} onChange={setIssuedBy}
-              placeholder="Select issuer…" options={issuers} />
-          )}
+          {ContactSelect ? (
+            <ContactSelect label="Issued by" optional value={issuedBy} onChange={setIssuedBy}
+              options={issuers} placeholder="Search contacts…"
+              allowCreate={!!onCreateContact} onCreate={onCreateContact} />
+          ) : null}
         </React.Fragment>
       )}
     </Modal>
@@ -172,6 +173,7 @@ export function FilesTable({
   kinds,
   issuerFor,
   issuers,
+  onCreateContact,
   onDelete,
   formatDate = ftDate,
   formatSize,
@@ -275,6 +277,7 @@ export function FilesTable({
         f={editFile}
         kinds={kinds}
         issuers={issuers}
+        onCreateContact={onCreateContact}
         onClose={() => setEditFile(null)}
         onSave={(patch) => {
           const id = editFile.id;

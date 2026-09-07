@@ -557,6 +557,32 @@ const SubscriptionStatusChip = DS.SubscriptionStatusChip || (({ paused, ended, a
 // pickers). Aliased straight from the bundle.
 const Combobox = DS.Combobox;
 
+// ContactSelect — THE contact picker (Combobox + per-type glyphs + optional
+// typed inline create). Every contact field goes through it; the fallback keeps
+// the kit working across a bundle rebuild.
+// Every contact field can create a contact: when a caller sets allowCreate
+// without its own persist path, the kit's default one runs (POST /api/contacts
+// with the name + the type picked on the create row).
+const kitCreateContact = (name, kind) => {
+  const D2 = window.OdysseyData;
+  return D2.contactOption(D2.createContact(name, kind));
+};
+const ContactSelectBase = DS.ContactSelect || (({ label = 'Contact', optional, required, help, error, bare, contacts, options, value, onChange, id, ...rest }) => {
+  const reg = (window.OdysseyData && window.OdysseyData.contactTypeByKey) || {};
+  const opts = options || (contacts || []).filter((c) => !c.archived).map((c) => {
+    const m = reg[c.type] || {};
+    return { value: c.id || c.contactId, label: c.name, icon: m.icon, iconColor: m.color };
+  });
+  const ctl = <DS.Combobox id={id} value={value || ''} onChange={(v, o) => onChange && onChange(v || '', o)} options={opts} clearable invalid={!!error} {...rest} />;
+  if (bare) return ctl;
+  return (
+    <FieldShell label={label} htmlFor={id} optional={optional} required={required} helper={error || help} error={error}>{ctl}</FieldShell>
+  );
+});
+const ContactSelect = ({ allowCreate, onCreate, ...rest }) => (
+  <ContactSelectBase allowCreate={allowCreate} onCreate={allowCreate ? (onCreate || kitCreateContact) : onCreate} {...rest} />
+);
+
 // SegmentedControl — compact 2–3 option toggle (the contract Term / One-off
 // switch, dense view switches). Aliased straight from the bundle.
 const SegmentedControl = DS.SegmentedControl;
@@ -1269,7 +1295,7 @@ const CustodianChip = DS.CustodianChip || (({ custodian }) => (
     ? <span className="odc-custodian"><span className="material-icons odc-custodian-ic" aria-hidden="true">account_balance</span><span className="odc-custodian-name">{custodian.name}</span></span>
     : <span className="odc-custodian empty"><span className="material-icons odc-custodian-ic" aria-hidden="true">account_balance</span><span className="odc-custodian-name">No custodian</span></span>
 ));
-const CustodianSelect = DS.CustodianSelect || (({ value, onChange, contacts = [], label = 'Custodian', optional = true, help, error, loading, disabled }) => {
+const CustodianSelect = DS.CustodianSelect || (({ value, onChange, contacts = [], label = 'Custodian', optional = true, help, error, loading, disabled, onCreate }) => {
   // Functional fallback over the bundle's Combobox until it carries the typed
   // CustodianSelect — active contacts only, clearable, optional.
   const reg = (window.OdysseyData && window.OdysseyData.contactTypeByKey) || {};
@@ -1283,7 +1309,7 @@ const CustodianSelect = DS.CustodianSelect || (({ value, onChange, contacts = []
     <div className={`odc-field${error ? ' error' : ''}`}>
       <label className="odc-field-label">{label}{optional ? <span className="odc-field-opt">Optional</span> : null}</label>
       {DS.Combobox
-        ? <DS.Combobox value={value || ''} onChange={(v) => onChange && onChange(v || '')} options={options} placeholder="Search contacts…" clearable loading={loading} disabled={disabled} />
+        ? <DS.Combobox value={value || ''} onChange={(v) => onChange && onChange(v || '')} options={options} placeholder="Search contacts…" clearable loading={loading} disabled={disabled} onCreate={onCreate} createLabel="Add" createKinds={onCreate ? DS.CONTACT_CREATE_KINDS : undefined} />
         : <DS.Select value={value || ''} onChange={(v) => onChange && onChange(v || '')} options={options} placeholder="Search contacts…" />}
       {msg ? <div className="odc-field-help">{msg}</div> : null}
     </div>
@@ -1348,7 +1374,7 @@ Object.assign(window, {
   TaxStatementFileTypeSelect, TaxStatementFileTypeMultiSelect,
   InsurancePolicyTypeSelect, PolicyFileTypeSelect, PolicyFileTypeMultiSelect, CoverageStatusChip, Combobox, MatchIndicator,
   BillingIntervalSelect, BillingIntervalMultiSelect, BillingIntervalChip, SubscriptionStatusChip,
-  SegmentedControl,
+  SegmentedControl, ContactSelect,
   ODC_TONE, odcTypeRows, odcStatusRows,
   ContractTypeSelect,
   BudgetCategoryTypeSelect,

@@ -127,7 +127,8 @@ const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
         value={draft.custodianId}
         onChange={set('custodianId')}
         contacts={(window.OdysseyData.contacts) || []}
-        help="The bank, broker, or provider that holds this account."
+        onCreate={(name, kind) => window.OdysseyData.contactOption(window.OdysseyData.createContact(name, kind))}
+        help="The bank, broker, or provider that holds this account — add it here if it isn't listed."
       />
 
       <Field

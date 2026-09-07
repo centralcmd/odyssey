@@ -108,15 +108,28 @@ const AddPolicyPartyModal = ({ policy, party = null, optionsLoading = false, onC
         </div>
       </FieldShell>
 
-      <FieldShell label={def.label} htmlFor="app-target" error={error}
-        helper={error ? undefined : (options.length
-          ? `${def.help} ${options.length} ${def.noun}${options.length === 1 ? '' : 's'} available to link.`
-          : `Every ${def.noun} is already linked to this policy in this role.`)}>
-        <Combobox id="app-target" value={value} onChange={(v) => { setValue(v || ''); if (error) setError(null); }}
+      {/* A contact role uses the canonical ContactSelect (create rows included —
+          the contact you need to name may not exist yet); an account role keeps
+          the plain Combobox over accounts. */}
+      {def.noun === 'contact' ? (
+        <ContactSelect id="app-target" label={def.label} error={error} allowCreate
+          help={error ? undefined : (options.length
+            ? `${def.help} ${options.length} contact${options.length === 1 ? '' : 's'} available to link.`
+            : `Every contact is already linked to this policy in this role — or add a new one below.`)}
+          value={value} onChange={(v) => { setValue(v || ''); if (error) setError(null); }}
           options={options} loading={optionsLoading}
-          placeholder={`Search ${def.noun}s…`}
-          ariaLabel={def.label} invalid={!!error} />
-      </FieldShell>
+          placeholder="Search contacts…" ariaLabel={def.label} />
+      ) : (
+        <FieldShell label={def.label} htmlFor="app-target" error={error}
+          helper={error ? undefined : (options.length
+            ? `${def.help} ${options.length} ${def.noun}${options.length === 1 ? '' : 's'} available to link.`
+            : `Every ${def.noun} is already linked to this policy in this role.`)}>
+          <Combobox id="app-target" value={value} onChange={(v) => { setValue(v || ''); if (error) setError(null); }}
+            options={options} loading={optionsLoading}
+            placeholder={`Search ${def.noun}s…`}
+            ariaLabel={def.label} invalid={!!error} />
+        </FieldShell>
+      )}
 
       {/* The term is the party's own fact, not the policy's: left as it lands,
           the party is on the policy for its whole life. */}

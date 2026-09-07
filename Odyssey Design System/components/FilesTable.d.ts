@@ -75,6 +75,12 @@ export interface FilesTableProps {
   onSave?: (id: string, patch: { name: string; kind: string; validFrom?: string | null; validTo?: string | null; issuedAt?: string | null; issuedBy?: string | null }) => void;
   /** File-kind vocabulary for the dialog's Document type picker. Default: the canonical ACCOUNT_FILE_TYPES registry. */
   kinds?: AccountFileType[];
+  /**
+   * Create a contact from the Issued-by picker's inline create rows and return
+   * the option to select: `(name, kind) => option`. Supplying it turns the
+   * create rows on (gate it on the caller's `contacts.create` claim).
+   */
+  onCreateContact?: (name: string, kind: string) => { value: string; label: string; icon?: string; iconColor?: string } | undefined | null;
   /** Resolve a row's `issuedBy` id to a display name, shown in the detail well. */
   issuerFor?: (file: FilesTableRow) => string | null | undefined;
   /**

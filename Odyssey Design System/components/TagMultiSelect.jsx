@@ -6,7 +6,12 @@
  * beneficiaries). A field whose control box shows each selected member as a
  * removable chip, with a trigger that opens a searchable, checkable list.
  * Provide `onCreate` to offer an inline "Create …" row for a name that matches
- * nothing (the create affordance the single tag Combobox had).
+ * nothing (the create affordance the single tag Combobox had). `createKinds`
+ * ({key,label,icon}[]) says WHAT gets created and renders one row per kind with
+ * the kind as a muted trailing icon + label — the same shape as the Combobox
+ * create rows, so "Create 'AA' · Transaction tag" states the record it will
+ * make instead of leaving the user to infer it. A field only offers the kinds
+ * it can create; the picked key is passed to `onCreate(text, kind)`.
  *
  * Controlled: `value` is an array of ids; `onChange(nextIds)` fires the full
  * next set on every add / remove. `options` are {value,label,icon?,iconColor?}
@@ -117,6 +122,7 @@ export function TagMultiSelect({
   addLabel = 'Add tag',
   onCreate,
   createLabel = 'Create',
+  createKinds,
   help,
   error,
   required = false,
@@ -218,9 +224,11 @@ export function TagMultiSelect({
   const filtered = q ? opts.filter((o) => o.label.toLowerCase().includes(q)) : opts;
   const exact = opts.some((o) => o.label.toLowerCase() === q);
   const showCreate = !!onCreate && !!q && !exact && !loading;
+  const kinds = (createKinds && createKinds.length ? createKinds : [null]);
+  const createRows = showCreate ? kinds : [];
 
-  const create = () => {
-    const made = onCreate(query.trim());
+  const create = (kind) => {
+    const made = onCreate(query.trim(), kind ? kind.key : undefined);
     if (made != null && onChange) {
       const opt = typeof made === 'string' ? { value: made, label: made } : made;
       if (!set.has(opt.value)) { onChange([...value, opt.value]); say(`${opt.label} created and added.`); }
@@ -381,7 +389,7 @@ export function TagMultiSelect({
                   aria-label={searchLabel}
                   placeholder={searchPlaceholder || (onCreate ? 'Search or add a tag…' : 'Search tags…')}
                   onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && showCreate) { e.preventDefault(); create(); } }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && showCreate) { e.preventDefault(); create(createRows[0]); } }}
                 />
               </div>
               <div className="odc-tagms-list">
@@ -405,12 +413,20 @@ export function TagMultiSelect({
                         </span>
                       </label>
                     ))}
-                    {showCreate ? (
-                      <button type="button" className="odc-tagms-create" onMouseDown={(e) => { e.preventDefault(); create(); }}>
+                    {createRows.map((kind, k) => (
+                      <button key={kind ? kind.key : 'create'} type="button"
+                        className={`odc-tagms-create${k === 0 ? ' first' : ''}`}
+                        onMouseDown={(e) => { e.preventDefault(); create(kind); }}>
                         <span className="material-icons" aria-hidden="true">add</span>
                         <span>{`${createLabel} "${query.trim()}"`}</span>
+                        {kind ? (
+                          <span className="odc-tagms-create-kind">
+                            <span className="material-icons" aria-hidden="true">{kind.icon}</span>
+                            <span>{kind.label}</span>
+                          </span>
+                        ) : null}
                       </button>
-                    ) : null}
+                    ))}
                     {filtered.length === 0 && !showCreate ? <div className="odc-tagms-empty">{emptyText}</div> : null}
                   </React.Fragment>
                 )}

@@ -156,6 +156,31 @@
   }
   function plTagName(id) { return PL_TAG_NAME[id] || id; }
   function plPersonName(id) { return PL_PERSON_NAME[id] || id; }
+  // Create a PhotoTag from any picker's create row and register it everywhere
+  // the library resolves tag names, so the new tag reads as a tag immediately.
+  var __plTagSeq = 0;
+  function plCreateTag(name) {
+    var clean = String(name || '').trim();
+    if (!clean) return null;
+    var hit = PHOTO_TAGS.filter(function (t) { return t.name.toLowerCase() === clean.toLowerCase(); })[0];
+    if (hit) return { value: hit.id, label: hit.name };
+    var tag = { id: 'pt-new-' + (++__plTagSeq) + '-' + Date.now().toString(36), name: clean, normalizedName: clean.toUpperCase(), description: null, archived: null };
+    PHOTO_TAGS.push(tag);
+    PL_TAG_NAME[tag.id] = tag.name; TAG_ID_BY_NAME[tag.name] = tag.id;
+    PL_TAG_OPTIONS.push({ value: tag.id, label: tag.name });
+    return { value: tag.id, label: tag.name };
+  }
+  // A person tagged on a photo IS a Person contact — created through the shared
+  // contact path, then registered as a library person so the name resolves.
+  function plCreatePerson(name) {
+    var D = window.OdysseyData;
+    if (!D || !D.createContact) return null;
+    var cp = D.createContact(name, 'Person');
+    if (!cp) return null;
+    PL_PERSON_NAME[cp.id] = cp.name; PERSON_ID_BY_NAME[cp.name] = cp.id;
+    PL_PERSON_OPTIONS.push({ value: cp.id, label: cp.name });
+    return { value: cp.id, label: cp.name };
+  }
 
   Object.assign(window, {
     PHOTOS: PHOTOS, PL_ALBUMS: PL_ALBUMS, PL_ALBUM_BY_ID: PL_ALBUM_BY_ID,
@@ -163,6 +188,7 @@
     PL_ASPECTS: PL_ASPECTS,
     plPhotoBg: plPhotoBg, plFmtDate: plFmtDate, plDateTime: plDateTime, plMonthKey: plMonthKey, plTime: plTime,
     plTagName: plTagName, plPersonName: plPersonName,
+    plCreateTag: plCreateTag, plCreatePerson: plCreatePerson,
   });
 
   if (window.OdysseyData) {

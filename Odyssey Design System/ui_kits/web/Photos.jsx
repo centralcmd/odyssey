@@ -317,9 +317,19 @@
             React.createElement('label', { className: 'odc-field-label' }, 'Albums'),
             React.createElement(MultiSelect, { allLabel: 'No album', value: form.albums, onChange: function (v) { set({ albums: v }); }, options: albumOpts })
           ),
-          TagMultiSelect && React.createElement(TagMultiSelect, { label: 'Tags', value: form.tags, onChange: function (v) { set({ tags: v }); }, options: tagOpts, addLabel: 'Add tag', placeholder: 'No tags', onCreate: function (name) { const id = 'pt-new-' + name.toLowerCase().replace(/\s+/g, '-'); setTagOpts(function (o) { return o.some(function (x) { return x.label.toLowerCase() === name.toLowerCase(); }) ? o : o.concat([{ value: id, label: name }]); }); return { value: id, label: name }; } }),
-          // People: existing Person contacts only — NO onCreate (spec §9).
-          TagMultiSelect && React.createElement(TagMultiSelect, { label: 'People', value: form.people, onChange: function (v) { set({ people: v }); }, options: peopleOpts, addLabel: 'Tag a person', placeholder: 'No one tagged', emptyText: 'No matching person. People come from your Person contacts.' }),
+          TagMultiSelect && React.createElement(TagMultiSelect, { label: 'Tags', value: form.tags, onChange: function (v) { set({ tags: v }); }, options: tagOpts, addLabel: 'Add tag', placeholder: 'No tags',
+            createKinds: window.OdysseyData.tagCreateKinds('photo'),
+            onCreate: function (name) {
+              var opt = window.plCreateTag(name);
+              if (!opt) return null;
+              setTagOpts(function (o) { return o.some(function (x) { return x.value === opt.value; }) ? o : o.concat([opt]); });
+              return opt;
+            } }),
+          // People ARE Person contacts: the create row makes one and tags it,
+          // rather than dead-ending on a person who isn't in Contacts yet.
+          TagMultiSelect && React.createElement(TagMultiSelect, { label: 'People', value: form.people, onChange: function (v) { set({ people: v }); }, options: peopleOpts, addLabel: 'Tag a person', placeholder: 'No one tagged', emptyText: 'No matching person.', noun: 'person', createLabel: 'Add',
+            createKinds: [{ key: 'Person', label: 'Person', icon: 'person' }],
+            onCreate: function (name) { return window.plCreatePerson(name); } }),
           Field && React.createElement(Field, { label: 'Caption', value: form.caption, onChange: function (v) { set({ caption: v }); }, multiline: true, rows: 2, maxLength: 2000, placeholder: 'Write a caption…' }),
           Field && React.createElement(Field, { label: 'Location', value: form.location, onChange: function (v) { set({ location: v }); }, icon: 'place', maxLength: 256, placeholder: 'Add a place — e.g. Lisbon, Portugal' }),
           CoordinateField && React.createElement(CoordinateField, { value: { lat: form.lat, lng: form.lng }, onChange: function (c) { set({ lat: c.lat == null ? '' : String(c.lat), lng: c.lng == null ? '' : String(c.lng) }); }, optional: true }),

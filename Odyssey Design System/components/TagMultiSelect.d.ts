@@ -29,9 +29,17 @@ export interface TagMultiSelectProps {
    * Receives the typed text; return the new value or a {value,label} option —
    * it's added to the selection.
    */
-  onCreate?: (text: string) => string | TagMultiSelectOption | undefined;
+  onCreate?: (text: string, kind?: string) => string | TagMultiSelectOption | undefined;
   /** Prefix for the create row label. Default "Create". */
   createLabel?: string;
+  /**
+   * What the create rows create: one row per kind, each reading
+   * `Create "‹text›"` with the kind as a muted trailing icon + label. The
+   * picked `key` is passed to `onCreate`. A field offers only the kinds it can
+   * create (a transaction-tag field offers Transaction tag; a contact
+   * collection offers Organization and Person). Omit for one plain row.
+   */
+  createKinds?: Array<{ key: string; label: string; icon?: string }>;
   help?: React.ReactNode;
   /** Marks the field invalid: aria-invalid on the trigger + role="alert" message. */
   error?: React.ReactNode;

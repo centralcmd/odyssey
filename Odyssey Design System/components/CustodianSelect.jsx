@@ -8,9 +8,10 @@
  * Per spec FE-1 this is **not a new widget** — it reuses/extends the DS
  * `Combobox` (a searchable single-select, the DS equivalent of `OdsCombobox`
  * over `MudAutocomplete`), wrapped in the standard field label / help / error
- * chrome. It deliberately does NOT take an `onCreate` (Non-Goal 1: no inline
- * contact creation) and does NOT restrict by ContactType (Non-Goal 4:
- * any contact is eligible).
+ * chrome, and does NOT restrict by ContactType (Non-Goal 4: any contact is
+ * eligible). Inline create is available like every other contact picker —
+ * pass `onCreate(name, kind)` (gated on `contacts.create`) and the popover
+ * offers one create row per type; omit it and there is no create row.
  *
  * Options are the **active** contacts only — archived ones are filtered
  * out client-side (FE-6 / §9 archived-on-set) so an archived target can't be
@@ -61,11 +62,15 @@ export function CustodianSelect({
   error,
   loading = false,
   disabled = false,
+  onCreate,
+  createLabel = 'Add',
+  createKinds,
   className = '',
   id,
 }) {
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
   const Combobox = NS.Combobox;
+  const kinds = onCreate ? (createKinds || NS.CONTACT_CREATE_KINDS) : undefined;
 
   const autoId = React.useId();
   const fieldId = id || autoId;
@@ -112,8 +117,11 @@ export function CustodianSelect({
         placeholder={placeholder}
         clearable
         loading={loading}
-        disabled={disabled || (isEmpty && !value)}
-        emptyText="No contacts match"
+        disabled={disabled || (isEmpty && !value && !onCreate)}
+        emptyText={onCreate ? 'No matches — type to add one' : 'No contacts match'}
+        onCreate={onCreate}
+        createLabel={createLabel}
+        createKinds={kinds}
         ariaDescribedBy={msg ? helpId : undefined}
         invalid={!!error}
       />

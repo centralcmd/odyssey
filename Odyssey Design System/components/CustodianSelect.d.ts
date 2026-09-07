@@ -31,13 +31,19 @@ export interface CustodianSelectProps {
   /** Show an announced loading row while the contact list loads. */
   loading?: boolean;
   disabled?: boolean;
+  /** Create a contact from the inline create rows and return the option to select. Supplying it turns the create rows on (one per contact type); omit it for a pick-only field. */
+  onCreate?: (name: string, kind: string) => string | { value: string; label: string; icon?: string; iconColor?: string } | undefined | null;
+  /** Prefix on the create rows. Default "Add". */
+  createLabel?: string;
+  /** Override the create rows (default: Organization, then Person). */
+  createKinds?: Array<{ key: string; label: string; icon?: string }>;
   className?: string;
   id?: string;
 }
 
 /**
  * The optional custodian picker for the account create dialog and inline edit
- * grid. Reuses/extends the DS `Combobox` (no inline create, no type restriction);
+ * grid. Reuses/extends the DS `Combobox` (optional inline create, no type restriction);
  * lists active contacts only; clearable + optional. Meets the picker-half
  * of the feature's WCAG 2.2 AA requirements.
  */
