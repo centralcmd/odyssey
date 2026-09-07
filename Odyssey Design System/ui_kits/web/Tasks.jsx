@@ -232,7 +232,8 @@ const AddTaskModal = ({ task, onClose, onSubmit }) => {
           <Select label="Status" value={draft.status} onChange={set('status')}
             options={(window.TODO_STATUSES || []).map((s) => ({ value: s.key, label: s.label }))} />
         ) : null}
-        <div className="edit-wide"><TagMultiSelect label="Tags" value={draft.tagIds} onChange={set('tagIds')} options={TASK_TAG_OPTIONS()} optional /></div>
+        <div className="edit-wide"><TagMultiSelect label="Tags" value={draft.tagIds} onChange={set('tagIds')} options={TASK_TAG_OPTIONS()} optional
+          onCreate={(name) => T_D.createTag('task', name)} createKinds={T_D.tagCreateKinds('task')} /></div>
         <div className="edit-wide"><NoteField label="Content" value={draft.content} onChange={set('content')} maxLength={4096} rows={4} optional placeholder="Optional details" /></div>
         <div className="edit-wide">
           <FieldShell label="Attachments" optional helper="PDFs and documents.">

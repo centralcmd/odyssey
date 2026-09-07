@@ -726,7 +726,8 @@
 .odc-scroll,
 .odc-modal-body,
 .odc-select-pop, .odc-combo-pop, .odc-smarttags-pop,
-.odc-menu-pop, .odc-ms-pop {
+.odc-menu-pop, .odc-ms-pop,
+.odc-tagms-list, .odc-ms-list {
   scrollbar-width: thin;
   scrollbar-color: var(--mud-palette-lines-default) transparent;
 }
@@ -734,12 +735,14 @@
 .odc-modal-body::-webkit-scrollbar,
 .odc-select-pop::-webkit-scrollbar, .odc-combo-pop::-webkit-scrollbar,
 .odc-smarttags-pop::-webkit-scrollbar,
-.odc-menu-pop::-webkit-scrollbar, .odc-ms-pop::-webkit-scrollbar { width: 10px; height: 10px; }
+.odc-menu-pop::-webkit-scrollbar, .odc-ms-pop::-webkit-scrollbar,
+.odc-tagms-list::-webkit-scrollbar, .odc-ms-list::-webkit-scrollbar { width: 10px; height: 10px; }
 .odc-scroll::-webkit-scrollbar-thumb,
 .odc-modal-body::-webkit-scrollbar-thumb,
 .odc-select-pop::-webkit-scrollbar-thumb, .odc-combo-pop::-webkit-scrollbar-thumb,
 .odc-smarttags-pop::-webkit-scrollbar-thumb,
-.odc-menu-pop::-webkit-scrollbar-thumb, .odc-ms-pop::-webkit-scrollbar-thumb {
+.odc-menu-pop::-webkit-scrollbar-thumb, .odc-ms-pop::-webkit-scrollbar-thumb,
+.odc-tagms-list::-webkit-scrollbar-thumb, .odc-ms-list::-webkit-scrollbar-thumb {
   background: var(--mud-palette-lines-default); border-radius: 5px;
   border: 3px solid var(--mud-palette-surface);
 }
@@ -747,7 +750,8 @@
 .odc-modal-body::-webkit-scrollbar-track,
 .odc-select-pop::-webkit-scrollbar-track, .odc-combo-pop::-webkit-scrollbar-track,
 .odc-smarttags-pop::-webkit-scrollbar-track,
-.odc-menu-pop::-webkit-scrollbar-track, .odc-ms-pop::-webkit-scrollbar-track { background: transparent; }
+.odc-menu-pop::-webkit-scrollbar-track, .odc-ms-pop::-webkit-scrollbar-track,
+.odc-tagms-list::-webkit-scrollbar-track, .odc-ms-list::-webkit-scrollbar-track { background: transparent; }
 .odc-modal-foot {
   display: flex; justify-content: flex-end; gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
@@ -1301,12 +1305,21 @@
 .odc-combo-opt.active { background: var(--mud-palette-action-default-hover); }
 .odc-combo-opt.selected { color: var(--brand-text); font-weight: var(--fw-medium); }
 .odc-combo-opt-check { flex: none; font-size: 18px !important; color: var(--brand-text) !important; }
-.odc-combo-create {
-  color: var(--brand-text);
+.odc-combo-create { color: var(--brand-text); }
+/* The rule + gap belongs to the first create row only, so a stack of typed
+   create rows reads as one group under the results. */
+.odc-combo-create.first {
   border-top: 1px solid var(--mud-palette-divider);
   margin-top: var(--space-1); padding-top: 10px;
 }
 .odc-combo-create > .material-icons { color: var(--brand-text); }
+/* The type being created — muted, trailing, never competing with the action. */
+.odc-combo-create-kind {
+  flex: none !important; display: inline-flex; align-items: center; gap: 5px;
+  color: var(--mud-palette-text-secondary);
+  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
+}
+.odc-combo-create-kind > .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); }
 .odc-combo-empty { padding: 12px; text-align: center; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 /* Combobox trailing controls — the clear (×) and chevron overlay INSIDE the
    input on the right (like the Select trigger), not as inline siblings beside
@@ -1573,6 +1586,8 @@
   font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans);
 }
 .odc-tagms-create:hover { background: var(--mud-palette-action-default-hover); }
+.odc-tagms-create.first { border-top: 1px solid var(--mud-palette-divider); margin-top: var(--space-1); padding-top: 10px; }
+.odc-tagms-create > span:not(.material-icons):not(.odc-tagms-create-kind) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; }
 .odc-tagms-create .material-icons { font-size: 18px; }
 .odc-tagms-loading { display: flex; align-items: center; gap: 8px; padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 .odc-tagms-loading .material-icons { font-size: 17px; }
@@ -2691,6 +2706,14 @@
 .odc-tagms-search input::placeholder, .odc-ms-search input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
 /* Scroll region + row geometry. */
 .odc-tagms-list, .odc-ms-list { max-height: 232px; overflow-y: auto; display: flex; flex-direction: column; }
+/* Create rows: the rule + gap belongs to the first, so a stack of typed create
+   rows reads as one group under the options; the kind is muted and trailing. */
+.odc-tagms-create-kind {
+  flex: none !important; margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
+  color: var(--mud-palette-text-secondary);
+  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
+}
+.odc-tagms-create-kind > .material-icons { font-size: 15px !important; color: var(--mud-palette-text-secondary) !important; }
 .odc-tagms-opt, .odc-ms-opt, .odc-combo-opt {
   display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
   padding: 8px; border-radius: var(--radius-sm); cursor: pointer;

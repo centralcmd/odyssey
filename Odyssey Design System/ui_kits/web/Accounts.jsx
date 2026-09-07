@@ -292,7 +292,12 @@ const AllocationDonuts = () => {
    Pass `onDelete` to allow detaching a file (the transaction
    edit panel); pass `accountFor` when rows span accounts (the Files page) — it
    resolves each file's owning account. ---- */
-const FilesTable = ({ files, account, accountFor, onNavigate, onDelete, sort, onSortChange, empty, kinds, showValidity = true }) => {
+/* `showValidity` drives the read-only validity COLUMNS; `editValidity` drives
+   the Valid from / Valid to / Issued / Issued by block in the Edit dialog. They
+   are separate because the flat Files page hides the columns (width) while its
+   rows are still account files whose validity is editable — only the
+   transaction-file panels, a different record shape, turn editing off too. */
+const FilesTable = ({ files, account, accountFor, onNavigate, onDelete, sort, onSortChange, empty, kinds, showValidity = true, editValidity }) => {
   const { useState } = React;
   const DSFilesTable = (window.OdysseyDesignSystem_d5aa51 || {}).FilesTable;
   const D = window.OdysseyData;
@@ -339,9 +344,13 @@ const FilesTable = ({ files, account, accountFor, onNavigate, onDelete, sort, on
           const c = f.issuedBy && window.OdysseyData.contactById[f.issuedBy];
           return c ? c.name : null;
         }}
-        issuers={showValidity ? (window.OdysseyData.contacts || [])
+        onCreateContact={(name, kind) => window.OdysseyData.contactOption(window.OdysseyData.createContact(name, kind))}
+        issuers={(editValidity != null ? editValidity : showValidity) ? (window.OdysseyData.contacts || [])
           .filter(c => !c.archived)
-          .map(c => ({ value: c.id, label: c.name })) : undefined}
+          .map(c => {
+            const t = (window.OdysseyData.contactTypeByKey || {})[c.type] || {};
+            return { value: c.id, label: c.name, icon: t.icon, iconColor: t.color };
+          }) : undefined}
         validityColumns={showValidity}
         formatDate={H.dateLong}
         empty={empty}
@@ -559,7 +568,7 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
 
       <div className="acct-section">
         <SectionDivider label="Files" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
-        <div className="acct-table-frame">
+        <div className="acct-table-frame odc-scroll">
           {files.length === 0 ? (
             <div className="empty-line">No files attached to this account yet.</div>
           ) : (
@@ -572,7 +581,7 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
 
       <div className="acct-section">
         <SectionDivider label="Transactions" meta={`${txns.length} transaction${txns.length === 1 ? '' : 's'}`} />
-        <div className="acct-txn-table acct-table-frame">
+        <div className="acct-txn-table acct-table-frame odc-scroll">
           {txns.length === 0 ? (
             <div className="empty-line">No transactions recorded for this account yet.</div>
           ) : (

@@ -76,8 +76,8 @@ const AfmValidity = ({ file, patch, issuers }) => {
             <DateField label="Valid from" value={file.validFrom || ''} onChange={(v) => patch({ validFrom: v || null })} />
             <DateField label="Valid to" value={file.validTo || ''} onChange={(v) => patch({ validTo: v || null })} />
             <DateField label="Issued" value={file.issuedAt || ''} onChange={(v) => patch({ issuedAt: v || null })} />
-            <Select label="Issued by" value={file.issuedBy || ''} placeholder="Select issuer…"
-              onChange={(v) => patch({ issuedBy: v || null })} options={issuers || []} />
+            <ContactSelect label="Issued by" optional allowCreate value={file.issuedBy || ''}
+              onChange={(v) => patch({ issuedBy: v || null })} contacts={issuers || []} />
           </div>
           {rangeBad && <div className="helper aam-err">“Valid to” can’t be before “Valid from”.</div>}
         </div>
@@ -92,7 +92,7 @@ const AddFileModal = ({ onClose, onCreate, defaultAccount = '', accounts }) => {
   const acctOptions = (accounts || d.accounts)
     .filter(a => !a.closed)
     .map(a => ({ value: a.id, label: `${a.name} ${a.number}` }));
-  const issuers = (d.contacts || []).filter(c => !c.archived).map(c => ({ value: c.id, label: c.name }));
+  const issuers = (d.contacts || []).filter(c => !c.archived);
 
   const [account, setAccount] = useState(defaultAccount || '');
   const [files, setFiles] = useState([]); // { uid, name, kind, sizeBytes, validFrom?, validTo?, issuedAt?, issuedBy? }

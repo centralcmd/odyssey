@@ -65,6 +65,16 @@ const FanConfidence = ({ value }) => {
    User-role reviewer never meets a 403 on a happy-path control). Below the field,
    a MatchIndicator states where the value came from; a sub-threshold match shows
    the interactive "Suggested: … — Apply" chip instead of auto-filling. --------- */
+/* A contact created here is a Person or an Organization (mutually exclusive,
+   fixed at creation), so the create affordance is offered as ONE ROW PER TYPE —
+   the same `createKinds` contract as the New-transaction contact picker.
+   A merchant read off a statement is an organization far more often than a
+   person, so that row leads and the no-match one-click create uses it. */
+const FAN_CP_KINDS = ['Organization', 'Person'].map((key) => {
+  const t = (window.OdysseyData.contactTypeByKey || {})[key] || { label: key, icon: 'category' };
+  return { key, label: t.label, icon: t.icon };
+});
+
 const FanMerchantCell = ({ row, options, canCreate, onChange, onCreate, onApply, onDismiss }) => {
   const sugg = row.merchantSuggestion;
   const state = row.contactId ? row.merchantSource : (sugg ? 'suggestion' : 'none');
@@ -74,21 +84,23 @@ const FanMerchantCell = ({ row, options, canCreate, onChange, onCreate, onApply,
   const rawMerchant = (row.merchant || '').trim();
   const offerCreate = state === 'none' && canCreate && !!rawMerchant && rawMerchant.toLowerCase() !== 'unknown';
   const createAndLink = () => {
-    const made = onCreate(row.uid, rawMerchant);
+    const made = onCreate(row.uid, rawMerchant, 'Organization');
     if (made) onChange(row.uid, made.value, made);
   };
   return (
     <div className="fan-matchcell">
-      <Combobox
+      <ContactSelect
+        bare
+        label="Merchant"
         value={row.contactId || ''}
         onChange={(v, opt) => onChange(row.uid, v, opt)}
         options={options}
-        ariaLabel="Merchant"
         placeholder={row.merchant || 'Search contacts…'}
         emptyText={canCreate ? 'No matches — type to create' : 'No matches'}
-        clearable
-        onCreate={canCreate ? ((text) => onCreate(row.uid, text)) : undefined}
+        allowCreate={canCreate}
+        onCreate={(text, kind) => onCreate(row.uid, text, kind)}
         createLabel="Create"
+        createKinds={FAN_CP_KINDS}
       />
       {state === 'suggestion' ? (
         <MatchIndicator state="suggestion" name={sugg.name} confidence={sugg.conf}
@@ -102,8 +114,9 @@ const FanMerchantCell = ({ row, options, canCreate, onChange, onCreate, onApply,
   );
 };
 
-/* ---- Category cell → TransactionTags (0..N). Keeps the existing TagMultiSelect;
-   v1 has NO inline tag-create (contacts only), so no onCreate here. The
+/* ---- Category cell → TransactionTags (0..N). The same TagMultiSelect as the
+   transaction form, create row included: a category the statement names may not
+   exist yet, and sending the reviewer to Tags mid-review loses the review. The
    MatchIndicator mirrors the merchant cell: AI / chosen / none, or a sub-threshold
    suggestion chip that applies the suggested tag set. ------------------------- */
 const FanCategoryCell = ({ row, tagOptions, onChange, onApply, onDismiss }) => {
@@ -112,7 +125,9 @@ const FanCategoryCell = ({ row, tagOptions, onChange, onApply, onDismiss }) => {
   return (
     <div className="fan-matchcell">
       <TagMultiSelect value={row.tagIds || []} onChange={(ids) => onChange(row.uid, ids)}
-        options={tagOptions} placeholder={row.categoryHint ? row.categoryHint : 'Set tags'} addLabel="Tag" />
+        options={tagOptions} placeholder={row.categoryHint ? row.categoryHint : 'Set tags'} addLabel="Tag"
+        onCreate={canCreate ? ((name) => window.OdysseyData.createTag('transaction', name)) : undefined}
+        createKinds={window.OdysseyData.tagCreateKinds('transaction')} />
       {state === 'suggestion' ? (
         <MatchIndicator state="suggestion" name={sugg.names.join(', ')} confidence={sugg.conf}
           onApply={() => onApply(row.uid)} onDismiss={() => onDismiss(row.uid)} />
@@ -291,7 +306,13 @@ const AnalyzeFileModal = ({ file, account, onClose, onImported, onNavigateTransa
   const createdCpIds = useRef(new Set()).current;   // synchronous "created here" set
   const contacts = [...D.contacts.filter(c => !c.archived), ...extraCps];
   const cpById = (id) => contacts.find(c => c.id === id) || D.contactById[id] || null;
-  const cpOptions = contacts.map(c => ({ value: c.id, label: c.name, icon: 'storefront' }));
+  // Every contact is selectable — a payment can be to a person as easily as to
+  // a company — and each option carries its OWN type glyph + color from the
+  // registry, so the list stops reading as merchants only.
+  const cpOptions = contacts.map(c => {
+    const t = (D.contactTypeByKey || {})[c.type] || {};
+    return { value: c.id, label: c.name, icon: t.icon || 'category', iconColor: t.color };
+  });
   const tagOptions = D.tags.filter(t => !t.archived).map(t => ({ value: t.id, label: t.name }));
   const tagName = (id) => (D.tagById[id] ? D.tagById[id].name : id);
   const addCp = (cp) => setExtraCps(prev => [...prev, cp]);
@@ -400,13 +421,16 @@ const AnalyzeFileModal = ({ file, account, onClose, onImported, onNavigateTransa
       merchantConf: null, merchantSuggestion: null,
     });
   };
-  const onMerchantCreate = (uid, text) => {
+  const onMerchantCreate = (uid, text, kind) => {
     const name = String(text || '').trim();
     if (!name) return undefined;
-    const cp = { id: `cp-fan-${fanUid()}`, name, type: 'Merchant' };  // POST /api/contacts — Name only
+    // POST /api/contacts — Name + the type the reviewer picked on the create row.
+    const type = kind || 'Organization';
+    const meta = (D.contactTypeByKey || {})[type] || {};
+    const cp = { id: `cp-fan-${fanUid()}`, name, type };
     createdCpIds.add(cp.id);
     addCp(cp);  // added to the in-memory option list ⇒ selectable on every row
-    return { value: cp.id, label: cp.name, icon: 'storefront' };
+    return { value: cp.id, label: cp.name, icon: meta.icon || 'storefront', iconColor: meta.color };
   };
   const applyMerchantSuggestion = (uid) => setRows(prev => prev.map(r => (r.uid === uid && r.merchantSuggestion
     ? { ...r, contactId: r.merchantSuggestion.id, merchant: r.merchantSuggestion.name, merchantSource: 'manual', merchantConf: null, merchantSuggestion: null }

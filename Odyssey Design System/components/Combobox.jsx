@@ -109,6 +109,7 @@ export function Combobox({
   placeholder = 'Search…',
   onCreate,
   createLabel = 'Create',
+  createKinds,
   disabled = false,
   id,
   emptyText = 'No matches',
@@ -131,7 +132,12 @@ export function Combobox({
   const q = query.trim().toLowerCase();
   const filtered = q ? opts.filter((o) => o.label.toLowerCase().includes(q)) : opts;
   const showCreate = !!onCreate && !!q && !opts.some((o) => o.label.toLowerCase() === q);
-  const rowCount = filtered.length + (showCreate ? 1 : 0);
+  // One create row per kind when the created record has a type the user must
+  // choose up front (a contact is a person OR a company); a single unqualified
+  // row otherwise.
+  const kinds = (createKinds && createKinds.length ? createKinds : [null]);
+  const createRows = showCreate ? kinds : [];
+  const rowCount = filtered.length + createRows.length;
 
   // Keep the active option scrolled into view as the highlight moves.
   React.useEffect(() => {
@@ -159,8 +165,8 @@ export function Combobox({
     if (onChange) onChange(o.value, o);
     closeAndClear();
   };
-  const create = () => {
-    const made = onCreate(query.trim());
+  const create = (kind) => {
+    const made = onCreate(query.trim(), kind ? kind.key : undefined);
     if (made != null && onChange) {
       const opt = typeof made === 'string' ? { value: made, label: made } : made;
       onChange(opt.value, opt);
@@ -179,7 +185,7 @@ export function Combobox({
     } else if (e.key === 'Enter') {
       if (!open) return;
       e.preventDefault();
-      if (showCreate && active === filtered.length) create();
+      if (showCreate && active >= filtered.length) create(createRows[active - filtered.length]);
       else if (filtered[active]) pick(filtered[active]);
     } else if (e.key === 'Escape') {
       // Stop propagation so Esc dismisses only the popover — an enclosing
@@ -266,22 +272,32 @@ export function Combobox({
                 ) : null}
               </li>
             ))}
-            {!loading && showCreate ? (
-              <li
-                id={`${fieldId}-opt-${filtered.length}`}
-                role="option"
-                aria-selected={false}
-                className={`odc-combo-opt odc-combo-create${active === filtered.length ? ' active' : ''}`}
-                onMouseEnter={() => setActive(filtered.length)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  create();
-                }}
-              >
-                <span className="material-icons" aria-hidden="true">add</span>
-                <span>{`${createLabel} "${query.trim()}"`}</span>
-              </li>
-            ) : null}
+            {!loading && createRows.map((kind, k) => {
+              const i = filtered.length + k;
+              return (
+                <li
+                  key={kind ? kind.key : 'create'}
+                  id={`${fieldId}-opt-${i}`}
+                  role="option"
+                  aria-selected={false}
+                  className={`odc-combo-opt odc-combo-create${k === 0 ? ' first' : ''}${active === i ? ' active' : ''}`}
+                  onMouseEnter={() => setActive(i)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    create(kind);
+                  }}
+                >
+                  <span className="material-icons" aria-hidden="true">add</span>
+                  <span>{`${createLabel} "${query.trim()}"`}</span>
+                  {kind ? (
+                    <span className="odc-combo-create-kind">
+                      <span className="material-icons" aria-hidden="true">{kind.icon}</span>
+                      <span>{kind.label}</span>
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
             {!loading && rowCount === 0 ? <li className="odc-combo-empty" role="status" aria-live="polite">{emptyText}</li> : null}
           </ul>,
           document.body,

@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"c0ff965931f8","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"405e74b88332","components/ContactChip.jsx":"595200f6059a","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"d3a9026394fa","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"fc773cfaf6b8","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"806ae364ec54","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"63773ec5d23e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"bf69671bfea5","ui_kits/web/AddAccountModal.jsx":"6754b62d87e8","ui_kits/web/AddBudgetItemModal.jsx":"987e1fdecb12","ui_kits/web/AddBudgetModal.jsx":"9bf3e6a081f8","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"3833b7a19a10","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"35a97b29e621","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"5af0bf6bd424","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"1da025db23eb","ui_kits/web/AddTaxStatementModal.jsx":"5fdd74bd79ec","ui_kits/web/AddTermModal.jsx":"dc6bf97cb769","ui_kits/web/AddTransactionModal.jsx":"9b6e577331a3","ui_kits/web/AnalyzeFileModal.jsx":"caf08d9633a7","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"f4010640760d","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"fc153733f0b3","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c388d4828996","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"db3f18a11ae0","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"f13761a94a44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7033ff0bc236","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"bd7a50a736b5","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"acffb8e12396","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"c98d7395c179","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"c0ff965931f8","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"068d17440abe","components/ContactChip.jsx":"595200f6059a","components/ContactSelect.jsx":"9728227b0d66","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"eb29f4abc14f","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"c025efc795cb","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"63773ec5d23e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"301e57a7a9bb","ui_kits/web/AddAccountModal.jsx":"af7807f9a07b","ui_kits/web/AddBudgetItemModal.jsx":"987e1fdecb12","ui_kits/web/AddBudgetModal.jsx":"9bf3e6a081f8","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"bb8ebb0c14a6","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"1a6914aab912","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"ed18b3c414ea","ui_kits/web/AddTaxStatementModal.jsx":"949d785d8d15","ui_kits/web/AddTermModal.jsx":"dc6bf97cb769","ui_kits/web/AddTransactionModal.jsx":"44c0de9b2f94","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"35f03e541aee","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"a38b3b7e1965","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"4e61559e938b","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"d430ca57572f","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"7095f7173156","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"842864201bb9","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -3104,6 +3104,7 @@ function Combobox({
   placeholder = 'Search…',
   onCreate,
   createLabel = 'Create',
+  createKinds,
   disabled = false,
   id,
   emptyText = 'No matches',
@@ -3135,7 +3136,12 @@ function Combobox({
   const q = query.trim().toLowerCase();
   const filtered = q ? opts.filter(o => o.label.toLowerCase().includes(q)) : opts;
   const showCreate = !!onCreate && !!q && !opts.some(o => o.label.toLowerCase() === q);
-  const rowCount = filtered.length + (showCreate ? 1 : 0);
+  // One create row per kind when the created record has a type the user must
+  // choose up front (a contact is a person OR a company); a single unqualified
+  // row otherwise.
+  const kinds = createKinds && createKinds.length ? createKinds : [null];
+  const createRows = showCreate ? kinds : [];
+  const rowCount = filtered.length + createRows.length;
 
   // Keep the active option scrolled into view as the highlight moves.
   React.useEffect(() => {
@@ -3162,8 +3168,8 @@ function Combobox({
     if (onChange) onChange(o.value, o);
     closeAndClear();
   };
-  const create = () => {
-    const made = onCreate(query.trim());
+  const create = kind => {
+    const made = onCreate(query.trim(), kind ? kind.key : undefined);
     if (made != null && onChange) {
       const opt = typeof made === 'string' ? {
         value: made,
@@ -3184,7 +3190,7 @@ function Combobox({
     } else if (e.key === 'Enter') {
       if (!open) return;
       e.preventDefault();
-      if (showCreate && active === filtered.length) create();else if (filtered[active]) pick(filtered[active]);
+      if (showCreate && active >= filtered.length) create(createRows[active - filtered.length]);else if (filtered[active]) pick(filtered[active]);
     } else if (e.key === 'Escape') {
       // Stop propagation so Esc dismisses only the popover — an enclosing
       // Modal keeps its own Esc for the next press.
@@ -3283,20 +3289,29 @@ function Combobox({
   }, o.label), o.value === value ? /*#__PURE__*/React.createElement("span", {
     className: "material-icons odc-combo-opt-check",
     "aria-hidden": "true"
-  }, "check") : null)), !loading && showCreate ? /*#__PURE__*/React.createElement("li", {
-    id: `${fieldId}-opt-${filtered.length}`,
-    role: "option",
-    "aria-selected": false,
-    className: `odc-combo-opt odc-combo-create${active === filtered.length ? ' active' : ''}`,
-    onMouseEnter: () => setActive(filtered.length),
-    onMouseDown: e => {
-      e.preventDefault();
-      create();
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "material-icons",
-    "aria-hidden": "true"
-  }, "add"), /*#__PURE__*/React.createElement("span", null, `${createLabel} "${query.trim()}"`)) : null, !loading && rowCount === 0 ? /*#__PURE__*/React.createElement("li", {
+  }, "check") : null)), !loading && createRows.map((kind, k) => {
+    const i = filtered.length + k;
+    return /*#__PURE__*/React.createElement("li", {
+      key: kind ? kind.key : 'create',
+      id: `${fieldId}-opt-${i}`,
+      role: "option",
+      "aria-selected": false,
+      className: `odc-combo-opt odc-combo-create${k === 0 ? ' first' : ''}${active === i ? ' active' : ''}`,
+      onMouseEnter: () => setActive(i),
+      onMouseDown: e => {
+        e.preventDefault();
+        create(kind);
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, "add"), /*#__PURE__*/React.createElement("span", null, `${createLabel} "${query.trim()}"`), kind ? /*#__PURE__*/React.createElement("span", {
+      className: "odc-combo-create-kind"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, kind.icon), /*#__PURE__*/React.createElement("span", null, kind.label)) : null);
+  }), !loading && rowCount === 0 ? /*#__PURE__*/React.createElement("li", {
     className: "odc-combo-empty",
     role: "status",
     "aria-live": "polite"
@@ -3415,6 +3430,203 @@ function ContactChip({
 }
 Object.assign(__ds_scope, { contactTypeMeta, ContactChip });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/ContactChip.jsx", error: String((e && e.message) || e) }); }
+
+// components/ContactSelect.jsx
+try { (() => {
+/**
+ * Odyssey DS — ContactSelect
+ * The one control for **picking a contact**, wherever a record links to one:
+ * a transaction's counterparty, a file's issuer, a subscription's biller, an
+ * extracted statement merchant. It replaces the plain `Select`-of-names that
+ * each of those surfaces used to hand-roll, so every contact field searches,
+ * shows each candidate's ContactType glyph in its registry color, and — where
+ * the caller allows it — creates a missing contact inline.
+ *
+ * It is not a new widget: it wraps the DS `Combobox` (typeahead, full keyboard,
+ * accessible name, keyboard-operable clear) in the standard field chrome, the
+ * same way `CustodianSelect` does for the account ↔ custodian link.
+ *
+ * Options come from `contacts` ({ id|contactId, name, type, archived }) — the
+ * **active** ones only, since an archived contact must not be linkable; a value
+ * already pointing at an archived contact stays resolvable so the trigger keeps
+ * showing its name. A caller that already has display options (FilesTable's
+ * `issuers`) may pass `options` instead.
+ *
+ * Inline create: with `allowCreate` (gate it on the caller's `contacts.create`
+ * claim), the popover offers ONE create row per contact type — a contact is a
+ * person or a company and the two are mutually exclusive — and `onCreate(name,
+ * kind)` returns the created option so it can be selected in the same gesture.
+ *
+ * `bare` drops the label/help chrome for a control that sits in a table cell or
+ * inside a caller-supplied FieldShell.
+ */
+
+const CS_FALLBACK_TYPES = {
+  Merchant: {
+    icon: 'storefront',
+    color: 'oklch(0.79 0.115 188)',
+    label: 'Merchant'
+  },
+  Person: {
+    icon: 'person',
+    color: 'oklch(0.80 0.15 150)',
+    label: 'Person'
+  },
+  Organization: {
+    icon: 'corporate_fare',
+    color: 'oklch(0.72 0.16 295)',
+    label: 'Organization'
+  },
+  Company: {
+    icon: 'business',
+    color: 'oklch(0.76 0.13 225)',
+    label: 'Company'
+  },
+  Institution: {
+    icon: 'account_balance',
+    color: 'oklch(0.75 0.16 330)',
+    label: 'Institution'
+  },
+  Other: {
+    icon: 'category',
+    color: 'oklch(0.74 0.02 250)',
+    label: 'Other'
+  }
+};
+function contactTypeMeta(typeKey) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const reg = NS.CONTACT_TYPES;
+  if (reg) {
+    const hit = reg.find(t => t.key === typeKey);
+    if (hit) return hit;
+  }
+  return CS_FALLBACK_TYPES[typeKey] || CS_FALLBACK_TYPES.Other;
+}
+
+/** The default create rows: an organization first (most linked contacts are), then a person. */
+const CONTACT_CREATE_KINDS = ['Organization', 'Person'].map(key => {
+  const m = CS_FALLBACK_TYPES[key];
+  return {
+    key,
+    label: m.label,
+    icon: m.icon
+  };
+});
+function ContactSelect({
+  value,
+  onChange,
+  contacts,
+  options: optionsProp,
+  label = 'Contact',
+  optional = false,
+  required = false,
+  placeholder = 'Search contacts…',
+  emptyText,
+  help,
+  error,
+  loading = false,
+  disabled = false,
+  bare = false,
+  allowCreate = false,
+  onCreate,
+  createLabel = 'Add',
+  createKinds,
+  ariaLabel,
+  className = '',
+  id
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const Combobox = NS.Combobox;
+
+  // Contacts created from the create rows are kept here as well as handed to
+  // the caller: a surface that passes pre-built `options` (or whose list is
+  // rebuilt on its own schedule) would otherwise not carry the new contact yet,
+  // and the field would clear itself the moment it was created.
+  const [created, setCreated] = React.useState([]);
+  const autoId = React.useId();
+  const fieldId = id || autoId;
+  const helpId = `${fieldId}-help`;
+  let options = optionsProp;
+  if (!options) {
+    const list = contacts || [];
+    const idOf = c => c.id || c.contactId;
+    const byId = {};
+    list.forEach(c => {
+      byId[idOf(c)] = c;
+    });
+    options = list.filter(c => !c.archived).map(c => {
+      const meta = contactTypeMeta(c.type);
+      return {
+        value: idOf(c),
+        label: c.name,
+        icon: meta.icon,
+        iconColor: meta.color
+      };
+    });
+    if (value && !options.some(o => o.value === value) && byId[value]) {
+      const c = byId[value];
+      const meta = contactTypeMeta(c.type);
+      options = [{
+        value,
+        label: c.name,
+        icon: meta.icon,
+        iconColor: meta.color
+      }, ...options];
+    }
+  }
+  if (created.length) {
+    const known = new Set(options.map(o => o.value));
+    options = [...created.filter(o => !known.has(o.value)), ...options];
+  }
+  const kinds = allowCreate ? createKinds || CONTACT_CREATE_KINDS : undefined;
+  const handleCreate = allowCreate && onCreate ? (text, kind) => {
+    const made = onCreate(text, kind || (kinds && kinds[0] ? kinds[0].key : 'Organization'));
+    if (made == null) return made;
+    const opt = typeof made === 'string' ? {
+      value: made,
+      label: text
+    } : made;
+    setCreated(prev => [...prev, opt]);
+    return opt;
+  } : undefined;
+  const msg = error || help || null;
+  if (!Combobox) return null;
+  const control = /*#__PURE__*/React.createElement(Combobox, {
+    id: fieldId,
+    value: value || '',
+    onChange: (v, opt) => onChange && onChange(v || '', opt),
+    options: options,
+    placeholder: placeholder,
+    clearable: true,
+    loading: loading,
+    disabled: disabled,
+    emptyText: emptyText || (handleCreate ? 'No matches — type to add one' : 'No contacts match'),
+    onCreate: handleCreate,
+    createLabel: createLabel,
+    createKinds: kinds,
+    ariaLabel: ariaLabel || (bare ? label : undefined),
+    ariaDescribedBy: msg ? helpId : undefined,
+    invalid: !!error
+  });
+  if (bare) return control;
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-field${error ? ' error' : ''}${className ? ' ' + className : ''}`
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "odc-field-label",
+    htmlFor: fieldId
+  }, label, required ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-req",
+    "aria-hidden": "true"
+  }, "*") : null, optional && !required ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-opt"
+  }, "Optional") : null), control, msg ? /*#__PURE__*/React.createElement("div", {
+    className: `odc-field-help${error ? ' error' : ''}`,
+    id: helpId,
+    role: error ? 'alert' : undefined
+  }, msg) : null);
+}
+Object.assign(__ds_scope, { CONTACT_CREATE_KINDS, ContactSelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/ContactSelect.jsx", error: String((e && e.message) || e) }); }
 
 // components/ContactTypeMultiSelect.jsx
 try { (() => {
@@ -4311,9 +4523,10 @@ try { (() => {
  * Per spec FE-1 this is **not a new widget** — it reuses/extends the DS
  * `Combobox` (a searchable single-select, the DS equivalent of `OdsCombobox`
  * over `MudAutocomplete`), wrapped in the standard field label / help / error
- * chrome. It deliberately does NOT take an `onCreate` (Non-Goal 1: no inline
- * contact creation) and does NOT restrict by ContactType (Non-Goal 4:
- * any contact is eligible).
+ * chrome, and does NOT restrict by ContactType (Non-Goal 4: any contact is
+ * eligible). Inline create is available like every other contact picker —
+ * pass `onCreate(name, kind)` (gated on `contacts.create`) and the popover
+ * offers one create row per type; omit it and there is no create row.
  *
  * Options are the **active** contacts only — archived ones are filtered
  * out client-side (FE-6 / §9 archived-on-set) so an archived target can't be
@@ -4384,11 +4597,15 @@ function CustodianSelect({
   error,
   loading = false,
   disabled = false,
+  onCreate,
+  createLabel = 'Add',
+  createKinds,
   className = '',
   id
 }) {
   const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
   const Combobox = NS.Combobox;
+  const kinds = onCreate ? createKinds || NS.CONTACT_CREATE_KINDS : undefined;
   const autoId = React.useId();
   const fieldId = id || autoId;
   const helpId = `${fieldId}-help`;
@@ -4443,8 +4660,11 @@ function CustodianSelect({
     placeholder: placeholder,
     clearable: true,
     loading: loading,
-    disabled: disabled || isEmpty && !value,
-    emptyText: "No contacts match",
+    disabled: disabled || isEmpty && !value && !onCreate,
+    emptyText: onCreate ? 'No matches — type to add one' : 'No contacts match',
+    onCreate: onCreate,
+    createLabel: createLabel,
+    createKinds: kinds,
     ariaDescribedBy: msg ? helpId : undefined,
     invalid: !!error
   }), msg ? /*#__PURE__*/React.createElement("div", {
@@ -6250,6 +6470,7 @@ function FTEditModal({
   f,
   kinds,
   issuers,
+  onCreateContact,
   onSave,
   onClose
 }) {
@@ -6263,7 +6484,7 @@ function FTEditModal({
     Modal,
     TypeSelect,
     AccountFileTypeSelect,
-    Select
+    ContactSelect
   } = NS;
   const [name, setName] = useState(f.name);
   const [kind, setKind] = useState(f.kind);
@@ -6345,13 +6566,16 @@ function FTEditModal({
     label: "Issued",
     value: issuedAt,
     onChange: setIssuedAt
-  }), Select && /*#__PURE__*/React.createElement(Select, {
+  }), ContactSelect ? /*#__PURE__*/React.createElement(ContactSelect, {
     label: "Issued by",
+    optional: true,
     value: issuedBy,
     onChange: setIssuedBy,
-    placeholder: "Select issuer\u2026",
-    options: issuers
-  })));
+    options: issuers,
+    placeholder: "Search contacts\u2026",
+    allowCreate: !!onCreateContact,
+    onCreate: onCreateContact
+  }) : null));
 }
 function FilesTable({
   files = [],
@@ -6361,6 +6585,7 @@ function FilesTable({
   kinds,
   issuerFor,
   issuers,
+  onCreateContact,
   onDelete,
   formatDate = ftDate,
   formatSize,
@@ -6543,6 +6768,7 @@ function FilesTable({
     f: editFile,
     kinds: kinds,
     issuers: issuers,
+    onCreateContact: onCreateContact,
     onClose: () => setEditFile(null),
     onSave: patch => {
       const id = editFile.id;
@@ -12856,7 +13082,12 @@ try { (() => {
  * beneficiaries). A field whose control box shows each selected member as a
  * removable chip, with a trigger that opens a searchable, checkable list.
  * Provide `onCreate` to offer an inline "Create …" row for a name that matches
- * nothing (the create affordance the single tag Combobox had).
+ * nothing (the create affordance the single tag Combobox had). `createKinds`
+ * ({key,label,icon}[]) says WHAT gets created and renders one row per kind with
+ * the kind as a muted trailing icon + label — the same shape as the Combobox
+ * create rows, so "Create 'AA' · Transaction tag" states the record it will
+ * make instead of leaving the user to infer it. A field only offers the kinds
+ * it can create; the picked key is passed to `onCreate(text, kind)`.
  *
  * Controlled: `value` is an array of ids; `onChange(nextIds)` fires the full
  * next set on every add / remove. `options` are {value,label,icon?,iconColor?}
@@ -12998,6 +13229,7 @@ function TagMultiSelect({
   addLabel = 'Add tag',
   onCreate,
   createLabel = 'Create',
+  createKinds,
   help,
   error,
   required = false,
@@ -13118,8 +13350,10 @@ function TagMultiSelect({
   const filtered = q ? opts.filter(o => o.label.toLowerCase().includes(q)) : opts;
   const exact = opts.some(o => o.label.toLowerCase() === q);
   const showCreate = !!onCreate && !!q && !exact && !loading;
-  const create = () => {
-    const made = onCreate(query.trim());
+  const kinds = createKinds && createKinds.length ? createKinds : [null];
+  const createRows = showCreate ? kinds : [];
+  const create = kind => {
+    const made = onCreate(query.trim(), kind ? kind.key : undefined);
     if (made != null && onChange) {
       const opt = typeof made === 'string' ? {
         value: made,
@@ -13294,7 +13528,7 @@ function TagMultiSelect({
     onKeyDown: e => {
       if (e.key === 'Enter' && showCreate) {
         e.preventDefault();
-        create();
+        create(createRows[0]);
       }
     }
   })), /*#__PURE__*/React.createElement("div", {
@@ -13327,17 +13561,23 @@ function TagMultiSelect({
     "aria-hidden": "true"
   }, o.icon) : null, /*#__PURE__*/React.createElement("span", null, o.label), o.sub ? /*#__PURE__*/React.createElement("span", {
     className: "odc-tagms-opt-sub"
-  }, o.sub) : null))), showCreate ? /*#__PURE__*/React.createElement("button", {
+  }, o.sub) : null))), createRows.map((kind, k) => /*#__PURE__*/React.createElement("button", {
+    key: kind ? kind.key : 'create',
     type: "button",
-    className: "odc-tagms-create",
+    className: `odc-tagms-create${k === 0 ? ' first' : ''}`,
     onMouseDown: e => {
       e.preventDefault();
-      create();
+      create(kind);
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "material-icons",
     "aria-hidden": "true"
-  }, "add"), /*#__PURE__*/React.createElement("span", null, `${createLabel} "${query.trim()}"`)) : null, filtered.length === 0 && !showCreate ? /*#__PURE__*/React.createElement("div", {
+  }, "add"), /*#__PURE__*/React.createElement("span", null, `${createLabel} "${query.trim()}"`), kind ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-tagms-create-kind"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, kind.icon), /*#__PURE__*/React.createElement("span", null, kind.label)) : null)), filtered.length === 0 && !showCreate ? /*#__PURE__*/React.createElement("div", {
     className: "odc-tagms-empty"
   }, emptyText) : null)), /*#__PURE__*/React.createElement("div", {
     className: "odc-tagms-foot"
@@ -19378,6 +19618,11 @@ const AllocationDonuts = () => {
    Pass `onDelete` to allow detaching a file (the transaction
    edit panel); pass `accountFor` when rows span accounts (the Files page) — it
    resolves each file's owning account. ---- */
+/* `showValidity` drives the read-only validity COLUMNS; `editValidity` drives
+   the Valid from / Valid to / Issued / Issued by block in the Edit dialog. They
+   are separate because the flat Files page hides the columns (width) while its
+   rows are still account files whose validity is editable — only the
+   transaction-file panels, a different record shape, turn editing off too. */
 const FilesTable = ({
   files,
   account,
@@ -19388,7 +19633,8 @@ const FilesTable = ({
   onSortChange,
   empty,
   kinds,
-  showValidity = true
+  showValidity = true,
+  editValidity
 }) => {
   const {
     useState
@@ -19448,10 +19694,16 @@ const FilesTable = ({
       const c = f.issuedBy && window.OdysseyData.contactById[f.issuedBy];
       return c ? c.name : null;
     },
-    issuers: showValidity ? (window.OdysseyData.contacts || []).filter(c => !c.archived).map(c => ({
-      value: c.id,
-      label: c.name
-    })) : undefined,
+    onCreateContact: (name, kind) => window.OdysseyData.contactOption(window.OdysseyData.createContact(name, kind)),
+    issuers: (editValidity != null ? editValidity : showValidity) ? (window.OdysseyData.contacts || []).filter(c => !c.archived).map(c => {
+      const t = (window.OdysseyData.contactTypeByKey || {})[c.type] || {};
+      return {
+        value: c.id,
+        label: c.name,
+        icon: t.icon,
+        iconColor: t.color
+      };
+    }) : undefined,
     validityColumns: showValidity,
     formatDate: H.dateLong,
     empty: empty,
@@ -19777,7 +20029,7 @@ const AccountDetail = ({
     label: "Files",
     meta: `${files.length} file${files.length === 1 ? '' : 's'}`
   }), /*#__PURE__*/React.createElement("div", {
-    className: "acct-table-frame"
+    className: "acct-table-frame odc-scroll"
   }, files.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "empty-line"
   }, "No files attached to this account yet.") : /*#__PURE__*/React.createElement(InlinePager, {
@@ -19792,7 +20044,7 @@ const AccountDetail = ({
     label: "Transactions",
     meta: `${txns.length} transaction${txns.length === 1 ? '' : 's'}`
   }), /*#__PURE__*/React.createElement("div", {
-    className: "acct-txn-table acct-table-frame"
+    className: "acct-txn-table acct-table-frame odc-scroll"
   }, txns.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "empty-line"
   }, "No transactions recorded for this account yet.") : /*#__PURE__*/React.createElement(InlinePager, {
@@ -20619,7 +20871,8 @@ const AddAccountModal = ({
     value: draft.custodianId,
     onChange: set('custodianId'),
     contacts: window.OdysseyData.contacts || [],
-    help: "The bank, broker, or provider that holds this account."
+    onCreate: (name, kind) => window.OdysseyData.contactOption(window.OdysseyData.createContact(name, kind)),
+    help: "The bank, broker, or provider that holds this account \u2014 add it here if it isn't listed."
   }), /*#__PURE__*/React.createElement(Field, {
     label: "Description",
     value: draft.description,
@@ -21720,7 +21973,21 @@ const AddContractPartyModal = ({
     "aria-hidden": "true"
   }, k.icon), /*#__PURE__*/React.createElement("span", {
     className: "con-kind-lab"
-  }, k.label))))), /*#__PURE__*/React.createElement(FieldShell, {
+  }, k.label))))), kind === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
+    id: "acp-target",
+    label: def.label,
+    error: error,
+    allowCreate: true,
+    help: error ? undefined : options.length ? `${options.length} contact${options.length === 1 ? '' : 's'} available to link.` : 'Every contact is already linked to this contract — or add a new one below.',
+    value: value,
+    onChange: v => {
+      setValue(v || '');
+      if (error) setError(null);
+    },
+    options: options,
+    placeholder: "Search contacts\u2026",
+    ariaLabel: def.label
+  }) : /*#__PURE__*/React.createElement(FieldShell, {
     label: def.label,
     htmlFor: "acp-target",
     error: error,
@@ -22010,14 +22277,15 @@ const AfmValidity = ({
     onChange: v => patch({
       issuedAt: v || null
     })
-  }), /*#__PURE__*/React.createElement(Select, {
+  }), /*#__PURE__*/React.createElement(ContactSelect, {
     label: "Issued by",
+    optional: true,
+    allowCreate: true,
     value: file.issuedBy || '',
-    placeholder: "Select issuer\u2026",
     onChange: v => patch({
       issuedBy: v || null
     }),
-    options: issuers || []
+    contacts: issuers || []
   })), rangeBad && /*#__PURE__*/React.createElement("div", {
     className: "helper aam-err"
   }, "\u201CValid to\u201D can\u2019t be before \u201CValid from\u201D.")));
@@ -22036,10 +22304,7 @@ const AddFileModal = ({
     value: a.id,
     label: `${a.name} ${a.number}`
   }));
-  const issuers = (d.contacts || []).filter(c => !c.archived).map(c => ({
-    value: c.id,
-    label: c.name
-  }));
+  const issuers = (d.contacts || []).filter(c => !c.archived);
   const [account, setAccount] = useState(defaultAccount || '');
   const [files, setFiles] = useState([]); // { uid, name, kind, sizeBytes, validFrom?, validTo?, issuedAt?, issuedBy? }
   const [errors, setErrors] = useState({});
@@ -22441,7 +22706,22 @@ const AddPolicyPartyModal = ({
     "aria-hidden": "true"
   }, r.icon), /*#__PURE__*/React.createElement("span", {
     className: "ins-kind-lab"
-  }, r.label))))), /*#__PURE__*/React.createElement(FieldShell, {
+  }, r.label))))), def.noun === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
+    id: "app-target",
+    label: def.label,
+    error: error,
+    allowCreate: true,
+    help: error ? undefined : options.length ? `${def.help} ${options.length} contact${options.length === 1 ? '' : 's'} available to link.` : `Every contact is already linked to this policy in this role — or add a new one below.`,
+    value: value,
+    onChange: v => {
+      setValue(v || '');
+      if (error) setError(null);
+    },
+    options: options,
+    loading: optionsLoading,
+    placeholder: "Search contacts\u2026",
+    ariaLabel: def.label
+  }) : /*#__PURE__*/React.createElement(FieldShell, {
     label: def.label,
     htmlFor: "app-target",
     error: error,
@@ -22774,20 +23054,17 @@ const AddSubscriptionModal = ({
     optional: true,
     maxLength: 128,
     helper: "Membership, account, or subscription number \u2014 a reference label, not a key."
-  }), /*#__PURE__*/React.createElement(FieldShell, {
+  }), /*#__PURE__*/React.createElement(ContactSelect, {
     label: "Company",
-    htmlFor: "sub-new-cp",
-    optional: true,
-    helper: "The contact that bills this subscription."
-  }, /*#__PURE__*/React.createElement(Combobox, {
     id: "sub-new-cp",
+    optional: true,
+    allowCreate: true,
     value: draft.contactId,
     onChange: v => set('contactId')(v || ''),
     options: SUB_CONTACT_OPTIONS(),
-    placeholder: "Search contacts\u2026",
-    ariaLabel: "Company",
-    clearable: true
-  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
+    help: "The contact that bills this subscription \u2014 add it here if it isn't listed.",
+    ariaLabel: "Company"
+  }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
     label: "Start date",
     value: draft.startDate,
     onChange: set('startDate'),
@@ -23175,23 +23452,29 @@ const AddTaxStatementModal = ({
   }), /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Derivation tags",
     meta: "tags feeding the derived figures"
-  }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(FieldShell, {
+  }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(TagMultiSelect, {
     label: "Tax-payment tags",
-    helper: "Sum into derived advance tax paid (within the year)."
-  }, /*#__PURE__*/React.createElement(MultiSelect, {
-    allLabel: "Select tags\u2026",
+    optional: true,
     value: draft.taxTags,
     onChange: set('taxTags'),
-    options: taxOpts
-  })), /*#__PURE__*/React.createElement(FieldShell, {
+    options: taxOpts,
+    placeholder: "No tags",
+    addLabel: "Add tag",
+    onCreate: name => window.OdysseyData.createTag('transaction', name),
+    createKinds: window.OdysseyData.tagCreateKinds('transaction'),
+    help: "Sum into derived advance tax paid (within the year)."
+  }), /*#__PURE__*/React.createElement(TagMultiSelect, {
     label: "Income tags",
-    helper: "Sum into derived actual income."
-  }, /*#__PURE__*/React.createElement(MultiSelect, {
-    allLabel: "Select tags\u2026",
+    optional: true,
     value: draft.incomeTags,
     onChange: set('incomeTags'),
-    options: incOpts
-  }))));
+    options: incOpts,
+    placeholder: "No tags",
+    addLabel: "Add tag",
+    onCreate: name => window.OdysseyData.createTag('transaction', name),
+    createKinds: window.OdysseyData.tagCreateKinds('transaction'),
+    help: "Sum into derived actual income."
+  })));
 };
 Object.assign(window, {
   AddTaxStatementModal
@@ -23758,57 +24041,44 @@ const AccountPicker = ({
   }))));
 };
 
-/* ---- Contact combobox — the DS Combobox (search an existing contact
-   or type a new name to create one inline), matching the insurer / company
-   pickers in the other create modals. `extra` carries the contacts created
-   inline during this session so they stay selectable. ----- */
+/* ---- Contact field — the DS ContactSelect (search an existing contact, or
+   add a missing one inline as a company or a person). `extra` carries the
+   contacts created during this session so they stay selectable. ----- */
 const ContactPicker = ({
   value,
   extra,
   onChange,
   onCreate
 }) => {
-  const cpId = React.useId();
-  const all = [...window.OdysseyData.contacts, ...extra];
-  const options = all.map(c => {
-    const m = atmCpType(c.type);
-    return {
-      value: c.id,
-      label: c.name,
-      icon: m.icon,
-      iconColor: m.color
-    };
-  });
-  const handleCreate = text => {
+  const handleCreate = (text, kind) => {
     const name = text.trim();
     if (!name) return null;
     const cp = {
       id: `cp-new-${++atmCpUid}`,
       name,
-      type: 'Other'
+      type: kind || 'Organization'
     };
     onCreate(cp);
+    const m = atmCpType(cp.type);
     return {
       value: cp.id,
-      label: cp.name
+      label: cp.name,
+      icon: m.icon,
+      iconColor: m.color
     };
   };
-  return /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Contact",
-    htmlFor: cpId,
+  return /*#__PURE__*/React.createElement(ContactSelect, {
+    label: "Merchant",
     optional: true,
-    helper: "Search an existing contact, or type a new name to add one."
-  }, /*#__PURE__*/React.createElement(Combobox, {
-    id: cpId,
     value: value || '',
     onChange: v => onChange(v || null),
-    options: options,
-    onCreate: handleCreate,
-    createLabel: "Add",
+    contacts: [...window.OdysseyData.contacts, ...extra],
     placeholder: "Who is it with?",
-    ariaLabel: "Contact",
-    clearable: true
-  }));
+    ariaLabel: "Merchant",
+    allowCreate: true,
+    onCreate: handleCreate,
+    help: "Search an existing contact, or type a new name to add it as a company or a person."
+  });
 };
 const AddTransactionModal = ({
   onClose,
@@ -23860,16 +24130,16 @@ const AddTransactionModal = ({
 
   // (Esc-to-close, scrim click and focus handling come from the DS Modal shell.)
 
-  const tagOptions = [...window.OdysseyData.tags.filter(t => !t.archived).map(t => ({
+  // One source: createTag writes into the shared tag store, so the store IS the
+  // option list (a local "created here" copy would list the new tag twice).
+  const tagOptions = window.OdysseyData.tags.filter(t => !t.archived).map(t => ({
     value: t.id,
     label: t.name
-  })), ...extraTags];
+  }));
   const createTag = name => {
-    const opt = {
-      value: `tag-new-${Date.now()}`,
-      label: name
-    };
-    setExtraTags(prev => [...prev, opt]);
+    const opt = window.OdysseyData.createTag('transaction', name);
+    if (!opt) return null;
+    setExtraTags(prev => [...prev, opt]); // re-render so the store's new tag shows
     return opt.value;
   };
   const sym = ATM_CURRENCY_SYMBOL[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
@@ -24012,6 +24282,7 @@ const AddTransactionModal = ({
     options: tagOptions,
     placeholder: "No tags",
     onCreate: createTag,
+    createKinds: window.OdysseyData.tagCreateKinds('transaction'),
     help: "Add as many as fit \u2014 e.g. a category plus Reimbursable."
   })), /*#__PURE__*/React.createElement(FieldShell, {
     label: "Status",
@@ -24186,6 +24457,22 @@ const FanConfidence = ({
    User-role reviewer never meets a 403 on a happy-path control). Below the field,
    a MatchIndicator states where the value came from; a sub-threshold match shows
    the interactive "Suggested: … — Apply" chip instead of auto-filling. --------- */
+/* A contact created here is a Person or an Organization (mutually exclusive,
+   fixed at creation), so the create affordance is offered as ONE ROW PER TYPE —
+   the same `createKinds` contract as the New-transaction contact picker.
+   A merchant read off a statement is an organization far more often than a
+   person, so that row leads and the no-match one-click create uses it. */
+const FAN_CP_KINDS = ['Organization', 'Person'].map(key => {
+  const t = (window.OdysseyData.contactTypeByKey || {})[key] || {
+    label: key,
+    icon: 'category'
+  };
+  return {
+    key,
+    label: t.label,
+    icon: t.icon
+  };
+});
 const FanMerchantCell = ({
   row,
   options,
@@ -24203,21 +24490,23 @@ const FanMerchantCell = ({
   const rawMerchant = (row.merchant || '').trim();
   const offerCreate = state === 'none' && canCreate && !!rawMerchant && rawMerchant.toLowerCase() !== 'unknown';
   const createAndLink = () => {
-    const made = onCreate(row.uid, rawMerchant);
+    const made = onCreate(row.uid, rawMerchant, 'Organization');
     if (made) onChange(row.uid, made.value, made);
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "fan-matchcell"
-  }, /*#__PURE__*/React.createElement(Combobox, {
+  }, /*#__PURE__*/React.createElement(ContactSelect, {
+    bare: true,
+    label: "Merchant",
     value: row.contactId || '',
     onChange: (v, opt) => onChange(row.uid, v, opt),
     options: options,
-    ariaLabel: "Merchant",
     placeholder: row.merchant || 'Search contacts…',
     emptyText: canCreate ? 'No matches — type to create' : 'No matches',
-    clearable: true,
-    onCreate: canCreate ? text => onCreate(row.uid, text) : undefined,
-    createLabel: "Create"
+    allowCreate: canCreate,
+    onCreate: (text, kind) => onCreate(row.uid, text, kind),
+    createLabel: "Create",
+    createKinds: FAN_CP_KINDS
   }), state === 'suggestion' ? /*#__PURE__*/React.createElement(MatchIndicator, {
     state: "suggestion",
     name: sugg.name,
@@ -24232,8 +24521,9 @@ const FanMerchantCell = ({
   }));
 };
 
-/* ---- Category cell → TransactionTags (0..N). Keeps the existing TagMultiSelect;
-   v1 has NO inline tag-create (contacts only), so no onCreate here. The
+/* ---- Category cell → TransactionTags (0..N). The same TagMultiSelect as the
+   transaction form, create row included: a category the statement names may not
+   exist yet, and sending the reviewer to Tags mid-review loses the review. The
    MatchIndicator mirrors the merchant cell: AI / chosen / none, or a sub-threshold
    suggestion chip that applies the suggested tag set. ------------------------- */
 const FanCategoryCell = ({
@@ -24252,7 +24542,9 @@ const FanCategoryCell = ({
     onChange: ids => onChange(row.uid, ids),
     options: tagOptions,
     placeholder: row.categoryHint ? row.categoryHint : 'Set tags',
-    addLabel: "Tag"
+    addLabel: "Tag",
+    onCreate: canCreate ? name => window.OdysseyData.createTag('transaction', name) : undefined,
+    createKinds: window.OdysseyData.tagCreateKinds('transaction')
   }), state === 'suggestion' ? /*#__PURE__*/React.createElement(MatchIndicator, {
     state: "suggestion",
     name: sugg.names.join(', '),
@@ -24500,11 +24792,18 @@ const AnalyzeFileModal = ({
   const createdCpIds = useRef(new Set()).current; // synchronous "created here" set
   const contacts = [...D.contacts.filter(c => !c.archived), ...extraCps];
   const cpById = id => contacts.find(c => c.id === id) || D.contactById[id] || null;
-  const cpOptions = contacts.map(c => ({
-    value: c.id,
-    label: c.name,
-    icon: 'storefront'
-  }));
+  // Every contact is selectable — a payment can be to a person as easily as to
+  // a company — and each option carries its OWN type glyph + color from the
+  // registry, so the list stops reading as merchants only.
+  const cpOptions = contacts.map(c => {
+    const t = (D.contactTypeByKey || {})[c.type] || {};
+    return {
+      value: c.id,
+      label: c.name,
+      icon: t.icon || 'category',
+      iconColor: t.color
+    };
+  });
   const tagOptions = D.tags.filter(t => !t.archived).map(t => ({
     value: t.id,
     label: t.name
@@ -24680,20 +24979,24 @@ const AnalyzeFileModal = ({
       merchantSuggestion: null
     });
   };
-  const onMerchantCreate = (uid, text) => {
+  const onMerchantCreate = (uid, text, kind) => {
     const name = String(text || '').trim();
     if (!name) return undefined;
+    // POST /api/contacts — Name + the type the reviewer picked on the create row.
+    const type = kind || 'Organization';
+    const meta = (D.contactTypeByKey || {})[type] || {};
     const cp = {
       id: `cp-fan-${fanUid()}`,
       name,
-      type: 'Merchant'
-    }; // POST /api/contacts — Name only
+      type
+    };
     createdCpIds.add(cp.id);
     addCp(cp); // added to the in-memory option list ⇒ selectable on every row
     return {
       value: cp.id,
       label: cp.name,
-      icon: 'storefront'
+      icon: meta.icon || 'storefront',
+      iconColor: meta.color
     };
   };
   const applyMerchantSuggestion = uid => setRows(prev => prev.map(r => r.uid === uid && r.merchantSuggestion ? {
@@ -26405,7 +26708,7 @@ const BudgetDetail = ({
     icon: "check",
     onClick: () => setEditMulti(false)
   }, "Done"))) : /*#__PURE__*/React.createElement("div", {
-    className: "bgt-items acct-table-frame"
+    className: "bgt-items acct-table-frame odc-scroll"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bgt-item-head"
   }, /*#__PURE__*/React.createElement("span", null, "Item"), /*#__PURE__*/React.createElement("span", null, "Actual vs planned"), /*#__PURE__*/React.createElement("span", {
@@ -26430,7 +26733,7 @@ const BudgetDetail = ({
     label: "Transactions",
     meta: `${txns.length} matched · in range and tagged`
   }), /*#__PURE__*/React.createElement("div", {
-    className: "acct-txn-table acct-table-frame"
+    className: "acct-txn-table acct-table-frame odc-scroll"
   }, /*#__PURE__*/React.createElement(InlinePager, {
     items: txns
   }, pageRows => /*#__PURE__*/React.createElement(TxnTable, {
@@ -29032,6 +29335,67 @@ const SubscriptionStatusChip = DS.SubscriptionStatusChip || (({
 // pickers). Aliased straight from the bundle.
 const Combobox = DS.Combobox;
 
+// ContactSelect — THE contact picker (Combobox + per-type glyphs + optional
+// typed inline create). Every contact field goes through it; the fallback keeps
+// the kit working across a bundle rebuild.
+// Every contact field can create a contact: when a caller sets allowCreate
+// without its own persist path, the kit's default one runs (POST /api/contacts
+// with the name + the type picked on the create row).
+const kitCreateContact = (name, kind) => {
+  const D2 = window.OdysseyData;
+  return D2.contactOption(D2.createContact(name, kind));
+};
+const ContactSelectBase = DS.ContactSelect || (({
+  label = 'Contact',
+  optional,
+  required,
+  help,
+  error,
+  bare,
+  contacts,
+  options,
+  value,
+  onChange,
+  id,
+  ...rest
+}) => {
+  const reg = window.OdysseyData && window.OdysseyData.contactTypeByKey || {};
+  const opts = options || (contacts || []).filter(c => !c.archived).map(c => {
+    const m = reg[c.type] || {};
+    return {
+      value: c.id || c.contactId,
+      label: c.name,
+      icon: m.icon,
+      iconColor: m.color
+    };
+  });
+  const ctl = /*#__PURE__*/React.createElement(DS.Combobox, _extends({
+    id: id,
+    value: value || '',
+    onChange: (v, o) => onChange && onChange(v || '', o),
+    options: opts,
+    clearable: true,
+    invalid: !!error
+  }, rest));
+  if (bare) return ctl;
+  return /*#__PURE__*/React.createElement(FieldShell, {
+    label: label,
+    htmlFor: id,
+    optional: optional,
+    required: required,
+    helper: error || help,
+    error: error
+  }, ctl);
+});
+const ContactSelect = ({
+  allowCreate,
+  onCreate,
+  ...rest
+}) => /*#__PURE__*/React.createElement(ContactSelectBase, _extends({
+  allowCreate: allowCreate,
+  onCreate: allowCreate ? onCreate || kitCreateContact : onCreate
+}, rest));
+
 // SegmentedControl — compact 2–3 option toggle (the contract Term / One-off
 // switch, dense view switches). Aliased straight from the bundle.
 const SegmentedControl = DS.SegmentedControl;
@@ -30437,7 +30801,8 @@ const CustodianSelect = DS.CustodianSelect || (({
   help,
   error,
   loading,
-  disabled
+  disabled,
+  onCreate
 }) => {
   // Functional fallback over the bundle's Combobox until it carries the typed
   // CustodianSelect — active contacts only, clearable, optional.
@@ -30466,7 +30831,10 @@ const CustodianSelect = DS.CustodianSelect || (({
     placeholder: "Search contacts\u2026",
     clearable: true,
     loading: loading,
-    disabled: disabled
+    disabled: disabled,
+    onCreate: onCreate,
+    createLabel: "Add",
+    createKinds: onCreate ? DS.CONTACT_CREATE_KINDS : undefined
   }) : /*#__PURE__*/React.createElement(DS.Select, {
     value: value || '',
     onChange: v => onChange && onChange(v || ''),
@@ -30607,6 +30975,7 @@ Object.assign(window, {
   BillingIntervalChip,
   SubscriptionStatusChip,
   SegmentedControl,
+  ContactSelect,
   ODC_TONE,
   odcTypeRows,
   odcStatusRows,
@@ -32062,7 +32431,8 @@ const ContactList = ({
   readOnly,
   addReq,
   onConsumeAdd,
-  styleMode
+  styleMode,
+  bare
 }) => {
   const {
     useState,
@@ -32139,7 +32509,7 @@ const ContactList = ({
     item
   })));
   const cards = styleMode !== 'rows';
-  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("div", null, !bare && /*#__PURE__*/React.createElement("div", {
     className: "cp-sub"
   }, /*#__PURE__*/React.createElement("span", {
     className: "cp-sub-label"
@@ -32290,13 +32660,17 @@ const ContactList = ({
   }));
 };
 
-/* ================= detail (read + contact management) ================= */
-const CpDetail = ({
-  c,
-  onContacts,
-  addReq,
-  onConsumeAdd,
-  contactStyle
+/* ================= expanded body · DS RecordCard tiles =================
+   The Contacts rollout of the DS record-card pattern. The body carries the
+   record's FULL field set as InfoTiles — including what the collapsed header
+   already shows: at tile scale each value arrives with its own label, so the
+   header's meta line and a labelled Job title tile read as two different
+   things. Person and Organization contribute their own field sets (they are
+   mutually exclusive); everything else is the base Contact. Notes is the wide
+   content tile, so a long note wraps across the grid instead of squeezing into
+   a column. */
+const CpTiles = ({
+  c
 }) => {
   const H = window.OdysseyHelpers;
   const meta = CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person;
@@ -32305,80 +32679,279 @@ const CpDetail = ({
   const p = c.person || {},
     o = c.org || {};
   const website = o.website && /^https?:\/\//i.test(o.website) ? o.website : null;
-  return /*#__PURE__*/React.createElement("div", {
-    className: "acct-detail"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "meta-grid"
-  }, /*#__PURE__*/React.createElement(MetaTile, {
+  return /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "badge",
     label: "Display name",
-    value: resolvedName(c) || '—'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    value: resolvedName(c) || '—',
+    valueVariant: "text",
+    foot: c.displayName ? 'override' : 'computed from the name fields'
+  }), /*#__PURE__*/React.createElement(InfoTile, {
+    icon: meta.icon,
+    iconColor: meta.color,
+    iconSoft: meta.soft,
     label: "Type",
-    value: /*#__PURE__*/React.createElement(Chip, {
-      tone: "outline",
-      icon: meta.icon
-    }, meta.label)
-  }), isPerson ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MetaTile, {
+    value: meta.label,
+    valueVariant: "text",
+    foot: "fixed after creation"
+  }), isPerson ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "person",
     label: "First name",
-    value: p.firstName || '—'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    value: p.firstName || '—',
+    valueVariant: "text"
+  }), /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "person",
     label: "Last name",
-    value: p.lastName || '—'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    value: p.lastName || '—',
+    valueVariant: "text"
+  }), p.dateOfBirth ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "cake",
     label: "Date of birth",
-    value: p.dateOfBirth ? H.dateLong(p.dateOfBirth) : '—',
-    mono: true
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    value: H.dateLong(p.dateOfBirth),
+    valueVariant: "sm"
+  }) : null, p.sex ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "wc",
     label: "Sex",
-    value: p.sex || '—'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    value: p.sex,
+    valueVariant: "text"
+  }) : null, p.title ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "work",
     label: "Job title",
-    value: p.title || '—'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    value: p.title,
+    valueVariant: "text"
+  }) : null, p.company ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "corporate_fare",
     label: "Company",
-    value: p.company || '—'
-  })) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MetaTile, {
+    value: p.company,
+    valueVariant: "text",
+    foot: "free text \u2014 not a linked contact"
+  }) : null) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "corporate_fare",
     label: "Legal name",
-    value: o.legalName || '—'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    value: o.legalName || '—',
+    valueVariant: "text"
+  }), o.organizationNumber ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "pin",
     label: "Organization number",
-    value: o.organizationNumber || '—',
-    mono: true
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    value: o.organizationNumber
+  }) : null, o.website ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "link",
     label: "Website",
+    valueVariant: "text",
     value: website ? /*#__PURE__*/React.createElement("a", {
       href: website,
       target: "_blank",
       rel: "noopener noreferrer"
-    }, o.website) : o.website || '—'
-  })), /*#__PURE__*/React.createElement(MetaTile, {
+    }, o.website) : o.website
+  }) : null), /*#__PURE__*/React.createElement(InfoTile, {
+    icon: c.archived ? 'inventory_2' : 'task_alt',
     label: "Status",
-    value: /*#__PURE__*/React.createElement(Chip, {
-      tone: status.tone,
-      dot: true
-    }, status.label)
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Notes",
-    value: c.notes || '—'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    value: status.label,
+    valueVariant: "text",
+    className: c.archived ? 'muted' : 'tone-income',
+    foot: c.archived ? `since ${H.dateTime(c.archived)}` : 'in the default list'
+  }), /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "schedule",
     label: "Created",
     value: H.dateTime(c.createdAt),
-    mono: true
-  }), /*#__PURE__*/React.createElement(MetaTile, {
+    valueVariant: "sm"
+  }), /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "update",
     label: "Updated",
     value: H.dateTime(c.updatedAt),
-    mono: true
-  })), /*#__PURE__*/React.createElement("div", {
-    style: cpStyles.contactWrap
-  }, /*#__PURE__*/React.createElement(ContactList, {
+    valueVariant: "sm",
+    foot: "bumped by any address, email or phone change"
+  }));
+};
+
+/* One contact record (DS RecordCard). The list owns ONE openId, so opening a
+   card closes its siblings. */
+const CpRecordCard = ({
+  c,
+  open,
+  onToggle,
+  onSave,
+  onDelete,
+  onContacts,
+  onExportRow,
+  contactStyle
+}) => {
+  const {
+    useState
+  } = React;
+  const H = window.OdysseyHelpers;
+  const [showEdit, setShowEdit] = useState(false);
+  const [addReq, setAddReq] = useState(null); // {kind, nonce}
+  const meta = CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person;
+  const status = H.archivedStatus(c);
+  const isPerson = c.type === 'Person';
+  const p = c.person || {},
+    o = c.org || {};
+  const primaryOf = list => (list || []).find(x => x.isPrimary) || (list || [])[0] || null;
+  const email = primaryOf(c.emails),
+    phone = primaryOf(c.phones),
+    addr = primaryOf(c.addresses);
+  const role = isPerson ? [p.title, p.company].filter(Boolean).join(' · ') : o.organizationNumber || o.website || '';
+  const entries = contactCount(c);
+  const requestAdd = kind => {
+    if (!open) onToggle(true);
+    setAddReq({
+      kind,
+      nonce: Date.now()
+    });
+  };
+  if (!RecordCard || !InfoTileGrid || !InfoTile) return null;
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(RecordCard, {
+    icon: meta.icon,
+    accent: meta.color,
+    accentSoft: meta.soft,
+    name: resolvedName(c),
+    chips: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Chip, {
+      tone: status.tone,
+      dot: true
+    }, status.label), c.displayName ? /*#__PURE__*/React.createElement(Chip, {
+      tone: "outline",
+      icon: "badge"
+    }, "Display name") : null),
+    meta: [/*#__PURE__*/React.createElement("span", {
+      className: "row gap-1",
+      style: {
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: meta.icon,
+      size: 14
+    }), /*#__PURE__*/React.createElement("span", null, meta.label)), role ? /*#__PURE__*/React.createElement("span", {
+      className: "row gap-1",
+      style: {
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: isPerson ? 'work' : 'pin',
+      size: 14
+    }), /*#__PURE__*/React.createElement("span", null, role)) : null, email ? /*#__PURE__*/React.createElement("span", {
+      className: "row gap-1",
+      style: {
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "mail",
+      size: 14
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "mono"
+    }, email.value)) : null, !email && phone ? /*#__PURE__*/React.createElement("span", {
+      className: "row gap-1",
+      style: {
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "call",
+      size: 14
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "mono"
+    }, phone.value)) : null, !email && !phone && addr ? /*#__PURE__*/React.createElement("span", {
+      className: "row gap-1",
+      style: {
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "location_on",
+      size: 14
+    }), /*#__PURE__*/React.createElement("span", null, addressLines(addr).join(', '))) : null],
+    counts: [{
+      icon: 'location_on',
+      value: (c.addresses || []).length,
+      label: 'Addresses'
+    }, {
+      icon: 'mail',
+      value: (c.emails || []).length,
+      label: 'Emails'
+    }, {
+      icon: 'call',
+      value: (c.phones || []).length,
+      label: 'Phone numbers'
+    }].filter(k => k.value > 0),
+    dimmed: !!c.archived,
+    open: open,
+    onToggle: onToggle,
+    actions: /*#__PURE__*/React.createElement(ActionMenu, {
+      items: [{
+        icon: 'edit',
+        label: 'Edit contact',
+        onClick: () => setShowEdit(true)
+      }, {
+        icon: 'download',
+        label: 'Export vCard',
+        onClick: () => onExportRow && onExportRow(c)
+      }, ...(c.archived ? [] : [{
+        divider: true
+      }, {
+        icon: 'add_location_alt',
+        label: 'New address',
+        onClick: () => requestAdd('address')
+      }, {
+        icon: 'alternate_email',
+        label: 'New email',
+        onClick: () => requestAdd('email')
+      }, {
+        icon: 'add_call',
+        label: 'New phone number',
+        onClick: () => requestAdd('phone')
+      }]), {
+        divider: true
+      }, {
+        icon: c.archived ? 'unarchive' : 'inventory_2',
+        label: c.archived ? 'Restore' : 'Archive',
+        onClick: () => onSave(c.id, {
+          archived: c.archived ? null : new Date().toISOString()
+        })
+      }, {
+        icon: 'fingerprint',
+        label: 'Copy ID',
+        trailingIcon: 'content_copy',
+        onClick: () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(c.id);
+        }
+      }, {
+        divider: true
+      }, {
+        icon: 'delete',
+        label: 'Delete',
+        danger: true,
+        onClick: () => onDelete && onDelete(c.id)
+      }]
+    }),
+    details: /*#__PURE__*/React.createElement(CpTiles, {
+      c: c
+    }),
+    content: /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "sticky_note_2",
+      label: "Notes",
+      wide: true,
+      value: c.notes || 'No notes',
+      valueVariant: "text",
+      className: c.notes ? undefined : 'muted'
+    }))
+  }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Contact information",
+    meta: `${entries} ${entries === 1 ? 'entry' : 'entries'}`
+  }), /*#__PURE__*/React.createElement(ContactList, {
     c: c,
     onContacts: onContacts,
     readOnly: !!c.archived,
+    bare: true,
     addReq: addReq,
-    onConsumeAdd: onConsumeAdd,
+    onConsumeAdd: () => setAddReq(null),
     styleMode: contactStyle
-  })));
+  })), showEdit && /*#__PURE__*/React.createElement(AddContactModal, {
+    contact: c,
+    onClose: () => setShowEdit(false),
+    onSave: (id, patch) => {
+      onSave(id, patch);
+      setShowEdit(false);
+    }
+  }));
 };
+const contactCount = c => (c.addresses || []).length + (c.emails || []).length + (c.phones || []).length;
 
 /* ================= shared Person / Organization field sets ================= */
 const PersonFields = ({
@@ -32461,7 +33034,8 @@ const displayNameHint = type => type === 'Person' ? 'Defaults to "First Last" if
 /* Contact record editing reuses AddContactModal in edit mode
    (row Edit → setEditCp); there is no inline edit panel. */
 
-/* ================= table ================= */
+/* Sorting is client-side over the card list (the DS rollout has no column
+   headers); the SortSelect in the page header owns the field + direction. */
 const cpSortVal = (c, key) => {
   switch (key) {
     case 'name':
@@ -32473,194 +33047,6 @@ const cpSortVal = (c, key) => {
     default:
       return 0;
   }
-};
-const contactCount = c => (c.addresses || []).length + (c.emails || []).length + (c.phones || []).length;
-const ContactTable = ({
-  contacts,
-  onSave,
-  onDelete,
-  onContacts,
-  onExportRow,
-  sort,
-  onSortChange,
-  empty,
-  contactStyle
-}) => {
-  const {
-    useState
-  } = React;
-  const [addReq, setAddReq] = useState(null); // {id, kind, nonce}
-  const requestAdd = (c, ctx, kind) => {
-    if (!ctx.expanded) ctx.toggle();
-    setAddReq({
-      id: c.id,
-      kind,
-      nonce: Date.now()
-    });
-  };
-  const [editCp, setEditCp] = useState(null);
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(RecordTable, {
-    rows: contacts,
-    ariaLabel: "Contacts",
-    rowKey: c => c.id,
-    defaultSort: {
-      key: 'name',
-      dir: 'asc'
-    },
-    sort: sort,
-    onSortChange: onSortChange,
-    leading: c => /*#__PURE__*/React.createElement(Avatar, {
-      icon: (CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person).icon,
-      tone: cpTone(c.type)
-    }),
-    columns: [{
-      key: 'name',
-      header: 'Name',
-      sortable: true,
-      sortType: 'text',
-      sortValue: c => cpSortVal(c, 'name'),
-      cell: (c, ctx) => /*#__PURE__*/React.createElement("span", {
-        style: {
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8
-        }
-      }, resolvedName(c), c.displayName && /*#__PURE__*/React.createElement(MIcon, {
-        name: "badge",
-        size: 15,
-        className: "muted",
-        title: "Display name overridden"
-      }), ctx.justSaved && /*#__PURE__*/React.createElement(Chip, {
-        tone: "income",
-        dot: true
-      }, "Saved"))
-    }, {
-      key: 'type',
-      header: 'Type',
-      sortable: true,
-      sortType: 'status',
-      sortValue: c => cpSortVal(c, 'type'),
-      cell: c => {
-        const m = CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person;
-        return /*#__PURE__*/React.createElement(Chip, {
-          tone: "outline",
-          icon: m.icon
-        }, m.label);
-      }
-    }, {
-      key: 'contact',
-      header: 'Contact',
-      className: 'muted',
-      cell: c => {
-        const n = contactCount(c);
-        if (!n) return /*#__PURE__*/React.createElement("span", {
-          className: "muted"
-        }, "\u2014");
-        return /*#__PURE__*/React.createElement("span", {
-          style: {
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 10,
-            color: 'var(--mud-palette-text-secondary)'
-          }
-        }, (c.addresses || []).length > 0 && /*#__PURE__*/React.createElement("span", {
-          style: cpStyles.countPill
-        }, /*#__PURE__*/React.createElement(MIcon, {
-          name: "location_on",
-          size: 14
-        }), c.addresses.length), (c.emails || []).length > 0 && /*#__PURE__*/React.createElement("span", {
-          style: cpStyles.countPill
-        }, /*#__PURE__*/React.createElement(MIcon, {
-          name: "mail",
-          size: 14
-        }), c.emails.length), (c.phones || []).length > 0 && /*#__PURE__*/React.createElement("span", {
-          style: cpStyles.countPill
-        }, /*#__PURE__*/React.createElement(MIcon, {
-          name: "call",
-          size: 14
-        }), c.phones.length));
-      }
-    }, {
-      key: 'status',
-      header: 'Status',
-      sortable: true,
-      sortType: 'status',
-      sortValue: c => cpSortVal(c, 'status'),
-      cell: c => {
-        const s = window.OdysseyHelpers.archivedStatus(c);
-        return /*#__PURE__*/React.createElement(Chip, {
-          tone: s.tone,
-          dot: true
-        }, s.label);
-      }
-    }],
-    actions: (c, ctx) => [...(ctx.editing ? [] : [{
-      icon: ctx.expanded ? 'close' : 'expand_more',
-      label: ctx.expanded ? 'Collapse' : 'View details',
-      onClick: ctx.toggle
-    }]), {
-      icon: 'edit',
-      label: 'Edit',
-      onClick: () => setEditCp(c)
-    }, {
-      icon: 'download',
-      label: 'Export vCard',
-      onClick: () => onExportRow && onExportRow(c)
-    }, ...(c.archived ? [] : [{
-      divider: true
-    }, {
-      icon: 'add_location_alt',
-      label: 'New address',
-      onClick: () => requestAdd(c, ctx, 'address')
-    }, {
-      icon: 'alternate_email',
-      label: 'New email',
-      onClick: () => requestAdd(c, ctx, 'email')
-    }, {
-      icon: 'add_call',
-      label: 'New phone number',
-      onClick: () => requestAdd(c, ctx, 'phone')
-    }]), {
-      divider: true
-    }, {
-      icon: c.archived ? 'unarchive' : 'archive',
-      label: c.archived ? 'Restore' : 'Archive',
-      onClick: () => onSave(c.id, {
-        archived: c.archived ? null : new Date().toISOString()
-      })
-    }, {
-      icon: 'fingerprint',
-      label: 'Copy ID',
-      trailingIcon: 'content_copy',
-      onClick: () => {
-        if (navigator.clipboard) navigator.clipboard.writeText(c.id);
-      }
-    }, {
-      divider: true
-    }, {
-      icon: 'delete',
-      label: 'Delete',
-      danger: true,
-      onClick: ctx.remove
-    }],
-    renderDetail: c => /*#__PURE__*/React.createElement(CpDetail, {
-      c: c,
-      onContacts: onContacts,
-      contactStyle: contactStyle,
-      addReq: addReq && addReq.id === c.id ? addReq : null,
-      onConsumeAdd: () => setAddReq(null)
-    }),
-    onSave: onSave,
-    onDelete: onDelete,
-    empty: empty
-  }), editCp && /*#__PURE__*/React.createElement(AddContactModal, {
-    contact: editCp,
-    onClose: () => setEditCp(null),
-    onSave: (id, patch) => {
-      onSave(id, patch);
-      setEditCp(null);
-    }
-  }));
 };
 
 /* ================= New / Edit contact dialog ================= */
@@ -32686,7 +33072,8 @@ const AddContactModal = ({
     company: cp.person && cp.person.company || '',
     legalName: cp.org && cp.org.legalName || '',
     organizationNumber: cp.org && cp.org.organizationNumber || '',
-    website: cp.org && cp.org.website || ''
+    website: cp.org && cp.org.website || '',
+    notes: cp.notes || ''
   });
   const [err, setErr] = useState({});
   const set = k => v => {
@@ -32706,7 +33093,8 @@ const AddContactModal = ({
     if (t === type) return;
     setType(t);
     setErr({});
-    setDraft({
+    // Notes belong to the contact itself, not to either field set — kept across a Type switch.
+    setDraft(s => ({
       firstName: '',
       lastName: '',
       dateOfBirth: '',
@@ -32715,8 +33103,9 @@ const AddContactModal = ({
       company: '',
       legalName: '',
       organizationNumber: '',
-      website: ''
-    });
+      website: '',
+      notes: s.notes
+    }));
   };
   const submit = () => {
     const e = {};
@@ -32733,7 +33122,8 @@ const AddContactModal = ({
     }
     if (isEdit) {
       const patch = {
-        displayName: displayName.trim() || null
+        displayName: displayName.trim() || null,
+        notes: draft.notes.trim() || null
       };
       if (type === 'Person') patch.person = {
         firstName: draft.firstName.trim(),
@@ -32753,7 +33143,7 @@ const AddContactModal = ({
     const dto = {
       type,
       displayName: displayName.trim() || null,
-      notes: undefined,
+      notes: draft.notes.trim() || null,
       archived: null,
       addresses: [],
       emails: [],
@@ -32819,6 +33209,13 @@ const AddContactModal = ({
     placeholder: "Optional override",
     helper: displayNameHint(type),
     maxLength: 128
+  }), /*#__PURE__*/React.createElement(NoteField, {
+    label: "Notes",
+    optional: true,
+    maxLength: 1024,
+    value: draft.notes,
+    onChange: set('notes'),
+    placeholder: type === 'Person' ? 'How you know them, what they invoice for…' : 'What this organization is to you, billing quirks…'
   })));
 };
 
@@ -32841,8 +33238,10 @@ const Contacts = ({
     key: 'name',
     dir: 'asc'
   });
-  const [pageSize, setPageSize] = useState(25);
-  const [page, setPage] = useState(1);
+  // Card-list server paging: "Load N at a time" batch size, fed to InfiniteList.
+  const [batch, setBatch] = useState(25);
+  // The list owns ONE openId — opening a record closes its siblings.
+  const [openId, setOpenId] = useState('c1');
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [toast, setToast] = useState(null);
@@ -32908,15 +33307,15 @@ const Contacts = ({
     }
     return true;
   }), [rows, typeFilter, statusFilter, debouncedQ]);
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedQ, typeFilter, statusFilter, sort, pageSize]);
   const totalCount = filtered.length;
-  const paged = useMemo(() => {
-    if (pageSize === 'all') return filtered;
-    const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+  const sortedRows = useMemo(() => {
+    const dir = sort.dir === 'desc' ? -1 : 1;
+    return [...filtered].sort((a, b) => {
+      const va = cpSortVal(a, sort.key),
+        vb = cpSortVal(b, sort.key);
+      return va < vb ? -dir : va > vb ? dir : 0;
+    });
+  }, [filtered, sort]);
   const activeCount = rows.filter(c => !c.archived).length;
   const archivedCount = rows.length - activeCount;
   const hasFilters = !!(debouncedQ || typeFilter.length || statusFilter.length);
@@ -33042,8 +33441,12 @@ const Contacts = ({
         type: 'status'
       }]
     }), /*#__PURE__*/React.createElement(PageSizeSelect, {
-      value: pageSize,
-      onChange: setPageSize
+      prefix: "Load",
+      suffix: "at a time",
+      label: "Contacts per batch",
+      value: batch,
+      onChange: setBatch,
+      options: [25, 50, 100]
     })),
     primary: {
       label: 'New contact',
@@ -33071,18 +33474,33 @@ const Contacts = ({
   }), adding && /*#__PURE__*/React.createElement(AddContactModal, {
     onClose: () => setAdding(false),
     onCreate: createCp
-  }), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardBody, {
-    style: {
-      padding: 0
-    }
-  }, /*#__PURE__*/React.createElement(ContactTable, {
-    contacts: paged,
-    sort: sort,
-    onSortChange: setSort,
-    onSave: onSave,
-    onDelete: onDelete,
-    onContacts: onContacts,
-    onExportRow: exportRow,
+  }), rows.length === 0 ? /*#__PURE__*/React.createElement(EmptyState, {
+    icon: "store",
+    mutedIcon: true,
+    title: "No contacts yet",
+    desc: "Add the people and organizations money moves to and from.",
+    action: /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: "add",
+      onClick: () => setAdding(true)
+    }, "New contact")
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "acct-list"
+  }, /*#__PURE__*/React.createElement(InfiniteList, {
+    items: sortedRows,
+    batchSize: batch,
+    itemKey: c => c.id,
+    noun: "contacts",
+    renderItem: c => /*#__PURE__*/React.createElement(CpRecordCard, {
+      c: c,
+      open: openId === c.id,
+      onToggle: o => setOpenId(o ? c.id : null),
+      onSave: onSave,
+      onDelete: onDelete,
+      onContacts: onContacts,
+      onExportRow: exportRow
+    }),
     empty: /*#__PURE__*/React.createElement(EmptyState, {
       icon: "store",
       mutedIcon: true,
@@ -33098,14 +33516,13 @@ const Contacts = ({
         icon: "add",
         onClick: () => setAdding(true)
       }, "New contact")
+    }),
+    trailing: /*#__PURE__*/React.createElement(AddRow, {
+      title: "New contact",
+      sub: "A person or organization that money moves to or from.",
+      onClick: () => setAdding(true)
     })
-  }), totalCount > 0 && /*#__PURE__*/React.createElement(Pager, {
-    page: page,
-    pageSize: pageSize,
-    totalCount: totalCount,
-    onPageChange: setPage,
-    onPageSizeChange: setPageSize
-  }))), toast && DSToast && DSToastStack && /*#__PURE__*/React.createElement(DSToastStack, null, /*#__PURE__*/React.createElement(DSToast, {
+  })), toast && DSToast && DSToastStack && /*#__PURE__*/React.createElement(DSToastStack, null, /*#__PURE__*/React.createElement(DSToast, {
     key: toast.k,
     severity: toast.severity,
     duration: 4200,
@@ -33230,9 +33647,9 @@ const cpStyles = {
 };
 Object.assign(window, {
   Contacts,
-  ContactTable,
+  CpRecordCard,
+  CpTiles,
   AddContactModal,
-  CpDetail,
   CP_TYPES
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/Contacts.jsx", error: String((e && e.message) || e) }); }
@@ -36465,6 +36882,7 @@ const Files = ({
     onSortChange: setSort,
     accountFor: f => d.accountById[f.account],
     showValidity: false,
+    editValidity: true,
     onNavigate: onNavigate,
     onDelete: f => setFilesByAccount(prev => ({
       ...prev,
@@ -39862,7 +40280,9 @@ const AddJournalEntryModal = ({
     value: draft.tagIds,
     onChange: set('tagIds'),
     options: JOURNAL_TAG_OPTIONS(),
-    optional: true
+    optional: true,
+    onCreate: name => J_D.createTag('journal', name),
+    createKinds: J_D.tagCreateKinds('journal')
   }), /*#__PURE__*/React.createElement(TagMultiSelect, {
     label: "Contacts",
     value: draft.contactIds,
@@ -39870,7 +40290,14 @@ const AddJournalEntryModal = ({
     options: JOURNAL_CP_OPTIONS(),
     addLabel: "Link contact",
     placeholder: "No linked contacts",
-    optional: true
+    optional: true,
+    searchLabel: "Search contacts",
+    searchPlaceholder: "Search or add a contact\u2026",
+    emptyText: "No contacts match",
+    noun: "contact",
+    createLabel: "Add",
+    onCreate: (name, kind) => J_D.contactOption(J_D.createContact(name, kind)),
+    createKinds: (window.OdysseyDesignSystem_d5aa51 || {}).CONTACT_CREATE_KINDS
   }), /*#__PURE__*/React.createElement("div", {
     className: "edit-wide"
   }, /*#__PURE__*/React.createElement(NoteField, {
@@ -42303,23 +42730,20 @@ try { (() => {
       options: tagOpts,
       addLabel: 'Add tag',
       placeholder: 'No tags',
+      createKinds: window.OdysseyData.tagCreateKinds('photo'),
       onCreate: function (name) {
-        const id = 'pt-new-' + name.toLowerCase().replace(/\s+/g, '-');
+        var opt = window.plCreateTag(name);
+        if (!opt) return null;
         setTagOpts(function (o) {
           return o.some(function (x) {
-            return x.label.toLowerCase() === name.toLowerCase();
-          }) ? o : o.concat([{
-            value: id,
-            label: name
-          }]);
+            return x.value === opt.value;
+          }) ? o : o.concat([opt]);
         });
-        return {
-          value: id,
-          label: name
-        };
+        return opt;
       }
     }),
-    // People: existing Person contacts only — NO onCreate (spec §9).
+    // People ARE Person contacts: the create row makes one and tags it,
+    // rather than dead-ending on a person who isn't in Contacts yet.
     TagMultiSelect && React.createElement(TagMultiSelect, {
       label: 'People',
       value: form.people,
@@ -42331,7 +42755,17 @@ try { (() => {
       options: peopleOpts,
       addLabel: 'Tag a person',
       placeholder: 'No one tagged',
-      emptyText: 'No matching person. People come from your Person contacts.'
+      emptyText: 'No matching person.',
+      noun: 'person',
+      createLabel: 'Add',
+      createKinds: [{
+        key: 'Person',
+        label: 'Person',
+        icon: 'person'
+      }],
+      onCreate: function (name) {
+        return window.plCreatePerson(name);
+      }
     }), Field && React.createElement(Field, {
       label: 'Caption',
       value: form.caption,
@@ -46460,7 +46894,9 @@ const AddTaskModal = ({
     value: draft.tagIds,
     onChange: set('tagIds'),
     options: TASK_TAG_OPTIONS(),
-    optional: true
+    optional: true,
+    onCreate: name => T_D.createTag('task', name),
+    createKinds: T_D.tagCreateKinds('task')
   })), /*#__PURE__*/React.createElement("div", {
     className: "edit-wide"
   }, /*#__PURE__*/React.createElement(NoteField, {
@@ -54053,6 +54489,104 @@ window.OdysseyData.custodianForAccount = a => {
 };
 /* Active (non-archived) contacts — the selectable custodian options. */
 window.OdysseyData.activeContacts = () => window.OdysseyData.contacts.filter(c => !c.archived);
+/* Create a contact from any picker (POST /api/contacts — Name + Type only) and
+   register it so every ContactSelect on screen can resolve and offer it. The
+   type is the one the reviewer picked on the create row; nothing is guessed. */
+let __cpSeq = 0;
+window.OdysseyData.createContact = (name, type) => {
+  const clean = String(name || '').trim();
+  if (!clean) return null;
+  const cp = {
+    id: `cp-inline-${++__cpSeq}-${Date.now().toString(36)}`,
+    name: clean,
+    normalizedName: clean.toUpperCase(),
+    type: type || 'Organization',
+    description: null,
+    archived: null
+  };
+  window.OdysseyData.contacts.push(cp);
+  window.OdysseyData.contactById[cp.id] = cp;
+  return cp;
+};
+/* ---- Tag creation from any picker -------------------------------------------
+   A tag field can only create a tag of the vocabulary it is searching, so the
+   kind IS the store: transaction / journal / task / photo. Each create row
+   states which one it makes, and the new tag is registered in that store's
+   list + id lookup so every picker and read chip resolves it immediately. */
+window.OdysseyData.tagKinds = {
+  transaction: {
+    key: 'transaction',
+    label: 'Transaction tag',
+    icon: 'local_offer',
+    store: 'tags',
+    byId: 'tagById',
+    prefix: 't-'
+  },
+  journal: {
+    key: 'journal',
+    label: 'Journal tag',
+    icon: 'menu_book',
+    store: 'journalTags',
+    byId: 'journalTagById',
+    prefix: 'jt-'
+  },
+  task: {
+    key: 'task',
+    label: 'Task tag',
+    icon: 'checklist',
+    store: 'taskTags',
+    byId: 'taskTagById',
+    prefix: 'kt-'
+  },
+  photo: {
+    key: 'photo',
+    label: 'Photo tag',
+    icon: 'photo',
+    store: 'photoTags',
+    byId: 'photoTagById',
+    prefix: 'pt-'
+  }
+};
+/* The create rows for a tag field: one row, the field's own vocabulary. */
+window.OdysseyData.tagCreateKinds = kind => {
+  const k = window.OdysseyData.tagKinds[kind];
+  return k ? [{
+    key: k.key,
+    label: k.label,
+    icon: k.icon
+  }] : undefined;
+};
+let __tagSeq = 0;
+window.OdysseyData.createTag = (kind, name) => {
+  const D = window.OdysseyData;
+  const k = D.tagKinds[kind];
+  const clean = String(name || '').trim();
+  if (!k || !clean) return null;
+  const tag = {
+    id: `${k.prefix}new-${++__tagSeq}-${Date.now().toString(36)}`,
+    name: clean,
+    normalizedName: clean.toUpperCase(),
+    description: null,
+    archived: null
+  };
+  if (Array.isArray(D[k.store])) D[k.store].push(tag);
+  if (D[k.byId]) D[k.byId][tag.id] = tag;
+  return {
+    value: tag.id,
+    label: tag.name
+  };
+};
+/* The option a picker selects right after creating — name + its type visuals. */
+window.OdysseyData.contactOption = cp => {
+  if (!cp) return null;
+  const m = (window.OdysseyData.contactTypeByKey || {})[cp.type] || {};
+  return {
+    value: cp.id,
+    label: cp.name,
+    icon: m.icon || 'category',
+    iconColor: m.color
+  };
+};
 window.OdysseyData.currencyByCode = Object.fromEntries(window.OdysseyData.currencies.map(c => [c.code, c]));
 window.OdysseyHelpers = {
   money(n, currency = 'USD') {
@@ -56675,6 +57209,56 @@ try { (() => {
   function plPersonName(id) {
     return PL_PERSON_NAME[id] || id;
   }
+  // Create a PhotoTag from any picker's create row and register it everywhere
+  // the library resolves tag names, so the new tag reads as a tag immediately.
+  var __plTagSeq = 0;
+  function plCreateTag(name) {
+    var clean = String(name || '').trim();
+    if (!clean) return null;
+    var hit = PHOTO_TAGS.filter(function (t) {
+      return t.name.toLowerCase() === clean.toLowerCase();
+    })[0];
+    if (hit) return {
+      value: hit.id,
+      label: hit.name
+    };
+    var tag = {
+      id: 'pt-new-' + ++__plTagSeq + '-' + Date.now().toString(36),
+      name: clean,
+      normalizedName: clean.toUpperCase(),
+      description: null,
+      archived: null
+    };
+    PHOTO_TAGS.push(tag);
+    PL_TAG_NAME[tag.id] = tag.name;
+    TAG_ID_BY_NAME[tag.name] = tag.id;
+    PL_TAG_OPTIONS.push({
+      value: tag.id,
+      label: tag.name
+    });
+    return {
+      value: tag.id,
+      label: tag.name
+    };
+  }
+  // A person tagged on a photo IS a Person contact — created through the shared
+  // contact path, then registered as a library person so the name resolves.
+  function plCreatePerson(name) {
+    var D = window.OdysseyData;
+    if (!D || !D.createContact) return null;
+    var cp = D.createContact(name, 'Person');
+    if (!cp) return null;
+    PL_PERSON_NAME[cp.id] = cp.name;
+    PERSON_ID_BY_NAME[cp.name] = cp.id;
+    PL_PERSON_OPTIONS.push({
+      value: cp.id,
+      label: cp.name
+    });
+    return {
+      value: cp.id,
+      label: cp.name
+    };
+  }
   Object.assign(window, {
     PHOTOS: PHOTOS,
     PL_ALBUMS: PL_ALBUMS,
@@ -56689,7 +57273,9 @@ try { (() => {
     plMonthKey: plMonthKey,
     plTime: plTime,
     plTagName: plTagName,
-    plPersonName: plPersonName
+    plPersonName: plPersonName,
+    plCreateTag: plCreateTag,
+    plCreatePerson: plCreatePerson
   });
   if (window.OdysseyData) {
     window.OdysseyData.photoTags = PHOTO_TAGS;
@@ -59654,6 +60240,10 @@ __ds_ns.ColorSwatchSelect = __ds_scope.ColorSwatchSelect;
 __ds_ns.Combobox = __ds_scope.Combobox;
 
 __ds_ns.ContactChip = __ds_scope.ContactChip;
+
+__ds_ns.CONTACT_CREATE_KINDS = __ds_scope.CONTACT_CREATE_KINDS;
+
+__ds_ns.ContactSelect = __ds_scope.ContactSelect;
 
 __ds_ns.ContactTypeMultiSelect = __ds_scope.ContactTypeMultiSelect;
 

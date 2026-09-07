@@ -417,8 +417,15 @@ const AddJournalEntryModal = ({ onClose, onCreate, onSave, entry = null }) => {
         <div className="edit-wide"><Field label="Title" value={draft.title} onChange={set('title')} error={errors.title} maxLength={200} autoFocus /></div>
         <DateField label="Entry date" value={draft.entryDate} onChange={set('entryDate')} error={errors.entryDate} />
         <Field label="Location" value={draft.location} onChange={set('location')} placeholder="Optional" maxLength={300} />
-        <TagMultiSelect label="Tags" value={draft.tagIds} onChange={set('tagIds')} options={JOURNAL_TAG_OPTIONS()} optional />
-        <TagMultiSelect label="Contacts" value={draft.contactIds} onChange={set('contactIds')} options={JOURNAL_CP_OPTIONS()} addLabel="Link contact" placeholder="No linked contacts" optional />
+        <TagMultiSelect label="Tags" value={draft.tagIds} onChange={set('tagIds')} options={JOURNAL_TAG_OPTIONS()} optional
+          onCreate={(name) => J_D.createTag('journal', name)}
+          createKinds={J_D.tagCreateKinds('journal')} />
+        {/* Linked contacts create CONTACTS, so the rows are the contact types —
+            the same two rows every contact picker offers. */}
+        <TagMultiSelect label="Contacts" value={draft.contactIds} onChange={set('contactIds')} options={JOURNAL_CP_OPTIONS()} addLabel="Link contact" placeholder="No linked contacts" optional
+          searchLabel="Search contacts" searchPlaceholder="Search or add a contact…" emptyText="No contacts match" noun="contact"
+          createLabel="Add" onCreate={(name, kind) => J_D.contactOption(J_D.createContact(name, kind))}
+          createKinds={(window.OdysseyDesignSystem_d5aa51 || {}).CONTACT_CREATE_KINDS} />
         <div className="edit-wide"><NoteField label="Content" value={draft.content} onChange={set('content')} maxLength={4096} rows={6} error={errors.content} placeholder="What happened?" /></div>
         <FieldShell label="Photos" optional helper="JPEG, PNG, GIF, or WebP.">
           <FileUpload accept="image/*" showKinds={false} files={draft.photos} onChange={set('photos')} compact />

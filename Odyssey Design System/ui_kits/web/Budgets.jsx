@@ -197,7 +197,7 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
           </div>
 
         ) : (
-          <div className="bgt-items acct-table-frame">
+          <div className="bgt-items acct-table-frame odc-scroll">
             <div className="bgt-item-head">
               <span>Item</span>
               <span>Actual vs planned</span>
@@ -213,7 +213,7 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
 
       <div className="acct-section">
         <SectionDivider label="Transactions" meta={`${txns.length} matched · in range and tagged`} />
-        <div className="acct-txn-table acct-table-frame">
+        <div className="acct-txn-table acct-table-frame odc-scroll">
           <InlinePager items={txns}>
             {(pageRows) => (
               <TxnTable

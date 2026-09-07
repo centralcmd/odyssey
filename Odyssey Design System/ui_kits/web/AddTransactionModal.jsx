@@ -151,31 +151,28 @@ const AccountPicker = ({ value, onChange, error, locked }) => {
   );
 };
 
-/* ---- Contact combobox — the DS Combobox (search an existing contact
-   or type a new name to create one inline), matching the insurer / company
-   pickers in the other create modals. `extra` carries the contacts created
-   inline during this session so they stay selectable. ----- */
+/* ---- Contact field — the DS ContactSelect (search an existing contact, or
+   add a missing one inline as a company or a person). `extra` carries the
+   contacts created during this session so they stay selectable. ----- */
 const ContactPicker = ({ value, extra, onChange, onCreate }) => {
-  const cpId = React.useId();
-  const all = [...window.OdysseyData.contacts, ...extra];
-  const options = all.map((c) => {
-    const m = atmCpType(c.type);
-    return { value: c.id, label: c.name, icon: m.icon, iconColor: m.color };
-  });
-  const handleCreate = (text) => {
+  const handleCreate = (text, kind) => {
     const name = text.trim();
     if (!name) return null;
-    const cp = { id: `cp-new-${++atmCpUid}`, name, type: 'Other' };
+    const cp = { id: `cp-new-${++atmCpUid}`, name, type: kind || 'Organization' };
     onCreate(cp);
-    return { value: cp.id, label: cp.name };
+    const m = atmCpType(cp.type);
+    return { value: cp.id, label: cp.name, icon: m.icon, iconColor: m.color };
   };
   return (
-    <FieldShell label="Contact" htmlFor={cpId} optional
-      helper="Search an existing contact, or type a new name to add one.">
-      <Combobox id={cpId} value={value || ''} onChange={(v) => onChange(v || null)}
-        options={options} onCreate={handleCreate} createLabel="Add"
-        placeholder="Who is it with?" ariaLabel="Contact" clearable />
-    </FieldShell>
+    <ContactSelect
+      label="Merchant" optional
+      value={value || ''}
+      onChange={(v) => onChange(v || null)}
+      contacts={[...window.OdysseyData.contacts, ...extra]}
+      placeholder="Who is it with?"
+      ariaLabel="Merchant"
+      allowCreate onCreate={handleCreate}
+      help="Search an existing contact, or type a new name to add it as a company or a person." />
   );
 };
 
@@ -212,13 +209,13 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
 
   // (Esc-to-close, scrim click and focus handling come from the DS Modal shell.)
 
-  const tagOptions = [
-    ...window.OdysseyData.tags.filter(t => !t.archived).map(t => ({ value: t.id, label: t.name })),
-    ...extraTags,
-  ];
+  // One source: createTag writes into the shared tag store, so the store IS the
+  // option list (a local "created here" copy would list the new tag twice).
+  const tagOptions = window.OdysseyData.tags.filter(t => !t.archived).map(t => ({ value: t.id, label: t.name }));
   const createTag = (name) => {
-    const opt = { value: `tag-new-${Date.now()}`, label: name };
-    setExtraTags(prev => [...prev, opt]);
+    const opt = window.OdysseyData.createTag('transaction', name);
+    if (!opt) return null;
+    setExtraTags(prev => [...prev, opt]); // re-render so the store's new tag shows
     return opt.value;
   };
   const sym = ATM_CURRENCY_SYMBOL[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
@@ -368,6 +365,7 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
               options={tagOptions}
               placeholder="No tags"
               onCreate={createTag}
+              createKinds={window.OdysseyData.tagCreateKinds('transaction')}
               help="Add as many as fit — e.g. a category plus Reimbursable."
             />
           </div>

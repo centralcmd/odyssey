@@ -360,7 +360,7 @@ const KIND_TITLE = { address: 'Address', email: 'Email', phone: 'Phone number' }
 /* One flat list across all three collections — the kind avatar makes each row
    self-describing, so no per-kind section headers. Adding is driven from the
    contact's action menu (addReq); primary arbitration stays per-kind. */
-const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode }) => {
+const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode, bare }) => {
   const { useState, useRef, useEffect } = React;
   const [editing, setEditing] = useState(null); // {kind,id}
   const [adding, setAdding] = useState(null);    // kind
@@ -413,11 +413,13 @@ const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode 
 
   return (
     <div>
-      <div className="cp-sub">
-        <span className="cp-sub-label">Contact information</span>
-        <span className="cp-sub-rule" />
-        <span className="cp-sub-meta">{all.length} {all.length === 1 ? 'entry' : 'entries'}</span>
-      </div>
+      {!bare && (
+        <div className="cp-sub">
+          <span className="cp-sub-label">Contact information</span>
+          <span className="cp-sub-rule" />
+          <span className="cp-sub-meta">{all.length} {all.length === 1 ? 'entry' : 'entries'}</span>
+        </div>
+      )}
       {all.length === 0 && (
         <div style={cpStyles.emptyRow}>
           <span style={{ color: 'var(--mud-palette-text-secondary)', font: '400 13px/1.4 var(--font-sans)' }}>
@@ -480,50 +482,146 @@ const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode 
   );
 };
 
-/* ================= detail (read + contact management) ================= */
-const CpDetail = ({ c, onContacts, addReq, onConsumeAdd, contactStyle }) => {
+/* ================= expanded body · DS RecordCard tiles =================
+   The Contacts rollout of the DS record-card pattern. The body carries the
+   record's FULL field set as InfoTiles — including what the collapsed header
+   already shows: at tile scale each value arrives with its own label, so the
+   header's meta line and a labelled Job title tile read as two different
+   things. Person and Organization contribute their own field sets (they are
+   mutually exclusive); everything else is the base Contact. Notes is the wide
+   content tile, so a long note wraps across the grid instead of squeezing into
+   a column. */
+const CpTiles = ({ c }) => {
   const H = window.OdysseyHelpers;
   const meta = CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person;
   const status = H.archivedStatus(c);
   const isPerson = c.type === 'Person';
   const p = c.person || {}, o = c.org || {};
   const website = o.website && /^https?:\/\//i.test(o.website) ? o.website : null;
+  return (
+    <InfoTileGrid>
+      <InfoTile icon="badge" label="Display name" value={resolvedName(c) || '—'} valueVariant="text"
+        foot={c.displayName ? 'override' : 'computed from the name fields'} />
+      <InfoTile icon={meta.icon} iconColor={meta.color} iconSoft={meta.soft}
+        label="Type" value={meta.label} valueVariant="text" foot="fixed after creation" />
+      {isPerson ? (
+        <React.Fragment>
+          <InfoTile icon="person" label="First name" value={p.firstName || '—'} valueVariant="text" />
+          <InfoTile icon="person" label="Last name" value={p.lastName || '—'} valueVariant="text" />
+          {p.dateOfBirth ? (
+            <InfoTile icon="cake" label="Date of birth" value={H.dateLong(p.dateOfBirth)} valueVariant="sm" />
+          ) : null}
+          {p.sex ? <InfoTile icon="wc" label="Sex" value={p.sex} valueVariant="text" /> : null}
+          {p.title ? <InfoTile icon="work" label="Job title" value={p.title} valueVariant="text" /> : null}
+          {p.company ? (
+            <InfoTile icon="corporate_fare" label="Company" value={p.company} valueVariant="text"
+              foot="free text — not a linked contact" />
+          ) : null}
+        </React.Fragment>
+      ) : (
+        <React.Fragment>
+          <InfoTile icon="corporate_fare" label="Legal name" value={o.legalName || '—'} valueVariant="text" />
+          {o.organizationNumber ? (
+            <InfoTile icon="pin" label="Organization number" value={o.organizationNumber} />
+          ) : null}
+          {o.website ? (
+            <InfoTile icon="link" label="Website" valueVariant="text"
+              value={website ? <a href={website} target="_blank" rel="noopener noreferrer">{o.website}</a> : o.website} />
+          ) : null}
+        </React.Fragment>
+      )}
+      <InfoTile icon={c.archived ? 'inventory_2' : 'task_alt'} label="Status" value={status.label} valueVariant="text"
+        className={c.archived ? 'muted' : 'tone-income'}
+        foot={c.archived ? `since ${H.dateTime(c.archived)}` : 'in the default list'} />
+      <InfoTile icon="schedule" label="Created" value={H.dateTime(c.createdAt)} valueVariant="sm" />
+      <InfoTile icon="update" label="Updated" value={H.dateTime(c.updatedAt)} valueVariant="sm"
+        foot="bumped by any address, email or phone change" />
+    </InfoTileGrid>
+  );
+};
+
+/* One contact record (DS RecordCard). The list owns ONE openId, so opening a
+   card closes its siblings. */
+const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onExportRow, contactStyle }) => {
+  const { useState } = React;
+  const H = window.OdysseyHelpers;
+  const [showEdit, setShowEdit] = useState(false);
+  const [addReq, setAddReq] = useState(null); // {kind, nonce}
+  const meta = CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person;
+  const status = H.archivedStatus(c);
+  const isPerson = c.type === 'Person';
+  const p = c.person || {}, o = c.org || {};
+  const primaryOf = (list) => (list || []).find((x) => x.isPrimary) || (list || [])[0] || null;
+  const email = primaryOf(c.emails), phone = primaryOf(c.phones), addr = primaryOf(c.addresses);
+  const role = isPerson
+    ? [p.title, p.company].filter(Boolean).join(' · ')
+    : (o.organizationNumber || (o.website || ''));
+  const entries = contactCount(c);
+  const requestAdd = (kind) => { if (!open) onToggle(true); setAddReq({ kind, nonce: Date.now() }); };
+
+  if (!RecordCard || !InfoTileGrid || !InfoTile) return null;
 
   return (
-    <div className="acct-detail">
-      <div className="meta-grid">
-        <MetaTile label="Display name" value={resolvedName(c) || '—'} />
-        <MetaTile label="Type" value={<Chip tone="outline" icon={meta.icon}>{meta.label}</Chip>} />
-        {isPerson ? (
-          <React.Fragment>
-            <MetaTile label="First name" value={p.firstName || '—'} />
-            <MetaTile label="Last name" value={p.lastName || '—'} />
-            <MetaTile label="Date of birth" value={p.dateOfBirth ? H.dateLong(p.dateOfBirth) : '—'} mono />
-            <MetaTile label="Sex" value={p.sex || '—'} />
-            <MetaTile label="Job title" value={p.title || '—'} />
-            <MetaTile label="Company" value={p.company || '—'} />
-          </React.Fragment>
-        ) : (
-          <React.Fragment>
-            <MetaTile label="Legal name" value={o.legalName || '—'} />
-            <MetaTile label="Organization number" value={o.organizationNumber || '—'} mono />
-            <MetaTile label="Website" value={website
-              ? <a href={website} target="_blank" rel="noopener noreferrer">{o.website}</a>
-              : (o.website || '—')} />
-          </React.Fragment>
+    <div>
+      <RecordCard
+        icon={meta.icon}
+        accent={meta.color}
+        accentSoft={meta.soft}
+        name={resolvedName(c)}
+        chips={<React.Fragment>
+          <Chip tone={status.tone} dot>{status.label}</Chip>
+          {c.displayName ? <Chip tone="outline" icon="badge">Display name</Chip> : null}
+        </React.Fragment>}
+        meta={[
+          <span className="row gap-1" style={{ alignItems: 'center' }}><MIcon name={meta.icon} size={14} /><span>{meta.label}</span></span>,
+          role ? <span className="row gap-1" style={{ alignItems: 'center' }}><MIcon name={isPerson ? 'work' : 'pin'} size={14} /><span>{role}</span></span> : null,
+          email ? <span className="row gap-1" style={{ alignItems: 'center' }}><MIcon name="mail" size={14} /><span className="mono">{email.value}</span></span> : null,
+          !email && phone ? <span className="row gap-1" style={{ alignItems: 'center' }}><MIcon name="call" size={14} /><span className="mono">{phone.value}</span></span> : null,
+          !email && !phone && addr ? <span className="row gap-1" style={{ alignItems: 'center' }}><MIcon name="location_on" size={14} /><span>{addressLines(addr).join(', ')}</span></span> : null,
+        ]}
+        counts={[
+          { icon: 'location_on', value: (c.addresses || []).length, label: 'Addresses' },
+          { icon: 'mail', value: (c.emails || []).length, label: 'Emails' },
+          { icon: 'call', value: (c.phones || []).length, label: 'Phone numbers' },
+        ].filter((k) => k.value > 0)}
+        dimmed={!!c.archived}
+        open={open}
+        onToggle={onToggle}
+        actions={<ActionMenu items={[
+          { icon: 'edit', label: 'Edit contact', onClick: () => setShowEdit(true) },
+          { icon: 'download', label: 'Export vCard', onClick: () => onExportRow && onExportRow(c) },
+          ...(c.archived ? [] : [
+            { divider: true },
+            { icon: 'add_location_alt', label: 'New address', onClick: () => requestAdd('address') },
+            { icon: 'alternate_email', label: 'New email', onClick: () => requestAdd('email') },
+            { icon: 'add_call', label: 'New phone number', onClick: () => requestAdd('phone') },
+          ]),
+          { divider: true },
+          { icon: c.archived ? 'unarchive' : 'inventory_2', label: c.archived ? 'Restore' : 'Archive',
+            onClick: () => onSave(c.id, { archived: c.archived ? null : new Date().toISOString() }) },
+          { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
+          { divider: true },
+          { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(c.id) },
+        ]} />}
+        details={<CpTiles c={c} />}
+        content={(
+          <InfoTileGrid>
+            <InfoTile icon="sticky_note_2" label="Notes" wide value={c.notes || 'No notes'}
+              valueVariant="text" className={c.notes ? undefined : 'muted'} />
+          </InfoTileGrid>
         )}
-        <MetaTile label="Status" value={<Chip tone={status.tone} dot>{status.label}</Chip>} />
-        <MetaTile label="Notes" value={c.notes || '—'} />
-        <MetaTile label="Created" value={H.dateTime(c.createdAt)} mono />
-        <MetaTile label="Updated" value={H.dateTime(c.updatedAt)} mono />
-      </div>
-
-      <div style={cpStyles.contactWrap}>
-        <ContactList c={c} onContacts={onContacts} readOnly={!!c.archived} addReq={addReq} onConsumeAdd={onConsumeAdd} styleMode={contactStyle} />
-      </div>
+      >
+        <SectionDivider label="Contact information" meta={`${entries} ${entries === 1 ? 'entry' : 'entries'}`} />
+        <ContactList c={c} onContacts={onContacts} readOnly={!!c.archived} bare
+          addReq={addReq} onConsumeAdd={() => setAddReq(null)} styleMode={contactStyle} />
+      </RecordCard>
+      {showEdit && <AddContactModal contact={c} onClose={() => setShowEdit(false)}
+        onSave={(id, patch) => { onSave(id, patch); setShowEdit(false); }} />}
     </div>
   );
 };
+
+const contactCount = (c) => (c.addresses || []).length + (c.emails || []).length + (c.phones || []).length;
 
 /* ================= shared Person / Organization field sets ================= */
 const PersonFields = ({ d, set, err }) => (
@@ -558,7 +656,8 @@ const displayNameHint = (type) => type === 'Person'
 /* Contact record editing reuses AddContactModal in edit mode
    (row Edit → setEditCp); there is no inline edit panel. */
 
-/* ================= table ================= */
+/* Sorting is client-side over the card list (the DS rollout has no column
+   headers); the SortSelect in the page header owns the field + direction. */
 const cpSortVal = (c, key) => {
   switch (key) {
     case 'name': return resolvedName(c).toLowerCase();
@@ -566,82 +665,6 @@ const cpSortVal = (c, key) => {
     case 'status': return c.archived ? 1 : 0;
     default: return 0;
   }
-};
-const contactCount = (c) => (c.addresses || []).length + (c.emails || []).length + (c.phones || []).length;
-
-const ContactTable = ({ contacts, onSave, onDelete, onContacts, onExportRow, sort, onSortChange, empty, contactStyle }) => {
-  const { useState } = React;
-  const [addReq, setAddReq] = useState(null); // {id, kind, nonce}
-  const requestAdd = (c, ctx, kind) => { if (!ctx.expanded) ctx.toggle(); setAddReq({ id: c.id, kind, nonce: Date.now() }); };
-  const [editCp, setEditCp] = useState(null);
-  return (
-  <React.Fragment>
-  <RecordTable
-    rows={contacts}
-    ariaLabel="Contacts"
-    rowKey={(c) => c.id}
-    defaultSort={{ key: 'name', dir: 'asc' }}
-    sort={sort}
-    onSortChange={onSortChange}
-    leading={(c) => <Avatar icon={(CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person).icon} tone={cpTone(c.type)} />}
-    columns={[
-      {
-        key: 'name', header: 'Name', sortable: true, sortType: 'text', sortValue: (c) => cpSortVal(c, 'name'),
-        cell: (c, ctx) => (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            {resolvedName(c)}
-            {c.displayName && <MIcon name="badge" size={15} className="muted" title="Display name overridden" />}
-            {ctx.justSaved && <Chip tone="income" dot>Saved</Chip>}
-          </span>
-        ),
-      },
-      {
-        key: 'type', header: 'Type', sortable: true, sortType: 'status', sortValue: (c) => cpSortVal(c, 'type'),
-        cell: (c) => { const m = CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person; return <Chip tone="outline" icon={m.icon}>{m.label}</Chip>; },
-      },
-      {
-        key: 'contact', header: 'Contact', className: 'muted',
-        cell: (c) => {
-          const n = contactCount(c);
-          if (!n) return <span className="muted">—</span>;
-          return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--mud-palette-text-secondary)' }}>
-              {(c.addresses || []).length > 0 && <span style={cpStyles.countPill}><MIcon name="location_on" size={14} />{c.addresses.length}</span>}
-              {(c.emails || []).length > 0 && <span style={cpStyles.countPill}><MIcon name="mail" size={14} />{c.emails.length}</span>}
-              {(c.phones || []).length > 0 && <span style={cpStyles.countPill}><MIcon name="call" size={14} />{c.phones.length}</span>}
-            </span>
-          );
-        },
-      },
-      {
-        key: 'status', header: 'Status', sortable: true, sortType: 'status', sortValue: (c) => cpSortVal(c, 'status'),
-        cell: (c) => { const s = window.OdysseyHelpers.archivedStatus(c); return <Chip tone={s.tone} dot>{s.label}</Chip>; },
-      },
-    ]}
-    actions={(c, ctx) => [
-      ...(ctx.editing ? [] : [{ icon: ctx.expanded ? 'close' : 'expand_more', label: ctx.expanded ? 'Collapse' : 'View details', onClick: ctx.toggle }]),
-      { icon: 'edit', label: 'Edit', onClick: () => setEditCp(c) },
-      { icon: 'download', label: 'Export vCard', onClick: () => onExportRow && onExportRow(c) },
-      ...(c.archived ? [] : [
-        { divider: true },
-        { icon: 'add_location_alt', label: 'New address', onClick: () => requestAdd(c, ctx, 'address') },
-        { icon: 'alternate_email', label: 'New email', onClick: () => requestAdd(c, ctx, 'email') },
-        { icon: 'add_call', label: 'New phone number', onClick: () => requestAdd(c, ctx, 'phone') },
-      ]),
-      { divider: true },
-      { icon: c.archived ? 'unarchive' : 'archive', label: c.archived ? 'Restore' : 'Archive', onClick: () => onSave(c.id, { archived: c.archived ? null : new Date().toISOString() }) },
-      { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
-      { divider: true },
-      { icon: 'delete', label: 'Delete', danger: true, onClick: ctx.remove },
-    ]}
-    renderDetail={(c) => <CpDetail c={c} onContacts={onContacts} contactStyle={contactStyle} addReq={addReq && addReq.id === c.id ? addReq : null} onConsumeAdd={() => setAddReq(null)} />}
-    onSave={onSave}
-    onDelete={onDelete}
-    empty={empty}
-  />
-  {editCp && <AddContactModal contact={editCp} onClose={() => setEditCp(null)} onSave={(id, patch) => { onSave(id, patch); setEditCp(null); }} />}
-  </React.Fragment>
-  );
 };
 
 /* ================= New / Edit contact dialog ================= */
@@ -657,6 +680,7 @@ const AddContactModal = ({ onClose, onCreate, contact, onSave }) => {
     title: (cp.person && cp.person.title) || '', company: (cp.person && cp.person.company) || '',
     legalName: (cp.org && cp.org.legalName) || '', organizationNumber: (cp.org && cp.org.organizationNumber) || '',
     website: (cp.org && cp.org.website) || '',
+    notes: cp.notes || '',
   });
   const [err, setErr] = useState({});
   const set = (k) => (v) => { setDraft(s => ({ ...s, [k]: v })); if (err[k]) setErr(e => ({ ...e, [k]: undefined })); };
@@ -667,7 +691,8 @@ const AddContactModal = ({ onClose, onCreate, contact, onSave }) => {
     if (t === type) return;
     setType(t);
     setErr({});
-    setDraft({ firstName: '', lastName: '', dateOfBirth: '', sex: '', title: '', company: '', legalName: '', organizationNumber: '', website: '' });
+    // Notes belong to the contact itself, not to either field set — kept across a Type switch.
+    setDraft(s => ({ firstName: '', lastName: '', dateOfBirth: '', sex: '', title: '', company: '', legalName: '', organizationNumber: '', website: '', notes: s.notes }));
   };
 
   const submit = () => {
@@ -676,13 +701,13 @@ const AddContactModal = ({ onClose, onCreate, contact, onSave }) => {
     else { if (!draft.legalName.trim()) e.legalName = 'Legal name is required for an organization.'; if (draft.website && !/^https?:\/\//i.test(draft.website.trim())) e.website = 'Must start with http:// or https://'; }
     if (Object.keys(e).length) { setErr(e); return; }
     if (isEdit) {
-      const patch = { displayName: displayName.trim() || null };
+      const patch = { displayName: displayName.trim() || null, notes: draft.notes.trim() || null };
       if (type === 'Person') patch.person = { firstName: draft.firstName.trim(), lastName: draft.lastName.trim(), dateOfBirth: draft.dateOfBirth || null, sex: draft.sex || null, title: draft.title.trim() || null, company: draft.company.trim() || null };
       else patch.org = { legalName: draft.legalName.trim(), organizationNumber: draft.organizationNumber.trim() || null, website: draft.website.trim() || null };
       onSave && onSave(cp.id, patch);
       return;
     }
-    const dto = { type, displayName: displayName.trim() || null, notes: undefined, archived: null, addresses: [], emails: [], phones: [] };
+    const dto = { type, displayName: displayName.trim() || null, notes: draft.notes.trim() || null, archived: null, addresses: [], emails: [], phones: [] };
     if (type === 'Person') dto.person = { firstName: draft.firstName.trim(), lastName: draft.lastName.trim(), dateOfBirth: draft.dateOfBirth || null, sex: draft.sex || null, title: draft.title.trim() || null, company: draft.company.trim() || null };
     else dto.org = { legalName: draft.legalName.trim(), organizationNumber: draft.organizationNumber.trim() || null, website: draft.website.trim() || null };
     onCreate && onCreate(dto);
@@ -708,6 +733,8 @@ const AddContactModal = ({ onClose, onCreate, contact, onSave }) => {
           ? <PersonFields d={draft} set={set} err={err} />
           : <OrgFields d={draft} set={set} err={err} />}
         <Field label="Display name" value={displayName} onChange={setDisplayName} placeholder="Optional override" helper={displayNameHint(type)} maxLength={128} />
+        <NoteField label="Notes" optional maxLength={1024} value={draft.notes} onChange={set('notes')}
+          placeholder={type === 'Person' ? 'How you know them, what they invoice for…' : 'What this organization is to you, billing quirks…'} />
       </div>
     </Modal>
   );
@@ -723,8 +750,10 @@ const Contacts = ({ tweaks = {} }) => {
   const [adding, setAdding] = useState(false);
   const [rows, setRows] = useState(CP_SEED);
   const [sort, setSort] = useState({ key: 'name', dir: 'asc' });
-  const [pageSize, setPageSize] = useState(25);
-  const [page, setPage] = useState(1);
+  // Card-list server paging: "Load N at a time" batch size, fed to InfiniteList.
+  const [batch, setBatch] = useState(25);
+  // The list owns ONE openId — opening a record closes its siblings.
+  const [openId, setOpenId] = useState('c1');
   const [importOpen, setImportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [toast, setToast] = useState(null);
@@ -764,13 +793,14 @@ const Contacts = ({ tweaks = {} }) => {
     return true;
   }), [rows, typeFilter, statusFilter, debouncedQ]);
 
-  useEffect(() => { setPage(1); }, [debouncedQ, typeFilter, statusFilter, sort, pageSize]);
   const totalCount = filtered.length;
-  const paged = useMemo(() => {
-    if (pageSize === 'all') return filtered;
-    const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+  const sortedRows = useMemo(() => {
+    const dir = sort.dir === 'desc' ? -1 : 1;
+    return [...filtered].sort((a, b) => {
+      const va = cpSortVal(a, sort.key), vb = cpSortVal(b, sort.key);
+      return va < vb ? -dir : va > vb ? dir : 0;
+    });
+  }, [filtered, sort]);
 
   const activeCount = rows.filter(c => !c.archived).length;
   const archivedCount = rows.length - activeCount;
@@ -841,7 +871,8 @@ const Contacts = ({ tweaks = {} }) => {
             </div>
             <SortSelect sort={sort} onSort={setSort}
               fields={[{ key: 'name', label: 'Name', type: 'text' }, { key: 'type', label: 'Type', type: 'status' }]} />
-            <PageSizeSelect value={pageSize} onChange={setPageSize} />
+            <PageSizeSelect prefix="Load" suffix="at a time" label="Contacts per batch"
+              value={batch} onChange={setBatch} options={[25, 50, 100]} />
           </div>
         )}
         primary={{ label: 'New contact', icon: 'add', onClick: () => setAdding(true) }}
@@ -856,16 +887,24 @@ const Contacts = ({ tweaks = {} }) => {
 
       {adding && <AddContactModal onClose={() => setAdding(false)} onCreate={createCp} />}
 
-      <Card>
-        <CardBody style={{ padding: 0 }}>
-          <ContactTable
-            contacts={paged}
-            sort={sort}
-            onSortChange={setSort}
-            onSave={onSave}
-            onDelete={onDelete}
-            onContacts={onContacts}
-            onExportRow={exportRow}
+      {rows.length === 0 ? (
+        <EmptyState icon="store" mutedIcon
+          title="No contacts yet"
+          desc="Add the people and organizations money moves to and from."
+          action={<Button variant="filled" color="primary" icon="add" onClick={() => setAdding(true)}>New contact</Button>} />
+      ) : (
+        <div className="acct-list">
+          <InfiniteList
+            items={sortedRows}
+            batchSize={batch}
+            itemKey={(c) => c.id}
+            noun="contacts"
+            renderItem={(c) => (
+              <CpRecordCard c={c}
+                open={openId === c.id}
+                onToggle={(o) => setOpenId(o ? c.id : null)}
+                onSave={onSave} onDelete={onDelete} onContacts={onContacts} onExportRow={exportRow} />
+            )}
             empty={(
               <EmptyState icon="store" mutedIcon
                 title="No contacts match"
@@ -874,12 +913,13 @@ const Contacts = ({ tweaks = {} }) => {
                   ? <Button variant="outlined" icon="close" onClick={clearFilters}>Clear filters</Button>
                   : <Button variant="filled" color="primary" icon="add" onClick={() => setAdding(true)}>New contact</Button>} />
             )}
+            trailing={(
+              <AddRow title="New contact" sub="A person or organization that money moves to or from."
+                onClick={() => setAdding(true)} />
+            )}
           />
-          {totalCount > 0 && (
-            <Pager page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} onPageSizeChange={setPageSize} />
-          )}
-        </CardBody>
-      </Card>
+        </div>
+      )}
       {toast && DSToast && DSToastStack && (
         <DSToastStack>
           <DSToast key={toast.k} severity={toast.severity} duration={4200} onClose={() => setToast(null)} message={toast.message} />
@@ -918,4 +958,4 @@ const cpStyles = {
   countPill: { display: 'inline-flex', alignItems: 'center', gap: 3, font: '500 12.5px/1 var(--font-sans)' },
 };
 
-Object.assign(window, { Contacts, ContactTable, AddContactModal, CpDetail, CP_TYPES });
+Object.assign(window, { Contacts, CpRecordCard, CpTiles, AddContactModal, CP_TYPES });

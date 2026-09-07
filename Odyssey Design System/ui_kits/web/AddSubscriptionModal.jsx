@@ -100,12 +100,9 @@ const AddSubscriptionModal = ({ onClose, onCreate, onSave, subscription = null }
         placeholder="Optional" optional maxLength={128}
         helper="Membership, account, or subscription number — a reference label, not a key." />
 
-      <FieldShell label="Company" htmlFor="sub-new-cp" optional
-        helper="The contact that bills this subscription.">
-        <Combobox id="sub-new-cp" value={draft.contactId}
-          onChange={(v) => set('contactId')(v || '')} options={SUB_CONTACT_OPTIONS()}
-          placeholder="Search contacts…" ariaLabel="Company" clearable />
-      </FieldShell>
+      <ContactSelect label="Company" id="sub-new-cp" optional allowCreate value={draft.contactId}
+        onChange={(v) => set('contactId')(v || '')} options={SUB_CONTACT_OPTIONS()}
+        help="The contact that bills this subscription — add it here if it isn't listed." ariaLabel="Company" />
 
       <FormRow>
         <DateField label="Start date" value={draft.startDate} onChange={set('startDate')}

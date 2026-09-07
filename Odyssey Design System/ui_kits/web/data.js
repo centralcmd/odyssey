@@ -845,6 +845,58 @@ window.OdysseyData.custodianForAccount = (a) => {
 };
 /* Active (non-archived) contacts — the selectable custodian options. */
 window.OdysseyData.activeContacts = () => window.OdysseyData.contacts.filter(c => !c.archived);
+/* Create a contact from any picker (POST /api/contacts — Name + Type only) and
+   register it so every ContactSelect on screen can resolve and offer it. The
+   type is the one the reviewer picked on the create row; nothing is guessed. */
+let __cpSeq = 0;
+window.OdysseyData.createContact = (name, type) => {
+  const clean = String(name || '').trim();
+  if (!clean) return null;
+  const cp = {
+    id: `cp-inline-${++__cpSeq}-${Date.now().toString(36)}`,
+    name: clean, normalizedName: clean.toUpperCase(),
+    type: type || 'Organization', description: null, archived: null,
+  };
+  window.OdysseyData.contacts.push(cp);
+  window.OdysseyData.contactById[cp.id] = cp;
+  return cp;
+};
+/* ---- Tag creation from any picker -------------------------------------------
+   A tag field can only create a tag of the vocabulary it is searching, so the
+   kind IS the store: transaction / journal / task / photo. Each create row
+   states which one it makes, and the new tag is registered in that store's
+   list + id lookup so every picker and read chip resolves it immediately. */
+window.OdysseyData.tagKinds = {
+  transaction: { key: 'transaction', label: 'Transaction tag', icon: 'local_offer', store: 'tags',        byId: 'tagById',        prefix: 't-' },
+  journal:     { key: 'journal',     label: 'Journal tag',     icon: 'menu_book',   store: 'journalTags', byId: 'journalTagById', prefix: 'jt-' },
+  task:        { key: 'task',        label: 'Task tag',        icon: 'checklist',   store: 'taskTags',    byId: 'taskTagById',    prefix: 'kt-' },
+  photo:       { key: 'photo',       label: 'Photo tag',       icon: 'photo',       store: 'photoTags',   byId: 'photoTagById',   prefix: 'pt-' },
+};
+/* The create rows for a tag field: one row, the field's own vocabulary. */
+window.OdysseyData.tagCreateKinds = (kind) => {
+  const k = window.OdysseyData.tagKinds[kind];
+  return k ? [{ key: k.key, label: k.label, icon: k.icon }] : undefined;
+};
+let __tagSeq = 0;
+window.OdysseyData.createTag = (kind, name) => {
+  const D = window.OdysseyData;
+  const k = D.tagKinds[kind];
+  const clean = String(name || '').trim();
+  if (!k || !clean) return null;
+  const tag = {
+    id: `${k.prefix}new-${++__tagSeq}-${Date.now().toString(36)}`,
+    name: clean, normalizedName: clean.toUpperCase(), description: null, archived: null,
+  };
+  if (Array.isArray(D[k.store])) D[k.store].push(tag);
+  if (D[k.byId]) D[k.byId][tag.id] = tag;
+  return { value: tag.id, label: tag.name };
+};
+/* The option a picker selects right after creating — name + its type visuals. */
+window.OdysseyData.contactOption = (cp) => {
+  if (!cp) return null;
+  const m = (window.OdysseyData.contactTypeByKey || {})[cp.type] || {};
+  return { value: cp.id, label: cp.name, icon: m.icon || 'category', iconColor: m.color };
+};
 window.OdysseyData.currencyByCode = Object.fromEntries(window.OdysseyData.currencies.map(c => [c.code, c]));
 
 window.OdysseyHelpers = {
