@@ -28,6 +28,10 @@ public partial class OdsContactSelect
 
     [Parameter] public bool Optional { get; set; }
 
+    /// <summary>
+    /// Marks the field required: the visible <c>*</c> beside the label AND <c>aria-required</c> on the
+    /// input. The marker alone would state the constraint to sighted users only.
+    /// </summary>
     [Parameter] public bool Required { get; set; }
 
     [Parameter] public string Placeholder { get; set; } = "Search contacts…";

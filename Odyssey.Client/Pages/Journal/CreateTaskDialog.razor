@@ -90,7 +90,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        TagCreator.CreateFailed += OnTagCreateFailed;
+        TagCreator.OnCreateFailed = OnTagCreateFailed;
         _editing = Task is not null;
         _draft = Task is not null ? JournalTaskDraft.From(Task, AttachmentUploads) : new JournalTaskDraft();
         _maxUploadMb = (await UploadLimits.GetAsync()).MaxUploadMegabytes;

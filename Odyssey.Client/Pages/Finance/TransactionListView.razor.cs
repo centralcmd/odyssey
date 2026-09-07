@@ -32,9 +32,22 @@ public partial class TransactionListView
     private Guid _editKey;
     private bool _editOpen;
 
+    /// <summary>
+    /// Whether the component is running interactively. The claim load is skipped off-browser, because
+    /// resolving the principal is an HTTP call that has no business running during prerender.
+    /// </summary>
+    /// <remarks>
+    /// A swappable seam for the same reason <c>Settings.InteractiveCheck</c> is one: a bUnit host is
+    /// not a browser either, so a hard <c>OperatingSystem.IsBrowser()</c> would make the permission
+    /// gating — the whole point of this component — untestable. Being <c>static</c> it is
+    /// process-wide, so a test class that moves it must restore it and must not run in parallel with
+    /// another that does (see <c>TransactionLedgerCollection</c>).
+    /// </remarks>
+    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
         var user = await AuthenticationStateProvider.GetUserAsync();

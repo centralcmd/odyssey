@@ -49,8 +49,8 @@ public partial class CreateJournalEntryDialog
 
     protected override async Task OnInitializedAsync()
     {
-        ContactCreator.CreateFailed += OnContactCreateFailed;
-        TagCreator.CreateFailed += OnTagCreateFailed;
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
+        TagCreator.OnCreateFailed = OnTagCreateFailed;
 
         // Ahead of the create-mode early return: both modes show the dropzones.
         _maxUploadMb = (await UploadLimits.GetAsync()).MaxUploadMegabytes;

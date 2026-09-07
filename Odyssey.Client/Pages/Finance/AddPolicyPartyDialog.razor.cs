@@ -77,7 +77,7 @@ public partial class AddPolicyPartyDialog
 
     protected override async Task OnInitializedAsync()
     {
-        ContactCreator.CreateFailed += OnContactCreateFailed;
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
         if (OperatingSystem.IsBrowser())
         {
             var user = await AuthenticationStateProvider.GetUserAsync();

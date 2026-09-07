@@ -71,7 +71,7 @@ public partial class CreateAccountDialog
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
-        ContactCreator.CreateFailed += OnContactCreateFailed;
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
 
         await Task.WhenAll(LoadCurrencies(), LoadContacts());
     }

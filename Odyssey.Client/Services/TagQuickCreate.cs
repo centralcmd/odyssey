@@ -35,9 +35,16 @@ public interface ITagQuickCreate<TTag>
     /// </summary>
     string? Resolve(string? id);
 
-    /// <summary>Fires with a temporary id whose create failed, so the host can drop it from its
-    /// selection and re-render.</summary>
-    event Action<string>? CreateFailed;
+    /// <summary>
+    /// Called with a temporary id whose create failed, so the host can drop it from its options and
+    /// clear a selection that pointed at it.
+    /// </summary>
+    /// <remarks>
+    /// A settable callback rather than an event: the creator is registered <b>transient</b>, so it has
+    /// exactly one owner for its whole life. An event would invite a second subscriber and oblige
+    /// every host to unsubscribe in <c>Dispose</c> — ceremony for a multiplicity that cannot arise.
+    /// </remarks>
+    Action<string>? OnCreateFailed { get; set; }
 }
 
 public sealed class TagQuickCreate<TTag>(ITagsApiClient<TTag> tags, ISnackbar snackbar) : ITagQuickCreate<TTag>
@@ -46,7 +53,7 @@ public sealed class TagQuickCreate<TTag>(ITagsApiClient<TTag> tags, ISnackbar sn
     private readonly Dictionary<string, string> _resolved = new(StringComparer.Ordinal);
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
 
-    public event Action<string>? CreateFailed;
+    public Action<string>? OnCreateFailed { get; set; }
 
     public OdsOption? Begin(string name)
     {
@@ -84,19 +91,20 @@ public sealed class TagQuickCreate<TTag>(ITagsApiClient<TTag> tags, ISnackbar sn
                 return;
             }
 
-            // The picker withholds the create row when a listed option already carries the name, so a
-            // conflict here means an ARCHIVED tag holds it — which the row cannot select and this
-            // cannot un-archive. Say so rather than reporting a bare "create failed".
+            // The journal, task and photo tag services refuse a name an ACTIVE tag already holds;
+            // transaction tags have no such guard. Either way the picker withholds the create row for
+            // a name it is already offering, so a conflict means the name is taken by a tag this field
+            // could not show — say that rather than reporting a bare "create failed".
             var reason = result.Status == System.Net.HttpStatusCode.Conflict
-                ? "an archived tag already uses that name."
+                ? "that name is already taken by a tag this field can't offer."
                 : result.Error;
             snackbar.Add($"Couldn’t create “{name}”: {reason}", Severity.Error);
-            CreateFailed?.Invoke(tempId);
+            OnCreateFailed?.Invoke(tempId);
         }
         catch (Exception ex)
         {
             snackbar.Add($"Couldn’t create “{name}”: {ex.Message}", Severity.Error);
-            CreateFailed?.Invoke(tempId);
+            OnCreateFailed?.Invoke(tempId);
         }
     }
 }

@@ -57,7 +57,7 @@ public partial class AddFileDialog
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
-        ContactCreator.CreateFailed += OnContactCreateFailed;
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
     }
 
     // The picker hands its option back synchronously; the shared creator POSTs behind it and the temp

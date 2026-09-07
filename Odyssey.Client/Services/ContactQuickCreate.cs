@@ -3,8 +3,6 @@ using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
-using System.Net;
-
 namespace Odyssey.Client.Services;
 
 /// <summary>
@@ -22,6 +20,14 @@ namespace Odyssey.Client.Services;
 /// <para>
 /// Registered <b>transient</b>: one creator per dialog, because the temporary ids it hands out are
 /// only meaningful to the surface that is holding them.
+/// </para>
+///
+/// <para>
+/// There is deliberately no duplicate-name reconcile here. <c>ContactService.Create</c> applies no
+/// name-uniqueness rule and <c>Contact.NormalizedName</c> carries a plain (non-unique) index, so
+/// <c>POST /api/contacts</c> cannot answer <c>409</c> for a repeated name — a branch handling one
+/// would be code that has never run. If a uniqueness guard is ever added server-side, linking the
+/// staged option to the existing record by name is the behaviour to add back.
 /// </para>
 /// </summary>
 public interface IContactQuickCreate
@@ -46,9 +52,16 @@ public interface IContactQuickCreate
     /// </summary>
     string? Resolve(string? id);
 
-    /// <summary>Fires with a temporary id whose create failed, so the host can clear a selection that
-    /// pointed at it and re-render.</summary>
-    event Action<string>? CreateFailed;
+    /// <summary>
+    /// Called with a temporary id whose create failed, so the host can drop it from its options and
+    /// clear a selection that pointed at it.
+    /// </summary>
+    /// <remarks>
+    /// A settable callback rather than an event: the creator is registered <b>transient</b>, so it has
+    /// exactly one owner for its whole life. An event would invite a second subscriber and oblige
+    /// every host to unsubscribe in <c>Dispose</c> — ceremony for a multiplicity that cannot arise.
+    /// </remarks>
+    Action<string>? OnCreateFailed { get; set; }
 }
 
 public sealed class ContactQuickCreate(
@@ -64,7 +77,7 @@ public sealed class ContactQuickCreate(
     private readonly Dictionary<string, string> _resolved = new(StringComparer.Ordinal);
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
 
-    public event Action<string>? CreateFailed;
+    public Action<string>? OnCreateFailed { get; set; }
 
     public bool HasPending => _pending.Any(t => !t.IsCompleted);
 
@@ -111,20 +124,6 @@ public sealed class ContactQuickCreate(
                 return;
             }
 
-            // A duplicate name (409) means the contact already exists — link the staged option to the
-            // existing record by name rather than failing the whole form.
-            if (result.Status == HttpStatusCode.Conflict)
-            {
-                var existing = (await referenceData.ContactsAsync())
-                    .FirstOrDefault(c => c.Archived is null
-                        && string.Equals(c.ResolvedDisplayName, name, StringComparison.OrdinalIgnoreCase));
-                if (existing is not null)
-                {
-                    _resolved[tempId] = existing.ContactId.ToString();
-                    return;
-                }
-            }
-
             Fail(tempId, name, result.Error);
         }
         catch (Exception ex)
@@ -136,7 +135,7 @@ public sealed class ContactQuickCreate(
     private void Fail(string tempId, string name, string? reason)
     {
         snackbar.Add($"Couldn’t create “{name}”: {reason}", Severity.Error);
-        CreateFailed?.Invoke(tempId);
+        OnCreateFailed?.Invoke(tempId);
     }
 
     /// <summary>

@@ -65,6 +65,17 @@ public partial class OdsCombobox
     /// <c>aria-invalid</c> on the input and the error outline.</summary>
     [Parameter] public bool Error { get; set; }
 
+    /// <summary>
+    /// Marks the control required, as <c>aria-required</c> on the inner input.
+    /// </summary>
+    /// <remarks>
+    /// Set through JS for the same reason <see cref="AriaDescribedBy"/> is: MudAutocomplete splats
+    /// unmatched attributes onto its wrapper, not the <c>role="combobox"</c> input. MudBlazor's own
+    /// <c>Required</c> is deliberately not used — it would switch on its built-in validation and its
+    /// error styling, which the host's own <see cref="Error"/> already owns.
+    /// </remarks>
+    [Parameter] public bool Required { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
@@ -77,13 +88,20 @@ public partial class OdsCombobox
     // record itself stays the shared OdsOption, which carries no create-kind concept.
     private readonly Dictionary<string, OdsCreateKind> _createRows = new(StringComparer.Ordinal);
 
-    // Wire the input's aria-describedby to the helper id once (MudAutocomplete won't put it there
-    // itself). Idempotent per (InputId, AriaDescribedBy); JS-unavailable environments no-op.
+    // Wire the input's aria-describedby / aria-required once (MudAutocomplete won't put either on the
+    // inner input itself). Idempotent; JS-unavailable environments no-op.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || string.IsNullOrEmpty(InputId) || string.IsNullOrEmpty(AriaDescribedBy))
+        if (!firstRender || string.IsNullOrEmpty(InputId))
             return;
-        try { await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-describedby", AriaDescribedBy); }
+
+        try
+        {
+            if (!string.IsNullOrEmpty(AriaDescribedBy))
+                await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-describedby", AriaDescribedBy);
+            if (Required)
+                await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-required", "true");
+        }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 

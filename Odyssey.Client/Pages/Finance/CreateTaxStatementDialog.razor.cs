@@ -78,7 +78,7 @@ public partial class CreateTaxStatementDialog
 
     protected override async Task OnInitializedAsync()
     {
-        TagCreator.CreateFailed += OnTagCreateFailed;
+        TagCreator.OnCreateFailed = OnTagCreateFailed;
         if (OperatingSystem.IsBrowser())
         {
             var user = await AuthenticationStateProvider.GetUserAsync();

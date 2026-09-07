@@ -116,8 +116,8 @@ public partial class CreateTransactionDialog
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
         _canCreateTag = user.HasPermission(PermissionClaims.TransactionTagsCreate);
-        ContactCreator.CreateFailed += OnContactCreateFailed;
-        TagCreator.CreateFailed += OnTagCreateFailed;
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
+        TagCreator.OnCreateFailed = OnTagCreateFailed;
 
         _currencyCode = UserPreferences.DefaultCurrency ?? string.Empty;
         await Task.WhenAll(LoadAccounts(), LoadTransactionTags(), LoadContacts(), LoadCurrencies());

@@ -460,6 +460,13 @@ public partial class FileAnalysisDialog
         _isImporting = true;
         try
         {
+            // Let every staged inline create land first. A merchant or a category created in the
+            // review is linked to its row against a TEMPORARY id, and BuildImportRequest parses those
+            // ids straight into the request — so importing while a POST is still in flight would post
+            // an id no server row backs. Awaiting resolves each staged create one way or the other:
+            // a success has rewritten the row to the real id, a failure has rolled the row back.
+            await WhenCreatesSettledAsync();
+
             var imported = await FileAnalysis.ImportAsync(_jobId, _session.BuildImportRequest());
             if (!imported.IsSuccess)
             {
@@ -501,7 +508,26 @@ public partial class FileAnalysisDialog
     //
     // POST /api/contacts carries the Name ONLY (clamped/escaped on the server), never the
     // model-derived OrganizationNumber/Description.
-    private async Task CreateContactAsync(FileAnalysisPendingContact pending)
+    /// <summary>
+    /// Every staged create started in this review, so <see cref="ImportAsync"/> can wait for them.
+    /// </summary>
+    /// <remarks>
+    /// The grid raises its create callbacks fire-and-forget — it has to, because the picker hands the
+    /// option back synchronously — so the task is captured here instead. Each entry already handles
+    /// its own failure, so awaiting the set never throws.
+    /// </remarks>
+    private readonly List<Task> _pendingCreates = [];
+
+    private Task WhenCreatesSettledAsync() => Task.WhenAll(_pendingCreates.ToArray());
+
+    private Task CreateContactAsync(FileAnalysisPendingContact pending)
+    {
+        var task = RunCreateContactAsync(pending);
+        _pendingCreates.Add(task);
+        return task;
+    }
+
+    private async Task RunCreateContactAsync(FileAnalysisPendingContact pending)
     {
         var (tempId, name, type) = pending;
         try
@@ -548,7 +574,14 @@ public partial class FileAnalysisDialog
     // ── Inline category-tag create ────────────────────────────────────────────
     // The grid already staged the tag optimistically against a temp id; this is the round trip that
     // reconciles it with the real one or rolls the whole thing back.
-    private async Task CreateTagAsync(FileAnalysisPendingTag pending)
+    private Task CreateTagAsync(FileAnalysisPendingTag pending)
+    {
+        var task = RunCreateTagAsync(pending);
+        _pendingCreates.Add(task);
+        return task;
+    }
+
+    private async Task RunCreateTagAsync(FileAnalysisPendingTag pending)
     {
         var (tempId, name) = pending;
         try

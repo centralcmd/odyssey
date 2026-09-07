@@ -44,7 +44,7 @@ public partial class CreateSubscriptionDialog
 
     protected override async Task OnInitializedAsync()
     {
-        ContactCreator.CreateFailed += OnContactCreateFailed;
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
         if (!OperatingSystem.IsBrowser())
             return;
         var user = await AuthenticationStateProvider.GetUserAsync();

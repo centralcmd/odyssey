@@ -60,21 +60,16 @@
     }
     else
     {
-        <div class="odc-field @(_error is not null ? "error" : "")">
-            <label class="odc-field-label" for="con-party-pick">@Current.Label</label>
+        @* OdsFieldShell owns the label association AND the helper/error ids; the hand-rolled
+           .odc-field markup this replaced had neither, so a screen-reader user never heard the
+           available-count hint or the reason a save was refused. Help and Error are mutually
+           exclusive here, so the error reuses HelpId and one AriaDescribedBy covers both states. *@
+        <OdsFieldShell Label="@Current.Label" HtmlFor="con-party-pick"
+                       Help="@(_error is null ? PickerHelp : null)" Error="@_error">
             <OdsCombobox InputId="con-party-pick" Value="@_value" ValueChanged="OnValueChanged"
-                         Options="Available" Placeholder="@($"Search {Current.Label.ToLowerInvariant()}s…")" Error="_error is not null" />
-            <div class="odc-field-help @(_error is not null ? "error" : "")">
-                @if (_error is not null)
-                {
-                    @_error
-                }
-                else
-                {
-                    @PickerHelp
-                }
-            </div>
-        </div>
+                         Options="Available" Placeholder="@($"Search {Current.Label.ToLowerInvariant()}s…")"
+                         AriaDescribedBy="con-party-pick-help" Error="@(_error is not null)" />
+        </OdsFieldShell>
     }
 </OdsFormDialog>
 
@@ -135,7 +130,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        ContactCreator.CreateFailed += OnContactCreateFailed;
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
         if (!OperatingSystem.IsBrowser())
             return;
         var user = await AuthenticationStateProvider.GetUserAsync();

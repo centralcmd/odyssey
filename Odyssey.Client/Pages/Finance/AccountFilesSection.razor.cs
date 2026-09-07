@@ -189,7 +189,7 @@ public partial class AccountFilesSection
 
         var user = await AuthenticationState.GetUserAsync();
         _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
-        ContactCreator.CreateFailed += OnContactCreateFailed;
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
 
         await LoadResumableMapAsync();
         await LoadAnalysisAvailabilityAsync();

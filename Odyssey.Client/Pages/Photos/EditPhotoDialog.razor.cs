@@ -89,7 +89,7 @@ public partial class EditPhotoDialog
         }
     }
 
-    protected override void OnInitialized() => ContactCreator.CreateFailed += OnPersonCreateFailed;
+    protected override void OnInitialized() => ContactCreator.OnCreateFailed = OnPersonCreateFailed;
 
     // A person tagged on a photo IS a Person contact — staged through the shared creator, and its
     // temp id mapped to the real one on save.
