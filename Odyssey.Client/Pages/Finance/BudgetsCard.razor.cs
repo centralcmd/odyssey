@@ -71,7 +71,6 @@ public partial class BudgetsCard
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canReadTransactions;
-    private bool _canDownloadFiles;
 
     protected override async Task OnInitializedAsync()
     {
@@ -140,7 +139,6 @@ public partial class BudgetsCard
         _canUpdate = user.HasPermission(PermissionClaims.BudgetsUpdate);
         _canDelete = user.HasPermission(PermissionClaims.BudgetsDelete);
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
-        _canDownloadFiles = user.HasPermission(PermissionClaims.FilesRead);
     }
 
     // Server-side fetch (issue #277): name search + status filter + sort applied by the API.

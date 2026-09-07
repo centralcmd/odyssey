@@ -1,7 +1,6 @@
 @using System.Globalization
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
-@inject IClipboardService Clipboard
 @inject IReferenceDataCache ReferenceData
 @inject ITransactionsApiClient Transactions
 @inject IAccountsApiClient Accounts
@@ -125,14 +124,11 @@
         else
         {
             <div class="odc-smarttags-table">
-                @* Account column kept (the watchlist spans every account, not just this one). *@
-                <OdsInlinePager Items="_transactions" Context="pageRows">
-                    <OdsTxnTable Rows="pageRows" Actions="BuildActions">
-                        <RenderDetail Context="t">
-                            <TransactionDetailPanel Transaction="t" CanDownloadFiles="CanDownloadFiles" />
-                        </RenderDetail>
-                    </OdsTxnTable>
-                </OdsInlinePager>
+                @* Account column kept (the watchlist spans every account, not just this one). A row
+                   carries the SAME action menu it does on the Transactions page. *@
+                @* No host notification: this section's count is the number of WATCHED TAGS, which a
+                   transaction write cannot change. *@
+                <TransactionListView Rows="_transactions" OnChanged="LoadTransactionsAsync" />
             </div>
         }
     </ChildContent>

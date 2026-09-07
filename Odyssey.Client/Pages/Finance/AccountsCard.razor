@@ -333,7 +333,7 @@
                                     <AccountTransactionsSection @key="@($"txns:{account.AccountId}")"
                                                                 AccountId="@account.AccountId"
                                                                 Chrome="false"
-                                                                CanDownloadFiles="@_canDownloadFiles" />
+                                                                OnChanged="GetAccounts" />
                                 </div>
                             </div>
                         }
@@ -349,7 +349,6 @@
                                                          Account="account"
                                                          Chrome="false"
                                                          CanWrite="@_canUpdateAccounts"
-                                                         CanDownloadFiles="@_canDownloadFiles"
                                                          FormatMoney="FormatMoney"
                                                          OnCountChanged="@(count => { account.SmartTagCount = count; })" />
                             </div>

@@ -288,50 +288,10 @@ public partial class TransactionsCard
         await ReloadAsync();
     }
 
-    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingTransaction t, OdsRecordActionContext ctx)
-    {
-        var items = new List<OdsMenuItem>();
-
-        items.Add(new OdsMenuItem
-        {
-            Icon = ctx.Expanded ? "close" : "expand_more",
-            Label = ctx.Expanded ? "Collapse" : "View details",
-            OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
-        });
-
-        if (_canUpdate)
-            items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, () => EditClicked(t)) });
-
-        // Status transitions (New · Approved · Flagged) — offered only for the states the row isn't
-        // already in, gated on the update permission.
-        if (_canUpdate)
-        {
-            var statusItems = new List<OdsMenuItem>();
-            if (t.Status != TransactionStatus.Approved)
-                statusItems.Add(new OdsMenuItem { Icon = "check_circle", Label = "Approve", OnClick = EventCallback.Factory.Create(this, () => SetStatus(t, TransactionStatus.Approved)) });
-            if (t.Status != TransactionStatus.Flagged)
-                statusItems.Add(new OdsMenuItem { Icon = "flag", Label = "Flag", OnClick = EventCallback.Factory.Create(this, () => SetStatus(t, TransactionStatus.Flagged)) });
-            if (t.Status != TransactionStatus.New)
-                statusItems.Add(new OdsMenuItem { Icon = "undo", Label = "Reset to New", OnClick = EventCallback.Factory.Create(this, () => SetStatus(t, TransactionStatus.New)) });
-
-            if (statusItems.Count > 0)
-            {
-                items.Add(new OdsMenuItem { Divider = true });
-                items.AddRange(statusItems);
-            }
-        }
-
-        items.Add(new OdsMenuItem { Divider = true });
-        items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyId(t.TransactionId)) });
-
-        if (_canDelete)
-        {
-            items.Add(new OdsMenuItem { Divider = true });
-            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, ctx.Remove) });
-        }
-
-        return items;
-    }
+    // The row menu is shared with the three embedded ledgers (TransactionRowMenu), so a row offers
+    // the same actions wherever it is rendered.
+    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingTransaction t, OdsRecordActionContext ctx) =>
+        TransactionRowMenu.Build(this, t, ctx, _canUpdate, _canDelete, EditClickedAsync, SetStatus, CopyId);
 
     private bool _createOpen;
     private Guid _createKey;
@@ -349,14 +309,15 @@ public partial class TransactionsCard
     private Guid _editTransactionKey;
     private bool _editTransactionOpen;
 
-    private void EditClicked(ExistingTransaction t)
+    private Task EditClickedAsync(ExistingTransaction t)
     {
         if (!_canUpdate)
-            return;
+            return Task.CompletedTask;
 
         _editTransaction = t;
         _editTransactionKey = Guid.NewGuid();
         _editTransactionOpen = true;
+        return Task.CompletedTask;
     }
 
     private async Task HandleDelete(object key)
@@ -378,30 +339,15 @@ public partial class TransactionsCard
         StateHasChanged();
     }
 
-    // Change a transaction's status in place — PUT a full patch mirroring the current record with the
-    // new status, so the ledger's quick Approve / Flag / Reset actions don't require opening the editor.
+    // Change a transaction's status in place — the patch is TransactionRowMenu's, shared with the
+    // embedded ledgers, so the quick Approve / Flag / Reset actions write the same thing everywhere.
     private async Task SetStatus(ExistingTransaction t, TransactionStatus status)
     {
         if (!_canUpdate || t.Status == status)
             return;
 
-        var patch = new NewTransaction
-        {
-            Description = t.Description,
-            Amount = t.Amount,
-            TimeStamp = t.TimeStamp,
-            AccountId = t.AccountId,
-            TransactionTagIds = t.TransactionTags.Select(tag => tag.TransactionTagId).ToList(),
-            ContactId = t.ContactId ?? t.Contact?.ContactId,
-            CurrencyCode = t.CurrencyCode,
-            ExternalId = t.ExternalId,
-            InternalId = t.InternalId,
-            ExtraData = t.ExtraData,
-            Status = status,
-            StatusComment = t.StatusComment,
-        };
-
-        if ((await Transactions.UpdateAsync(t.TransactionId, patch)).Toast(Snackbar, "Update failed", "Transaction updated."))
+        if ((await Transactions.UpdateAsync(t.TransactionId, TransactionRowMenu.StatusPatch(t, status)))
+            .Toast(Snackbar, "Update failed", "Transaction updated."))
             await RefreshAsync();
     }
 

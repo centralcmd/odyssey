@@ -1,0 +1,45 @@
+@using Odyssey.Dtos.Finance
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+@inject ITransactionsApiClient Transactions
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@*
+    TransactionListView — the embedded ledger: an OdsInlinePager over OdsTxnTable, its expanded
+    detail, its row action menu and the edit dialog that menu opens.
+
+    It exists so a transaction row behaves identically wherever it is rendered. The account, budget
+    and smart-tag sections each used to host their own OdsTxnTable and hand it a two-item menu (View
+    details · Copy ID), which made the same row read-only when embedded and fully actionable on the
+    Transactions page — a difference with no reason a user could see. The menu itself comes from
+    TransactionRowMenu, which the Transactions page uses too, so the four surfaces cannot drift.
+
+    The component resolves its own permission claims rather than taking them as parameters: the gates
+    are what decide which items appear, and a host that forgot to pass one would silently render a
+    lesser menu — the exact failure this replaces.
+
+    Writes (status change, delete) are applied here and the host is told to reload through OnChanged,
+    because the host owns the query the rows came from.
+*@
+
+<OdsInlinePager Items="Rows" Context="pageRows">
+    <OdsTxnTable Rows="pageRows"
+                 HideAccount="HideAccount"
+                 Actions="BuildActions"
+                 OnDelete="HandleDeleteAsync">
+        <RenderDetail Context="t">
+            <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" />
+        </RenderDetail>
+    </OdsTxnTable>
+</OdsInlinePager>
+
+@if (_editTransaction is not null)
+{
+    <CreateTransactionDialog @key="_editKey"
+                             @bind-Open="_editOpen"
+                             Transaction="_editTransaction"
+                             CanDownloadFiles="_canDownloadFiles"
+                             CanUploadFiles="_canUploadFiles"
+                             CanDeleteFiles="_canDeleteFiles"
+                             OnSaved="ChangedAsync" />
+}

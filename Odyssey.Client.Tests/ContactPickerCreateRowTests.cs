@@ -28,7 +28,6 @@ namespace Odyssey.Client.Tests;
 /// registries and the payload builder instead.
 /// </para>
 /// </remarks>
-[Collection(PortaledPopoverCollection.Name)]
 public class ContactPickerCreateRowTests : IAsyncLifetime
 {
     // One context per test, torn down with it: several of these render MudBlazor's portaled popover,
@@ -218,8 +217,7 @@ public class ContactPickerCreateRowTests : IAsyncLifetime
         cut.Find("#tms").Click();
         Search(cut, "Nopa");
 
-        var rows = cut.FindAll(".odc-tagms-create");
-        Assert.Equal(2, rows.Count);
+        var rows = CreateRows(cut, 2);
         Assert.Contains("first", rows[0].ClassName!.Split(' '));
         Assert.DoesNotContain("first", rows[1].ClassName!.Split(' '));
 
@@ -240,9 +238,7 @@ public class ContactPickerCreateRowTests : IAsyncLifetime
 
         cut.Find("#tms").Click();
         Search(cut, "Nopa");
-        var rows = cut.FindAll(".odc-tagms-create");
-        Assert.True(rows.Count == 2, cut.Markup);
-        rows[1].Click();
+        CreateRows(cut, 2)[1].Click();
 
         Assert.Equal("Person", picked);
     }
@@ -256,15 +252,27 @@ public class ContactPickerCreateRowTests : IAsyncLifetime
         cut.Find("#tms").Click();
         Search(cut, "Nopa");
 
-        var rows = cut.FindAll(".odc-tagms-create");
-        Assert.True(rows.Count == 1, cut.Markup);
-        Assert.DoesNotContain("odc-tagms-create-kind", rows[0].InnerHtml, StringComparison.Ordinal);
+        var row = CreateRows(cut, 1)[0];
+        Assert.DoesNotContain("odc-tagms-create-kind", row.InnerHtml, StringComparison.Ordinal);
     }
 
-    // Type into the popover's search field. The input is inside MudBlazor's portaled popover, so the
-    // event is dispatched explicitly rather than through Input(), which does not reach it.
+    // Type into the popover's search field, then wait for the rows it produces.
+    //
+    // The input lives in MudBlazor's portaled popover, which is rendered through a section outlet a
+    // beat after the trigger is clicked — so the element has to be WAITED for rather than found, and
+    // the event dispatched explicitly (Input() does not reach it). Finding it too early yields a node
+    // from the outlet's previous render, and the event then lands on a tree nothing is showing: the
+    // search box stays empty and no create row ever appears.
     private static void Search<T>(IRenderedComponent<T> cut, string text) where T : IComponent =>
-        cut.Find(".odc-tagms-search input").TriggerEvent("oninput", new ChangeEventArgs { Value = text });
+        cut.WaitForElement(".odc-tagms-search input")
+            .TriggerEvent("oninput", new ChangeEventArgs { Value = text });
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> CreateRows<T>(
+        IRenderedComponent<T> cut, int expected) where T : IComponent
+    {
+        cut.WaitForAssertion(() => Assert.Equal(expected, cut.FindAll(".odc-tagms-create").Count));
+        return [.. cut.FindAll(".odc-tagms-create")];
+    }
 
     // ── Harnesses ────────────────────────────────────────────────────────────
 

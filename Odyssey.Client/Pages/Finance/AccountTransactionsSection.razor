@@ -1,6 +1,5 @@
 @using Odyssey.Dtos.Finance
 @inject ISnackbar Snackbar
-@inject IClipboardService Clipboard
 @inject NavigationManager NavigationManager
 @inject ITransactionsApiClient Transactions
 
@@ -25,16 +24,10 @@
         }
         else
         {
-            @* The shared design-system ledger, dropping the Account column (one account).
-               Rows expand in place to the read-only detail; editing happens on the
-               Transactions page (the "View all" link). *@
-            <OdsInlinePager Items="_transactions" Context="pageRows">
-                <OdsTxnTable Rows="pageRows" HideAccount="true" Actions="BuildActions">
-                    <RenderDetail Context="t">
-                        <TransactionDetailPanel Transaction="t" CanDownloadFiles="CanDownloadFiles" />
-                    </RenderDetail>
-                </OdsTxnTable>
-            </OdsInlinePager>
+            @* The shared embedded ledger, dropping the Account column (one account). A row carries
+               the SAME action menu it does on the Transactions page — edit, the status transitions
+               and delete included. *@
+            <TransactionListView Rows="_transactions" HideAccount="true" OnChanged="ReloadAsync" />
         }
     </ChildContent>
 </OdsCollapsible>
@@ -48,8 +41,12 @@
     /// </summary>
     [Parameter] public bool Chrome { get; set; } = true;
 
-    /// <summary>Gates the file-download buttons in an expanded row's attached-files detail.</summary>
-    [Parameter] public bool CanDownloadFiles { get; set; }
+    /// <summary>
+    /// Raised after a write applied from a row's action menu — a status change, a delete, or a save
+    /// from the edit dialog. The host's own record carries a transaction count and a rollup derived
+    /// from these rows, so it has to refetch or its header keeps reporting the pre-write number.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
 
     private List<ExistingTransaction> _transactions = [];
     private bool _isLoading;
@@ -69,6 +66,13 @@
             await LoadTransactionsAsync();
     }
 
+    // A row write changes this section's rows AND the host's transaction count, so both reload.
+    private async Task ReloadAsync()
+    {
+        await LoadTransactionsAsync();
+        await OnChanged.InvokeAsync();
+    }
+
     private async Task LoadTransactionsAsync()
     {
         _isLoading = true;
@@ -82,25 +86,4 @@
     {
         NavigationManager.NavigateTo("/transactions");
     }
-
-    // Read-only row menu: expand/collapse the detail + copy the id.
-    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingTransaction t, OdsRecordActionContext ctx) =>
-    [
-        new()
-        {
-            Icon = ctx.Expanded ? "close" : "expand_more",
-            Label = ctx.Expanded ? "Collapse" : "View details",
-            OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
-        },
-        new()
-        {
-            Icon = "fingerprint",
-            TrailingIcon = "content_copy",
-            Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this, () => CopyTransactionId(t.TransactionId)),
-        },
-    ];
-
-    private Task CopyTransactionId(Guid transactionId) =>
-        Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
 }

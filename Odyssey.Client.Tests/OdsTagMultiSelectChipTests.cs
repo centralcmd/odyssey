@@ -27,7 +27,6 @@ namespace Odyssey.Client.Tests;
 /// an id absent from them reads as <c>UnknownLabel</c> — never, in either case, as the raw GUID.
 /// </para>
 /// </remarks>
-[Collection(PortaledPopoverCollection.Name)]
 public class OdsTagMultiSelectChipTests
 {
     private const string KnownId = "11111111-1111-1111-1111-111111111111";
