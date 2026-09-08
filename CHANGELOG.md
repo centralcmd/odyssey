@@ -5,6 +5,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0](https://github.com/centralcmd/odyssey/compare/v0.23.1...v0.24.0) (2026-09-08)
+
+
+### Features
+
+* a picker that can select a contact or a tag can create one ([330c7c8](https://github.com/centralcmd/odyssey/commit/330c7c8d7c449860136b1c914f503694ab89abaa))
+
 ## [0.23.1](https://github.com/centralcmd/odyssey/compare/v0.23.0...v0.23.1) (2026-09-08)
 
 
