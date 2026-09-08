@@ -325,7 +325,7 @@ public class ContractsApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var cp = await context.Contacts.Include(c => c.OrganizationDetails).FirstAsync(c => c.ContactId == contactId);
         Assert.Equal("Acme Corp", cp.OrganizationDetails!.LegalName); // not "HACKED"
-        Assert.Equal("ORG-12345", cp.OrganizationNumber);             // not "EVIL"
+        Assert.Equal("ORG-12345", cp.OrganizationDetails.OrganizationNumber); // not "EVIL"
     }
 
     // ── Cross-claim minimisation (criterion #5) ────────────────────────────────
@@ -622,7 +622,6 @@ public class ContractsApiTests
             ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
             NormalizedName = "acme corp",
             Type = ContactType.Organization,
-            OrganizationNumber = "ORG-12345",
             Notes = "secret contact notes",
             OrganizationDetails = new() { LegalName = "Acme Corp", OrganizationNumber = "ORG-12345" },
         });

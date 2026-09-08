@@ -7,6 +7,13 @@ namespace Odyssey.Context;
 
 [Index(nameof(ContactId))]
 [Index(nameof(CurrencyCode))]
+// The list's dominant shape: filter by account, order by date (TransactionService.ListAsync).
+// Leading with AccountId also satisfies EF's foreign-key index convention, so this replaces the
+// standalone IX_Transactions_AccountId rather than adding alongside it.
+[Index(nameof(AccountId), nameof(TimeStamp))]
+// Status is a list filter and sort key, and GetSummary groups the whole table by it for the page
+// header on every load.
+[Index(nameof(Status))]
 public class Transaction
 {
     [Key]

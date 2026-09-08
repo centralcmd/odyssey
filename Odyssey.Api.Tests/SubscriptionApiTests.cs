@@ -327,7 +327,7 @@ public class SubscriptionApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var contact = await context.Contacts.Include(c => c.OrganizationDetails).FirstAsync(c => c.ContactId == contactId);
         Assert.Equal("Netflix", contact.OrganizationDetails!.LegalName);
-        Assert.Equal("ORG-12345", contact.OrganizationNumber);
+        Assert.Equal("ORG-12345", contact.OrganizationDetails.OrganizationNumber);
     }
 
     // ── Delete (criterion #10) ─────────────────────────────────────────────────
@@ -546,7 +546,6 @@ public class SubscriptionApiTests
             ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
             NormalizedName = "NETFLIX",
             Type = ContactType.Organization,
-            OrganizationNumber = "ORG-12345",
             Notes = "secret contact notes",
             Archived = archived ? DateTime.UtcNow : null,
             OrganizationDetails = new() { LegalName = "Netflix", OrganizationNumber = "ORG-12345" },

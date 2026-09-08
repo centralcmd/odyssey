@@ -601,6 +601,14 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .Property(entry => entry.ExternalUid)
             .UseCollation("utf8mb4_bin");
 
+        // Contact is the vCard case the comment above names, and the only one of the three whose
+        // ExternalUid index is UNIQUE — so without the binary collation two vCards whose UIDs differ
+        // only in case collide: ContactService.FindIdByExternalUid resolves the second onto the first
+        // (import treats it as an update, not a create) and the unique index rejects the distinct UID.
+        modelBuilder.Entity<Contact>()
+            .Property(contact => contact.ExternalUid)
+            .UseCollation("utf8mb4_bin");
+
         // ── Cross-module foreign keys ─────────────────────────────────────────────────────────────
         // These were plain Guid columns for as long as finance and journal lived in separate contexts:
         // EF cannot declare a relationship whose principal is in another model, so the integrity was

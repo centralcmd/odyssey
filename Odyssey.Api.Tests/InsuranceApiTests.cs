@@ -263,7 +263,7 @@ public class InsuranceApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var insurer = await context.Contacts.Include(c => c.OrganizationDetails).FirstAsync(c => c.ContactId == insurerId);
         Assert.Equal("Acme Insurance", insurer.OrganizationDetails!.LegalName);
-        Assert.Equal("ORG-12345", insurer.OrganizationNumber);
+        Assert.Equal("ORG-12345", insurer.OrganizationDetails.OrganizationNumber);
     }
 
     // ── Validation (criterion #4) ──────────────────────────────────────────────
@@ -798,7 +798,6 @@ public class InsuranceApiTests
             ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
             NormalizedName = "acme insurance",
             Type = ContactType.Organization,
-            OrganizationNumber = "ORG-12345",
             Notes = "secret insurer notes",
             Archived = archived ? DateTime.UtcNow : null,
             OrganizationDetails = new() { LegalName = "Acme Insurance", OrganizationNumber = "ORG-12345" },
