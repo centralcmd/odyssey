@@ -11,10 +11,6 @@ namespace Odyssey.Context.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
-                name: "IX_Transactions_AccountId",
-                table: "Transactions");
-
-            migrationBuilder.DropIndex(
                 name: "IX_Photos_Archived",
                 table: "Photos");
 
@@ -47,10 +43,19 @@ namespace Odyssey.Context.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4")
                 .OldAnnotation("MySql:CharSet", "utf8mb4");
 
+            // InnoDB requires an index on a foreign-key column at all times, so this composite has to
+            // exist BEFORE IX_Transactions_AccountId is dropped. EF scaffolds every DropIndex ahead of
+            // every CreateIndex, which fails with "Cannot drop index 'IX_Transactions_AccountId':
+            // needed in a foreign key constraint" (errno 1553) — hence the hand-ordering here.
             migrationBuilder.CreateIndex(
                 name: "IX_Transactions_AccountId_TimeStamp",
                 table: "Transactions",
                 columns: new[] { "AccountId", "TimeStamp" });
+
+            // Now redundant: the composite leads with AccountId, so it satisfies the FK on its own.
+            migrationBuilder.DropIndex(
+                name: "IX_Transactions_AccountId",
+                table: "Transactions");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transactions_Status",
@@ -66,10 +71,6 @@ namespace Odyssey.Context.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Transactions_AccountId_TimeStamp",
-                table: "Transactions");
-
             migrationBuilder.DropIndex(
                 name: "IX_Transactions_Status",
                 table: "Transactions");
@@ -117,10 +118,16 @@ namespace Odyssey.Context.Migrations
                 nullable: true)
                 .Annotation("MySql:CharSet", "utf8mb4");
 
+            // Same InnoDB rule in reverse: restore the single-column index first, so dropping the
+            // composite below never leaves the foreign key unindexed.
             migrationBuilder.CreateIndex(
                 name: "IX_Transactions_AccountId",
                 table: "Transactions",
                 column: "AccountId");
+
+            migrationBuilder.DropIndex(
+                name: "IX_Transactions_AccountId_TimeStamp",
+                table: "Transactions");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Photos_Archived",
