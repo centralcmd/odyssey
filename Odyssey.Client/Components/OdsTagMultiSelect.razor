@@ -7,6 +7,12 @@
     (insurers, insured accounts, insured contacts, beneficiaries). Provide OnCreate to offer an inline
     "Create …" row for a name that matches nothing.
 
+    CreateKinds says WHAT gets created and renders one row per kind with the kind as a muted trailing
+    icon + label — `Create "AA" · Transaction tag` states the record it will make instead of leaving
+    the user to infer it. A field only ever offers the vocabulary it searches (a journal-tag field
+    cannot mint a transaction tag); where the members are contacts rather than tags, the rows are the
+    contact types, so the created record still carries a real type.
+
     Controlled: Value is the selected ids; ValueChanged fires the full next set on every add / remove
     (bind via @@bind-Value). Built on MudMenu so the popover is portaled out of any overflow:hidden
     ancestor (modal body / card / collapsible) and flips above when there isn't room below.
@@ -166,10 +172,27 @@
                             }
                             @if (ShowCreate)
                             {
-                                <button type="button" class="odc-tagms-create" @onclick="Create">
-                                    <span class="material-icons" aria-hidden="true">add</span>
-                                    <span>@CreateRowLabel</span>
-                                </button>
+                                @* One row per kind — the rule + gap belong to the FIRST, so a stack of
+                                   typed create rows reads as one group under the options. *@
+                                @for (var k = 0; k < CreateRows.Count; k++)
+                                {
+                                    var kind = CreateRows[k];
+                                    <button type="button" class="odc-tagms-create @(k == 0 ? "first" : null)"
+                                            @onclick="@(() => Create(kind))">
+                                        <span class="material-icons" aria-hidden="true">add</span>
+                                        <span>@CreateRowLabel</span>
+                                        @if (kind is not null)
+                                        {
+                                            <span class="odc-tagms-create-kind">
+                                                @if (!string.IsNullOrEmpty(kind.Icon))
+                                                {
+                                                    <span class="material-icons" aria-hidden="true">@kind.Icon</span>
+                                                }
+                                                <span>@kind.Label</span>
+                                            </span>
+                                        }
+                                    </button>
+                                }
                             }
                             @if (!Filtered.Any() && !ShowCreate)
                             {

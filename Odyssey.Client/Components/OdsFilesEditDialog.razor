@@ -8,6 +8,11 @@
     grows the document-validity fields — a Valid from / Valid to period, the
     issue date, and the issuing contact.
 
+    "Issued by" is the canonical OdsContactSelect like every other contact field,
+    so it searches, shows each candidate's type glyph, and — with OnCreateContact
+    (gated on contacts.create) — adds a missing issuer inline rather than sending
+    the user to Contacts mid-edit.
+
     This replaced the in-row OdsFilesEditPanel: editing runs in the standard
     modal every other create/edit surface uses, so the files table no longer
     needs an expandable row to host it. Commits an OdsFileEdit patch through
@@ -31,7 +36,9 @@
             <div class="odc-rec-edit-err">“Valid to” can’t be before “Valid from”.</div>
         }
         <OdsDatePicker Label="Issued" @bind-Value="_issuedAt" />
-        <OdsSelect Label="Issued by" @bind-Value="_issuedBy" Options="Issuers!" Placeholder="Select issuer…" />
+        <OdsContactSelect Label="Issued by" Optional @bind-Value="_issuedBy"
+                          Options="_issuerOptions"
+                          AllowCreate="@(OnCreateContact is not null)" OnCreate="CreateContactOption" />
     }
 </OdsFormDialog>
 
@@ -49,6 +56,13 @@
     /// <summary>Issuing-contact options. When non-null the document-validity fields are shown.</summary>
     [Parameter] public IReadOnlyList<OdsOption>? Issuers { get; set; }
 
+    /// <summary>
+    /// Create a contact from the Issued-by picker's inline create rows and return the option to
+    /// select: <c>(name, kind) =&gt; option</c>. Supplying it turns the create rows on — gate it on
+    /// the host's <c>contacts.create</c> claim.
+    /// </summary>
+    [Parameter] public Func<string, string, OdsOption?>? OnCreateContact { get; set; }
+
     /// <summary>Commit the edit patch (an <see cref="OdsFileEdit"/>).</summary>
     [Parameter] public EventCallback<object?> OnSave { get; set; }
 
@@ -61,6 +75,22 @@
     private bool _touched;
 
     private bool ShowValidity => Issuers is not null;
+
+    // Issuers created here, ahead of the host's option refresh, so the picker keeps resolving the
+    // value it was just handed.
+    private readonly List<OdsOption> _created = [];
+
+    private IReadOnlyList<OdsOption> _issuerOptions => _created.Count == 0
+        ? Issuers ?? []
+        : [.. _created.Where(c => (Issuers ?? []).All(o => o.Value != c.Value)), .. Issuers ?? []];
+
+    private OdsOption? CreateContactOption(string text, string kind)
+    {
+        var option = OnCreateContact?.Invoke(text, kind);
+        if (option is not null)
+            _created.Add(option);
+        return option;
+    }
 
     private bool _valid => !string.IsNullOrWhiteSpace(_name);
 

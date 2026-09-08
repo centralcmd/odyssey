@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.Client.Components;
+using Odyssey.Client.Authorization;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -26,6 +28,46 @@ public partial class CreateSubscriptionDialog
     private bool IsEdit => Subscription is not null;
 
     private string CompanyFieldId => IsEdit ? $"sub-edit-company-{Subscription!.SubscriptionId}" : "sub-new-company";
+
+    // The picker's own option list: the host's Companies plus anything created from the create rows,
+    // which the host's list won't carry until it re-fetches.
+    private readonly List<OdsOption> _createdCompanies = [];
+    private bool _canCreateContact;
+
+    private IReadOnlyList<OdsOption> _companyOptions => _createdCompanies.Count == 0
+        ? Companies
+        : [.. _createdCompanies.Where(c => Companies.All(o => o.Value != c.Value)), .. Companies];
+
+    private string CompanyHelp => _canCreateContact
+        ? "The company that bills this subscription — add it here if it isn't listed."
+        : "The company that bills this subscription, if tracked.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
+        if (!OperatingSystem.IsBrowser())
+            return;
+        var user = await AuthenticationStateProvider.GetUserAsync();
+        _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
+    }
+
+    // Contacts created here are appended to the host's list rather than replacing it, so a host
+    // refresh that drops them still leaves the selected value resolvable.
+    private OdsOption? CreateContactOption(string text, string kind)
+    {
+        var option = ContactCreator.Begin(text, kind);
+        if (option is not null)
+            _createdCompanies.Add(option);
+        return option;
+    }
+
+    private void OnContactCreateFailed(string tempId)
+    {
+        _createdCompanies.RemoveAll(o => o.Value == tempId);
+        if (_contactId == tempId)
+            _contactId = null;
+        StateHasChanged();
+    }
 
     private string? _name;
     private string? _externalId;
@@ -125,7 +167,10 @@ public partial class CreateSubscriptionDialog
             return false;
         }
 
-        var contactId = Guid.TryParse(_contactId, out var cp) ? (Guid?)cp : null;
+        // Let any in-flight inline contact create land, then map its temp id to the real one — a
+        // failed create resolves to null, so a bogus id is never posted.
+        await ContactCreator.WhenSettledAsync();
+        var contactId = Guid.TryParse(ContactCreator.Resolve(_contactId), out var cp) ? (Guid?)cp : null;
         var startDate = DateOnly.FromDateTime(_startDate!.Value);
         var endDate = _endDate is { } e ? DateOnly.FromDateTime(e) : (DateOnly?)null;
         var currencyCode = _currencyCode.Trim().ToUpperInvariant();

@@ -1,17 +1,22 @@
 @using Odyssey.Client.Authorization
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
+@using Microsoft.AspNetCore.Components.Authorization
+@using Odyssey.Client.Services
+@using Odyssey.Dtos.Authorization
 @attribute [Authorize(Policy = PermissionClaims.ContractsUpdate)]
 @inject IContractsApiClient Contracts
 @inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IContactQuickCreate ContactCreator
 
 @*
     AddContractPartyDialog — add a party to a contract (issue #174 §3 step 3, §7 POST …/parties).
     The accessible two-step picker the spec mandates (frontend B2):
       1. choose the party KIND — Account / Contact
-      2. pick the specific record from a type-to-filter OdsCombobox whose options are PRE-LOADED for
-         the chosen kind (no in-widget async fetch). The inaccessible CreateTransactionDialog popover
-         is deliberately NOT used.
+      2. pick the specific record. The Contact kind uses the canonical OdsContactSelect, create rows
+         and all; the Account kind keeps the plain OdsCombobox over accounts. Either way the options
+         are PRE-LOADED for the chosen kind (no in-widget async fetch).
     On save the party is created from a SCALAR ID only (accountId xor contactId — the XOR +
     anti-over-posting invariant, §6/§10). Already-linked targets are filtered out so the same record
     can't be attached twice (the §9 duplicate guard, pre-empted).
@@ -45,25 +50,27 @@
         </div>
     </div>
 
-    <div class="odc-field @(_error is not null ? "error" : "")">
-        <label class="odc-field-label" for="con-party-pick">@Current.Label</label>
-        <OdsCombobox InputId="con-party-pick" Value="@_value" ValueChanged="OnValueChanged"
-                     Options="Available" Placeholder="@($"Search {Current.Label.ToLowerInvariant()}s…")" Error="_error is not null" />
-        <div class="odc-field-help @(_error is not null ? "error" : "")">
-            @if (_error is not null)
-            {
-                @_error
-            }
-            else if (Available.Count > 0)
-            {
-                @($"{Available.Count} {Current.Label.ToLowerInvariant()}{(Available.Count == 1 ? "" : "s")} available to link.")
-            }
-            else
-            {
-                @($"Every {Current.Label.ToLowerInvariant()} is already linked to this contract.")
-            }
-        </div>
-    </div>
+    @if (IsContactKind)
+    {
+        <OdsContactSelect Id="con-party-pick" Label="@Current.Label"
+                          Value="@_value" ValueChanged="OnValueChanged"
+                          Options="Available" Placeholder="Search contacts…"
+                          Help="@(_error is null ? PickerHelp : null)" Error="@_error"
+                          AllowCreate="@_canCreateContact" OnCreate="CreateContactOption" />
+    }
+    else
+    {
+        @* OdsFieldShell owns the label association AND the helper/error ids; the hand-rolled
+           .odc-field markup this replaced had neither, so a screen-reader user never heard the
+           available-count hint or the reason a save was refused. Help and Error are mutually
+           exclusive here, so the error reuses HelpId and one AriaDescribedBy covers both states. *@
+        <OdsFieldShell Label="@Current.Label" HtmlFor="con-party-pick"
+                       Help="@(_error is null ? PickerHelp : null)" Error="@_error">
+            <OdsCombobox InputId="con-party-pick" Value="@_value" ValueChanged="OnValueChanged"
+                         Options="Available" Placeholder="@($"Search {Current.Label.ToLowerInvariant()}s…")"
+                         AriaDescribedBy="con-party-pick-help" Error="@(_error is not null)" />
+        </OdsFieldShell>
+    }
 </OdsFormDialog>
 
 @code {
@@ -97,11 +104,56 @@
 
     private KindDef Current => Kinds.First(k => k.Kind == _kind);
 
+    /// <summary>The Contact kind links a CONTACT — the one that gets the canonical picker.</summary>
+    private bool IsContactKind => _kind == ContractPartyKind.Institution;
+
+    private bool _canCreateContact;
+
+    // Contacts created inline, ahead of the host's option-cache refresh, so the picker can still
+    // resolve the value it was just handed.
+    private readonly List<OdsOption> _createdContacts = [];
+
     private IReadOnlyList<OdsOption> AllForKind => _kind switch
     {
         ContractPartyKind.Account => Accounts,
-        _ => Institutions,
+        _ => _createdContacts.Count == 0
+            ? Institutions
+            : [.. _createdContacts.Where(c => Institutions.All(o => o.Value != c.Value)), .. Institutions],
     };
+
+    /// <summary>The picker's helper line: how many records are still linkable, so "nothing to choose"
+    /// reads as a stated fact rather than as an empty list.</summary>
+    private string PickerHelp => Available.Count > 0
+        ? $"{Available.Count} {Current.Label.ToLowerInvariant()}{(Available.Count == 1 ? "" : "s")} available to link."
+        : $"Every {Current.Label.ToLowerInvariant()} is already linked to this contract"
+          + (IsContactKind && _canCreateContact ? " — or add a new one below." : ".");
+
+    protected override async Task OnInitializedAsync()
+    {
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
+        if (!OperatingSystem.IsBrowser())
+            return;
+        var user = await AuthenticationStateProvider.GetUserAsync();
+        _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
+    }
+
+    // The picker hands its option back synchronously; the shared creator POSTs behind it and the temp
+    // id is mapped at save. A failed create drops the option and the selection with it.
+    private OdsOption? CreateContactOption(string text, string kind)
+    {
+        var option = ContactCreator.Begin(text, kind);
+        if (option is not null)
+            _createdContacts.Add(option);
+        return option;
+    }
+
+    private void OnContactCreateFailed(string tempId)
+    {
+        _createdContacts.RemoveAll(o => o.Value == tempId);
+        if (_value == tempId)
+            _value = null;
+        StateHasChanged();
+    }
 
     // Ids already linked to this contract for the chosen kind, so the picker offers only not-yet-linked.
     private HashSet<string> LinkedForKind => _kind switch
@@ -150,7 +202,13 @@
 
     private async Task<bool> SaveAsync()
     {
-        if (!Guid.TryParse(_value, out var id))
+        // Let any in-flight inline contact create land, then map the staged id to the real one; a
+        // create that failed resolves to null and reads as "nothing selected" rather than posting an
+        // id no server issued.
+        if (IsContactKind)
+            await ContactCreator.WhenSettledAsync();
+
+        if (!Guid.TryParse(IsContactKind ? ContactCreator.Resolve(_value) : _value, out var id))
         {
             _error = $"Select {(Current.Label[0] is 'I' or 'A' or 'E' or 'O' or 'U' ? "an" : "a")} {Current.Label.ToLowerInvariant()} to link.";
             return false;

@@ -311,7 +311,7 @@
                         <div class="acct-section">
                             <OdsSectionDivider Label="Files"
                                                Meta="@($"{account.FileCount} file{(account.FileCount == 1 ? "" : "s")}")" />
-                            <div class="acct-table-frame">
+                            <div class="acct-table-frame odc-scroll">
                                 <AccountFilesSection @key="@($"{account.AccountId}:{_filesRefreshToken}")"
                                                      AccountId="@account.AccountId"
                                                      AccountName="@account.Name"
@@ -329,11 +329,11 @@
                             <div class="acct-section">
                                 <OdsSectionDivider Label="Transactions"
                                                    Meta="@($"{account.TransactionCount} transaction{(account.TransactionCount == 1 ? "" : "s")}")" />
-                                <div class="acct-txn-table acct-table-frame">
+                                <div class="acct-txn-table acct-table-frame odc-scroll">
                                     <AccountTransactionsSection @key="@($"txns:{account.AccountId}")"
                                                                 AccountId="@account.AccountId"
                                                                 Chrome="false"
-                                                                CanDownloadFiles="@_canDownloadFiles" />
+                                                                OnChanged="GetAccounts" />
                                 </div>
                             </div>
                         }
@@ -349,7 +349,6 @@
                                                          Account="account"
                                                          Chrome="false"
                                                          CanWrite="@_canUpdateAccounts"
-                                                         CanDownloadFiles="@_canDownloadFiles"
                                                          FormatMoney="FormatMoney"
                                                          OnCountChanged="@(count => { account.SmartTagCount = count; })" />
                             </div>

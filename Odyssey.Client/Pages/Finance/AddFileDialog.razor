@@ -1,8 +1,13 @@
 @using Odyssey.Dtos.Finance
+@using Microsoft.AspNetCore.Components.Authorization
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Authorization
 @inject IFilesApiClient Files
 @inject ISnackbar Snackbar
 @inject IReferenceDataCache ReferenceData
 @inject IUploadLimitsCache UploadLimits
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IContactQuickCreate ContactCreator
 
 @*
     AddFileDialog — upload documents and attach them to an account. Uses the shared OdsFileUpload
@@ -66,9 +71,10 @@
                                   ValueChanged="@(v => Patch(ctx, f => f.ValidTo = v))" />
                     <OdsDateField Label="Issued" Value="ctx.File.IssuedAt"
                                   ValueChanged="@(v => Patch(ctx, f => f.IssuedAt = v))" />
-                    <OdsSelect Label="Issued by" Value="@ctx.File.IssuedBy" Placeholder="Select issuer…"
-                               Options="_issuerOptions"
-                               ValueChanged="@(v => Patch(ctx, f => f.IssuedBy = v))" />
+                    <OdsContactSelect Label="Issued by" Optional Value="@ctx.File.IssuedBy"
+                                      Options="_issuerOptions"
+                                      AllowCreate="@_canCreateContact" OnCreate="CreateContactOption"
+                                      ValueChanged="@(v => Patch(ctx, f => f.IssuedBy = v))" />
                 </div>
                 @if (RangeBad(ctx.File))
                 {

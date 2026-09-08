@@ -1,15 +1,19 @@
 @*
     EditPhotoDialog — the photo metadata editor (Odyssey Design System · Photos · edit).
-    Title, date/time taken, caption, location + coordinates, tags, people (existing Person
-    contacts — never created here, spec §9), and album membership. Loads the full photo
-    on open; PUTs UpdatePhoto on save (preserving the current archived/favourite state).
-    Creating new tags is done on the Photo Tags page; extraction still auto-creates on add.
+    Title, date/time taken, caption, location + coordinates, tags, people, and album
+    membership. Loads the full photo on open; PUTs UpdatePhoto on save (preserving the
+    current archived/favourite state).
+
+    Both member pickers can create, and their create rows name what they make: Tags mints a
+    PhotoTag, and People — who ARE Person contacts — mints a Person contact, rather than
+    dead-ending on someone who isn't in Contacts yet.
 *@
 @inject IPhotosApiClient Photos
 @inject IPhotoTagsApiClient PhotoTags
 @inject IFilesApiClient Files
 @inject ISnackbar Snackbar
 @inject ITagsApiClient<ExistingPhotoTag> PhotoTagWrites
+@inject IContactQuickCreate ContactCreator
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" Icon="edit"
                Title="Edit details" Subtitle="@_photo?.FileName"
@@ -41,11 +45,17 @@
                                EmptyText="No matching album. Create albums on the Albums page." />
             <OdsTagMultiSelect Label="Tags" Value="_tags" ValueChanged="v => _tags = v" Options="_tagOpts"
                                Placeholder="No tags" AddLabel="Add tag"
-                               OnCreate="@(CanCreateTags ? CreateTagOption : null)" />
-            <OdsTagMultiSelect Label="People" Value="_people" ValueChanged="v => _people = v" Options="PeopleOptions"
+                               OnCreate="@(CanCreateTags ? CreateTagOption : null)"
+                               CreateKinds="OdsTypeRegistries.TagCreateKinds.Photo" />
+            @* People ARE Person contacts, so the create row makes one and tags it. One kind only —
+               a photo's people can never be organizations. *@
+            <OdsTagMultiSelect Label="People" Value="_people" ValueChanged="v => _people = v" Options="_peopleOpts"
                                Placeholder="No one tagged" AddLabel="Tag a person" Noun="person" NounPlural="people"
-                               SearchLabel="Search people" SearchPlaceholder="Search people…"
-                               EmptyText="No matching person. People come from your Person contacts." />
+                               SearchLabel="Search people"
+                               SearchPlaceholder="@(CanCreateContacts ? "Search or add a person…" : "Search people…")"
+                               OnCreate="@(CanCreateContacts ? CreatePersonOption : null)"
+                               CreateLabel="Add" CreateKinds="_personCreateKinds"
+                               EmptyText="@(CanCreateContacts ? "No matching person — type to add one." : "No matching person. People come from your Person contacts.")" />
             <OdsField Label="Caption" @bind-Value="_caption" Multiline="true" Rows="2" MaxLength="2000"
                       Placeholder="Write a caption…" />
             <OdsField Label="Location" @bind-Value="_location" Icon="place" MaxLength="256"

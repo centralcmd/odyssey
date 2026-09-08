@@ -1,4 +1,6 @@
 @page "/contacts"
+@using System.Globalization
+@using Odyssey.Dtos.Journal
 @using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 @using Odyssey.Client.Authorization
@@ -49,118 +51,114 @@
                 <OdsContactTypeMultiSelect Label="Type" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged" Class="ph-select" />
                 <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingContact" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
-                <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Contacts per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
             </div>
         </SearchContent>
     </PageHeader>
 
-    @{
-        var columns = new List<OdsRecordColumn<ExistingContact>>
-        {
-            new()
-            {
-                Key = "name", HeaderText = "Name", Sortable = true,
-                SortValue = c => c.ResolvedDisplayName.ToLowerInvariant(),
-                Cell = (c, ctx) => @<span class="d-inline-flex align-center" style="gap:8px;">
-                    @c.ResolvedDisplayName
-                    @if (!string.IsNullOrWhiteSpace(c.DisplayName))
-                    {
-                        <span class="material-icons odc-rec-muted" aria-hidden="true" title="Display name overridden" style="font-size:15px;">badge</span>
-                    }
-                    @if (ctx.JustSaved) { <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip> }
-                </span>
-            },
-            new()
-            {
-                Key = "type", HeaderText = "Type", Sortable = true, SortType = OdsSortType.Status,
-                SortValue = c => (int)c.Type,
-                Cell = (c, ctx) => @<OdsChip Tone="OdsChipTone.Outline" Icon="@ContactTypeMeta.Icon(c.Type)">@c.Type</OdsChip>
-            },
-            new()
-            {
-                Key = "contact", HeaderText = "Contact", CellClass = "odc-rec-muted",
-                Cell = (c, ctx) => @<text>
-                    @{
-                        var addr = c.Addresses.Count; var em = c.EmailAddresses.Count; var ph = c.PhoneNumbers.Count;
-                    }
-                    @if (addr + em + ph == 0)
-                    {
-                        <span class="odc-rec-muted">—</span>
-                    }
-                    else
-                    {
-                        <span class="d-inline-flex align-center" style="gap:10px;color:var(--mud-palette-text-secondary);">
-                            @if (addr > 0) { <span class="d-inline-flex align-center" style="gap:3px;"><span class="material-icons" aria-hidden="true" style="font-size:14px;">location_on</span>@addr</span> }
-                            @if (em > 0) { <span class="d-inline-flex align-center" style="gap:3px;"><span class="material-icons" aria-hidden="true" style="font-size:14px;">mail</span>@em</span> }
-                            @if (ph > 0) { <span class="d-inline-flex align-center" style="gap:3px;"><span class="material-icons" aria-hidden="true" style="font-size:14px;">call</span>@ph</span> }
-                        </span>
-                    }
-                </text>
-            },
-            new()
-            {
-                Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
-                SortValue = c => c.Archived is null ? 0 : 1,
-                Cell = (c, ctx) => @<text>
-                    @if (c.Archived is not null)
-                    {
-                        <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
-                    }
-                    else
-                    {
-                        <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
-                    }
-                </text>
-            },
-        };
-    }
-
-    <MudCard Outlined="true">
-        <OdsRecordTable TRow="ExistingContact"
-                        AriaLabel="Contacts"
-                        Rows="@_contacts"
-                        Loading="_isLoading"
-                        Refetching="_refetching"
-                        Error="_loadError"
-                        OnRetry="GetContacts"
-                        HasFilters="_hasFilters"
-                        OnClearFilters="ClearFilters"
-                        Noun="contacts"
-                        EmptyIcon="store"
-                        EmptyDescription="Add the people and organizations money moves to and from."
-                        ServerSort="true"
-                        RowKey="@(c => (object)c.ContactId)"
-                        Columns="@columns"
-                        DefaultSort="@DefaultSort"
-                        Sort="_sort"
-                        SortChanged="OnSortChanged"
-                        Actions="BuildActions"
-                        OnDelete="HandleDelete">
-            <Leading Context="c">
+    <div class="acct-list">
+        <OdsInfiniteList TItem="ExistingContact" Items="_contacts" BatchSize="_batch"
+                         ItemKey="@(c => (object)c.ContactId)" Noun="contacts"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="GetContacts"
+                         HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                         EmptyIcon="store"
+                         EmptyDescription="Add the people and organizations money moves to and from.">
+            <RenderItem Context="c">
                 @{
+                    var archived = c.Archived is not null;
                     var typeMeta = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
+
+                    @* The meta line: type · the role line · the primary way to reach them. The three
+                       collections share one slot in priority order — email, else phone, else address —
+                       because the card is a summary, and their full sets are the counts and the body. *@
+                    var meta = new List<RenderFragment?>
+                    {
+                        IconMeta(typeMeta.Icon, typeMeta.Label),
+                        RoleMeta(c),
+                        ReachMeta(c),
+                    };
+
+                    @* Counts are the body's table of contents: same glyphs, same order as the contact
+                       information below. A collection with nothing in it contributes no count. *@
+                    var counts = ContactCounts(c);
                 }
-                <OdsAvatar Icon="@typeMeta.Icon" Bg="@typeMeta.Soft" Fg="@typeMeta.Color" />
-            </Leading>
-            <RenderDetail Context="c">
-                <ContactDetailPanel Contact="c" CanEdit="_canUpdate" OnChanged="RefreshContactAsync"
-                                         AddRequest="@(_addRequest is { } r && r.Id == c.ContactId ? (r.Kind, r.Nonce) : ((string, Guid)?)null)"
-                                         OnAddConsumed="@(() => _addRequest = null)" />
-            </RenderDetail>
+                @* One accent per record, taken from the contact's TYPE — the header mark and every
+                   tile icon chip in the body resolve from it. *@
+                <OdsRecordCard Id="@($"cp-{c.ContactId}")"
+                               Icon="@typeMeta.Icon"
+                               Accent="@typeMeta.Color"
+                               AccentSoft="@typeMeta.Soft"
+                               Name="@c.ResolvedDisplayName"
+                               Meta="meta"
+                               Counts="counts"
+                               Dimmed="archived"
+                               Open="@(_openId == c.ContactId)"
+                               OnToggle="@(open => ToggleExpand(c.ContactId, open))">
+
+                    <Chips>
+                        @if (archived)
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
+                        }
+                        else
+                        {
+                            <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(c.DisplayName))
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Icon="badge">Display name</OdsChip>
+                        }
+                    </Chips>
+
+                    <Actions>
+                        <OdsMenu Items="BuildActions(c)" AriaLabel="@($"Actions for {c.ResolvedDisplayName}")" />
+                    </Actions>
+
+                    <Details>
+                        @* The record's FULL field set as tiles — including what the collapsed header
+                           already shows: at tile scale each value arrives with its own label, so the
+                           header's meta line and a labelled Job title tile read as two different
+                           things. Person and Organization contribute their own sets (they are
+                           mutually exclusive); everything else is the base contact. *@
+                        <ContactInfoTiles Contact="c" />
+                    </Details>
+
+                    <Content>
+                        @* Prose is not a field: notes go in one wide tile that wraps across the grid. *@
+                        <OdsInfoTileGrid>
+                            <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true"
+                                         ValueVariant="OdsInfoTileVariant.Text"
+                                         Tone="@(string.IsNullOrWhiteSpace(c.Notes) ? OdsInfoTileTone.Muted : OdsInfoTileTone.Default)">
+                                <Value>@(string.IsNullOrWhiteSpace(c.Notes) ? "No notes" : c.Notes)</Value>
+                            </OdsInfoTile>
+                        </OdsInfoTileGrid>
+                    </Content>
+
+                    <Sections>
+                        <OdsSectionDivider Label="Contact information" Meta="@MethodCountLabel(c)" />
+                        <ContactDetailPanel Contact="c" CanEdit="_canUpdate" OnChanged="RefreshContactAsync"
+                                            AddRequest="@(_addRequest is { } r && r.Id == c.ContactId ? (r.Kind, r.Nonce) : ((string, Guid)?)null)"
+                                            OnAddConsumed="@(() => _addRequest = null)" />
+                    </Sections>
+                </OdsRecordCard>
+            </RenderItem>
             <CreateAction>
                 @if (_canCreate)
                 {
                     <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New contact</OdsButton>
                 }
             </CreateAction>
-        </OdsRecordTable>
-        @if (_totalCount > 0)
-        {
-            <OdsPager Page="_page" PageChanged="OnPageChanged"
-                      PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
-                      TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
-        }
-    </MudCard>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New contact"
+                               Sub="A person or organization that money moves to or from."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
 </MudStack>
 
 <ContactImportDialog @bind-Open="_importOpen" OnChanged="OnImportedAsync" />
@@ -188,4 +186,68 @@
                                  Blockers="_blockedLinks"
                                  CanUpdateInsurance="_canUpdateInsurance"
                                  OnDetachAndDelete="DetachAndDeleteAsync" />
+}
+
+@code {
+    // Inline render fragments are Razor syntax, so these cannot live in the code-behind.
+
+    // A meta entry with its own leading glyph. One span, so it becomes the .odc-record-metaitem's only
+    // child and picks up the meta line's alignment.
+    private RenderFragment IconMeta(string icon, string text) =>
+        @<span class="cp-sub-meta-item">
+            <span class="material-icons" aria-hidden="true">@icon</span><span>@text</span>
+        </span>;
+
+    // The role line: what a person does (title · company), or what identifies an organization
+    // (its number, else its site). Null when the contact carries neither — the card drops the entry
+    // rather than leaving a stray separator.
+    private RenderFragment? RoleMeta(ExistingContact c)
+    {
+        if (c.Type == ContactType.Person && c.PersonDetails is { } person)
+        {
+            var role = string.Join(" · ", new[] { person.Title, person.Company }.Where(v => !string.IsNullOrWhiteSpace(v)));
+            return string.IsNullOrWhiteSpace(role) ? null : IconMeta("work", role);
+        }
+
+        var org = c.OrganizationDetails;
+        var identifier = !string.IsNullOrWhiteSpace(org?.OrganizationNumber) ? org!.OrganizationNumber : org?.Website;
+        return string.IsNullOrWhiteSpace(identifier) ? null : IconMeta("pin", identifier!);
+    }
+
+    // The primary way to reach them — email, else phone, else address. One slot, in priority order:
+    // the card is a summary, and the full sets are the counts and the body.
+    private RenderFragment? ReachMeta(ExistingContact c)
+    {
+        if (Primary(c.EmailAddresses, e => e.IsPrimary) is { } email)
+            return IconMeta("mail", email.Value);
+        if (Primary(c.PhoneNumbers, p => p.IsPrimary) is { } phone)
+            return IconMeta("call", phone.Value);
+        if (Primary(c.Addresses, a => a.IsPrimary) is { } address)
+            return IconMeta("location_on", string.Join(", ", new[] { address.Line1, address.City }.Where(v => !string.IsNullOrWhiteSpace(v))));
+        return null;
+    }
+
+    // The flagged primary, else the first — a collection with no flag still has a member to show.
+    private static T? Primary<T>(IReadOnlyList<T> items, Func<T, bool> isPrimary) where T : class =>
+        items.FirstOrDefault(isPrimary) ?? items.FirstOrDefault();
+
+    // The header counts, in the same order and with the same glyphs as the contact-information
+    // section below. A collection with nothing in it contributes no count.
+    private static IReadOnlyList<OdsRecordCount> ContactCounts(ExistingContact c) =>
+    [
+        .. new (string Icon, int Value, string Label)[]
+        {
+            ("location_on", c.Addresses.Count, "Addresses"),
+            ("mail", c.EmailAddresses.Count, "Emails"),
+            ("call", c.PhoneNumbers.Count, "Phone numbers"),
+        }
+        .Where(k => k.Value > 0)
+        .Select(k => new OdsRecordCount(k.Icon, k.Value.ToString(CultureInfo.CurrentCulture), k.Label)),
+    ];
+
+    private static string MethodCountLabel(ExistingContact c)
+    {
+        var total = c.Addresses.Count + c.EmailAddresses.Count + c.PhoneNumbers.Count;
+        return $"{total} {(total == 1 ? "entry" : "entries")}";
+    }
 }

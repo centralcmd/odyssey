@@ -37,10 +37,18 @@ else
 }
 <OdsField Label="Display name" @bind-Value="Draft.DisplayName" Placeholder="Optional override"
           Help="@DisplayNameHint" MaxLength="128" />
+@* Notes belong to the contact itself, not to either field set — so the dialog edits them here rather
+   than leaving a persisted value reachable only through the API. *@
+<OdsNoteField Label="Notes" Optional="true" @bind-Value="Draft.Notes" MaxLength="1024" Rows="3"
+              Placeholder="@NotesPlaceholder" />
 
 @code {
     [Parameter, EditorRequired] public ContactDraft Draft { get; set; } = default!;
     [Parameter] public IReadOnlyDictionary<string, string> FieldErrors { get; set; } = new Dictionary<string, string>();
+
+    private string NotesPlaceholder => Draft.Type == ContactType.Person
+        ? "How you know them, what they invoice for…"
+        : "What this organization is to you, billing quirks…";
 
     private string DisplayNameHint => Draft.Type == ContactType.Person
         ? "Defaults to \"First Last\" if left blank"

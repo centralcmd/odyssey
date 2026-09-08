@@ -116,6 +116,13 @@ public sealed class FileAnalysisSession
     /// </summary>
     public bool CanCreateContact { get; set; }
 
+    /// <summary>
+    /// Whether the reviewer holds <c>transactions.tags.create</c>. Same gate, same reason: a category
+    /// the statement names may not exist yet, and sending the reviewer to the Tags page mid-review
+    /// loses the review — but a reviewer who would meet a 403 is never shown the row.
+    /// </summary>
+    public bool CanCreateTag { get; set; }
+
     // ── Vocabulary ────────────────────────────────────────────────────────────
     private readonly List<ExistingContact> contacts = [];
     private readonly List<ExistingTransactionTag> tags = [];
@@ -132,6 +139,12 @@ public sealed class FileAnalysisSession
 
     /// <summary>Contacts created inline during this review, so their indicator reads "Created here".</summary>
     private readonly HashSet<Guid> createdContactIds = [];
+
+    /// <summary>Transaction tags created inline during this review.</summary>
+    private readonly HashSet<Guid> createdTagIds = [];
+
+    /// <summary>Matches <c>TagWrite.MaxNameLength</c> — a longer typed name is clamped, not refused.</summary>
+    public const int MaxTagNameLength = 64;
 
     /// <summary>The number of contact + tag names that would be sent for matching (consent + progress copy).</summary>
     public int VocabularyCount => contacts.Count + tags.Count;
@@ -151,7 +164,7 @@ public sealed class FileAnalysisSession
     {
         contacts.Clear();
         contacts.AddRange(loaded.Where(c => c.Archived is null).OrderBy(c => c.ResolvedDisplayName));
-        ContactOptions = [.. contacts.Select(c => ContactOption(c.ContactId, c.ResolvedDisplayName))];
+        ContactOptions = [.. contacts.Select(c => ContactOption(c.ContactId, c.ResolvedDisplayName, c.Type))];
     }
 
     public void SetTags(IEnumerable<ExistingTransactionTag> loaded)
@@ -174,8 +187,14 @@ public sealed class FileAnalysisSession
     public IReadOnlyList<OdsOption> CurrencyPickerOptions(string current) =>
         [.. CurrencyOptions(current).Select(OdsOption.From)];
 
-    private static OdsOption ContactOption(Guid id, string name) =>
-        new(id.ToString(), name) { Icon = "storefront" };
+    // Every contact is selectable — a payment can be to a person as easily as to a company — and each
+    // option carries its OWN type glyph + colour from the registry, so the list stops reading as
+    // merchants only.
+    private static OdsOption ContactOption(Guid id, string name, ContactType type)
+    {
+        var meta = OdsTypeRegistries.ContactTypeOf(type.ToString());
+        return new OdsOption(id.ToString(), name) { Icon = meta.Icon, IconColor = meta.Color };
+    }
 
     private string TagName(Guid id) => tags.FirstOrDefault(t => t.TransactionTagId == id)?.Name ?? id.ToString();
 
@@ -465,7 +484,7 @@ public sealed class FileAnalysisSession
     /// then calls <see cref="ReconcileCreatedContact"/> or <see cref="RollbackCreatedContact"/>.
     /// Returns the staged option, or null when the typed text is blank.
     /// </summary>
-    public OdsOption? BeginCreateContact(FileAnalysisRow row, string? text, out Guid tempId)
+    public OdsOption? BeginCreateContact(FileAnalysisRow row, string? text, ContactType type, out Guid tempId)
     {
         tempId = Guid.Empty;
         var name = (text ?? string.Empty).Trim();
@@ -476,7 +495,7 @@ public sealed class FileAnalysisSession
 
         tempId = Guid.NewGuid();
         createdContactIds.Add(tempId);
-        var option = ContactOption(tempId, name);
+        var option = ContactOption(tempId, name, type);
         ContactOptions = [.. ContactOptions, option];
         contacts.Add(new ExistingContact
         {
@@ -484,7 +503,7 @@ public sealed class FileAnalysisSession
             ExternalUid = $"urn:uuid:{tempId}",
             ResolvedDisplayName = name,
             NormalizedName = name.ToUpperInvariant(),
-            Type = ContactType.Organization,
+            Type = type,
         });
 
         row.ContactId = tempId;
@@ -495,6 +514,65 @@ public sealed class FileAnalysisSession
         return option;
     }
 
+    /// <summary>
+    /// Stages an optimistic inline TAG create and adds it to the row's selection, so a category the
+    /// statement names but the vocabulary lacks doesn't send the reviewer to the Tags page — which
+    /// would lose the review. The caller POSTs and then reconciles or rolls back.
+    /// </summary>
+    public OdsOption? BeginCreateTag(FileAnalysisRow row, string? text, out Guid tempId)
+    {
+        tempId = Guid.Empty;
+        var name = (text ?? string.Empty).Trim();
+        if (name.Length == 0)
+            return null;
+        if (name.Length > MaxTagNameLength)
+            name = name[..MaxTagNameLength];
+
+        tempId = Guid.NewGuid();
+        createdTagIds.Add(tempId);
+        var option = new OdsOption(tempId.ToString(), name);
+        TagOptions = [.. TagOptions, option];
+        tags.Add(new ExistingTransactionTag { TransactionTagId = tempId, Name = name, Archived = null });
+
+        SetCategory(row, [.. row.TagIds, tempId.ToString()]);
+        return option;
+    }
+
+    /// <summary>Swaps a staged tag's temp id for the server's real id everywhere it landed.</summary>
+    public void ReconcileCreatedTag(Guid tempId, Guid realId, string name)
+    {
+        createdTagIds.Remove(tempId);
+        createdTagIds.Add(realId);
+
+        var tag = tags.FirstOrDefault(t => t.TransactionTagId == tempId);
+        if (tag is not null)
+            tag.TransactionTagId = realId;
+
+        TagOptions = [.. TagOptions.Select(o => o.Value == tempId.ToString() ? new OdsOption(realId.ToString(), name) : o)];
+
+        foreach (var row in Rows)
+        {
+            if (row.TagIds.Contains(tempId.ToString()))
+                SetCategory(row, [.. row.TagIds.Select(id => id == tempId.ToString() ? realId.ToString() : id)]);
+        }
+    }
+
+    /// <summary>
+    /// Undoes a staged tag the server rejected: the option disappears and every row that had it
+    /// selected drops it, so the import never posts an id no server issued.
+    /// </summary>
+    public void RollbackCreatedTag(Guid tempId)
+    {
+        createdTagIds.Remove(tempId);
+        tags.RemoveAll(t => t.TransactionTagId == tempId);
+        TagOptions = [.. TagOptions.Where(o => o.Value != tempId.ToString())];
+        foreach (var row in Rows)
+        {
+            if (row.TagIds.Contains(tempId.ToString()))
+                SetCategory(row, [.. row.TagIds.Where(id => id != tempId.ToString())]);
+        }
+    }
+
     /// <summary>Swaps the optimistic temp id for the server's real id everywhere it landed.</summary>
     public void ReconcileCreatedContact(Guid tempId, Guid realId, string name)
     {
@@ -502,10 +580,11 @@ public sealed class FileAnalysisSession
         createdContactIds.Add(realId);
 
         var contact = contacts.FirstOrDefault(c => c.ContactId == tempId);
+        var type = contact?.Type ?? ContactType.Organization;
         if (contact is not null)
             contact.ContactId = realId;
 
-        ContactOptions = [.. ContactOptions.Select(o => o.Value == tempId.ToString() ? ContactOption(realId, name) : o)];
+        ContactOptions = [.. ContactOptions.Select(o => o.Value == tempId.ToString() ? ContactOption(realId, name, type) : o)];
 
         foreach (var row in Rows.Where(r => r.ContactId == tempId))
             row.ContactId = realId;

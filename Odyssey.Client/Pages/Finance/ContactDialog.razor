@@ -1,8 +1,9 @@
 @*
     Create / edit dialog for a contact (Odyssey Design System · Contacts AddContactModal).
     Create mode shows the Type selector; edit mode locks Type behind a chip ("can't be changed after
-    creation") and prefills the fields. Both edit the DisplayName override + the Person/Organization
-    sub-fields — contacts are managed separately in the detail panel.
+    creation") and prefills the fields. Both edit the DisplayName override, the Notes, and the
+    Person/Organization sub-fields — the contact METHODS (addresses, emails, phone numbers) are managed
+    separately on the record card.
 *@
 @using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
@@ -66,8 +67,15 @@
         if (!Enum.TryParse<ContactType>(value, out var type) || type == _draft.Type)
             return;
 
-        // Switching Type discards the previously-visible field set (§3).
-        _draft = new ContactDraft { Type = type, DisplayName = _draft.DisplayName };
+        // Switching Type discards the previously-visible field set (§3). Display name and notes are
+        // the contact's own, not either set's, so they survive the switch.
+        _draft = new ContactDraft
+        {
+            Type = type,
+            DisplayName = _draft.DisplayName,
+            Notes = _draft.Notes,
+            RelationshipType = _draft.RelationshipType,
+        };
         _errors = new();
     }
 

@@ -1,0 +1,131 @@
+@*
+    ContactInfoTiles — the expanded contact card's field set (Odyssey Design System · Contacts CpTiles).
+
+    The record's FULL field set as InfoTiles — including what the collapsed header already shows: at
+    tile scale each value arrives with its own label, so the header's meta line and a labelled "Job
+    title" tile read as two different things rather than as a repetition.
+
+    Person and Organization contribute their own sets (they are mutually exclusive); everything else
+    is the base contact. Notes is NOT here — prose is not a field, so the card puts it in its own wide
+    content tile.
+*@
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Journal
+
+<OdsInfoTileGrid>
+    <OdsInfoTile Icon="badge" Label="Display name" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true"
+                 Foot="@OdsInfoTile.Caption(string.IsNullOrWhiteSpace(Contact.DisplayName) ? "computed from the name fields" : "override")">
+        <Value>@Dash(Contact.ResolvedDisplayName)</Value>
+    </OdsInfoTile>
+
+    @* No per-tile icon colour: the grid inherits the card's accent, which IS this contact's type colour. *@
+    <OdsInfoTile Icon="@_typeMeta.Icon" Label="Type" ValueVariant="OdsInfoTileVariant.Text"
+                 Foot="@OdsInfoTile.Caption("fixed after creation")">
+        <Value>@_typeMeta.Label</Value>
+    </OdsInfoTile>
+
+    @if (Contact.Type == ContactType.Person && Contact.PersonDetails is { } person)
+    {
+        <OdsInfoTile Icon="person" Label="First name" ValueVariant="OdsInfoTileVariant.Text">
+            <Value>@Dash(person.FirstName)</Value>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="person" Label="Last name" ValueVariant="OdsInfoTileVariant.Text">
+            <Value>@Dash(person.LastName)</Value>
+        </OdsInfoTile>
+        @if (person.DateOfBirth is { } dob)
+        {
+            <OdsInfoTile Icon="cake" Label="Date of birth" ValueVariant="OdsInfoTileVariant.Sm">
+                <Value>@LongDate(dob)</Value>
+            </OdsInfoTile>
+        }
+        @if (person.Sex is { } sex)
+        {
+            <OdsInfoTile Icon="wc" Label="Sex" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@sex</Value>
+            </OdsInfoTile>
+        }
+        @if (!string.IsNullOrWhiteSpace(person.Title))
+        {
+            <OdsInfoTile Icon="work" Label="Job title" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@person.Title</Value>
+            </OdsInfoTile>
+        }
+        @if (!string.IsNullOrWhiteSpace(person.Company))
+        {
+            <OdsInfoTile Icon="corporate_fare" Label="Company" ValueVariant="OdsInfoTileVariant.Text"
+                         Foot="@OdsInfoTile.Caption("free text — not a linked contact")">
+                <Value>@person.Company</Value>
+            </OdsInfoTile>
+        }
+    }
+    else if (Contact.Type == ContactType.Organization && Contact.OrganizationDetails is { } org)
+    {
+        <OdsInfoTile Icon="corporate_fare" Label="Legal name" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+            <Value>@Dash(org.LegalName)</Value>
+        </OdsInfoTile>
+        @if (!string.IsNullOrWhiteSpace(org.OrganizationNumber))
+        {
+            <OdsInfoTile Icon="pin" Label="Organization number">
+                <Value>@org.OrganizationNumber</Value>
+            </OdsInfoTile>
+        }
+        @if (!string.IsNullOrWhiteSpace(org.Website))
+        {
+            <OdsInfoTile Icon="link" Label="Website" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                <Value>
+                    @if (WebsiteHref(org.Website) is { } href)
+                    {
+                        <a href="@href" target="_blank" rel="noopener noreferrer">@org.Website</a>
+                    }
+                    else
+                    {
+                        @org.Website
+                    }
+                </Value>
+            </OdsInfoTile>
+        }
+    }
+
+    <OdsInfoTile Icon="@(IsArchived ? "inventory_2" : "task_alt")" Label="Status"
+                 ValueVariant="OdsInfoTileVariant.Text"
+                 Tone="@(IsArchived ? OdsInfoTileTone.Muted : OdsInfoTileTone.Income)"
+                 Foot="@OdsInfoTile.Caption(IsArchived ? $"since {ShortDateTime(Contact.Archived!.Value)}" : "in the default list")">
+        <Value>@(IsArchived ? "Archived" : "Active")</Value>
+    </OdsInfoTile>
+
+    <OdsInfoTile Icon="schedule" Label="Created" ValueVariant="OdsInfoTileVariant.Sm">
+        <Value>@ShortDateTime(Contact.CreatedAt)</Value>
+    </OdsInfoTile>
+
+    <OdsInfoTile Icon="update" Label="Updated" ValueVariant="OdsInfoTileVariant.Sm"
+                 Foot="@OdsInfoTile.Caption("bumped by any address, email or phone change")">
+        <Value>@ShortDateTime(Contact.UpdatedAt)</Value>
+    </OdsInfoTile>
+</OdsInfoTileGrid>
+
+@code {
+    [Parameter, EditorRequired] public ExistingContact Contact { get; set; } = default!;
+
+    private OdsTypeOption _typeMeta = OdsTypeRegistries.ContactTypeOf(null);
+
+    private bool IsArchived => Contact.Archived is not null;
+
+    protected override void OnParametersSet() =>
+        _typeMeta = OdsTypeRegistries.ContactTypeOf(Contact.Type.ToString());
+
+    private static string Dash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+
+    private static string LongDate(DateTime value) => value.ToString("MMM dd, yyyy");
+
+    private static string ShortDateTime(DateTime value) =>
+        value.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt");
+
+    // Only an absolute http(s) URL becomes a link — anything else renders as the stored text, so a
+    // stored "example.com" can never resolve against the app's own origin.
+    private static string? WebsiteHref(string? website) =>
+        !string.IsNullOrWhiteSpace(website)
+        && Uri.TryCreate(website.Trim(), UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            ? uri.ToString()
+            : null;
+}

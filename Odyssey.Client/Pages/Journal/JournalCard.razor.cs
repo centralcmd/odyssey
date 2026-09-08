@@ -61,6 +61,7 @@ public partial class JournalCard
     private bool _canDelete;
     private bool _canReadFiles;
     private bool _canReadContacts;
+    private bool _canCreateContacts;
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "journal-page";
@@ -134,6 +135,7 @@ public partial class JournalCard
         _canDelete = user.HasPermission(PermissionClaims.JournalDelete);
         _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
+        _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
         _canCreatePhotoTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
@@ -158,16 +160,7 @@ public partial class JournalCard
             return;
         var contacts = await ReferenceData.ContactsAsync();
         _contactById = contacts.ToDictionary(c => c.ContactId);
-        _contactOptions =
-        [
-            .. contacts.Where(c => c.Archived is null)
-                .OrderBy(c => c.ResolvedDisplayName, StringComparer.CurrentCultureIgnoreCase)
-                .Select(c =>
-                {
-                    var meta = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
-                    return new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName) { Icon = meta.Icon, IconColor = meta.Color };
-                }),
-        ];
+        _contactOptions = OdsContactOptions.Active(contacts);
     }
 
     // The server's ArchivalStatus filter is Active XOR Archived — there is no "all". So the toolbar's
@@ -503,12 +496,8 @@ public partial class JournalCard
         _photoAlbumOptions = [.. albums.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
 
         // Active Person contacts for the people picker — reuse the entry's already-loaded set.
-        _photoPeopleOptions =
-        [
-            .. _contactById.Values
-                .Where(c => c.Type == ContactType.Person && c.Archived is null)
-                .Select(c => new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName)),
-        ];
+        _photoPeopleOptions = OdsContactOptions.Active(
+            _contactById.Values.Where(c => c.Type == ContactType.Person));
 
         // Set only after the fetches succeed, so a transient failure retries on the next open.
         _photoRefsLoaded = true;

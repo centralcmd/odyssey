@@ -1,0 +1,80 @@
+@*
+    OdsContactSelect — THE contact picker (Odyssey Design System · components/ContactSelect).
+
+    The one control every field that links a record to a contact uses: the transaction counterparty,
+    a file's "Issued by", a subscription's Company, the Analyze-file Merchant cell, the insured
+    contact / insurer / beneficiary roles on a policy, the Contact kind of a contract party. It
+    replaces the plain select-of-names each of those surfaces used to hand-roll, so every contact
+    field searches, shows each candidate's ContactType glyph in its registry colour, and — where the
+    caller allows it — creates a missing contact inline.
+
+    It is NOT a new widget: it wraps OdsCombobox (typeahead, full keyboard, accessible name,
+    keyboard-operable clear) in the standard label / help / error field chrome, the same way
+    OdsCustodianSelect does for the account ↔ custodian link.
+
+    Options are built from ACTIVE contacts only — an archived contact must not be linkable — while a
+    value already pointing at an archived contact stays resolvable so the trigger keeps showing its
+    name. A caller that already holds display options (the party dialogs, which pre-filter to the
+    records still linkable in a role) passes Options instead of Contacts.
+
+    Inline create: with AllowCreate (gate it on the caller's contacts.create claim), the popover
+    offers ONE create row per contact type — a contact is a person or a company and the two are
+    mutually exclusive — and OnCreate(name, kind) returns the created option so it is selected in the
+    same gesture. A picker that can select a contact can add one: reaching a dead end because the
+    contact doesn't exist yet is what sends people to another screen mid-task.
+
+    Bare drops the label / help chrome for a control that sits in a table cell or inside a caller's
+    own OdsFieldShell; it then names itself with AriaLabel (defaulting to Label).
+*@
+
+@if (Bare)
+{
+    @Control
+}
+else
+{
+    <div class="@FieldClass">
+        <label class="odc-field-label" for="@_inputId">
+            @Label
+            @if (Required)
+            {
+                <span class="odc-field-req" aria-hidden="true">*</span>
+            }
+            else if (Optional)
+            {
+                <span class="odc-field-opt">Optional</span>
+            }
+        </label>
+
+        @Control
+
+        @* Both regions are ALWAYS mounted (empty when idle) so a later text change is announced — a
+           region created together with its text usually isn't. At most one carries text at a time;
+           the wrapper keeps them out of the field's flex gap so an empty region adds no space. *@
+        <div class="odc-field-msgs">
+            <div class="odc-field-help" id="@_statusId" role="status" aria-live="polite">@StatusMessage</div>
+            <div class="odc-field-help error" id="@_alertId" role="alert">@AlertMessage</div>
+        </div>
+    </div>
+}
+
+@code {
+    // Razor syntax, so it cannot live in the code-behind: the same control markup for both the bare
+    // (table-cell) and the chromed form-field rendering, so the two can never drift apart.
+    private RenderFragment Control =>
+        @<OdsCombobox Value="@Value"
+                      ValueChanged="OnValueChanged"
+                      Options="_options"
+                      Placeholder="@Placeholder"
+                      Disabled="@PickerDisabled"
+                      Loading="@Loading"
+                      EmptyText="@EffectiveEmptyText"
+                      InputId="@_inputId"
+                      AriaLabel="@BareAriaLabel"
+                      AriaDescribedBy="@(Bare ? null : _describedBy)"
+                      Required="@Required"
+                      Error="@HasError"
+                      OnCreate="@(CanCreate ? HandleCreate : null)"
+                      CreateLabel="@CreateLabel"
+                      CreateKinds="@(CanCreate ? EffectiveCreateKinds : null)" />;
+}

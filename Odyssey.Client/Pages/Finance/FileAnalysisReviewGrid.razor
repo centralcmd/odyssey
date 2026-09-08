@@ -86,17 +86,23 @@
                                    @onchange="@(e => row.Description = e.Value?.ToString() ?? string.Empty)" aria-label="Description" />
                         </div>
 
-                        <!-- Merchant → ContactId (OdsCombobox + match indicator) -->
+                        <!-- Merchant → ContactId (OdsContactSelect + match indicator) -->
                         <div class="fan-cell">
                             <div class="fan-matchcell">
-                                <OdsCombobox Value="@(row.ContactId?.ToString())"
-                                             ValueChanged="@(v => Session.SelectContact(row, v))"
-                                             Options="Session.ContactOptions"
-                                             Placeholder="@(string.IsNullOrEmpty(row.Merchant) ? "Search contacts…" : row.Merchant)"
-                                             OnCreate="@(Session.CanCreateContact ? (text => BeginCreateContact(row, text)) : null)"
-                                             CreateLabel="Create"
-                                             InputId="@MerchantInputId(row)" AriaLabel="Merchant"
-                                             Class="odc-combo" />
+                                @* The canonical contact picker, bare for the grid cell. Create is offered
+                                   ONCE PER CONTACT TYPE, so a created merchant carries a real type
+                                   instead of a guessed one. *@
+                                <OdsContactSelect Bare Label="Merchant"
+                                                  Value="@(row.ContactId?.ToString())"
+                                                  ValueChanged="@(v => Session.SelectContact(row, v))"
+                                                  Options="Session.ContactOptions"
+                                                  Placeholder="@(string.IsNullOrEmpty(row.Merchant) ? "Search contacts…" : row.Merchant)"
+                                                  AllowCreate="@Session.CanCreateContact"
+                                                  OnCreate="@((text, kind) => BeginCreateContact(row, text, kind))"
+                                                  CreateLabel="Create"
+                                                  Id="@MerchantInputId(row)"
+                                                  EmptyText="@(Session.CanCreateContact ? "No matches — type to create" : "No matches")"
+                                                  Class="odc-combo" />
                                 @if (FileAnalysisSession.MerchantState(row) == OdsMatchState.Suggestion && row.MerchantSuggestion is not null)
                                 {
                                     <OdsMatchIndicator State="OdsMatchState.Suggestion"
@@ -119,12 +125,17 @@
                         <!-- Category → TransactionTagIds (a candidate may carry several) + match indicator -->
                         <div class="fan-cell">
                             <div class="fan-matchcell">
+                                @* The same picker as the transaction form, create row included: a category
+                                   the statement names may not exist yet, and sending the reviewer to the
+                                   Tags page mid-review loses the review. *@
                                 <OdsTagMultiSelect Value="@row.TagIds"
                                                    ValueChanged="@(ids => FileAnalysisSession.SetCategory(row, ids))"
                                                    Options="Session.TagOptions"
                                                    AddLabel="Tag"
                                                    AriaLabel="Category tags"
                                                    Id="@CategoryControlId(row)"
+                                                   OnCreate="@(Session.CanCreateTag ? ((text, kind) => BeginCreateTag(row, text)) : null)"
+                                                   CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
                                                    Placeholder="@(string.IsNullOrWhiteSpace(row.CategoryHint) ? "Set tags" : $"{row.CategoryHint} · set tags")" />
                                 @if (FileAnalysisSession.CategoryState(row) == OdsMatchState.Suggestion && row.CatSuggestion is not null)
                                 {

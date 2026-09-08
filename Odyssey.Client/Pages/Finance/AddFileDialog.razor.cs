@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Application;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -38,6 +40,7 @@ public partial class AddFileDialog
     private readonly HashSet<string> _metaOpen = [];
 
     private IReadOnlyList<OdsOption> _issuerOptions = [];
+    private bool _canCreateContact;
 
     // Prefetched rather than read at validation time: OnFilesChanged is a synchronous handler, and the
     // cap is admin-editable (issue #421 Wave 4). Seeded with the shipped fallback so a dialog that
@@ -50,9 +53,29 @@ public partial class AddFileDialog
             return;
         _uploadLimits = await UploadLimits.GetAsync();
         var contacts = await ReferenceData.ContactsAsync();
-        _issuerOptions = [.. contacts
-            .Where(c => c.Archived is null)
-            .Select(c => new OdsOption(c.ContactId.ToString(), c.ResolvedDisplayName))];
+        _issuerOptions = [.. contacts.Where(c => c.Archived is null).Select(OdsContactOptions.From)];
+
+        var user = await AuthenticationStateProvider.GetUserAsync();
+        _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
+        ContactCreator.OnCreateFailed = OnContactCreateFailed;
+    }
+
+    // The picker hands its option back synchronously; the shared creator POSTs behind it and the temp
+    // id is mapped when the upload is submitted.
+    private OdsOption? CreateContactOption(string text, string kind)
+    {
+        var option = ContactCreator.Begin(text, kind);
+        if (option is not null)
+            _issuerOptions = [.. _issuerOptions, option];
+        return option;
+    }
+
+    private void OnContactCreateFailed(string tempId)
+    {
+        _issuerOptions = [.. _issuerOptions.Where(o => o.Value != tempId)];
+        foreach (var f in _files.Where(f => f.IssuedBy == tempId))
+            f.IssuedBy = null;
+        StateHasChanged();
     }
 
     private Task CancelClicked() => OpenChanged.InvokeAsync(false);
@@ -116,6 +139,9 @@ public partial class AddFileDialog
         if (_files.Count == 0 || _isUploading)
             return;
 
+        // Let any in-flight inline contact creates land so the real issuer ids are posted.
+        await ContactCreator.WhenSettledAsync();
+
         if (_files.Any(RangeBad))
         {
             Snackbar.Add("A file’s “Valid to” can’t be before its “Valid from”.", Severity.Warning);
@@ -162,7 +188,9 @@ public partial class AddFileDialog
         if (!string.IsNullOrEmpty(finalName) && finalName != item.Source!.Name)
             await Files.UpdateMetadataAsync(result.Id, null, finalName);
 
-        var issuedBy = Guid.TryParse(item.IssuedBy, out var id) ? id : (Guid?)null;
+        // A temp id from an inline create maps to the id the server issued; a create that failed maps
+        // to null, so a bogus issuer is never posted.
+        var issuedBy = Guid.TryParse(ContactCreator.Resolve(item.IssuedBy), out var id) ? id : (Guid?)null;
         await Files.AttachToAccountAsync(AccountId, result.Id, TypeOf(item),
             item.ValidFrom, item.ValidTo, item.IssuedAt, issuedBy);
     }

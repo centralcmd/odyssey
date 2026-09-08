@@ -187,5 +187,6 @@
                              OpenChanged="OnEditOpenChanged"
                              Kinds="@(Kinds ?? OdsTypeRegistries.AccountFileOptions)"
                              Issuers="Issuers"
+                             OnCreateContact="OnCreateContact"
                              OnSave="@(patch => CommitEditAsync(file, patch))" />;
 }

@@ -42,6 +42,13 @@ public partial class OdsFilesTable
     [Parameter] public IReadOnlyList<OdsOption>? Issuers { get; set; }
 
     /// <summary>
+    /// Create a contact from the default Edit dialog's Issued-by picker and return the option to
+    /// select. Supplying it turns its inline create rows on — gate it on the host's
+    /// <c>contacts.create</c> claim.
+    /// </summary>
+    [Parameter] public Func<string, string, OdsOption?>? OnCreateContact { get; set; }
+
+    /// <summary>
     /// Append the read-only document-validity columns (Valid from · Valid to · Issued · Issued by,
     /// the last resolved through <see cref="IssuerFor"/>). Set on surfaces that track document
     /// validity — account files — and leave off on transaction attachments and the flat Files page.

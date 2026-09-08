@@ -98,6 +98,131 @@ public class FileAnalysisSessionTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    //  Inline CATEGORY-TAG create → reconcile / rollback
+    //
+    //  The twin of the merchant flow, and it needs its own coverage for the same
+    //  reason: the row's tag ids go to the import endpoint as parsed GUIDs, so a
+    //  staged id that is never reconciled or rolled back is an id no server row
+    //  backs.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Begin_create_tag_stages_the_option_the_tag_and_adds_it_to_the_row()
+    {
+        var session = SeededSession(out var row);
+
+        var option = session.BeginCreateTag(row, "  Groceries  ", out var tempId);
+
+        Assert.NotNull(option);
+        Assert.NotEqual(Guid.Empty, tempId);
+        Assert.Equal("Groceries", option!.Label); // trimmed
+        Assert.Contains(session.TagOptions, o => o.Value == tempId.ToString());
+        Assert.Contains(tempId.ToString(), row.TagIds);
+    }
+
+    [Fact]
+    public void Begin_create_tag_ignores_a_blank_name()
+    {
+        var session = SeededSession(out var row);
+
+        Assert.Null(session.BeginCreateTag(row, "   ", out var tempId));
+        Assert.Equal(Guid.Empty, tempId);
+        Assert.Empty(row.TagIds);
+    }
+
+    /// <summary>Clamped, not refused — the server's own limit stays the real bound.</summary>
+    [Fact]
+    public void Begin_create_tag_truncates_an_over_long_name()
+    {
+        var session = SeededSession(out var row);
+
+        var option = session.BeginCreateTag(row, new string('x', 400), out _);
+
+        Assert.Equal(FileAnalysisSession.MaxTagNameLength, option!.Label.Length);
+    }
+
+    /// <summary>
+    /// The success branch: the temp id is swapped for the server's everywhere it landed — the option
+    /// list AND every row that had selected it, including rows the reviewer picked it on afterwards.
+    /// </summary>
+    [Fact]
+    public void Reconcile_swaps_the_staged_tag_id_on_every_row_that_holds_it()
+    {
+        var session = new FileAnalysisSession { CanCreateTag = true };
+        session.Job = Job(Candidate(), Candidate());
+        session.MatchStatus = FileAnalysisMatchStatus.Completed;
+        session.SeedRows();
+        var (first, second) = (session.Rows[0], session.Rows[1]);
+
+        session.BeginCreateTag(first, "Groceries", out var tempId);
+        FileAnalysisSession.SetCategory(second, [tempId.ToString()]);
+
+        var realId = Guid.NewGuid();
+        session.ReconcileCreatedTag(tempId, realId, "Groceries");
+
+        Assert.DoesNotContain(session.TagOptions, o => o.Value == tempId.ToString());
+        Assert.Contains(session.TagOptions, o => o.Value == realId.ToString() && o.Label == "Groceries");
+        Assert.Equal([realId.ToString()], first.TagIds);
+        Assert.Equal([realId.ToString()], second.TagIds);
+    }
+
+    /// <summary>
+    /// The failure branch: the staged tag disappears from the options AND from every row's selection.
+    /// A row left holding the temp id would be parsed straight into the import request.
+    /// </summary>
+    [Fact]
+    public void Rollback_removes_the_staged_tag_its_option_and_every_row_selection()
+    {
+        var session = new FileAnalysisSession { CanCreateTag = true };
+        session.Job = Job(Candidate(), Candidate());
+        session.MatchStatus = FileAnalysisMatchStatus.Completed;
+        session.SeedRows();
+        var (first, second) = (session.Rows[0], session.Rows[1]);
+
+        session.BeginCreateTag(first, "Groceries", out var tempId);
+        FileAnalysisSession.SetCategory(second, [tempId.ToString()]);
+
+        session.RollbackCreatedTag(tempId);
+
+        Assert.DoesNotContain(session.TagOptions, o => o.Value == tempId.ToString());
+        Assert.DoesNotContain(tempId.ToString(), first.TagIds);
+        Assert.DoesNotContain(tempId.ToString(), second.TagIds);
+    }
+
+    /// <summary>A rollback keeps the tags the reviewer chose from the real vocabulary.</summary>
+    [Fact]
+    public void Rollback_keeps_the_row_s_other_tags()
+    {
+        var session = SeededSession(out var row);
+        var existing = Guid.NewGuid();
+        session.SetTags([new ExistingTransactionTag { TransactionTagId = existing, Name = "Food", Archived = null }]);
+        FileAnalysisSession.SetCategory(row, [existing.ToString()]);
+
+        session.BeginCreateTag(row, "Groceries", out var tempId);
+        Assert.Equal(2, row.TagIds.Count);
+
+        session.RollbackCreatedTag(tempId);
+
+        Assert.Equal([existing.ToString()], row.TagIds);
+    }
+
+    /// <summary>
+    /// A merchant created as a PERSON keeps that type — the whole reason the create rows are typed.
+    /// The reviewer picks the row; nothing guesses afterwards.
+    /// </summary>
+    [Fact]
+    public void A_contact_created_as_a_person_keeps_its_type_and_glyph()
+    {
+        var session = SeededSession(out var row);
+
+        var option = session.BeginCreateContact(row, "Ada Lovelace", ContactType.Person, out var tempId);
+
+        var staged = Assert.Single(session.Contacts, c => c.ContactId == tempId);
+        Assert.Equal(ContactType.Person, staged.Type);
+        Assert.Equal(OdsTypeRegistries.ContactTypeOf(nameof(ContactType.Person)).Icon, option!.Icon);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     //  Inline merchant create → rollback
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -106,7 +231,7 @@ public class FileAnalysisSessionTests
     {
         var session = SeededSession(out var row);
 
-        var option = session.BeginCreateContact(row, "  Kiwi Minipris  ", out var tempId);
+        var option = session.BeginCreateContact(row, "  Kiwi Minipris  ", ContactType.Organization, out var tempId);
 
         Assert.NotNull(option);
         Assert.NotEqual(Guid.Empty, tempId);
@@ -134,7 +259,7 @@ public class FileAnalysisSessionTests
         session.SeedRows();
         var (first, second) = (session.Rows[0], session.Rows[1]);
 
-        session.BeginCreateContact(first, "Kiwi", out var tempId);
+        session.BeginCreateContact(first, "Kiwi", ContactType.Organization, out var tempId);
         // The same staged contact is then picked on a second row.
         session.SelectContact(second, tempId.ToString());
         Assert.Equal(tempId, second.ContactId);
@@ -163,8 +288,8 @@ public class FileAnalysisSessionTests
         session.SeedRows();
         var (doomed, survivor) = (session.Rows[0], session.Rows[1]);
 
-        session.BeginCreateContact(doomed, "Doomed", out var doomedId);
-        session.BeginCreateContact(survivor, "Survivor", out var survivorId);
+        session.BeginCreateContact(doomed, "Doomed", ContactType.Organization, out var doomedId);
+        session.BeginCreateContact(survivor, "Survivor", ContactType.Organization, out var survivorId);
 
         session.RollbackCreatedContact(doomedId);
 
@@ -181,7 +306,7 @@ public class FileAnalysisSessionTests
         var session = SeededSession(out var row);
         Assert.True(session.CanQuickCreateMerchant(row));
 
-        session.BeginCreateContact(row, row.Merchant, out var tempId);
+        session.BeginCreateContact(row, row.Merchant, ContactType.Organization, out var tempId);
         Assert.False(session.CanQuickCreateMerchant(row)); // already linked
 
         session.RollbackCreatedContact(tempId);
@@ -193,7 +318,7 @@ public class FileAnalysisSessionTests
     public void Reconcile_swaps_the_temp_id_for_the_server_id_everywhere_it_landed()
     {
         var session = SeededSession(out var row);
-        session.BeginCreateContact(row, "Kiwi", out var tempId);
+        session.BeginCreateContact(row, "Kiwi", ContactType.Organization, out var tempId);
         var realId = Guid.NewGuid();
 
         session.ReconcileCreatedContact(tempId, realId, "Kiwi");
@@ -213,7 +338,7 @@ public class FileAnalysisSessionTests
     public void A_reconciled_contact_is_still_attributed_as_created_here()
     {
         var session = SeededSession(out var row);
-        session.BeginCreateContact(row, "Kiwi", out var tempId);
+        session.BeginCreateContact(row, "Kiwi", ContactType.Organization, out var tempId);
         var realId = Guid.NewGuid();
         session.ReconcileCreatedContact(tempId, realId, "Kiwi");
 
@@ -230,7 +355,7 @@ public class FileAnalysisSessionTests
     {
         var session = SeededSession(out var row);
 
-        var option = session.BeginCreateContact(row, text, out var tempId);
+        var option = session.BeginCreateContact(row, text, ContactType.Organization, out var tempId);
 
         Assert.Null(option);
         Assert.Equal(Guid.Empty, tempId);
@@ -243,7 +368,7 @@ public class FileAnalysisSessionTests
     {
         var session = SeededSession(out var row);
 
-        var option = session.BeginCreateContact(row, new string('x', 400), out _);
+        var option = session.BeginCreateContact(row, new string('x', 400), ContactType.Organization, out _);
 
         Assert.Equal(FileAnalysisSession.MaxContactNameLength, option!.Label.Length);
         Assert.Equal(option.Label, row.Merchant);
@@ -410,7 +535,7 @@ public class FileAnalysisSessionTests
         var chosenId = Guid.NewGuid();
         session.SetContacts([Contact(chosenId, "Chosen By Hand")]);
         session.SelectContact(manual, chosenId.ToString());
-        session.BeginCreateContact(created, "Created Here", out var createdId);
+        session.BeginCreateContact(created, "Created Here", ContactType.Organization, out var createdId);
 
         // The server re-matched and now proposes a different contact for every row.
         var proposed = Guid.NewGuid();

@@ -14,9 +14,6 @@ public partial class AccountSmartTagsSection
     /// <summary>Gates the add/remove controls (accounts.update). Read-only viewers keep the chips + table.</summary>
     [Parameter] public bool CanWrite { get; set; }
 
-    /// <summary>Gates the file-download buttons in an expanded row's attached-files detail.</summary>
-    [Parameter] public bool CanDownloadFiles { get; set; }
-
     /// <summary>
     /// The disclosure shell. False renders the section bare — no OdsCollapsible, no header — for a
     /// host that introduces it with its own OdsSectionDivider (an OdsRecordCard body). The content
@@ -187,25 +184,4 @@ public partial class AccountSmartTagsSection
 
     private void SyncSelected() =>
         _selectedIds = _smartTags.Select(t => t.TransactionTagId.ToString()).ToList();
-
-    // Read-only row menu: expand/collapse the detail + copy the id (mirrors AccountTransactionsSection).
-    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingTransaction t, OdsRecordActionContext ctx) =>
-    [
-        new()
-        {
-            Icon = ctx.Expanded ? "close" : "expand_more",
-            Label = ctx.Expanded ? "Collapse" : "View details",
-            OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
-        },
-        new()
-        {
-            Icon = "fingerprint",
-            TrailingIcon = "content_copy",
-            Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this, () => CopyTransactionId(t.TransactionId)),
-        },
-    ];
-
-    private Task CopyTransactionId(Guid transactionId) =>
-        Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
 }

@@ -9,7 +9,8 @@
 @inject ISnackbar Snackbar
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IUserPreferenceService UserPreferences
-@inject IContactsApiClient Contacts
+@inject IContactQuickCreate ContactCreator
+@inject ITagQuickCreate<ExistingTransactionTag> TagCreator
 @inject ITransactionsApiClient Transactions
 @inject IReferenceDataCache ReferenceData
 @inject IAccountsApiClient Accounts
@@ -138,18 +139,19 @@
                     }
                 </div>
 
-                <!-- Contact: DS Combobox — search existing or type a new name to add one -->
-                <OdsFieldShell Label="Contact" HtmlFor="atm-cp" Optional="true"
-                               Help="Search an existing contact, or type a new name to add one.">
-                    @* The visible OdsFieldShell label + helper own the accessible name / description,
-                       so no AriaLabel here (it would double the name); AriaDescribedBy wires the input
-                       to the helper's id. *@
-                    <OdsCombobox InputId="atm-cp" Value="@_contactId" ValueChanged="@(v => _contactId = v)"
-                                 Options="_cpOptions" Placeholder="Who is it with?"
-                                 AriaDescribedBy="atm-cp-help"
-                                 CreateLabel="Add"
-                                 OnCreate="@(_canCreateContact ? CreateContactOption : null)" />
-                </OdsFieldShell>
+                @* Merchant: the canonical OdsContactSelect — search an existing contact, or add a
+                   missing one inline as a company or a person (typed create rows).
+
+                   The FORM says "Merchant" (design system · AddTransactionModal) while the ledger
+                   column, the detail tile and the sort field keep "Contact". That is deliberate, not
+                   drift: the field is being filled in from a receipt or a statement line, where the
+                   counterparty is the merchant on it, and the read surfaces name the RECORD it links
+                   to — which is a contact, and may well be a person. *@
+                <OdsContactSelect Id="atm-cp" Label="Merchant" Optional
+                                  Value="@_contactId" ValueChanged="@(v => _contactId = v)"
+                                  Options="_cpOptions" Placeholder="Who is it with?"
+                                  AllowCreate="@_canCreateContact" OnCreate="CreateContactOption"
+                                  Help="@ContactHelp" />
 
                 <!-- Tags (wide, many-to-many) -->
                 <div class="odc-form-grid-wide">
@@ -158,6 +160,8 @@
                                        @bind-Value="_selectedTagIds"
                                        Options="_tagOptions"
                                        Placeholder="No tags"
+                                       OnCreate="@(_canCreateTag ? CreateTagOption : null)"
+                                       CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
                                        Help="Add as many as fit — e.g. a category plus Reimbursable." />
                 </div>
 

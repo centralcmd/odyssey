@@ -1,6 +1,5 @@
 @using Odyssey.Dtos.Finance
 @inject ISnackbar Snackbar
-@inject IClipboardService Clipboard
 @inject ITransactionsApiClient Transactions
 
 @* Transaction list for an expanded budget card. The transactions shown are those
@@ -24,15 +23,9 @@
         }
         else
         {
-            @* The shared design-system ledger (matched transactions span accounts, so the
-               Account column stays). Rows expand in place; editing is on the Transactions page. *@
-            <OdsInlinePager Items="_transactions" Context="pageRows">
-                <OdsTxnTable Rows="pageRows" Actions="BuildActions">
-                    <RenderDetail Context="t">
-                        <TransactionDetailPanel Transaction="t" CanDownloadFiles="CanDownloadFiles" />
-                    </RenderDetail>
-                </OdsTxnTable>
-            </OdsInlinePager>
+            @* The shared embedded ledger (matched transactions span accounts, so the Account column
+               stays). A row carries the SAME action menu it does on the Transactions page. *@
+            <TransactionListView Rows="_transactions" OnChanged="ReloadAsync" />
         }
     </ChildContent>
 </OdsCollapsible>
@@ -48,12 +41,16 @@
     /// </summary>
     [Parameter] public bool Chrome { get; set; } = true;
 
+    /// <summary>
+    /// Raised after a write applied from a row's action menu — a status change, a delete, or a save
+    /// from the edit dialog. The host's own record carries a transaction count and a rollup derived
+    /// from these rows, so it has to refetch or its header keeps reporting the pre-write number.
+    /// </summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
     // Transaction-tag ids drawn from the budget's items. With no tags there is nothing
     // to match, so the list stays empty rather than fetching every transaction.
     [Parameter] public IReadOnlyCollection<Guid> TagIds { get; set; } = [];
-
-    /// <summary>Gates the file-download buttons in an expanded row's attached-files detail.</summary>
-    [Parameter] public bool CanDownloadFiles { get; set; }
 
     private List<ExistingTransaction> _transactions = [];
     private bool _isLoading;
@@ -76,6 +73,13 @@
     }
 
     private void ToggleOpen() => _isOpen = !_isOpen;
+
+    // A row write changes this section's rows AND the host's matched count, so both reload.
+    private async Task ReloadAsync()
+    {
+        await LoadTransactionsAsync();
+        await OnChanged.InvokeAsync();
+    }
 
     private async Task LoadTransactionsAsync()
     {
@@ -103,25 +107,4 @@
         _isLoading = false;
         StateHasChanged();
     }
-
-    // Read-only row menu: expand/collapse the detail + copy the id.
-    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingTransaction t, OdsRecordActionContext ctx) =>
-    [
-        new()
-        {
-            Icon = ctx.Expanded ? "close" : "expand_more",
-            Label = ctx.Expanded ? "Collapse" : "View details",
-            OnClick = EventCallback.Factory.Create(this, ctx.Toggle),
-        },
-        new()
-        {
-            Icon = "fingerprint",
-            TrailingIcon = "content_copy",
-            Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this, () => CopyTransactionId(t.TransactionId)),
-        },
-    ];
-
-    private Task CopyTransactionId(Guid transactionId) =>
-        Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
 }

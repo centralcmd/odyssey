@@ -122,7 +122,8 @@
 <EditPhotoDialog @key="_editId" Open="_editId is not null" OpenChanged="v => { if (!v) _editId = null; }"
                  PhotoId="@(_editId ?? Guid.Empty)"
                  TagOptions="_tagOptions" PeopleOptions="_peopleOptions" AlbumOptions="_albumOptions"
-                 CanCreateTags="_canCreateTags" CanRenameFile="_canRenameFile" OnSaved="OnPhotoSaved" />
+                 CanCreateTags="_canCreateTags" CanCreateContacts="_canCreateContacts"
+                 CanRenameFile="_canRenameFile" OnSaved="OnPhotoSaved" />
 
 <AddToAlbumDialog Open="_addToAlbumIds is not null" OpenChanged="v => { if (!v) _addToAlbumIds = null; }"
                   PhotoIds="@(_addToAlbumIds ?? [])" OnSaved="OnAlbumsChanged" />

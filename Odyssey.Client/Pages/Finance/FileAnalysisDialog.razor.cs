@@ -4,6 +4,7 @@ using MudBlazor;
 using Odyssey.Dtos.Application;
 using Odyssey.Client.Services;
 using Odyssey.Client.Authorization;
+using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Client.Models;
 using Odyssey.Dtos.Finance;
@@ -209,6 +210,7 @@ public partial class FileAnalysisDialog
         // renders the right affordance from first paint.
         var user = await AuthState.GetUserAsync();
         _session.CanCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
+        _session.CanCreateTag = user.HasPermission(PermissionClaims.TransactionTagsCreate);
 
         // Reference data is loaded up front so the review phase is ready the moment analysis
         // completes — and, on resume, BEFORE candidate rows are seeded (seeding against unloaded
@@ -458,6 +460,13 @@ public partial class FileAnalysisDialog
         _isImporting = true;
         try
         {
+            // Let every staged inline create land first. A merchant or a category created in the
+            // review is linked to its row against a TEMPORARY id, and BuildImportRequest parses those
+            // ids straight into the request — so importing while a POST is still in flight would post
+            // an id no server row backs. Awaiting resolves each staged create one way or the other:
+            // a success has rewritten the row to the real id, a failure has rolled the row back.
+            await WhenCreatesSettledAsync();
+
             var imported = await FileAnalysis.ImportAsync(_jobId, _session.BuildImportRequest());
             if (!imported.IsSuccess)
             {
@@ -499,19 +508,32 @@ public partial class FileAnalysisDialog
     //
     // POST /api/contacts carries the Name ONLY (clamped/escaped on the server), never the
     // model-derived OrganizationNumber/Description.
-    private async Task CreateContactAsync(FileAnalysisPendingContact pending)
+    /// <summary>
+    /// Every staged create started in this review, so <see cref="ImportAsync"/> can wait for them.
+    /// </summary>
+    /// <remarks>
+    /// The grid raises its create callbacks fire-and-forget — it has to, because the picker hands the
+    /// option back synchronously — so the task is captured here instead. Each entry already handles
+    /// its own failure, so awaiting the set never throws.
+    /// </remarks>
+    private readonly List<Task> _pendingCreates = [];
+
+    private Task WhenCreatesSettledAsync() => Task.WhenAll(_pendingCreates.ToArray());
+
+    private Task CreateContactAsync(FileAnalysisPendingContact pending)
     {
-        var (tempId, name) = pending;
+        var task = RunCreateContactAsync(pending);
+        _pendingCreates.Add(task);
+        return task;
+    }
+
+    private async Task RunCreateContactAsync(FileAnalysisPendingContact pending)
+    {
+        var (tempId, name, type) = pending;
         try
         {
-            // Quick-create defaults to an Organization with the typed text as its legal name (issue #325 §13).
-            var body = new NewContact
-            {
-                Type = ContactType.Organization,
-                Archived = false,
-                OrganizationDetails = new OrganizationDetailsDto { LegalName = name },
-            };
-            var result = await Contacts.CreateAsync(body);
+            // The type is the one the reviewer picked on the create row — never guessed after the fact.
+            var result = await Contacts.CreateAsync(ContactQuickCreate.BuildPayload(name, type));
             if (!result.IsSuccess)
             {
                 Snackbar.Add($"Couldn’t create “{name}”: {result.Error}", Severity.Error);
@@ -544,6 +566,48 @@ public partial class FileAnalysisDialog
         {
             Snackbar.Add($"Couldn’t create “{name}”: {ex.Message}", Severity.Error);
             _session.RollbackCreatedContact(tempId);
+        }
+
+        StateHasChanged();
+    }
+
+    // ── Inline category-tag create ────────────────────────────────────────────
+    // The grid already staged the tag optimistically against a temp id; this is the round trip that
+    // reconciles it with the real one or rolls the whole thing back.
+    private Task CreateTagAsync(FileAnalysisPendingTag pending)
+    {
+        var task = RunCreateTagAsync(pending);
+        _pendingCreates.Add(task);
+        return task;
+    }
+
+    private async Task RunCreateTagAsync(FileAnalysisPendingTag pending)
+    {
+        var (tempId, name) = pending;
+        try
+        {
+            var result = await TransactionTags.CreateAsync(new TagWrite(name, null, false));
+            if (result.IsSuccess && result.CreatedId is { } id)
+            {
+                // The session-wide tag cache is now stale — the next picker must re-fetch.
+                ReferenceData.InvalidateTransactionTags();
+                _session.ReconcileCreatedTag(tempId, id, name);
+            }
+            else
+            {
+                // The create row is withheld when a listed tag already carries the name, so a conflict
+                // here means an ARCHIVED tag holds it — which this cannot select or un-archive.
+                var reason = result.Status == System.Net.HttpStatusCode.Conflict
+                    ? "an archived tag already uses that name."
+                    : result.Error;
+                Snackbar.Add($"Couldn’t create “{name}”: {reason}", Severity.Error);
+                _session.RollbackCreatedTag(tempId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Couldn’t create “{name}”: {ex.Message}", Severity.Error);
+            _session.RollbackCreatedTag(tempId);
         }
 
         StateHasChanged();
