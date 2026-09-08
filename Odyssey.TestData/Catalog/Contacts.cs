@@ -109,7 +109,6 @@ public static class Contacts
                 ExternalUid = ExternalUidFor(definition.Name),
                 NormalizedName = Normalize(definition.Name),
                 Type = ContactType.Organization,
-                OrganizationNumber = definition.OrganizationNumber,
                 Notes = definition.Notes,
                 Archived = null,
                 CreatedAt = SeededAt,

@@ -68,7 +68,7 @@ public sealed class ContactLookup(OdysseyContext context) : IContactLookup
                 ContactNaming.Resolve(c),
                 c.NormalizedName,
                 c.Type,
-                c.OrganizationDetails?.OrganizationNumber ?? c.OrganizationNumber,
+                c.OrganizationDetails?.OrganizationNumber,
                 c.Archived));
     }
 
@@ -87,7 +87,7 @@ public sealed class ContactLookup(OdysseyContext context) : IContactLookup
                 ContactNaming.Resolve(c),
                 c.NormalizedName,
                 c.Type,
-                c.OrganizationDetails?.OrganizationNumber ?? c.OrganizationNumber,
+                c.OrganizationDetails?.OrganizationNumber,
                 c.Archived))
             .ToList();
     }

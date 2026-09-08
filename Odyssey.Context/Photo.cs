@@ -11,7 +11,10 @@ namespace Odyssey.Context;
 /// (date/coords/dimensions/title/caption) lives only here; the original file is never modified.
 /// </summary>
 [Index(nameof(FileId), IsUnique = true)]
-[Index(nameof(Archived))]
+// Every list filters Archived and defaults to ordering by TakenAt (PhotoService.ListAsync), so the
+// composite serves both. It supersedes the standalone Archived index, which was a strict prefix of
+// it and therefore pure write cost.
+[Index(nameof(Archived), nameof(TakenAt))]
 [Index(nameof(TakenAt))]
 [Index(nameof(Favourited))]
 public class Photo

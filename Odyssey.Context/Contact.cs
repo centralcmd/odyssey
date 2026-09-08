@@ -46,13 +46,6 @@ public class Contact
     [Required]
     public ContactType Type { get; set; }
 
-    /// <summary>
-    /// Deprecated — retained temporarily through v1 (issue #325 §15), superseded by
-    /// <see cref="OrganizationDetails.OrganizationNumber"/>. Dropped in the follow-up cleanup migration.
-    /// </summary>
-    [StringLength(64)]
-    public string? OrganizationNumber { get; set; }
-
     /// <summary>Free-text notes (renamed from <c>Description</c> in issue #325 — no semantic change).</summary>
     [StringLength(1024)]
     public string? Notes { get; set; }
@@ -67,13 +60,6 @@ public class Contact
     /// and on any Address/EmailAddress/PhoneNumber child mutation (§9).
     /// </summary>
     public DateTime UpdatedAt { get; set; }
-
-    /// <summary>
-    /// Transitional snapshot of the pre-migration six-value <c>Type</c> ordinal (issue #325 §15) —
-    /// a rollback/audit column dropped alongside <see cref="OrganizationNumber"/> in the follow-up
-    /// cleanup migration.
-    /// </summary>
-    public int? LegacyType { get; set; }
 
     public PersonDetails? PersonDetails { get; set; }
     public OrganizationDetails? OrganizationDetails { get; set; }

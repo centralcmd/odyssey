@@ -417,8 +417,6 @@ public class ContactService
                 context.Remove(contact.OrganizationDetails);
                 contact.OrganizationDetails = null;
             }
-            // Clear the deprecated base column so it can't retain a stale value after Org -> Person.
-            contact.OrganizationNumber = null;
 
             var details = source.PersonDetails!;
             var dob = ValidateDateOfBirth(details.DateOfBirth);
@@ -444,8 +442,6 @@ public class ContactService
             contact.OrganizationDetails.LegalName = CleanRequired(details.LegalName, 256, "Legal name");
             contact.OrganizationDetails.OrganizationNumber = CleanOptional(details.OrganizationNumber, 64, "Organization number");
             contact.OrganizationDetails.Website = ValidateWebsite(details.Website);
-            // Keep the deprecated base column in sync while it is retained (§15).
-            contact.OrganizationNumber = contact.OrganizationDetails.OrganizationNumber;
         }
 
         contact.NormalizedName = ContactNaming.Normalize(ContactNaming.Resolve(contact));

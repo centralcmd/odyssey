@@ -51,10 +51,6 @@ public class FileAnalysisCandidateTransaction
     [StringLength(256)]
     public string? ReferenceNumber { get; set; }
 
-    public int? SourceLineNumber { get; set; }
-
-    public int? SourcePageNumber { get; set; }
-
     [Precision(5, 4)]
     public decimal? LlmConfidence { get; set; }
 
