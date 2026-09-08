@@ -5,6 +5,14 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.1](https://github.com/centralcmd/odyssey/compare/v0.23.0...v0.23.1) (2026-09-08)
+
+
+### Documentation
+
+* explain the aspire dashboard's dev-certificate banner on linux ([6d4c95c](https://github.com/centralcmd/odyssey/commit/6d4c95c65852b8cabbe2acf01b440960ce6b574e))
+* update design system ([42bd158](https://github.com/centralcmd/odyssey/commit/42bd158e712bf3420e1515162d39225ec6126d71))
+
 ## [0.23.0](https://github.com/centralcmd/odyssey/compare/v0.22.0...v0.23.0) (2026-09-06)
 
 
