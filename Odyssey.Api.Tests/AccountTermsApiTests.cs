@@ -182,6 +182,118 @@ public class AccountTermsApiTests
         Assert.Equal(0.03m, Assert.Single(current!).Value);
     }
 
+    // ── Labels over the wire ──────────────────────────────────────────────────
+
+    private static NewAccountTerm Fee(decimal value, DateTime effectiveFrom, string? label, TermKind kind = TermKind.TransactionFee) => new()
+    {
+        TermKind = kind,
+        ValueUnit = TermValueUnit.Amount,
+        Value = value,
+        Label = label,
+        EffectiveFrom = effectiveFrom,
+    };
+
+    [Fact]
+    public async Task Post_TwoLabelledFeesOfOneKind_BothStayCurrent()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee(25m, new DateTime(2026, 1, 1), "ATM · domestic"));
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee(60m, new DateTime(2026, 3, 1), "ATM · abroad"));
+
+        var current = await client.GetFromJsonAsync<List<CurrentAccountTerm>>(CurrentPath(accountId));
+
+        Assert.Equal(2, current!.Count);
+        Assert.Equal(25m, current.Single(t => t.Label == "ATM · domestic").Value);
+        Assert.Equal(60m, current.Single(t => t.Label == "ATM · abroad").Value);
+    }
+
+    [Fact]
+    public async Task Post_SameKindAndDateWithDifferentLabels_BothCreated()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        var date = new DateTime(2026, 1, 1);
+        var first = await client.PostAsJsonAsync(TermsPath(accountId), Fee(25m, date, "Domestic"));
+        var second = await client.PostAsJsonAsync(TermsPath(accountId), Fee(60m, date, "Abroad"));
+
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_SameKindDateAndLabelDifferingOnlyByCase_ReturnsConflict()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        var date = new DateTime(2026, 1, 1);
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee(25m, date, "Domestic"));
+        var duplicate = await client.PostAsJsonAsync(TermsPath(accountId), Fee(30m, date, "  domestic  "));
+
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_OtherFeeWithoutLabel_ReturnsBadRequest()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CheckingAccount);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(TermsPath(accountId), Fee(10m, new DateTime(2026, 1, 1), null, TermKind.OtherFee));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_LabelOnRateKind_ReturnsBadRequest()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.SavingsAccount);
+        using var client = factory.CreateClient();
+
+        var term = InterestRate(0.03m, new DateTime(2026, 1, 1));
+        term.Label = "Promotional";
+
+        var response = await client.PostAsJsonAsync(TermsPath(accountId), term);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_LabelOverMaxLength_ReturnsBadRequest()
+    {
+        // [StringLength] on the DTO, so model validation refuses it before the service is reached.
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            TermsPath(accountId), Fee(25m, new DateTime(2026, 1, 1), new string('x', TermLabel.MaxLength + 1)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_LabelRoundTripsThroughHistory()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee(25m, new DateTime(2026, 1, 1), "  ATM   Abroad  "));
+
+        var history = await client.GetFromJsonAsync<List<ExistingAccountTerm>>(TermsPath(accountId));
+
+        Assert.Equal("ATM Abroad", Assert.Single(history!).Label);
+    }
+
     [Fact]
     public async Task Put_TermNotOnAccount_ReturnsNotFound()
     {

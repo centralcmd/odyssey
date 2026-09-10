@@ -1,4 +1,5 @@
 using Odyssey.Context;
+using TermLabel = Odyssey.Dtos.Finance.TermLabel;
 using Odyssey.TestData.Catalog;
 using static Odyssey.TestData.DemoDataDefaults;
 
@@ -10,6 +11,11 @@ namespace Odyssey.TestData.Generators;
 /// <see cref="TermValueUnit"/>s and several <see cref="BillingPeriod"/>s, and includes a couple of
 /// rate histories (a savings rate climbing over the years) so the "current value" resolution and the
 /// history listing both have something to show.
+///
+/// The travel card carries a labelled fee stack — a foreign-transaction markup beside a domestic and
+/// an overseas cash-withdrawal charge, plus two unrelated "other" fees — because a series is keyed on
+/// kind <em>plus</em> label. Before labels those entries superseded one another and the demo card
+/// could only show one of them.
 ///
 /// The shape mirrors the API's validation rules so the seeded data is one the service itself would
 /// accept: rate kinds (InterestRate/ExpectedReturn) are percentages in the fraction range [-1, 1]
@@ -28,10 +34,13 @@ public static class AccountTermGenerator
         DateTime EffectiveFrom,
         string? Currency = null,
         BillingPeriod? Billing = null,
-        string? Note = null);
+        string? Note = null,
+        string? Label = null);
 
-    public static Guid IdFor(string accountName, TermKind kind, DateTime effectiveFrom) =>
-        DeterministicGuid.From($"account-term::{accountName}::{kind}@{effectiveFrom:yyyy-MM-dd}");
+    // The label is part of the series key, so two labelled fees of one kind may legitimately share a
+    // date — it has to be part of the deterministic id too, or they would collide on it.
+    public static Guid IdFor(string accountName, TermKind kind, DateTime effectiveFrom, string? label = null) =>
+        DeterministicGuid.From($"account-term::{accountName}::{kind}::{TermLabel.KeyOf(label) ?? ""}@{effectiveFrom:yyyy-MM-dd}");
 
     public static List<AccountTerm> Build()
     {
@@ -52,9 +61,17 @@ public static class AccountTermGenerator
             new(Catalog.Accounts.CarLoanVolvo, TermKind.InterestRate, TermValueUnit.Percentage, 0.0690m, D(2023, 2, 15), Note: "Auto loan APR."),
             new(Catalog.Accounts.RenovationPersonalLoan, TermKind.InterestRate, TermValueUnit.Percentage, 0.0810m, D(2024, 9, 1), Note: "Personal loan APR."),
 
-            // Credit card: APR plus an annual fee (amount, billed annually).
+            // Credit card: APR plus an annual fee (amount, billed annually), and the labelled fee stack
+            // that motivated labels — a card really does price a domestic and a foreign cash withdrawal
+            // differently, and all four of these coexist rather than superseding one another.
             new(Catalog.Accounts.TravelRewardsCard, TermKind.InterestRate, TermValueUnit.Percentage, 0.1999m, D(2018, 5, 20), Note: "Purchase APR."),
             new(Catalog.Accounts.TravelRewardsCard, TermKind.ServiceFee, TermValueUnit.Amount, 95m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.Annually, Note: "Annual card fee."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.TransactionFee, TermValueUnit.Percentage, 0.0250m, D(2018, 5, 20), Billing: BillingPeriod.PerTransaction, Label: "Foreign transaction", Note: "Currency conversion markup on purchases abroad."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.TransactionFee, TermValueUnit.Amount, 5m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "Cash withdrawal · domestic", Note: "ATM cash advance at home."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.TransactionFee, TermValueUnit.Amount, 12m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "Cash withdrawal · abroad", Note: "ATM cash advance overseas."),
+            // Two OtherFees side by side — the pair that silently overwrote each other before labels.
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.OtherFee, TermValueUnit.Amount, 15m, D(2019, 3, 1), Currency: Currencies.Usd, Billing: BillingPeriod.OneTime, Label: "Card replacement", Note: "Reissue after loss or damage."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.OtherFee, TermValueUnit.Amount, 2m, D(2019, 3, 1), Currency: Currencies.Usd, Billing: BillingPeriod.Monthly, Label: "Paper statement", Note: "Waived on paperless billing."),
 
             // Brokerage (investment): expected return + a percentage platform/management fee.
             new(Catalog.Accounts.BrokerageAccount, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0700m, D(2016, 7, 1), Note: "Long-run expected annual return."),
@@ -71,12 +88,15 @@ public static class AccountTermGenerator
             // Everyday checking: a monthly service fee + a per-transaction fee (amounts, USD).
             new(Catalog.Accounts.EverydayChecking, TermKind.ServiceFee, TermValueUnit.Amount, 12m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.Monthly, Note: "Monthly account maintenance fee."),
             new(Catalog.Accounts.EverydayChecking, TermKind.TransactionFee, TermValueUnit.Amount, 0.30m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Note: "Per-transaction processing fee."),
+            // An unlabelled fee and a labelled one of the same kind are separate series; neither hides
+            // the other.
+            new(Catalog.Accounts.EverydayChecking, TermKind.TransactionFee, TermValueUnit.Amount, 25m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "International wire", Note: "Outgoing SWIFT transfer."),
         };
 
         return specs
             .Select(spec => new AccountTerm
             {
-                AccountTermId = IdFor(spec.AccountName, spec.Kind, spec.EffectiveFrom),
+                AccountTermId = IdFor(spec.AccountName, spec.Kind, spec.EffectiveFrom, spec.Label),
                 AccountId = Catalog.Accounts.IdFor(spec.AccountName),
                 TermKind = spec.Kind,
                 ValueUnit = spec.Unit,
@@ -84,6 +104,8 @@ public static class AccountTermGenerator
                 // Percentage terms never carry a currency; amounts carry the account currency.
                 CurrencyCode = spec.Unit == TermValueUnit.Percentage ? null : spec.Currency,
                 BillingPeriod = spec.Billing,
+                Label = TermLabel.Normalize(spec.Label),
+                LabelKey = TermLabel.KeyOf(spec.Label),
                 EffectiveFrom = spec.EffectiveFrom,
                 Note = spec.Note,
                 CreatedAtUtc = spec.EffectiveFrom,

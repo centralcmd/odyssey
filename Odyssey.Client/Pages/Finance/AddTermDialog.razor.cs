@@ -25,10 +25,15 @@ public partial class AddTermDialog
 
     private bool IsEdit => Term is not null;
     private bool IsRate => TermKindVisuals.Info(_kind).Group == TermGroup.Rate;
+
+    /// <summary>OtherFee is the open category, so an unnamed one is exactly the entry that could not
+    /// be told apart from — and would supersede — the next unnamed one. Naming it is its price.</summary>
+    private bool LabelRequired => _kind == TermKind.OtherFee;
     private bool IsPercentage => _unit == TermValueUnit.Percentage;
 
     private TermKind _kind;
     private TermValueUnit _unit;
+    private string? _label = "";
     private string _valueStr = "";
     private string _currency = "USD";
     private string _billingPeriod = "";
@@ -73,6 +78,7 @@ public partial class AddTermDialog
             _valueStr = Term.ValueUnit == TermValueUnit.Percentage ? FractionToPercentString(Term.Value) : Term.Value.ToString(CultureInfo.InvariantCulture);
             _currency = Term.CurrencyCode ?? Account.CurrencyCode;
             _billingPeriod = Term.BillingPeriod?.ToString() ?? "";
+            _label = Term.Label ?? "";
             _effectiveFrom = Term.EffectiveFrom.Date;
             _note = Term.Note ?? "";
         }
@@ -119,6 +125,9 @@ public partial class AddTermDialog
         var info = TermKindVisuals.Info(kind);
         _unit = info.DefaultUnit;
         _billingPeriod = info.Group == TermGroup.Fee ? DefaultBillingFor(kind) : "";
+        // A rate kind is refused a label server-side, so drop any typed one rather than posting a 400.
+        if (info.Group == TermGroup.Rate)
+            _label = "";
         _errors.Clear();
     }
 
@@ -136,6 +145,15 @@ public partial class AddTermDialog
     }
 
     private void OnCurrencyChanged(string value) => _currency = value;
+
+    private void OnLabelChanged(string value)
+    {
+        _label = value;
+        _errors.Remove("label");
+        // The duplicate check is keyed on the label, so a fixed label can clear a stale date error.
+        _errors.Remove("effectiveFrom");
+    }
+
     private void OnBillingChanged(string value) => _billingPeriod = value;
     private void OnNoteChanged(string value) => _note = value;
 
@@ -200,13 +218,26 @@ public partial class AddTermDialog
         if ((_note?.Length ?? 0) > 512)
             _errors["note"] = "Keep the note under 512 characters.";
 
-        // Duplicate (kind, effectiveFrom) → the server's 409, excluding the row being edited.
+        // Shares TermLabel with the server rather than re-implementing the rule, so the pre-check and
+        // the write agree on what counts as the same series.
+        var label = IsRate ? null : TermLabel.Normalize(_label);
+        if (label is { Length: > TermLabel.MaxLength })
+            _errors["label"] = $"Keep the label under {TermLabel.MaxLength} characters.";
+        else if (label is null && LabelRequired)
+            _errors["label"] = "Name this fee so it isn’t confused with another.";
+
+        // Duplicate (kind, label, effectiveFrom) → the server's 409, excluding the row being edited.
+        // Case-folded, so "ATM abroad" and "atm abroad" are caught here rather than at the API.
+        var labelKey = TermLabel.KeyOf(label);
         if (_effectiveFrom is { } date && Existing.Any(t =>
                 t.AccountTermId != (Term?.AccountTermId ?? Guid.Empty)
                 && t.TermKind == _kind
+                && TermLabel.KeyOf(t.Label) == labelKey
                 && t.EffectiveFrom.Date == date.Date))
         {
-            _errors["effectiveFrom"] = "This kind already has an entry on that date.";
+            _errors["effectiveFrom"] = label is null
+                ? "This kind already has an entry on that date."
+                : $"“{label}” already has an entry on that date.";
         }
 
         if (_errors.Count > 0)
@@ -225,6 +256,7 @@ public partial class AddTermDialog
             BillingPeriod = IsRate || string.IsNullOrEmpty(_billingPeriod)
                 ? null
                 : Enum.Parse<BillingPeriod>(_billingPeriod),
+            Label = label,
             EffectiveFrom = DateTime.SpecifyKind(_effectiveFrom!.Value.Date, DateTimeKind.Utc),
             Note = string.IsNullOrWhiteSpace(_note) ? null : _note!.Trim(),
         };

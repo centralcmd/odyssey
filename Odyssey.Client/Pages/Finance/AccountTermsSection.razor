@@ -103,7 +103,18 @@
                                     <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
                                         <span class="material-icons" style="font-size:18px;">@info.Icon</span>
                                     </span>
-                                    <span class="trm-tile-kind">@info.Label</span>
+                                    @* The author's own wording leads; the kind drops to the caption beneath it. *@
+                                    @if (!string.IsNullOrWhiteSpace(t.Label))
+                                    {
+                                        <span class="trm-tile-txt">
+                                            <span class="trm-tile-name">@t.Label</span>
+                                            <span class="trm-tile-kind">@info.Label</span>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="trm-tile-kind">@info.Label</span>
+                                    }
                                 </div>
                                 <div class="trm-tile-value" style="color:@(TermKindVisuals.CostColor(t, Account) ?? info.Color);">
                                     @TermKindVisuals.FormatValue(t, Account, FormatMoney)
@@ -188,7 +199,13 @@
                                         <span class="material-icons" style="font-size:15px;">@info.Icon</span>
                                     </span>
                                     <div>
-                                        <div class="trm-row-kind-name">@info.Label</div>
+                                        <div class="trm-row-kind-name">
+                                            @TermKindVisuals.DisplayName(t.TermKind, t.Label)
+                                            @if (!string.IsNullOrWhiteSpace(t.Label))
+                                            {
+                                                <span class="trm-row-kind-cat"> · @info.Label</span>
+                                            }
+                                        </div>
                                         @if (!string.IsNullOrWhiteSpace(t.Note))
                                         {
                                             <div class="trm-row-note">@t.Note</div>

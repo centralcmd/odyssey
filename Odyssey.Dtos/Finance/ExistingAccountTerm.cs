@@ -14,6 +14,11 @@ public sealed record ExistingAccountTerm
     public string? CurrencyCode { get; set; }
 
     public BillingPeriod? BillingPeriod { get; set; }
+
+    /// <summary>Names this term's series within its kind; null is the kind's unnamed series.</summary>
+    [StringLength(TermLabel.MaxLength)]
+    public string? Label { get; set; }
+
     public DateTime EffectiveFrom { get; set; }
 
     [StringLength(512)]

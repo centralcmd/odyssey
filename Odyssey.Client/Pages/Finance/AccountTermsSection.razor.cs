@@ -85,14 +85,22 @@ public partial class AccountTermsSection
         // Newest first for the history table.
         _terms = _terms.OrderByDescending(t => t.EffectiveFrom).ThenByDescending(t => t.CreatedAtUtc).ToList();
 
+        // In force is resolved per SERIES — kind + label — not per kind, matching the server. A fee
+        // kind can carry several named fees at once (a card's domestic and foreign ATM charge), and
+        // one-per-kind showed only whichever was dated latest.
         var asOf = DateTime.UtcNow.Date;
-        _current = TermKindVisuals.All
-            .Select(kind => _terms
-                .Where(t => t.TermKind == kind && t.EffectiveFrom.Date <= asOf)
+        var kindOrder = TermKindVisuals.All
+            .Select((kind, index) => (kind, index))
+            .ToDictionary(x => x.kind, x => x.index);
+
+        _current = _terms
+            .Where(t => t.EffectiveFrom.Date <= asOf)
+            .GroupBy(TermKindVisuals.SeriesKey)
+            .Select(series => series
                 .OrderByDescending(t => t.EffectiveFrom).ThenByDescending(t => t.CreatedAtUtc)
-                .FirstOrDefault())
-            .Where(t => t is not null)
-            .Select(t => t!)
+                .First())
+            .OrderBy(t => kindOrder.TryGetValue(t.TermKind, out var i) ? i : int.MaxValue)
+            .ThenBy(t => t.Label, StringComparer.OrdinalIgnoreCase)
             .ToList();
         _currentIds = _current.Select(t => t.AccountTermId).ToHashSet();
 
@@ -149,8 +157,10 @@ public partial class AccountTermsSection
             return null;
 
         var info = TermKindVisuals.Info(kind.Value);
+        // Rate kinds are refused a label server-side precisely so this headline has one series to
+        // chart; the filter states that rather than leaving it implied.
         var ascending = _terms
-            .Where(t => t.TermKind == kind.Value)
+            .Where(t => t.TermKind == kind.Value && string.IsNullOrWhiteSpace(t.Label))
             .OrderBy(t => t.EffectiveFrom).ThenBy(t => t.CreatedAtUtc)
             .ToList();
         if (ascending.Count == 0)

@@ -14,8 +14,15 @@ namespace Odyssey.Core.Finance;
 /// <summary>
 /// Business logic for time-versioned account terms (interest rates, expected returns, and fee
 /// prices). Mirrors <see cref="AccountService"/>: enforces per-kind account-type eligibility and
-/// value/unit/currency validation, and resolves the currently-effective value of each kind by
+/// value/unit/currency validation, and resolves the currently-effective value of each series by
 /// implicit supersession (latest <c>EffectiveFrom</c> on or before a date).
+/// <para>
+/// A series is a kind <em>plus</em> a label, not a kind alone. Fees of one kind genuinely coexist —
+/// a card charges differently for a domestic and a foreign cash withdrawal — and keying supersession
+/// on the kind made the second such fee silently replace the first. Labels also give
+/// <see cref="ContextTermKind.OtherFee"/> a working shape: it is the open category, so it is the one
+/// kind where a label is <em>required</em>.
+/// </para>
 /// </summary>
 public class AccountTermService
 {
@@ -82,8 +89,9 @@ public class AccountTermService
     }
 
     /// <summary>
-    /// Returns the currently-effective value of each kind that has at least one entry on or before
-    /// <paramref name="asOf"/> (default now), or <c>null</c> if the account does not exist.
+    /// Returns the currently-effective value of each series — kind plus label — that has at least one
+    /// entry on or before <paramref name="asOf"/> (default now), or <c>null</c> if the account does
+    /// not exist. A kind carrying several labelled fees therefore yields one entry per label.
     /// </summary>
     public async Task<IList<CurrentAccountTerm>?> GetCurrent(Guid accountId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
@@ -99,9 +107,10 @@ public class AccountTermService
             .ToListAsync(cancellationToken);
 
         var current = terms
-            .GroupBy(term => term.TermKind)
+            .GroupBy(term => (term.TermKind, term.LabelKey))
             .Select(group => group.MostEffective()!)
             .OrderBy(term => term.TermKind)
+            .ThenBy(term => term.LabelKey, StringComparer.Ordinal)
             .ToList();
 
         return current.Adapt<List<CurrentAccountTerm>>();
@@ -188,9 +197,29 @@ public class AccountTermService
             throw new DomainValidationException(
                 $"Term kind '{source.TermKind}' must be expressed as a percentage, not an amount.");
 
-        if (source.BillingPeriod is not null && (kind == ContextTermKind.InterestRate || kind == ContextTermKind.ExpectedReturn))
+        var isRate = kind == ContextTermKind.InterestRate || kind == ContextTermKind.ExpectedReturn;
+
+        if (source.BillingPeriod is not null && isRate)
             throw new DomainValidationException(
                 $"BillingPeriod is not allowed for term kind '{source.TermKind}'.");
+
+        var label = TermLabel.Normalize(source.Label);
+
+        // A rate kind stays single-series on purpose. Two labelled interest rates would both be "in
+        // force" at once, and the account header, the record card and the history chart all headline
+        // one rate — there would be no non-arbitrary way to pick it.
+        if (label is not null && isRate)
+            throw new DomainValidationException(
+                $"Label is not allowed for term kind '{source.TermKind}': a rate has one series per account.");
+
+        // OtherFee is the open category, so an unlabelled one is exactly the entry that cannot be
+        // told apart from the next unlabelled one — and would supersede it. Naming it is the price
+        // of using the catch-all.
+        if (label is null && kind == ContextTermKind.OtherFee)
+            throw new DomainValidationException(
+                "A label is required for term kind 'OtherFee' — name the fee so it is not confused with another.");
+
+        var labelKey = TermLabel.KeyOf(label);
 
         var billingPeriod = source.BillingPeriod?.Adapt<ContextBillingPeriod>();
 
@@ -217,20 +246,29 @@ public class AccountTermService
 
         var effectiveFrom = NormalizeToUtc(source.EffectiveFrom);
 
+        // The duplicate is per SERIES, so two labelled fees of one kind may share an effective date.
+        // Matching on the case-folded key means "ATM abroad" and "atm abroad" collide, which is what
+        // stops a typo forking a second series that then supersedes nothing.
         var duplicateExists = await context.AccountTerms.AnyAsync(existing =>
             existing.AccountId == account.AccountId
             && existing.TermKind == kind
+            && existing.LabelKey == labelKey
             && existing.EffectiveFrom == effectiveFrom
             && (excludeTermId == null || existing.AccountTermId != excludeTermId), cancellationToken);
         if (duplicateExists)
+        {
+            var named = label is null ? $"'{source.TermKind}'" : $"'{source.TermKind}' labelled '{label}'";
             throw new DomainConflictException(
-                $"A '{source.TermKind}' term effective from {effectiveFrom:yyyy-MM-dd} already exists for this account.");
+                $"A {named} term effective from {effectiveFrom:yyyy-MM-dd} already exists for this account.");
+        }
 
         term.TermKind = kind;
         term.ValueUnit = unit;
         term.Value = source.Value;
         term.CurrencyCode = currencyCode;
         term.BillingPeriod = billingPeriod;
+        term.Label = label;
+        term.LabelKey = labelKey;
         term.EffectiveFrom = effectiveFrom;
         term.Note = source.Note;
     }

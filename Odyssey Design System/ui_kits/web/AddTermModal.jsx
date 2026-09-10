@@ -13,11 +13,22 @@
      • CurrencyCode    — required for Amount (defaults to the account currency);
                          null for Percentage.
      • BillingPeriod   — optional context for fees; null for rate kinds.
+     • Label           — names one series within a fee kind, so a card can carry a
+                         domestic and a foreign cash-withdrawal fee at once. Required
+                         for OtherFee (the open category, where two unnamed entries
+                         cannot be told apart); refused for rate kinds, which stay
+                         one-series so the headline rate is unambiguous. ≤ 64 chars.
      • EffectiveFrom   — required; past or future allowed (future = scheduled).
      • Note            — optional, ≤ 512 chars.
 
-   Rejects an exact (TermKind, EffectiveFrom) duplicate (the server's 409). On
+   Rejects an exact (TermKind, Label, EffectiveFrom) duplicate (the server's 409),
+   matching the label case-insensitively so a typo does not fork a second series. On
    confirm, onSave(dto, id?) receives the term-shaped object (id present on edit). */
+
+/* Series label normalization — mirrors TermLabel in Odyssey.Dtos. Display form keeps
+   the author's casing; the key case-folds, and is what de-duplicates. */
+const trmLabelNorm = (v) => (String(v || '').trim().replace(/\s+/g, ' ') || null);
+const trmLabelKey = (v) => { const n = trmLabelNorm(v); return n && n.toLowerCase(); };
 
 const TRM_SYM = window.ATM_CURRENCY_SYMBOL || { USD: '$', EUR: '€', GBP: '£', JPY: '¥', NOK: 'kr', SEK: 'kr', CAD: '$' };
 const TRM_CURRENCIES = (window.OdysseyData.currencies || [])
@@ -53,6 +64,7 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
     valueStr: term ? (term.unit === 'Percentage' ? fracToPctStr(term.value) : String(term.value)) : '',
     currency: term ? (term.currency || account.currency || 'USD') : (account.currency || 'USD'),
     billingPeriod: term ? (term.billingPeriod || '') : (initInfo.group === 'fee' ? (TRM_DEFAULT_BILLING[initKind] || '') : ''),
+    label: term ? (term.label || '') : '',
     effectiveFrom: term ? term.effectiveFrom : new Date().toISOString().slice(0, 10),
     note: term ? (term.note || '') : '',
   }));
@@ -74,6 +86,7 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
       kind: k,
       unit: ki.defaultUnit,
       billingPeriod: ki.group === 'fee' ? (TRM_DEFAULT_BILLING[k] || d.billingPeriod || '') : '',
+      label: ki.group === 'rate' ? '' : d.label,
     }));
     setErrors({});
   };
@@ -95,10 +108,20 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
     if (draft.note.length > 512) next.note = 'Keep the note under 512 characters.';
 
-    // Duplicate (kind, effectiveFrom) → 409, excluding the row being edited.
+    const label = isRate ? null : trmLabelNorm(draft.label);
+    if (label && label.length > 64) next.label = 'Keep the label under 64 characters.';
+    // OtherFee is the catch-all, so an unnamed one is precisely the entry that would
+    // be confused with — and silently supersede — the next unnamed one.
+    if (!label && draft.kind === 'OtherFee') next.label = 'Name this fee so it isn’t confused with another.';
+
+    // Duplicate (kind, label, effectiveFrom) → 409, excluding the row being edited.
     const dup = existing.some(t =>
-      t.id !== (term && term.id) && t.kind === draft.kind && t.effectiveFrom === draft.effectiveFrom);
-    if (dup) next.effectiveFrom = 'This kind already has an entry on that date.';
+      t.id !== (term && term.id) && t.kind === draft.kind
+      && (trmLabelKey(t.label) || null) === (trmLabelKey(label) || null)
+      && t.effectiveFrom === draft.effectiveFrom);
+    if (dup) next.effectiveFrom = label
+      ? `“${label}” already has an entry on that date.`
+      : 'This kind already has an entry on that date.';
 
     if (Object.keys(next).length) { setErrors(next); return; }
 
@@ -109,6 +132,7 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
       value,
       currency: isPct ? null : draft.currency,
       billingPeriod: isRate ? null : (draft.billingPeriod || null),
+      label,
       effectiveFrom: draft.effectiveFrom,
       note: draft.note.trim() || null,
     }, term && term.id);
@@ -243,6 +267,23 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
           helper={errors.effectiveFrom ? undefined : 'When this value takes effect'} />
       </FormRow>
       {errors.effectiveFrom && <div className="helper aam-err" style={{ marginTop: -6 }}>{errors.effectiveFrom}</div>}
+
+      {/* Label — fees only. What lets one kind hold several fees at once. */}
+      {!isRate && (
+        <Field
+          label="Label"
+          optional={draft.kind !== 'OtherFee'}
+          required={draft.kind === 'OtherFee'}
+          maxLength={64}
+          value={draft.label}
+          onChange={set('label')}
+          error={errors.label}
+          placeholder="e.g. “ATM withdrawal · abroad”"
+          help={draft.kind === 'OtherFee'
+            ? 'Required — names this fee so it keeps its own history.'
+            : 'Optional. Name it to record several of this kind side by side.'}
+        />
+      )}
 
       {/* Billing period — fees only */}
       {!isRate && (

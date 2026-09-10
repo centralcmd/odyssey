@@ -9,8 +9,14 @@
     built on the shared OdsModal shell like every other create/edit dialog. The field set
     mirrors the NewAccountTerm DTO and the AccountTermService validation: eligibility-gated
     kind, percentage-or-amount value, currency (amount only), effective date, billing
-    period (fees only), and a note. Rejects an exact (kind, effectiveFrom) duplicate
-    client-side; the API still has the final say (400 / 409 surfaced as a toast).
+    period (fees only), a label (fees only) and a note.
+
+    The label names one SERIES within a kind, which is what lets a card carry a domestic
+    and a foreign cash-withdrawal fee at once instead of the second superseding the first.
+    It is required for OtherFee — the open category, where two unnamed entries could not be
+    told apart — and refused for rate kinds, which stay one-series so the headline rate is
+    unambiguous. Rejects an exact (kind, label, effectiveFrom) duplicate client-side, folding
+    case via the shared TermLabel rules; the API still has the final say (400 / 409 as a toast).
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
@@ -137,6 +143,20 @@
             @if (_errors.TryGetValue("effectiveFrom", out var dateErr))
             {
                 <div class="trm-err" style="margin-top:-6px;">@dateErr</div>
+            }
+
+            @* Label — fees only. This is what lets one kind hold several fees at once. *@
+            @if (!IsRate)
+            {
+                <OdsField Label="Label"
+                          Value="@_label" ValueChanged="OnLabelChanged"
+                          MaxLength="TermLabel.MaxLength"
+                          Required="LabelRequired"
+                          Placeholder="e.g. “ATM withdrawal · abroad”"
+                          Help="@(LabelRequired
+                              ? "Required — names this fee so it keeps its own history."
+                              : "Optional. Name it to record several of this kind side by side.")"
+                          Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
             }
 
             @* Billing period — fees only *@

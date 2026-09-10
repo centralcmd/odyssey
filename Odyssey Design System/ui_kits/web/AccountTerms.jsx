@@ -28,15 +28,24 @@ const trmToday = () => new Date().toISOString().slice(0, 10);
 const trmKindInfo = (k) => H.termKindInfo(k);
 
 /* ---- per-list resolvers (operate on a live array so edits reflect at once) ---- */
+/* Resolution is per SERIES — kind + label — not per kind. A card charges separately for a
+   domestic and a foreign cash withdrawal, and keying on the kind alone showed whichever was
+   dated later as though it had replaced the other. Mirrors AccountTermService.GetCurrent. */
+const trmSeriesKey = (t) => `${t.kind}\u0000${String(t.label || '').trim().replace(/\s+/g, ' ').toLowerCase()}`;
 const trmCurrentFromList = (terms, asOf) => {
   const cutoff = asOf || trmToday();
-  const byKind = {};
+  const bySeries = {};
   for (const t of terms) {
     if (t.effectiveFrom > cutoff) continue;
-    const cur = byKind[t.kind];
-    if (!cur || t.effectiveFrom > cur.effectiveFrom) byKind[t.kind] = t;
+    const key = trmSeriesKey(t);
+    const cur = bySeries[key];
+    if (!cur || t.effectiveFrom > cur.effectiveFrom) bySeries[key] = t;
   }
-  return D.termKinds.map(k => byKind[k.key]).filter(Boolean);
+  // Registry order by kind, then label, so the tile row is stable across reloads.
+  const order = D.termKinds.map(k => k.key);
+  return Object.values(bySeries).sort((a, b) =>
+    (order.indexOf(a.kind) - order.indexOf(b.kind))
+    || String(a.label || '').localeCompare(String(b.label || '')));
 };
 const trmSeriesFromList = (terms, kind) => terms
   .filter(t => t.kind === kind)
@@ -275,12 +284,20 @@ const CurrentTermsSummary = ({ current, style, account }) => {
       {current.map(t => {
         const info = trmKindInfo(t.kind);
         return (
-          <div className="trm-tile" key={t.kind}>
+          <div className="trm-tile" key={trmSeriesKey(t)}>
             <div className="trm-tile-top">
               <span className="trm-kind-ic md" style={{ background: info.soft, color: info.color }}>
                 <MIcon name={info.icon} size={18} />
               </span>
-              <span className="trm-tile-kind">{info.label}</span>
+              {/* The author's own wording leads; the kind drops to the caption beneath it. */}
+              {t.label ? (
+                <span className="trm-tile-txt">
+                  <span className="trm-tile-name">{t.label}</span>
+                  <span className="trm-tile-kind">{info.label}</span>
+                </span>
+              ) : (
+                <span className="trm-tile-kind">{info.label}</span>
+              )}
             </div>
             <div className="trm-tile-value" style={{ color: H.costColor(t, account) || info.color }}>{H.fmtTermValueFor(t, account)}</div>
             <div className="trm-tile-foot">
@@ -334,7 +351,10 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
                   <MIcon name={info.icon} size={15} />
                 </span>
                 <div>
-                  <div className="trm-row-kind-name">{info.label}</div>
+                  <div className="trm-row-kind-name">
+                    {t.label || info.label}
+                    {t.label && <span className="trm-row-kind-cat"> · {info.label}</span>}
+                  </div>
                   {t.note && <div className="trm-row-note">{t.note}</div>}
                 </div>
               </div>

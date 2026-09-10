@@ -111,6 +111,18 @@ public static class TermKindVisuals
     public static decimal SignedValue(ExistingAccountTerm term, ExistingAccount account) =>
         IsCostRate(term, account) ? -Math.Abs(term.Value) : term.Value;
 
+    /// <summary>
+    /// The key one term series resolves under — the kind plus its case-folded label. Mirrors
+    /// <c>AccountTermService.GetCurrent</c>: a fee kind may hold several named series at once, so
+    /// grouping on the kind alone would show whichever is dated later as if it had replaced the rest.
+    /// </summary>
+    public static (TermKind Kind, string? LabelKey) SeriesKey(ExistingAccountTerm term) =>
+        (term.TermKind, TermLabel.KeyOf(term.Label));
+
+    /// <summary>The name a term leads with: the author's own label, falling back to the kind.</summary>
+    public static string DisplayName(TermKind kind, string? label) =>
+        string.IsNullOrWhiteSpace(label) ? Info(kind).Label : TermLabel.Normalize(label)!;
+
     /// <summary>0.0340 → "3.40%", 0.0003 → "0.03%" (trailing zeros trimmed above 1%).</summary>
     public static string PctStr(decimal frac)
     {

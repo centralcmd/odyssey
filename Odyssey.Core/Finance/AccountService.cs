@@ -436,9 +436,13 @@ public class AccountService
             .ToDictionary(
                 group => group.Key,
                 group => group
-                    .GroupBy(t => t.TermKind)
-                    .Select(byKind => byKind.MostEffective()!)
+                    // Keyed on the series (kind + label), not the kind: a card with a domestic and a
+                    // foreign cash-withdrawal fee has both in force, and grouping by kind alone showed
+                    // whichever was dated later as if it had replaced the other.
+                    .GroupBy(t => (t.TermKind, t.LabelKey))
+                    .Select(bySeries => bySeries.MostEffective()!)
                     .OrderBy(t => t.TermKind)
+                    .ThenBy(t => t.LabelKey, StringComparer.Ordinal)
                     .ToList());
     }
 
@@ -457,6 +461,7 @@ public class AccountService
         Value = term.Value,
         CurrencyCode = term.CurrencyCode,
         BillingPeriod = term.BillingPeriod?.Adapt<DtoBillingPeriod>(),
+        Label = term.Label,
         EffectiveFrom = term.EffectiveFrom,
     };
 
