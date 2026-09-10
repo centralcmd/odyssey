@@ -91,8 +91,8 @@
                         var rateInfo = TermKindVisuals.Info(headerRate.TermKind);
                         meta.Add(RateMeta(
                             TermKindVisuals.CostColor(headerRate, account) ?? rateInfo.Color,
-                            rateInfo.Label,
-                            TermKindVisuals.FormatValue(headerRate, account, FormatMoney)));
+                            TermKindVisuals.LabelFor(headerRate, account),
+                            TermKindVisuals.FormatValue(headerRate, FormatMoney)));
                     }
 
                     @* The header counts are the body's table of contents: same glyphs, same order as
@@ -263,10 +263,10 @@
                                         var info = TermKindVisuals.Info(term.TermKind);
                                         var asTerm = ToTerm(account, term);
                                         <OdsInfoTile Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
-                                                     Label="@info.Label" Foot="@OdsInfoTile.Caption(TermFoot(term))">
+                                                     Label="@TermKindVisuals.LabelFor(asTerm, account)" Foot="@OdsInfoTile.Caption(TermFoot(term))">
                                             <Value>
                                                 <span style="color:@(TermKindVisuals.CostColor(asTerm, account) ?? info.Color);">
-                                                    @TermKindVisuals.FormatValue(asTerm, account, FormatMoney)
+                                                    @TermKindVisuals.FormatValue(asTerm, FormatMoney)
                                                 </span>
                                             </Value>
                                         </OdsInfoTile>
