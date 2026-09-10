@@ -156,11 +156,13 @@ public partial class AccountTermsSection
         if (ascending.Count == 0)
             return null;
 
-        // Apply the cost sign for a liability's interest rate (negative + expense-colored).
+        // A liability's interest rate is a cost, so the panel is expense-colored — but the series is
+        // the stored rate as entered. Nothing is re-signed, so the delta follows the real rate: a rise
+        // reads as a rise.
         var cost = kind.Value == TermKind.InterestRate && TermKindVisuals.IsLiability(Account.AccountType);
         var color = cost ? "var(--finance-expense)" : info.Color;
         var points = ascending
-            .Select(t => (Date: t.EffectiveFrom.Date, Value: (double)(cost ? -Math.Abs(t.Value) : t.Value)))
+            .Select(t => (Date: t.EffectiveFrom.Date, Value: (double)t.Value))
             .ToList();
 
         var current = points[^1];

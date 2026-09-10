@@ -106,7 +106,7 @@
                                     <span class="trm-tile-kind">@info.Label</span>
                                 </div>
                                 <div class="trm-tile-value" style="color:@(TermKindVisuals.CostColor(t, Account) ?? info.Color);">
-                                    @TermKindVisuals.FormatValue(t, Account, FormatMoney)
+                                    @TermKindVisuals.FormatValue(t, FormatMoney)
                                 </div>
                                 <div class="trm-tile-foot">
                                     <span>since @MonthYear(t.EffectiveFrom)</span>
@@ -198,7 +198,7 @@
                             </td>
                             <td class="trm-cell-date">@t.EffectiveFrom.ToString("MMM dd, yyyy")</td>
                             <td class="trm-cell-value" style="@(isCurrent ? $"color:{TermKindVisuals.CostColor(t, Account) ?? info.Color};" : "")">
-                                @TermKindVisuals.FormatValue(t, Account, FormatMoney)@if (bill is not null && !string.IsNullOrEmpty(bill.Suffix))
+                                @TermKindVisuals.FormatValue(t, FormatMoney)@if (bill is not null && !string.IsNullOrEmpty(bill.Suffix))
                                 {<span style="color:var(--mud-palette-text-secondary);font-weight:400;"> @bill.Suffix</span>}
                             </td>
                             <td>@RenderStatus(t, isCurrent)</td>
