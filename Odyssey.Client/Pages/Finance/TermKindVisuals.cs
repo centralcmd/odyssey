@@ -95,9 +95,9 @@ public static class TermKindVisuals
     public static bool IsLiability(AccountType accountType) =>
         AccountTypeVisuals.Group(accountType) == AccountGroup.Liability;
 
-    /// <summary>Interest charged on a liability is a cost: its rate reads negative + expense-colored,
-    /// mirroring how the account balance is shown. Earned interest and expected return stay positive;
-    /// fees keep their own price framing.</summary>
+    /// <summary>Interest charged on a liability is a cost, so its rate is expense-colored — but only
+    /// its color. The rate itself is never re-signed: a term renders with the sign the user entered,
+    /// so a genuinely negative rate stays distinguishable from an ordinary one.</summary>
     public static bool IsCostRate(ExistingAccountTerm term, ExistingAccount account) =>
         term.ValueUnit == TermValueUnit.Percentage
         && term.TermKind == TermKind.InterestRate
@@ -107,9 +107,20 @@ public static class TermKindVisuals
     public static string? CostColor(ExistingAccountTerm term, ExistingAccount account) =>
         IsCostRate(term, account) ? "var(--finance-expense)" : null;
 
-    /// <summary>The percentage value with the cost sign applied (for the chart + deltas).</summary>
-    public static decimal SignedValue(ExistingAccountTerm term, ExistingAccount account) =>
-        IsCostRate(term, account) ? -Math.Abs(term.Value) : term.Value;
+    /// <summary>A term's kind label in the context of its account: a cost-rate reads "Interest
+    /// charged", every other term keeps its registry label. The expense color must never be the only
+    /// cue that a liability's interest is money out (WCAG 1.4.1 Use of Color) — the sign used to be
+    /// the second cue, so the word carries it now. Pair this with <see cref="CostColor"/> wherever a
+    /// value is tinted, the way a balance pairs its color with a signed amount.</summary>
+    public static string LabelFor(ExistingAccountTerm term, ExistingAccount account) =>
+        IsCostRate(term, account) ? "Interest charged" : Info(term.TermKind).Label;
+
+    /// <summary>The direction glyph for a rate change, from the rate as stored. A liability's rising
+    /// APR trends <em>up</em>: nothing re-signs a cost rate, which is what used to invert this.</summary>
+    public static string DeltaIcon(decimal current, decimal previous) =>
+        current > previous ? "arrow_upward"
+        : current < previous ? "arrow_downward"
+        : "remove";
 
     /// <summary>
     /// The key one term series resolves under — the kind plus its case-folded label. Mirrors
@@ -119,9 +130,12 @@ public static class TermKindVisuals
     public static (TermKind Kind, string? LabelKey) SeriesKey(ExistingAccountTerm term) =>
         (term.TermKind, TermLabel.KeyOf(term.Label));
 
-    /// <summary>The name a term leads with: the author's own label, falling back to the kind.</summary>
-    public static string DisplayName(TermKind kind, string? label) =>
-        string.IsNullOrWhiteSpace(label) ? Info(kind).Label : TermLabel.Normalize(label)!;
+    /// <summary>The name a term leads with: the author's own label, falling back to the kind wording.
+    /// The fallback is <see cref="LabelFor"/> rather than the bare registry label, so an unlabelled
+    /// cost rate still reads "Interest charged" (WCAG 1.4.1, issue #53). A rate kind is refused a
+    /// label server-side, so in practice only the fallback arm can ever be a cost rate.</summary>
+    public static string DisplayName(ExistingAccountTerm term, ExistingAccount account) =>
+        string.IsNullOrWhiteSpace(term.Label) ? LabelFor(term, account) : TermLabel.Normalize(term.Label)!;
 
     /// <summary>0.0340 → "3.40%", 0.0003 → "0.03%" (trailing zeros trimmed above 1%).</summary>
     public static string PctStr(decimal frac)
@@ -133,14 +147,14 @@ public static class TermKindVisuals
         return $"{s}%";
     }
 
-    /// <summary>A term's value as a display string, signed for cost-rates: "−6.49%" on a loan,
-    /// "3.40%" on savings, or a money amount for fee amounts (formatted via <paramref name="money"/>).</summary>
-    public static string FormatValue(ExistingAccountTerm term, ExistingAccount account, Func<decimal, string?, string> money)
+    /// <summary>A term's value as a display string, carrying the stored sign as entered: "6.49%" on a
+    /// loan, "3.40%" on savings, "−0.5%" for a genuinely negative rate, or a money amount for fee
+    /// amounts (formatted via <paramref name="money"/>).</summary>
+    public static string FormatValue(ExistingAccountTerm term, Func<decimal, string?, string> money)
     {
         if (term.ValueUnit != TermValueUnit.Percentage)
             return money(term.Value, term.CurrencyCode);
 
-        var v = SignedValue(term, account);
-        return (v < 0 ? "−" : "") + PctStr(Math.Abs(v));
+        return (term.Value < 0 ? "−" : "") + PctStr(Math.Abs(term.Value));
     }
 }

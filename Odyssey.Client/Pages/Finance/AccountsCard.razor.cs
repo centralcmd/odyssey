@@ -619,6 +619,9 @@ public partial class AccountsCard
         Value = term.Value,
         CurrencyCode = term.CurrencyCode,
         BillingPeriod = term.BillingPeriod,
+        // Carried through so the tile can name the series: one kind may now be in force several
+        // times over, and without it a card would show three identical "Transaction fee" tiles.
+        Label = term.Label,
         EffectiveFrom = term.EffectiveFrom,
     };
 

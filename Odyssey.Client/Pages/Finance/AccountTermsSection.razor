@@ -59,7 +59,7 @@
                             </span>
                             <div class="trm-hero-titles">
                                 <div class="trm-hero-kind">
-                                    @_hero.Info.Label
+                                    @_hero.KindLabel
                                     <span style="color:var(--mud-palette-text-secondary);font-weight:400;">· history</span>
                                 </div>
                                 <div class="trm-hero-sub">@_hero.SubLine</div>
@@ -103,21 +103,23 @@
                                     <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
                                         <span class="material-icons" style="font-size:18px;">@info.Icon</span>
                                     </span>
-                                    @* The author's own wording leads; the kind drops to the caption beneath it. *@
+                                    @* The author's own wording leads; the kind drops to the caption beneath
+                                       it. The caption stays LabelFor, not the bare registry label, so a cost
+                                       rate keeps saying "Interest charged" (WCAG 1.4.1, issue #53). *@
                                     @if (!string.IsNullOrWhiteSpace(t.Label))
                                     {
                                         <span class="trm-tile-txt">
                                             <span class="trm-tile-name">@t.Label</span>
-                                            <span class="trm-tile-kind">@info.Label</span>
+                                            <span class="trm-tile-kind">@TermKindVisuals.LabelFor(t, Account)</span>
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="trm-tile-kind">@info.Label</span>
+                                        <span class="trm-tile-kind">@TermKindVisuals.LabelFor(t, Account)</span>
                                     }
                                 </div>
                                 <div class="trm-tile-value" style="color:@(TermKindVisuals.CostColor(t, Account) ?? info.Color);">
-                                    @TermKindVisuals.FormatValue(t, Account, FormatMoney)
+                                    @TermKindVisuals.FormatValue(t, FormatMoney)
                                 </div>
                                 <div class="trm-tile-foot">
                                     <span>since @MonthYear(t.EffectiveFrom)</span>
@@ -200,10 +202,10 @@
                                     </span>
                                     <div>
                                         <div class="trm-row-kind-name">
-                                            @TermKindVisuals.DisplayName(t.TermKind, t.Label)
+                                            @TermKindVisuals.DisplayName(t, Account)
                                             @if (!string.IsNullOrWhiteSpace(t.Label))
                                             {
-                                                <span class="trm-row-kind-cat"> · @info.Label</span>
+                                                <span class="trm-row-kind-cat"> · @TermKindVisuals.LabelFor(t, Account)</span>
                                             }
                                         </div>
                                         @if (!string.IsNullOrWhiteSpace(t.Note))
@@ -215,7 +217,7 @@
                             </td>
                             <td class="trm-cell-date">@t.EffectiveFrom.ToString("MMM dd, yyyy")</td>
                             <td class="trm-cell-value" style="@(isCurrent ? $"color:{TermKindVisuals.CostColor(t, Account) ?? info.Color};" : "")">
-                                @TermKindVisuals.FormatValue(t, Account, FormatMoney)@if (bill is not null && !string.IsNullOrEmpty(bill.Suffix))
+                                @TermKindVisuals.FormatValue(t, FormatMoney)@if (bill is not null && !string.IsNullOrEmpty(bill.Suffix))
                                 {<span style="color:var(--mud-palette-text-secondary);font-weight:400;"> @bill.Suffix</span>}
                             </td>
                             <td>@RenderStatus(t, isCurrent)</td>
