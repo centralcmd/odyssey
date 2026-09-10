@@ -59,7 +59,7 @@
                             </span>
                             <div class="trm-hero-titles">
                                 <div class="trm-hero-kind">
-                                    @_hero.Info.Label
+                                    @_hero.KindLabel
                                     <span style="color:var(--mud-palette-text-secondary);font-weight:400;">· history</span>
                                 </div>
                                 <div class="trm-hero-sub">@_hero.SubLine</div>
@@ -103,7 +103,7 @@
                                     <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
                                         <span class="material-icons" style="font-size:18px;">@info.Icon</span>
                                     </span>
-                                    <span class="trm-tile-kind">@info.Label</span>
+                                    <span class="trm-tile-kind">@TermKindVisuals.LabelFor(t, Account)</span>
                                 </div>
                                 <div class="trm-tile-value" style="color:@(TermKindVisuals.CostColor(t, Account) ?? info.Color);">
                                     @TermKindVisuals.FormatValue(t, FormatMoney)
@@ -188,7 +188,7 @@
                                         <span class="material-icons" style="font-size:15px;">@info.Icon</span>
                                     </span>
                                     <div>
-                                        <div class="trm-row-kind-name">@info.Label</div>
+                                        <div class="trm-row-kind-name">@TermKindVisuals.LabelFor(t, Account)</div>
                                         @if (!string.IsNullOrWhiteSpace(t.Note))
                                         {
                                             <div class="trm-row-note">@t.Note</div>

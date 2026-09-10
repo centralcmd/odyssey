@@ -136,7 +136,7 @@ public partial class AccountTermsSection
 
     // ── Hero step-line chart ────────────────────────────────────────────────
     private sealed record HeroModel(
-        TermKindInfo Info, string Color, string CurrentLabel, string SubLine,
+        TermKindInfo Info, string KindLabel, string Color, string CurrentLabel, string SubLine,
         string? DeltaLabel, string DeltaIcon, string Svg);
 
     private HeroModel? BuildHero()
@@ -165,23 +165,24 @@ public partial class AccountTermsSection
             .Select(t => (Date: t.EffectiveFrom.Date, Value: (double)t.Value))
             .ToList();
 
-        var current = points[^1];
-        var prev = points.Count > 1 ? points[^2] : (ValueTuple<DateTime, double>?)null;
+        var currentTerm = ascending[^1];
+        var previousTerm = ascending.Count > 1 ? ascending[^2] : null;
 
-        string Fmt(double v) => (v < 0 ? "−" : "") + TermKindVisuals.PctStr((decimal)Math.Abs(v));
+        string Fmt(decimal v) => (v < 0 ? "−" : "") + TermKindVisuals.PctStr(Math.Abs(v));
 
         string? deltaLabel = null;
         var deltaIcon = "remove";
-        if (prev is { } p)
+        if (previousTerm is not null)
         {
-            var diff = current.Value - p.Item2;
-            deltaIcon = diff > 0 ? "arrow_upward" : diff < 0 ? "arrow_downward" : "remove";
-            deltaLabel = $"{TermKindVisuals.PctStr((decimal)Math.Abs(diff))} vs {MonthYear(p.Item1)}";
+            deltaIcon = TermKindVisuals.DeltaIcon(currentTerm.Value, previousTerm.Value);
+            deltaLabel = $"{TermKindVisuals.PctStr(Math.Abs(currentTerm.Value - previousTerm.Value))} vs {MonthYear(previousTerm.EffectiveFrom.Date)}";
         }
 
-        var subLine = $"{points.Count} change{(points.Count == 1 ? "" : "s")} since {MonthYear(points[0].Date)} · in force since {current.Date:MMM dd, yyyy}";
+        var subLine = $"{points.Count} change{(points.Count == 1 ? "" : "s")} since {MonthYear(points[0].Date)} · in force since {currentTerm.EffectiveFrom.Date:MMM dd, yyyy}";
 
-        return new HeroModel(info, color, Fmt(current.Value), subLine, deltaLabel, deltaIcon, BuildChartSvg(points, color));
+        return new HeroModel(
+            info, TermKindVisuals.LabelFor(currentTerm, Account), color, Fmt(currentTerm.Value),
+            subLine, deltaLabel, deltaIcon, BuildChartSvg(points, color));
     }
 
     private static string F(double d) => d.ToString("0.0", CultureInfo.InvariantCulture);

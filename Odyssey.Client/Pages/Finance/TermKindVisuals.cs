@@ -107,6 +107,21 @@ public static class TermKindVisuals
     public static string? CostColor(ExistingAccountTerm term, ExistingAccount account) =>
         IsCostRate(term, account) ? "var(--finance-expense)" : null;
 
+    /// <summary>A term's kind label in the context of its account: a cost-rate reads "Interest
+    /// charged", every other term keeps its registry label. The expense color must never be the only
+    /// cue that a liability's interest is money out (WCAG 1.4.1 Use of Color) — the sign used to be
+    /// the second cue, so the word carries it now. Pair this with <see cref="CostColor"/> wherever a
+    /// value is tinted, the way a balance pairs its color with a signed amount.</summary>
+    public static string LabelFor(ExistingAccountTerm term, ExistingAccount account) =>
+        IsCostRate(term, account) ? "Interest charged" : Info(term.TermKind).Label;
+
+    /// <summary>The direction glyph for a rate change, from the rate as stored. A liability's rising
+    /// APR trends <em>up</em>: nothing re-signs a cost rate, which is what used to invert this.</summary>
+    public static string DeltaIcon(decimal current, decimal previous) =>
+        current > previous ? "arrow_upward"
+        : current < previous ? "arrow_downward"
+        : "remove";
+
     /// <summary>0.0340 → "3.40%", 0.0003 → "0.03%" (trailing zeros trimmed above 1%).</summary>
     public static string PctStr(decimal frac)
     {
