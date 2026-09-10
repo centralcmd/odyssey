@@ -12,11 +12,7 @@ public sealed class ContactDraft
 {
     public ContactType Type { get; set; } = ContactType.Person;
     public string DisplayName { get; set; } = string.Empty;
-
-    // Base — carried through the full-replace PUT even though the DS form doesn't surface them,
-    // so an inline edit never silently wipes a persisted value (Notes) or the relationship.
     public string Notes { get; set; } = string.Empty;
-    public RelationshipType? RelationshipType { get; set; }
 
     // Person
     public string FirstName { get; set; } = string.Empty;
@@ -87,7 +83,6 @@ public sealed class ContactDraft
                 MiddleName = string.IsNullOrWhiteSpace(MiddleName) ? null : MiddleName.Trim(),
                 DateOfBirth = DateOfBirth,
                 DateOfDeath = DateOfDeath,
-                RelationshipType = RelationshipType,
                 Sex = Enum.TryParse<Sex>(Sex, out var sex) ? sex : null,
                 Title = string.IsNullOrWhiteSpace(Title) ? null : Title.Trim(),
                 Company = string.IsNullOrWhiteSpace(Company) ? null : Company.Trim(),
@@ -124,7 +119,6 @@ public sealed class ContactDraft
             draft.MiddleName = person.MiddleName ?? string.Empty;
             draft.DateOfBirth = person.DateOfBirth;
             draft.DateOfDeath = person.DateOfDeath;
-            draft.RelationshipType = person.RelationshipType;
             draft.Sex = person.Sex?.ToString() ?? string.Empty;
             draft.Title = person.Title ?? string.Empty;
             draft.Company = person.Company ?? string.Empty;

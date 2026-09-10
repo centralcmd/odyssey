@@ -40,8 +40,6 @@ public class PersonDetails
     /// </summary>
     public DateOnly? DateOfDeath { get; set; }
 
-    public RelationshipType? RelationshipType { get; set; }
-
     /// <summary>Optional sex (issue #325 v5). <c>null</c> means unspecified.</summary>
     public Sex? Sex { get; set; }
 

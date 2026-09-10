@@ -37,9 +37,6 @@ public sealed record PersonDetailsDto
     /// </summary>
     public DateTime? DateOfDeath { get; set; }
 
-    [EnumDataType(typeof(RelationshipType))]
-    public RelationshipType? RelationshipType { get; set; }
-
     [EnumDataType(typeof(Sex))]
     public Sex? Sex { get; set; }
 
