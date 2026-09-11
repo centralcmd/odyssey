@@ -52,8 +52,13 @@ public static class JournalTaskGenerator
     /// </summary>
     public static Result Generate(DateTime anchor)
     {
-        // Seed Bogus once so the filler backlog items below are reproducible.
-        Randomizer.Seed = new Random(RandomizerSeed);
+        // A LOCAL Randomizer, never the global `Randomizer.Seed`. That static is one
+        // System.Random shared process-wide, so two concurrent DemoDataSet.Build() calls — a
+        // seeder run racing a test's own Build(), which is routine under xUnit's parallel
+        // collections — reseed each other mid-generation and interleave draws. The filler rows
+        // below then differ between the two, which surfaced as a seeded-count assertion failing
+        // in CI and passing locally. Seeded identically, so the values are unchanged.
+        var faker = new Faker { Random = new Randomizer(RandomizerSeed) };
 
         var specs = new List<TaskSpec>
         {
@@ -107,7 +112,6 @@ public static class JournalTaskGenerator
         };
 
         // A few Bogus-generated filler backlog items for realistic board volume/pagination.
-        var faker = new Faker();
         string[] fillerTags = ["Home", "Errands", "Urgent", "Finance"];
         for (var i = 0; i < 4; i++)
         {
