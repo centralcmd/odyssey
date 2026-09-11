@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
@@ -41,6 +42,35 @@ public class ContactController : ControllerBase
     /// <summary>The house claim check — the same shape PhotosController and JournalEntriesController use.</summary>
     private bool HasClaim(string claimValue) => User.HasClaim(PermissionClaims.Type, claimValue);
 
+    private string ActorUserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
+
+    /// <summary>
+    /// A structured, <b>value-free</b> audit event for a change to the personal data issue #48 adds
+    /// (§10.9). <c>Contact.UpdatedAt</c> records <i>that</i> something changed and never <i>who</i> or
+    /// <i>what</i>, which cannot answer "who recorded this?" or, after an incident, "whose maiden
+    /// names were read?" — precisely what GDPR Art. 33 breach scoping and Art. 5(2) accountability
+    /// require.
+    ///
+    /// <para>
+    /// It carries the actor, the contact id and the action, and <b>never the alias value, the label
+    /// or the date</b>, so §10.6's no-echo rule is unchanged. It lives in the controller because the
+    /// domain service has no <c>ClaimsPrincipal</c>.
+    /// </para>
+    /// </summary>
+    private void AuditContactChange(Guid contactId, string action) =>
+        logger.LogInformation(
+            "Contact {ContactId} {Action} by {ActorUserId}.", contactId, action, ActorUserId);
+
+    /// <summary>
+    /// The bulk-read counterpart (§10.11). A <c>contacts.read</c> holder — <b>Guest included</b> — can
+    /// download the whole corpus, maiden names and dates of death with it, in one request. Row count
+    /// and whether filters were applied; no names, no values.
+    /// </summary>
+    private void AuditVCardExport(int rowCount, bool filtered) =>
+        logger.LogInformation(
+            "Contacts vCard export of {RowCount} contact(s) ({Scope}) by {ActorUserId}.",
+            rowCount, filtered ? "filtered" : "all", ActorUserId);
+
     [HttpGet(Name = "GetContacts")]
     [Authorize(Policy = PermissionClaims.ContactsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingContact>))]
@@ -82,6 +112,11 @@ public class ContactController : ControllerBase
             Description = @"The new contact to create.")] NewContact newContact, CancellationToken cancellationToken = default)
     {
         var contact = await contactService.Create(newContact, cancellationToken);
+        if (contact.PersonDetails?.DateOfDeath is not null)
+        {
+            AuditContactChange(contact.ContactId, "dateOfDeath.set");
+        }
+
         return CreatedAtRoute("GetContact", new { id = contact.ContactId }, "");
     }
 
@@ -97,8 +132,24 @@ public class ContactController : ControllerBase
         [FromBody] [SwaggerParameter("NewContact", Required = true,
             Description = @"The contact with the updated values.")] NewContact newContact, CancellationToken cancellationToken = default)
     {
+        // Read BEFORE the write: the audit event distinguishes recording a death from clearing one,
+        // and only the prior value can say which happened (§10.9). Value-free either way — the event
+        // names the transition, never the date.
+        var before = (await contactService.Get(id, cancellationToken))?.PersonDetails?.DateOfDeath;
+
         var contact = await contactService.Update(id, newContact, cancellationToken);
-        return contact is null ? await Post(newContact, cancellationToken) : NoContent();
+        if (contact is null)
+        {
+            return await Post(newContact, cancellationToken);
+        }
+
+        var after = contact.PersonDetails?.DateOfDeath;
+        if (before != after)
+        {
+            AuditContactChange(id, after is null ? "dateOfDeath.cleared" : "dateOfDeath.set");
+        }
+
+        return NoContent();
     }
 
     [HttpDelete("{id}", Name = "DeleteContact")]
@@ -189,7 +240,8 @@ it in one transaction, instead of refusing with a 409. Requires insurance.update
     [Produces("text/vcard")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export a single contact as an RFC 6350 vCard 4.0 .vcf file.")]
+    [SwaggerOperation(Summary = "Export a single contact as an RFC 6350 vCard 4.0 .vcf file.",
+        Description = ExportDisclosure)]
     public async Task<IActionResult> ExportVCard(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -199,8 +251,19 @@ it in one transaction, instead of refusing with a 409. Requires insurance.update
             return this.NotFoundProblem($"Contact ID {id} not found.");
         }
 
+        AuditVCardExport(rowCount: 1, filtered: false);
         return VCardFile(export);
     }
+
+    /// <summary>
+    /// What leaves the deployment when a contact is exported (issue #48 §10.11). Stated on the
+    /// operation because issue #48 widened it: the file now also carries alternative names — which
+    /// include maiden and former names — middle names and the lifecycle dates.
+    /// </summary>
+    private const string ExportDisclosure = @"The exported card carries the contact's names, aliases
+(including maiden and former names, with their free-text labels), middle name, dates of birth and
+death, an organization's establishment and dissolution dates, addresses, email addresses, phone
+numbers and notes.";
 
     [HttpGet("vcard", Name = "ExportContactsVCard")]
     [Authorize(Policy = PermissionClaims.ContactsRead)]
@@ -210,7 +273,8 @@ it in one transaction, instead of refusing with a 409. Requires insurance.update
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Export every contact matching the supplied filters as a multi-entry RFC 6350 vCard 4.0 .vcf file.",
-        Description = "Omit all filters to export everything; pass the page's current filter state to export exactly the filtered set.")]
+        Description = "Omit all filters to export everything; pass the page's current filter state to export exactly the filtered set.\n\n"
+            + ExportDisclosure)]
     public async Task<IActionResult> ExportVCards(
         [FromQuery] ContactsQueryParams query, CancellationToken cancellationToken = default)
     {
@@ -225,6 +289,7 @@ it in one transaction, instead of refusing with a 409. Requires insurance.update
             // Odyssey.ApiClient compares the parsed entry count in the downloaded body against this
             // header and treats a short count as a failed download rather than a smaller-but-valid one.
             Response.Headers["X-Odyssey-Export-Rows"] = rowCount.ToString(CultureInfo.InvariantCulture);
+            AuditVCardExport(rowCount, filtered: HasAnyFilter(query));
         }, cancellationToken);
 
         return new EmptyResult();
@@ -266,6 +331,9 @@ it in one transaction, instead of refusing with a 409. Requires insurance.update
         return Ok(result);
     }
 
+    private static bool HasAnyFilter(ContactsQueryParams query) =>
+        !string.IsNullOrWhiteSpace(query.Search) || query.Types is { Length: > 0 } || query.Status is not null;
+
     // nosniff mirrors the file-download surface: the browser must not re-interpret the body as
     // anything other than the declared text/vcard (matches CalendarIcsController.Export).
     private IActionResult VCardFile(VCardExport export)
@@ -273,6 +341,93 @@ it in one transaction, instead of refusing with a 409. Requires insurance.update
         Response.Headers.XContentTypeOptions = "nosniff";
         var bytes = Encoding.UTF8.GetBytes(export.Content);
         return File(bytes, "text/vcard; charset=utf-8", export.FileName);
+    }
+
+    // ── Aliases (issue #48 §7) ────────────────────────────────────────────────
+    // Four sub-resource actions gated by the SIBLING claims — contacts.read/.create/.update/.delete.
+    // No new claim, so no RolePermissions change, no RoleClaimSeeder reconciliation and no forced
+    // sign-out/sign-in (§10.8).
+    //
+    // Containment holds on all four verbs: the service resolves an aliasId SCOPED to contactId, so an
+    // alias belonging to another contact is a 404 — not a 403, which would confirm the row exists
+    // under a different parent (ASVS V4.1.5, WSTG-ATHZ-04).
+
+    [HttpGet("{contactId}/aliases", Name = "GetContactAliases")]
+    [Authorize(Policy = PermissionClaims.ContactsRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingContactAlias>))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "List a contact's alternative names.")]
+    public async Task<IActionResult> GetAliases([FromRoute] Guid contactId, CancellationToken cancellationToken = default)
+    {
+        var aliases = await contactService.GetAliases(contactId, cancellationToken);
+        return aliases is null ? this.NotFoundProblem($"Contact ID {contactId} not found.") : Ok(aliases);
+    }
+
+    [HttpPost("{contactId}/aliases", Name = "PostContactAlias")]
+    [Authorize(Policy = PermissionClaims.ContactsCreate)]
+    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingContactAlias))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Add one alternative name to a contact.",
+        Description = @"409 when the contact already carries that value (compared case- AND
+accent-insensitively, on the value alone — two labels cannot smuggle in a second ""Hansen""); 422 when
+the contact is already at its 32-alias cap. Both name the field `value` in the problem-details
+`errors` dictionary, and neither echoes the submitted value or label.")]
+    public async Task<IActionResult> PostAlias(
+        [FromRoute] Guid contactId, [FromBody] NewContactAlias request, CancellationToken cancellationToken = default)
+    {
+        var created = await contactService.CreateAlias(contactId, request, cancellationToken);
+        if (created is null)
+        {
+            return this.NotFoundProblem($"Contact ID {contactId} not found.");
+        }
+
+        AuditContactChange(contactId, "alias.created");
+        // CreatedAtRoute points at the collection: the siblings expose no per-item GET either.
+        return CreatedAtRoute("GetContactAliases", new { contactId }, created);
+    }
+
+    [HttpPut("{contactId}/aliases/{aliasId}", Name = "PutContactAlias")]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Replace one of a contact's alternative names.",
+        Description = @"A replace, not a patch: an omitted or blank `label` CLEARS a previously-set
+one, matching the sibling sub-resources. There is deliberately no 422 here — a replace cannot grow the
+collection, so the cap is unreachable on this verb.")]
+    public async Task<IActionResult> PutAlias(
+        [FromRoute] Guid contactId, [FromRoute] Guid aliasId, [FromBody] NewContactAlias request,
+        CancellationToken cancellationToken = default)
+    {
+        var updated = await contactService.UpdateAlias(contactId, aliasId, request, cancellationToken);
+        if (!updated)
+        {
+            return this.NotFoundProblem($"Alias ID {aliasId} is not attached to contact ID {contactId}.");
+        }
+
+        AuditContactChange(contactId, "alias.updated");
+        return NoContent();
+    }
+
+    [HttpDelete("{contactId}/aliases/{aliasId}", Name = "DeleteContactAlias")]
+    [Authorize(Policy = PermissionClaims.ContactsDelete)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    public async Task<IActionResult> DeleteAlias(
+        [FromRoute] Guid contactId, [FromRoute] Guid aliasId, CancellationToken cancellationToken = default)
+    {
+        var deleted = await contactService.DeleteAlias(contactId, aliasId, cancellationToken);
+        if (!deleted)
+        {
+            return this.NotFoundProblem($"Alias ID {aliasId} is not attached to contact ID {contactId}.");
+        }
+
+        AuditContactChange(contactId, "alias.deleted");
+        return NoContent();
     }
 
     // ── Addresses (issue #325 §7) ─────────────────────────────────────────────

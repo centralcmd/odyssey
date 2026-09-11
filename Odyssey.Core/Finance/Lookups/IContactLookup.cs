@@ -29,12 +29,27 @@ public interface IContactLookup
     Task<IReadOnlyDictionary<Guid, ContactRef>> ResolveRefsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Resolves each existing contact id to a full <see cref="ExistingContact"/> DTO (with Person/Org
-    /// details and address/email/phone children). Used by read paths that embed the whole contact — e.g.
-    /// <c>ExistingTransaction.Contact</c> — which previously came from an EF navigation include now that
-    /// Contact lives in OdysseyContext. Ids with no matching contact are absent.
+    /// Resolves each existing contact id to the two-member <see cref="ContactEmbed"/> that finance
+    /// read DTOs embed — <c>ExistingTransaction.Contact</c>. Ids with no matching contact are absent.
+    ///
+    /// <para>
+    /// <b>It used to return the full <see cref="ExistingContact"/>, and that was a cross-claim leak
+    /// waiting to widen</b> (issue #48 §10.2). Its three consumers —
+    /// <c>TransactionService.EnrichContactsAsync</c>, <c>AccountService</c> and
+    /// <c>BudgetService</c> — sit behind <c>transactions.read</c>, <c>accounts.read</c> and
+    /// <c>budgets.read</c>, none of which is <c>contacts.read</c>; so every contact field reached a
+    /// caller holding no <c>contacts.*</c> claim at all, and the alias list, middle name and
+    /// lifecycle dates would have joined them the moment anyone added
+    /// <c>.Include(c =&gt; c.Aliases)</c> to the query behind it.
+    /// </para>
+    ///
+    /// <para>
+    /// The narrowing is structural for the same reason <see cref="ContactRef"/> is: a member-level
+    /// assertion over <see cref="ContactRef"/> alone would have passed green throughout. Widen this
+    /// return type and the leak comes back.
+    /// </para>
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, ExistingContact>> ResolveContactsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, ContactEmbed>> ResolveContactsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// The ids of contacts whose resolved display name contains <paramref name="term"/> (case-insensitive).

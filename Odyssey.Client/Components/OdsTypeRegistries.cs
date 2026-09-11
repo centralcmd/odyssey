@@ -56,6 +56,51 @@ public static class OdsContactOptions
     public static OdsOption From(Odyssey.Dtos.Journal.ExistingContact contact)
     {
         var meta = OdsTypeRegistries.ContactTypeOf(contact.Type.ToString());
+        return new OdsOption(contact.ContactId.ToString(), Labelled(contact))
+        {
+            Icon = meta.Icon,
+            IconColor = meta.Color,
+        };
+    }
+
+    /// <summary>
+    /// The option's label, suffixed when the contact carries a date of death (Person) or a
+    /// dissolution date (Organization): <c>Kari Nordmann · Deceased</c> (issue #48 §3 state 12).
+    ///
+    /// <para>
+    /// The contact is <b>still fully selectable</b> — recording either date removes no capability —
+    /// and the suffix goes into the <b>label</b> rather than a sub-line for two reasons: it lands in
+    /// the accessible name by construction, and <c>OdsCombobox</c> renders no
+    /// <c>OdsOption.Sub</c> at all (only OdsTagMultiSelect does), so a sub-line would be silently
+    /// invisible. It is deliberately not an OdsContactChip either: that component is not on the
+    /// picker path, and wiring it would re-widen the cross-claim projection issue #48 narrowed.
+    /// </para>
+    /// </summary>
+    private static string Labelled(Odyssey.Dtos.Journal.ExistingContact contact)
+    {
+        var state = contact.Type == Odyssey.Dtos.ContactType.Person
+            ? contact.PersonDetails?.DateOfDeath is not null ? "Deceased" : null
+            : contact.OrganizationDetails?.DissolvedDate is not null ? "Dissolved" : null;
+
+        return state is null ? contact.ResolvedDisplayName : $"{contact.ResolvedDisplayName} · {state}";
+    }
+
+    /// <summary>
+    /// An option for a contact the caller only holds as the narrow finance embed (issue #48 §10.2):
+    /// <see cref="Odyssey.Dtos.Journal.ContactEmbed"/> carries an id and a resolved name and nothing
+    /// else, deliberately — including no <c>Type</c>, so this option cannot carry a type glyph.
+    ///
+    /// <para>
+    /// Its one call site is the transaction dialog's edit-mode fallback, where the linked contact has
+    /// since been archived and so is absent from the picker's own option list. The picker needs
+    /// <i>something</i> to render the trigger's name against; an unresolvable-type option is the
+    /// right shape for that, and the alternative — widening the embed to carry a type — is the leak
+    /// the narrowing closed.
+    /// </para>
+    /// </summary>
+    public static OdsOption From(Odyssey.Dtos.Journal.ContactEmbed contact)
+    {
+        var meta = OdsTypeRegistries.ContactTypeOf(null);
         return new OdsOption(contact.ContactId.ToString(), contact.ResolvedDisplayName)
         {
             Icon = meta.Icon,

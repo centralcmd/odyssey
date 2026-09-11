@@ -163,7 +163,9 @@ public class ContactVCardService
 
         if (row.Type == ContactType.Person && row.PersonDetails is { } person)
         {
-            AppendFolded(sb, $"N:{EscapeText(person.LastName)};{EscapeText(person.FirstName)};;;");
+            // Component 3 is the middle name (issue #48). The writer already emitted five components,
+            // so a null MiddleName produces a BYTE-IDENTICAL line to the pre-change output.
+            AppendFolded(sb, $"N:{EscapeText(person.LastName)};{EscapeText(person.FirstName)};{EscapeText(person.MiddleName ?? "")};;");
             if (!string.IsNullOrWhiteSpace(person.Title))
             {
                 AppendFolded(sb, $"TITLE:{EscapeText(person.Title)}");
@@ -184,6 +186,13 @@ public class ContactVCardService
                 AppendFolded(sb, $"GENDER:{(sex == Sex.Male ? "M" : "F")}");
             }
 
+            if (person.DateOfDeath is { } dod)
+            {
+                // A real registered property (RFC 6474), so it is used rather than inventing an
+                // X-ODYSSEY- name for it.
+                AppendFolded(sb, $"DEATHDATE:{dod:yyyyMMdd}");
+            }
+
             if (person.RelationshipType is { } relationship)
             {
                 AppendFolded(sb, $"X-ODYSSEY-RELATIONSHIP:{relationship}");
@@ -202,6 +211,18 @@ public class ContactVCardService
             {
                 AppendFolded(sb, $"X-ODYSSEY-ORG-NUMBER:{EscapeText(org.OrganizationNumber)}");
             }
+
+            // No registered property exists for either, so both follow the established
+            // X-ODYSSEY-ORG-NUMBER / -RELATIONSHIP naming (issue #48 §9).
+            if (org.EstablishedDate is { } established)
+            {
+                AppendFolded(sb, $"X-ODYSSEY-ESTABLISHED:{established:yyyyMMdd}");
+            }
+
+            if (org.DissolvedDate is { } dissolved)
+            {
+                AppendFolded(sb, $"X-ODYSSEY-DISSOLVED:{dissolved:yyyyMMdd}");
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(row.Notes))
@@ -210,6 +231,31 @@ public class ContactVCardService
         }
 
         AppendFolded(sb, $"REV:{row.UpdatedAt:yyyyMMddTHHmmssZ}");
+
+        // Aliases (issue #48 §9): one GROUPED pair per alias, in API order — the label is a grouped
+        // PROPERTY, never a parameter.
+        //
+        // Two reasons a parameter cannot carry it. RFC 6350's quoted param-value is QSAFE-CHAR, which
+        // EXCLUDES DQUOTE, so a label containing `"` has no in-band escape at all; and this parser is
+        // not quote-aware (ParseProperties takes the first ':' and splits on every ';'), so `:`, `;`
+        // or `"` breaks the parse and `a";TYPE=work;X-EVIL="b` INJECTS parameters that downstream
+        // address books honour. This Label is the first user-controlled free text this codebase would
+        // put in a vCard parameter — every existing one comes from a closed enum switch. A grouped
+        // property removes the surface rather than defending it: its value is TEXT, which
+        // EscapeText/UnescapeText already round-trip losslessly.
+        //
+        // A contact with no aliases emits nothing, so its card stays byte-identical to the previous
+        // output.
+        var aliasGroup = 0;
+        foreach (var alias in row.Aliases)
+        {
+            aliasGroup++;
+            AppendFolded(sb, $"item{aliasGroup}.NICKNAME:{EscapeText(alias.Value)}");
+            if (!string.IsNullOrWhiteSpace(alias.Label))
+            {
+                AppendFolded(sb, $"item{aliasGroup}.{AliasLabelProperty}:{EscapeText(alias.Label)}");
+            }
+        }
 
         foreach (var address in row.Addresses)
         {
@@ -397,11 +443,17 @@ public class ContactVCardService
         var lastName = "";
         var legalName = "";
 
+        var middleName = "";
+
         if (type == ContactType.Person)
         {
             var comps = nRaw is null ? [] : SplitUnescaped(nRaw);
             lastName = comps.Count > 0 ? UnescapeText(comps[0]).Trim() : "";
             firstName = comps.Count > 1 ? UnescapeText(comps[1]).Trim() : "";
+            // Component 3 (issue #48 §9). FN and N will legitimately DISAGREE on it: FN comes from
+            // ResolvedDisplayName, which by design excludes the middle name, while N now carries it.
+            // Accepted — FN is authoritative in vCard 4.0 and stays consistent with what Odyssey shows.
+            middleName = comps.Count > 2 ? UnescapeText(comps[2]).Trim() : "";
         }
         else
         {
@@ -438,7 +490,11 @@ public class ContactVCardService
             {
                 FirstName = firstName,
                 LastName = lastName,
+                MiddleName = EmptyToNull(middleName),
                 DateOfBirth = ParseBirthday(TextValue(props, "BDAY")),
+                // Same lenient posture BDAY already has: an unparseable date reads as absent rather
+                // than skipping the whole entry (issue #48 §11).
+                DateOfDeath = ParseVCardDate(TextValue(props, "DEATHDATE")),
                 Sex = ParseGender(TextValue(props, "GENDER")),
                 RelationshipType = ParseRelationship(TextValue(props, "X-ODYSSEY-RELATIONSHIP")),
                 Title = EmptyToNull(TextValue(props, "TITLE")),
@@ -452,6 +508,8 @@ public class ContactVCardService
                 LegalName = legalName,
                 OrganizationNumber = EmptyToNull(TextValue(props, "X-ODYSSEY-ORG-NUMBER")),
                 Website = ValidateHttpUrl(TextValue(props, "URL")),
+                EstablishedDate = ParseVCardDate(TextValue(props, "X-ODYSSEY-ESTABLISHED")),
+                DissolvedDate = ParseVCardDate(TextValue(props, "X-ODYSSEY-DISSOLVED")),
             };
         }
 
@@ -522,6 +580,11 @@ public class ContactVCardService
         Guid contactId, ContactType contactType, Dictionary<string, List<VCardProperty>> props, bool isUpdate,
         string sampleName, ImportSkipCollector skipped, int maxRepeatableProperties, CancellationToken cancellationToken)
     {
+        // Aliases MERGE rather than replace, unlike the three collections below (issue #48 §9): an
+        // import must never delete an alias a person typed, and must never overwrite a label they
+        // typed with a blank one.
+        await MergeAliasesAsync(contactId, props, sampleName, skipped, cancellationToken);
+
         if (isUpdate)
         {
             foreach (var address in await contactService.GetAddresses(contactId, cancellationToken) ?? [])
@@ -599,6 +662,168 @@ public class ContactVCardService
             }
         }
     }
+
+    /// <summary>The grouped label property carrying an alias's free-text label (issue #48 §9).</summary>
+    private const string AliasLabelProperty = "X-ODYSSEY-ALIAS-LABEL";
+
+    /// <summary>
+    /// Adds the card's aliases to the contact, never removing one.
+    ///
+    /// <para>
+    /// An incoming value that already exists is left <b>alone, its stored label included</b>. The cap
+    /// counts the contact's total, and the excess is a counted reason group rather than a skip — the
+    /// contact still imports (§11).
+    /// </para>
+    /// </summary>
+    private async Task MergeAliasesAsync(
+        Guid contactId, Dictionary<string, List<VCardProperty>> props, string sampleName,
+        ImportSkipCollector skipped, CancellationToken cancellationToken)
+    {
+        var candidates = ParseAliases(props);
+        if (candidates.Count == 0)
+        {
+            return;
+        }
+
+        var existing = await contactService.GetAliases(contactId, cancellationToken) ?? [];
+        var kept = existing.Select(a => a.Value).ToList();
+        var dropped = 0;
+
+        foreach (var candidate in candidates)
+        {
+            if (kept.Any(value => AliasValueEquals(value, candidate.Value)))
+            {
+                continue; // already present — its stored label wins
+            }
+
+            if (kept.Count >= ContactAliasRules.MaxPerContact)
+            {
+                dropped++;
+                continue;
+            }
+
+            try
+            {
+                await contactService.CreateAlias(contactId, candidate, cancellationToken);
+                kept.Add(candidate.Value);
+            }
+            catch (DomainException ex) when (ex is DomainValidationException or DomainConflictException or DomainUnprocessableException)
+            {
+                // Same posture as the three collections below: one bad repeatable property is dropped
+                // and reported, not escalated into a whole-entry skip.
+                skipped.Add($"Alias dropped: {ex.Message}", sampleName);
+            }
+        }
+
+        if (dropped > 0)
+        {
+            skipped.Add(
+                $"Aliases dropped: more than {ContactAliasRules.MaxPerContact} in one entry — the rest were not imported.",
+                sampleName);
+        }
+    }
+
+    /// <summary>
+    /// The card's aliases, in document order, de-duplicated case- and accent-insensitively with the
+    /// first occurrence (and its label) winning.
+    ///
+    /// <para>
+    /// Pairing is on the <b>group</b>: a <c>NICKNAME</c> takes the label from an
+    /// <c>X-ODYSSEY-ALIAS-LABEL</c> sharing its group. The comma split is conditioned on
+    /// <i>"our label is present"</i>, NOT on <i>"the property is grouped"</i> — grouping is a general
+    /// vCard mechanism and an Apple-style <c>item1.NICKNAME:Kari,KH</c> with no label beside it must
+    /// still split into two aliases.
+    /// </para>
+    ///
+    /// <para>
+    /// Four edge cases, so a mis-attached label cannot mislabel a maiden name: an ungrouped label is
+    /// ignored; a group with two labels takes the first; a group with two <c>NICKNAME</c>s labels the
+    /// first only; a label-only group creates no alias.
+    /// </para>
+    /// </summary>
+    private static List<NewContactAlias> ParseAliases(Dictionary<string, List<VCardProperty>> props)
+    {
+        var labelsByGroup = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var prop in Properties(props, AliasLabelProperty))
+        {
+            // An ungrouped label belongs to no alias — ignored rather than applied to the first one.
+            if (prop.Group is not { Length: > 0 } group || labelsByGroup.ContainsKey(group))
+            {
+                continue; // first label in a group wins
+            }
+
+            labelsByGroup[group] = UnescapeText(prop.RawValue);
+        }
+
+        var result = new List<NewContactAlias>();
+        var labelledGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var prop in Properties(props, "NICKNAME"))
+        {
+            string? label = null;
+            if (prop.Group is { Length: > 0 } group
+                && labelsByGroup.TryGetValue(group, out var groupLabel)
+                && labelledGroups.Add(group))
+            {
+                label = groupLabel;
+            }
+
+            // A labelled NICKNAME is one alias: its label describes that whole value, so splitting it
+            // would attach one label to several unrelated names.
+            var values = label is null
+                ? SplitUnescapedOn(prop.RawValue, ',').Select(UnescapeText)
+                : [UnescapeText(prop.RawValue)];
+
+            foreach (var raw in values)
+            {
+                var value = CollapseWhitespace(StripControlCharacters(raw));
+                if (value.Length == 0)
+                {
+                    continue;
+                }
+
+                if (value.Length > ContactAliasRules.MaxValueLength)
+                {
+                    value = value[..ContactAliasRules.MaxValueLength];
+                }
+
+                if (result.Any(a => AliasValueEquals(a.Value, value)))
+                {
+                    continue;
+                }
+
+                var cleanedLabel = CollapseWhitespace(StripControlCharacters(label ?? ""));
+                // Truncated rather than rejected — the informative part survives, matching the
+                // "drop this one field" posture the rest of the import takes (§9).
+                if (cleanedLabel.Length > ContactAliasRules.MaxLabelLength)
+                {
+                    cleanedLabel = cleanedLabel[..ContactAliasRules.MaxLabelLength];
+                }
+
+                result.Add(new NewContactAlias { Value = value, Label = EmptyToNull(cleanedLabel) });
+            }
+        }
+
+        return result;
+    }
+
+    private static bool AliasValueEquals(string left, string right) =>
+        string.Compare(left, right, CultureInfo.InvariantCulture,
+            CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) == 0;
+
+    /// <summary>
+    /// Strips C0 control characters and DEL rather than rejecting them (issue #48 §9).
+    ///
+    /// <para>
+    /// <see cref="UnescapeText"/> turns an escaped newline into a real <c>U+000A</c> before the value
+    /// reaches <c>ContactService</c>, so a <c>NICKNAME</c> carrying one would otherwise throw and cost the
+    /// user the whole card — or, worse, persist a control character that feeds straight back into the
+    /// next export. The HTTP path still <b>rejects</b> the same characters; stripping here is the
+    /// import's truncate-don't-reject posture, not a relaxation of the rule.
+    /// </para>
+    /// </summary>
+    private static string StripControlCharacters(string value) =>
+        value.Any(char.IsControl) ? new string([.. value.Where(ch => !char.IsControl(ch))]) : value;
 
     private static NewAddress? ParseAddress(VCardProperty prop, ContactType contactType)
     {
@@ -728,7 +953,16 @@ public class ContactVCardService
 
     private static bool HasPref(IReadOnlyDictionary<string, string> parameters) => parameters.ContainsKey("PREF");
 
-    private static DateTime? ParseBirthday(string? value)
+    private static DateTime? ParseBirthday(string? value) => ParseVCardDate(value);
+
+    /// <summary>
+    /// A vCard date property in either basic (<c>yyyyMMdd</c>) or extended (<c>yyyy-MM-dd</c>) form.
+    /// An unparseable value reads as <b>absent</b>, never as an error — the posture <c>BDAY</c>
+    /// already had and which <c>DEATHDATE</c>, <c>X-ODYSSEY-ESTABLISHED</c> and
+    /// <c>X-ODYSSEY-DISSOLVED</c> inherit (issue #48 §11): one malformed property must not cost the
+    /// user a whole card.
+    /// </summary>
+    private static DateTime? ParseVCardDate(string? value)
     {
         if (value is null)
         {
@@ -785,7 +1019,20 @@ public class ContactVCardService
 
     // ---------------------------------------------------------------- Parsing primitives
 
-    private readonly record struct VCardProperty(IReadOnlyDictionary<string, string> Params, string RawValue);
+    /// <summary>
+    /// One parsed content line. <paramref name="Group"/> is the RFC 6350 §3.2 group prefix
+    /// (<c>item1</c> in <c>item1.NICKNAME:…</c>), <see langword="null"/> when the property is
+    /// ungrouped — added in issue #48 so an alias can be paired with the label sharing its group.
+    ///
+    /// <para>
+    /// <b>The dictionary key stays the BARE property name.</b> Keying it group-qualified would break
+    /// every existing lookup — <c>RawValue(props, "N")</c> and
+    /// <c>TextValue(props, "UID"|"FN"|"NOTE"|"BDAY"|"URL")</c> — and Apple and iCloud emit grouped
+    /// properties routinely (<c>item1.EMAIL</c> + <c>item1.X-ABLabel</c>), so those cards would stop
+    /// importing. The group is carried alongside the value, not folded into the key.
+    /// </para>
+    /// </summary>
+    private readonly record struct VCardProperty(IReadOnlyDictionary<string, string> Params, string RawValue, string? Group);
 
     private static string? RawValue(Dictionary<string, List<VCardProperty>> props, string name) =>
         props.TryGetValue(name, out var list) && list.Count > 0 ? list[0].RawValue : null;
@@ -925,6 +1172,13 @@ public class ContactVCardService
                 continue;
             }
 
+            // Retained ALONGSIDE the bare name, never folded into it (see VCardProperty).
+            var group = dotIndex >= 0 ? namePart[..dotIndex].Trim() : null;
+            if (group is { Length: 0 })
+            {
+                group = null;
+            }
+
             var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             for (var i = 1; i < segments.Length; i++)
             {
@@ -943,7 +1197,7 @@ public class ContactVCardService
                 result[name] = list;
             }
 
-            list.Add(new VCardProperty(parameters, rawValue));
+            list.Add(new VCardProperty(parameters, rawValue, group));
         }
 
         return result;
@@ -951,7 +1205,11 @@ public class ContactVCardService
 
     // Splits a raw structured-property value on unescaped ';' — an escaped "\;" is kept intact for the
     // subsequent per-component UnescapeText call rather than treated as a separator.
-    private static List<string> SplitUnescaped(string value)
+    private static List<string> SplitUnescaped(string value) => SplitUnescapedOn(value, ';');
+
+    // The same split on any separator. NICKNAME's value list is comma-separated (issue #48 §9), and an
+    // escaped "\," must not be treated as a separator any more than an escaped "\;" is.
+    private static List<string> SplitUnescapedOn(string value, char separator)
     {
         var parts = new List<string>();
         var sb = new StringBuilder();
@@ -964,7 +1222,7 @@ public class ContactVCardService
                 continue;
             }
 
-            if (value[i] == ';')
+            if (value[i] == separator)
             {
                 parts.Add(sb.ToString());
                 sb.Clear();

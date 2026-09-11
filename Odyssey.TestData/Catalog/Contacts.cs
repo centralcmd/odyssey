@@ -1,6 +1,7 @@
 using Odyssey.Dtos;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.TestData.Catalog;
 
@@ -44,6 +45,16 @@ public static class Contacts
     /// <summary>A second insurance provider, so a policy can be placed across co-insurers.</summary>
     public const string Allstate = "Allstate";
 
+    /// <summary>A deceased person — the issue #48 case that must NOT read as archived.</summary>
+    public const string LatePartner = "Morgan Rivera";
+
+    /// <summary>
+    /// The near-cap contact (issue #48 §15). §12's <c>ListAllAsync</c> budget measures payload growth
+    /// from inline aliases, and that measurement is meaningless unless something in the seed actually
+    /// carries a full set.
+    /// </summary>
+    public const string AliasHeavy = "Northgate Mutual";
+
     private static readonly DateTime SeededAt = new(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     // (key, notes, legalName, organizationNumber) — every entry an Organization; the people are below.
@@ -68,6 +79,7 @@ public static class Contacts
         (BlueCross, "Healthcare network", null),
         (Irs, "Tax authority", null),
         (CashWithdrawal, "Uncategorized cash", null),
+        (AliasHeavy, "Former insurer — dissolved; kept for policy history", "31-4455667"),
     ];
 
     public static Guid IdFor(string name) => DeterministicGuid.From($"contact::{name}");
@@ -78,7 +90,8 @@ public static class Contacts
 
     private static Contact Person(
         string key, string firstName, string lastName, RelationshipType relationship, string notes,
-        DateTime? archived = null) => new()
+        DateTime? archived = null, string? middleName = null,
+        DateOnly? dateOfBirth = null, DateOnly? dateOfDeath = null) => new()
     {
         ContactId = IdFor(key),
         ExternalUid = ExternalUidFor(key),
@@ -93,9 +106,25 @@ public static class Contacts
             ContactId = IdFor(key),
             FirstName = firstName,
             LastName = lastName,
+            MiddleName = middleName,
+            DateOfBirth = dateOfBirth,
+            DateOfDeath = dateOfDeath,
             RelationshipType = relationship,
         },
     };
+
+    /// <summary>
+    /// Aliases for a seeded contact (issue #48). Ids are deterministic like every other seeded key, so
+    /// a reseed produces the same rows and a test can name one.
+    /// </summary>
+    private static List<ContactAlias> Aliases(string key, params (string Value, string? Label)[] aliases) =>
+        [.. aliases.Select(alias => new ContactAlias
+        {
+            Id = DeterministicGuid.From($"contact-alias::{key}::{alias.Value}"),
+            ContactId = IdFor(key),
+            Value = alias.Value,
+            Label = alias.Label,
+        })];
 
     private static string Normalize(string value) =>
         string.Join(' ', value.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
@@ -125,7 +154,11 @@ public static class Contacts
 
         // The Person contacts. The landlord predates the household, which exists so the insurance
         // link collections have real people to name.
-        contacts.Add(Person(Landlord, "Jane", "Smith", RelationshipType.Landlord, "Property landlord"));
+        //
+        // The landlord carries a MAIDEN NAME and a middle name — the two additions of issue #48 that
+        // are searchable — so the alias and middle-name search arms have something real to match.
+        contacts.Add(Person(Landlord, "Jane", "Smith", RelationshipType.Landlord, "Property landlord",
+            middleName: "Elisabeth", dateOfBirth: new DateOnly(1968, 3, 14)));
         contacts.Add(Person(PolicyHolder, "Alex", "Rivera", RelationshipType.Family, "Policyholder on the household policies"));
         contacts.Add(Person(Spouse, "Sam", "Rivera", RelationshipType.Family, "Named on the household policies"));
         // Archived on purpose: this is the demo's UNNAMED-member case. The Term Life policy keeps the
@@ -134,6 +167,59 @@ public static class Contacts
         contacts.Add(Person(FormerBeneficiary, "Chris", "Rivera", RelationshipType.Family,
             "Former beneficiary — archived", archived: SeededAt.AddYears(1)));
 
+        // The DECEASED case (issue #48). Recording a death date archives nothing and removes no
+        // capability, so this contact keeps its policy links and stays selectable everywhere — which
+        // is exactly what the demo has to show, since the archived case above looks superficially
+        // similar and is not the same thing at all.
+        contacts.Add(Person(LatePartner, "Morgan", "Rivera", RelationshipType.Family,
+            "Late partner — the record stays live; finance rows still reference it",
+            dateOfBirth: new DateOnly(1951, 9, 2), dateOfDeath: new DateOnly(2024, 3, 11)));
+
+        AttachAliases(contacts);
+
         return contacts;
+    }
+
+    /// <summary>
+    /// The demo's alias and organization-lifecycle set (issue #48 §15): a labelled alias, an
+    /// unlabelled one, a dissolved organization, and one contact at the 32-alias cap.
+    /// </summary>
+    private static void AttachAliases(List<Contact> contacts)
+    {
+        var byId = contacts.ToDictionary(contact => contact.ContactId);
+
+        void Attach(string key, params (string Value, string? Label)[] aliases)
+        {
+            if (byId.TryGetValue(IdFor(key), out var contact))
+            {
+                contact.Aliases = Aliases(key, aliases);
+            }
+        }
+
+        // A maiden name — the labelled case, and the one §10.4 calls special-category-adjacent.
+        Attach(Landlord, ("Jane Hawthorne", "maiden name"), ("Janey", "nickname"));
+        // The UNLABELLED case: an abbreviation everyone uses, with nothing to say about it.
+        Attach(FirstNationalBank, ("FNB", null));
+        Attach(StateFarm, ("State Farm Mutual", "legal name"));
+        Attach(LatePartner, ("Mo", "nickname"));
+
+        // A DISSOLVED organization, and an established date on an operating one — the latter gets no
+        // card chip, deliberately: an operating company needs no badge.
+        if (byId.TryGetValue(IdFor(AliasHeavy), out var dissolved) && dissolved.OrganizationDetails is { } dissolvedOrg)
+        {
+            dissolvedOrg.EstablishedDate = new DateOnly(1974, 6, 1);
+            dissolvedOrg.DissolvedDate = new DateOnly(2023, 6, 30);
+            // At the cap. §12's ListAllAsync budget is measured against this row, so the number here
+            // is the cap itself, read from the shared constant rather than written as a literal.
+            dissolved.Aliases = Aliases(
+                AliasHeavy,
+                [.. Enumerable.Range(1, ContactAliasRules.MaxPerContact)
+                    .Select(index => ($"Northgate Mutual {index:00}", index % 3 == 0 ? "pre-merger name" : (string?)null))]);
+        }
+
+        if (byId.TryGetValue(IdFor(Globex), out var employer) && employer.OrganizationDetails is { } employerOrg)
+        {
+            employerOrg.EstablishedDate = new DateOnly(1998, 11, 4);
+        }
     }
 }

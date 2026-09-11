@@ -57,6 +57,23 @@ public interface IContactsApiClient
     /// </summary>
     Task<ApiResult<DetachedInsuranceLinks>> DeleteWithInsuranceDetachAsync(Guid id, CancellationToken ct = default);
 
+    // ── Aliases (issue #48 §7) ───────────────────────────────────────────────────
+    // Gated by the same contacts.* claims as the contact-method sub-resources. These return the raw
+    // ApiResult and never toast: a 400/409/422 here belongs INLINE on the dialog's value field, not
+    // in a snackbar the user gets alongside the field error for the same rejection. The decision that
+    // a failure becomes a toast is the UI's, made at the page call site.
+
+    Task<ApiResult<List<ExistingContactAlias>>> ListAliasesAsync(Guid contactId, CancellationToken ct = default);
+
+    /// <summary>Adds one alias. <c>409</c> on a duplicate value, <c>422</c> at the 32-alias cap; both
+    /// name <c>value</c> in the problem-details <c>errors</c> dictionary.</summary>
+    Task<ApiResult> AddAliasAsync(Guid contactId, NewContactAlias alias, CancellationToken ct = default);
+
+    /// <summary>Replaces one alias. A <c>null</c> or omitted label CLEARS it — a replace, not a patch.</summary>
+    Task<ApiResult> UpdateAliasAsync(Guid contactId, Guid aliasId, NewContactAlias alias, CancellationToken ct = default);
+
+    Task<ApiResult> DeleteAliasAsync(Guid contactId, Guid aliasId, CancellationToken ct = default);
+
     // ── Contact methods ──────────────────────────────────────────────────────────
     // The server owns primary arbitration (setting one primary clears the others), so callers
     // re-fetch the collection after any mutation rather than patching locally.
@@ -124,6 +141,20 @@ public sealed class ContactsApiClient(IOdysseyApi api) : IContactsApiClient
     public Task<ApiResult<DetachedInsuranceLinks>> DeleteWithInsuranceDetachAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync<DetachedInsuranceLinks>(
             HttpMethod.Delete, $"{Base}/{id}?detachInsuranceLinks=true", null, ct);
+
+    // ── Aliases (issue #48 §7) ───────────────────────────────────────────────────
+
+    public Task<ApiResult<List<ExistingContactAlias>>> ListAliasesAsync(Guid contactId, CancellationToken ct = default) =>
+        api.GetAsync<List<ExistingContactAlias>>($"{Base}/{contactId}/aliases", ct);
+
+    public Task<ApiResult> AddAliasAsync(Guid contactId, NewContactAlias alias, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Post, $"{Base}/{contactId}/aliases", alias, ct);
+
+    public Task<ApiResult> UpdateAliasAsync(Guid contactId, Guid aliasId, NewContactAlias alias, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Put, $"{Base}/{contactId}/aliases/{aliasId}", alias, ct);
+
+    public Task<ApiResult> DeleteAliasAsync(Guid contactId, Guid aliasId, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Delete, $"{Base}/{contactId}/aliases/{aliasId}", null, ct);
 
     // ── Contact methods ──────────────────────────────────────────────────────────
 

@@ -9,6 +9,16 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine@sha256:c4b29bf368004ad9076c1ab9
 WORKDIR /app
 COPY --from=build /app/publish .
 
+# Globalization (issue #48). The alpine runtime image ships no ICU, so .NET falls back to INVARIANT
+# globalization — under which CompareOptions.IgnoreNonSpace silently stops folding accents. That is
+# the comparison the contact-alias duplicate check uses to agree with the column's utf8mb4_*_ci unique
+# index, so without ICU the service would accept "Renee" against a stored "Renée" and let the INDEX
+# reject it: a 500-shaped failure on an ordinary write, reproducible nowhere else — a dev box and both
+# fast test tiers have ICU. Installed here, asserted at startup by GlobalizationGuard, and the
+# environment variable is pinned false so a base-image change cannot silently re-enable invariant mode.
+RUN apk add --no-cache icu-libs icu-data-full
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+
 # The Data Protection key ring lives here (issue #444). Created at BUILD TIME with the right owner
 # because a named volume mounted at a path absent from the image is created root:root 0755 by the
 # daemon, and `app` would then be unable to write it — which Data Protection meets by silently falling

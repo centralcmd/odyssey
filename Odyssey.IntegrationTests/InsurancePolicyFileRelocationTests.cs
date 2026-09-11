@@ -971,15 +971,9 @@ public class InsurancePolicyFileRelocationTests(MariaDbFixture fixture)
     private static async Task SeedPolicyAsync(OdysseyContext context, Guid policyId, string name)
     {
         var insurerId = Guid.NewGuid();
-        context.Contacts.Add(new Contact
-        {
-            ContactId = insurerId,
-            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
-            OrganizationDetails = new() { LegalName = name },
-            NormalizedName = name.ToUpperInvariant(),
-            Type = ContactType.Organization,
-        });
-        await context.SaveChangesAsync();
+        // Seeded through BaselineContacts rather than as an EF graph: this runs against the Baseline
+        // schema, which predates any column a later migration adds to OrganizationDetails.
+        await BaselineContacts.AddOrganizationAsync(context, insurerId, name);
 
         var createdAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
         await context.Database.ExecuteSqlRawAsync($"""

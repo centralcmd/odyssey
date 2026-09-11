@@ -537,6 +537,11 @@ TestingEnvironmentGuard.Validate(
     app.Environment.EnvironmentName,
     app.Services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>()?.GetType().FullName);
 
+// Accent folding is ICU-backed and silently degrades to nothing under invariant globalization, which
+// is the alpine runtime image's default (issue #48 §5). Refuse to serve rather than let contact-alias
+// uniqueness disagree with the database's own index — a condition no test tier can reproduce.
+GlobalizationGuard.EnsureIcuAvailable();
+
 // Key-ring diagnostics (issue #444 §10). The DETECTED REPOSITORY TYPE is logged, not the config key:
 // the config key is the cause, the repository type is the actual condition, and the durability check
 // allow-lists durable types — so an operator diagnosing an unexpected 503 on a secret write needs to

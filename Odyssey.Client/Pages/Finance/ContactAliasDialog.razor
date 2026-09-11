@@ -1,0 +1,115 @@
+@*
+    Add / edit dialog for one contact alias (Odyssey Design System · components/ContactAliases, its
+    Modal + two Fields). The host performs the sub-resource API call and hands back a message when the
+    server rejects it; the dialog renders that message INLINE on the offending field, never as a toast.
+
+    OdsFormDialog's OnSubmit→false contract gives "stays open on rejection" for free, so there is no
+    saving state of its own. OdsField needs no new parameter: its CaptureUnmatchedValues splat carries
+    a lowercase `id` through to the input, which is what focusById moves focus to — the same shape
+    OdsProfileFields and the onboarding gate already use. A typed Id parameter would give one component
+    two ways to set one attribute.
+*@
+@inject IJSRuntime JS
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
+               Icon="badge"
+               Title="@(IsEdit ? "Edit alias" : "New alias")"
+               Subtitle="Another name this contact is known by."
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create alias")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SubmitAsync">
+    <div class="odc-alias-form">
+        <OdsField Label="Alias" @bind-Value="_value" Required="true" Error="@_error"
+                  Placeholder="e.g. Kari"
+                  Help="@(_error is null ? "The name to also find this contact by" : null)"
+                  MaxLength="ContactAliasRules.MaxValueLength" id="@ValueFieldId" />
+        <OdsField Label="Label" @bind-Value="_label" Optional="true"
+                  Placeholder="e.g. maiden name"
+                  Help="Optional — e.g. maiden name, nickname, trading as"
+                  MaxLength="ContactAliasRules.MaxLabelLength" />
+    </div>
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The alias being edited, or null to add a new one.</summary>
+    [Parameter] public ExistingContactAlias? Alias { get; set; }
+
+    /// <summary>
+    /// Performs the API call. Returns null on success, or the message to render on the value field —
+    /// the 400 / 409 / 422 family, which keeps the dialog open (issue #48 §11).
+    /// </summary>
+    [Parameter] public Func<string, string?, Task<string?>>? OnCommit { get; set; }
+
+    private bool IsEdit => Alias is not null;
+
+    private string _value = string.Empty;
+    private string _label = string.Empty;
+    private string? _error;
+    private Guid _seeded;
+
+    // Unique per dialog instance so a second dialog opened in the same list cannot steal focus by id.
+    private readonly string ValueFieldId = $"alias-value-{Guid.NewGuid():N}";
+
+    protected override void OnParametersSet()
+    {
+        var key = Alias?.Id ?? Guid.Empty;
+        if (_seeded == key && (_seeded != Guid.Empty || Open))
+        {
+            return;
+        }
+
+        _seeded = key;
+        _value = Alias?.Value ?? string.Empty;
+        _label = Alias?.Label ?? string.Empty;
+        _error = null;
+    }
+
+    private async Task<bool> SubmitAsync()
+    {
+        if (OnCommit is null)
+        {
+            return false;
+        }
+
+        var value = ContactAliasText.Canonical(_value);
+        var label = ContactAliasText.Canonical(_label);
+
+        // The client mirrors the server's shape rules so an obvious rejection costs no round trip;
+        // the server re-checks all of them, and its message wins whenever it does reject.
+        var problem = ContactAliasText.Validate(value, label);
+        if (problem is null)
+        {
+            problem = await OnCommit(value, string.IsNullOrEmpty(label) ? null : label);
+        }
+
+        if (problem is not null)
+        {
+            await RejectAsync(problem);
+            return false;
+        }
+
+        return true;
+    }
+
+    // aria-invalid and aria-describedby come from OdsField's own error state; the focus move is what
+    // makes assistive tech read the name, the invalid state and the message. That is why no assertive
+    // announcement is needed for a field-level rejection.
+    private async Task RejectAsync(string message)
+    {
+        _error = message;
+        StateHasChanged();
+        try
+        {
+            var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/profile-gate.js");
+            await module.InvokeVoidAsync("focusById", ValueFieldId);
+        }
+        catch (JSException)
+        {
+            // Focus is an enhancement; the inline error is already rendered and announced by the
+            // field's own aria-describedby when the user reaches it.
+        }
+    }
+}

@@ -92,28 +92,30 @@ public sealed class ContactLookup(OdysseyContext context) : IContactLookup
             .ToList();
     }
 
-    public async Task<IReadOnlyDictionary<Guid, ExistingContact>> ResolveContactsAsync(
+    public async Task<IReadOnlyDictionary<Guid, ContactEmbed>> ResolveContactsAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
     {
         if (ids.Count == 0)
         {
-            return new Dictionary<Guid, ExistingContact>();
+            return new Dictionary<Guid, ContactEmbed>();
         }
 
         var distinct = ids.Distinct().ToList();
+
+        // The two detail sub-records are still included, because the resolved display name is
+        // computed from them — but nothing else is, and nothing else escapes. In particular there is
+        // no .Include(c => c.Aliases) here and there must never be: this method's callers hold
+        // transactions.read / accounts.read / budgets.read and no contacts.* claim (issue #48 §10.2).
         var rows = await context.Contacts
             .AsNoTracking()
             .Where(c => distinct.Contains(c.ContactId))
             .Include(c => c.PersonDetails)
             .Include(c => c.OrganizationDetails)
-            .Include(c => c.Addresses)
-            .Include(c => c.EmailAddresses)
-            .Include(c => c.PhoneNumbers)
-            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
-        // Mapster maps Contact → ExistingContact via ContactMapsterConfig (registered in this assembly).
-        return rows.ToDictionary(c => c.ContactId, c => c.Adapt<ExistingContact>());
+        return rows.ToDictionary(
+            c => c.ContactId,
+            c => new ContactEmbed { ContactId = c.ContactId, ResolvedDisplayName = ContactNaming.Resolve(c) });
     }
 
     public async Task<IReadOnlyList<Guid>> SearchIdsByNameAsync(string term, CancellationToken cancellationToken = default)

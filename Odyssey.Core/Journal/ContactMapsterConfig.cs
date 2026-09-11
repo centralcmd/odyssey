@@ -50,11 +50,21 @@ public static class ContactMapsterConfig
                     src => src.Type == ContactType.Organization ? src.OrganizationDetails : null);
 
             // DateOfBirth is DateOnly? server-side but surfaces as DateTime? (midnight, time ignored)
-            // for MudDatePicker (frontend finding CDS-5).
+            // for MudDatePicker (frontend finding CDS-5). DateOfDeath (issue #48) is the same
+            // exchange, deliberately — do NOT "fix" either to DateOnly?.
             TypeAdapterConfig<PersonDetails, PersonDetailsDto>
                 .NewConfig()
                 .Map(dest => dest.DateOfBirth,
-                    src => src.DateOfBirth == null ? (DateTime?)null : src.DateOfBirth.Value.ToDateTime(TimeOnly.MinValue));
+                    src => src.DateOfBirth == null ? (DateTime?)null : src.DateOfBirth.Value.ToDateTime(TimeOnly.MinValue))
+                .Map(dest => dest.DateOfDeath,
+                    src => src.DateOfDeath == null ? (DateTime?)null : src.DateOfDeath.Value.ToDateTime(TimeOnly.MinValue));
+
+            TypeAdapterConfig<OrganizationDetails, OrganizationDetailsDto>
+                .NewConfig()
+                .Map(dest => dest.EstablishedDate,
+                    src => src.EstablishedDate == null ? (DateTime?)null : src.EstablishedDate.Value.ToDateTime(TimeOnly.MinValue))
+                .Map(dest => dest.DissolvedDate,
+                    src => src.DissolvedDate == null ? (DateTime?)null : src.DissolvedDate.Value.ToDateTime(TimeOnly.MinValue));
 
             configured = true;
         }

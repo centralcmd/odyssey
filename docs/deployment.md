@@ -644,6 +644,45 @@ since `v0.8.0`. Every such database has been a development or test one; recreate
 them. The first real deployment retires that licence permanently, after which a schema change is an
 additive migration even when a squash would be tidier.
 
+## Who can read contact personal data
+
+**Every role that can see the Contacts page can read every contact field, and can download all of
+them in one request.** `Guest` — the lowest role — holds `contacts.read`, which is the claim gating
+both `GET /api/contacts` and `GET /api/contacts/vcard`.
+
+That matters more than it used to. Issue #48 added **aliases**, each with a free-text label, plus a
+**middle name**, a **date of death**, and an organization's **establishment** and **dissolution**
+dates. Two of those are special-category-adjacent: an alias is frequently a *maiden or former name*,
+which in combination reveals marital or gender-transition history, and a date of death is data about a
+deceased person that is often health-adjacent. The free-text label sharpens this rather than softening
+it — "maiden name" as an explicit label states outright what an unlabelled alias would only imply, and
+unlike a free-text note it is **structured and machine-extractable**: "every contact with a label
+containing 'maiden'" is a one-line script against this shape.
+
+**This is an accepted, deliberate posture, not an oversight.** It is right for a single-household
+deployment where every role holder is a member of that household. The rejected alternative was a
+separate `contacts.sensitive.read` claim: it would make the contact read DTO claim-conditional, need a
+`RolePermissions` change, and force every existing session to sign out and back in, for a boundary
+that does not exist in that threat model.
+
+**If you are deploying Odyssey somewhere the roles do not map to one trusted household, revisit this
+before anything else.** Until a finer claim exists, the only control is role assignment: do not grant
+`Guest` — or any role — to someone who should not read the whole contact corpus.
+
+Per-request audit lines are written for both halves, and carry **no values**: a contact change records
+the actor, the contact id and the action (`alias.created` / `.updated` / `.deleted`,
+`dateOfDeath.set` / `.cleared`), and a vCard export records the actor, the row count and whether
+filters were applied.
+
+### The runtime image needs ICU
+
+The API image installs `icu-libs` and pins `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false`. Contact
+alias uniqueness is checked **accent-insensitively**, to agree with the database's own
+`utf8mb4_*_ci` unique index; that comparison is ICU-backed and silently stops folding accents under
+invariant globalization, which is the alpine runtime's default. The API asserts this at startup and
+refuses to serve rather than accept an alias the index will then reject. If you build your own image,
+keep both.
+
 ## Security checklist
 
 - [ ] `ASPNETCORE_ENVIRONMENT=Production` (Swagger off; set in the overlay) — and **not**
@@ -667,3 +706,6 @@ additive migration even when a squash would be tidier.
 - [ ] `dataprotection_keys` is backed up, and stored **separately** from the database dump — it is
       secret-bearing once any credential is stored under System settings → Credentials.
 - [ ] The API started cleanly, i.e. the keys directory is writable (see the upgrade note above).
+- [ ] Roles are assigned on the understanding that **any** of them can read every contact's aliases
+      (maiden and former names included), middle names and dates of death, and export the lot — see
+      [the section above](#who-can-read-contact-personal-data).

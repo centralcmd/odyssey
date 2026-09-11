@@ -47,7 +47,7 @@
             <div class="ph-filter-bar">
                 <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
                                 DebounceInterval="300" OnSearch="ReloadAsync"
-                                Placeholder="Search name or notes…" Class="ph-search" />
+                                Placeholder="Search name, alias or notes…" Class="ph-search" />
                 <OdsContactTypeMultiSelect Label="Type" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged" Class="ph-select" />
                 <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingContact" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
@@ -109,6 +109,16 @@
                         {
                             <OdsChip Tone="OdsChipTone.Outline" Icon="badge">Display name</OdsChip>
                         }
+                        @* Deceased / dissolved, AFTER the status chip and always as TEXT — OdsChip
+                           marks its dot and icon aria-hidden, so a chip's meaning has to live in its
+                           text content. It cannot go on the card's Name, which is a string rather
+                           than a RenderFragment and would fold the marker into the accessible
+                           heading. Recording either date archives nothing: the contact keeps its
+                           links and stays selectable everywhere. *@
+                        @if (LifecycleChip(c) is { } lifecycle)
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Icon="event_busy">@lifecycle</OdsChip>
+                        }
                     </Chips>
 
                     <Actions>
@@ -136,9 +146,22 @@
                     </Content>
 
                     <Sections>
+                        @* Aliases are names, not contact methods, so they get their own section ABOVE
+                           Contact information. The divider is emitted HERE, by the card, because the
+                           card owns the headings and both section components render bare. *@
+                        <OdsSectionDivider Label="Aliases" Meta="@AliasCountLabel(c)" />
+                        <ContactAliasSection Contact="c"
+                                             CanCreate="_canCreate" CanUpdate="_canUpdate" CanDelete="_canDelete"
+                                             OnChanged="RefreshContactAsync"
+                                             OnAnnounce="Announce"
+                                             AddRequest="@(_addRequest is { } ar && ar.Id == c.ContactId ? (ar.Kind, ar.Nonce) : ((string, Guid)?)null)"
+                                             OnAddConsumed="@(() => _addRequest = null)" />
+
                         <OdsSectionDivider Label="Contact information" Meta="@MethodCountLabel(c)" />
+                        @* The "alias" add-kind is consumed by the section above, so the panel filters it
+                           out rather than opening an address form for it. *@
                         <ContactDetailPanel Contact="c" CanEdit="_canUpdate" OnChanged="RefreshContactAsync"
-                                            AddRequest="@(_addRequest is { } r && r.Id == c.ContactId ? (r.Kind, r.Nonce) : ((string, Guid)?)null)"
+                                            AddRequest="@(_addRequest is { } r && r.Id == c.ContactId && r.Kind != "alias" ? (r.Kind, r.Nonce) : ((string, Guid)?)null)"
                                             OnAddConsumed="@(() => _addRequest = null)" />
                     </Sections>
                 </OdsRecordCard>
@@ -244,6 +267,24 @@
         .Where(k => k.Value > 0)
         .Select(k => new OdsRecordCount(k.Icon, k.Value.ToString(CultureInfo.CurrentCulture), k.Label)),
     ];
+
+    // Counts alias ROWS, never resolved names — and deliberately NOT part of the header's count
+    // chips, which are the table of contents for the contact-INFORMATION section. Aliases have their
+    // own section, so they get their own divider meta.
+    private static string AliasCountLabel(ExistingContact c) =>
+        $"{c.Aliases.Count} {(c.Aliases.Count == 1 ? "alias" : "aliases")}";
+
+    // The lifecycle marker's TEXT. Person → "Deceased <date>", Organization → "Dissolved <date>".
+    // An organization with only an establishment date gets no chip: an operating company needs no
+    // badge.
+    private static string? LifecycleChip(ExistingContact c)
+    {
+        if (c.Type == ContactType.Person && c.PersonDetails?.DateOfDeath is { } died)
+            return $"Deceased {died:d MMM yyyy}";
+        if (c.Type == ContactType.Organization && c.OrganizationDetails?.DissolvedDate is { } dissolved)
+            return $"Dissolved {dissolved:d MMM yyyy}";
+        return null;
+    }
 
     private static string MethodCountLabel(ExistingContact c)
     {

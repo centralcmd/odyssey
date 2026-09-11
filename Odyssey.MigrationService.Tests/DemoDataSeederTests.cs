@@ -6,6 +6,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
+using Odyssey.Dtos.Journal;
 using Odyssey.Context.Legal;
 using Odyssey.Dtos.Application;
 using Odyssey.TestData;
@@ -70,6 +71,42 @@ public class DemoDataSeederTests
         var externalUids = await journalForContacts.Contacts.Select(c => c.ExternalUid).ToListAsync();
         Assert.All(externalUids, uid => Assert.False(string.IsNullOrWhiteSpace(uid)));
         Assert.Equal(externalUids.Count, externalUids.Distinct(StringComparer.Ordinal).Count());
+
+        await AssertAliasAndLifecycleSeedAsync(journalForContacts, expected);
+    }
+
+    /// <summary>
+    /// The issue #48 seed (§15). Each of these exists because a demo cannot fabricate it at read
+    /// time, and one of them exists because a performance budget is otherwise meaningless.
+    /// </summary>
+    private static async Task AssertAliasAndLifecycleSeedAsync(OdysseyContext context, DemoDataSet expected)
+    {
+        var seededAliases = expected.Contacts.SelectMany(contact => contact.Aliases).ToList();
+        Assert.Equal(seededAliases.Count, await context.ContactAliases.CountAsync());
+
+        // A labelled alias and an unlabelled one: the two states the card renders differently, and
+        // the two the vCard export emits differently (a label property, or none at all).
+        Assert.Contains(seededAliases, alias => alias.Label is not null);
+        Assert.Contains(seededAliases, alias => alias.Label is null);
+
+        // The DECEASED case. It must NOT read as archived — recording a death changes no state and
+        // removes no capability — which is exactly what makes it different from the archived contact
+        // seeded beside it, and what a demo has to show side by side.
+        var deceased = await context.Contacts
+            .Include(contact => contact.PersonDetails)
+            .SingleAsync(contact => contact.PersonDetails!.DateOfDeath != null);
+        Assert.Null(deceased.Archived);
+
+        // A dissolved organization, and a middle name — the other searchable addition.
+        Assert.True(await context.OrganizationDetails.AnyAsync(org => org.DissolvedDate != null));
+        Assert.True(await context.PersonDetails.AnyAsync(person => person.MiddleName != null));
+
+        // One contact AT the cap. §12's ListAllAsync budget measures payload growth from inline
+        // aliases, and that measurement is meaningless unless something in the seed carries a full
+        // set — so the absence of this row would quietly turn a performance target into a no-op.
+        var perContact = seededAliases.GroupBy(alias => alias.ContactId).Select(group => group.Count()).ToList();
+        Assert.Contains(ContactAliasRules.MaxPerContact, perContact);
+        Assert.All(perContact, count => Assert.True(count <= ContactAliasRules.MaxPerContact));
     }
 
     [Fact]

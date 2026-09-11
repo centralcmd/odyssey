@@ -22,8 +22,23 @@ public class PersonDetails
     [StringLength(128)]
     public required string LastName { get; set; }
 
+    /// <summary>
+    /// Optional middle name (issue #48) — stored, rendered and searchable, but deliberately outside
+    /// the <c>First Last</c> fallback feeding <see cref="Contact.NormalizedName"/>, so adding one
+    /// shifts no existing contact's search key, sort position or rendered name.
+    /// </summary>
+    [StringLength(128)]
+    public string? MiddleName { get; set; }
+
     /// <summary>Optional birth date — a pure date (no time component). Must not be in the future.</summary>
     public DateOnly? DateOfBirth { get; set; }
+
+    /// <summary>
+    /// Optional date of death (issue #48). Recording it archives nothing and removes no capability:
+    /// finance rows legitimately reference a deceased counterparty and an estate is administered for
+    /// years, so the record stays live and selectable everywhere.
+    /// </summary>
+    public DateOnly? DateOfDeath { get; set; }
 
     public RelationshipType? RelationshipType { get; set; }
 

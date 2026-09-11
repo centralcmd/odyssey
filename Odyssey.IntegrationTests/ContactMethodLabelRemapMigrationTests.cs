@@ -304,24 +304,15 @@ public class ContactMethodLabelRemapMigrationTests(MariaDbFixture fixture)
 
     // ── Seeding at the baseline schema ───────────────────────────────────────
 
-    private static Task SeedContactAsync(OdysseyContext context, Guid contactId, ContactType type)
-    {
-        var contact = new Contact
-        {
-            ContactId = contactId,
-            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
-            NormalizedName = type == ContactType.Person ? "ADA LOVELACE" : "ACME",
-            Type = type,
-        };
-
-        if (type == ContactType.Person)
-            contact.PersonDetails = new() { FirstName = "Ada", LastName = "Lovelace" };
-        else
-            contact.OrganizationDetails = new() { LegalName = "Acme" };
-
-        context.Contacts.Add(contact);
-        return context.SaveChangesAsync();
-    }
+    // Seeded through BaselineContacts rather than as an EF graph: this runs at the Baseline schema,
+    // which predates the columns later migrations add to the two detail tables (issue #48 added
+    // MiddleName and DateOfDeath to PersonDetails). An EF insert names every column of TODAY's entity,
+    // so it breaks on a schema that is deliberately older — which is exactly what a migration test
+    // sits on.
+    private static Task SeedContactAsync(OdysseyContext context, Guid contactId, ContactType type) =>
+        type == ContactType.Person
+            ? BaselineContacts.AddPersonAsync(context, contactId, "Ada", "Lovelace")
+            : BaselineContacts.AddOrganizationAsync(context, contactId, "Acme");
 
     // Raw SQL throughout: an out-of-range ordinal — and, once the enum is widened, a label the new
     // scope forbids — cannot be written through the entity, and that is precisely the pre-migration
