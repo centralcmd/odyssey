@@ -44,6 +44,20 @@ public class FilesTableEditLifecycleTests
     private static readonly IReadOnlyList<OdsOption> Issuers =
         [new("11111111-1111-1111-1111-111111111111", "First National Bank")];
 
+    // bUnit's WaitForAssertion defaults to a ONE-SECOND ceiling, which is not a statement about how
+    // long these assertions should take — they settle in a render pass or two — but about how long the
+    // waiter is willing to be starved of a scheduling slot. On a contended CI runner sharing a box
+    // with the rest of the suite that is not always enough, and the failure reports "Check count: 0":
+    // the assertion never ran even once, so nothing was measured.
+    //
+    // Raising the ceiling cannot mask a regression, which is what makes this a robustness fix rather
+    // than a weakened test: WaitForAssertion returns the moment the assertion holds, so a passing run
+    // costs no extra time, and a dialog that genuinely unmounts fails EVERY check and still ends in
+    // the same failure — just later.
+    //
+    // The property is static (process-wide), so it is set once here rather than per context.
+    static FilesTableEditLifecycleTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
+
     private static BunitContext NewContext()
     {
         var ctx = new BunitContext();
