@@ -31,6 +31,13 @@ public class DataExportApiTests
     // Recognizable payloads used to prove the excluded data never reaches the export.
     private static readonly byte[] BlobContent = Encoding.UTF8.GetBytes("SECRET-BLOB-CONTENT-MUST-NOT-EXPORT");
     private const string CandidateMarker = "CANDIDATE-DESCRIPTION-MUST-NOT-EXPORT";
+    internal const string TaxStatementMarker = "TAX-STATEMENT-NOTES-MUST-EXPORT";
+
+    // The candidate-tag row carries no free text — only two foreign keys, one of which
+    // (the tag) is legitimately exported elsewhere. Its parent id is therefore the only
+    // value that can prove the row itself did not travel.
+    private static readonly Guid CandidateTransactionId =
+        Guid.Parse("cadc0de0-0000-4000-8000-000000000001");
 
     // ── Authorization matrix (spec §3.4 / §10.1) ──────────────────────────────
 
@@ -140,6 +147,10 @@ public class DataExportApiTests
         Assert.Contains("FileBlob", exclusions.GetProperty("excludedTables").EnumerateArray().Select(e => e.GetString()));
         Assert.Contains("FileBlob.Content", exclusions.GetProperty("excludedFields").EnumerateArray().Select(e => e.GetString()));
 
+        // Issue #33: the candidate-TAGS table was in neither the export nor this list — its parent
+        // is excluded, so it belongs here rather than being the one member of the group left unsaid.
+        Assert.Contains("FileAnalysisCandidateTags", exclusions.GetProperty("excludedTables").EnumerateArray().Select(e => e.GetString()));
+
         // The export only covers Finance (+ Contacts); it must say so rather than let a reader assume
         // Identity/Journal data is captured elsewhere by this export (architect finding F-10).
         var outOfScope = exclusions.GetProperty("outOfScopeDatabases").EnumerateArray().Select(e => e.GetString()!).ToList();
@@ -151,7 +162,13 @@ public class DataExportApiTests
                  {
                      "accounts", "accountTerms", "budgets", "budgetItems", "contacts", "currencies",
                      "exchangeRates", "transactions", "transactionTags", "fileMetadata", "accountFiles",
-                     "transactionFiles"
+                     "transactionFiles",
+                     // Issue #33.
+                     "accountEstimates", "accountSmartTags", "taxStatements", "taxStatementTags",
+                     "taxStatementFiles", "insurancePolicies", "insurancePolicyInsurers",
+                     "insurancePolicyInsuredAccounts", "insurancePolicyInsuredContacts",
+                     "insurancePolicyBeneficiaries", "policyRenewals", "policyRenewalFiles",
+                     "contracts", "contractParties", "contractFiles", "subscriptions",
                  })
         {
             Assert.Equal(JsonValueKind.Array, finance.GetProperty(collection).ValueKind);
@@ -205,6 +222,10 @@ public class DataExportApiTests
         Assert.DoesNotContain(collectionNames, name => name.Contains("analysis", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(collectionNames, name => name.Contains("candidate", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(CandidateMarker, rawJson);
+
+        // The candidate-TAGS row is seeded too, so this is a leak check rather than a restatement
+        // of the declared list: its parent id must appear nowhere, under any collection name.
+        Assert.DoesNotContain(CandidateTransactionId.ToString(), rawJson, StringComparison.OrdinalIgnoreCase);
     }
 
     // ── Rows reference FKs, not nested objects (spec §10.1.8) ─────────────────
@@ -309,6 +330,473 @@ public class DataExportApiTests
             EffectiveFrom = DateTime.UtcNow,
             CreatedAtUtc = DateTime.UtcNow,
         });
+        await context.SaveChangesAsync();
+    }
+
+    // ── Issue #33: the previously-omitted tables ──────────────────────────────
+
+    /// <summary>
+    /// The policy header and its renewals. Before issue #33 an export of a workspace holding
+    /// insurance said nothing about it — not in the data, and not in <c>excludedTables</c> either.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesInsurancePoliciesAndRenewals()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var policy = Assert.Single(finance.GetProperty("insurancePolicies").EnumerateArray());
+        Assert.Equal("Life cover", policy.GetProperty("name").GetString());
+        Assert.Equal("POL-123", policy.GetProperty("policyNumber").GetString());
+        Assert.Equal(JsonValueKind.Number, policy.GetProperty("type").ValueKind);
+
+        var renewal = Assert.Single(finance.GetProperty("policyRenewals").EnumerateArray());
+        Assert.Equal(policy.GetProperty("insurancePolicyId").GetGuid(), renewal.GetProperty("insurancePolicyId").GetGuid());
+        Assert.Equal(420m, renewal.GetProperty("premium").GetDecimal());
+        Assert.Equal(500_000m, renewal.GetProperty("coverageAmount").GetDecimal());
+
+        Assert.Single(finance.GetProperty("policyRenewalFiles").EnumerateArray());
+    }
+
+    /// <summary>
+    /// The decision issue #33 flagged as the one worth thinking about: a link row is a
+    /// <c>(policy, contact)</c> pair, so it discloses a relationship between two people rather than
+    /// a field of one record. It exports the relationship COLUMNS and nothing else — the same
+    /// posture the read path takes for an archived link, where the id survives and the name does
+    /// not. A resolved name here would make the export disclose more than the API it mirrors.
+    /// </summary>
+    [Theory]
+    [InlineData("insurancePolicyInsurers", "contactId")]
+    [InlineData("insurancePolicyInsuredAccounts", "accountId")]
+    [InlineData("insurancePolicyInsuredContacts", "contactId")]
+    public async Task Export_InsurancePartyLink_CarriesIdsOnly_NeverAResolvedName(
+        string collection, string targetIdProperty)
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var link = Assert.Single(finance.GetProperty(collection).EnumerateArray());
+
+        Assert.NotEqual(Guid.Empty, link.GetProperty("insurancePolicyId").GetGuid());
+        Assert.NotEqual(Guid.Empty, link.GetProperty(targetIdProperty).GetGuid());
+
+        // The whole row, named: an added name/displayName column fails here rather than shipping.
+        Assert.Equal(
+            new[] { "id", "insurancePolicyId", targetIdProperty, "fromDate", "toDate" }.Order(StringComparer.Ordinal),
+            link.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// The beneficiary table is the one that diverges: it carries its own attribution columns, and
+    /// they travel with it. Same ids-only rule for the target.
+    /// </summary>
+    [Fact]
+    public async Task Export_BeneficiaryLink_CarriesIdsAndAttribution_ButNoName()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var beneficiary = Assert.Single(finance.GetProperty("insurancePolicyBeneficiaries").EnumerateArray());
+
+        Assert.NotEqual(Guid.Empty, beneficiary.GetProperty("contactId").GetGuid());
+        Assert.Equal("designator", beneficiary.GetProperty("createdByUserId").GetString());
+        Assert.Equal(
+            new[] { "id", "insurancePolicyId", "contactId", "fromDate", "toDate", "createdByUserId", "createdAtUtc" }
+                .Order(StringComparer.Ordinal),
+            beneficiary.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// A contract party is one-of-two with no kind discriminator on the row, so both nullable
+    /// relationship columns are exported and which one is set is what says which kind it is.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesContractsAndParties_AsIdsOnly()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var contract = Assert.Single(finance.GetProperty("contracts").EnumerateArray());
+        Assert.Equal("Lease", contract.GetProperty("name").GetString());
+
+        var parties = finance.GetProperty("contractParties").EnumerateArray().ToList();
+        Assert.Equal(2, parties.Count);
+        Assert.All(parties, party =>
+        {
+            Assert.Equal(contract.GetProperty("contractId").GetGuid(), party.GetProperty("contractId").GetGuid());
+            Assert.Equal(
+                new[] { "contractPartyId", "contractId", "accountId", "contactId" }.Order(StringComparer.Ordinal),
+                party.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+        });
+
+        // Both branches, each with the other column null. Covering only one would let a dropped
+        // relationship column pass: the surviving branch would still look correct.
+        var institution = Assert.Single(parties, party => party.GetProperty("contactId").ValueKind != JsonValueKind.Null);
+        Assert.NotEqual(Guid.Empty, institution.GetProperty("contactId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, institution.GetProperty("accountId").ValueKind);
+
+        var accountParty = Assert.Single(parties, party => party.GetProperty("accountId").ValueKind != JsonValueKind.Null);
+        Assert.NotEqual(Guid.Empty, accountParty.GetProperty("accountId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, accountParty.GetProperty("contactId").ValueKind);
+
+        Assert.Single(finance.GetProperty("contractFiles").EnumerateArray());
+    }
+
+    /// <summary>
+    /// Tax statements carry declared figures and an assessment — wholly user-authored financial
+    /// data, and the strongest omission after insurance.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesTaxStatementsWithTheirDeclaredFigures()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        var rawJson = await (await client.GetAsync(ExportPath)).Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(rawJson);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var statement = Assert.Single(finance.GetProperty("taxStatements").EnumerateArray());
+        Assert.Equal(2025, statement.GetProperty("fiscalYear").GetInt32());
+        Assert.Equal(1_250_000m, statement.GetProperty("declaredNetWorth").GetDecimal());
+        Assert.Equal(96_000m, statement.GetProperty("declaredTotalIncome").GetDecimal());
+        Assert.Equal(24_500m, statement.GetProperty("assessedTax").GetDecimal());
+        Assert.Contains(TaxStatementMarker, rawJson, StringComparison.Ordinal);
+
+        Assert.Single(finance.GetProperty("taxStatementTags").EnumerateArray());
+        Assert.Single(finance.GetProperty("taxStatementFiles").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Export_IncludesSubscriptionsAndAccountSideTables()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var subscription = Assert.Single(finance.GetProperty("subscriptions").EnumerateArray());
+        Assert.Equal("Streaming", subscription.GetProperty("name").GetString());
+        Assert.Equal(12.99m, subscription.GetProperty("amount").GetDecimal());
+        Assert.Equal(JsonValueKind.Number, subscription.GetProperty("interval").ValueKind);
+
+        var estimate = Assert.Single(finance.GetProperty("accountEstimates").EnumerateArray());
+        Assert.Equal(185_000m, estimate.GetProperty("value").GetDecimal());
+
+        // Composite-keyed: the row is the (account, tag) pair, so there is no id to export.
+        var smartTag = Assert.Single(finance.GetProperty("accountSmartTags").EnumerateArray());
+        Assert.NotEqual(Guid.Empty, smartTag.GetProperty("accountId").GetGuid());
+        Assert.NotEqual(Guid.Empty, smartTag.GetProperty("transactionTagId").GetGuid());
+    }
+
+    // ── Deterministic ordering, every collection (spec §10.1.9) ───────────────
+
+    /// <summary>
+    /// The collections and the key columns each is ordered by, with the kind of comparison that
+    /// key uses. All 28 of them appear here — ordering was pinned for <c>accounts</c> alone, so a
+    /// dropped or wrong <c>OrderBy</c> on any of the other 27 queries passed the whole suite.
+    /// Deterministic order is what makes two exports of unchanged data diffable, so it is a
+    /// property of the format, not of one table.
+    /// </summary>
+    public static TheoryData<string, string[], KeyKind> OrderedCollections() => new()
+    {
+        { "accounts", ["accountId"], KeyKind.Guid },
+        { "accountTerms", ["accountTermId"], KeyKind.Guid },
+        { "budgets", ["budgetId"], KeyKind.Guid },
+        { "budgetItems", ["budgetItemId"], KeyKind.Guid },
+        { "contacts", ["contactId"], KeyKind.Guid },
+        // The one text-keyed collection. Its ordering was never covered, which is how it
+        // came to be left out of an assertion that claimed to cover everything.
+        { "currencies", ["currencyCode"], KeyKind.Text },
+        { "exchangeRates", ["exchangeRateId"], KeyKind.Guid },
+        { "transactions", ["transactionId"], KeyKind.Guid },
+        { "transactionTags", ["transactionTagId"], KeyKind.Guid },
+        { "fileMetadata", ["id"], KeyKind.Guid },
+        { "accountFiles", ["id"], KeyKind.Guid },
+        { "transactionFiles", ["id"], KeyKind.Guid },
+        { "accountEstimates", ["accountEstimateId"], KeyKind.Guid },
+        // Composite-keyed: ordered by both key columns, in that order.
+        { "accountSmartTags", ["accountId", "transactionTagId"], KeyKind.Guid },
+        { "taxStatements", ["taxStatementId"], KeyKind.Guid },
+        { "taxStatementTags", ["id"], KeyKind.Guid },
+        { "taxStatementFiles", ["id"], KeyKind.Guid },
+        { "insurancePolicies", ["insurancePolicyId"], KeyKind.Guid },
+        { "insurancePolicyInsurers", ["id"], KeyKind.Guid },
+        { "insurancePolicyInsuredAccounts", ["id"], KeyKind.Guid },
+        { "insurancePolicyInsuredContacts", ["id"], KeyKind.Guid },
+        { "insurancePolicyBeneficiaries", ["id"], KeyKind.Guid },
+        { "policyRenewals", ["policyRenewalId"], KeyKind.Guid },
+        { "policyRenewalFiles", ["id"], KeyKind.Guid },
+        { "contracts", ["contractId"], KeyKind.Guid },
+        { "contractParties", ["contractPartyId"], KeyKind.Guid },
+        { "contractFiles", ["contractFileId"], KeyKind.Guid },
+        { "subscriptions", ["subscriptionId"], KeyKind.Guid },
+    };
+
+    /// <summary>
+    /// Rows come back in ascending primary-key order. The fixture seeds each table so that INSERT
+    /// order is not already key order — without that a missing <c>OrderBy</c> still returns sorted
+    /// rows on the in-memory provider and the assertion proves nothing.
+    /// </summary>
+    /// <summary>How a collection's key columns compare. A Guid key must NOT be compared as text:
+    /// <see cref="Guid.CompareTo(Guid)"/> reads the first three groups in a different byte order
+    /// than their printed form, so the two orderings genuinely disagree.</summary>
+    public enum KeyKind
+    {
+        Guid,
+        Text,
+    }
+
+    [Theory]
+    [MemberData(nameof(OrderedCollections))]
+    public async Task Export_EveryCollection_IsOrderedByPrimaryKey(
+        string collection, string[] keyProperties, KeyKind keyKind)
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        await SeedOutOfOrderRowsAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var rows = finance.GetProperty(collection).EnumerateArray().ToList();
+
+        // Guards the guard: on one row every ordering is trivially correct, so a collection the
+        // fixture stopped seeding would pass this silently.
+        Assert.True(rows.Count >= 2,
+            $"'{collection}' has {rows.Count} row(s); the fixture must seed at least two or this "
+            + "assertion cannot fail.");
+
+        for (var i = 1; i < rows.Count; i++)
+        {
+            Assert.True(CompareKeys(rows[i - 1], rows[i], keyProperties, keyKind) < 0,
+                $"'{collection}' is not ordered by {string.Join(" + ", keyProperties)}: row {i - 1} "
+                + $"({KeyText(rows[i - 1], keyProperties)}) precedes row {i} "
+                + $"({KeyText(rows[i], keyProperties)}).");
+        }
+    }
+
+    // Compares the way the provider's OrderBy does: Guid.CompareTo for a Guid key, ordinal for a
+    // text one. The fixture keeps text keys to ASCII so ordinal and the provider's culture-aware
+    // default cannot disagree on them.
+    private static int CompareKeys(
+        JsonElement left, JsonElement right, string[] keyProperties, KeyKind keyKind)
+    {
+        foreach (var property in keyProperties)
+        {
+            var comparison = keyKind switch
+            {
+                KeyKind.Guid => left.GetProperty(property).GetGuid()
+                    .CompareTo(right.GetProperty(property).GetGuid()),
+                _ => string.CompareOrdinal(
+                    left.GetProperty(property).GetString(), right.GetProperty(property).GetString()),
+            };
+
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+        }
+
+        return 0;
+    }
+
+    private static string KeyText(JsonElement row, string[] keyProperties) =>
+        string.Join(", ", keyProperties.Select(property => row.GetProperty(property).ToString()));
+
+    /// <summary>
+    /// Ids that differ only in their final byte, so <see cref="Guid.CompareTo(Guid)"/> reduces to
+    /// comparing <paramref name="sequence"/>. Rows are added highest-first, which is what makes the
+    /// stored order differ from key order.
+    /// </summary>
+    private static Guid OrderingId(int sequence) =>
+        Guid.Parse($"00000000-0000-4000-8000-{sequence:D12}");
+
+    /// <summary>
+    /// Adds two more rows to every table, inserted in DESCENDING key order. Each child attaches to
+    /// the parent of the same sequence number, which keeps the unique index on the four insurance
+    /// party tables (policy + target) satisfied.
+    /// </summary>
+    private static async Task SeedOutOfOrderRowsAsync(WebApplicationFactory<Program> factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var accountIds = await context.Accounts.Select(a => a.AccountId).ToListAsync();
+        var accountId = accountIds[0];
+        var contactId = await context.Contacts.Select(c => c.ContactId).FirstAsync();
+        var tagId = await context.TransactionTags.Select(t => t.TransactionTagId).FirstAsync();
+        var fileMetadataId = await context.FileMetadata.Select(f => f.Id).FirstAsync();
+        var budgetId = await context.Budgets.Select(b => b.BudgetId).FirstAsync();
+        var transactionId = await context.Transactions.Select(t => t.TransactionId).FirstAsync();
+        var now = DateTime.UtcNow;
+
+        foreach (var sequence in new[] { 3, 2 })
+        {
+            var id = OrderingId(sequence);
+
+            context.AccountTerms.Add(new AccountTerm
+            {
+                AccountTermId = id, AccountId = accountId, TermKind = TermKind.InterestRate,
+                ValueUnit = TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = now, CreatedAtUtc = now,
+            });
+            context.AccountEstimates.Add(new AccountEstimate
+            {
+                AccountEstimateId = id, AccountId = accountId, Value = 1_000m,
+                EffectiveFrom = now, CreatedAtUtc = now,
+            });
+            context.Budgets.Add(new Budget
+            {
+                BudgetId = id, Name = $"Budget {sequence}", StartDate = now, EndDate = now.AddMonths(1),
+            });
+            context.BudgetItems.Add(new BudgetItem
+            {
+                BudgetItemId = id, BudgetId = budgetId, Name = $"Item {sequence}", PlannedAmount = 10m,
+            });
+            context.Contacts.Add(new Contact
+            {
+                ContactId = id,
+                ExternalUid = $"urn:uuid:{id}",
+                NormalizedName = $"ordering {sequence}",
+                Type = Odyssey.Dtos.ContactType.Organization,
+                OrganizationDetails = new() { LegalName = $"Ordering {sequence}" },
+            });
+            context.ExchangeRates.Add(new ExchangeRate
+            {
+                ExchangeRateId = id, FromCurrencyCode = "USD", ToCurrencyCode = "EUR",
+                Rate = 0.9m, AsOf = now.AddDays(-sequence), CreatedAt = now,
+            });
+            context.Transactions.Add(new Transaction
+            {
+                TransactionId = id, Description = $"Row {sequence}", Amount = 1m,
+                TimeStamp = now, AccountId = accountId,
+            });
+            context.TransactionTags.Add(new TransactionTag { TransactionTagId = id, Name = $"Tag {sequence}" });
+
+            var blobId = Guid.Parse($"00000000-0000-4000-9000-{sequence:D12}");
+            context.FileBlob.Add(new FileBlob { Id = blobId, Content = [1, 2, 3] });
+            context.FileMetadata.Add(new FileMetadata
+            {
+                Id = id, FileName = $"file{sequence}.pdf", ContentType = "application/pdf",
+                SizeBytes = 3, Sha256Hash = $"hash{sequence}", FileBlobId = blobId, UploadedAtUtc = now,
+            });
+            context.AccountFiles.Add(new AccountFile
+            {
+                Id = id, AccountId = accountId, FileMetadataId = fileMetadataId,
+                AttachedAtUtc = now, FileType = AccountFileType.Statement,
+            });
+            context.TransactionFiles.Add(new TransactionFile
+            {
+                Id = id, TransactionId = transactionId, FileMetadataId = fileMetadataId, AttachedAtUtc = now,
+            });
+
+            context.TaxStatements.Add(new TaxStatement
+            {
+                TaxStatementId = id, Name = $"FY{sequence}", FiscalYear = 2020 + sequence,
+                StartDate = now.AddYears(-1), EndDate = now, CreatedAtUtc = now,
+            });
+            context.TaxStatementTags.Add(new TaxStatementTag
+            {
+                Id = id, TaxStatementId = id, TransactionTagId = tagId,
+                Role = Odyssey.Dtos.Finance.TaxStatementTagRole.Income,
+            });
+            context.TaxStatementFiles.Add(new TaxStatementFile
+            {
+                Id = id, TaxStatementId = id, FileMetadataId = fileMetadataId, AttachedAtUtc = now,
+            });
+
+            context.InsurancePolicies.Add(new InsurancePolicy
+            {
+                InsurancePolicyId = id, Name = $"Policy {sequence}", CreatedAtUtc = now,
+            });
+            context.InsurancePolicyInsurers.Add(new InsurancePolicyInsurer
+            {
+                Id = id, InsurancePolicyId = id, ContactId = contactId,
+            });
+            context.InsurancePolicyInsuredAccounts.Add(new InsurancePolicyInsuredAccount
+            {
+                Id = id, InsurancePolicyId = id, AccountId = accountId,
+            });
+            context.InsurancePolicyInsuredContacts.Add(new InsurancePolicyInsuredContact
+            {
+                Id = id, InsurancePolicyId = id, ContactId = contactId,
+            });
+            context.InsurancePolicyBeneficiaries.Add(new InsurancePolicyBeneficiary
+            {
+                Id = id, InsurancePolicyId = id, ContactId = contactId, CreatedAtUtc = now,
+            });
+            context.PolicyRenewals.Add(new PolicyRenewal
+            {
+                PolicyRenewalId = id, InsurancePolicyId = id, FromDate = now, ToDate = now.AddYears(1),
+                Premium = 10m, CoverageAmount = 100m, CreatedAtUtc = now,
+            });
+            context.PolicyRenewalFiles.Add(new PolicyRenewalFile
+            {
+                Id = id, PolicyRenewalId = id, FileMetadataId = fileMetadataId, AttachedAtUtc = now,
+            });
+
+            context.Contracts.Add(new Contract
+            {
+                ContractId = id, Name = $"Contract {sequence}", CreatedAtUtc = now,
+            });
+            context.ContractParties.Add(new ContractParty
+            {
+                ContractPartyId = id, ContractId = id, ContactId = contactId,
+            });
+            context.ContractFiles.Add(new ContractFile
+            {
+                ContractFileId = id, ContractId = id, FileMetadataId = fileMetadataId, AttachedAtUtc = now,
+            });
+
+            context.Subscriptions.Add(new Subscription
+            {
+                SubscriptionId = id, Name = $"Sub {sequence}",
+                StartDate = DateOnly.FromDateTime(now), Amount = 1m,
+                FirstBillingDate = DateOnly.FromDateTime(now), CreatedAtUtc = now,
+            });
+        }
+
+        // Text-keyed, so its inversion comes from the codes. ASCII-only and outside the ISO set the
+        // migration seeds, so they neither collide with it nor let ordinal and culture-aware
+        // comparison disagree.
+        foreach (var code in new[] { "ZZB", "ZZA" })
+        {
+            context.Currencies.Add(new Currency
+            {
+                CurrencyCode = code, Name = $"Test {code}", MinorUnits = 2,
+            });
+        }
+
+        // Composite-keyed, so its inversion comes from the accounts rather than a crafted id: the
+        // two remaining accounts are added highest-first.
+        foreach (var otherAccountId in accountIds.Skip(1).OrderByDescending(id => id))
+        {
+            context.AccountSmartTags.Add(new AccountSmartTag
+            {
+                AccountId = otherAccountId, TransactionTagId = tagId, AddedAt = now,
+            });
+        }
+
         await context.SaveChangesAsync();
     }
 
@@ -457,6 +945,149 @@ public class DataExportApiTests
             FileType = AccountFileType.Statement,
         });
 
+        // ── Issue #33: the tables the export used to omit silently ────────────
+
+        context.AccountEstimates.Add(new AccountEstimate
+        {
+            AccountEstimateId = Guid.NewGuid(),
+            AccountId = accountId,
+            Value = 185_000m,
+            CurrencyCode = "USD",
+            EffectiveFrom = DateTime.UtcNow,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.AccountSmartTags.Add(new AccountSmartTag
+        {
+            AccountId = accountId,
+            TransactionTagId = tagId,
+            AddedAt = DateTime.UtcNow,
+        });
+
+        var taxStatementId = Guid.NewGuid();
+        context.TaxStatements.Add(new TaxStatement
+        {
+            TaxStatementId = taxStatementId,
+            Name = "FY2025",
+            FiscalYear = 2025,
+            StartDate = DateTime.UtcNow.AddYears(-1),
+            EndDate = DateTime.UtcNow,
+            DeclaredNetWorth = 1_250_000m,
+            DeclaredTotalIncome = 96_000m,
+            AssessedTax = 24_500m,
+            Notes = TaxStatementMarker,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.TaxStatementTags.Add(new TaxStatementTag
+        {
+            Id = Guid.NewGuid(),
+            TaxStatementId = taxStatementId,
+            TransactionTagId = tagId,
+            Role = Odyssey.Dtos.Finance.TaxStatementTagRole.Income,
+        });
+        context.TaxStatementFiles.Add(new TaxStatementFile
+        {
+            Id = Guid.NewGuid(),
+            TaxStatementId = taxStatementId,
+            FileMetadataId = fileMetadataId,
+            AttachedByUserId = "uploader",
+            AttachedAtUtc = DateTime.UtcNow,
+        });
+
+        // A policy wired to all four party collections — the link rows are what issue #33 was
+        // really about, since a (policy, contact) pair discloses a relationship between people.
+        var policyId = Guid.NewGuid();
+        context.InsurancePolicies.Add(new InsurancePolicy
+        {
+            InsurancePolicyId = policyId,
+            Name = "Life cover",
+            PolicyNumber = "POL-123",
+            Type = InsurancePolicyType.Life,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.InsurancePolicyInsurers.Add(new InsurancePolicyInsurer
+        {
+            Id = Guid.NewGuid(), InsurancePolicyId = policyId, ContactId = contactId,
+        });
+        context.InsurancePolicyInsuredAccounts.Add(new InsurancePolicyInsuredAccount
+        {
+            Id = Guid.NewGuid(), InsurancePolicyId = policyId, AccountId = accountId,
+        });
+        context.InsurancePolicyInsuredContacts.Add(new InsurancePolicyInsuredContact
+        {
+            Id = Guid.NewGuid(), InsurancePolicyId = policyId, ContactId = contactId,
+        });
+        context.InsurancePolicyBeneficiaries.Add(new InsurancePolicyBeneficiary
+        {
+            Id = Guid.NewGuid(),
+            InsurancePolicyId = policyId,
+            ContactId = contactId,
+            CreatedByUserId = "designator",
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+
+        var renewalId = Guid.NewGuid();
+        context.PolicyRenewals.Add(new PolicyRenewal
+        {
+            PolicyRenewalId = renewalId,
+            InsurancePolicyId = policyId,
+            FromDate = DateTime.UtcNow,
+            ToDate = DateTime.UtcNow.AddYears(1),
+            Premium = 420m,
+            CoverageAmount = 500_000m,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.PolicyRenewalFiles.Add(new PolicyRenewalFile
+        {
+            Id = Guid.NewGuid(),
+            PolicyRenewalId = renewalId,
+            FileMetadataId = fileMetadataId,
+            AttachedByUserId = "uploader",
+            AttachedAtUtc = DateTime.UtcNow,
+        });
+
+        var contractId = Guid.NewGuid();
+        context.Contracts.Add(new Contract
+        {
+            ContractId = contractId,
+            Name = "Lease",
+            Type = ContractType.Rental,
+            StartDate = DateTime.UtcNow,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.ContractParties.AddRange(
+            new ContractParty
+            {
+                ContractPartyId = Guid.NewGuid(), ContractId = contractId, ContactId = contactId,
+            },
+            // The other branch of the one-of-two. Exporting only the Institution side would leave a
+            // dropped AccountId column passing every test.
+            new ContractParty
+            {
+                ContractPartyId = Guid.NewGuid(), ContractId = contractId, AccountId = accountId,
+            });
+        context.ContractFiles.Add(new ContractFile
+        {
+            ContractFileId = Guid.NewGuid(),
+            ContractId = contractId,
+            FileMetadataId = fileMetadataId,
+            AttachedByUserId = "uploader",
+            AttachedAtUtc = DateTime.UtcNow,
+        });
+
+        context.Subscriptions.Add(new Subscription
+        {
+            SubscriptionId = Guid.NewGuid(),
+            Name = "Streaming",
+            ContactId = contactId,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Amount = 12.99m,
+            CurrencyCode = "USD",
+            Interval = BillingInterval.Monthly,
+            IntervalCount = 1,
+            FirstBillingDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+
         // File-analysis records — must NOT appear in the export.
         var jobId = Guid.NewGuid();
         context.FileAnalysisJobs.Add(new FileAnalysisJob
@@ -467,12 +1098,17 @@ public class DataExportApiTests
         });
         context.FileAnalysisCandidateTransactions.Add(new FileAnalysisCandidateTransaction
         {
-            Id = Guid.NewGuid(),
+            Id = CandidateTransactionId,
             AnalysisJobId = jobId,
             TransactionDate = DateTime.UtcNow,
             Description = CandidateMarker,
             Amount = 9.99m,
             Currency = "USD",
+        });
+        context.FileAnalysisCandidateTags.Add(new FileAnalysisCandidateTag
+        {
+            CandidateTransactionId = CandidateTransactionId,
+            TransactionTagId = tagId,
         });
 
         await context.SaveChangesAsync();
