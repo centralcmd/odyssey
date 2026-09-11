@@ -53,6 +53,7 @@ public class OdsTypeSelectListboxTests
         [Parameter] public EventCallback<string> ValueChanged { get; set; }
         [Parameter] public IReadOnlyList<OdsTypeOption> Types { get; set; } = [];
         [Parameter] public IReadOnlyList<OdsTypeSelectGroup>? Groups { get; set; }
+        [Parameter] public bool Disabled { get; set; }
 
         protected override void BuildRenderTree(RenderTreeBuilder builder)
         {
@@ -64,6 +65,7 @@ public class OdsTypeSelectListboxTests
             builder.AddComponentParameter(4, nameof(OdsTypeSelect.ValueChanged), ValueChanged);
             builder.AddComponentParameter(5, nameof(OdsTypeSelect.Types), Types);
             builder.AddComponentParameter(6, nameof(OdsTypeSelect.Groups), Groups);
+            builder.AddComponentParameter(7, nameof(OdsTypeSelect.Disabled), Disabled);
             builder.CloseComponent();
         }
     }
@@ -207,6 +209,21 @@ public class OdsTypeSelectListboxTests
         // length a screen reader announces matches the number of choices.
         Assert.Equal("presentation", cut.Find(".odc-typesel-group").GetAttribute("role"));
         Assert.Equal("presentation", cut.Find(".odc-typesel-sep").GetAttribute("role"));
+
+        // But the section label still has to REACH that tree, as the group's name — otherwise a
+        // screen-reader user gets one flat list where a sighted user sees two labelled sections
+        // (WCAG 1.3.1 Info and Relationships).
+        var sections = cut.FindAll("[role='group']");
+        Assert.Equal(2, sections.Count);
+
+        var names = sections
+            .Select(section => cut.Find($"#{section.GetAttribute("aria-labelledby")}").TextContent.Trim())
+            .ToList();
+        Assert.Equal(new[] { "Personal", "Shared" }, names);
+
+        // Each group owns its own options, so the grouping is real rather than decorative.
+        Assert.Equal(2, sections[0].QuerySelectorAll("[role='option']").Length);
+        Assert.Single(sections[1].QuerySelectorAll("[role='option']"));
     }
 
     [Fact]
@@ -221,22 +238,6 @@ public class OdsTypeSelectListboxTests
 
         trigger.Click();
         Assert.Equal("true", cut.Find("button.odc-select-trigger").GetAttribute("aria-expanded"));
-    }
-
-    /// <summary>
-    /// MudMenu wraps a custom activator in a div that toggles the menu on Enter/Space itself. Left to
-    /// bubble, that toggle and the button's own native activation ran on the same keystroke — the
-    /// popover opened and closed again, so the control could not be opened from the keyboard at all.
-    /// </summary>
-    [Fact]
-    public void The_trigger_keeps_its_keystrokes_from_MudBlazors_activator()
-    {
-        var ctx = NewContext();
-        var cut = ctx.Render<SelectHost>(p => p.Add(h => h.Value, "Work").Add(h => h.Types, Types));
-
-        // Asserted on the rendered markup because the flag is a Blazor render-tree directive, not a
-        // DOM attribute; this component emits exactly one of them, on the trigger.
-        Assert.Contains("onkeydown:stopPropagation", cut.Markup, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -384,5 +385,113 @@ public class OdsTypeSelectListboxTests
 
         Assert.Equal(0, changes);
         Assert.Empty(OptionIds(cut));
+    }
+
+    /// <summary>
+    /// The closed trigger's own keyboard path, which had no coverage at all even though "the control
+    /// could not be opened from the keyboard" is one of the defects this component was fixed for.
+    /// </summary>
+    [Theory]
+    [InlineData("ArrowDown")]
+    [InlineData("ArrowUp")]
+    public void An_arrow_on_the_closed_trigger_opens_the_list(string key)
+    {
+        var ctx = NewContext();
+        var cut = ctx.Render<SelectHost>(p => p.Add(h => h.Value, "Work").Add(h => h.Types, Types));
+
+        Assert.Empty(cut.FindAll("[role='option']"));
+
+        cut.Find("button.odc-select-trigger").KeyDown(new KeyboardEventArgs { Key = key });
+
+        Assert.Equal(Types.Count, OptionIds(cut).Count);
+        Assert.Equal("true", cut.Find("button.odc-select-trigger").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void An_unrelated_key_on_the_closed_trigger_leaves_it_closed()
+    {
+        var ctx = NewContext();
+        var cut = ctx.Render<SelectHost>(p => p.Add(h => h.Value, "Work").Add(h => h.Types, Types));
+
+        cut.Find("button.odc-select-trigger").KeyDown(new KeyboardEventArgs { Key = "a" });
+
+        Assert.Empty(OptionIds(cut));
+    }
+
+    /// <summary>
+    /// MudBlazor renders the activator wrapper disabled too, so this guards the component's own
+    /// early return rather than the rendered markup — a disabled field must not open on an arrow.
+    /// </summary>
+    [Fact]
+    public void A_disabled_trigger_does_not_open_on_an_arrow()
+    {
+        var ctx = NewContext();
+        var cut = ctx.Render<SelectHost>(p => p
+            .Add(h => h.Value, "Work")
+            .Add(h => h.Types, Types)
+            .Add(h => h.Disabled, true));
+
+        cut.Find("button.odc-select-trigger").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+
+        Assert.Empty(OptionIds(cut));
+    }
+
+    /// <summary>
+    /// Enter and Space on the trigger reach it twice: MudMenu's activator wrapper toggles on the
+    /// keydown, and the browser then synthesises a click from the same keystroke. Honouring both
+    /// toggled twice and left the popup shut, which is the keyboard-inoperability bug itself.
+    ///
+    /// <para>
+    /// A synthesised click is the one that reports <c>Detail == 0</c>. The earlier fix — a blanket
+    /// <c>@onkeydown:stopPropagation</c> on the trigger — also worked, but Blazor evaluates that
+    /// directive once per render rather than per key, so it swallowed Escape as well and stopped it
+    /// cancelling a wrapping dialog. This pins the narrow guard so that regression cannot come back.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_keyboard_synthesised_click_on_the_trigger_is_ignored()
+    {
+        var ctx = NewContext();
+        var cut = ctx.Render<SelectHost>(p => p.Add(h => h.Value, "Work").Add(h => h.Types, Types));
+
+        // Detail == 0 is a click the keyboard produced; the wrapper has already acted on it.
+        cut.Find("button.odc-select-trigger").Click(new MouseEventArgs { Detail = 0 });
+        Assert.Empty(OptionIds(cut));
+
+        // Detail == 1 is a real pointer click, and still opens.
+        cut.Find("button.odc-select-trigger").Click(new MouseEventArgs { Detail = 1 });
+        Assert.Equal(Types.Count, OptionIds(cut).Count);
+    }
+
+    /// <summary>
+    /// The trigger must not swallow keys it has no use for: its Escape has to keep bubbling, or it
+    /// stops reaching the key interceptor that cancels a wrapping OdsModal.
+    /// </summary>
+    [Fact]
+    public void The_trigger_does_not_stop_keys_from_propagating()
+    {
+        var ctx = NewContext();
+        var cut = ctx.Render<SelectHost>(p => p.Add(h => h.Value, "Work").Add(h => h.Types, Types));
+
+        Assert.DoesNotContain("onkeydown:stopPropagation", cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The other typeahead branch: a buffer that GROWS re-tests the option already focused, so
+    /// refining "s" to "sw" stays on Switchboard rather than stepping past it.
+    /// </summary>
+    [Fact]
+    public void Typeahead_refines_onto_the_option_it_is_already_on()
+    {
+        var ctx = NewContext();
+        var cut = RenderOpen(ctx);
+
+        var ids = OptionIds(cut);
+
+        Press(cut, ids[0], "s");
+        Assert.Equal(ids[2], LastFocusTarget(ctx));
+
+        Press(cut, ids[2], "w");
+        Assert.Equal(ids[2], LastFocusTarget(ctx));
     }
 }

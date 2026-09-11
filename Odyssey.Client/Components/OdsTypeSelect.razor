@@ -27,8 +27,16 @@
       role="listbox": that nests a second listbox inside the first and leaves the outer one
       with no options, which is the defect this fixes, one level up. The cost of using
       MudBlazor's element is that it takes no attributes of ours, so the listbox carries no
-      aria-label and the trigger carries no aria-controls; the trigger's own accessible name
-      is what names the control, and aria-controls is not required for the pattern.
+      aria-label and the trigger carries no aria-controls. Note this is a gap against the
+      design system rather than parity with it: TypeSelect.jsx sets BOTH, which it can afford
+      to because it builds its own <ul>. Neither is required for the pattern — the trigger's
+      own accessible name is what names the control — but if MudMenu ever exposes its list id,
+      that is the follow-up.
+    • A group of options is a real role="group" named by aria-labelledby, not a bare heading.
+      A presentational heading alone drops the section label out of the accessibility tree
+      entirely, so a screen-reader user got one flat list where a sighted user sees Assets and
+      Liabilities (WCAG 1.3.1). The heading element itself stays presentational — it is the
+      group's NAME, and a stray generic child is not a valid listbox descendant.
     • Selection is exposed with aria-selected on every option, not only on the chosen one.
       The check glyph stays aria-hidden: with aria-selected present it is decoration, and
       duplicating the state in text would make every row announce twice.
@@ -42,10 +50,12 @@
       OdsMoneyField.
 
     The one MudMenu key handler that is NOT inert is on the activator wrapper it puts around a
-    custom trigger: that wrapper toggles the menu on Enter/Space by itself. Left to bubble, it
-    ran on the same keystroke as the button's own native activation — the popover opened and
-    closed again, so the control could not be opened from the keyboard at all. Hence the
-    trigger's @@onkeydown:stopPropagation, which is load-bearing rather than tidying.
+    custom trigger: that wrapper toggles the menu on Enter/Space by itself. That ran on the same
+    keystroke as the button's own native activation — the popover opened and closed again, so
+    the control could not be opened from the keyboard at all. The trigger's click handler
+    therefore ignores a keyboard-synthesised click (Detail == 0) and lets the wrapper own
+    Enter/Space; see OnTriggerClickAsync for why a blanket @@onkeydown:stopPropagation is the
+    wrong instrument, and what it broke.
 
     Arrow keys are not preventDefault'ed, so they still scroll the popover — Blazor evaluates
     @@onkeydown:preventDefault once at render, not per key, and a blanket preventDefault
@@ -80,9 +90,8 @@
                     aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
                     aria-label="@AriaLabel"
                     aria-describedby="@DescribedBy"
-                    @onclick="@context.ToggleAsync"
-                    @onkeydown="OnTriggerKeyAsync"
-                    @onkeydown:stopPropagation="true">
+                    @onclick="OnTriggerClickAsync"
+                    @onkeydown="OnTriggerKeyAsync">
                 <span class="odc-select-trigger-main">
                     @if (Selected is not null && !string.IsNullOrEmpty(Selected.Icon))
                     {
@@ -97,6 +106,7 @@
             @if (Groups is not null)
             {
                 var first = true;
+                var index = 0;
                 foreach (var group in Groups)
                 {
                     if (group.Items.Count == 0)
@@ -108,11 +118,14 @@
                         <div class="odc-typesel-sep" role="presentation"></div>
                     }
                     first = false;
-                    <div class="odc-typesel-group" role="presentation">@group.Label</div>
-                    foreach (var option in group.Items)
-                    {
-                        @OptionRow(option)
-                    }
+                    var headingId = GroupId(index++);
+                    <div role="group" aria-labelledby="@headingId">
+                        <div class="odc-typesel-group" id="@headingId" role="presentation">@group.Label</div>
+                        @foreach (var option in group.Items)
+                        {
+                            @OptionRow(option)
+                        }
+                    </div>
                 }
             }
             else

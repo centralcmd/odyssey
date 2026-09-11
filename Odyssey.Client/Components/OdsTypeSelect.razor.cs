@@ -83,6 +83,8 @@ public partial class OdsTypeSelect
 
     private string OptionId(string key) => $"{FieldId}-opt-{key}";
 
+    private string GroupId(int index) => $"{FieldId}-grp-{index}";
+
     private int IndexOf(string? key)
     {
         var ordered = Ordered;
@@ -127,9 +129,33 @@ public partial class OdsTypeSelect
         await FocusAsync(OptionId(ordered[index >= 0 ? index : 0].Key));
     }
 
+    /// <summary>
+    /// A keyboard-synthesised click — Enter or Space on the trigger — reports <c>Detail == 0</c>,
+    /// and by the time it arrives MudMenu's own activator wrapper has ALREADY toggled the menu for
+    /// that same keystroke. Honouring this click as well toggles twice and leaves the popup exactly
+    /// as it was, which is why the control could not be opened from the keyboard at all.
+    ///
+    /// <para>
+    /// Discriminating on <c>Detail</c> is what lets the keydown keep propagating. The first fix here
+    /// was a blanket <c>@onkeydown:stopPropagation</c>, which worked but was far too wide: the
+    /// directive is evaluated once per render rather than per key, so it swallowed EVERY key on the
+    /// trigger — including the Escape that cancels a wrapping OdsModal, whose MudBlazor key
+    /// interceptor listens in the bubble phase on the dialog container the trigger sits inside.
+    /// Tabbing to a type field would have made Escape stop cancelling the form.
+    /// </para>
+    /// </summary>
+    private async Task OnTriggerClickAsync(MouseEventArgs e)
+    {
+        if (e.Detail == 0 || _menu is null)
+        {
+            return;
+        }
+        await _menu.ToggleMenuAsync(EventArgs.Empty);
+    }
+
     private async Task OnTriggerKeyAsync(KeyboardEventArgs e)
     {
-        // Enter and Space are left to the button's own activation, which reaches ToggleAsync.
+        // Enter and Space are left to MudMenu's activator wrapper, which toggles on both.
         if (Disabled || _open || _menu is null)
         {
             return;
