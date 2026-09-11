@@ -31,6 +31,7 @@ public class DataExportApiTests
     // Recognizable payloads used to prove the excluded data never reaches the export.
     private static readonly byte[] BlobContent = Encoding.UTF8.GetBytes("SECRET-BLOB-CONTENT-MUST-NOT-EXPORT");
     private const string CandidateMarker = "CANDIDATE-DESCRIPTION-MUST-NOT-EXPORT";
+    internal const string TaxStatementMarker = "TAX-STATEMENT-NOTES-MUST-EXPORT";
 
     // ── Authorization matrix (spec §3.4 / §10.1) ──────────────────────────────
 
@@ -140,6 +141,10 @@ public class DataExportApiTests
         Assert.Contains("FileBlob", exclusions.GetProperty("excludedTables").EnumerateArray().Select(e => e.GetString()));
         Assert.Contains("FileBlob.Content", exclusions.GetProperty("excludedFields").EnumerateArray().Select(e => e.GetString()));
 
+        // Issue #33: the candidate-TAGS table was in neither the export nor this list — its parent
+        // is excluded, so it belongs here rather than being the one member of the group left unsaid.
+        Assert.Contains("FileAnalysisCandidateTags", exclusions.GetProperty("excludedTables").EnumerateArray().Select(e => e.GetString()));
+
         // The export only covers Finance (+ Contacts); it must say so rather than let a reader assume
         // Identity/Journal data is captured elsewhere by this export (architect finding F-10).
         var outOfScope = exclusions.GetProperty("outOfScopeDatabases").EnumerateArray().Select(e => e.GetString()!).ToList();
@@ -151,7 +156,13 @@ public class DataExportApiTests
                  {
                      "accounts", "accountTerms", "budgets", "budgetItems", "contacts", "currencies",
                      "exchangeRates", "transactions", "transactionTags", "fileMetadata", "accountFiles",
-                     "transactionFiles"
+                     "transactionFiles",
+                     // Issue #33.
+                     "accountEstimates", "accountSmartTags", "taxStatements", "taxStatementTags",
+                     "taxStatementFiles", "insurancePolicies", "insurancePolicyInsurers",
+                     "insurancePolicyInsuredAccounts", "insurancePolicyInsuredContacts",
+                     "insurancePolicyBeneficiaries", "policyRenewals", "policyRenewalFiles",
+                     "contracts", "contractParties", "contractFiles", "subscriptions",
                  })
         {
             Assert.Equal(JsonValueKind.Array, finance.GetProperty(collection).ValueKind);
@@ -312,6 +323,169 @@ public class DataExportApiTests
         await context.SaveChangesAsync();
     }
 
+    // ── Issue #33: the previously-omitted tables ──────────────────────────────
+
+    /// <summary>
+    /// The policy header and its renewals. Before issue #33 an export of a workspace holding
+    /// insurance said nothing about it — not in the data, and not in <c>excludedTables</c> either.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesInsurancePoliciesAndRenewals()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var policy = Assert.Single(finance.GetProperty("insurancePolicies").EnumerateArray());
+        Assert.Equal("Life cover", policy.GetProperty("name").GetString());
+        Assert.Equal("POL-123", policy.GetProperty("policyNumber").GetString());
+        Assert.Equal(JsonValueKind.Number, policy.GetProperty("type").ValueKind);
+
+        var renewal = Assert.Single(finance.GetProperty("policyRenewals").EnumerateArray());
+        Assert.Equal(policy.GetProperty("insurancePolicyId").GetGuid(), renewal.GetProperty("insurancePolicyId").GetGuid());
+        Assert.Equal(420m, renewal.GetProperty("premium").GetDecimal());
+        Assert.Equal(500_000m, renewal.GetProperty("coverageAmount").GetDecimal());
+
+        Assert.Single(finance.GetProperty("policyRenewalFiles").EnumerateArray());
+    }
+
+    /// <summary>
+    /// The decision issue #33 flagged as the one worth thinking about: a link row is a
+    /// <c>(policy, contact)</c> pair, so it discloses a relationship between two people rather than
+    /// a field of one record. It exports the relationship COLUMNS and nothing else — the same
+    /// posture the read path takes for an archived link, where the id survives and the name does
+    /// not. A resolved name here would make the export disclose more than the API it mirrors.
+    /// </summary>
+    [Theory]
+    [InlineData("insurancePolicyInsurers", "contactId")]
+    [InlineData("insurancePolicyInsuredAccounts", "accountId")]
+    [InlineData("insurancePolicyInsuredContacts", "contactId")]
+    public async Task Export_InsurancePartyLink_CarriesIdsOnly_NeverAResolvedName(
+        string collection, string targetIdProperty)
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var link = Assert.Single(finance.GetProperty(collection).EnumerateArray());
+
+        Assert.NotEqual(Guid.Empty, link.GetProperty("insurancePolicyId").GetGuid());
+        Assert.NotEqual(Guid.Empty, link.GetProperty(targetIdProperty).GetGuid());
+
+        // The whole row, named: an added name/displayName column fails here rather than shipping.
+        Assert.Equal(
+            new[] { "id", "insurancePolicyId", targetIdProperty, "fromDate", "toDate" }.Order(StringComparer.Ordinal),
+            link.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// The beneficiary table is the one that diverges: it carries its own attribution columns, and
+    /// they travel with it. Same ids-only rule for the target.
+    /// </summary>
+    [Fact]
+    public async Task Export_BeneficiaryLink_CarriesIdsAndAttribution_ButNoName()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var beneficiary = Assert.Single(finance.GetProperty("insurancePolicyBeneficiaries").EnumerateArray());
+
+        Assert.NotEqual(Guid.Empty, beneficiary.GetProperty("contactId").GetGuid());
+        Assert.Equal("designator", beneficiary.GetProperty("createdByUserId").GetString());
+        Assert.Equal(
+            new[] { "id", "insurancePolicyId", "contactId", "fromDate", "toDate", "createdByUserId", "createdAtUtc" }
+                .Order(StringComparer.Ordinal),
+            beneficiary.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// A contract party is one-of-two with no kind discriminator on the row, so both nullable
+    /// relationship columns are exported and which one is set is what says which kind it is.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesContractsAndParties_AsIdsOnly()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var contract = Assert.Single(finance.GetProperty("contracts").EnumerateArray());
+        Assert.Equal("Lease", contract.GetProperty("name").GetString());
+
+        var party = Assert.Single(finance.GetProperty("contractParties").EnumerateArray());
+        Assert.Equal(contract.GetProperty("contractId").GetGuid(), party.GetProperty("contractId").GetGuid());
+        Assert.NotEqual(Guid.Empty, party.GetProperty("contactId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, party.GetProperty("accountId").ValueKind);
+        Assert.Equal(
+            new[] { "contractPartyId", "contractId", "accountId", "contactId" }.Order(StringComparer.Ordinal),
+            party.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+
+        Assert.Single(finance.GetProperty("contractFiles").EnumerateArray());
+    }
+
+    /// <summary>
+    /// Tax statements carry declared figures and an assessment — wholly user-authored financial
+    /// data, and the strongest omission after insurance.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesTaxStatementsWithTheirDeclaredFigures()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        var rawJson = await (await client.GetAsync(ExportPath)).Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(rawJson);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var statement = Assert.Single(finance.GetProperty("taxStatements").EnumerateArray());
+        Assert.Equal(2025, statement.GetProperty("fiscalYear").GetInt32());
+        Assert.Equal(1_250_000m, statement.GetProperty("declaredNetWorth").GetDecimal());
+        Assert.Equal(96_000m, statement.GetProperty("declaredTotalIncome").GetDecimal());
+        Assert.Equal(24_500m, statement.GetProperty("assessedTax").GetDecimal());
+        Assert.Contains(TaxStatementMarker, rawJson, StringComparison.Ordinal);
+
+        Assert.Single(finance.GetProperty("taxStatementTags").EnumerateArray());
+        Assert.Single(finance.GetProperty("taxStatementFiles").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Export_IncludesSubscriptionsAndAccountSideTables()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var subscription = Assert.Single(finance.GetProperty("subscriptions").EnumerateArray());
+        Assert.Equal("Streaming", subscription.GetProperty("name").GetString());
+        Assert.Equal(12.99m, subscription.GetProperty("amount").GetDecimal());
+        Assert.Equal(JsonValueKind.Number, subscription.GetProperty("interval").ValueKind);
+
+        var estimate = Assert.Single(finance.GetProperty("accountEstimates").EnumerateArray());
+        Assert.Equal(185_000m, estimate.GetProperty("value").GetDecimal());
+
+        // Composite-keyed: the row is the (account, tag) pair, so there is no id to export.
+        var smartTag = Assert.Single(finance.GetProperty("accountSmartTags").EnumerateArray());
+        Assert.NotEqual(Guid.Empty, smartTag.GetProperty("accountId").GetGuid());
+        Assert.NotEqual(Guid.Empty, smartTag.GetProperty("transactionTagId").GetGuid());
+    }
+
     // ── Deterministic ordering (spec §10.1.9) ─────────────────────────────────
 
     [Fact]
@@ -455,6 +629,142 @@ public class DataExportApiTests
             AttachedByUserId = "uploader",
             AttachedAtUtc = DateTime.UtcNow,
             FileType = AccountFileType.Statement,
+        });
+
+        // ── Issue #33: the tables the export used to omit silently ────────────
+
+        context.AccountEstimates.Add(new AccountEstimate
+        {
+            AccountEstimateId = Guid.NewGuid(),
+            AccountId = accountId,
+            Value = 185_000m,
+            CurrencyCode = "USD",
+            EffectiveFrom = DateTime.UtcNow,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.AccountSmartTags.Add(new AccountSmartTag
+        {
+            AccountId = accountId,
+            TransactionTagId = tagId,
+            AddedAt = DateTime.UtcNow,
+        });
+
+        var taxStatementId = Guid.NewGuid();
+        context.TaxStatements.Add(new TaxStatement
+        {
+            TaxStatementId = taxStatementId,
+            Name = "FY2025",
+            FiscalYear = 2025,
+            StartDate = DateTime.UtcNow.AddYears(-1),
+            EndDate = DateTime.UtcNow,
+            DeclaredNetWorth = 1_250_000m,
+            DeclaredTotalIncome = 96_000m,
+            AssessedTax = 24_500m,
+            Notes = TaxStatementMarker,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.TaxStatementTags.Add(new TaxStatementTag
+        {
+            Id = Guid.NewGuid(),
+            TaxStatementId = taxStatementId,
+            TransactionTagId = tagId,
+            Role = Odyssey.Dtos.Finance.TaxStatementTagRole.Income,
+        });
+        context.TaxStatementFiles.Add(new TaxStatementFile
+        {
+            Id = Guid.NewGuid(),
+            TaxStatementId = taxStatementId,
+            FileMetadataId = fileMetadataId,
+            AttachedByUserId = "uploader",
+            AttachedAtUtc = DateTime.UtcNow,
+        });
+
+        // A policy wired to all four party collections — the link rows are what issue #33 was
+        // really about, since a (policy, contact) pair discloses a relationship between people.
+        var policyId = Guid.NewGuid();
+        context.InsurancePolicies.Add(new InsurancePolicy
+        {
+            InsurancePolicyId = policyId,
+            Name = "Life cover",
+            PolicyNumber = "POL-123",
+            Type = InsurancePolicyType.Life,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.InsurancePolicyInsurers.Add(new InsurancePolicyInsurer
+        {
+            Id = Guid.NewGuid(), InsurancePolicyId = policyId, ContactId = contactId,
+        });
+        context.InsurancePolicyInsuredAccounts.Add(new InsurancePolicyInsuredAccount
+        {
+            Id = Guid.NewGuid(), InsurancePolicyId = policyId, AccountId = accountId,
+        });
+        context.InsurancePolicyInsuredContacts.Add(new InsurancePolicyInsuredContact
+        {
+            Id = Guid.NewGuid(), InsurancePolicyId = policyId, ContactId = contactId,
+        });
+        context.InsurancePolicyBeneficiaries.Add(new InsurancePolicyBeneficiary
+        {
+            Id = Guid.NewGuid(),
+            InsurancePolicyId = policyId,
+            ContactId = contactId,
+            CreatedByUserId = "designator",
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+
+        var renewalId = Guid.NewGuid();
+        context.PolicyRenewals.Add(new PolicyRenewal
+        {
+            PolicyRenewalId = renewalId,
+            InsurancePolicyId = policyId,
+            FromDate = DateTime.UtcNow,
+            ToDate = DateTime.UtcNow.AddYears(1),
+            Premium = 420m,
+            CoverageAmount = 500_000m,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.PolicyRenewalFiles.Add(new PolicyRenewalFile
+        {
+            Id = Guid.NewGuid(),
+            PolicyRenewalId = renewalId,
+            FileMetadataId = fileMetadataId,
+            AttachedByUserId = "uploader",
+            AttachedAtUtc = DateTime.UtcNow,
+        });
+
+        var contractId = Guid.NewGuid();
+        context.Contracts.Add(new Contract
+        {
+            ContractId = contractId,
+            Name = "Lease",
+            Type = ContractType.Rental,
+            StartDate = DateTime.UtcNow,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.ContractParties.Add(new ContractParty
+        {
+            ContractPartyId = Guid.NewGuid(), ContractId = contractId, ContactId = contactId,
+        });
+        context.ContractFiles.Add(new ContractFile
+        {
+            ContractFileId = Guid.NewGuid(),
+            ContractId = contractId,
+            FileMetadataId = fileMetadataId,
+            AttachedByUserId = "uploader",
+            AttachedAtUtc = DateTime.UtcNow,
+        });
+
+        context.Subscriptions.Add(new Subscription
+        {
+            SubscriptionId = Guid.NewGuid(),
+            Name = "Streaming",
+            ContactId = contactId,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Amount = 12.99m,
+            CurrencyCode = "USD",
+            Interval = BillingInterval.Monthly,
+            IntervalCount = 1,
+            FirstBillingDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            CreatedAtUtc = DateTime.UtcNow,
         });
 
         // File-analysis records — must NOT appear in the export.

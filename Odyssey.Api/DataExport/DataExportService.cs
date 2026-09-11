@@ -26,7 +26,14 @@ public sealed record DataExportSummary(long ByteCount, IReadOnlyDictionary<strin
 /// export DTO (scalar + foreign-key columns only — never a navigation graph), and ordered
 /// deterministically by primary key. File blob payloads are never loaded: <see cref="FileMetadata"/>
 /// is projected without its <c>FileBlob.Content</c>, and the <c>FileBlob</c>, file-analysis job, and
-/// candidate-transaction tables are not exported at all.
+/// candidate tables are not exported at all.
+///
+/// Issue #33: the covered set is a deliberate list, not every table in the context — the contact
+/// detail tables have their own vCard export and the journal side has its own surfaces. What that
+/// list must not do is omit a Finance table silently, which is what it was doing for insurance,
+/// contracts, tax statements, subscriptions and the two account side-tables. Anything genuinely left
+/// out belongs in <see cref="DataExportExclusions.ExcludedTables"/> with its reason; an omission that
+/// is stated is a different thing from one that is merely absent.
 ///
 /// Issue #395: rows are written to the response as they are read rather than materialized. Each table
 /// is enumerated with <see cref="EntityFrameworkQueryableExtensions.AsAsyncEnumerable{TResult}"/> and
@@ -135,6 +142,24 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.FileMetadata), FileMetadataQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.AccountFiles), AccountFilesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.TransactionFiles), TransactionFilesQuery(), cancellationToken);
+
+        // Issue #33 — order matches FinanceDatabaseExport, which is the wire order.
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.AccountEstimates), AccountEstimatesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.AccountSmartTags), AccountSmartTagsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.TaxStatements), TaxStatementsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.TaxStatementTags), TaxStatementTagsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.TaxStatementFiles), TaxStatementFilesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicies), InsurancePoliciesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicyInsurers), InsurancePolicyInsurersQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicyInsuredAccounts), InsurancePolicyInsuredAccountsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicyInsuredContacts), InsurancePolicyInsuredContactsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicyBeneficiaries), InsurancePolicyBeneficiariesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PolicyRenewals), PolicyRenewalsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PolicyRenewalFiles), PolicyRenewalFilesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Contracts), ContractsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractParties), ContractPartiesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractFiles), ContractFilesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Subscriptions), SubscriptionsQuery(), cancellationToken);
     }
 
     /// <summary>
@@ -390,6 +415,246 @@ public sealed class DataExportService
                 AttachedByUserId = transactionFile.AttachedByUserId,
                 AttachedAtUtc = transactionFile.AttachedAtUtc,
                 Type = (FinanceDtos.TransactionFileType)transactionFile.Type,
+            });
+
+    // ── Issue #33 ─────────────────────────────────────────────────────────────
+
+    private IQueryable<AccountEstimateExport> AccountEstimatesQuery() =>
+        context.AccountEstimates.AsNoTracking()
+            .OrderBy(estimate => estimate.AccountEstimateId)
+            .Select(estimate => new AccountEstimateExport
+            {
+                AccountEstimateId = estimate.AccountEstimateId,
+                AccountId = estimate.AccountId,
+                Value = estimate.Value,
+                CurrencyCode = estimate.CurrencyCode,
+                EffectiveFrom = estimate.EffectiveFrom,
+                Note = estimate.Note,
+                CreatedAtUtc = estimate.CreatedAtUtc,
+            });
+
+    // Composite-keyed, so both key columns order it — there is no single id to sort on.
+    private IQueryable<AccountSmartTagExport> AccountSmartTagsQuery() =>
+        context.AccountSmartTags.AsNoTracking()
+            .OrderBy(smartTag => smartTag.AccountId)
+            .ThenBy(smartTag => smartTag.TransactionTagId)
+            .Select(smartTag => new AccountSmartTagExport
+            {
+                AccountId = smartTag.AccountId,
+                TransactionTagId = smartTag.TransactionTagId,
+                AddedAt = smartTag.AddedAt,
+            });
+
+    private IQueryable<TaxStatementExport> TaxStatementsQuery() =>
+        context.TaxStatements.AsNoTracking()
+            .OrderBy(statement => statement.TaxStatementId)
+            .Select(statement => new TaxStatementExport
+            {
+                TaxStatementId = statement.TaxStatementId,
+                Name = statement.Name,
+                FiscalYear = statement.FiscalYear,
+                StartDate = statement.StartDate,
+                EndDate = statement.EndDate,
+                BaseCurrencyCode = statement.BaseCurrencyCode,
+                DeclaredTotalAssets = statement.DeclaredTotalAssets,
+                DeclaredTotalLiabilities = statement.DeclaredTotalLiabilities,
+                DeclaredNetWorth = statement.DeclaredNetWorth,
+                DeclaredTotalIncome = statement.DeclaredTotalIncome,
+                AssessedTax = statement.AssessedTax,
+                SettlementAmount = statement.SettlementAmount,
+                SettledAtUtc = statement.SettledAtUtc,
+                FiledAtUtc = statement.FiledAtUtc,
+                TaxOfficeApprovedAtUtc = statement.TaxOfficeApprovedAtUtc,
+                // No Odyssey.Context copy of this enum exists, so there is nothing to cast across.
+                Status = statement.Status,
+                StatusComment = statement.StatusComment,
+                StatusChangedAt = statement.StatusChangedAt,
+                Notes = statement.Notes,
+                Archived = statement.Archived,
+                CreatedAtUtc = statement.CreatedAtUtc,
+            });
+
+    private IQueryable<TaxStatementTagExport> TaxStatementTagsQuery() =>
+        context.TaxStatementTags.AsNoTracking()
+            .OrderBy(tag => tag.Id)
+            .Select(tag => new TaxStatementTagExport
+            {
+                Id = tag.Id,
+                TaxStatementId = tag.TaxStatementId,
+                TransactionTagId = tag.TransactionTagId,
+                Role = tag.Role,
+            });
+
+    private IQueryable<TaxStatementFileExport> TaxStatementFilesQuery() =>
+        context.TaxStatementFiles.AsNoTracking()
+            .OrderBy(statementFile => statementFile.Id)
+            .Select(statementFile => new TaxStatementFileExport
+            {
+                Id = statementFile.Id,
+                TaxStatementId = statementFile.TaxStatementId,
+                FileMetadataId = statementFile.FileMetadataId,
+                AttachedByUserId = statementFile.AttachedByUserId,
+                AttachedAtUtc = statementFile.AttachedAtUtc,
+                FileType = (FinanceDtos.TaxStatementFileType)statementFile.FileType,
+            });
+
+    private IQueryable<InsurancePolicyExport> InsurancePoliciesQuery() =>
+        context.InsurancePolicies.AsNoTracking()
+            .OrderBy(policy => policy.InsurancePolicyId)
+            .Select(policy => new InsurancePolicyExport
+            {
+                InsurancePolicyId = policy.InsurancePolicyId,
+                Name = policy.Name,
+                PolicyNumber = policy.PolicyNumber,
+                Type = (FinanceDtos.InsurancePolicyType)policy.Type,
+                Notes = policy.Notes,
+                Archived = policy.Archived,
+                CreatedAtUtc = policy.CreatedAtUtc,
+            });
+
+    // The four party link tables: relationship columns and the optional term, never a resolved
+    // name. See InsurancePolicyInsurerExport for why the id alone is the right projection.
+    private IQueryable<InsurancePolicyInsurerExport> InsurancePolicyInsurersQuery() =>
+        context.InsurancePolicyInsurers.AsNoTracking()
+            .OrderBy(insurer => insurer.Id)
+            .Select(insurer => new InsurancePolicyInsurerExport
+            {
+                Id = insurer.Id,
+                InsurancePolicyId = insurer.InsurancePolicyId,
+                ContactId = insurer.ContactId,
+                FromDate = insurer.FromDate,
+                ToDate = insurer.ToDate,
+            });
+
+    private IQueryable<InsurancePolicyInsuredAccountExport> InsurancePolicyInsuredAccountsQuery() =>
+        context.InsurancePolicyInsuredAccounts.AsNoTracking()
+            .OrderBy(insured => insured.Id)
+            .Select(insured => new InsurancePolicyInsuredAccountExport
+            {
+                Id = insured.Id,
+                InsurancePolicyId = insured.InsurancePolicyId,
+                AccountId = insured.AccountId,
+                FromDate = insured.FromDate,
+                ToDate = insured.ToDate,
+            });
+
+    private IQueryable<InsurancePolicyInsuredContactExport> InsurancePolicyInsuredContactsQuery() =>
+        context.InsurancePolicyInsuredContacts.AsNoTracking()
+            .OrderBy(insured => insured.Id)
+            .Select(insured => new InsurancePolicyInsuredContactExport
+            {
+                Id = insured.Id,
+                InsurancePolicyId = insured.InsurancePolicyId,
+                ContactId = insured.ContactId,
+                FromDate = insured.FromDate,
+                ToDate = insured.ToDate,
+            });
+
+    private IQueryable<InsurancePolicyBeneficiaryExport> InsurancePolicyBeneficiariesQuery() =>
+        context.InsurancePolicyBeneficiaries.AsNoTracking()
+            .OrderBy(beneficiary => beneficiary.Id)
+            .Select(beneficiary => new InsurancePolicyBeneficiaryExport
+            {
+                Id = beneficiary.Id,
+                InsurancePolicyId = beneficiary.InsurancePolicyId,
+                ContactId = beneficiary.ContactId,
+                FromDate = beneficiary.FromDate,
+                ToDate = beneficiary.ToDate,
+                CreatedByUserId = beneficiary.CreatedByUserId,
+                CreatedAtUtc = beneficiary.CreatedAtUtc,
+            });
+
+    private IQueryable<PolicyRenewalExport> PolicyRenewalsQuery() =>
+        context.PolicyRenewals.AsNoTracking()
+            .OrderBy(renewal => renewal.PolicyRenewalId)
+            .Select(renewal => new PolicyRenewalExport
+            {
+                PolicyRenewalId = renewal.PolicyRenewalId,
+                InsurancePolicyId = renewal.InsurancePolicyId,
+                FromDate = renewal.FromDate,
+                ToDate = renewal.ToDate,
+                Premium = renewal.Premium,
+                PremiumCurrencyCode = renewal.PremiumCurrencyCode,
+                CoverageAmount = renewal.CoverageAmount,
+                CoverageCurrencyCode = renewal.CoverageCurrencyCode,
+                Notes = renewal.Notes,
+                CreatedAtUtc = renewal.CreatedAtUtc,
+            });
+
+    private IQueryable<PolicyRenewalFileExport> PolicyRenewalFilesQuery() =>
+        context.PolicyRenewalFiles.AsNoTracking()
+            .OrderBy(renewalFile => renewalFile.Id)
+            .Select(renewalFile => new PolicyRenewalFileExport
+            {
+                Id = renewalFile.Id,
+                PolicyRenewalId = renewalFile.PolicyRenewalId,
+                FileMetadataId = renewalFile.FileMetadataId,
+                FileType = (FinanceDtos.PolicyFileType)renewalFile.FileType,
+                EffectiveDate = renewalFile.EffectiveDate,
+                AttachedByUserId = renewalFile.AttachedByUserId,
+                AttachedAtUtc = renewalFile.AttachedAtUtc,
+            });
+
+    private IQueryable<ContractExport> ContractsQuery() =>
+        context.Contracts.AsNoTracking()
+            .OrderBy(contract => contract.ContractId)
+            .Select(contract => new ContractExport
+            {
+                ContractId = contract.ContractId,
+                Name = contract.Name,
+                Type = (FinanceDtos.ContractType)contract.Type,
+                Description = contract.Description,
+                StartDate = contract.StartDate,
+                EndDate = contract.EndDate,
+                CompletionDate = contract.CompletionDate,
+                Archived = contract.Archived,
+                CreatedAtUtc = contract.CreatedAtUtc,
+            });
+
+    private IQueryable<ContractPartyExport> ContractPartiesQuery() =>
+        context.ContractParties.AsNoTracking()
+            .OrderBy(party => party.ContractPartyId)
+            .Select(party => new ContractPartyExport
+            {
+                ContractPartyId = party.ContractPartyId,
+                ContractId = party.ContractId,
+                AccountId = party.AccountId,
+                ContactId = party.ContactId,
+            });
+
+    private IQueryable<ContractFileExport> ContractFilesQuery() =>
+        context.ContractFiles.AsNoTracking()
+            .OrderBy(contractFile => contractFile.ContractFileId)
+            .Select(contractFile => new ContractFileExport
+            {
+                ContractFileId = contractFile.ContractFileId,
+                ContractId = contractFile.ContractId,
+                FileMetadataId = contractFile.FileMetadataId,
+                FileType = (FinanceDtos.ContractFileType)contractFile.FileType,
+                AttachedByUserId = contractFile.AttachedByUserId,
+                AttachedAtUtc = contractFile.AttachedAtUtc,
+            });
+
+    private IQueryable<SubscriptionExport> SubscriptionsQuery() =>
+        context.Subscriptions.AsNoTracking()
+            .OrderBy(subscription => subscription.SubscriptionId)
+            .Select(subscription => new SubscriptionExport
+            {
+                SubscriptionId = subscription.SubscriptionId,
+                Name = subscription.Name,
+                ExternalId = subscription.ExternalId,
+                ContactId = subscription.ContactId,
+                StartDate = subscription.StartDate,
+                EndDate = subscription.EndDate,
+                Amount = subscription.Amount,
+                CurrencyCode = subscription.CurrencyCode,
+                Interval = (FinanceDtos.BillingInterval)subscription.Interval,
+                IntervalCount = subscription.IntervalCount,
+                FirstBillingDate = subscription.FirstBillingDate,
+                Notes = subscription.Notes,
+                Paused = subscription.Paused,
+                Archived = subscription.Archived,
+                CreatedAtUtc = subscription.CreatedAtUtc,
             });
 }
 
