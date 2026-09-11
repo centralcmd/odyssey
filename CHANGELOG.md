@@ -5,6 +5,31 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0](https://github.com/centralcmd/odyssey/compare/v0.24.0...v0.25.0) (2026-09-11)
+
+
+### Features
+
+* **core:** contact aliases and life-cycle dates ([772c04e](https://github.com/centralcmd/odyssey/commit/772c04eaf140e39f19067508c80c50da70b97f01))
+* **core:** name an account term by its label, and cut TermKind to three ([cc47400](https://github.com/centralcmd/odyssey/commit/cc474000dc4aa9bb10b54c044ce33757d7557dac))
+* label an organization's contact methods with an organization vocabulary ([126fd9c](https://github.com/centralcmd/odyssey/commit/126fd9c8bef098d6eba134d2d1a0f677d12bf15a))
+
+
+### Bug Fixes
+
+* **client:** stop re-signing a liability's interest rate ([#55](https://github.com/centralcmd/odyssey/issues/55)) ([0d3fb8f](https://github.com/centralcmd/odyssey/commit/0d3fb8f36052248744c1f4908ca47d8d109950a3))
+
+
+### Refactoring
+
+* **core:** remove unused contact relationship type ([bfbb518](https://github.com/centralcmd/odyssey/commit/bfbb518fe278e0dd34760844a561863058c03f75))
+* **data:** drop dead columns, fix contact uid collation, retune indexes ([#46](https://github.com/centralcmd/odyssey/issues/46)) ([5850de2](https://github.com/centralcmd/odyssey/commit/5850de2060018ae10814e7a9a2e2342a639bb374))
+
+
+### Documentation
+
+* update design system ([0dd8b33](https://github.com/centralcmd/odyssey/commit/0dd8b33697646bf8bc9ac042bd4878b38b258532))
+
 ## [0.24.0](https://github.com/centralcmd/odyssey/compare/v0.23.1...v0.24.0) (2026-09-08)
 
 
