@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -106,9 +107,19 @@ public partial class ContactDetailPanel
         _dialogKind = kind;
         _dialogIsEdit = false;
         _dialogIsFirst = kind switch { "email" => _emails.Count == 0, "phone" => _phones.Count == 0, _ => _addresses.Count == 0 };
-        _dialogDraft = new ContactMethodDraft { IsPrimary = _dialogIsFirst };
+        _dialogDraft = new ContactMethodDraft { IsPrimary = _dialogIsFirst, Label = DefaultLabel(kind) };
         _dialogOpen = true;
     }
+
+    // The per-type default is applied HERE, not in the dialog (issue #47 §3): this is the only site
+    // holding both the kind and the parent contact's type, and applying it in OnParametersSet would
+    // either clobber an edit draft or need an !IsEdit guard — a second place the rule lives.
+    private string DefaultLabel(string kind) => kind switch
+    {
+        "email" => ContactLabelScope.DefaultEmailLabel(Contact.Type).ToString(),
+        "phone" => ContactLabelScope.DefaultPhoneLabel(Contact.Type).ToString(),
+        _ => ContactLabelScope.DefaultAddressLabel(Contact.Type).ToString(),
+    };
 
     private Task OpenEditAddressAsync(ExistingAddress a) { OpenEdit("address", ContactMethodDraft.FromAddress(a), _addresses.Count == 1); return Task.CompletedTask; }
     private Task OpenEditEmailAsync(ExistingEmailAddress e) { OpenEdit("email", ContactMethodDraft.FromEmail(e), _emails.Count == 1); return Task.CompletedTask; }
@@ -126,19 +137,21 @@ public partial class ContactDetailPanel
     // ── Mutations ───────────────────────────────────────────────────────────────
     private Guid Id => Contact.ContactId;
 
-    private async Task<bool> CommitContact(ContactMethodDraft draft)
+    // `assign` is the dialog's server-error channel: a 422 naming `label` lands on the Label control
+    // rather than only in a toast the user has to translate back into a field (issue #47 §3).
+    private async Task<bool> CommitContact(ContactMethodDraft draft, Func<string, string, bool> assign)
     {
         var ok = _dialogKind switch
         {
             "email" => draft.Id is { } id
-                ? (await Contacts.UpdateEmailAsync(Id, id, draft.ToNewEmail())).Toast(Snackbar, "Update failed", "Email saved.")
-                : (await Contacts.AddEmailAsync(Id, draft.ToNewEmail())).Toast(Snackbar, "Unable to add email", "Email added."),
+                ? (await Contacts.UpdateEmailAsync(Id, id, draft.ToNewEmail())).ToastOrFields(Snackbar, "Update failed", assign, "Email saved.")
+                : (await Contacts.AddEmailAsync(Id, draft.ToNewEmail())).ToastOrFields(Snackbar, "Unable to add email", assign, "Email added."),
             "phone" => draft.Id is { } id
-                ? (await Contacts.UpdatePhoneAsync(Id, id, draft.ToNewPhone())).Toast(Snackbar, "Update failed", "Phone saved.")
-                : (await Contacts.AddPhoneAsync(Id, draft.ToNewPhone())).Toast(Snackbar, "Unable to add phone", "Phone added."),
+                ? (await Contacts.UpdatePhoneAsync(Id, id, draft.ToNewPhone())).ToastOrFields(Snackbar, "Update failed", assign, "Phone saved.")
+                : (await Contacts.AddPhoneAsync(Id, draft.ToNewPhone())).ToastOrFields(Snackbar, "Unable to add phone", assign, "Phone added."),
             _ => draft.Id is { } id
-                ? (await Contacts.UpdateAddressAsync(Id, id, draft.ToNewAddress())).Toast(Snackbar, "Update failed", "Address saved.")
-                : (await Contacts.AddAddressAsync(Id, draft.ToNewAddress())).Toast(Snackbar, "Unable to add address", "Address added."),
+                ? (await Contacts.UpdateAddressAsync(Id, id, draft.ToNewAddress())).ToastOrFields(Snackbar, "Update failed", assign, "Address saved.")
+                : (await Contacts.AddAddressAsync(Id, draft.ToNewAddress())).ToastOrFields(Snackbar, "Unable to add address", assign, "Address added."),
         };
 
         if (ok)

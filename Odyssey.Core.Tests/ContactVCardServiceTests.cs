@@ -202,7 +202,7 @@ public class ContactVCardServiceTests
         await using var context = TestContextFactory.CreateJournal();
         var (service, vCard) = CreateServices(context);
         var created = await service.Create(Org("Acme"));
-        await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.Home, Value = "old@example.com" });
+        await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.General, Value = "old@example.com" });
         var externalUid = (await service.Get(created.ContactId))!.ExternalUid;
 
         var vcf = Vcard(

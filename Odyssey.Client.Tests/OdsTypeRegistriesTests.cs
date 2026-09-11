@@ -170,13 +170,22 @@ public class OdsTypeRegistriesTests
         Assert.Equal("Organization", OdsTypeRegistries.ContactTypeOf(key).Key);
     }
 
+    /// <summary>
+    /// The keyed <c>Other</c> fallback (issue #47 §9, criterion 19). This test fails against the old
+    /// positional <c>[^1]</c> implementation now that the organization members are appended AFTER
+    /// <c>Other</c> — that fallback would render an undefined ordinal as <c>Branch</c> / <c>Claims</c>
+    /// / <c>Direct</c>: plausible, specific and wrong.
+    /// </summary>
     [Fact]
     public void An_unknown_contact_label_key_falls_back_to_Other()
     {
         Assert.Equal("Other", OdsTypeRegistries.RelationshipTypeOf("Nope").Key);
         Assert.Equal("Other", OdsTypeRegistries.AddressLabelOf(null).Key);
+        Assert.Equal("Other", OdsTypeRegistries.AddressLabelOf("Nonexistent").Key);
+        Assert.Equal("Other", OdsTypeRegistries.EmailLabelOf("Nonexistent").Key);
+        Assert.Equal("Other", OdsTypeRegistries.PhoneLabelOf("Nonexistent").Key);
         Assert.Equal("Other", OdsTypeRegistries.EmailLabelOf("Mobile").Key);   // Mobile is phone-only
-        Assert.Equal("Other", OdsTypeRegistries.PhoneLabelOf("Billing").Key);  // Billing is address-only
+        Assert.Equal("Other", OdsTypeRegistries.AddressLabelOf("Switchboard").Key); // phone-only
     }
 
     // ── Option projections ───────────────────────────────────────────────────
@@ -201,9 +210,8 @@ public class OdsTypeRegistriesTests
     {
         { "ContactOptions", OdsTypeRegistries.ContactOptions, OdsTypeRegistries.ContactTypes },
         { "RelationshipOptions", OdsTypeRegistries.RelationshipOptions, OdsTypeRegistries.RelationshipTypes },
-        { "AddressLabelOptions", OdsTypeRegistries.AddressLabelOptions, OdsTypeRegistries.AddressLabels },
-        { "EmailLabelOptions", OdsTypeRegistries.EmailLabelOptions, OdsTypeRegistries.EmailLabels },
-        { "PhoneLabelOptions", OdsTypeRegistries.PhoneLabelOptions, OdsTypeRegistries.PhoneLabels },
+        // No *LabelOptions rows: the three unfiltered label unions were removed by issue #47 §3 in
+        // favour of the per-contact-type projections, which LabelsFor_offers_exactly_the_scoped_set covers.
         { "AccountFileOptions", OdsTypeRegistries.AccountFileOptions, OdsTypeRegistries.AccountFileTypes },
         { "TransactionFileOptions", OdsTypeRegistries.TransactionFileOptions, OdsTypeRegistries.TransactionFileTypes },
         { "TaxStatementFileOptions", OdsTypeRegistries.TaxStatementFileOptions, OdsTypeRegistries.TaxStatementFileTypes },

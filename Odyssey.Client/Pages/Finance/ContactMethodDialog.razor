@@ -3,15 +3,18 @@
     (Odyssey Design System · Contacts ContactForm, issue #325). Collects the fields for the
     given Kind and hands a ContactMethodDraft back to the host, which performs the sub-resource API call.
 *@
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
+@inject IJSRuntime Js
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged"
                Icon="@KindIcon" Title="@DialogTitle"
                SubmitLabel="@SubmitLabel" SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SubmitAsync">
     <div style="display:flex;flex-direction:column;gap:12px;">
-        <OdsTypeSelect Label="Label" Value="@Draft.Label" ValueChanged="@(v => Draft.Label = v)"
-                       Types="LabelTypes" Placeholder="Select label…" />
+        <OdsContactMethodLabelSelect Id="@LabelFieldId" Kind="@Kind" ContactType="ContactType"
+                                    Value="@Draft.Label" ValueChanged="@(v => Draft.Label = v)"
+                                    Required="true" Error="@Err("label")" />
 
         @if (Kind == "address")
         {
@@ -55,23 +58,39 @@
     /// <summary>"address" | "email" | "phone".</summary>
     [Parameter, EditorRequired] public string Kind { get; set; } = "address";
     [Parameter, EditorRequired] public ContactMethodDraft Draft { get; set; } = new();
+
+    /// <summary>
+    /// The parent contact's type — the second input deciding which labels the picker offers, and what
+    /// <see cref="ContactMethodDraft.Validate"/> measures the draft against (issue #47 §3).
+    ///
+    /// <para>Captured, not live: a concurrent type switch does not rebuild the option set under the
+    /// user — that is the WCAG 3.2.2 change-on-input hazard. The dialog keeps the set it opened with
+    /// and the write fails server-side instead.</para>
+    /// </summary>
+    [Parameter, EditorRequired] public ContactType ContactType { get; set; } = ContactType.Person;
     [Parameter] public bool IsEdit { get; set; }
     /// <summary>First record in its collection — primary is forced on and the toggle disabled.</summary>
     [Parameter] public bool IsFirst { get; set; }
 
-    /// <summary>Host callback performing the sub-resource API call; returns success.</summary>
-    [Parameter] public Func<ContactMethodDraft, Task<bool>>? OnCommit { get; set; }
+    /// <summary>
+    /// Host callback performing the sub-resource API call; returns success. The second argument is the
+    /// server-error channel (issue #47 §3): the host hands each field the server named to it, and it
+    /// returns whether this form owns that field — the shape <c>ToastOrFields</c> expects, so a
+    /// rejection the dialog cannot place is toasted rather than vanishing.
+    /// </summary>
+    [Parameter] public Func<ContactMethodDraft, Func<string, string, bool>, Task<bool>>? OnCommit { get; set; }
 
-    private Dictionary<string, string> _errors = new();
+    private Dictionary<string, string> _errors = new(StringComparer.OrdinalIgnoreCase);
+
+    private string LabelFieldId = default!;
 
     private string? Err(string key) => _errors.GetValueOrDefault(key);
 
-    private IReadOnlyList<OdsTypeOption> LabelTypes => Kind switch
-    {
-        "email" => OdsTypeRegistries.EmailLabels,
-        "phone" => OdsTypeRegistries.PhoneLabels,
-        _ => OdsTypeRegistries.AddressLabels,
-    };
+    // The fields this form can mark. Anything else the server names is toasted by the host instead.
+    private IEnumerable<string> OwnedFields =>
+        Kind == "address" ? ["label", "line1", "city", "countryCode"] : ["label", "value"];
+
+    protected override void OnInitialized() => LabelFieldId = $"ods-cmd-label-{Guid.NewGuid():N}";
 
     private string KindNoun => Kind switch { "email" => "email", "phone" => "phone number", _ => "address" };
     private string KindIcon => Kind switch { "email" => "alternate_email", "phone" => "call", _ => "location_on" };
@@ -86,13 +105,42 @@
 
     private async Task<bool> SubmitAsync()
     {
-        _errors = Draft.Validate(Kind);
+        _errors = Draft.Validate(Kind, ContactType);
         if (_errors.Count > 0)
+        {
+            await FocusFirstErrorAsync();
             return false;
+        }
 
         if (OnCommit is null)
             return false;
 
-        return await OnCommit(Draft);
+        var ok = await OnCommit(Draft, AssignServerError);
+        if (!ok && _errors.Count > 0)
+            await FocusFirstErrorAsync();
+
+        return ok;
+    }
+
+    // Places a server-named field error on the matching control. Returns false for a field this form
+    // does not render, so the host toasts it rather than swallowing it.
+    private bool AssignServerError(string field, string message)
+    {
+        if (!OwnedFields.Contains(field, StringComparer.OrdinalIgnoreCase))
+            return false;
+
+        _errors[field] = message;
+        return true;
+    }
+
+    // Only the Label field has an id to move focus to; the OdsField-backed rows manage their own.
+    // window.odsFocusById is a bare .focus(), so it is a silent no-op if the node has gone.
+    private async Task FocusFirstErrorAsync()
+    {
+        if (!_errors.ContainsKey("label"))
+            return;
+
+        try { await Js.InvokeVoidAsync("odsFocusById", LabelFieldId); }
+        catch (Exception) { /* best-effort: no JS runtime under bUnit, and focus is not load-bearing */ }
     }
 }
