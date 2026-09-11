@@ -7,6 +7,11 @@ public sealed record ExistingAccountTerm
     public required Guid AccountTermId { get; set; }
     public required Guid AccountId { get; set; }
     public TermKind TermKind { get; set; }
+
+    /// <summary>The series name, as the user wrote it. Null for a rate.</summary>
+    [StringLength(TermLabel.MaxLength)]
+    public string? Label { get; set; }
+
     public TermValueUnit ValueUnit { get; set; }
     public decimal Value { get; set; }
 

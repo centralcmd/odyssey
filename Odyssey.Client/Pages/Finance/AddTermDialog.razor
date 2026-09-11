@@ -8,9 +8,11 @@
     AddTermDialog — New / Edit dialog for an account term (interest-rate & fee history),
     built on the shared OdsModal shell like every other create/edit dialog. The field set
     mirrors the NewAccountTerm DTO and the AccountTermService validation: eligibility-gated
-    kind, percentage-or-amount value, currency (amount only), effective date, billing
-    period (fees only), and a note. Rejects an exact (kind, effectiveFrom) duplicate
-    client-side; the API still has the final say (400 / 409 surfaced as a toast).
+    kind, the series name (required on a fee, refused on a rate), percentage-or-amount
+    value, currency (amount only), effective date, billing period (fees only), and a note.
+    Rejects a (kind, label, effectiveFrom) duplicate client-side on the SAME normalized,
+    case-folded key the server writes — the shared TermLabel delegate, not a second
+    implementation. The API still has the final say (400 / 409 surfaced as a toast).
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
@@ -19,7 +21,12 @@
     <ChildContent>
         <div class="ods-modal-body">
 
-            @* Term kind — eligibility-gated grid (new) or a locked tile (edit) *@
+            @* Term kind — eligibility-gated grid (new) · locked tile (edit) · nothing at all when
+               the account type leaves one eligible kind. Dropping a one-option button grid removes a
+               control, not information: the kind it would have selected is still written out on every
+               tile and history row. *@
+            @if (IsEdit || _eligibleKinds.Count > 1)
+            {
             <div class="trm-field">
                 <div class="trm-label">Term</div>
                 @if (IsEdit)
@@ -69,6 +76,21 @@
                     <div class="trm-err">@kindErr</div>
                 }
             </div>
+            }
+
+            @* Name — the series label. Not rendered on a rate kind (the headline rate stays
+               unambiguous); required on every fee, since with one fee kind two unnamed fees could not
+               be told apart. It is the existing OdsField, so the label / helper / error / required
+               semantics — and the aria-invalid wiring MudBlazor does from ErrorText — are the
+               established ones; this introduces no new widget and no new ARIA contract. *@
+            @if (TakesLabel)
+            {
+                <OdsField Label="Name" Required="true" MaxLength="TermLabelMaxLength"
+                          Value="@_label" ValueChanged="OnLabelChanged"
+                          Placeholder="e.g. ATM withdrawal · abroad"
+                          Help="Names this fee so it keeps its own history, separate from the account’s other fees."
+                          Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
+            }
 
             @* Unit + value — the hero input *@
             <div class="trm-value-block">

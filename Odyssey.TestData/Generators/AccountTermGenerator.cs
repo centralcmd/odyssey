@@ -1,5 +1,8 @@
 using Odyssey.Context;
 using Odyssey.TestData.Catalog;
+// The one normalization rule, shared with the write path — aliased rather than imported wholesale,
+// since Odyssey.Dtos.Finance also carries DTO twins of the entity enums used throughout this file.
+using TermLabel = Odyssey.Dtos.Finance.TermLabel;
 using static Odyssey.TestData.DemoDataDefaults;
 
 namespace Odyssey.TestData.Generators;
@@ -11,12 +14,19 @@ namespace Odyssey.TestData.Generators;
 /// rate histories (a savings rate climbing over the years) so the "current value" resolution and the
 /// history listing both have something to show.
 ///
+/// <para>
+/// Every fee is named by its own <c>Label</c>, which is what makes the travel card's six charges six
+/// separate series — before labels they were four kinds that collapsed to two in-force values, and
+/// the rest were silently superseded. Two of the card's ATM fees share a label across two dates, so
+/// per-series supersession has something to demonstrate too.
+/// </para>
+///
 /// The shape mirrors the API's validation rules so the seeded data is one the service itself would
 /// accept: rate kinds (InterestRate/ExpectedReturn) are percentages in the fraction range [-1, 1]
-/// with no billing period and no currency; fee amounts carry a supported currency (defaulting to the
-/// account currency) and may carry a billing period; eligibility per account type matches
-/// <c>AccountTermService</c>. Accounts are referenced by their stable deterministic ids; none is
-/// created here.
+/// with no billing period, no currency and no label; every <see cref="TermKind.Fee"/> carries a
+/// label; fee amounts carry a supported currency (defaulting to the account currency) and may carry a
+/// billing period; eligibility per account type matches <c>AccountTermService</c>. Accounts are
+/// referenced by their stable deterministic ids; none is created here.
 /// </summary>
 public static class AccountTermGenerator
 {
@@ -26,12 +36,18 @@ public static class AccountTermGenerator
         TermValueUnit Unit,
         decimal Value,
         DateTime EffectiveFrom,
+        string? Label = null,
         string? Currency = null,
         BillingPeriod? Billing = null,
         string? Note = null);
 
-    public static Guid IdFor(string accountName, TermKind kind, DateTime effectiveFrom) =>
-        DeterministicGuid.From($"account-term::{accountName}::{kind}@{effectiveFrom:yyyy-MM-dd}");
+    /// <summary>
+    /// The id of one seeded term. The label is part of the seed key because it is part of the series
+    /// key: two fees on one account can now share a kind and a date, and would otherwise be handed
+    /// the same deterministic id.
+    /// </summary>
+    public static Guid IdFor(string accountName, TermKind kind, DateTime effectiveFrom, string? label = null) =>
+        DeterministicGuid.From($"account-term::{accountName}::{kind}::{TermLabel.Key(label) ?? ""}@{effectiveFrom:yyyy-MM-dd}");
 
     public static List<AccountTerm> Build()
     {
@@ -52,33 +68,46 @@ public static class AccountTermGenerator
             new(Catalog.Accounts.CarLoanVolvo, TermKind.InterestRate, TermValueUnit.Percentage, 0.0690m, D(2023, 2, 15), Note: "Auto loan APR."),
             new(Catalog.Accounts.RenovationPersonalLoan, TermKind.InterestRate, TermValueUnit.Percentage, 0.0810m, D(2024, 9, 1), Note: "Personal loan APR."),
 
-            // Credit card: APR plus an annual fee (amount, billed annually).
+            // Credit card: the purchase APR plus SIX named fees. Under one fee kind per category these
+            // collapsed to two in-force values; named, they are six independent series — which is the
+            // whole point of the label. "ATM withdrawal · abroad" carries two dates, so its later
+            // entry supersedes only itself and the domestic charge beside it is untouched.
             new(Catalog.Accounts.TravelRewardsCard, TermKind.InterestRate, TermValueUnit.Percentage, 0.1999m, D(2018, 5, 20), Note: "Purchase APR."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.ServiceFee, TermValueUnit.Amount, 95m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.Annually, Note: "Annual card fee."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 95m, D(2018, 5, 20), Label: "Annual card fee", Currency: Currencies.Usd, Billing: BillingPeriod.Annually, Note: "Membership fee."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Percentage, 0.0275m, D(2018, 5, 20), Label: "Currency conversion", Billing: BillingPeriod.PerTransaction, Note: "Markup on the network rate."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 5m, D(2018, 5, 20), Label: "ATM withdrawal · domestic", Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 25m, D(2018, 5, 20), Label: "ATM withdrawal · abroad", Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 30m, D(2024, 3, 1), Label: "ATM withdrawal · abroad", Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Note: "Overseas network charge increase."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 15m, D(2018, 5, 20), Label: "Card replacement", Currency: Currencies.Usd, Billing: BillingPeriod.OneTime),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 2m, D(2018, 5, 20), Label: "Paper statement", Currency: Currencies.Usd, Billing: BillingPeriod.Monthly),
 
-            // Brokerage (investment): expected return + a percentage platform/management fee.
+            // Brokerage (investment): expected return + a percentage platform fee.
             new(Catalog.Accounts.BrokerageAccount, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0700m, D(2016, 7, 1), Note: "Long-run expected annual return."),
-            new(Catalog.Accounts.BrokerageAccount, TermKind.ManagementFee, TermValueUnit.Percentage, 0.0025m, D(2016, 7, 1), Note: "Platform fee."),
+            new(Catalog.Accounts.BrokerageAccount, TermKind.Fee, TermValueUnit.Percentage, 0.0025m, D(2016, 7, 1), Label: "Platform fee", Billing: BillingPeriod.Annually, Note: "Blended expense ratio."),
 
-            // Pension: expected return + management fee.
+            // Pension: expected return + a scheme management charge.
             new(Catalog.Accounts.WorkplacePension, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0500m, D(2016, 2, 10), Note: "Expected annual return."),
-            new(Catalog.Accounts.WorkplacePension, TermKind.ManagementFee, TermValueUnit.Percentage, 0.0040m, D(2016, 2, 10), Note: "Scheme management charge."),
+            new(Catalog.Accounts.WorkplacePension, TermKind.Fee, TermValueUnit.Percentage, 0.0040m, D(2016, 2, 10), Label: "Management charge", Billing: BillingPeriod.Annually, Note: "Scheme management charge."),
 
             // Stocks portfolio (SEK investment): percentage terms only (no currency needed).
             new(Catalog.Accounts.StocksPortfolio, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0650m, D(2019, 11, 5), Note: "Expected annual return."),
-            new(Catalog.Accounts.StocksPortfolio, TermKind.ManagementFee, TermValueUnit.Percentage, 0.0030m, D(2019, 11, 5), Note: "Custody fee."),
+            new(Catalog.Accounts.StocksPortfolio, TermKind.Fee, TermValueUnit.Percentage, 0.0030m, D(2019, 11, 5), Label: "Custody fee", Billing: BillingPeriod.Annually),
 
-            // Everyday checking: a monthly service fee + a per-transaction fee (amounts, USD).
-            new(Catalog.Accounts.EverydayChecking, TermKind.ServiceFee, TermValueUnit.Amount, 12m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.Monthly, Note: "Monthly account maintenance fee."),
-            new(Catalog.Accounts.EverydayChecking, TermKind.TransactionFee, TermValueUnit.Amount, 0.30m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Note: "Per-transaction processing fee."),
+            // Everyday checking: a monthly maintenance fee + a per-transaction fee (amounts, USD).
+            new(Catalog.Accounts.EverydayChecking, TermKind.Fee, TermValueUnit.Amount, 12m, D(2016, 4, 1), Label: "Account maintenance", Currency: Currencies.Usd, Billing: BillingPeriod.Monthly),
+            new(Catalog.Accounts.EverydayChecking, TermKind.Fee, TermValueUnit.Amount, 0.30m, D(2016, 4, 1), Label: "Transaction processing", Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction),
         };
 
         return specs
             .Select(spec => new AccountTerm
             {
-                AccountTermId = IdFor(spec.AccountName, spec.Kind, spec.EffectiveFrom),
+                AccountTermId = IdFor(spec.AccountName, spec.Kind, spec.EffectiveFrom, spec.Label),
                 AccountId = Catalog.Accounts.IdFor(spec.AccountName),
                 TermKind = spec.Kind,
+                // Normalized through the same rule the write path uses, so the seed is a set the
+                // service itself would have produced.
+                Label = TermLabel.Normalize(spec.Label),
+                LabelKey = TermLabel.Key(spec.Label),
                 ValueUnit = spec.Unit,
                 Value = spec.Value,
                 // Percentage terms never carry a currency; amounts carry the account currency.

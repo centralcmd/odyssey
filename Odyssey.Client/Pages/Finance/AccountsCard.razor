@@ -262,8 +262,12 @@
                                     {
                                         var info = TermKindVisuals.Info(term.TermKind);
                                         var asTerm = ToTerm(account, term);
+                                        @* A fee is NAMED by its label, with the kind wording leading the
+                                           foot — so six fees read as six distinct tiles, in text,
+                                           rather than six identical ones. *@
                                         <OdsInfoTile Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
-                                                     Label="@TermKindVisuals.LabelFor(asTerm, account)" Foot="@OdsInfoTile.Caption(TermFoot(term))">
+                                                     Label="@TermKindVisuals.DisplayName(asTerm, account)"
+                                                     Foot="@OdsInfoTile.Caption(TermFoot(asTerm, account))">
                                             <Value>
                                                 <span style="color:@(TermKindVisuals.CostColor(asTerm, account) ?? info.Color);">
                                                     @TermKindVisuals.FormatValue(asTerm, FormatMoney)

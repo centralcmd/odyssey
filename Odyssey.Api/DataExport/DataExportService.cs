@@ -231,6 +231,8 @@ public sealed class DataExportService
                 AccountTermId = term.AccountTermId,
                 AccountId = term.AccountId,
                 TermKind = (FinanceDtos.TermKind)term.TermKind,
+                Label = term.Label,
+                LabelKey = term.LabelKey,
                 ValueUnit = (FinanceDtos.TermValueUnit)term.ValueUnit,
                 Value = term.Value,
                 CurrencyCode = term.CurrencyCode,

@@ -14,7 +14,8 @@ public partial class AddTermDialog
     /// <summary>The term being edited, or <c>null</c> to create a new one.</summary>
     [Parameter] public ExistingAccountTerm? Term { get; set; }
 
-    /// <summary>The account's existing terms — for the client-side (kind, effectiveFrom) duplicate guard.</summary>
+    /// <summary>The account's existing terms — for the client-side (kind, label, effectiveFrom)
+    /// duplicate guard.</summary>
     [Parameter] public IReadOnlyList<ExistingAccountTerm> Existing { get; set; } = [];
 
     [Parameter] public bool Open { get; set; }
@@ -27,7 +28,13 @@ public partial class AddTermDialog
     private bool IsRate => TermKindVisuals.Info(_kind).Group == TermGroup.Rate;
     private bool IsPercentage => _unit == TermValueUnit.Percentage;
 
+    /// <summary>Whether the Name field is rendered: a fee takes a label, a rate is refused one.</summary>
+    private bool TakesLabel => TermLabel.RuleFor(_kind) == TermLabelRule.Required;
+
+    private const int TermLabelMaxLength = TermLabel.MaxLength;
+
     private TermKind _kind;
+    private string _label = "";
     private TermValueUnit _unit;
     private string _valueStr = "";
     private string _currency = "USD";
@@ -47,15 +54,6 @@ public partial class AddTermDialog
     private List<OdsOption> _billingOptions = [];
     private readonly Dictionary<string, string> _errors = new();
 
-    // Sensible default billing period per fee kind (mirrors the design-system dialog).
-    private static readonly Dictionary<TermKind, BillingPeriod> DefaultBilling = new()
-    {
-        [TermKind.ManagementFee] = BillingPeriod.Annually,
-        [TermKind.ServiceFee] = BillingPeriod.Monthly,
-        [TermKind.TransactionFee] = BillingPeriod.PerTransaction,
-        [TermKind.OtherFee] = BillingPeriod.OneTime,
-    };
-
     protected override void OnInitialized()
     {
         _eligibleKinds = TermKindVisuals.EligibleKinds(Account.AccountType);
@@ -69,6 +67,7 @@ public partial class AddTermDialog
         if (Term is not null)
         {
             _kind = Term.TermKind;
+            _label = Term.Label ?? "";
             _unit = Term.ValueUnit;
             _valueStr = Term.ValueUnit == TermValueUnit.Percentage ? FractionToPercentString(Term.Value) : Term.Value.ToString(CultureInfo.InvariantCulture);
             _currency = Term.CurrencyCode ?? Account.CurrencyCode;
@@ -78,7 +77,7 @@ public partial class AddTermDialog
         }
         else
         {
-            _kind = _eligibleKinds.Count > 0 ? _eligibleKinds[0] : TermKind.OtherFee;
+            _kind = _eligibleKinds.Count > 0 ? _eligibleKinds[0] : TermKind.Fee;
             _unit = TermKindVisuals.Info(_kind).DefaultUnit;
             _currency = Account.CurrencyCode;
             _billingPeriod = DefaultBillingFor(_kind);
@@ -110,16 +109,31 @@ public partial class AddTermDialog
         StateHasChanged();
     }
 
-    private string DefaultBillingFor(TermKind kind) =>
-        DefaultBilling.TryGetValue(kind, out var b) ? b.ToString() : "";
+    // One default for a fee — there is no longer a fee kind to guess from.
+    private static string DefaultBillingFor(TermKind kind) =>
+        TermKindVisuals.Info(kind).Group == TermGroup.Fee
+            ? TermKindVisuals.DefaultFeeBillingPeriod.ToString()
+            : "";
 
     private void PickKind(TermKind kind)
     {
         _kind = kind;
         var info = TermKindVisuals.Info(kind);
         _unit = info.DefaultUnit;
-        _billingPeriod = info.Group == TermGroup.Fee ? DefaultBillingFor(kind) : "";
+        // A rate kind refuses a label, so a typed one is discarded on the switch rather than carried
+        // invisibly into a request the server would reject.
+        if (TermLabel.RuleFor(kind) != TermLabelRule.Required)
+            _label = "";
+        _billingPeriod = info.Group == TermGroup.Fee
+            ? (string.IsNullOrEmpty(_billingPeriod) ? DefaultBillingFor(kind) : _billingPeriod)
+            : "";
         _errors.Clear();
+    }
+
+    private void OnLabelChanged(string value)
+    {
+        _label = value;
+        _errors.Remove("label");
     }
 
     private void OnUnitChanged(string value)
@@ -200,13 +214,26 @@ public partial class AddTermDialog
         if ((_note?.Length ?? 0) > 512)
             _errors["note"] = "Keep the note under 512 characters.";
 
-        // Duplicate (kind, effectiveFrom) → the server's 409, excluding the row being edited.
+        // Label — refused on a rate kind (the field isn't rendered), required on every fee.
+        var label = TakesLabel ? TermLabel.Normalize(_label) : null;
+        if (TakesLabel && label is null)
+            _errors["label"] = "Name this fee so it keeps its own history.";
+        else if (label is { Length: > TermLabel.MaxLength })
+            _errors["label"] = $"Keep the name under {TermLabel.MaxLength} characters.";
+
+        // Duplicate (kind, label, effectiveFrom) → the server's 409, excluding the row being edited.
+        // Compared on the SAME normalized, case-folded key the server writes, so "ATM abroad" and
+        // "  atm   Abroad " collide here exactly as they would there.
+        var labelKey = TermLabel.Key(label);
         if (_effectiveFrom is { } date && Existing.Any(t =>
                 t.AccountTermId != (Term?.AccountTermId ?? Guid.Empty)
                 && t.TermKind == _kind
+                && TermLabel.Key(t.Label) == labelKey
                 && t.EffectiveFrom.Date == date.Date))
         {
-            _errors["effectiveFrom"] = "This kind already has an entry on that date.";
+            _errors["effectiveFrom"] = label is null
+                ? "This kind already has an entry on that date."
+                : $"“{label}” already has an entry on that date.";
         }
 
         if (_errors.Count > 0)
@@ -219,6 +246,8 @@ public partial class AddTermDialog
         var dto = new NewAccountTerm
         {
             TermKind = _kind,
+            // LabelKey is derived server-side and is on no request DTO — only Label is sent.
+            Label = label,
             ValueUnit = _unit,
             Value = value,
             CurrencyCode = IsPercentage ? null : _currency,

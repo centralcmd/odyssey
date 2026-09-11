@@ -129,6 +129,8 @@ public sealed class AccountTermExport
     public Guid AccountTermId { get; init; }
     public Guid AccountId { get; init; }
     public TermKind TermKind { get; init; }
+    public string? Label { get; init; }
+    public string? LabelKey { get; init; }
     public TermValueUnit ValueUnit { get; init; }
     public decimal Value { get; init; }
     public string? CurrencyCode { get; init; }

@@ -14,8 +14,14 @@ namespace Odyssey.Core.Finance;
 /// <summary>
 /// Business logic for time-versioned account terms (interest rates, expected returns, and fee
 /// prices). Mirrors <see cref="AccountService"/>: enforces per-kind account-type eligibility and
-/// value/unit/currency validation, and resolves the currently-effective value of each kind by
+/// value/unit/currency validation, and resolves the currently-effective value of each SERIES by
 /// implicit supersession (latest <c>EffectiveFrom</c> on or before a date).
+///
+/// <para>
+/// A series is <c>(AccountId, TermKind, LabelKey)</c>. One kind can hold several concurrently
+/// in-force terms told apart by a user-authored label, and supersession happens strictly within a
+/// label — a rise in the foreign ATM charge is not a change to the domestic one.
+/// </para>
 /// </summary>
 public class AccountTermService
 {
@@ -29,7 +35,7 @@ public class AccountTermService
     }
 
     // The eligibility matrix lives in code (not the database) so it can evolve without a migration.
-    // Unknown is never permitted; fee kinds are permitted on every account type.
+    // Unknown is never permitted; Fee is permitted on every account type.
     private static readonly IReadOnlySet<ContextAccountType> InterestRateAccountTypes = new HashSet<ContextAccountType>
     {
         ContextAccountType.CheckingAccount,
@@ -82,8 +88,9 @@ public class AccountTermService
     }
 
     /// <summary>
-    /// Returns the currently-effective value of each kind that has at least one entry on or before
-    /// <paramref name="asOf"/> (default now), or <c>null</c> if the account does not exist.
+    /// Returns the currently-effective value of each SERIES that has at least one entry on or before
+    /// <paramref name="asOf"/> (default now), or <c>null</c> if the account does not exist. One kind
+    /// contributes one entry per label, so a card charging four named fees returns four.
     /// </summary>
     public async Task<IList<CurrentAccountTerm>?> GetCurrent(Guid accountId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
@@ -99,9 +106,10 @@ public class AccountTermService
             .ToListAsync(cancellationToken);
 
         var current = terms
-            .GroupBy(term => term.TermKind)
+            .GroupBy(term => (term.TermKind, term.LabelKey))
             .Select(group => group.MostEffective()!)
             .OrderBy(term => term.TermKind)
+            .ThenBy(term => term.LabelKey, StringComparer.Ordinal)
             .ToList();
 
         return current.Adapt<List<CurrentAccountTerm>>();
@@ -113,7 +121,7 @@ public class AccountTermService
     /// <exception cref="DomainNotFoundException">The account does not exist.</exception>
     /// <exception cref="DomainValidationException">Validation or eligibility failed.</exception>
     /// <exception cref="DomainValidationException">The currency for an amount is unsupported.</exception>
-    /// <exception cref="DomainConflictException">A term with the same kind and effective date exists.</exception>
+    /// <exception cref="DomainConflictException">A term in the same series with that effective date exists.</exception>
     public async Task<ExistingAccountTerm> Create(Guid accountId, NewAccountTerm newTerm, CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts.FirstOrDefaultAsync(a => a.AccountId == accountId, cancellationToken)
@@ -179,6 +187,27 @@ public class AccountTermService
             throw new DomainValidationException(
                 $"Term kind '{source.TermKind}' is not permitted for accounts of type '{account.AccountType}'.");
 
+        // The label carries a fee's taxonomy, so it is required there and refused on a rate: two
+        // labelled interest rates would both be in force, and the account header, the record card and
+        // the history chart each headline exactly one, with no non-arbitrary way to choose.
+        var label = TermLabel.Normalize(source.Label);
+        if (label is not null && label.Length > TermLabel.MaxLength)
+            throw new DomainValidationException(
+                $"A term label must be {TermLabel.MaxLength} characters or fewer.");
+
+        switch (TermLabel.RuleFor(source.TermKind))
+        {
+            case TermLabelRule.Refused when label is not null:
+                throw new DomainValidationException(
+                    $"Term kind '{source.TermKind}' does not take a label.");
+            case TermLabelRule.Required when label is null:
+                throw new DomainValidationException(
+                    $"Term kind '{source.TermKind}' requires a label naming what is charged.");
+        }
+
+        // Derived here and only here — LabelKey is on no request DTO and is never bound from one.
+        var labelKey = TermLabel.Key(label);
+
         var unit = source.ValueUnit.Adapt<ContextTermValueUnit>();
 
         // Rate kinds are percentages by definition; an amount unit would store a rate as a currency
@@ -217,16 +246,22 @@ public class AccountTermService
 
         var effectiveFrom = NormalizeToUtc(source.EffectiveFrom);
 
+        // The guard is over the SERIES key, on the folded form, so "ATM abroad", "atm abroad" and
+        // "  ATM   abroad  " collide while two differently-named fees on one date do not.
         var duplicateExists = await context.AccountTerms.AnyAsync(existing =>
             existing.AccountId == account.AccountId
             && existing.TermKind == kind
+            && existing.LabelKey == labelKey
             && existing.EffectiveFrom == effectiveFrom
             && (excludeTermId == null || existing.AccountTermId != excludeTermId), cancellationToken);
         if (duplicateExists)
-            throw new DomainConflictException(
-                $"A '{source.TermKind}' term effective from {effectiveFrom:yyyy-MM-dd} already exists for this account.");
+            throw new DomainConflictException(label is null
+                ? $"A '{source.TermKind}' term effective from {effectiveFrom:yyyy-MM-dd} already exists for this account."
+                : $"'{label}' already has an entry effective from {effectiveFrom:yyyy-MM-dd} on this account.");
 
         term.TermKind = kind;
+        term.Label = label;
+        term.LabelKey = labelKey;
         term.ValueUnit = unit;
         term.Value = source.Value;
         term.CurrencyCode = currencyCode;
@@ -239,8 +274,7 @@ public class AccountTermService
     {
         ContextTermKind.InterestRate => InterestRateAccountTypes.Contains(accountType),
         ContextTermKind.ExpectedReturn => ExpectedReturnAccountTypes.Contains(accountType),
-        ContextTermKind.ManagementFee or ContextTermKind.ServiceFee
-            or ContextTermKind.TransactionFee or ContextTermKind.OtherFee => true,
+        ContextTermKind.Fee => true,
         _ => false,
     };
 

@@ -73,6 +73,42 @@ public class DemoDataSeederTests
     }
 
     [Fact]
+    public async Task Seeds_a_travel_card_whose_six_named_fees_are_all_in_force()
+    {
+        // Before the term label these were four fee kinds that resolved to TWO in-force values, with
+        // the rest silently superseded. Named, each is its own series — which is the whole point.
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var cardId = TestData.Catalog.Accounts.IdFor(TestData.Catalog.Accounts.TravelRewardsCard);
+        var fees = await context.AccountTerms
+            .AsNoTracking()
+            .Where(t => t.AccountId == cardId && t.TermKind == TermKind.Fee)
+            .ToListAsync();
+
+        // Every fee is named, and the names are what tell them apart.
+        Assert.All(fees, fee => Assert.False(string.IsNullOrWhiteSpace(fee.Label)));
+
+        var asOf = DateTime.UtcNow;
+        var inForce = fees
+            .Where(t => t.EffectiveFrom <= asOf)
+            .GroupBy(t => t.LabelKey)
+            .Select(series => series.OrderByDescending(t => t.EffectiveFrom).ThenByDescending(t => t.CreatedAtUtc).First())
+            .ToList();
+
+        Assert.Equal(6, inForce.Count);
+        Assert.Equal(6, inForce.Select(t => t.Label).Distinct().Count());
+
+        // The two ATM charges are separate series: the later overseas entry supersedes only itself.
+        Assert.Equal(30m, inForce.Single(t => t.LabelKey == "atm withdrawal · abroad").Value);
+        Assert.Equal(5m, inForce.Single(t => t.LabelKey == "atm withdrawal · domestic").Value);
+    }
+
+    [Fact]
     public async Task Seeds_journal_module_dataset()
     {
         await using var provider = BuildProvider(out var seeder);
