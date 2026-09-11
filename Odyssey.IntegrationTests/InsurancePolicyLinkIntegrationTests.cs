@@ -392,7 +392,8 @@ public class InsurancePolicyLinkIntegrationTests(MariaDbFixture fixture)
             {
                 await MigrationSeam.MigrateToAsync(context, PrecedingMigration);
 
-                context.Contacts.Add(Organization(insurerId, "Legacy Insurer"));
+                // Baseline schema: see BaselineContacts for why the insurer is not an EF graph insert.
+                await BaselineContacts.AddOrganizationAsync(context, insurerId, "Legacy Insurer");
                 context.Accounts.Add(new Account
                 {
                     AccountId = accountId,
@@ -456,8 +457,7 @@ public class InsurancePolicyLinkIntegrationTests(MariaDbFixture fixture)
             await using (var context = New(connectionString))
             {
                 await MigrationSeam.MigrateToAsync(context, PrecedingMigration);
-                context.Contacts.Add(Organization(insurerId, "Legacy Insurer"));
-                await context.SaveChangesAsync();
+                await BaselineContacts.AddOrganizationAsync(context, insurerId, "Legacy Insurer");
                 await InsertLegacyPolicyAsync(context, policyId, "Replayed", insurerId, null);
             }
 

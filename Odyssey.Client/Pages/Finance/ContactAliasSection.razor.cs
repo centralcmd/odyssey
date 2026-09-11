@@ -162,12 +162,10 @@ public partial class ContactAliasSection
         return FieldError(result) ?? result.Error ?? "Unable to save the alias.";
     }
 
-    private static string? FieldError(ApiClient.ApiResult result) =>
-        result.Problem?.Errors is { } errors
-        && errors.TryGetValue("value", out var messages)
-        && messages is { Length: > 0 }
-            ? messages[0]
-            : null;
+    // ApiProblem.ErrorFor is case-insensitive, because ASP.NET keys model-validation errors by the
+    // JSON property name whose casing need not match the CLR one — so this reaches both the service's
+    // own `value` entry and model validation's `Value`.
+    private static string? FieldError(ApiClient.ApiResult result) => result.Problem?.ErrorFor("value");
 
     /// <summary>
     /// Deleting is IMMEDIATE — no confirmation, matching the sibling tiles, since an alias is cheap

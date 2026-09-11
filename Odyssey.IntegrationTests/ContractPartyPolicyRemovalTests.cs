@@ -190,14 +190,8 @@ public class ContractPartyPolicyRemovalTests(MariaDbFixture fixture)
     {
         if (contactId is { } contact)
         {
-            context.Contacts.Add(new Contact
-            {
-                ContactId = contact,
-                ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
-                OrganizationDetails = new() { LegalName = "Counterparty" },
-                NormalizedName = "COUNTERPARTY",
-                Type = ContactType.Organization,
-            });
+            // Baseline schema: see BaselineContacts for why this is not an EF graph insert.
+            await BaselineContacts.AddOrganizationAsync(context, contact, "Counterparty");
         }
 
         if (accountId is { } account)
