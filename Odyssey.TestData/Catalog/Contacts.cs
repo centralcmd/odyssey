@@ -89,7 +89,7 @@ public static class Contacts
     private static string ExternalUidFor(string name) => $"urn:uuid:{DeterministicGuid.From($"contact-external-uid::{name}")}";
 
     private static Contact Person(
-        string key, string firstName, string lastName, RelationshipType relationship, string notes,
+        string key, string firstName, string lastName, string notes,
         DateTime? archived = null, string? middleName = null,
         DateOnly? dateOfBirth = null, DateOnly? dateOfDeath = null) => new()
     {
@@ -109,7 +109,6 @@ public static class Contacts
             MiddleName = middleName,
             DateOfBirth = dateOfBirth,
             DateOfDeath = dateOfDeath,
-            RelationshipType = relationship,
         },
     };
 
@@ -157,21 +156,22 @@ public static class Contacts
         //
         // The landlord carries a MAIDEN NAME and a middle name — the two additions of issue #48 that
         // are searchable — so the alias and middle-name search arms have something real to match.
-        contacts.Add(Person(Landlord, "Jane", "Smith", RelationshipType.Landlord, "Property landlord",
+        contacts.Add(Person(Landlord, "Jane", "Smith", "Property landlord",
             middleName: "Elisabeth", dateOfBirth: new DateOnly(1968, 3, 14)));
-        contacts.Add(Person(PolicyHolder, "Alex", "Rivera", RelationshipType.Family, "Policyholder on the household policies"));
-        contacts.Add(Person(Spouse, "Sam", "Rivera", RelationshipType.Family, "Named on the household policies"));
+        contacts.Add(Person(PolicyHolder, "Alex", "Rivera", "Policyholder on the household policies"));
+        contacts.Add(Person(Spouse, "Sam", "Rivera", "Named on the household policies"));
         // Archived on purpose: this is the demo's UNNAMED-member case. The Term Life policy keeps the
         // beneficiary link, and the read path returns it with its id and type but NO name — the state
         // an ordinary write can neither remove nor accidentally delete (issue #27 §9).
-        contacts.Add(Person(FormerBeneficiary, "Chris", "Rivera", RelationshipType.Family,
-            "Former beneficiary — archived", archived: SeededAt.AddYears(1)));
+        contacts.Add(Person(
+            FormerBeneficiary, "Chris", "Rivera", "Former beneficiary — archived",
+            archived: SeededAt.AddYears(1)));
 
         // The DECEASED case (issue #48). Recording a death date archives nothing and removes no
         // capability, so this contact keeps its policy links and stays selectable everywhere — which
         // is exactly what the demo has to show, since the archived case above looks superficially
         // similar and is not the same thing at all.
-        contacts.Add(Person(LatePartner, "Morgan", "Rivera", RelationshipType.Family,
+        contacts.Add(Person(LatePartner, "Morgan", "Rivera",
             "Late partner — the record stays live; finance rows still reference it",
             dateOfBirth: new DateOnly(1951, 9, 2), dateOfDeath: new DateOnly(2024, 3, 11)));
 

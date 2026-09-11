@@ -23,7 +23,6 @@ public class OdsTypeRegistriesTests
     public static TheoryData<string, Type> RegistryEnumPairs() => new()
     {
         { nameof(OdsTypeRegistries.ContactTypes), typeof(ContactType) },
-        { nameof(OdsTypeRegistries.RelationshipTypes), typeof(RelationshipType) },
         { nameof(OdsTypeRegistries.AddressLabels), typeof(AddressLabel) },
         { nameof(OdsTypeRegistries.EmailLabels), typeof(EmailLabel) },
         { nameof(OdsTypeRegistries.PhoneLabels), typeof(PhoneLabel) },
@@ -133,7 +132,6 @@ public class OdsTypeRegistriesTests
     public void Every_string_keyed_lookup_resolves_each_enum_member_to_its_own_entry()
     {
         AssertResolvesEveryKey<ContactType>(OdsTypeRegistries.ContactTypeOf);
-        AssertResolvesEveryKey<RelationshipType>(OdsTypeRegistries.RelationshipTypeOf);
         AssertResolvesEveryKey<AddressLabel>(OdsTypeRegistries.AddressLabelOf);
         AssertResolvesEveryKey<EmailLabel>(OdsTypeRegistries.EmailLabelOf);
         AssertResolvesEveryKey<PhoneLabel>(OdsTypeRegistries.PhoneLabelOf);
@@ -179,7 +177,6 @@ public class OdsTypeRegistriesTests
     [Fact]
     public void An_unknown_contact_label_key_falls_back_to_Other()
     {
-        Assert.Equal("Other", OdsTypeRegistries.RelationshipTypeOf("Nope").Key);
         Assert.Equal("Other", OdsTypeRegistries.AddressLabelOf(null).Key);
         Assert.Equal("Other", OdsTypeRegistries.AddressLabelOf("Nonexistent").Key);
         Assert.Equal("Other", OdsTypeRegistries.EmailLabelOf("Nonexistent").Key);
@@ -209,7 +206,6 @@ public class OdsTypeRegistriesTests
     public static TheoryData<string, IReadOnlyList<OdsOption>, IReadOnlyList<OdsTypeOption>> PrebuiltOptions() => new()
     {
         { "ContactOptions", OdsTypeRegistries.ContactOptions, OdsTypeRegistries.ContactTypes },
-        { "RelationshipOptions", OdsTypeRegistries.RelationshipOptions, OdsTypeRegistries.RelationshipTypes },
         // No *LabelOptions rows: the three unfiltered label unions were removed by issue #47 §3 in
         // favour of the per-contact-type projections, which LabelsFor_offers_exactly_the_scoped_set covers.
         { "AccountFileOptions", OdsTypeRegistries.AccountFileOptions, OdsTypeRegistries.AccountFileTypes },

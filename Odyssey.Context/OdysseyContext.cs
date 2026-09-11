@@ -538,7 +538,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         modelBuilder.Entity<PersonDetails>(entity =>
         {
-            entity.Property(p => p.RelationshipType).HasConversion<int>();
             entity.Property(p => p.Sex).HasConversion<int>();
         });
 

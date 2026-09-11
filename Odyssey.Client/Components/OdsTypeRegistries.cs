@@ -127,15 +127,6 @@ public static class OdsTypeRegistries
         new() { Key = "Organization", Label = "Organization", Icon = "corporate_fare",  Color = "oklch(0.72 0.16 295)",  Soft = "oklch(0.72 0.16 295 / 0.16)" },
     ];
 
-    /// <summary>RelationshipType — a person contact's relationship to the user (issue #325).</summary>
-    public static readonly IReadOnlyList<OdsTypeOption> RelationshipTypes =
-    [
-        new() { Key = "Family",   Label = "Family",   Icon = "family_restroom", Color = "oklch(0.80 0.15 150)", Soft = "oklch(0.80 0.15 150 / 0.16)" },
-        new() { Key = "Landlord", Label = "Landlord", Icon = "home",            Color = "oklch(0.77 0.14 55)",  Soft = "oklch(0.77 0.14 55 / 0.16)" },
-        new() { Key = "Employer", Label = "Employer", Icon = "work",            Color = "oklch(0.76 0.13 225)", Soft = "oklch(0.76 0.13 225 / 0.16)" },
-        new() { Key = "Other",    Label = "Other",    Icon = "category",        Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-    ];
-
     /// <summary>AddressLabel — Home · Work · Billing · Other (issue #325). Mirrors the DS ADDRESS_LABELS.</summary>
     public static readonly IReadOnlyList<OdsTypeOption> AddressLabels =
     [
@@ -322,10 +313,6 @@ public static class OdsTypeRegistries
     public static OdsTypeOption ContactTypeOf(string? key) =>
         ContactTypes.FirstOrDefault(t => t.Key == key) ?? ContactTypes[^1];
 
-    /// <summary>The RelationshipType descriptor for an enum key (falls back to "Other").</summary>
-    public static OdsTypeOption RelationshipTypeOf(string? key) =>
-        RelationshipTypes.FirstOrDefault(t => t.Key == key) ?? RelationshipTypes[^1];
-
     /// <summary>
     /// The AddressLabel descriptor for an enum key, resolving <c>Other</c> <b>by key</b>.
     ///
@@ -446,7 +433,6 @@ public static class OdsTypeRegistries
 
     /// <summary>Pre-built option lists for the domain pickers.</summary>
     public static readonly IReadOnlyList<OdsOption> ContactOptions = ToOptions(ContactTypes);
-    public static readonly IReadOnlyList<OdsOption> RelationshipOptions = ToOptions(RelationshipTypes);
     // No AddressLabelOptions/EmailLabelOptions/PhoneLabelOptions: an unfiltered union of a label
     // registry is a picker that offers labels the server rejects. The per-contact-type projections
     // above supersede them (issue #47 §3).

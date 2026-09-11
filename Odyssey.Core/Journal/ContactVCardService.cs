@@ -192,11 +192,6 @@ public class ContactVCardService
                 // X-ODYSSEY- name for it.
                 AppendFolded(sb, $"DEATHDATE:{dod:yyyyMMdd}");
             }
-
-            if (person.RelationshipType is { } relationship)
-            {
-                AppendFolded(sb, $"X-ODYSSEY-RELATIONSHIP:{relationship}");
-            }
         }
         else if (row.Type == ContactType.Organization && row.OrganizationDetails is { } org)
         {
@@ -496,7 +491,6 @@ public class ContactVCardService
                 // than skipping the whole entry (issue #48 §11).
                 DateOfDeath = ParseVCardDate(TextValue(props, "DEATHDATE")),
                 Sex = ParseGender(TextValue(props, "GENDER")),
-                RelationshipType = ParseRelationship(TextValue(props, "X-ODYSSEY-RELATIONSHIP")),
                 Title = EmptyToNull(TextValue(props, "TITLE")),
                 Company = EmptyToNull(company),
             };
@@ -990,9 +984,6 @@ public class ContactVCardService
             _ => null,
         };
     }
-
-    private static RelationshipType? ParseRelationship(string? value) =>
-        value is not null && Enum.TryParse<RelationshipType>(value, ignoreCase: true, out var result) ? result : null;
 
     // Dropped (not skipped) if the value isn't a well-formed http/https URL (§9) — the contact-level
     // service-side Website check throws on a bad scheme, which would otherwise turn this into a

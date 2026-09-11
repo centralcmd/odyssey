@@ -1,18 +1,6 @@
 namespace Odyssey.Dtos;
 
 /// <summary>
-/// A person contact's relationship to the user (issue #325 §6). Optional — <c>null</c> means
-/// unspecified.
-/// </summary>
-public enum RelationshipType
-{
-    Family = 1,
-    Landlord = 2,
-    Employer = 3,
-    Other = 4,
-}
-
-/// <summary>
 /// A person contact's sex (issue #325 v5, §6). Optional — <c>null</c> means unspecified/not
 /// provided. A deliberately minimal binary; no icon/registry treatment.
 /// </summary>

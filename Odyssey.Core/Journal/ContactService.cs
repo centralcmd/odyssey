@@ -454,7 +454,6 @@ public class ContactService
             contact.PersonDetails.MiddleName = CleanOptional(details.MiddleName, 128, "Middle name");
             contact.PersonDetails.DateOfBirth = dob;
             contact.PersonDetails.DateOfDeath = dod;
-            contact.PersonDetails.RelationshipType = details.RelationshipType;
             contact.PersonDetails.Sex = details.Sex;
             contact.PersonDetails.Title = CleanOptional(details.Title, 128, "Title");
             contact.PersonDetails.Company = CleanOptional(details.Company, 256, "Company");
