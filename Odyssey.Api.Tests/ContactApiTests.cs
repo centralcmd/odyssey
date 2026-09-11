@@ -37,7 +37,7 @@ public class ContactApiTests
 
     private static NewAddress Address(bool primary = false) => new()
     {
-        Label = AddressLabel.Home, IsPrimary = primary, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
+        Label = AddressLabel.Visiting, IsPrimary = primary, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
     };
 
     // ── Claim matrix on the sub-resource routes ───────────────────────────────
@@ -74,7 +74,7 @@ public class ContactApiTests
         var post = await client.PostAsJsonAsync($"/api/contacts/{id}/addresses", Address());
         Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
 
-        var put = await client.PutAsJsonAsync($"/api/contacts/{id}/emails/{Guid.NewGuid()}", new NewEmailAddress { Label = EmailLabel.Work, Value = "x@example.com" });
+        var put = await client.PutAsJsonAsync($"/api/contacts/{id}/emails/{Guid.NewGuid()}", new NewEmailAddress { Label = EmailLabel.General, Value = "x@example.com" });
         Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
 
         var delete = await client.DeleteAsync($"/api/contacts/{id}/phones/{Guid.NewGuid()}");
@@ -144,7 +144,7 @@ public class ContactApiTests
 
         // The address id exists, but not under 'other' — must 404, not mutate across parents.
         var put = await client.PutAsJsonAsync($"/api/contacts/{other}/addresses/{created!.Id}",
-            new NewAddress { Label = AddressLabel.Work, IsPrimary = true, Line1 = "HACKED", City = "Nowhere", CountryCode = "NO" });
+            new NewAddress { Label = AddressLabel.Registered, IsPrimary = true, Line1 = "HACKED", City = "Nowhere", CountryCode = "NO" });
         Assert.Equal(HttpStatusCode.NotFound, put.StatusCode);
 
         var unchanged = await client.GetFromJsonAsync<List<ExistingAddress>>($"/api/contacts/{owner}/addresses");
@@ -181,7 +181,7 @@ public class ContactApiTests
         {
             id = Guid.NewGuid(),
             contactId = other,
-            label = (int)AddressLabel.Home,
+            label = (int)AddressLabel.Visiting,
             isPrimary = true,
             line1 = "Storgata 55",
             city = "Oslo",
@@ -206,7 +206,7 @@ public class ContactApiTests
         using var client = factory.CreateClient();
 
         await client.PostAsJsonAsync($"/api/contacts/{id}/addresses", Address());
-        await client.PostAsJsonAsync($"/api/contacts/{id}/emails", new NewEmailAddress { Label = EmailLabel.Work, Value = "billing@example.com" });
+        await client.PostAsJsonAsync($"/api/contacts/{id}/emails", new NewEmailAddress { Label = EmailLabel.General, Value = "billing@example.com" });
 
         var fetched = await client.GetFromJsonAsync<ExistingContact>($"/api/contacts/{id}");
         Assert.Single(fetched!.Addresses);

@@ -50,7 +50,7 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
             OrganizationDetails = new OrganizationDetailsDto { LegalName = $"Acme {suffix}" },
         });
         await contactService.CreateEmail(created.ContactId,
-            new NewEmailAddress { Label = EmailLabel.Home, Value = $"old-{suffix}@example.com" });
+            new NewEmailAddress { Label = EmailLabel.General, Value = $"old-{suffix}@example.com" });
         var externalUid = (await contactService.Get(created.ContactId))!.ExternalUid;
 
         var vcf = "BEGIN:VCARD\r\nVERSION:4.0\r\n" +
@@ -123,6 +123,75 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
         Assert.Equal(3, chunks.Count); // 3 + 3 + 1 — proves more than one chunk actually ran
         Assert.Equal(7, chunks.Sum(c => c.Count));
         Assert.Equal(7, chunks.SelectMany(c => c.Select(row => row.ContactId)).Distinct().Count());
+    }
+
+    /// <summary>
+    /// The label codec against the real engine (issue #47 §16.13, §16.15). The fast tier proves the
+    /// codec; this proves the ordinals survive a real <c>int</c> column and a real round trip — and,
+    /// more to the point, that the <b>clamp</b> holds inside the import's own transaction, where a
+    /// <c>DomainUnprocessableException</c> escaping a catch would roll the whole entry back rather
+    /// than merely dropping a property.
+    /// </summary>
+    [SkippableFact]
+    public async Task Import_ClampsPersonTokensOntoAnOrganization_AndRoundTripsTheExtension()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+
+        var connectionString = fixture.RelationalConnectionString;
+        var options = new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+            .Options;
+
+        await using (var migrating = new OdysseyContext(options))
+        {
+            await migrating.Database.MigrateAsync();
+        }
+
+        await using var context = new OdysseyContext(options);
+        var contactService = new ContactService(context, new ContactReferenceGuard(context));
+        var vCardService = new ContactVCardService(
+            context, contactService, new UnlimitedImportExportLimitsLookup(), NullLogger<ContactVCardService>.Instance);
+
+        var suffix = Guid.NewGuid().ToString("N");
+
+        // What Google and Apple emit for an organization — every token is person-only, and without the
+        // clamp all three rows are dropped by the per-property catch.
+        var clamped = "BEGIN:VCARD\r\nVERSION:4.0\r\n" +
+                      $"UID:clamp-{suffix}\r\nKIND:org\r\nFN:Clamped {suffix}\r\nORG:Clamped {suffix}\r\n" +
+                      "TEL;TYPE=home:+47 22 00 00 00\r\nEMAIL;TYPE=work:post@example.com\r\n" +
+                      "ADR;TYPE=home:;;Storgata 55;Oslo;;0184;NO\r\nEND:VCARD\r\n";
+
+        using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(clamped)))
+        {
+            var result = await vCardService.ImportAsync(stream, stream.Length, "text/vcard");
+            Assert.Equal(1, result.CreatedCount);
+            Assert.Empty(result.Skipped);
+        }
+
+        var created = Assert.Single(
+            (await contactService.ListAsync(new ContactsQueryParams { Search = $"Clamped {suffix}" })).Items);
+
+        Assert.Equal(PhoneLabel.Other, Assert.Single(created.PhoneNumbers).Label);
+        Assert.Equal(EmailLabel.Other, Assert.Single(created.EmailAddresses).Label);
+        Assert.Equal(AddressLabel.Other, Assert.Single(created.Addresses).Label);
+
+        // Now the finer distinction: an organization label persists, exports with its extension, and
+        // re-imports as itself.
+        await contactService.CreatePhone(created.ContactId,
+            new NewPhoneNumber { Label = PhoneLabel.Claims, Value = "+47 22 00 00 01" });
+
+        var export = await vCardService.ExportOneAsync(created.ContactId);
+        Assert.Contains("X-ODYSSEY-LABEL=Claims", export!.Content);
+
+        using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(export.Content)))
+        {
+            var result = await vCardService.ImportAsync(stream, stream.Length, "text/vcard");
+            Assert.Equal(1, result.UpdatedCount);
+        }
+
+        var reimported = (await contactService.Get(created.ContactId))!;
+        Assert.Contains(reimported.PhoneNumbers, p => p.Label == PhoneLabel.Claims);
+        Assert.Equal(2, reimported.PhoneNumbers.Count);
     }
 
     // Matches today's out-of-the-box System Settings defaults (issue #343 §6) — unlimited counts,

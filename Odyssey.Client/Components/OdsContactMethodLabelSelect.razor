@@ -1,0 +1,66 @@
+@*
+    OdsContactMethodLabelSelect — the Label picker on a contact method (Odyssey Design System ·
+    components/ContactMethodLabelSelect, issue #47).
+
+    The one registry select whose option list is derived from TWO inputs: the method's Kind and the
+    parent contact's ContactType. A person has no switchboard; an organization has no home address.
+    The offered set is OdsTypeRegistries.*LabelsFor(ContactType), which projects the shared
+    ContactLabelScope — the same map the server validates against, not a client-side copy of it.
+
+    A thin, domain-typed wrapper over OdsTypeSelect: it introduces no new ARIA surface, and a Value
+    outside the offered set renders the trigger's placeholder. That is why an error on this field is
+    worded as *required* rather than naming the stale value, which is nowhere on screen.
+*@
+@using Odyssey.Dtos
+
+<OdsTypeSelect Value="@Value"
+               ValueChanged="ValueChanged"
+               Types="LabelTypes"
+               Label="@Label"
+               Placeholder="@Placeholder"
+               Help="@Help"
+               Error="@Error"
+               Required="@Required"
+               Disabled="@Disabled"
+               Class="@Class"
+               Id="@Id"
+               @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Selected enum member name (e.g. "Switchboard"). Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Which of the contact's three collections the row belongs to: "address" | "email" | "phone".</summary>
+    [Parameter, EditorRequired] public string Kind { get; set; } = "address";
+
+    /// <summary>The PARENT contact's type — half of what decides the option list.</summary>
+    [Parameter, EditorRequired] public ContactType ContactType { get; set; } = ContactType.Person;
+
+    [Parameter] public string? Label { get; set; } = "Label";
+
+    [Parameter] public string Placeholder { get; set; } = "Select label…";
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private IReadOnlyList<OdsTypeOption> LabelTypes => Kind switch
+    {
+        "email" => OdsTypeRegistries.EmailLabelsFor(ContactType),
+        "phone" => OdsTypeRegistries.PhoneLabelsFor(ContactType),
+        _ => OdsTypeRegistries.AddressLabelsFor(ContactType),
+    };
+}

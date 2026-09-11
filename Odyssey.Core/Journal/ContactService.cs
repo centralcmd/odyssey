@@ -12,6 +12,7 @@ using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Odyssey.Core.Journal;
 
@@ -32,15 +33,18 @@ public class ContactService
     private readonly OdysseyContext context;
     private readonly IContactReferenceGuard referenceGuard;
     private readonly TimeProvider timeProvider;
+    private readonly ILogger<ContactService>? logger;
 
     public ContactService(
         OdysseyContext context,
         IContactReferenceGuard referenceGuard,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        ILogger<ContactService>? logger = null)
     {
         this.context = context;
         this.referenceGuard = referenceGuard;
         this.timeProvider = timeProvider ?? TimeProvider.System;
+        this.logger = logger;
     }
 
     // The base read query, eagerly loading the 1:1 detail sub-records and the three contact
@@ -237,10 +241,19 @@ public class ContactService
             contact.ExternalUid = await ResolveExternalUid(putContact.ExternalUid, excludingContactId: id, cancellationToken);
         }
 
+        // Captured BEFORE the assignment below: the remap's whole trigger is the comparison, and
+        // reading contact.Type afterwards would make it always equal (issue #47 §5).
+        var previousType = contact.Type;
+
         contact.Type = putContact.Type;
         ApplyBaseAndDetails(contact, putContact);
         ApplyArchiveTransition(contact, putContact.Archived);
         contact.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
+
+        if (previousType != contact.Type)
+        {
+            await RemapChildLabelsAsync(contact, previousType, cancellationToken);
+        }
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -528,6 +541,8 @@ public class ContactService
         if (contact is null)
             return null;
 
+        RequireLabelValidFor(request.Label, contact.Type);
+
         var siblings = await context.Addresses.Where(a => a.ContactId == contactId).ToListAsync(cancellationToken);
         var address = new Address
         {
@@ -557,6 +572,8 @@ public class ContactService
         var address = await context.Addresses.FirstOrDefaultAsync(a => a.Id == addressId && a.ContactId == contactId, cancellationToken);
         if (address is null)
             return false;
+
+        RequireLabelValidFor(request.Label, contact.Type);
 
         address.Label = request.Label;
         address.Line1 = CleanRequired(request.Line1, 256, "Line 1");
@@ -611,6 +628,8 @@ public class ContactService
         if (contact is null)
             return null;
 
+        RequireLabelValidFor(request.Label, contact.Type);
+
         var siblings = await context.EmailAddresses.Where(e => e.ContactId == contactId).ToListAsync(cancellationToken);
         var email = new EmailAddress
         {
@@ -635,6 +654,8 @@ public class ContactService
         var email = await context.EmailAddresses.FirstOrDefaultAsync(e => e.Id == emailId && e.ContactId == contactId, cancellationToken);
         if (email is null)
             return false;
+
+        RequireLabelValidFor(request.Label, contact.Type);
 
         email.Label = request.Label;
         email.Value = CleanRequired(request.Value, 256, "Email address");
@@ -684,6 +705,8 @@ public class ContactService
         if (contact is null)
             return null;
 
+        RequireLabelValidFor(request.Label, contact.Type);
+
         var siblings = await context.PhoneNumbers.Where(p => p.ContactId == contactId).ToListAsync(cancellationToken);
         var phone = new PhoneNumber
         {
@@ -708,6 +731,8 @@ public class ContactService
         var phone = await context.PhoneNumbers.FirstOrDefaultAsync(p => p.Id == phoneId && p.ContactId == contactId, cancellationToken);
         if (phone is null)
             return false;
+
+        RequireLabelValidFor(request.Label, contact.Type);
 
         phone.Label = request.Label;
         phone.Value = CleanRequired(request.Value, 32, "Phone number");
@@ -740,6 +765,106 @@ public class ContactService
     // ── Shared child helpers ──────────────────────────────────────────────────
 
     // Loads the parent tracked so its UpdatedAt bump (§9, F4) persists in the same transaction.
+    // ── Label scope (issue #47 §9) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// The invariant every contact-method write holds: a label is valid for its contact's type.
+    ///
+    /// <para>Create and update apply the IDENTICAL check — there is no comparison against the stored
+    /// value, and therefore no constraint on when <c>Update*</c> assigns the row's fields. An earlier
+    /// draft compared against the stored label, which silently removed the rejection from all three
+    /// <c>PUT</c>s while every <c>POST</c> test still passed.</para>
+    ///
+    /// <para>422, not 400: the rule is <i>derived</i> — it depends on the parent contact's
+    /// <see cref="Contact.Type"/>, which model validation cannot see — so it is a well-formed request
+    /// that cannot be processed, not a malformed one. The field is <c>label</c>, the same key the
+    /// client's own rule uses, so one binding serves both.</para>
+    /// </summary>
+    private static void RequireLabelValidFor(AddressLabel label, ContactType type)
+    {
+        if (!ContactLabelScope.IsValidFor(label, type))
+            throw new DomainUnprocessableException(
+                LabelScopeMessage(label, type, ContactLabelScope.AddressLabelsFor(type)), "label");
+    }
+
+    /// <inheritdoc cref="RequireLabelValidFor(AddressLabel, ContactType)"/>
+    private static void RequireLabelValidFor(EmailLabel label, ContactType type)
+    {
+        if (!ContactLabelScope.IsValidFor(label, type))
+            throw new DomainUnprocessableException(
+                LabelScopeMessage(label, type, ContactLabelScope.EmailLabelsFor(type)), "label");
+    }
+
+    /// <inheritdoc cref="RequireLabelValidFor(AddressLabel, ContactType)"/>
+    private static void RequireLabelValidFor(PhoneLabel label, ContactType type)
+    {
+        if (!ContactLabelScope.IsValidFor(label, type))
+            throw new DomainUnprocessableException(
+                LabelScopeMessage(label, type, ContactLabelScope.PhoneLabelsFor(type)), "label");
+    }
+
+    // Names the offending label, the contact type and the valid set — all closed-vocabulary constants
+    // a caller can read off the API contract, so the message discloses nothing the caller didn't send
+    // or already know (issue #47 §10.5).
+    private static string LabelScopeMessage<TLabel>(TLabel label, ContactType type, IReadOnlyList<TLabel> valid)
+        where TLabel : struct, Enum =>
+        $"Label '{label}' is not valid for {Article(type)} {type} contact. " +
+        $"Valid labels: {string.Join(", ", valid)}.";
+
+    private static string Article(ContactType type) => type == ContactType.Organization ? "an" : "a";
+
+    /// <summary>
+    /// Clamps every contact-method label onto the contact's NEW type after a type switch, in the
+    /// caller's change tracker so it lands in the caller's single <c>SaveChangesAsync</c> (issue #47
+    /// §5). Only reached when the type actually changed, so an ordinary <c>PUT</c> loads no child rows.
+    /// </summary>
+    private async Task RemapChildLabelsAsync(Contact contact, ContactType previousType, CancellationToken cancellationToken)
+    {
+        var newType = contact.Type;
+        var addresses = await context.Addresses.Where(a => a.ContactId == contact.ContactId).ToListAsync(cancellationToken);
+        var emails = await context.EmailAddresses.Where(e => e.ContactId == contact.ContactId).ToListAsync(cancellationToken);
+        var phones = await context.PhoneNumbers.Where(p => p.ContactId == contact.ContactId).ToListAsync(cancellationToken);
+
+        var remappedAddresses = 0;
+        foreach (var address in addresses)
+        {
+            var clamped = ContactLabelScope.Clamp(address.Label, newType);
+            if (clamped == address.Label)
+                continue;
+            address.Label = clamped;
+            remappedAddresses++;
+        }
+
+        var remappedEmails = 0;
+        foreach (var email in emails)
+        {
+            var clamped = ContactLabelScope.Clamp(email.Label, newType);
+            if (clamped == email.Label)
+                continue;
+            email.Label = clamped;
+            remappedEmails++;
+        }
+
+        var remappedPhones = 0;
+        foreach (var phone in phones)
+        {
+            var clamped = ContactLabelScope.Clamp(phone.Label, newType);
+            if (clamped == phone.Label)
+                continue;
+            phone.Label = clamped;
+            remappedPhones++;
+        }
+
+        // A bulk mutation with no user-facing surface (the contact PUT returns no body) needs a record
+        // of itself — PII-free: ids and counts only, never a name or a value (issue #47 §10.8).
+        logger?.LogInformation(
+            "Contact {ContactId} type changed {PreviousType} -> {NewType}; contact-method labels remapped to Other: "
+            + "{RemappedAddresses} of {AddressCount} addresses, {RemappedEmails} of {EmailCount} emails, "
+            + "{RemappedPhones} of {PhoneCount} phone numbers.",
+            contact.ContactId, previousType, newType,
+            remappedAddresses, addresses.Count, remappedEmails, emails.Count, remappedPhones, phones.Count);
+    }
+
     private async Task<Contact?> LoadForChildMutation(Guid contactId, CancellationToken cancellationToken) =>
         await context.Contacts.FirstOrDefaultAsync(c => c.ContactId == contactId, cancellationToken);
 

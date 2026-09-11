@@ -103,8 +103,13 @@ public static class TransactionGenerator
     public static (List<Transaction> Transactions, List<TransactionTagLink> TagLinks) Build(
         IReadOnlyList<Account> accounts, DateTime anchor)
     {
-        Randomizer.Seed = new Random(RandomizerSeed);
-        var faker = new Faker();
+        // A LOCAL Randomizer, never the global `Randomizer.Seed`. That static is one
+        // System.Random shared process-wide, so two concurrent DemoDataSet.Build() calls — a
+        // seeder run racing a test's own Build(), which is routine under xUnit's parallel
+        // collections — reseed each other mid-generation and interleave draws. The filler rows
+        // below then differ between the two, which surfaced as a seeded-count assertion failing
+        // in CI and passing locally. Seeded identically, so the values are unchanged.
+        var faker = new Faker { Random = new Randomizer(RandomizerSeed) };
 
         var byName = accounts.ToDictionary(account => account.Name);
         var transactions = new List<Transaction>();
