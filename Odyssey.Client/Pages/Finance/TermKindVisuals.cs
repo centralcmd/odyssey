@@ -36,10 +36,11 @@ public static class TermKindVisuals
         [TermKind.InterestRate]   = new("Interest rate",   TermGroup.Rate, "percent",      "oklch(0.78 0.13 200)", "oklch(0.78 0.13 200 / 0.15)", TermValueUnit.Percentage),
         [TermKind.ExpectedReturn] = new("Expected return", TermGroup.Rate, "trending_up",  "oklch(0.72 0.16 295)", "oklch(0.72 0.16 295 / 0.15)", TermValueUnit.Percentage),
         // ---- Fees ----
-        [TermKind.ManagementFee]  = new("Management fee",  TermGroup.Fee,  "pie_chart",    "oklch(0.77 0.14 55)",  "oklch(0.77 0.14 55 / 0.15)",  TermValueUnit.Percentage),
-        [TermKind.ServiceFee]     = new("Service fee",     TermGroup.Fee,  "event_repeat", "oklch(0.76 0.13 225)", "oklch(0.76 0.13 225 / 0.15)", TermValueUnit.Amount),
-        [TermKind.TransactionFee] = new("Transaction fee", TermGroup.Fee,  "swap_horiz",   "oklch(0.75 0.16 330)", "oklch(0.75 0.16 330 / 0.15)", TermValueUnit.Amount),
-        [TermKind.OtherFee]       = new("Other fee",       TermGroup.Fee,  "receipt_long", "oklch(0.74 0.02 250)", "oklch(0.74 0.02 250 / 0.15)", TermValueUnit.Amount),
+        // One entry: the label names the fee, so the kind only has to say "this is a price, not a
+        // rate". The hue is the old ManagementFee orange — it sits in the shared categorical band and
+        // is the furthest of the four from both rate hues (200 and 295), which is what matters now
+        // that it is the only fee colour on the surface.
+        [TermKind.Fee]            = new("Fee",             TermGroup.Fee,  "receipt_long", "oklch(0.77 0.14 55)",  "oklch(0.77 0.14 55 / 0.15)",  TermValueUnit.Amount),
     };
 
     /// <summary>Term kinds in registry order (rates first), excluding <see cref="TermKind.Unknown"/>.</summary>
@@ -84,7 +85,7 @@ public static class TermKindVisuals
     {
         TermKind.InterestRate => InterestRateTypes.Contains(accountType),
         TermKind.ExpectedReturn => ExpectedReturnTypes.Contains(accountType),
-        TermKind.ManagementFee or TermKind.ServiceFee or TermKind.TransactionFee or TermKind.OtherFee => true,
+        TermKind.Fee => true,
         _ => false,
     };
 

@@ -24,9 +24,9 @@ public sealed record NewAccountTerm
     [EnumDataType(typeof(BillingPeriod))]
     public BillingPeriod? BillingPeriod { get; set; }
 
-    // Names one series of a fee kind, so an account can carry several at once ("ATM withdrawal ·
-    // abroad" beside "ATM withdrawal · domestic"). Required for OtherFee, refused for the rate
-    // kinds, optional elsewhere; null is the unnamed series. Normalized by TermLabel on write.
+    // Names one fee, so an account can carry several at once ("ATM withdrawal · abroad" beside
+    // "ATM withdrawal · domestic"). Required for a Fee and refused for the rate kinds, which stay
+    // one series per account; null is a rate's unnamed series. Normalized by TermLabel on write.
     [StringLength(TermLabel.MaxLength)]
     public string? Label { get; set; }
 

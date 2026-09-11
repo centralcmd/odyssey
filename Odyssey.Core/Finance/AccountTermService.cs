@@ -17,11 +17,15 @@ namespace Odyssey.Core.Finance;
 /// value/unit/currency validation, and resolves the currently-effective value of each series by
 /// implicit supersession (latest <c>EffectiveFrom</c> on or before a date).
 /// <para>
-/// A series is a kind <em>plus</em> a label, not a kind alone. Fees of one kind genuinely coexist —
-/// a card charges differently for a domestic and a foreign cash withdrawal — and keying supersession
-/// on the kind made the second such fee silently replace the first. Labels also give
-/// <see cref="ContextTermKind.OtherFee"/> a working shape: it is the open category, so it is the one
-/// kind where a label is <em>required</em>.
+/// A series is a kind <em>plus</em> a label, not a kind alone. Fees genuinely coexist — a card charges
+/// differently for a domestic and a foreign cash withdrawal — and keying supersession on the kind made
+/// the second such fee silently replace the first.
+/// </para>
+/// <para>
+/// There is exactly one fee kind, <see cref="ContextTermKind.Fee"/>, and its label is <em>required</em>.
+/// The former four-way split (management/service/transaction/other) carried no behaviour — all four
+/// were eligible everywhere and differed only in presentation — so the label now names the fee and the
+/// enum stays out of it. That also makes the label rule unconditional rather than a per-kind exception.
 /// </para>
 /// </summary>
 public class AccountTermService
@@ -36,7 +40,7 @@ public class AccountTermService
     }
 
     // The eligibility matrix lives in code (not the database) so it can evolve without a migration.
-    // Unknown is never permitted; fee kinds are permitted on every account type.
+    // Unknown is never permitted; Fee is permitted on every account type.
     private static readonly IReadOnlySet<ContextAccountType> InterestRateAccountTypes = new HashSet<ContextAccountType>
     {
         ContextAccountType.CheckingAccount,
@@ -212,12 +216,11 @@ public class AccountTermService
             throw new DomainValidationException(
                 $"Label is not allowed for term kind '{source.TermKind}': a rate has one series per account.");
 
-        // OtherFee is the open category, so an unlabelled one is exactly the entry that cannot be
-        // told apart from the next unlabelled one — and would supersede it. Naming it is the price
-        // of using the catch-all.
-        if (label is null && kind == ContextTermKind.OtherFee)
+        // Every fee is named. There is one fee kind, so an unlabelled fee is exactly the entry that
+        // cannot be told apart from the next unlabelled one — and would supersede it.
+        if (label is null && kind == ContextTermKind.Fee)
             throw new DomainValidationException(
-                "A label is required for term kind 'OtherFee' — name the fee so it is not confused with another.");
+                "A label is required for a fee — name it so it is not confused with another fee on this account.");
 
         var labelKey = TermLabel.KeyOf(label);
 
@@ -277,8 +280,7 @@ public class AccountTermService
     {
         ContextTermKind.InterestRate => InterestRateAccountTypes.Contains(accountType),
         ContextTermKind.ExpectedReturn => ExpectedReturnAccountTypes.Contains(accountType),
-        ContextTermKind.ManagementFee or ContextTermKind.ServiceFee
-            or ContextTermKind.TransactionFee or ContextTermKind.OtherFee => true,
+        ContextTermKind.Fee => true,
         _ => false,
     };
 

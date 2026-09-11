@@ -13,7 +13,7 @@
 
     The label names one SERIES within a kind, which is what lets a card carry a domestic
     and a foreign cash-withdrawal fee at once instead of the second superseding the first.
-    It is required for OtherFee — the open category, where two unnamed entries could not be
+    It is required for every fee — there is one fee kind, so two unnamed fees could not be
     told apart — and refused for rate kinds, which stay one-series so the headline rate is
     unambiguous. Rejects an exact (kind, label, effectiveFrom) duplicate client-side, folding
     case via the shared TermLabel rules; the API still has the final say (400 / 409 as a toast).
@@ -25,7 +25,11 @@
     <ChildContent>
         <div class="ods-modal-body">
 
-            @* Term kind — eligibility-gated grid (new) or a locked tile (edit) *@
+            @* Term kind — a locked tile (edit) or an eligibility-gated grid. With one fee kind, most
+               account types leave a single choice, and a one-option picker is noise: the block is
+               dropped entirely and the form opens on that kind. *@
+            @if (IsEdit || ShowKindPicker)
+            {
             <div class="trm-field">
                 <div class="trm-label">Term</div>
                 @if (IsEdit)
@@ -75,6 +79,7 @@
                     <div class="trm-err">@kindErr</div>
                 }
             </div>
+            }
 
             @* Unit + value — the hero input *@
             <div class="trm-value-block">
@@ -153,9 +158,7 @@
                           MaxLength="TermLabel.MaxLength"
                           Required="LabelRequired"
                           Placeholder="e.g. “ATM withdrawal · abroad”"
-                          Help="@(LabelRequired
-                              ? "Required — names this fee so it keeps its own history."
-                              : "Optional. Name it to record several of this kind side by side.")"
+                          Help="Names this fee and keeps its own price history — e.g. a domestic and a foreign ATM charge side by side.""
                           Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
             }
 

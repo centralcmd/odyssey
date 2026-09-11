@@ -13,11 +13,11 @@
      • CurrencyCode    — required for Amount (defaults to the account currency);
                          null for Percentage.
      • BillingPeriod   — optional context for fees; null for rate kinds.
-     • Label           — names one series within a fee kind, so a card can carry a
-                         domestic and a foreign cash-withdrawal fee at once. Required
-                         for OtherFee (the open category, where two unnamed entries
-                         cannot be told apart); refused for rate kinds, which stay
-                         one-series so the headline rate is unambiguous. ≤ 64 chars.
+     • Label           — names one fee, so a card can carry a domestic and a foreign
+                         cash-withdrawal charge at once. Required for every fee (there is
+                         one fee kind, so two unnamed fees cannot be told apart); refused
+                         for rate kinds, which stay one-series so the headline rate is
+                         unambiguous. ≤ 64 chars.
      • EffectiveFrom   — required; past or future allowed (future = scheduled).
      • Note            — optional, ≤ 512 chars.
 
@@ -35,10 +35,10 @@ const TRM_CURRENCIES = (window.OdysseyData.currencies || [])
   .filter(c => !c.archived)
   .map(c => ({ value: c.code, label: c.name }));
 
-/* sensible default billing period per fee kind */
-const TRM_DEFAULT_BILLING = {
-  ManagementFee: 'Annually', ServiceFee: 'Monthly', TransactionFee: 'PerTransaction', OtherFee: 'OneTime',
-};
+/* A fee opens on Monthly — the commonest cadence for an account-level charge. The four
+   kind-specific defaults went away with the kinds; one honest default beats a guess that was
+   silently wrong for three cases in four. */
+const TRM_DEFAULT_FEE_BILLING = 'Monthly';
 
 /* percent fraction → editable percent string ("0.0340" → "3.4") */
 const fracToPctStr = (f) => {
@@ -55,7 +55,7 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
   const eligible = H.eligibleTermKinds(account.type);
   const eligibleKinds = D.termKinds.filter(k => eligible.includes(k.key));
 
-  const initKind = term ? term.kind : (eligibleKinds[0] && eligibleKinds[0].key) || 'OtherFee';
+  const initKind = term ? term.kind : (eligibleKinds[0] && eligibleKinds[0].key) || 'Fee';
   const initInfo = H.termKindInfo(initKind);
 
   const [draft, setDraft] = useState(() => ({
@@ -63,7 +63,7 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
     unit: term ? term.unit : initInfo.defaultUnit,
     valueStr: term ? (term.unit === 'Percentage' ? fracToPctStr(term.value) : String(term.value)) : '',
     currency: term ? (term.currency || account.currency || 'USD') : (account.currency || 'USD'),
-    billingPeriod: term ? (term.billingPeriod || '') : (initInfo.group === 'fee' ? (TRM_DEFAULT_BILLING[initKind] || '') : ''),
+    billingPeriod: term ? (term.billingPeriod || '') : (initInfo.group === 'fee' ? TRM_DEFAULT_FEE_BILLING : ''),
     label: term ? (term.label || '') : '',
     effectiveFrom: term ? term.effectiveFrom : new Date().toISOString().slice(0, 10),
     note: term ? (term.note || '') : '',
@@ -85,7 +85,7 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
       ...d,
       kind: k,
       unit: ki.defaultUnit,
-      billingPeriod: ki.group === 'fee' ? (TRM_DEFAULT_BILLING[k] || d.billingPeriod || '') : '',
+      billingPeriod: ki.group === 'fee' ? TRM_DEFAULT_FEE_BILLING : '',
       label: ki.group === 'rate' ? '' : d.label,
     }));
     setErrors({});
@@ -110,9 +110,9 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
 
     const label = isRate ? null : trmLabelNorm(draft.label);
     if (label && label.length > 64) next.label = 'Keep the label under 64 characters.';
-    // OtherFee is the catch-all, so an unnamed one is precisely the entry that would
+    // Every fee is named: one fee kind means an unnamed fee is precisely the entry that would
     // be confused with — and silently supersede — the next unnamed one.
-    if (!label && draft.kind === 'OtherFee') next.label = 'Name this fee so it isn’t confused with another.';
+    if (!label && !isRate) next.label = 'Name this fee so it isn’t confused with another.';
 
     // Duplicate (kind, label, effectiveFrom) → 409, excluding the row being edited.
     const dup = existing.some(t =>
@@ -160,7 +160,10 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
         </React.Fragment>
       }>
 
-      {/* Kind — eligibility-gated grid (new); locked tile (edit) */}
+      {/* Kind — a locked tile (edit) or an eligibility-gated grid. With one fee kind, most account
+         types leave a single choice, and a one-option picker is noise: the block is dropped entirely
+         and the form opens on that kind. */}
+      {(isEdit || eligibleKinds.length > 1) && (
       <div className="field">
         <div className="label">Term</div>
         {isEdit ? (
@@ -201,6 +204,7 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
         )}
         {errors.kind && <div className="helper aam-err">{errors.kind}</div>}
       </div>
+      )}
 
       {/* Unit + Value */}
       <div className="trm-value-block">
@@ -272,16 +276,13 @@ const AddTermModal = ({ account, term, existing = [], onClose, onSave }) => {
       {!isRate && (
         <Field
           label="Label"
-          optional={draft.kind !== 'OtherFee'}
-          required={draft.kind === 'OtherFee'}
+          required
           maxLength={64}
           value={draft.label}
           onChange={set('label')}
           error={errors.label}
           placeholder="e.g. “ATM withdrawal · abroad”"
-          help={draft.kind === 'OtherFee'
-            ? 'Required — names this fee so it keeps its own history.'
-            : 'Optional. Name it to record several of this kind side by side.'}
+          help="Names this fee and keeps its own price history — e.g. a domestic and a foreign ATM charge side by side."
         />
       )}
 

@@ -7,7 +7,7 @@ namespace Odyssey.TestData.Generators;
 
 /// <summary>
 /// Deterministic time-versioned account terms (issue #172): interest rates, expected returns and
-/// bank fees. The set deliberately exercises every <see cref="TermKind"/>, both
+/// bank fees. The set deliberately exercises every <see cref="TermKind"/> (there are three), both
 /// <see cref="TermValueUnit"/>s and several <see cref="BillingPeriod"/>s, and includes a couple of
 /// rate histories (a savings rate climbing over the years) so the "current value" resolution and the
 /// history listing both have something to show.
@@ -19,10 +19,10 @@ namespace Odyssey.TestData.Generators;
 ///
 /// The shape mirrors the API's validation rules so the seeded data is one the service itself would
 /// accept: rate kinds (InterestRate/ExpectedReturn) are percentages in the fraction range [-1, 1]
-/// with no billing period and no currency; fee amounts carry a supported currency (defaulting to the
-/// account currency) and may carry a billing period; eligibility per account type matches
-/// <c>AccountTermService</c>. Accounts are referenced by their stable deterministic ids; none is
-/// created here.
+/// with no billing period, no currency and no label; every Fee carries a label (required) plus a
+/// supported currency for an amount (defaulting to the account currency) and may carry a billing
+/// period; eligibility per account type matches <c>AccountTermService</c>. Accounts are referenced by
+/// their stable deterministic ids; none is created here.
 /// </summary>
 public static class AccountTermGenerator
 {
@@ -65,32 +65,31 @@ public static class AccountTermGenerator
             // that motivated labels — a card really does price a domestic and a foreign cash withdrawal
             // differently, and all four of these coexist rather than superseding one another.
             new(Catalog.Accounts.TravelRewardsCard, TermKind.InterestRate, TermValueUnit.Percentage, 0.1999m, D(2018, 5, 20), Note: "Purchase APR."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.ServiceFee, TermValueUnit.Amount, 95m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.Annually, Note: "Annual card fee."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.TransactionFee, TermValueUnit.Percentage, 0.0250m, D(2018, 5, 20), Billing: BillingPeriod.PerTransaction, Label: "Foreign transaction", Note: "Currency conversion markup on purchases abroad."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.TransactionFee, TermValueUnit.Amount, 5m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "Cash withdrawal · domestic", Note: "ATM cash advance at home."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.TransactionFee, TermValueUnit.Amount, 12m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "Cash withdrawal · abroad", Note: "ATM cash advance overseas."),
-            // Two OtherFees side by side — the pair that silently overwrote each other before labels.
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.OtherFee, TermValueUnit.Amount, 15m, D(2019, 3, 1), Currency: Currencies.Usd, Billing: BillingPeriod.OneTime, Label: "Card replacement", Note: "Reissue after loss or damage."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.OtherFee, TermValueUnit.Amount, 2m, D(2019, 3, 1), Currency: Currencies.Usd, Billing: BillingPeriod.Monthly, Label: "Paper statement", Note: "Waived on paperless billing."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 95m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.Annually, Label: "Annual card fee"),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Percentage, 0.0250m, D(2018, 5, 20), Billing: BillingPeriod.PerTransaction, Label: "Foreign transaction", Note: "Currency conversion markup on purchases abroad."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 5m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "Cash withdrawal · domestic", Note: "ATM cash advance at home."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 12m, D(2018, 5, 20), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "Cash withdrawal · abroad", Note: "ATM cash advance overseas."),
+            // Two more on one date — the pair that silently overwrote each other before labels.
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 15m, D(2019, 3, 1), Currency: Currencies.Usd, Billing: BillingPeriod.OneTime, Label: "Card replacement", Note: "Reissue after loss or damage."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 2m, D(2019, 3, 1), Currency: Currencies.Usd, Billing: BillingPeriod.Monthly, Label: "Paper statement", Note: "Waived on paperless billing."),
 
             // Brokerage (investment): expected return + a percentage platform/management fee.
             new(Catalog.Accounts.BrokerageAccount, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0700m, D(2016, 7, 1), Note: "Long-run expected annual return."),
-            new(Catalog.Accounts.BrokerageAccount, TermKind.ManagementFee, TermValueUnit.Percentage, 0.0025m, D(2016, 7, 1), Note: "Platform fee."),
+            new(Catalog.Accounts.BrokerageAccount, TermKind.Fee, TermValueUnit.Percentage, 0.0025m, D(2016, 7, 1), Billing: BillingPeriod.Annually, Label: "Platform fee"),
 
             // Pension: expected return + management fee.
             new(Catalog.Accounts.WorkplacePension, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0500m, D(2016, 2, 10), Note: "Expected annual return."),
-            new(Catalog.Accounts.WorkplacePension, TermKind.ManagementFee, TermValueUnit.Percentage, 0.0040m, D(2016, 2, 10), Note: "Scheme management charge."),
+            new(Catalog.Accounts.WorkplacePension, TermKind.Fee, TermValueUnit.Percentage, 0.0040m, D(2016, 2, 10), Billing: BillingPeriod.Annually, Label: "Scheme management charge"),
 
             // Stocks portfolio (SEK investment): percentage terms only (no currency needed).
             new(Catalog.Accounts.StocksPortfolio, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0650m, D(2019, 11, 5), Note: "Expected annual return."),
-            new(Catalog.Accounts.StocksPortfolio, TermKind.ManagementFee, TermValueUnit.Percentage, 0.0030m, D(2019, 11, 5), Note: "Custody fee."),
+            new(Catalog.Accounts.StocksPortfolio, TermKind.Fee, TermValueUnit.Percentage, 0.0030m, D(2019, 11, 5), Billing: BillingPeriod.Annually, Label: "Custody fee"),
 
             // Everyday checking: a monthly service fee + a per-transaction fee (amounts, USD).
-            new(Catalog.Accounts.EverydayChecking, TermKind.ServiceFee, TermValueUnit.Amount, 12m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.Monthly, Note: "Monthly account maintenance fee."),
-            new(Catalog.Accounts.EverydayChecking, TermKind.TransactionFee, TermValueUnit.Amount, 0.30m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Note: "Per-transaction processing fee."),
-            // An unlabelled fee and a labelled one of the same kind are separate series; neither hides
-            // the other.
-            new(Catalog.Accounts.EverydayChecking, TermKind.TransactionFee, TermValueUnit.Amount, 25m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "International wire", Note: "Outgoing SWIFT transfer."),
+            // Three fees of one kind on one date, told apart by their labels alone.
+            new(Catalog.Accounts.EverydayChecking, TermKind.Fee, TermValueUnit.Amount, 12m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.Monthly, Label: "Account maintenance"),
+            new(Catalog.Accounts.EverydayChecking, TermKind.Fee, TermValueUnit.Amount, 0.30m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "Transaction processing"),
+            new(Catalog.Accounts.EverydayChecking, TermKind.Fee, TermValueUnit.Amount, 25m, D(2016, 4, 1), Currency: Currencies.Usd, Billing: BillingPeriod.PerTransaction, Label: "International wire", Note: "Outgoing SWIFT transfer."),
         };
 
         return specs

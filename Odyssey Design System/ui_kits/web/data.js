@@ -1130,10 +1130,12 @@ window.OdysseyData.termKinds = [
   { key: 'InterestRate',   label: 'Interest rate',   group: 'rate', enumValue: 1,  defaultUnit: 'Percentage', icon: 'percent',       color: 'oklch(0.78 0.13 200)',  soft: 'oklch(0.78 0.13 200 / 0.15)',  desc: 'Contractual interest the account earns or is charged.' },
   { key: 'ExpectedReturn', label: 'Expected return', group: 'rate', enumValue: 2,  defaultUnit: 'Percentage', icon: 'trending_up',   color: 'oklch(0.72 0.16 295)',  soft: 'oklch(0.72 0.16 295 / 0.15)',  desc: 'Optional target / expected annual return for a variable-return holding.' },
   // ---- Fees ----
-  { key: 'ManagementFee',  label: 'Management fee',   group: 'fee',  enumValue: 10, defaultUnit: 'Percentage', icon: 'pie_chart',     color: 'oklch(0.77 0.14 55)',   soft: 'oklch(0.77 0.14 55 / 0.15)',   desc: 'Fund / platform / management fee — usually a percentage of assets.' },
-  { key: 'ServiceFee',     label: 'Service fee',      group: 'fee',  enumValue: 11, defaultUnit: 'Amount',     icon: 'event_repeat',  color: 'oklch(0.76 0.13 225)',  soft: 'oklch(0.76 0.13 225 / 0.15)',  desc: 'Periodic account / service fee — usually a flat amount.' },
-  { key: 'TransactionFee', label: 'Transaction fee',  group: 'fee',  enumValue: 12, defaultUnit: 'Amount',     icon: 'swap_horiz',    color: 'oklch(0.75 0.16 330)',  soft: 'oklch(0.75 0.16 330 / 0.15)',  desc: 'Per-transaction fee — an amount or a percentage.' },
-  { key: 'OtherFee',       label: 'Other fee',        group: 'fee',  enumValue: 99, defaultUnit: 'Amount',     icon: 'receipt_long',  color: 'oklch(0.74 0.02 250)',  soft: 'oklch(0.74 0.02 250 / 0.15)',  desc: 'Any other fee outside the categories above.' },
+  // One fee kind. Management / service / transaction / other carried no behaviour between them —
+  // all four were eligible everywhere and differed only in presentation — so the term's own Label
+  // names the fee and the enum only says "price, not rate". The hue is the old ManagementFee orange,
+  // the furthest of the four from both rate hues (200, 295), which is what matters now that it is
+  // the only fee colour on the surface.
+  { key: 'Fee',            label: 'Fee',              group: 'fee',  enumValue: 10, defaultUnit: 'Amount',     icon: 'receipt_long',  color: 'oklch(0.77 0.14 55)',   soft: 'oklch(0.77 0.14 55 / 0.15)',   desc: 'A price the account charges — named by its label (e.g. ATM withdrawal, abroad).' },
 ];
 window.OdysseyData.termKindByKey = Object.fromEntries(window.OdysseyData.termKinds.map(t => [t.key, t]));
 
@@ -1153,10 +1155,7 @@ window.OdysseyData.billingPeriodByKey = Object.fromEntries(window.OdysseyData.bi
 window.OdysseyData.termKindEligibility = {
   InterestRate:   ['CheckingAccount', 'SavingsAccount', 'PensionAccount', 'CreditCard', 'Mortgage', 'StudentLoan', 'PersonalLoan', 'CarLoan', 'TaxDebt'],
   ExpectedReturn: ['InvestmentAccount', 'PensionAccount'],
-  ManagementFee:  'ALL',
-  ServiceFee:     'ALL',
-  TransactionFee: 'ALL',
-  OtherFee:       'ALL',
+  Fee:            'ALL',
 };
 
 /* Seed AccountTerm history, keyed by accountId. EffectiveFrom ascending here for
@@ -1169,27 +1168,28 @@ window.OdysseyData.accountTerms = {
     { id: 'tm-2-3', accountId: '2', kind: 'InterestRate',   unit: 'Percentage', value: 0.0385, currency: null,  billingPeriod: null,             effectiveFrom: '2025-01-15', note: 'Fed cut pass-through',                   createdAtUtc: '2025-01-15T09:00:00Z' },
     { id: 'tm-2-4', accountId: '2', kind: 'InterestRate',   unit: 'Percentage', value: 0.0360, currency: null,  billingPeriod: null,             effectiveFrom: '2025-07-01', note: null,                                     createdAtUtc: '2025-07-01T09:00:00Z' },
     { id: 'tm-2-5', accountId: '2', kind: 'InterestRate',   unit: 'Percentage', value: 0.0340, currency: null,  billingPeriod: null,             effectiveFrom: '2026-02-10', note: 'Fed cut pass-through',                   createdAtUtc: '2026-02-10T09:00:00Z' },
-    { id: 'tm-2-6', accountId: '2', kind: 'TransactionFee', unit: 'Amount',     value: 10.00,  currency: 'USD', billingPeriod: 'PerTransaction', effectiveFrom: '2024-02-01', note: 'Excess withdrawal fee (over 6 / month)', createdAtUtc: '2024-02-01T09:00:00Z' },
+    { id: 'tm-2-6', accountId: '2', kind: 'Fee', label: 'Excess withdrawal', unit: 'Amount',     value: 10.00,  currency: 'USD', billingPeriod: 'PerTransaction', effectiveFrom: '2024-02-01', note: 'Charged over 6 withdrawals a month',      createdAtUtc: '2024-02-01T09:00:00Z' },
   ],
   // Amex Platinum — purchase APR stepped UP, plus an annual fee and a cash-advance fee.
   '3': [
     { id: 'tm-3-1', accountId: '3', kind: 'InterestRate',   unit: 'Percentage', value: 0.2249, currency: null,  billingPeriod: null,             effectiveFrom: '2023-01-01', note: 'Variable purchase APR (Prime + 16.99%)', createdAtUtc: '2023-01-01T09:00:00Z' },
     { id: 'tm-3-2', accountId: '3', kind: 'InterestRate',   unit: 'Percentage', value: 0.2624, currency: null,  billingPeriod: null,             effectiveFrom: '2023-09-01', note: null,                                     createdAtUtc: '2023-09-01T09:00:00Z' },
     { id: 'tm-3-3', accountId: '3', kind: 'InterestRate',   unit: 'Percentage', value: 0.2899, currency: null,  billingPeriod: null,             effectiveFrom: '2024-06-01', note: 'Prime-rate increase',                    createdAtUtc: '2024-06-01T09:00:00Z' },
-    { id: 'tm-3-4', accountId: '3', kind: 'ServiceFee',     unit: 'Amount',     value: 695.00, currency: 'USD', billingPeriod: 'Annually',       effectiveFrom: '2023-01-01', note: 'Annual membership fee',                  createdAtUtc: '2023-01-01T09:00:00Z' },
-    { id: 'tm-3-5', accountId: '3', kind: 'TransactionFee', unit: 'Percentage', value: 0.0500, currency: null,  billingPeriod: 'PerTransaction', effectiveFrom: '2023-01-01', note: 'Cash-advance fee',                       createdAtUtc: '2023-01-01T09:00:00Z' },
+    { id: 'tm-3-4', accountId: '3', kind: 'Fee', label: 'Annual membership', unit: 'Amount',     value: 695.00, currency: 'USD', billingPeriod: 'Annually',       effectiveFrom: '2023-01-01', note: null,                                     createdAtUtc: '2023-01-01T09:00:00Z' },
+    { id: 'tm-3-5', accountId: '3', kind: 'Fee', label: 'Cash advance',      unit: 'Percentage', value: 0.0500, currency: null,  billingPeriod: 'PerTransaction', effectiveFrom: '2023-01-01', note: null,                                     createdAtUtc: '2023-01-01T09:00:00Z' },
   ],
-  // Vanguard Brokerage — an expected-return target (lowered once) + an expense ratio.
+  // Vanguard Brokerage — an expected-return target (lowered once) + an expense ratio. The two
+  // expense-ratio rows share a label, so they are ONE series: the 2025 row supersedes the 2023 one.
   '4': [
     { id: 'tm-4-1', accountId: '4', kind: 'ExpectedReturn', unit: 'Percentage', value: 0.0700, currency: null,  billingPeriod: null,       effectiveFrom: '2024-01-01', note: 'Long-run target · 80/20 blend', createdAtUtc: '2024-01-01T09:00:00Z' },
     { id: 'tm-4-2', accountId: '4', kind: 'ExpectedReturn', unit: 'Percentage', value: 0.0650, currency: null,  billingPeriod: null,       effectiveFrom: '2025-06-01', note: 'Trimmed on valuation outlook', createdAtUtc: '2025-06-01T09:00:00Z' },
-    { id: 'tm-4-3', accountId: '4', kind: 'ManagementFee',  unit: 'Percentage', value: 0.0004, currency: null,  billingPeriod: 'Annually', effectiveFrom: '2023-01-01', note: 'Blended expense ratio',        createdAtUtc: '2023-01-01T09:00:00Z' },
-    { id: 'tm-4-4', accountId: '4', kind: 'ManagementFee',  unit: 'Percentage', value: 0.0003, currency: null,  billingPeriod: 'Annually', effectiveFrom: '2025-01-01', note: 'Expense ratio reduction',      createdAtUtc: '2025-01-01T09:00:00Z' },
+    { id: 'tm-4-3', accountId: '4', kind: 'Fee', label: 'Expense ratio', unit: 'Percentage', value: 0.0004, currency: null,  billingPeriod: 'Annually', effectiveFrom: '2023-01-01', note: 'Blended across the 80/20 blend', createdAtUtc: '2023-01-01T09:00:00Z' },
+    { id: 'tm-4-4', accountId: '4', kind: 'Fee', label: 'Expense ratio', unit: 'Percentage', value: 0.0003, currency: null,  billingPeriod: 'Annually', effectiveFrom: '2025-01-01', note: 'Reduction',                      createdAtUtc: '2025-01-01T09:00:00Z' },
   ],
   // Citi Auto Loan — a single fixed APR (chart shows one flat hold) + a late fee.
   '5': [
     { id: 'tm-5-1', accountId: '5', kind: 'InterestRate', unit: 'Percentage', value: 0.0649, currency: null,  billingPeriod: null,             effectiveFrom: '2023-06-01', note: 'Fixed APR · 60-month term', createdAtUtc: '2023-06-01T09:00:00Z' },
-    { id: 'tm-5-2', accountId: '5', kind: 'OtherFee',     unit: 'Amount',     value: 15.00,  currency: 'USD', billingPeriod: 'PerTransaction', effectiveFrom: '2023-06-01', note: 'Late-payment fee',          createdAtUtc: '2023-06-01T09:00:00Z' },
+    { id: 'tm-5-2', accountId: '5', kind: 'Fee', label: 'Late payment', unit: 'Amount',     value: 15.00,  currency: 'USD', billingPeriod: 'PerTransaction', effectiveFrom: '2023-06-01', note: null,                        createdAtUtc: '2023-06-01T09:00:00Z' },
   ],
   // Chase Checking ('1') intentionally has no terms — drives the empty state.
 };

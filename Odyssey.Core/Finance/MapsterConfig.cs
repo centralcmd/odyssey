@@ -386,10 +386,7 @@ public static class MapsterConfig
     {
         ContextTermKind.InterestRate => DtoTermKind.InterestRate,
         ContextTermKind.ExpectedReturn => DtoTermKind.ExpectedReturn,
-        ContextTermKind.ManagementFee => DtoTermKind.ManagementFee,
-        ContextTermKind.ServiceFee => DtoTermKind.ServiceFee,
-        ContextTermKind.TransactionFee => DtoTermKind.TransactionFee,
-        ContextTermKind.OtherFee => DtoTermKind.OtherFee,
+        ContextTermKind.Fee => DtoTermKind.Fee,
         _ => DtoTermKind.Unknown,
     };
 
@@ -397,10 +394,7 @@ public static class MapsterConfig
     {
         DtoTermKind.InterestRate => ContextTermKind.InterestRate,
         DtoTermKind.ExpectedReturn => ContextTermKind.ExpectedReturn,
-        DtoTermKind.ManagementFee => ContextTermKind.ManagementFee,
-        DtoTermKind.ServiceFee => ContextTermKind.ServiceFee,
-        DtoTermKind.TransactionFee => ContextTermKind.TransactionFee,
-        DtoTermKind.OtherFee => ContextTermKind.OtherFee,
+        DtoTermKind.Fee => ContextTermKind.Fee,
         _ => ContextTermKind.Unknown,
     };
 

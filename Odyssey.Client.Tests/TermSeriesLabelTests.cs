@@ -28,7 +28,7 @@ public class TermSeriesLabelTests
     };
 
     private static ExistingAccountTerm Term(
-        string value, TermKind kind = TermKind.TransactionFee, string? label = null,
+        string value, TermKind kind = TermKind.Fee, string? label = null,
         TermValueUnit unit = TermValueUnit.Amount) => new()
     {
         AccountTermId = Guid.NewGuid(),
@@ -59,7 +59,7 @@ public class TermSeriesLabelTests
     [InlineData(null)]
     public void DisplayName_FallsBackToTheKindWhenUnlabelled(string? label) =>
         Assert.Equal(
-            "Transaction fee",
+            "Fee",
             TermKindVisuals.DisplayName(Term("5", label: label), Account(AccountType.CheckingAccount)));
 
     [Theory]
@@ -115,8 +115,10 @@ public class TermSeriesLabelTests
     }
 
     [Fact]
-    public void SeriesKey_SeparatesTheSameLabelUnderDifferentKinds() =>
+    public void SeriesKey_SeparatesTheUnnamedSeriesOfDifferentKinds() =>
+        // A rate carries no label and a fee must carry one, so the unnamed series of two kinds is the
+        // only cross-kind pair the app can actually produce — and the kind still has to separate them.
         Assert.NotEqual(
-            TermKindVisuals.SeriesKey(Term("5", TermKind.TransactionFee, "Monthly")),
-            TermKindVisuals.SeriesKey(Term("5", TermKind.ServiceFee, "Monthly")));
+            TermKindVisuals.SeriesKey(Term("0.03", TermKind.InterestRate, unit: TermValueUnit.Percentage)),
+            TermKindVisuals.SeriesKey(Term("5", TermKind.Fee)));
 }

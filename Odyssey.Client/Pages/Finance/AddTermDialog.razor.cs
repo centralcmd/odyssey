@@ -26,9 +26,16 @@ public partial class AddTermDialog
     private bool IsEdit => Term is not null;
     private bool IsRate => TermKindVisuals.Info(_kind).Group == TermGroup.Rate;
 
-    /// <summary>OtherFee is the open category, so an unnamed one is exactly the entry that could not
-    /// be told apart from — and would supersede — the next unnamed one. Naming it is its price.</summary>
-    private bool LabelRequired => _kind == TermKind.OtherFee;
+    /// <summary>Every fee is named: there is one fee kind, so an unnamed fee is exactly the entry that
+    /// could not be told apart from — and would supersede — the next unnamed one.</summary>
+    private bool LabelRequired => !IsRate;
+
+    /// <summary>
+    /// With one fee kind, most account types have a single eligible kind and the picker would be a
+    /// one-option control. Hide it and let the form open on that kind. An edit still shows the locked
+    /// tile, which is what names the term being edited.
+    /// </summary>
+    private bool ShowKindPicker => !IsEdit && _eligibleKinds.Count > 1;
     private bool IsPercentage => _unit == TermValueUnit.Percentage;
 
     private TermKind _kind;
@@ -52,14 +59,10 @@ public partial class AddTermDialog
     private List<OdsOption> _billingOptions = [];
     private readonly Dictionary<string, string> _errors = new();
 
-    // Sensible default billing period per fee kind (mirrors the design-system dialog).
-    private static readonly Dictionary<TermKind, BillingPeriod> DefaultBilling = new()
-    {
-        [TermKind.ManagementFee] = BillingPeriod.Annually,
-        [TermKind.ServiceFee] = BillingPeriod.Monthly,
-        [TermKind.TransactionFee] = BillingPeriod.PerTransaction,
-        [TermKind.OtherFee] = BillingPeriod.OneTime,
-    };
+    // A fee opens on Monthly: it is the commonest cadence for an account-level charge, and the four
+    // kind-specific defaults that used to pick this went away with the kinds. The user changes it in
+    // one click, and unlike the old per-kind guess it is not silently wrong for three cases out of four.
+    private const BillingPeriod DefaultFeeBilling = BillingPeriod.Monthly;
 
     protected override void OnInitialized()
     {
@@ -84,7 +87,7 @@ public partial class AddTermDialog
         }
         else
         {
-            _kind = _eligibleKinds.Count > 0 ? _eligibleKinds[0] : TermKind.OtherFee;
+            _kind = _eligibleKinds.Count > 0 ? _eligibleKinds[0] : TermKind.Fee;
             _unit = TermKindVisuals.Info(_kind).DefaultUnit;
             _currency = Account.CurrencyCode;
             _billingPeriod = DefaultBillingFor(_kind);
@@ -116,8 +119,8 @@ public partial class AddTermDialog
         StateHasChanged();
     }
 
-    private string DefaultBillingFor(TermKind kind) =>
-        DefaultBilling.TryGetValue(kind, out var b) ? b.ToString() : "";
+    private static string DefaultBillingFor(TermKind kind) =>
+        TermKindVisuals.Info(kind).Group == TermGroup.Fee ? DefaultFeeBilling.ToString() : "";
 
     private void PickKind(TermKind kind)
     {
@@ -225,6 +228,7 @@ public partial class AddTermDialog
             _errors["label"] = $"Keep the label under {TermLabel.MaxLength} characters.";
         else if (label is null && LabelRequired)
             _errors["label"] = "Name this fee so it isn’t confused with another.";
+
 
         // Duplicate (kind, label, effectiveFrom) → the server's 409, excluding the row being edited.
         // Case-folded, so "ATM abroad" and "atm abroad" are caught here rather than at the API.

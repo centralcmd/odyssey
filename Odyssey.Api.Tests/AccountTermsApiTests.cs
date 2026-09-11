@@ -120,9 +120,10 @@ public class AccountTermsApiTests
 
         var post = await client.PostAsJsonAsync(TermsPath(accountId), new NewAccountTerm
         {
-            TermKind = TermKind.ServiceFee,
+            TermKind = TermKind.Fee,
             ValueUnit = TermValueUnit.Amount,
             Value = 5m,
+            Label = "Account maintenance",
             EffectiveFrom = new DateTime(2026, 1, 1),
         });
         Assert.Equal(HttpStatusCode.Created, post.StatusCode);
@@ -184,7 +185,7 @@ public class AccountTermsApiTests
 
     // ── Labels over the wire ──────────────────────────────────────────────────
 
-    private static NewAccountTerm Fee(decimal value, DateTime effectiveFrom, string? label, TermKind kind = TermKind.TransactionFee) => new()
+    private static NewAccountTerm Fee(decimal value, DateTime effectiveFrom, string? label, TermKind kind = TermKind.Fee) => new()
     {
         TermKind = kind,
         ValueUnit = TermValueUnit.Amount,
@@ -240,13 +241,13 @@ public class AccountTermsApiTests
     }
 
     [Fact]
-    public async Task Post_OtherFeeWithoutLabel_ReturnsBadRequest()
+    public async Task Post_FeeWithoutLabel_ReturnsBadRequest()
     {
         await using var factory = new ApiFactory(WriteAndRead);
         var accountId = await SeedAccountAsync(factory, DtoAccountType.CheckingAccount);
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync(TermsPath(accountId), Fee(10m, new DateTime(2026, 1, 1), null, TermKind.OtherFee));
+        var response = await client.PostAsJsonAsync(TermsPath(accountId), Fee(10m, new DateTime(2026, 1, 1), null));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

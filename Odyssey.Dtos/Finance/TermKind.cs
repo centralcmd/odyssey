@@ -9,8 +9,6 @@ public enum TermKind
     ExpectedReturn = 2,
 
     // ---- Fees ----
-    ManagementFee = 10,
-    ServiceFee = 11,
-    TransactionFee = 12,
-    OtherFee = 99,
+    // One kind: the label names the fee, so the old four-way split said nothing the label does not.
+    Fee = 10,
 }

@@ -654,7 +654,7 @@ public class AccountServiceTests
             new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
             // A second KIND: the widened query is what makes this reach the card at all — the old
             // one filtered to the two rate kinds and a fee could never appear.
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.ServiceFee, ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", BillingPeriod = Context.BillingPeriod.Monthly, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
+            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.Fee, ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", BillingPeriod = Context.BillingPeriod.Monthly, Label = "Account maintenance", LabelKey = "account maintenance", EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var dto = (await service.ListAsync(new AccountsQueryParams())).Items.Single(a => a.AccountId == account.AccountId);
@@ -667,7 +667,7 @@ public class AccountServiceTests
         Assert.Equal(new DateTime(2026, 1, 1), rate.EffectiveFrom);
 
         // The billing period rides along: it is what separates a 5/month fee from a 5/year one.
-        var fee = dto.CurrentTerms.Single(t => t.TermKind == FinanceDtos.TermKind.ServiceFee);
+        var fee = dto.CurrentTerms.Single(t => t.TermKind == FinanceDtos.TermKind.Fee);
         Assert.Equal(5m, fee.Value);
         Assert.Equal(FinanceDtos.BillingPeriod.Monthly, fee.BillingPeriod);
         Assert.Equal("USD", fee.CurrencyCode);
@@ -734,7 +734,7 @@ public class AccountServiceTests
             // Future-dated → not yet in force, must be ignored.
             new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
             // A fee in force must never be chosen for the rate.
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.ServiceFee, ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
+            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.Fee, ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", Label = "Account maintenance", LabelKey = "account maintenance", EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var dto = (await service.ListAsync(new AccountsQueryParams())).Items.Single(a => a.AccountId == account.AccountId);
