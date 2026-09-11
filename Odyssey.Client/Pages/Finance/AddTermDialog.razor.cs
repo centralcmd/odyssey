@@ -227,7 +227,7 @@ public partial class AddTermDialog
         if (label is { Length: > TermLabel.MaxLength })
             _errors["label"] = $"Keep the label under {TermLabel.MaxLength} characters.";
         else if (label is null && LabelRequired)
-            _errors["label"] = "Name this fee so it isn’t confused with another.";
+            _errors["label"] = "Name this fee so it keeps its own history.";
 
 
         // Duplicate (kind, label, effectiveFrom) → the server's 409, excluding the row being edited.

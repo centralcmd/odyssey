@@ -150,15 +150,15 @@
                 <div class="trm-err" style="margin-top:-6px;">@dateErr</div>
             }
 
-            @* Label — fees only. This is what lets one kind hold several fees at once. *@
+            @* Name — fees only. This is what lets one kind hold several fees at once. *@
             @if (!IsRate)
             {
-                <OdsField Label="Label"
+                <OdsField Label="Name"
                           Value="@_label" ValueChanged="OnLabelChanged"
                           MaxLength="TermLabel.MaxLength"
                           Required="LabelRequired"
-                          Placeholder="e.g. “ATM withdrawal · abroad”"
-                          Help="Names this fee and keeps its own price history — e.g. a domestic and a foreign ATM charge side by side.""
+                          Placeholder="e.g. ATM withdrawal · abroad"
+                          Help="Names this fee so it keeps its own history, separate from the account’s other fees."
                           Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
             }
 

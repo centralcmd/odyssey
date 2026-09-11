@@ -106,17 +106,13 @@
                                     @* The author's own wording leads; the kind drops to the caption beneath
                                        it. The caption stays LabelFor, not the bare registry label, so a cost
                                        rate keeps saying "Interest charged" (WCAG 1.4.1, issue #53). *@
-                                    @if (!string.IsNullOrWhiteSpace(t.Label))
-                                    {
-                                        <span class="trm-tile-txt">
-                                            <span class="trm-tile-name">@t.Label</span>
-                                            <span class="trm-tile-kind">@TermKindVisuals.LabelFor(t, Account)</span>
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="trm-tile-kind">@TermKindVisuals.LabelFor(t, Account)</span>
-                                    }
+                                    <span class="trm-name">
+                                        <span class="@(string.IsNullOrWhiteSpace(t.Label) ? "trm-tile-kind" : "trm-tile-name")">@TermKindVisuals.DisplayName(t, Account)</span>
+                                        @if (!string.IsNullOrWhiteSpace(t.Label))
+                                        {
+                                            <span class="trm-kind-caption">@TermKindVisuals.LabelFor(t, Account)</span>
+                                        }
+                                    </span>
                                 </div>
                                 <div class="trm-tile-value" style="color:@(TermKindVisuals.CostColor(t, Account) ?? info.Color);">
                                     @TermKindVisuals.FormatValue(t, FormatMoney)
@@ -201,13 +197,13 @@
                                         <span class="material-icons" style="font-size:15px;">@info.Icon</span>
                                     </span>
                                     <div>
-                                        <div class="trm-row-kind-name">
-                                            @TermKindVisuals.DisplayName(t, Account)
+                                        <span class="trm-name">
+                                            <span class="trm-row-kind-name">@TermKindVisuals.DisplayName(t, Account)</span>
                                             @if (!string.IsNullOrWhiteSpace(t.Label))
                                             {
-                                                <span class="trm-row-kind-cat"> · @TermKindVisuals.LabelFor(t, Account)</span>
+                                                <span class="trm-kind-caption">@TermKindVisuals.LabelFor(t, Account)</span>
                                             }
-                                        </div>
+                                        </span>
                                         @if (!string.IsNullOrWhiteSpace(t.Note))
                                         {
                                             <div class="trm-row-note">@t.Note</div>
