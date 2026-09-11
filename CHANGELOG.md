@@ -5,6 +5,23 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0](https://github.com/centralcmd/odyssey/compare/v0.25.0...v0.26.0) (2026-09-11)
+
+
+### Features
+
+* **api:** export insurance, contracts, tax statements and subscriptions ([efc1cf7](https://github.com/centralcmd/odyssey/commit/efc1cf7662824dccda371c8eb09a4e1ca930a7ca))
+
+
+### Bug Fixes
+
+* **client:** make OdsTypeSelect's popup a real listbox ([6807e84](https://github.com/centralcmd/odyssey/commit/6807e840ef7ce78ac68f0304e2859c4cc4f8a069))
+
+
+### Documentation
+
+* update design system ([7b019e7](https://github.com/centralcmd/odyssey/commit/7b019e722778260b7e1208faf45074b6200d4ec1))
+
 ## [0.25.0](https://github.com/centralcmd/odyssey/compare/v0.24.0...v0.25.0) (2026-09-11)
 
 
