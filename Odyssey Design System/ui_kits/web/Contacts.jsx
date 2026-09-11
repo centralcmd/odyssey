@@ -142,7 +142,6 @@ const buildVCard = (c) => {
     if (p.dateOfBirth) L.push('BDAY:' + p.dateOfBirth.replace(/-/g, ''));
     if (p.dateOfDeath) L.push('DEATHDATE:' + p.dateOfDeath.replace(/-/g, ''));
     if (p.sex === 'Male' || p.sex === 'Female') L.push('GENDER:' + (p.sex === 'Male' ? 'M' : 'F'));
-    if (p.relationshipType) L.push('X-ODYSSEY-RELATIONSHIP:' + vcEsc(p.relationshipType));
   } else {
     const o = c.org || {};
     L.push('KIND:org');
