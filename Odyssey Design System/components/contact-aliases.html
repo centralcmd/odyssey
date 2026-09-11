@@ -1,0 +1,130 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · ContactAliases" subtitle="The Aliases section of a contact record: alternative names (nickname, maiden name, former company name), each with an optional FREE-TEXT label. Its own tile grid with the standard ⋯ menu — never a Chip (it cannot host a menu at a 24px target) and never the contact-method grid. Add / edit dialog, duplicate + cap rejections inline on the value field, one polite live region." viewport="1180x760" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · ContactAliases</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    a { color: var(--brand-text); }
+    a:hover { color: var(--mud-palette-primary); }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 0 0 16px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 20px 22px; min-width: 0; }
+    .panel.wide { grid-column: 1 / -1; }
+    .panel h3 { margin: 0 0 4px; font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+    .panel p.sub { margin: 0 0 16px; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .lbl { display: block; margin: 0 0 8px; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .stack { display: grid; gap: 20px; }
+    .note { margin: 20px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 104ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .note + .note { margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="cap">ContactAliases <code>&lt;ContactAliases aliases canCreate canUpdate canDelete onAdd onEdit onDelete /&gt;</code></div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51 || {};
+    const { ContactAliases, SectionDivider, Chip, Button } = NS;
+
+    const SEED = [
+      { id: 'a1', value: 'Kari', label: 'nickname' },
+      { id: 'a2', value: 'Kari Menon', label: 'maiden name' },
+      { id: 'a3', value: 'K. Nordmann', label: null },
+    ];
+
+    function Section({ label, count, children }) {
+      return (
+        <div>
+          <SectionDivider label={label} meta={count == null ? undefined : `${count} ${count === 1 ? 'alias' : 'aliases'}`} />
+          {children}
+        </div>
+      );
+    }
+
+    function Demo() {
+      const [aliases, setAliases] = React.useState(SEED);
+      const add = (value, label) => setAliases((prev) => [...prev, { id: 'a' + (prev.length + 4), value, label }]);
+      const edit = (id, value, label) => setAliases((prev) => prev.map((a) => (a.id === id ? { ...a, value, label } : a)));
+      const del = (id) => setAliases((prev) => prev.filter((a) => a.id !== id));
+
+      if (!ContactAliases) return <div className="panel">The compiled bundle does not carry <code>ContactAliases</code> yet.</div>;
+
+      return (
+        <div className="grid">
+          <div className="panel">
+            <h3>Live — full rights</h3>
+            <p className="sub">The ⋯ menu offers Copy alias · Edit · Copy ID · Delete. Add one from the button; a duplicate value (case- and accent-insensitive, label ignored) is refused inline on the field.</p>
+            <Section label="Aliases" count={aliases.length}>
+              <ContactAliases aliases={aliases} canCreate canUpdate canDelete
+                onAdd={add} onEdit={edit} onDelete={del} />
+            </Section>
+          </div>
+
+          <div className="panel">
+            <h3>Cap reached — 2 of 2</h3>
+            <p className="sub">The action is still offered; the save is refused with <i>“A contact can have at most 2 aliases.”</i> on the value field. Client-side copies of a server cap are banned, so the UI never hides the action.</p>
+            <Section label="Aliases" count={2}>
+              <ContactAliases aliases={SEED.slice(0, 2)} cap={2} canCreate canUpdate canDelete
+                onAdd={() => {}} onEdit={() => {}} onDelete={() => {}} />
+            </Section>
+          </div>
+
+          <div className="panel">
+            <h3>Read-only — <code>contacts.read</code></h3>
+            <p className="sub">The ⋯ trigger is still rendered and still useful: the copy items are unconditional, so the menu is never empty. No Edit, no Delete.</p>
+            <Section label="Aliases" count={2}>
+              <ContactAliases aliases={SEED.slice(0, 2)} />
+            </Section>
+          </div>
+
+          <div className="panel">
+            <h3>Update without delete</h3>
+            <p className="sub">A principal holding <code>contacts.update</code> but not <code>contacts.delete</code> gets Edit and no Delete — the two gates are distinct, so nobody is offered an action that 403s.</p>
+            <Section label="Aliases" count={1}>
+              <ContactAliases aliases={SEED.slice(0, 1)} canUpdate canCreate onEdit={() => {}} />
+            </Section>
+          </div>
+
+          <div className="panel">
+            <h3>Empty — can create</h3>
+            <Section label="Aliases" count={0}>
+              <ContactAliases aliases={[]} canCreate canUpdate canDelete onAdd={() => {}} />
+            </Section>
+            <span className="lbl" style={{ marginTop: 14 }}>Archived, or read-only</span>
+            <Section label="Aliases" count={0}>
+              <ContactAliases aliases={[]} archived />
+            </Section>
+          </div>
+
+          <div className="panel">
+            <h3>Lifecycle markers, for context</h3>
+            <p className="sub">The deceased / dissolved state is a record-card chip, not part of this section — meaning in text, after the status chip, and the contact stays selectable everywhere.</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Chip tone="income" dot>Active</Chip>
+              <Chip tone="outline" icon="event_busy">Deceased 11 Mar 2024</Chip>
+              <Chip tone="outline" icon="event_busy">Dissolved 30 Jun 2023</Chip>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+
+  <p class="note"><b>Why a tile and not a chip.</b> An alias needs a ⋯ menu at a ≥24×24 px target and a two-line body (value + label). <code>Chip</code> is a ~23 px nowrap pill with no positioning context and no class/style splat, so it cannot host one. The existing contact-method tile grid does not fit either: its model is positional, carries <i>Primary</i>, an enum label and an assigned column, and its entry count covers only addresses, emails and phones. Hence a sibling grid with the same tile shell.</p>
+  <p class="note"><b>The label is free text, on purpose.</b> A user writes “maiden name”, “stage name”, “pre-merger name” or anything else without a schema change. The consequence is stated rather than hidden: the label is not filterable, not validated against a vocabulary and not localised, and two people may spell one concept differently. Alias <i>values</i> are searched (so “Kari” finds “Karoline”); the label is not, which is why the page's search placeholder reads <i>Search name, alias or notes…</i>.</p>
+  <p class="note"><b>Rejections.</b> Duplicate (409), cap (422) and validation (400) render <b>inline on the value field</b> with <code>aria-invalid</code>, move focus there, and raise <b>no toast</b> — a user must never get a snackbar and a field error for the same failure. Only a 404 (or a transport failure) closes the dialog, toasts, and announces. Deleting is immediate: no confirm dialog, matching the sibling tiles, since an alias is cheap to re-add.</p>
+</body>
+</html>

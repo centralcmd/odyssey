@@ -116,10 +116,10 @@
 
     function App() {
       const [authed, setAuthed] = useState(true); // start on dashboard for review
-      const [view, setView] = useState('files'); // open on Files to review the ZIP export menu
+      const [view, setView] = useState('contacts'); // open on Contacts to review aliases + lifecycle dates
       const [authMode, setAuthMode] = useState('login');
       const [dark, setDark] = useState(true);
-      const [tweaks, setTweak] = useTweaks({ reportLayout: 'table', summaryBaseCurrency: 'USD', endingWindowDays: 45, showOnboarding: false, cpCanImport: true, cpExportCap: false, cpImportOutcome: 'skips', tCanImport: true, tExportCap: false, tImportOutcome: 'skips', jCanImport: true, jCanReadCp: true, jExportCap: false, jImportOutcome: 'skips', showPasswordGate: false, cprOutcome: 'success', usersResetOutcome: 'delivered' });
+      const [tweaks, setTweak] = useTweaks({ reportLayout: 'table', summaryBaseCurrency: 'USD', endingWindowDays: 45, showOnboarding: false, cpCanImport: true, cpExportCap: false, cpImportOutcome: 'skips', cpResidualLabel: false, cpCanCreate: true, cpCanUpdate: true, cpCanDelete: true, cpAliasCap: 32, tCanImport: true, tExportCap: false, tImportOutcome: 'skips', jCanImport: true, jCanReadCp: true, jExportCap: false, jImportOutcome: 'skips', showPasswordGate: false, cprOutcome: 'success', usersResetOutcome: 'delivered' });
 
       // The "Sort by" control's anatomy, read by the SortSelect bridge in
       // Components.jsx at render time — a tweak change re-renders the tree.
@@ -266,6 +266,19 @@
               <TweakRadio label="Import result" value={tweaks.cpImportOutcome}
                           options={[{ value: 'clean', label: 'All clean' }, { value: 'skips', label: 'With skips' }, { value: 'rejected', label: 'File rejected' }]}
                           onChange={(v) => setTweak('cpImportOutcome', v)} />
+              <TweakSection label="Contact-method labels" />
+              <TweakToggle label="Stored label out of scope (residual)" value={tweaks.cpResidualLabel}
+                           onChange={(v) => setTweak('cpResidualLabel', v)} />
+              <TweakSection label="Aliases — claims & cap" />
+              <TweakToggle label="Holds contacts.create (add alias offered)" value={tweaks.cpCanCreate}
+                           onChange={(v) => setTweak('cpCanCreate', v)} />
+              <TweakToggle label="Holds contacts.update (Edit offered)" value={tweaks.cpCanUpdate}
+                           onChange={(v) => setTweak('cpCanUpdate', v)} />
+              <TweakToggle label="Holds contacts.delete (Delete offered)" value={tweaks.cpCanDelete}
+                           onChange={(v) => setTweak('cpCanDelete', v)} />
+              <TweakRadio label="Alias cap (server-enforced)" value={tweaks.cpAliasCap}
+                          options={[{ value: 32, label: '32' }, { value: 2, label: '2 — see the 422' }]}
+                          onChange={(v) => setTweak('cpAliasCap', v)} />
               <TweakSection label="Blocked delete (insurance links)" />
               <TweakToggle label="Holds insurance.read (names blocking policies)" value={tweaks.cpCanReadInsurance}
                            onChange={(v) => setTweak('cpCanReadInsurance', v)} />

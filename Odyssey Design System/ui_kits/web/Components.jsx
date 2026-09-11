@@ -427,6 +427,19 @@ const FormRow = (props) => {
 // per option). `helper`→`help`, same as Select; value is the ContactType key.
 // Falls back to a registry-fed DS.Select until the bundle carries the typed
 // component (keeps the live screen working across a bundle rebuild).
+// ContactMethodLabelSelect — the Label picker on a contact method. Its option
+// list depends on TWO inputs: the method `kind` and the PARENT contact's type,
+// both required. Falls back to a ContactLabelScope-fed DS.Select until the
+// bundle carries the typed component.
+const ContactMethodLabelSelect = ({ helper, ...props }) => {
+  if (DS.ContactMethodLabelSelect) return <DS.ContactMethodLabelSelect help={helper} {...props} />;
+  const S = DS.ContactLabelScope;
+  const list = S ? S.labelsFor(props.kind || 'phone', props.contactType || 'Person') : [];
+  const { kind, contactType, ...rest } = props;
+  return <DS.Select help={helper} placeholder="Select label…"
+    options={list.map((l) => ({ value: l.key, label: l.label, icon: l.icon, iconColor: l.color }))} {...rest} />;
+};
+
 const ContactTypeSelect = ({ helper, ...props }) => {
   if (DS.ContactTypeSelect) return <DS.ContactTypeSelect help={helper} {...props} />;
   const reg = (window.OdysseyData && window.OdysseyData.contactTypes) || [];
@@ -1363,7 +1376,7 @@ Object.assign(window, {
   IMPORT_LIMIT_MB_DEFAULTS, getImportLimitMb,
   MIcon, Button, IconButton, Card, CardBody, CardHeader, Modal,
   Field, SearchField, Select, AmountField, MoneyField, CurrencySelect, NoteField, NumberField, FieldShell, FormRow, DateField, DateRangePicker, Chip, Alert, SeverityIcon, Avatar, TONE_MAP, Switch, Checkbox, StatTile, EmptyState, BrandMark,
-  ContactTypeSelect,
+  ContactTypeSelect, ContactMethodLabelSelect,
   SettingRow,
   SettingField,
   CapacityField,

@@ -94,27 +94,49 @@ public static class OdsTypeRegistries
     /// <summary>AddressLabel — Home · Work · Billing · Other (issue #325). Mirrors the DS ADDRESS_LABELS.</summary>
     public static readonly IReadOnlyList<OdsTypeOption> AddressLabels =
     [
-        new() { Key = "Home",    Label = "Home",    Icon = "home",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Work",    Label = "Work",    Icon = "work",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Billing", Label = "Billing", Icon = "receipt_long", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Other",   Label = "Other",   Icon = "category",     Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Home",       Label = "Home",       Icon = "home",                Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Work",       Label = "Work",       Icon = "work",                Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Billing",    Label = "Billing",    Icon = "receipt_long",        Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Other",      Label = "Other",      Icon = "category",            Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Postal",     Label = "Postal",     Icon = "markunread_mailbox",  Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Visiting",   Label = "Visiting",   Icon = "storefront",          Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Registered", Label = "Registered", Icon = "account_balance",     Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Branch",     Label = "Branch",     Icon = "apartment",           Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
-    /// <summary>EmailLabel — Home · Work · Other (issue #325 v4). Mirrors the DS EMAIL_LABELS.</summary>
+    /// <summary>EmailLabel — the person vocabulary (issue #325 v4) plus the organization one
+    /// (issue #47 §6), in ordinal order. Mirrors the DS EMAIL_LABELS. The offered subset for a given
+    /// contact is <see cref="EmailLabelsFor"/>, never this whole list.</summary>
     public static readonly IReadOnlyList<OdsTypeOption> EmailLabels =
     [
-        new() { Key = "Home",  Label = "Home",  Icon = "home",     Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Work",  Label = "Work",  Icon = "work",     Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Other", Label = "Other", Icon = "category", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        // "Personal", not "Home": the member name, the ordinal, the persisted value and the vCard
+        // token all stay `Home` — only the rendered string changes (issue #47 §9).
+        new() { Key = "Home",    Label = "Personal", Icon = "home",             Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Work",    Label = "Work",     Icon = "work",             Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Other",   Label = "Other",    Icon = "category",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "General", Label = "General",  Icon = "alternate_email",  Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Support", Label = "Support",  Icon = "support_agent",    Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Sales",   Label = "Sales",    Icon = "sell",             Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Billing", Label = "Billing",  Icon = "receipt_long",     Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Claims",  Label = "Claims",   Icon = "assignment_late",  Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
-    /// <summary>PhoneLabel — Home · Work · Mobile · Other (issue #325 v4). Mirrors the DS PHONE_LABELS.</summary>
+    /// <summary>PhoneLabel — the person vocabulary (issue #325 v4) plus the organization one
+    /// (issue #47 §6), in ordinal order. Mirrors the DS PHONE_LABELS. The offered subset for a given
+    /// contact is <see cref="PhoneLabelsFor"/>, never this whole list.</summary>
     public static readonly IReadOnlyList<OdsTypeOption> PhoneLabels =
     [
-        new() { Key = "Home",   Label = "Home",   Icon = "home",       Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Work",   Label = "Work",   Icon = "work",       Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Mobile", Label = "Mobile", Icon = "smartphone", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Other",  Label = "Other",  Icon = "category",   Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Home",        Label = "Home",        Icon = "home",             Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Work",        Label = "Work",        Icon = "work",             Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Mobile",      Label = "Mobile",      Icon = "smartphone",       Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Other",       Label = "Other",       Icon = "category",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Switchboard", Label = "Switchboard", Icon = "phone_in_talk",    Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Support",     Label = "Support",     Icon = "support_agent",    Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Sales",       Label = "Sales",       Icon = "sell",             Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Billing",     Label = "Billing",     Icon = "receipt_long",     Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Claims",      Label = "Claims",      Icon = "assignment_late",  Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Emergency",   Label = "Emergency",   Icon = "emergency",        Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Direct",      Label = "Direct",      Icon = "phone_forwarded",  Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
     /// <summary>AccountFileType — the kind of document attached to an account.</summary>
@@ -259,17 +281,67 @@ public static class OdsTypeRegistries
     public static OdsTypeOption RelationshipTypeOf(string? key) =>
         RelationshipTypes.FirstOrDefault(t => t.Key == key) ?? RelationshipTypes[^1];
 
-    /// <summary>The AddressLabel descriptor for an enum key (falls back to "Other").</summary>
+    /// <summary>
+    /// The AddressLabel descriptor for an enum key, resolving <c>Other</c> <b>by key</b>.
+    ///
+    /// <para>Not the positional <c>[^1]</c> the other registries use: issue #47 appends the
+    /// organization members <i>after</i> <c>Other</c>, which is precisely what breaks a positional
+    /// fallback. This path renders an undefined ordinal (a hand-edited row, a contact whose type was
+    /// switched concurrently), and with <c>[^1]</c> such a row would render as <c>Branch</c> /
+    /// <c>Claims</c> / <c>Direct</c> — plausible, specific and wrong, strictly worse than the honest
+    /// <c>Other</c>.</para>
+    /// </summary>
     public static OdsTypeOption AddressLabelOf(string? key) =>
-        AddressLabels.FirstOrDefault(t => t.Key == key) ?? AddressLabels[^1];
+        AddressLabels.FirstOrDefault(t => t.Key == key) ?? OtherOf(AddressLabels);
 
-    /// <summary>The EmailLabel descriptor for an enum key (falls back to "Other").</summary>
+    /// <inheritdoc cref="AddressLabelOf"/>
     public static OdsTypeOption EmailLabelOf(string? key) =>
-        EmailLabels.FirstOrDefault(t => t.Key == key) ?? EmailLabels[^1];
+        EmailLabels.FirstOrDefault(t => t.Key == key) ?? OtherOf(EmailLabels);
 
-    /// <summary>The PhoneLabel descriptor for an enum key (falls back to "Other").</summary>
+    /// <inheritdoc cref="AddressLabelOf"/>
     public static OdsTypeOption PhoneLabelOf(string? key) =>
-        PhoneLabels.FirstOrDefault(t => t.Key == key) ?? PhoneLabels[^1];
+        PhoneLabels.FirstOrDefault(t => t.Key == key) ?? OtherOf(PhoneLabels);
+
+    private static OdsTypeOption OtherOf(IReadOnlyList<OdsTypeOption> registry) =>
+        registry.First(t => t.Key == "Other");
+
+    // ── Per-contact-type label projections (issue #47 §3) ──────────────────────
+
+    /// <summary>
+    /// The AddressLabel options offered for a contact of this type, in the display order
+    /// <see cref="ContactLabelScope"/> declares — so the picker never offers a label the server would
+    /// reject, and the first entry is the label a new method opens on.
+    ///
+    /// <para>Built once per (kind, type), not projected per render.</para>
+    /// </summary>
+    public static IReadOnlyList<OdsTypeOption> AddressLabelsFor(ContactType type) =>
+        type == ContactType.Person ? PersonAddressLabels : OrganizationAddressLabels;
+
+    /// <inheritdoc cref="AddressLabelsFor"/>
+    public static IReadOnlyList<OdsTypeOption> EmailLabelsFor(ContactType type) =>
+        type == ContactType.Person ? PersonEmailLabels : OrganizationEmailLabels;
+
+    /// <inheritdoc cref="AddressLabelsFor"/>
+    public static IReadOnlyList<OdsTypeOption> PhoneLabelsFor(ContactType type) =>
+        type == ContactType.Person ? PersonPhoneLabels : OrganizationPhoneLabels;
+
+    private static IReadOnlyList<OdsTypeOption> Project<TLabel>(
+        IReadOnlyList<OdsTypeOption> registry, IReadOnlyList<TLabel> labels)
+        where TLabel : struct, Enum =>
+        [.. labels.Select(l => registry.First(t => t.Key == l.ToString()))];
+
+    private static readonly IReadOnlyList<OdsTypeOption> PersonAddressLabels =
+        Project(AddressLabels, ContactLabelScope.AddressLabelsFor(ContactType.Person));
+    private static readonly IReadOnlyList<OdsTypeOption> OrganizationAddressLabels =
+        Project(AddressLabels, ContactLabelScope.AddressLabelsFor(ContactType.Organization));
+    private static readonly IReadOnlyList<OdsTypeOption> PersonEmailLabels =
+        Project(EmailLabels, ContactLabelScope.EmailLabelsFor(ContactType.Person));
+    private static readonly IReadOnlyList<OdsTypeOption> OrganizationEmailLabels =
+        Project(EmailLabels, ContactLabelScope.EmailLabelsFor(ContactType.Organization));
+    private static readonly IReadOnlyList<OdsTypeOption> PersonPhoneLabels =
+        Project(PhoneLabels, ContactLabelScope.PhoneLabelsFor(ContactType.Person));
+    private static readonly IReadOnlyList<OdsTypeOption> OrganizationPhoneLabels =
+        Project(PhoneLabels, ContactLabelScope.PhoneLabelsFor(ContactType.Organization));
 
     /// <summary>The AccountFileType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption AccountFileTypeOf(AccountFileType kind) =>
@@ -330,9 +402,9 @@ public static class OdsTypeRegistries
     /// <summary>Pre-built option lists for the domain pickers.</summary>
     public static readonly IReadOnlyList<OdsOption> ContactOptions = ToOptions(ContactTypes);
     public static readonly IReadOnlyList<OdsOption> RelationshipOptions = ToOptions(RelationshipTypes);
-    public static readonly IReadOnlyList<OdsOption> AddressLabelOptions = ToOptions(AddressLabels);
-    public static readonly IReadOnlyList<OdsOption> EmailLabelOptions = ToOptions(EmailLabels);
-    public static readonly IReadOnlyList<OdsOption> PhoneLabelOptions = ToOptions(PhoneLabels);
+    // No AddressLabelOptions/EmailLabelOptions/PhoneLabelOptions: an unfiltered union of a label
+    // registry is a picker that offers labels the server rejects. The per-contact-type projections
+    // above supersede them (issue #47 §3).
     public static readonly IReadOnlyList<OdsOption> SexOptions = [new("Male", "Male"), new("Female", "Female")];
     public static readonly IReadOnlyList<OdsOption> AccountFileOptions = ToOptions(AccountFileTypes);
     public static readonly IReadOnlyList<OdsOption> TransactionFileOptions = ToOptions(TransactionFileTypes);

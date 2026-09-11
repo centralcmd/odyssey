@@ -12,7 +12,15 @@ namespace Odyssey.Client.Pages.Finance;
 public sealed class ContactMethodDraft
 {
     public Guid? Id { get; set; }
-    public string Label { get; set; } = "Home";
+
+    /// <summary>
+    /// The selected label's enum member name. <b>No default</b> (issue #47 §3): the valid set depends
+    /// on the parent contact's type, which this shape cannot see, and a hard-coded <c>"Home"</c> would
+    /// open "Add phone number" on an organization with a label the server rejects. The host applies
+    /// <c>ContactLabelScope.Default…Label(contact.Type)</c> when it opens a new method; a call site
+    /// that forgets fails loudly and client-side under <see cref="Validate"/>'s set-membership rule.
+    /// </summary>
+    public string Label { get; set; } = string.Empty;
     public bool IsPrimary { get; set; }
 
     // email / phone
@@ -30,9 +38,20 @@ public sealed class ContactMethodDraft
     private static readonly Regex PhoneRegex = new(@"^[+\d][\d\s()\-]{5,}$", RegexOptions.Compiled);
     private static readonly Regex CountryRegex = new("^[A-Za-z]{2}$", RegexOptions.Compiled);
 
-    public Dictionary<string, string> Validate(string kind)
+    /// <summary>
+    /// Client-side pre-check. The label rule is <b>set membership</b>, not non-emptiness (issue #47
+    /// §3): <c>OdsTypeSelect</c> renders its placeholder for a value absent from the offered list
+    /// while the bound <c>Label</c> still holds the old string, so a merely-non-empty rule would let a
+    /// stale <c>"Home"</c> through to a server 422 on a control that looked empty. Required-style
+    /// wording is deliberate for the same reason — the stale value is invisible, so naming it would
+    /// point at nothing on screen.
+    /// </summary>
+    public Dictionary<string, string> Validate(string kind, ContactType contactType)
     {
-        var errors = new Dictionary<string, string>();
+        var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (!IsLabelOffered(kind, contactType))
+            errors["label"] = "Label is required.";
+
         switch (kind)
         {
             case "address":
@@ -49,6 +68,13 @@ public sealed class ContactMethodDraft
         }
         return errors;
     }
+
+    private bool IsLabelOffered(string kind, ContactType contactType) => kind switch
+    {
+        "email" => Enum.TryParse<EmailLabel>(Label, out var e) && ContactLabelScope.IsValidFor(e, contactType),
+        "phone" => Enum.TryParse<PhoneLabel>(Label, out var p) && ContactLabelScope.IsValidFor(p, contactType),
+        _ => Enum.TryParse<AddressLabel>(Label, out var a) && ContactLabelScope.IsValidFor(a, contactType),
+    };
 
     public NewAddress ToNewAddress() => new()
     {

@@ -1,9 +1,20 @@
-/* Contacts — v5 "Extended Contacts".
+/* Contacts — v6 "Aliases & lifecycle dates" (on top of v5 "Extended Contacts").
    A base Contact record (DisplayName override + computed fallback,
    audit timestamps) discriminated by Type into a Person or Organization
    sub-record, plus three independently-managed contact collections
    (Addresses / Emails / Phone numbers), each row carrying a Label + a single
-   Primary. Mirrors the Extended Contacts spec (v5).
+   Primary.
+
+   v6 adds a fourth child collection — ALIASES, the alternative names a contact
+   is actually known by, each with an optional FREE-TEXT label ("maiden name",
+   "nickname", "trading as") — and four optional lifecycle scalars: a Person's
+   MiddleName + DateOfDeath, an Organization's EstablishedDate + DissolvedDate.
+   Aliases are names, not contact methods, so they get their own section ABOVE
+   Contact information, rendered by the DS `ContactAliases` component. Alias
+   values and MiddleName are SEARCHED; an alias LABEL is metadata and is not.
+   Recording a death or a dissolution changes no state: the contact keeps its
+   links and stays selectable everywhere, and only reads as historical (a card
+   chip in text, a picker suffix).
 
    NOTE: this kit screen keeps its own local type registry + seed so the two
    downstream previews (page + New-contact dialog) render the new shape
@@ -28,24 +39,29 @@ const SEX_OPTIONS = [
   { value: 'Male',   label: 'Male' },
   { value: 'Female', label: 'Female' },
 ];
-const ADDRESS_LABELS = [
-  { value: 'Home',    label: 'Home',    icon: 'home' },
-  { value: 'Work',    label: 'Work',    icon: 'work' },
-  { value: 'Billing', label: 'Billing', icon: 'receipt_long' },
-  { value: 'Other',   label: 'Other',   icon: 'category' },
-];
-const EMAIL_LABELS = [
-  { value: 'Home',  label: 'Home',  icon: 'home' },
-  { value: 'Work',  label: 'Work',  icon: 'work' },
-  { value: 'Other', label: 'Other', icon: 'category' },
-];
-const PHONE_LABELS = [
-  { value: 'Home',   label: 'Home',   icon: 'home' },
-  { value: 'Work',   label: 'Work',   icon: 'work' },
-  { value: 'Mobile', label: 'Mobile', icon: 'smartphone' },
-  { value: 'Other',  label: 'Other',  icon: 'category' },
-];
-const labelMeta = (labels, v) => labels.find(l => l.value === v) || labels[labels.length - 1];
+/* ---- Contact-method labels: one scope map, read off the DS namespace ----
+   The three label enums now carry an organization vocabulary, and every member
+   is scoped to the contact types it is valid for. ONE invariant: a contact
+   method's label is valid for its contact's type — the picker offers only valid
+   labels, the write path refuses the rest with a 422, and import + the
+   type-switch remap CLAMP to Other rather than dropping a record.
+   The map is the DS `ContactLabelScope`; a second copy in the kit is precisely
+   the divergence the spec forbids. */
+const CP_DS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
+const CP_SCOPE = CP_DS.ContactLabelScope;
+const labelsFor = (kind, type) => (CP_SCOPE ? CP_SCOPE.labelsFor(kind, type) : []);
+const defaultLabel = (kind, type) => (CP_SCOPE ? CP_SCOPE.defaultFor(kind, type) : '');
+const isLabelValid = (kind, key, type) => (CP_SCOPE ? CP_SCOPE.isValidFor(kind, key, type) : true);
+const clampLabel = (kind, key, type) => (CP_SCOPE ? CP_SCOPE.clamp(kind, key, type) : key);
+// Keyed `Other` fallback — organization members are appended AFTER Other, so a
+// positional last-entry fallback would render an undefined ordinal as Branch /
+// Claims / Direct: plausible, specific and wrong.
+const labelMeta = (kind, key) => (CP_SCOPE ? CP_SCOPE.metaFor(kind, key) : { key, label: key, icon: 'category' });
+// The 422 a contact-method write returns when the label is out of scope. Named
+// here because the client surfaces the server's own message verbatim.
+const labelScopeMessage = (kind, key, type) =>
+  `Label '${key}' is not valid for ${type === 'Organization' ? 'an Organization' : 'a Person'} contact. `
+  + `Valid labels: ${labelsFor(kind, type).map((l) => l.key).join(', ')}.`;
 
 /* ---- Resolution + formatting ---- */
 const resolvedName = (c) => {
@@ -59,9 +75,21 @@ const addressLines = (a) => {
   return [a.line1, a.line2, cityLine, a.countryCode].filter(v => v && v.trim());
 };
 const uid = (p) => `${p}-${Math.random().toString(36).slice(2, 8)}`;
+const cpToday = () => new Date().toISOString().slice(0, 10);
 
 /* Atoms not bridged to the kit globals — read straight off the DS namespace. */
-const { Menu: DSMenu, Toast: DSToast, ToastStack: DSToastStack } = window.OdysseyDesignSystem_d5aa51 || {};
+const { Menu: DSMenu, Toast: DSToast, ToastStack: DSToastStack, ContactAliases: DSContactAliases } = window.OdysseyDesignSystem_d5aa51 || {};
+
+/* ---- Lifecycle state (deceased / dissolved) ----
+   The meaning is always the chip's visible TEXT; the date makes it specific.
+   Recording either date removes no capability. */
+const cpLifecycle = (c) => {
+  const H = window.OdysseyHelpers;
+  const d = c.type === 'Person' ? (c.person || {}).dateOfDeath : (c.org || {}).dissolvedDate;
+  if (!d) return null;
+  const word = c.type === 'Person' ? 'Deceased' : 'Dissolved';
+  return { word, date: d, text: `${word} ${H ? H.dateLong(d) : d}` };
+};
 
 /* ================= vCard (RFC 6350 v4.0) export + import sim (spec §6/§9) =================
    Export is real — each row serializes to an RFC-shaped VCARD block with §3.3
@@ -78,10 +106,28 @@ const vcFold = (line) => {
   return out;
 };
 const vcRev = (iso) => { try { return new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''); } catch (e) { return ''; } };
-const ADR_TYPE = { Home: 'home', Work: 'work', Billing: 'billing', Other: 'other' };
-const TEL_TYPE = { Home: 'home', Work: 'work', Mobile: 'cell', Other: 'other' };
-const EMAIL_TYPE = { Home: 'home', Work: 'work', Other: 'other' };
-const vcParam = (type, pref) => `${type ? ';TYPE=' + type : ''}${pref ? ';PREF=1' : ''}`;
+/* The nearest standard TYPE token for every label, and the labels that have
+   none of their own — those and only those also emit X-ODYSSEY-LABEL, so an
+   export carrying no organization label is byte-identical to the pre-change
+   output. RFC 6350 dropped 3.0's `postal` ADR type, which is why Postal maps to
+   `home` plus the extension. */
+const VC_STD_TYPE = {
+  address: { Home: 'home', Work: 'work', Billing: 'billing', Other: 'other', Postal: 'home', Visiting: 'work', Registered: 'work', Branch: 'work' },
+  email:   { Home: 'home', Work: 'work', Other: 'other', General: 'work', Support: 'work', Sales: 'work', Billing: 'work', Claims: 'work' },
+  phone:   { Home: 'home', Work: 'work', Mobile: 'cell', Other: 'other', Switchboard: 'voice,work', Support: 'voice,work', Sales: 'voice,work', Billing: 'voice,work', Claims: 'voice,work', Emergency: 'voice,work', Direct: 'voice,work' },
+};
+const VC_EXT_LABELS = {
+  address: ['Postal', 'Visiting', 'Registered', 'Branch'],
+  email: ['General', 'Support', 'Sales', 'Billing', 'Claims'],
+  phone: ['Switchboard', 'Support', 'Sales', 'Billing', 'Claims', 'Emergency', 'Direct'],
+};
+// The X-ODYSSEY-LABEL value is always an enum member name from a closed set, so
+// nothing user-supplied reaches the vCard parameter grammar.
+const vcParam = (kind, label, pref) => {
+  const token = (VC_STD_TYPE[kind] || {})[label];
+  const ext = (VC_EXT_LABELS[kind] || []).indexOf(label) >= 0;
+  return `${token ? ';TYPE=' + token : ''}${pref ? ';PREF=1' : ''}${ext ? ';X-ODYSSEY-LABEL=' + label : ''}`;
+};
 
 const buildVCard = (c) => {
   const L = ['BEGIN:VCARD', 'VERSION:4.0'];
@@ -90,10 +136,11 @@ const buildVCard = (c) => {
   if (c.type === 'Person') {
     const p = c.person || {};
     L.push('KIND:individual');
-    L.push(`N:${vcEsc(p.lastName)};${vcEsc(p.firstName)};;;`);
+    L.push(`N:${vcEsc(p.lastName)};${vcEsc(p.firstName)};${vcEsc(p.middleName)};;`);
     if (p.title) L.push('TITLE:' + vcEsc(p.title));
     if (p.company) L.push('ORG:' + vcEsc(p.company));
     if (p.dateOfBirth) L.push('BDAY:' + p.dateOfBirth.replace(/-/g, ''));
+    if (p.dateOfDeath) L.push('DEATHDATE:' + p.dateOfDeath.replace(/-/g, ''));
     if (p.sex === 'Male' || p.sex === 'Female') L.push('GENDER:' + (p.sex === 'Male' ? 'M' : 'F'));
     if (p.relationshipType) L.push('X-ODYSSEY-RELATIONSHIP:' + vcEsc(p.relationshipType));
   } else {
@@ -102,14 +149,26 @@ const buildVCard = (c) => {
     L.push('ORG:' + vcEsc(o.legalName));
     if (o.website && /^https?:\/\//i.test(o.website)) L.push('URL:' + o.website);
     if (o.organizationNumber) L.push('X-ODYSSEY-ORG-NUMBER:' + vcEsc(o.organizationNumber));
+    if (o.establishedDate) L.push('X-ODYSSEY-ESTABLISHED:' + o.establishedDate.replace(/-/g, ''));
+    if (o.dissolvedDate) L.push('X-ODYSSEY-DISSOLVED:' + o.dissolvedDate.replace(/-/g, ''));
   }
+  /* Aliases: one GROUPED pair per alias, in API order — the label is a grouped
+     PROPERTY, never a parameter. RFC 6350's quoted param-value excludes DQUOTE,
+     so free text in a parameter has no in-band escape and would let `"` / `;`
+     / `:` inject parameters downstream address books honour. A property value
+     is TEXT, which the existing escaper round-trips losslessly. A contact with
+     no aliases emits nothing, so its card is byte-identical to v5's. */
+  (c.aliases || []).forEach((a, i) => {
+    L.push(`item${i + 1}.NICKNAME:${vcEsc(a.value)}`);
+    if (a.label) L.push(`item${i + 1}.X-ODYSSEY-ALIAS-LABEL:${vcEsc(a.label)}`);
+  });
   (c.addresses || []).forEach((a) => {
     const street = [a.line1, a.line2].filter(Boolean).join(' ');
     const val = `;;${vcEsc(street)};${vcEsc(a.city)};${vcEsc(a.region)};${vcEsc(a.postalCode)};${vcEsc(a.countryCode)}`;
-    L.push(`ADR${vcParam(ADR_TYPE[a.label], a.isPrimary)}:${val}`);
+    L.push(`ADR${vcParam('address', a.label, a.isPrimary)}:${val}`);
   });
-  (c.emails || []).forEach((e) => L.push(`EMAIL${vcParam(EMAIL_TYPE[e.label], e.isPrimary)}:${vcEsc(e.value)}`));
-  (c.phones || []).forEach((t) => L.push(`TEL${vcParam(TEL_TYPE[t.label], t.isPrimary)}:${vcEsc(t.value)}`));
+  (c.emails || []).forEach((e) => L.push(`EMAIL${vcParam('email', e.label, e.isPrimary)}:${vcEsc(e.value)}`));
+  (c.phones || []).forEach((t) => L.push(`TEL${vcParam('phone', t.label, t.isPrimary)}:${vcEsc(t.value)}`));
   if (c.notes) L.push('NOTE:' + vcEsc(c.notes));
   if (c.updatedAt) L.push('REV:' + vcRev(c.updatedAt));
   L.push('END:VCARD');
@@ -139,8 +198,11 @@ const vcMakeCreated = (n) => {
     return {
       id: uid('cp'), externalUid: `urn:uuid:imported-${Date.now()}-${i}`, type: 'Person', displayName: null,
       notes: 'Imported from vCard.', archived: null, createdAt: now, updatedAt: now,
-      person: { firstName: first, lastName: last, dateOfBirth: null, sex: null, title: null, company: null },
-      addresses: [], emails: [{ id: uid('e'), label: 'Home', isPrimary: true, value: `${first}.${last}`.toLowerCase() + '@example.com' }], phones: [],
+      person: { firstName: first, lastName: last, middleName: null, dateOfBirth: null, dateOfDeath: null, sex: null, title: null, company: null },
+      aliases: [],
+      // Every imported row's label goes through the clamp before it is written:
+      // an out-of-scope label becomes Other, never a dropped property.
+      addresses: [], emails: [{ id: uid('e'), label: clampLabel('email', 'Home', 'Person'), isPrimary: true, value: `${first}.${last}`.toLowerCase() + '@example.com' }], phones: [],
     };
   });
 };
@@ -168,8 +230,15 @@ const CP_SEED = [
   {
     id: 'c1', type: 'Person', displayName: null, notes: 'Shares the flat — splits rent and utilities.',
     archived: null, createdAt: '2024-11-02T09:00:00Z', updatedAt: '2026-06-18T14:22:00Z',
-    person: { firstName: 'Michael', lastName: 'Chen', dateOfBirth: '1990-04-12', sex: 'Male', title: 'Senior Engineer', company: 'Northwind Labs' },
-    addresses: [{ id: 'a1', label: 'Home', isPrimary: true, line1: 'Thorvald Meyers gate 12', line2: 'Leil. 3B', city: 'Oslo', region: '', postalCode: '0555', countryCode: 'NO' }],
+    person: { firstName: 'Michael', lastName: 'Chen', middleName: 'Wei', dateOfBirth: '1990-04-12', dateOfDeath: null, sex: 'Male', title: 'Senior Engineer', company: 'Northwind Labs' },
+    aliases: [
+      { id: 'al1', value: 'Mike', label: 'nickname' },
+      { id: 'al2', value: 'M. W. Chen', label: null },
+    ],
+    addresses: [
+      { id: 'a1', label: 'Home', isPrimary: true, line1: 'Thorvald Meyers gate 12', line2: 'Leil. 3B', city: 'Oslo', region: '', postalCode: '0555', countryCode: 'NO' },
+      { id: 'a1b', label: 'Postal', isPrimary: false, line1: 'Postboks 234 Sentrum', city: 'Oslo', region: '', postalCode: '0103', countryCode: 'NO' },
+    ],
     emails: [{ id: 'e1', label: 'Home', isPrimary: true, value: 'michael.chen@fastmail.com' }],
     phones: [
       { id: 'p1', label: 'Mobile', isPrimary: true, value: '+1 415 555 0147' },
@@ -179,54 +248,68 @@ const CP_SEED = [
   {
     id: 'c2', type: 'Organization', displayName: 'Lakeside PM', notes: 'Apartment landlord — monthly rent, billing goes to the SoMa office.',
     archived: null, createdAt: '2024-08-14T09:00:00Z', updatedAt: '2026-05-30T10:05:00Z',
-    org: { legalName: 'Lakeside Property Management LLC', organizationNumber: '81-2233445', website: 'https://lakesidepm.example.com' },
+    org: { legalName: 'Lakeside Property Management LLC', organizationNumber: '81-2233445', website: 'https://lakesidepm.example.com', establishedDate: '2009-03-02', dissolvedDate: null },
+    aliases: [{ id: 'al3', value: 'Lakeside Lettings', label: 'trading as' }],
     addresses: [
       { id: 'a2', label: 'Billing', isPrimary: true, line1: 'Storgata 55', line2: 'Etg. 14', city: 'Oslo', region: '', postalCode: '0184', countryCode: 'NO' },
-      { id: 'a3', label: 'Work', isPrimary: false, line1: 'Strandveien 200', city: 'Bergen', region: '', postalCode: '5003', countryCode: 'NO' },
+      { id: 'a3', label: 'Branch', isPrimary: false, line1: 'Strandveien 200', city: 'Bergen', region: '', postalCode: '5003', countryCode: 'NO' },
     ],
-    emails: [{ id: 'e2', label: 'Work', isPrimary: true, value: 'billing@lakesidepm.example.com' }],
-    phones: [{ id: 'p3', label: 'Work', isPrimary: true, value: '+1 510 555 0110' }],
+    emails: [{ id: 'e2', label: 'Billing', isPrimary: true, value: 'billing@lakesidepm.example.com' }],
+    phones: [{ id: 'p3', label: 'Switchboard', isPrimary: true, value: '+1 510 555 0110' }],
   },
   {
     id: 'c3', type: 'Person', displayName: null, notes: 'Family physician — reimbursements for out-of-pocket visits.',
     archived: null, createdAt: '2025-01-20T09:00:00Z', updatedAt: '2026-04-11T08:40:00Z',
-    person: { firstName: 'Priya', lastName: 'Nair', dateOfBirth: null, sex: 'Female', title: 'Physician', company: 'Bay Area Health Partners' },
+    person: { firstName: 'Priya', lastName: 'Nair', middleName: null, dateOfBirth: '1962-07-19', dateOfDeath: '2024-03-11', sex: 'Female', title: 'Physician', company: 'Bay Area Health Partners' },
+    aliases: [{ id: 'al4', value: 'Priya Menon', label: 'maiden name' }],
     addresses: [], emails: [{ id: 'e3', label: 'Work', isPrimary: true, value: 'p.nair@bahp.example.org' }],
     phones: [{ id: 'p4', label: 'Work', isPrimary: true, value: '+1 650 555 0088' }],
   },
   {
     id: 'c4', type: 'Organization', displayName: null, notes: 'Employer — payroll direct deposit.',
     archived: null, createdAt: '2023-06-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z',
-    org: { legalName: 'Northwind Labs, Inc.', organizationNumber: '98-7654321', website: 'https://northwind.example.com' },
-    addresses: [{ id: 'a4', label: 'Work', isPrimary: true, line1: 'Brobekkveien 80', city: 'Oslo', region: '', postalCode: '0598', countryCode: 'NO' }],
-    emails: [{ id: 'e4', label: 'Work', isPrimary: true, value: 'payroll@northwind.example.com' }],
+    org: { legalName: 'Northwind Labs, Inc.', organizationNumber: '98-7654321', website: 'https://northwind.example.com', establishedDate: '1998-11-04', dissolvedDate: null },
+    aliases: [{ id: 'al5', value: 'Northwind', label: null }],
+    addresses: [{ id: 'a4', label: 'Visiting', isPrimary: true, line1: 'Brobekkveien 80', city: 'Oslo', region: '', postalCode: '0598', countryCode: 'NO' }],
+    emails: [{ id: 'e4', label: 'Billing', isPrimary: true, value: 'payroll@northwind.example.com' }],
     phones: [],
   },
   {
     id: 'c5', type: 'Person', displayName: 'Sarah (agent)', notes: 'Letting agent for the Fell Street flat.',
     archived: null, createdAt: '2024-09-11T09:00:00Z', updatedAt: '2026-03-22T16:10:00Z',
-    person: { firstName: 'Sarah', lastName: 'Whitfield', dateOfBirth: '1985-11-30', sex: 'Female', title: null, company: 'Lakeside Property Management LLC' },
+    person: { firstName: 'Sarah', lastName: 'Whitfield', middleName: null, dateOfBirth: '1985-11-30', dateOfDeath: null, sex: 'Female', title: null, company: 'Lakeside Property Management LLC' },
+    aliases: [{ id: 'al6', value: 'Sarah Boyd', label: 'maiden name' }],
     addresses: [], emails: [{ id: 'e5', label: 'Work', isPrimary: true, value: 'sarah.w@lakesidepm.example.com' }],
     phones: [{ id: 'p5', label: 'Mobile', isPrimary: true, value: '+1 415 555 0333' }],
   },
   {
     id: 'c6', type: 'Organization', displayName: null, notes: 'Home & contents insurer — issues the property policy.',
     archived: null, createdAt: '2024-02-19T09:00:00Z', updatedAt: '2026-02-19T09:00:00Z',
-    org: { legalName: 'Pacific Home Insurance Co.', organizationNumber: '45-6677889', website: null },
-    addresses: [{ id: 'a6', label: 'Other', isPrimary: true, line1: 'Markveien 35', line2: '12. etg.', city: 'Oslo', region: '', postalCode: '0554', countryCode: 'NO' }],
-    emails: [{ id: 'e6', label: 'Other', isPrimary: true, value: 'claims@pacifichome.example.com' }],
-    phones: [{ id: 'p6', label: 'Other', isPrimary: true, value: '+1 800 555 0199' }],
+    org: { legalName: 'Pacific Home Insurance Co.', organizationNumber: '45-6677889', website: null, establishedDate: '1974-06-01', dissolvedDate: '2023-06-30' },
+    aliases: [
+      { id: 'al7', value: 'Pacific Home Assurance', label: 'pre-merger name' },
+      { id: 'al8', value: 'PHI', label: null },
+    ],
+    addresses: [{ id: 'a6', label: 'Registered', isPrimary: true, line1: 'Markveien 35', line2: '12. etg.', city: 'Oslo', region: '', postalCode: '0554', countryCode: 'NO' }],
+    emails: [{ id: 'e6', label: 'Claims', isPrimary: true, value: 'claims@pacifichome.example.com' }],
+    phones: [
+      { id: 'p6', label: 'Switchboard', isPrimary: true, value: '+1 800 555 0199' },
+      { id: 'p6b', label: 'Claims', isPrimary: false, value: '+1 800 555 0177' },
+      { id: 'p6c', label: 'Emergency', isPrimary: false, value: '+1 800 555 0100' },
+    ],
   },
   {
     id: 'c7', type: 'Person', displayName: null, notes: 'Dog walker — weekly, paid by transfer.',
     archived: null, createdAt: '2025-05-04T09:00:00Z', updatedAt: '2026-06-14T12:00:00Z',
-    person: { firstName: 'Diego', lastName: 'Ramos', dateOfBirth: null, sex: null, title: null, company: null },
+    person: { firstName: 'Diego', lastName: 'Ramos', middleName: null, dateOfBirth: null, dateOfDeath: null, sex: null, title: null, company: null },
+    aliases: [],
     addresses: [], emails: [], phones: [{ id: 'p7', label: 'Mobile', isPrimary: true, value: '+1 415 555 0270' }],
   },
   {
     id: 'c8', type: 'Organization', displayName: null, notes: 'Cancelled gym membership — kept for transaction history.',
     archived: '2025-03-02T09:00:00Z', createdAt: '2022-01-10T09:00:00Z', updatedAt: '2025-03-02T09:00:00Z',
-    org: { legalName: 'FitZone Gym', organizationNumber: null, website: null },
+    org: { legalName: 'FitZone Gym', organizationNumber: null, website: null, establishedDate: null, dissolvedDate: null },
+    aliases: [],
     addresses: [], emails: [], phones: [],
   },
 ];
@@ -236,8 +319,8 @@ const CP_SEED = [
 /* Primary marker — always visible TEXT (never icon/colour alone; §10 a11y). */
 const PrimaryBadge = () => <Chip tone="income" dot>Primary</Chip>;
 
-const LabelChip = ({ labels, value }) => {
-  const m = labelMeta(labels, value);
+const LabelChip = ({ kind, value }) => {
+  const m = labelMeta(kind, value);
   return <Chip tone="outline" icon={m.icon}>{m.label}</Chip>;
 };
 
@@ -257,10 +340,13 @@ const cpSectionHead = (icon, title, count) => (
    arbitration the service enforces (§9) runs here — setting one primary clears
    the siblings; the collection is the sole owner of the flag. */
 
+/* The label vocabulary is no longer part of this config — it depends on the
+   parent contact's type as well as the kind, so it is resolved per render
+   through ContactLabelScope. */
 const CONTACT_KINDS = {
-  address: { title: 'Addresses',     icon: 'home',  addTitle: 'Add address',      labels: ADDRESS_LABELS, avatar: 'location_on',     soft: 'oklch(0.77 0.14 55 / 0.15)',  fg: 'oklch(0.77 0.14 55)' },
-  email:   { title: 'Emails',        icon: 'mail',  addTitle: 'Add email',        labels: EMAIL_LABELS,   avatar: 'alternate_email', soft: 'oklch(0.72 0.16 295 / 0.15)', fg: 'oklch(0.72 0.16 295)' },
-  phone:   { title: 'Phone numbers', icon: 'call',  addTitle: 'Add phone number', labels: PHONE_LABELS,   avatar: 'call',            soft: 'oklch(0.78 0.13 200 / 0.15)', fg: 'oklch(0.78 0.13 200)' },
+  address: { title: 'Addresses',     icon: 'home',  addTitle: 'Add address',      avatar: 'location_on',     soft: 'oklch(0.77 0.14 55 / 0.15)',  fg: 'oklch(0.77 0.14 55)' },
+  email:   { title: 'Emails',        icon: 'mail',  addTitle: 'Add email',        avatar: 'alternate_email', soft: 'oklch(0.72 0.16 295 / 0.15)', fg: 'oklch(0.72 0.16 295)' },
+  phone:   { title: 'Phone numbers', icon: 'call',  addTitle: 'Add phone number', avatar: 'call',            soft: 'oklch(0.78 0.13 200 / 0.15)', fg: 'oklch(0.78 0.13 200)' },
 };
 
 // Single-line summary for the chip value (full detail stays in copy / edit).
@@ -272,15 +358,21 @@ const blankFor = (kind, defaultLabel) => {
   return { label: defaultLabel, isPrimary: false, value: '' };
 };
 
-const ContactForm = ({ kind, item, onCommit, onCancel, isFirst, mode }) => {
+const ContactForm = ({ kind, contactType, item, onCommit, onCancel, isFirst, mode }) => {
   const { useState } = React;
   const cfg = CONTACT_KINDS[kind];
   const [d, setD] = useState(item);
   const [err, setErr] = useState({});
   const set = (k) => (v) => { setD(s => ({ ...s, [k]: v })); if (err[k]) setErr(e => ({ ...e, [k]: undefined })); };
+  const offered = labelsFor(kind, contactType);
 
   const validate = () => {
     const e = {};
+    // Set membership, NOT non-emptiness. A label outside the offered set renders
+    // the trigger's placeholder while the draft still holds it, so a merely
+    // non-empty check would let an invisible value through to a server 422 on a
+    // field the user never touched. Required-style wording for the same reason.
+    if (!isLabelValid(kind, d.label, contactType)) e.label = 'Label is required.';
     if (kind === 'address') {
       if (!d.line1.trim()) e.line1 = 'Line 1 is required.';
       if (!d.city.trim()) e.city = 'City is required.';
@@ -311,7 +403,9 @@ const ContactForm = ({ kind, item, onCommit, onCancel, isFirst, mode }) => {
         <Button variant="filled" color="primary" icon={mode === 'edit' ? 'check' : 'add'} onClick={commit}>{mode === 'edit' ? 'Save changes' : `Create ${KIND_NOUN[kind]}`}</Button>
       </React.Fragment>}>
       <div style={{ display: 'grid', gap: 12 }}>
-        <Select label="Label" value={d.label} onChange={set('label')} options={cfg.labels} />
+        <ContactMethodLabelSelect kind={kind} contactType={contactType} value={d.label} onChange={set('label')}
+          required error={err.label}
+          helper={err.label ? undefined : `${offered.length} offered for ${contactType === 'Organization' ? 'an organization' : 'a person'}`} />
         {kind === 'address' && (
           <React.Fragment>
             <Field label="Line 1" value={d.line1} onChange={set('line1')} error={err.line1} placeholder="Street name and number" maxLength={256} />
@@ -360,7 +454,7 @@ const KIND_TITLE = { address: 'Address', email: 'Email', phone: 'Phone number' }
 /* One flat list across all three collections — the kind avatar makes each row
    self-describing, so no per-kind section headers. Adding is driven from the
    contact's action menu (addReq); primary arbitration stays per-kind. */
-const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode, bare }) => {
+const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode, bare, onProblem }) => {
   const { useState, useRef, useEffect } = React;
   const [editing, setEditing] = useState(null); // {kind,id}
   const [adding, setAdding] = useState(null);    // kind
@@ -386,7 +480,19 @@ const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode,
     if (data.isPrimary || next.length === 1) next = applyPrimary(next, id);
     change(kind, next); setAdding(null);
   };
-  const setPrimary = (kind, id) => change(kind, applyPrimary(listOf(kind), id));
+  const setPrimary = (kind, id) => {
+    const row = listOf(kind).find(x => x.id === id);
+    // "Set as primary" rebuilds the whole row from what is stored and re-PUTs
+    // it, bypassing the picker — so a stored label that is out of scope for the
+    // contact's type replays and the server refuses it with a 422. The user sees
+    // the server's own message; nothing is lost, and editing the label once
+    // clears it.
+    if (row && !isLabelValid(kind, row.label, c.type)) {
+      onProblem && onProblem(`Update failed: ${labelScopeMessage(kind, row.label, c.type)}`);
+      return;
+    }
+    change(kind, applyPrimary(listOf(kind), id));
+  };
   const remove = (kind, id) => {
     let next = listOf(kind).filter(x => x.id !== id);
     if (next.length && !next.some(x => x.isPrimary)) next = applyPrimary(next, next[0].id);
@@ -449,7 +555,7 @@ const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode,
                 </div>
                 <div className="cp-tile-value" style={{ color: cfg.fg }}>{valueEl}</div>
                 <div className="cp-tile-foot">
-                  <span>{labelMeta(cfg.labels, item.label).label}</span>
+                  <span>{labelMeta(kind, item.label).label}</span>
                   {item.isPrimary && <React.Fragment><span className="cp-tile-sep">·</span><span className="cp-tile-primary">Primary</span></React.Fragment>}
                 </div>
               </div>
@@ -460,7 +566,7 @@ const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode,
               <Avatar icon={cfg.avatar} tone={{ bg: cfg.soft, fg: cfg.fg }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                  <LabelChip labels={cfg.labels} value={item.label} />
+                  <LabelChip kind={kind} value={item.label} />
                   {item.isPrimary && <PrimaryBadge />}
                 </div>
                 <ContactValue kind={kind} item={item} />
@@ -471,11 +577,11 @@ const ContactList = ({ c, onContacts, readOnly, addReq, onConsumeAdd, styleMode,
         })}
       </div>
       {!readOnly && adding && (
-        <ContactForm mode="add" kind={adding} item={blankFor(adding, CONTACT_KINDS[adding].labels[0].value)} isFirst={listOf(adding).length === 0}
+        <ContactForm mode="add" kind={adding} contactType={c.type} item={blankFor(adding, defaultLabel(adding, c.type))} isFirst={listOf(adding).length === 0}
           onCommit={(data) => commitAdd(adding, data)} onCancel={() => setAdding(null)} />
       )}
       {!readOnly && editing && (
-        <ContactForm mode="edit" kind={editing.kind} item={listOf(editing.kind).find(x => x.id === editing.id)} isFirst={listOf(editing.kind).length === 1}
+        <ContactForm mode="edit" kind={editing.kind} contactType={c.type} item={listOf(editing.kind).find(x => x.id === editing.id)} isFirst={listOf(editing.kind).length === 1}
           onCommit={(data) => commitEdit(editing.kind, editing.id, data)} onCancel={() => setEditing(null)} />
       )}
     </div>
@@ -499,7 +605,7 @@ const CpTiles = ({ c }) => {
   const p = c.person || {}, o = c.org || {};
   const website = o.website && /^https?:\/\//i.test(o.website) ? o.website : null;
   return (
-    <InfoTileGrid>
+    <InfoTileGrid dense>
       <InfoTile icon="badge" label="Display name" value={resolvedName(c) || '—'} valueVariant="text"
         foot={c.displayName ? 'override' : 'computed from the name fields'} />
       <InfoTile icon={meta.icon} iconColor={meta.color} iconSoft={meta.soft}
@@ -507,9 +613,17 @@ const CpTiles = ({ c }) => {
       {isPerson ? (
         <React.Fragment>
           <InfoTile icon="person" label="First name" value={p.firstName || '—'} valueVariant="text" />
+          {/* A middle name is stored, shown and searchable — but it is NOT part of
+              the "First Last" fallback, so no contact's display name or sort
+              position shifts. No value renders no tile. */}
+          {p.middleName ? <InfoTile icon="person" label="Middle name" value={p.middleName} valueVariant="text" /> : null}
           <InfoTile icon="person" label="Last name" value={p.lastName || '—'} valueVariant="text" />
           {p.dateOfBirth ? (
             <InfoTile icon="cake" label="Date of birth" value={H.dateLong(p.dateOfBirth)} valueVariant="sm" />
+          ) : null}
+          {p.dateOfDeath ? (
+            <InfoTile icon="event_busy" label="Date of death" value={H.dateLong(p.dateOfDeath)} valueVariant="sm"
+              foot="the record stays live — nothing is archived" />
           ) : null}
           {p.sex ? <InfoTile icon="wc" label="Sex" value={p.sex} valueVariant="text" /> : null}
           {p.title ? <InfoTile icon="work" label="Job title" value={p.title} valueVariant="text" /> : null}
@@ -528,6 +642,15 @@ const CpTiles = ({ c }) => {
             <InfoTile icon="link" label="Website" valueVariant="text"
               value={website ? <a href={website} target="_blank" rel="noopener noreferrer">{o.website}</a> : o.website} />
           ) : null}
+          {/* Either date stands alone: the founding date of an old institution is
+              frequently unknown, and a dissolved body may have no recorded one. */}
+          {o.establishedDate ? (
+            <InfoTile icon="foundation" label="Established" value={H.dateLong(o.establishedDate)} valueVariant="sm" />
+          ) : null}
+          {o.dissolvedDate ? (
+            <InfoTile icon="event_busy" label="Dissolved" value={H.dateLong(o.dissolvedDate)} valueVariant="sm"
+              foot="reads as historical — still linkable" />
+          ) : null}
         </React.Fragment>
       )}
       <InfoTile icon={c.archived ? 'inventory_2' : 'task_alt'} label="Status" value={status.label} valueVariant="text"
@@ -535,14 +658,14 @@ const CpTiles = ({ c }) => {
         foot={c.archived ? `since ${H.dateTime(c.archived)}` : 'in the default list'} />
       <InfoTile icon="schedule" label="Created" value={H.dateTime(c.createdAt)} valueVariant="sm" />
       <InfoTile icon="update" label="Updated" value={H.dateTime(c.updatedAt)} valueVariant="sm"
-        foot="bumped by any address, email or phone change" />
+        foot="bumped by any address, email, phone or alias change" />
     </InfoTileGrid>
   );
 };
 
 /* One contact record (DS RecordCard). The list owns ONE openId, so opening a
    card closes its siblings. */
-const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onExportRow, contactStyle }) => {
+const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onAliases, onExportRow, contactStyle, onProblem, onAnnounce, perms = {}, aliasCap }) => {
   const { useState } = React;
   const H = window.OdysseyHelpers;
   const [showEdit, setShowEdit] = useState(false);
@@ -557,7 +680,17 @@ const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onExpor
     ? [p.title, p.company].filter(Boolean).join(' · ')
     : (o.organizationNumber || (o.website || ''));
   const entries = contactCount(c);
+  const aliases = c.aliases || [];
+  const life = cpLifecycle(c);
+  const canUpdate = perms.update !== false;
+  const canCreate = perms.create !== false;
+  const canDelete = perms.delete !== false;
   const requestAdd = (kind) => { if (!open) onToggle(true); setAddReq({ kind, nonce: Date.now() }); };
+  /* Alias writes are ordinary child-collection writes: each one bumps the
+     parent UpdatedAt, exactly as an address / email / phone change does. */
+  const addAlias = (value, label) => onAliases(c.id, [...aliases, { id: uid('al'), value, label }]);
+  const editAlias = (id, value, label) => onAliases(c.id, aliases.map((a) => (a.id === id ? { ...a, value, label } : a)));
+  const deleteAlias = (id) => onAliases(c.id, aliases.filter((a) => a.id !== id));
 
   if (!RecordCard || !InfoTileGrid || !InfoTile) return null;
 
@@ -570,7 +703,10 @@ const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onExpor
         name={resolvedName(c)}
         chips={<React.Fragment>
           <Chip tone={status.tone} dot>{status.label}</Chip>
-          {c.displayName ? <Chip tone="outline" icon="badge">Display name</Chip> : null}
+          {/* Deceased / dissolved sits AFTER the status chip and says so in text
+              — the card's Name is a string, so the marker cannot be folded into
+              the accessible heading. */}
+          {life ? <Chip tone="outline" icon="event_busy">{life.text}</Chip> : null}
         </React.Fragment>}
         meta={[
           <span className="row gap-1" style={{ alignItems: 'center' }}><MIcon name={meta.icon} size={14} /><span>{meta.label}</span></span>,
@@ -592,6 +728,7 @@ const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onExpor
           { icon: 'download', label: 'Export vCard', onClick: () => onExportRow && onExportRow(c) },
           ...(c.archived ? [] : [
             { divider: true },
+            ...(canCreate ? [{ icon: 'badge', label: 'New alias', onClick: () => requestAdd('alias') }] : []),
             { icon: 'add_location_alt', label: 'New address', onClick: () => requestAdd('address') },
             { icon: 'alternate_email', label: 'New email', onClick: () => requestAdd('email') },
             { icon: 'add_call', label: 'New phone number', onClick: () => requestAdd('phone') },
@@ -611,9 +748,38 @@ const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onExpor
           </InfoTileGrid>
         )}
       >
+        <SectionDivider label="Aliases" meta={`${aliases.length} ${aliases.length === 1 ? 'alias' : 'aliases'}`} />
+        {DSContactAliases ? (
+          <DSContactAliases
+            aliases={aliases}
+            canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete}
+            archived={!!c.archived}
+            cap={aliasCap}
+            addRequest={addReq && addReq.kind === 'alias' ? addReq : null}
+            onConsumeAddRequest={() => setAddReq(null)}
+            onAdd={addAlias} onEdit={editAlias} onDelete={deleteAlias}
+            onAnnounce={onAnnounce} />
+        ) : (
+          /* Bundle-lag fallback (same pattern as SeverityIcon / DateField): the
+             alias tiles read, but adding and editing live in the DS component. */
+          <div className="odc-aliases">
+            {aliases.length === 0
+              ? <p className="odc-aliases-empty">No aliases yet — use the ⋯ menu to add one.</p>
+              : <div className="odc-alias-grid">{aliases.map((a) => (
+                <div key={a.id} className="odc-alias-tile">
+                  <div className="odc-alias-top">
+                    <span className="odc-alias-ic" aria-hidden="true"><MIcon name="badge" size={15} /></span>
+                    <span className="odc-alias-kind">Alias</span>
+                  </div>
+                  <div className="odc-alias-value" title={a.value}>{a.value}</div>
+                  {a.label ? <div className="odc-alias-foot">{a.label}</div> : null}
+                </div>
+              ))}</div>}
+          </div>
+        )}
         <SectionDivider label="Contact information" meta={`${entries} ${entries === 1 ? 'entry' : 'entries'}`} />
-        <ContactList c={c} onContacts={onContacts} readOnly={!!c.archived} bare
-          addReq={addReq} onConsumeAdd={() => setAddReq(null)} styleMode={contactStyle} />
+        <ContactList c={c} onContacts={onContacts} readOnly={!!c.archived} bare onProblem={onProblem}
+          addReq={addReq && addReq.kind !== 'alias' ? addReq : null} onConsumeAdd={() => setAddReq(null)} styleMode={contactStyle} />
       </RecordCard>
       {showEdit && <AddContactModal contact={c} onClose={() => setShowEdit(false)}
         onSave={(id, patch) => { onSave(id, patch); setShowEdit(false); }} />}
@@ -630,11 +796,22 @@ const PersonFields = ({ d, set, err }) => (
       <Field label="First name" value={d.firstName} onChange={set('firstName')} error={err.firstName} required autoFocus maxLength={128} />
       <Field label="Last name" value={d.lastName} onChange={set('lastName')} error={err.lastName} required maxLength={128} />
     </FormRow>
+    {/* Stored and searchable, but deliberately outside the "First Last"
+        display-name fallback — so adding one shifts no name and no sort. */}
+    <Field label="Middle name" value={d.middleName} onChange={set('middleName')} placeholder="As it appears on a passport or bank record" helper="Optional · not part of the display name" maxLength={128} />
+    {/* Both dates are DateFields, not bare pickers: the birth/death pair is
+        checked from BOTH sides, so each one needs its own error channel. */}
     <FormRow>
-      <Field label="Date of birth" type="date" value={d.dateOfBirth} onChange={set('dateOfBirth')} helper="Optional · cannot be in the future" />
-      <Select label="Sex" value={d.sex} onChange={set('sex')} options={SEX_OPTIONS} helper="Optional" placeholder="Unspecified" />
+      <DateField label="Date of birth" value={d.dateOfBirth || null} onChange={set('dateOfBirth')}
+        max={cpToday()} error={err.dateOfBirth} optional help={err.dateOfBirth ? undefined : 'Cannot be in the future'} />
+      <DateField label="Date of death" value={d.dateOfDeath || null} onChange={set('dateOfDeath')}
+        max={cpToday()} error={err.dateOfDeath} optional
+        help={err.dateOfDeath ? undefined : 'Recording it archives nothing'} />
     </FormRow>
-    <Field label="Job title" value={d.title} onChange={set('title')} placeholder="e.g. Senior Engineer" helper="Optional" maxLength={128} />
+    <FormRow>
+      <Select label="Sex" value={d.sex} onChange={set('sex')} options={SEX_OPTIONS} helper="Optional" placeholder="Unspecified" />
+      <Field label="Job title" value={d.title} onChange={set('title')} placeholder="e.g. Senior Engineer" helper="Optional" maxLength={128} />
+    </FormRow>
     <Field label="Company" value={d.company} onChange={set('company')} placeholder="Employer name (optional)" helper="A free-text note — not linked to another contact" maxLength={256} />
   </React.Fragment>
 );
@@ -645,6 +822,15 @@ const OrgFields = ({ d, set, err }) => (
     <FormRow>
       <Field label="Organization number" value={d.organizationNumber} onChange={set('organizationNumber')} placeholder="Optional" maxLength={64} />
       <Field label="Website" value={d.website} onChange={set('website')} error={err.website} placeholder="https://example.com" helper="http/https only" maxLength={2048} />
+    </FormRow>
+    {/* "Dissolved", the term a business register publishes (No. oppløst) — not
+        "closed". Either date may stand without the other. */}
+    <FormRow>
+      <DateField label="Established" value={d.establishedDate || null} onChange={set('establishedDate')}
+        max={cpToday()} error={err.establishedDate} optional help={err.establishedDate ? undefined : 'Cannot be in the future'} />
+      <DateField label="Dissolved" value={d.dissolvedDate || null} onChange={set('dissolvedDate')}
+        max={cpToday()} error={err.dissolvedDate} optional
+        help={err.dissolvedDate ? undefined : 'Reads as historical — still linkable'} />
     </FormRow>
   </React.Fragment>
 );
@@ -676,10 +862,13 @@ const AddContactModal = ({ onClose, onCreate, contact, onSave }) => {
   const [displayName, setDisplayName] = useState(cp.displayName || '');
   const [draft, setDraft] = useState({
     firstName: (cp.person && cp.person.firstName) || '', lastName: (cp.person && cp.person.lastName) || '',
-    dateOfBirth: (cp.person && cp.person.dateOfBirth) || '', sex: (cp.person && cp.person.sex) || '',
+    middleName: (cp.person && cp.person.middleName) || '',
+    dateOfBirth: (cp.person && cp.person.dateOfBirth) || '', dateOfDeath: (cp.person && cp.person.dateOfDeath) || '',
+    sex: (cp.person && cp.person.sex) || '',
     title: (cp.person && cp.person.title) || '', company: (cp.person && cp.person.company) || '',
     legalName: (cp.org && cp.org.legalName) || '', organizationNumber: (cp.org && cp.org.organizationNumber) || '',
     website: (cp.org && cp.org.website) || '',
+    establishedDate: (cp.org && cp.org.establishedDate) || '', dissolvedDate: (cp.org && cp.org.dissolvedDate) || '',
     notes: cp.notes || '',
   });
   const [err, setErr] = useState({});
@@ -692,24 +881,56 @@ const AddContactModal = ({ onClose, onCreate, contact, onSave }) => {
     setType(t);
     setErr({});
     // Notes belong to the contact itself, not to either field set — kept across a Type switch.
-    setDraft(s => ({ firstName: '', lastName: '', dateOfBirth: '', sex: '', title: '', company: '', legalName: '', organizationNumber: '', website: '', notes: s.notes }));
+    setDraft(s => ({ firstName: '', lastName: '', middleName: '', dateOfBirth: '', dateOfDeath: '', sex: '', title: '', company: '', legalName: '', organizationNumber: '', website: '', establishedDate: '', dissolvedDate: '', notes: s.notes }));
   };
 
   const submit = () => {
     const e = {};
-    if (type === 'Person') { if (!draft.firstName.trim()) e.firstName = 'Required.'; if (!draft.lastName.trim()) e.lastName = 'Required.'; }
-    else { if (!draft.legalName.trim()) e.legalName = 'Legal name is required for an organization.'; if (draft.website && !/^https?:\/\//i.test(draft.website.trim())) e.website = 'Must start with http:// or https://'; }
+    const today = cpToday();
+    if (type === 'Person') {
+      if (!draft.firstName.trim()) e.firstName = 'Required.';
+      if (!draft.lastName.trim()) e.lastName = 'Required.';
+      if (draft.dateOfBirth && draft.dateOfBirth > today) e.dateOfBirth = 'Cannot be in the future.';
+      if (draft.dateOfDeath && draft.dateOfDeath > today) e.dateOfDeath = 'Cannot be in the future.';
+      // The pair is checked from BOTH sides, so the invariant cannot be broken
+      // by editing either field: the error renders on the field just changed.
+      if (draft.dateOfBirth && draft.dateOfDeath && draft.dateOfDeath < draft.dateOfBirth) {
+        e.dateOfDeath = 'Cannot be before the date of birth.';
+      }
+    } else {
+      if (!draft.legalName.trim()) e.legalName = 'Legal name is required for an organization.';
+      if (draft.website && !/^https?:\/\//i.test(draft.website.trim())) e.website = 'Must start with http:// or https://';
+      if (draft.establishedDate && draft.establishedDate > today) e.establishedDate = 'Cannot be in the future.';
+      if (draft.dissolvedDate && draft.dissolvedDate > today) e.dissolvedDate = 'Cannot be in the future.';
+      if (draft.establishedDate && draft.dissolvedDate && draft.dissolvedDate < draft.establishedDate) {
+        e.dissolvedDate = 'Cannot be before the established date.';
+      }
+    }
     if (Object.keys(e).length) { setErr(e); return; }
+    const personPatch = () => ({
+      firstName: draft.firstName.trim(), lastName: draft.lastName.trim(),
+      middleName: draft.middleName.trim() || null,
+      dateOfBirth: draft.dateOfBirth || null, dateOfDeath: draft.dateOfDeath || null,
+      sex: draft.sex || null, title: draft.title.trim() || null, company: draft.company.trim() || null,
+    });
+    const orgPatch = () => ({
+      legalName: draft.legalName.trim(), organizationNumber: draft.organizationNumber.trim() || null,
+      website: draft.website.trim() || null,
+      establishedDate: draft.establishedDate || null, dissolvedDate: draft.dissolvedDate || null,
+    });
     if (isEdit) {
       const patch = { displayName: displayName.trim() || null, notes: draft.notes.trim() || null };
-      if (type === 'Person') patch.person = { firstName: draft.firstName.trim(), lastName: draft.lastName.trim(), dateOfBirth: draft.dateOfBirth || null, sex: draft.sex || null, title: draft.title.trim() || null, company: draft.company.trim() || null };
-      else patch.org = { legalName: draft.legalName.trim(), organizationNumber: draft.organizationNumber.trim() || null, website: draft.website.trim() || null };
+      if (type === 'Person') patch.person = personPatch();
+      else patch.org = orgPatch();
       onSave && onSave(cp.id, patch);
       return;
     }
-    const dto = { type, displayName: displayName.trim() || null, notes: draft.notes.trim() || null, archived: null, addresses: [], emails: [], phones: [] };
-    if (type === 'Person') dto.person = { firstName: draft.firstName.trim(), lastName: draft.lastName.trim(), dateOfBirth: draft.dateOfBirth || null, sex: draft.sex || null, title: draft.title.trim() || null, company: draft.company.trim() || null };
-    else dto.org = { legalName: draft.legalName.trim(), organizationNumber: draft.organizationNumber.trim() || null, website: draft.website.trim() || null };
+    // Aliases are NOT part of the create dialog: they are added from the
+    // expanded card once the contact exists, exactly as addresses, emails and
+    // phone numbers are. So the create DTO carries an empty list.
+    const dto = { type, displayName: displayName.trim() || null, notes: draft.notes.trim() || null, archived: null, aliases: [], addresses: [], emails: [], phones: [] };
+    if (type === 'Person') dto.person = personPatch();
+    else dto.org = orgPatch();
     onCreate && onCreate(dto);
   };
 
@@ -762,6 +983,18 @@ const Contacts = ({ tweaks = {} }) => {
 
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q.trim()), 300); return () => clearTimeout(t); }, [q]);
 
+  // Residual state (§9): a row whose STORED label is invalid for its contact's
+  // type. Unreachable through the UI — it takes a concurrent type switch on the
+  // API (the contact PUT carries no concurrency token), a rollback then
+  // roll-forward, or a hand-edited row. Toggle it to see the picker fall back to
+  // its placeholder and "Set as primary" refuse with the server's 422 message.
+  const residual = !!tweaks.cpResidualLabel;
+  useEffect(() => {
+    setRows(prev => prev.map(c => c.id === 'c2'
+      ? { ...c, phones: (c.phones || []).map(p => p.id === 'p3' ? { ...p, label: residual ? 'Home' : 'Switchboard' } : p) }
+      : c));
+  }, [residual]);
+
   const touch = (c) => ({ ...c, updatedAt: new Date().toISOString() });
   const createCp = (dto) => {
     const now = new Date().toISOString();
@@ -781,13 +1014,33 @@ const Contacts = ({ tweaks = {} }) => {
   };
   // Any child (address/email/phone) mutation bumps the parent UpdatedAt (§9).
   const onContacts = (id, coll, value) => setRows(prev => prev.map(c => c.id === id ? touch({ ...c, [coll]: value }) : c));
+  // Aliases are the fourth child collection, on the same rule.
+  const onAliases = (id, value) => setRows(prev => prev.map(c => c.id === id ? touch({ ...c, aliases: value }) : c));
+  // ONE polite live region for the whole list — alias outcomes, and the two
+  // failure paths with neither a dialog to hold open nor a field to focus (a
+  // failed delete, and a 404 that closes the dialog), route through it. An
+  // aria-atomic region will not re-announce an identical string, so each
+  // message carries an invisible nonce.
+  const [announce, setAnnounce] = useState('');
+  const announceNonce = React.useRef(0);
+  const say = (msg) => { announceNonce.current += 1; setAnnounce(`${msg}${'\u200B'.repeat((announceNonce.current % 4) + 1)}`); };
+  const perms = {
+    create: tweaks.cpCanCreate !== false,
+    update: tweaks.cpCanUpdate !== false,
+    delete: tweaks.cpCanDelete !== false,
+  };
 
   const filtered = useMemo(() => rows.filter(c => {
     const st = c.archived ? 'archived' : 'active';
     if (statusFilter.length && !statusFilter.includes(st)) return false;
     if (typeFilter.length && !typeFilter.includes(c.type)) return false;
     if (debouncedQ) {
-      const hay = `${resolvedName(c)} ${window.OdysseyHelpers.normalizeName(resolvedName(c))} ${c.notes || ''}`.toLowerCase();
+      // Alias VALUES and the middle name are searched alongside the resolved
+      // and normalized name and the notes. An alias LABEL is metadata and is
+      // NOT searched — which is why the placeholder does not promise it.
+      const aliasHay = (c.aliases || []).map(a => a.value).join(' ');
+      const middle = (c.person && c.person.middleName) || '';
+      const hay = `${resolvedName(c)} ${window.OdysseyHelpers.normalizeName(resolvedName(c))} ${middle} ${aliasHay} ${c.notes || ''}`.toLowerCase();
       if (!hay.includes(debouncedQ.toLowerCase())) return false;
     }
     return true;
@@ -841,6 +1094,7 @@ const Contacts = ({ tweaks = {} }) => {
 
   return (
     <div className="col gap-6">
+      <div className="odc-sr-only" role="status" aria-live="polite">{announce}</div>
       <PageHeader
         title="Contacts"
         icon="groups"
@@ -861,7 +1115,7 @@ const Contacts = ({ tweaks = {} }) => {
         search={(
           <div className="row gap-3 acct-filter-bar" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ minWidth: 280, flex: 1 }}>
-              <SearchField placeholder="Search name or notes…" value={q} onChange={setQ} />
+              <SearchField placeholder="Search name, alias or notes…" value={q} onChange={setQ} />
             </div>
             <div style={{ minWidth: 180 }}>
               <MultiSelect allLabel="Any type" value={typeFilter} onChange={setTypeFilter} options={CP_TYPE_OPTIONS} />
@@ -903,7 +1157,9 @@ const Contacts = ({ tweaks = {} }) => {
               <CpRecordCard c={c}
                 open={openId === c.id}
                 onToggle={(o) => setOpenId(o ? c.id : null)}
-                onSave={onSave} onDelete={onDelete} onContacts={onContacts} onExportRow={exportRow} />
+                onSave={onSave} onDelete={onDelete} onContacts={onContacts} onAliases={onAliases} onExportRow={exportRow}
+                perms={perms} aliasCap={tweaks.cpAliasCap || 32} onAnnounce={say}
+                onProblem={(m) => pushToast('error', m)} />
             )}
             empty={(
               <EmptyState icon="store" mutedIcon

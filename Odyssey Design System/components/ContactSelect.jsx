@@ -24,7 +24,16 @@
  *
  * `bare` drops the label/help chrome for a control that sits in a table cell or
  * inside a caller-supplied FieldShell.
+ *
+ * **Lifecycle suffix.** A contact carrying a `dateOfDeath` (Person) or a
+ * `dissolvedDate` (Organization) is still fully selectable — recording either
+ * date removes no capability — but its option reads `Kari Nordmann · Deceased`.
+ * The suffix goes into the option's **label**, not a separate sub-line: that
+ * puts it in the accessible name by construction, and `Combobox` renders no
+ * sub-line anyway.
  */
+
+const CS_LIFECYCLE = (c) => (c.dateOfDeath ? 'Deceased' : c.dissolvedDate ? 'Dissolved' : null);
 
 const CS_FALLBACK_TYPES = {
   Merchant: { icon: 'storefront', color: 'oklch(0.79 0.115 188)', label: 'Merchant' },
@@ -94,12 +103,14 @@ export function ContactSelect({
     list.forEach((c) => { byId[idOf(c)] = c; });
     options = list.filter((c) => !c.archived).map((c) => {
       const meta = contactTypeMeta(c.type);
-      return { value: idOf(c), label: c.name, icon: meta.icon, iconColor: meta.color };
+      const state = CS_LIFECYCLE(c);
+      return { value: idOf(c), label: state ? `${c.name} · ${state}` : c.name, icon: meta.icon, iconColor: meta.color };
     });
     if (value && !options.some((o) => o.value === value) && byId[value]) {
       const c = byId[value];
       const meta = contactTypeMeta(c.type);
-      options = [{ value, label: c.name, icon: meta.icon, iconColor: meta.color }, ...options];
+      const state = CS_LIFECYCLE(c);
+      options = [{ value, label: state ? `${c.name} · ${state}` : c.name, icon: meta.icon, iconColor: meta.color }, ...options];
     }
   }
 

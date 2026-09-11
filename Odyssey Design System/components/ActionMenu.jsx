@@ -14,8 +14,12 @@
  *
  * RecordTable renders this for you (build the items from its `actions` prop);
  * use it directly for bespoke list rows (Files, Budgets, …).
+ *
+ * `ariaLabel` names the trigger for the row it acts on ("Actions for alias:
+ * Hansen") — pass it wherever several menus sit in one grid and "More actions"
+ * alone would not say which record is about to change.
  */
-export function ActionMenu({ items }) {
+export function ActionMenu({ items, ariaLabel }) {
   const { useState, useRef, useEffect } = React;
   const noteId = React.useId();
   const [open, setOpen] = useState(false);
@@ -115,7 +119,7 @@ export function ActionMenu({ items }) {
   return (
     <div className="acct-menu" ref={ref} onClick={(e) => e.stopPropagation()}>
       <span ref={btnRef}>
-        <button type="button" className="odc-iconbtn" aria-label="More actions"
+        <button type="button" className="odc-iconbtn" aria-label={ariaLabel || 'More actions'}
           aria-haspopup="menu" aria-expanded={open} onClick={toggle}>
           <span className="material-icons" aria-hidden="true">more_vert</span>
         </button>

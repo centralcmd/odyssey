@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="ContactMethodLabelSelect" subtitle="The Label picker on a contact method — the one registry select whose options depend on a sibling field, the parent contact's type. Person and Organization see different vocabularies; a value outside the offered set reads as empty and is refused client-side." viewport="980x700" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>ContactMethodLabelSelect</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+<link rel="stylesheet" href="../styles.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--mud-palette-background);color:var(--mud-palette-text-primary);font-family:var(--font-sans);padding:32px 36px}
+.wrap{max-width:900px;display:grid;gap:26px}
+.note{margin:0;font:400 13px/1.6 var(--font-sans);color:var(--mud-palette-text-secondary);max-width:78ch}
+.note b{color:var(--mud-palette-text-primary);font-weight:500}
+.note code{font:500 11.5px/1 var(--font-mono);color:var(--tide-400)}
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.cap{font:500 11px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:0 0 10px 2px}
+.set{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.set span{font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-secondary);border:1px solid var(--mud-palette-divider);border-radius:999px;padding:5px 9px}
+.set span.def{color:var(--tide-400);border-color:color-mix(in oklch,var(--tide-400) 45%,transparent)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const NS = window.OdysseyDesignSystem_d5aa51 || {};
+const { ContactMethodLabelSelect, ContactLabelScope, ContactTypeSelect, Button, Alert } = NS;
+
+function Column({ kind, type, title }) {
+  const [v, setV] = React.useState(ContactLabelScope.defaultFor(kind, type));
+  React.useEffect(() => { setV(ContactLabelScope.defaultFor(kind, type)); }, [kind, type]);
+  const set = ContactLabelScope.labelsFor(kind, type);
+  return React.createElement('div', null,
+    React.createElement('p', { className: 'cap' }, title),
+    React.createElement(ContactMethodLabelSelect, { kind, contactType: type, value: v, onChange: setV,
+      help: set.length + ' offered · default ' + set[0].label }),
+    React.createElement('div', { className: 'set' }, set.map((l, i) =>
+      React.createElement('span', { key: l.key, className: i === 0 ? 'def' : undefined }, l.key + ' ' + l.ordinal))),
+  );
+}
+
+/* State 3 — LabelNotOffered. The draft holds "Home" on an Organization: the
+   trigger renders its placeholder, so the message is required-style. */
+function Residual() {
+  const [v, setV] = React.useState('Home');
+  const offered = ContactLabelScope.isValidFor('phone', v, 'Organization');
+  return React.createElement('div', null,
+    React.createElement('p', { className: 'cap' }, 'State · label not offered'),
+    React.createElement(ContactMethodLabelSelect, {
+      kind: 'phone', contactType: 'Organization', value: v, onChange: setV, required: true,
+      error: offered ? undefined : 'Label is required.',
+      help: offered ? 'Valid for this contact.' : undefined,
+    }),
+    React.createElement('p', { className: 'note', style: { marginTop: 10 } },
+      offered
+        ? React.createElement(React.Fragment, null, 'Now in the offered set — the submit is unblocked.')
+        : React.createElement(React.Fragment, null, 'The draft still holds ', React.createElement('code', null, 'Home'),
+            ' — invisible on the trigger, so naming it would point at nothing. Validation is set membership, not non-emptiness.')),
+  );
+}
+
+function Demo() {
+  const [type, setType] = React.useState('Organization');
+  if (!ContactMethodLabelSelect || !ContactLabelScope) return React.createElement('div', null, 'Bundle not compiled yet.');
+  return React.createElement('div', { className: 'wrap' },
+    React.createElement('p', { className: 'note' },
+      React.createElement('b', null, 'Two inputs, one option list.'),
+      ' The picker is fed by ', React.createElement('code', null, 'ContactLabelScope.labelsFor(kind, contactType)'),
+      ' — the same map the server validates against. A new method opens on ',
+      React.createElement('code', null, 'defaultFor(kind, type)'), ', which is always the first offered member, so display order and default cannot drift apart. Ordinals are shown after each key: 1–19 is the person/shared band, 20+ the organization band, and nothing should assume the bands align across the three enums.'),
+    React.createElement('div', { style: { maxWidth: 260 } },
+      React.createElement(ContactTypeSelect, { label: 'Parent contact type', value: type, onChange: setType,
+        help: 'Locked after creation in the product.' })),
+    React.createElement('div', { className: 'cols' },
+      React.createElement(Column, { kind: 'address', type, title: 'Address' }),
+      React.createElement(Column, { kind: 'email', type, title: 'Email' }),
+      React.createElement(Column, { kind: 'phone', type, title: 'Phone' })),
+    React.createElement('div', { className: 'cols' },
+      React.createElement(Residual),
+      React.createElement('div', { style: { gridColumn: 'span 2' } },
+        React.createElement('p', { className: 'cap' }, 'Clamp · import & type-switch remap'),
+        Alert ? React.createElement(Alert, { severity: 'info' },
+          'A vCard ', React.createElement('code', null, 'TEL;TYPE=home'), ' on a ', React.createElement('code', null, 'KIND:org'),
+          ' record resolves to ', React.createElement('b', null, 'Home'), ', which clamps to ',
+          React.createElement('b', null, ContactLabelScope.clamp('phone', 'Home', 'Organization')),
+          ' before the row is written — clamp, never drop. The same clamp runs over all three collections when a contact\u2019s type changes.') : null,
+        React.createElement('p', { className: 'note', style: { marginTop: 12 } },
+          React.createElement('b', null, 'Unknown keys resolve Other by key.'),
+          ' ', React.createElement('code', null, 'metaFor(\u0027phone\u0027, \u0027Nonexistent\u0027)'), ' \u2192 ',
+          React.createElement('code', null, ContactLabelScope.metaFor('phone', 'Nonexistent').label),
+          '. A positional last-entry fallback would now render an undefined ordinal as ',
+          React.createElement('code', null, ContactLabelScope.all('phone')[ContactLabelScope.all('phone').length - 1].label),
+          ' — plausible, specific and wrong.'))),
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(Demo));
+</script>
+</body>
+</html>

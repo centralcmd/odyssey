@@ -217,28 +217,32 @@ public class ContactVCardService
             var street = address.Line2 is { Length: > 0 }
                 ? $"{address.Line1} {address.Line2}"
                 : address.Line1;
-            AppendFolded(sb, $"ADR;TYPE={AddressTypeToken(address.Label)}{pref}:;;{EscapeText(street)};{EscapeText(address.City)};{EscapeText(address.Region ?? "")};{EscapeText(address.PostalCode ?? "")};{EscapeText(address.CountryCode)}");
+            AppendFolded(sb, $"ADR;TYPE={AddressTypeToken(address.Label)}{pref}{ExtensionLabelParam(address.Label, AddressExtensionLabels)}:;;{EscapeText(street)};{EscapeText(address.City)};{EscapeText(address.Region ?? "")};{EscapeText(address.PostalCode ?? "")};{EscapeText(address.CountryCode)}");
         }
 
         foreach (var email in row.EmailAddresses)
         {
             var pref = email.IsPrimary ? ";PREF=1" : "";
-            AppendFolded(sb, $"EMAIL;TYPE={EmailTypeToken(email.Label)}{pref}:{EscapeText(email.Value)}");
+            AppendFolded(sb, $"EMAIL;TYPE={EmailTypeToken(email.Label)}{pref}{ExtensionLabelParam(email.Label, EmailExtensionLabels)}:{EscapeText(email.Value)}");
         }
 
         foreach (var phone in row.PhoneNumbers)
         {
             var pref = phone.IsPrimary ? ";PREF=1" : "";
-            AppendFolded(sb, $"TEL;TYPE={PhoneTypeToken(phone.Label)}{pref}:{EscapeText(phone.Value)}");
+            AppendFolded(sb, $"TEL;TYPE={PhoneTypeToken(phone.Label)}{pref}{ExtensionLabelParam(phone.Label, PhoneExtensionLabels)}:{EscapeText(phone.Value)}");
         }
 
         AppendFolded(sb, "END:VCARD");
     }
 
+    // The nearest standard vCard 4.0 token for each label. The organization vocabulary has no standard
+    // counterpart, so those members map onto the closest one and carry X-ODYSSEY-LABEL for the finer
+    // distinction (issue #47 §9). RFC 6350 dropped vCard 3.0's `postal` ADR type, which is why Postal
+    // maps to `home` plus the extension.
     private static string AddressTypeToken(AddressLabel label) => label switch
     {
-        AddressLabel.Home => "home",
-        AddressLabel.Work => "work",
+        AddressLabel.Home or AddressLabel.Postal => "home",
+        AddressLabel.Work or AddressLabel.Visiting or AddressLabel.Registered or AddressLabel.Branch => "work",
         AddressLabel.Billing => "billing",
         _ => "other",
     };
@@ -246,7 +250,8 @@ public class ContactVCardService
     private static string EmailTypeToken(EmailLabel label) => label switch
     {
         EmailLabel.Home => "home",
-        EmailLabel.Work => "work",
+        EmailLabel.Work or EmailLabel.General or EmailLabel.Support or EmailLabel.Sales
+            or EmailLabel.Billing or EmailLabel.Claims => "work",
         _ => "other",
     };
 
@@ -255,8 +260,32 @@ public class ContactVCardService
         PhoneLabel.Home => "home",
         PhoneLabel.Work => "work",
         PhoneLabel.Mobile => "cell",
+        PhoneLabel.Switchboard or PhoneLabel.Support or PhoneLabel.Sales or PhoneLabel.Billing
+            or PhoneLabel.Claims or PhoneLabel.Emergency or PhoneLabel.Direct => "voice,work",
         _ => "other",
     };
+
+    private const string ExtensionLabelParamName = "X-ODYSSEY-LABEL";
+
+    // The members with no standard token of their own — and ONLY those emit X-ODYSSEY-LABEL, so an
+    // export containing no organization labels is byte-identical to the pre-#47 output.
+    private static readonly AddressLabel[] AddressExtensionLabels =
+        [AddressLabel.Postal, AddressLabel.Visiting, AddressLabel.Registered, AddressLabel.Branch];
+
+    private static readonly EmailLabel[] EmailExtensionLabels =
+        [EmailLabel.General, EmailLabel.Support, EmailLabel.Sales, EmailLabel.Billing, EmailLabel.Claims];
+
+    private static readonly PhoneLabel[] PhoneExtensionLabels =
+    [
+        PhoneLabel.Switchboard, PhoneLabel.Support, PhoneLabel.Sales, PhoneLabel.Billing,
+        PhoneLabel.Claims, PhoneLabel.Emergency, PhoneLabel.Direct,
+    ];
+
+    // The value is always an enum member name from a closed set, so nothing user-supplied reaches the
+    // vCard parameter grammar — no injection surface on export.
+    private static string ExtensionLabelParam<TLabel>(TLabel label, TLabel[] extensionLabels)
+        where TLabel : struct, Enum =>
+        Array.IndexOf(extensionLabels, label) >= 0 ? $";{ExtensionLabelParamName}={label}" : "";
 
     // Builds "<sanitized display name>.vcf" for a single-contact export, stripping quotes/control
     // characters/slashes for a safe Content-Disposition value (mirrors CalendarIcsService.BuildFileName).
@@ -460,7 +489,7 @@ public class ContactVCardService
                 }
 
                 await ReplaceContactCollections(
-                    id, props, updated, sampleName, skipped, maxRepeatableProperties, cancellationToken);
+                    id, type, props, updated, sampleName, skipped, maxRepeatableProperties, cancellationToken);
 
                 await transaction.CommitAsync(cancellationToken);
                 return (id, updated);
@@ -468,7 +497,10 @@ public class ContactVCardService
 
             return (sampleName, isUpdate ? ImportOutcome.Updated : ImportOutcome.Created, null);
         }
-        catch (DomainValidationException ex)
+        // DomainException, not DomainValidationException: the contact-method label scope check rejects
+        // with DomainUnprocessableException (issue #47 §9), which would otherwise escape this catch and
+        // abort the whole import with a 500 and a dirty change tracker.
+        catch (DomainException ex)
         {
             // A validation failure partway through Create/Update can leave a partially-mutated tracked
             // entity in the change tracker without ever reaching SaveChangesAsync. Since one long-lived
@@ -487,8 +519,8 @@ public class ContactVCardService
     // drop is still recorded in the shared ImportSkipCollector so it surfaces in VCardImportResult instead of
     // silently vanishing (issue #338 review) — the entry itself is still reported Created/Updated.
     private async Task ReplaceContactCollections(
-        Guid contactId, Dictionary<string, List<VCardProperty>> props, bool isUpdate, string sampleName,
-        ImportSkipCollector skipped, int maxRepeatableProperties, CancellationToken cancellationToken)
+        Guid contactId, ContactType contactType, Dictionary<string, List<VCardProperty>> props, bool isUpdate,
+        string sampleName, ImportSkipCollector skipped, int maxRepeatableProperties, CancellationToken cancellationToken)
     {
         if (isUpdate)
         {
@@ -510,7 +542,7 @@ public class ContactVCardService
 
         foreach (var prop in CappedProperties(props, "ADR", "Address", sampleName, skipped, maxRepeatableProperties))
         {
-            var address = ParseAddress(prop);
+            var address = ParseAddress(prop, contactType);
             if (address is null)
             {
                 // ParseAddress pre-filters (missing street/city/country) rather than throwing, but the
@@ -523,7 +555,7 @@ public class ContactVCardService
             {
                 await contactService.CreateAddress(contactId, address, cancellationToken);
             }
-            catch (DomainValidationException ex)
+            catch (DomainException ex)
             {
                 skipped.Add($"Address dropped: {ex.Message}", sampleName);
             }
@@ -531,7 +563,7 @@ public class ContactVCardService
 
         foreach (var prop in CappedProperties(props, "EMAIL", "Email address", sampleName, skipped, maxRepeatableProperties))
         {
-            var email = ParseEmail(prop);
+            var email = ParseEmail(prop, contactType);
             if (email is null)
             {
                 skipped.Add("Email address dropped: missing or not a valid email address.", sampleName);
@@ -542,7 +574,7 @@ public class ContactVCardService
             {
                 await contactService.CreateEmail(contactId, email, cancellationToken);
             }
-            catch (DomainValidationException ex)
+            catch (DomainException ex)
             {
                 skipped.Add($"Email address dropped: {ex.Message}", sampleName);
             }
@@ -550,7 +582,7 @@ public class ContactVCardService
 
         foreach (var prop in CappedProperties(props, "TEL", "Phone number", sampleName, skipped, maxRepeatableProperties))
         {
-            var phone = ParsePhone(prop);
+            var phone = ParsePhone(prop, contactType);
             if (phone is null)
             {
                 skipped.Add("Phone number dropped: missing or not a valid phone number.", sampleName);
@@ -561,14 +593,14 @@ public class ContactVCardService
             {
                 await contactService.CreatePhone(contactId, phone, cancellationToken);
             }
-            catch (DomainValidationException ex)
+            catch (DomainException ex)
             {
                 skipped.Add($"Phone number dropped: {ex.Message}", sampleName);
             }
         }
     }
 
-    private static NewAddress? ParseAddress(VCardProperty prop)
+    private static NewAddress? ParseAddress(VCardProperty prop, ContactType contactType)
     {
         var comps = SplitUnescaped(prop.RawValue);
         string Get(int i) => comps.Count > i ? UnescapeText(comps[i]).Trim() : "";
@@ -586,13 +618,15 @@ public class ContactVCardService
 
         return new NewAddress
         {
-            Label = ExtractTypeToken(prop.Params, "home", "work", "billing") switch
-            {
-                "home" => AddressLabel.Home,
-                "work" => AddressLabel.Work,
-                "billing" => AddressLabel.Billing,
-                _ => AddressLabel.Other,
-            },
+            Label = ContactLabelScope.Clamp(
+                ExtensionLabel<AddressLabel>(prop.Params) ?? ExtractTypeToken(prop.Params, "home", "work", "billing") switch
+                {
+                    "home" => AddressLabel.Home,
+                    "work" => AddressLabel.Work,
+                    "billing" => AddressLabel.Billing,
+                    _ => AddressLabel.Other,
+                },
+                contactType),
             IsPrimary = HasPref(prop.Params),
             Line1 = street,
             City = city,
@@ -602,7 +636,7 @@ public class ContactVCardService
         };
     }
 
-    private static NewEmailAddress? ParseEmail(VCardProperty prop)
+    private static NewEmailAddress? ParseEmail(VCardProperty prop, ContactType contactType)
     {
         var value = UnescapeText(prop.RawValue).Trim();
         if (value.Length == 0 || !EmailValidator.IsValid(value))
@@ -612,18 +646,20 @@ public class ContactVCardService
 
         return new NewEmailAddress
         {
-            Label = ExtractTypeToken(prop.Params, "home", "work") switch
-            {
-                "home" => EmailLabel.Home,
-                "work" => EmailLabel.Work,
-                _ => EmailLabel.Other,
-            },
+            Label = ContactLabelScope.Clamp(
+                ExtensionLabel<EmailLabel>(prop.Params) ?? ExtractTypeToken(prop.Params, "home", "work") switch
+                {
+                    "home" => EmailLabel.Home,
+                    "work" => EmailLabel.Work,
+                    _ => EmailLabel.Other,
+                },
+                contactType),
             IsPrimary = HasPref(prop.Params),
             Value = value,
         };
     }
 
-    private static NewPhoneNumber? ParsePhone(VCardProperty prop)
+    private static NewPhoneNumber? ParsePhone(VCardProperty prop, ContactType contactType)
     {
         var raw = UnescapeText(prop.RawValue).Trim();
         var value = raw.StartsWith("tel:", StringComparison.OrdinalIgnoreCase) ? raw[4..] : raw;
@@ -634,13 +670,15 @@ public class ContactVCardService
 
         return new NewPhoneNumber
         {
-            Label = ExtractTypeToken(prop.Params, "home", "work", "cell", "mobile") switch
-            {
-                "home" => PhoneLabel.Home,
-                "work" => PhoneLabel.Work,
-                "cell" or "mobile" => PhoneLabel.Mobile,
-                _ => PhoneLabel.Other,
-            },
+            Label = ContactLabelScope.Clamp(
+                ExtensionLabel<PhoneLabel>(prop.Params) ?? ExtractTypeToken(prop.Params, "home", "work", "cell", "mobile") switch
+                {
+                    "home" => PhoneLabel.Home,
+                    "work" => PhoneLabel.Work,
+                    "cell" or "mobile" => PhoneLabel.Mobile,
+                    _ => PhoneLabel.Other,
+                },
+                contactType),
             IsPrimary = HasPref(prop.Params),
             Value = value,
         };
@@ -659,6 +697,33 @@ public class ContactVCardService
         return raw.Trim('"').Split(',')
             .Select(t => t.Trim().ToLowerInvariant())
             .FirstOrDefault(t => known.Contains(t));
+    }
+
+    /// <summary>
+    /// Resolves this property's <c>X-ODYSSEY-LABEL</c> parameter, or <see langword="null"/> when it is
+    /// absent or does not name a member — in which case the caller falls back to the standard
+    /// <c>TYPE</c> token.
+    ///
+    /// <para><b>Matched against <see cref="Enum.GetNames{TEnum}()"/>, never with
+    /// <see cref="Enum.TryParse{TEnum}(string, bool, out TEnum)"/></b>: <c>TryParse</c> returns
+    /// <see langword="true"/> for arbitrary numeric strings <i>and</i> for comma-separated name lists
+    /// (<c>"Home,Work"</c> → ordinal 3), either of which would persist a value no member names. The
+    /// parameter is fully attacker-controlled, and a value that does not match is discarded silently —
+    /// never stored, echoed, logged, or reported through <c>ImportSkipCollector</c> (issue #47 §10.4,
+    /// §10.7).</para>
+    /// </summary>
+    private static TLabel? ExtensionLabel<TLabel>(IReadOnlyDictionary<string, string> parameters)
+        where TLabel : struct, Enum
+    {
+        if (!parameters.TryGetValue(ExtensionLabelParamName, out var raw))
+        {
+            return null;
+        }
+
+        var name = Enum.GetNames<TLabel>()
+            .FirstOrDefault(n => string.Equals(n, raw.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        return name is null ? null : Enum.Parse<TLabel>(name);
     }
 
     private static bool HasPref(IReadOnlyDictionary<string, string> parameters) => parameters.ContainsKey("PREF");

@@ -103,8 +103,12 @@
 }
 .trm-tile-top { display: flex; align-items: center; gap: 9px; }
 .trm-tile-kind { font: 500 12px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.trm-tile-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.trm-tile-name { font: 500 12.5px/1.25 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+/* A labelled term is NAMED by its label; the kind wording drops to a caption
+   beneath it. Both are text — no meaning rides on the glyph or its hue. */
+.trm-name { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; }
+.trm-tile-name { font: 500 12.5px/1.25 var(--font-sans); color: var(--mud-palette-text-primary); }
+.trm-kind-caption { font: 400 10.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.trm-kind-caption.inline { font-size: 11px; }
 .trm-tile-value {
   font: 400 23px/1 var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -124,6 +128,9 @@
 
 /* ---- Compact row ---- */
 .trm-summary.row {
+  /* Explicit display — the kit's generic `.row { display: flex }` utility would
+     otherwise lay the entries out horizontally and clip them. */
+  display: block;
   border: 1px solid var(--mud-palette-divider);
   border-radius: 9px; overflow: hidden;
   background: var(--mud-palette-surface);
@@ -201,7 +208,6 @@
 .trm-tbl tbody tr.current td { background: oklch(0.78 0.13 200 / 0.04); }
 .trm-row-kind { display: flex; align-items: center; gap: 10px; }
 .trm-row-kind-name { font: 400 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
-.trm-row-kind-cat { color: var(--mud-palette-text-secondary); font-weight: 400; }
 .trm-row-note { font: 400 11.5px/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
 .trm-cell-date { font: 400 12.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .trm-cell-value {
@@ -312,6 +318,10 @@
 
 /* Value block — wraps the hero AmountField + its unit toggle head. */
 .trm-value-block { display: flex; flex-direction: column; gap: 10px; }
+
+/* Label field in the dialog — the helper text changes with the kind's rule. */
+.trm-label-hint { font: 400 11.5px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.trm-label-hint b { color: var(--mud-palette-text-primary); font-weight: 500; }
 
 .trm-foot-note { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .trm-field-head { display: flex; align-items: center; }
