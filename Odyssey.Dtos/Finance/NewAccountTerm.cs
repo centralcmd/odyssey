@@ -8,6 +8,14 @@ public sealed record NewAccountTerm
     [EnumDataType(typeof(TermKind))]
     public TermKind TermKind { get; set; }
 
+    /// <summary>
+    /// The series name — required on a <see cref="TermKind.Fee"/>, refused on a rate kind. Normalized
+    /// server-side by <see cref="TermLabel"/>; the folded comparison form is derived there and is
+    /// never accepted from a request.
+    /// </summary>
+    [StringLength(TermLabel.MaxLength)]
+    public string? Label { get; set; }
+
     [Required]
     [EnumDataType(typeof(TermValueUnit))]
     public TermValueUnit ValueUnit { get; set; }

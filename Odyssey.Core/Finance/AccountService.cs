@@ -409,8 +409,9 @@ public class AccountService
     /// accounts that have a rate in force. Backs the account-header rate subtitle.
     /// </summary>
     /// <summary>
-    /// The in-force terms per account — one per <see cref="ContextTermKind"/>, ordered by the registry's
-    /// own kind order so the card's Current band reads the same way on every account.
+    /// The in-force terms per account — one per SERIES, <c>(TermKind, LabelKey)</c>, ordered by kind
+    /// (registry order) then label so the card's Current band reads the same way on every load. One
+    /// kind contributes one tile per label: a card charging four named fees shows four.
     ///
     /// <para>
     /// This is the query that used to fetch the rate terms alone. Widening it from two kinds to all of
@@ -436,9 +437,10 @@ public class AccountService
             .ToDictionary(
                 group => group.Key,
                 group => group
-                    .GroupBy(t => t.TermKind)
-                    .Select(byKind => byKind.MostEffective()!)
+                    .GroupBy(t => (t.TermKind, t.LabelKey))
+                    .Select(bySeries => bySeries.MostEffective()!)
                     .OrderBy(t => t.TermKind)
+                    .ThenBy(t => t.LabelKey, StringComparer.Ordinal)
                     .ToList());
     }
 
@@ -453,6 +455,9 @@ public class AccountService
     private static AccountCurrentTerm ToCurrentTerm(AccountTerm term) => new()
     {
         TermKind = term.TermKind.Adapt<DtoTermKind>(),
+        // Carried because it is the tile's NAME — without it a card with several fees renders
+        // several indistinguishable tiles. Note is still excluded from this cross-claim projection.
+        Label = term.Label,
         ValueUnit = term.ValueUnit.Adapt<DtoTermValueUnit>(),
         Value = term.Value,
         CurrencyCode = term.CurrencyCode,

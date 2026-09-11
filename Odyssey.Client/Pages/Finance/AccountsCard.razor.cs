@@ -615,6 +615,9 @@ public partial class AccountsCard
         AccountTermId = Guid.Empty,
         AccountId = a.AccountId,
         TermKind = term.TermKind,
+        // Carried, because the card renders one tile per in-force series: without the label a travel
+        // card's six fees would be six identical "Fee" tiles.
+        Label = term.Label,
         ValueUnit = term.ValueUnit,
         Value = term.Value,
         CurrencyCode = term.CurrencyCode,
@@ -637,11 +640,19 @@ public partial class AccountsCard
             ? "No transactions"
             : $"{a.TransactionCount} transaction{(a.TransactionCount == 1 ? "" : "s")} · secondary";
 
-    /// <summary>A term's tile foot: when it took effect, plus its billing period where it has one.
-    /// The period is what separates a 695 annual fee from a 695 monthly one, so it rides along.</summary>
-    private static string TermFoot(AccountCurrentTerm term)
+    /// <summary>A term's tile foot: the kind wording for a labelled term (whose name is its label),
+    /// when it took effect, plus its billing period where it has one. The kind is text here rather
+    /// than only the tile's glyph and hue, and the period is what separates a 695 annual fee from a
+    /// 695 monthly one, so both ride along.</summary>
+    // internal rather than private so the caption composition can be asserted directly: it is what
+    // carries the kind wording as TEXT on the record card, which is a WCAG 1.4.1 commitment rather
+    // than a formatting detail. Odyssey.Client already grants InternalsVisibleTo to its test project.
+    internal static string TermFoot(ExistingAccountTerm term, ExistingAccount account)
     {
         var since = $"since {term.EffectiveFrom.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture)}";
+        if (TermKindVisuals.IsLabelled(term))
+            since = $"{TermKindVisuals.LabelFor(term, account)} · {since}";
+
         var period = TermKindVisuals.BillingInfo(term.BillingPeriod);
         return period is null || term.BillingPeriod == Odyssey.Dtos.Finance.BillingPeriod.OneTime
             ? since

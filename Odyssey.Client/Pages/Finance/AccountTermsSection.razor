@@ -103,7 +103,7 @@
                                     <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
                                         <span class="material-icons" style="font-size:18px;">@info.Icon</span>
                                     </span>
-                                    <span class="trm-tile-kind">@TermKindVisuals.LabelFor(t, Account)</span>
+                                    @RenderTermName(t, TermKindVisuals.IsLabelled(t) ? "trm-tile-name" : "trm-tile-kind")
                                 </div>
                                 <div class="trm-tile-value" style="color:@(TermKindVisuals.CostColor(t, Account) ?? info.Color);">
                                     @TermKindVisuals.FormatValue(t, FormatMoney)
@@ -154,6 +154,22 @@
 }
 
 @code {
+    // ── A term's NAME ─────────────────────────────────────────────────────────
+    // Its own label where it has one, with the kind wording as a caption beneath; otherwise the kind
+    // wording is the name. Both are plain text, so nothing is carried by the glyph or its hue alone
+    // (WCAG 1.1.1 / 1.4.1) — and an unlabelled cost rate still reads "Interest charged", because
+    // DisplayName falls back to LabelFor rather than the bare registry label.
+    private RenderFragment RenderTermName(ExistingAccountTerm t, string nameClass) => __builder =>
+    {
+        <span class="trm-name">
+            <span class="@nameClass">@TermKindVisuals.DisplayName(t, Account)</span>
+            @if (TermKindVisuals.IsLabelled(t))
+            {
+                <span class="trm-kind-caption">@TermKindVisuals.LabelFor(t, Account)</span>
+            }
+        </span>
+    };
+
     // ── History group + row ───────────────────────────────────────────────────
     private RenderFragment RenderGroup(string icon, string label, List<ExistingAccountTerm> rows) => __builder =>
     {
@@ -188,7 +204,7 @@
                                         <span class="material-icons" style="font-size:15px;">@info.Icon</span>
                                     </span>
                                     <div>
-                                        <div class="trm-row-kind-name">@TermKindVisuals.LabelFor(t, Account)</div>
+                                        @RenderTermName(t, "trm-row-kind-name")
                                         @if (!string.IsNullOrWhiteSpace(t.Note))
                                         {
                                             <div class="trm-row-note">@t.Note</div>

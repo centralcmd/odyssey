@@ -38,6 +38,15 @@ public class AccountTermsApiTests
         EffectiveFrom = effectiveFrom,
     };
 
+    private static NewAccountTerm Fee(string? label, decimal value, DateTime effectiveFrom) => new()
+    {
+        TermKind = TermKind.Fee,
+        Label = label,
+        ValueUnit = TermValueUnit.Amount,
+        Value = value,
+        EffectiveFrom = effectiveFrom,
+    };
+
     // ── Authorization matrix (spec §7) ────────────────────────────────────────
 
     [Fact]
@@ -118,13 +127,7 @@ public class AccountTermsApiTests
         var accountId = await SeedAccountAsync(factory, DtoAccountType.CheckingAccount, "EUR");
         using var client = factory.CreateClient();
 
-        var post = await client.PostAsJsonAsync(TermsPath(accountId), new NewAccountTerm
-        {
-            TermKind = TermKind.ServiceFee,
-            ValueUnit = TermValueUnit.Amount,
-            Value = 5m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        });
+        var post = await client.PostAsJsonAsync(TermsPath(accountId), Fee("Account fee", 5m, new DateTime(2026, 1, 1)));
         Assert.Equal(HttpStatusCode.Created, post.StatusCode);
 
         var list = await client.GetFromJsonAsync<List<ExistingAccountTerm>>(TermsPath(accountId));
@@ -218,6 +221,174 @@ public class AccountTermsApiTests
 
         var delete = await client.DeleteAsync($"{TermsPath(accountId)}/{term.AccountTermId}");
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+    }
+
+
+    // ── Series labels (spec §16) ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task Post_TwoLabelledFeesOnTheSameDate_BothCreatedAndBothCurrent()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        var date = new DateTime(2026, 1, 1);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync(TermsPath(accountId), Fee("ATM · abroad", 25m, date))).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync(TermsPath(accountId), Fee("ATM · domestic", 5m, date))).StatusCode);
+
+        var current = await client.GetFromJsonAsync<List<CurrentAccountTerm>>(CurrentPath(accountId));
+        Assert.Equal(2, current!.Count);
+        Assert.Equal(new[] { "ATM · abroad", "ATM · domestic" }, current.Select(t => t.Label));
+    }
+
+    [Theory]
+    [InlineData("atm · abroad")]
+    [InlineData("  ATM   ·   abroad ")]
+    public async Task Post_LabelDifferingOnlyByCaseOrSpacing_ReturnsConflict(string collidingLabel)
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        var date = new DateTime(2026, 1, 1);
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee("ATM · abroad", 25m, date));
+        var duplicate = await client.PostAsJsonAsync(TermsPath(accountId), Fee(collidingLabel, 30m, date));
+
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Post_FeeWithoutLabel_ReturnsBadRequest(string? label)
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.Cash);
+        using var client = factory.CreateClient();
+
+        var post = await client.PostAsJsonAsync(TermsPath(accountId), Fee(label, 5m, new DateTime(2026, 1, 1)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(TermKind.InterestRate, DtoAccountType.SavingsAccount)]
+    [InlineData(TermKind.ExpectedReturn, DtoAccountType.InvestmentAccount)]
+    public async Task Post_RateKindWithLabel_ReturnsBadRequest(TermKind kind, DtoAccountType accountType)
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, accountType);
+        using var client = factory.CreateClient();
+
+        var post = await client.PostAsJsonAsync(TermsPath(accountId), new NewAccountTerm
+        {
+            TermKind = kind,
+            Label = "Headline",
+            ValueUnit = TermValueUnit.Percentage,
+            Value = 0.03m,
+            EffectiveFrom = new DateTime(2026, 1, 1),
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_OverlongLabel_IsRejectedByModelValidation()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        var post = await client.PostAsJsonAsync(
+            TermsPath(accountId), Fee(new string('x', TermLabel.MaxLength + 1), 5m, new DateTime(2026, 1, 1)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+    }
+
+    [Fact]
+    public async Task Post_NormalizesLabelOnWriteAndRoundTripsThroughHistory()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee("  ATM   Abroad  ", 25m, new DateTime(2026, 1, 1)));
+
+        var list = await client.GetFromJsonAsync<List<ExistingAccountTerm>>(TermsPath(accountId));
+        Assert.Equal("ATM Abroad", Assert.Single(list!).Label);
+    }
+
+    [Fact]
+    public async Task Post_LabelKeyInTheRequestBody_IsNotBound()
+    {
+        // Mass assignment: LabelKey is on no request DTO, so a body that names it must be ignored and
+        // the stored value derived from Label alone.
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        var post = await client.PostAsJsonAsync(TermsPath(accountId), new
+        {
+            termKind = TermKind.Fee,
+            label = "ATM Abroad",
+            labelKey = "smuggled",
+            valueUnit = TermValueUnit.Amount,
+            value = 25m,
+            effectiveFrom = new DateTime(2026, 1, 1),
+        });
+        Assert.Equal(HttpStatusCode.Created, post.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var stored = await context.AccountTerms.AsNoTracking().SingleAsync(t => t.AccountId == accountId);
+        Assert.Equal("ATM Abroad", stored.Label);
+        Assert.Equal("atm abroad", stored.LabelKey);
+    }
+
+    [Fact]
+    public async Task Put_ChangingOnlyTheLabel_SplitsOneCurrentEntryIntoTwo()
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee("ATM", 25m, new DateTime(2026, 1, 1)));
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee("ATM", 30m, new DateTime(2026, 6, 1)));
+
+        var beforeCurrent = await client.GetFromJsonAsync<List<CurrentAccountTerm>>($"{CurrentPath(accountId)}?asOf=2026-12-01");
+        Assert.Single(beforeCurrent!);
+
+        var later = (await client.GetFromJsonAsync<List<ExistingAccountTerm>>(TermsPath(accountId)))!
+            .Single(t => t.EffectiveFrom.Date == new DateTime(2026, 6, 1));
+        var put = await client.PutAsJsonAsync(
+            $"{TermsPath(accountId)}/{later.AccountTermId}", Fee("ATM · abroad", 30m, new DateTime(2026, 6, 1)));
+        Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+
+        var afterCurrent = await client.GetFromJsonAsync<List<CurrentAccountTerm>>($"{CurrentPath(accountId)}?asOf=2026-12-01");
+        Assert.Equal(2, afterCurrent!.Count);
+    }
+
+    [Fact]
+    public async Task AccountRecord_CarriesOneDistinctlyNamedTermPerInForceSeries()
+    {
+        // The record card renders one tile per in-force term, so a card charging three fees must
+        // carry three DIFFERENT names — otherwise it renders three indistinguishable tiles.
+        await using var factory = new ApiFactory(
+            [PermissionClaims.AccountsTermsRead, PermissionClaims.AccountsTermsWrite, PermissionClaims.AccountsRead]);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.CreditCard);
+        using var client = factory.CreateClient();
+
+        var date = new DateTime(2026, 1, 1);
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee("Annual card fee", 95m, date));
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee("ATM · abroad", 25m, date));
+        await client.PostAsJsonAsync(TermsPath(accountId), Fee("Paper statement", 2m, date));
+
+        var account = await client.GetFromJsonAsync<ExistingAccount>($"/api/accounts/{accountId}");
+
+        Assert.Equal(3, account!.CurrentTerms.Count);
+        Assert.Equal(3, account.CurrentTerms.Select(t => t.Label).Distinct().Count());
     }
 
     private static readonly string[] WriteAndRead =

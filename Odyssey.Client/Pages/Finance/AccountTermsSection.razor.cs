@@ -85,14 +85,22 @@ public partial class AccountTermsSection
         // Newest first for the history table.
         _terms = _terms.OrderByDescending(t => t.EffectiveFrom).ThenByDescending(t => t.CreatedAtUtc).ToList();
 
+        // One entry per SERIES — (kind, label) — not per kind: a card charging a domestic and a
+        // foreign ATM fee has two in force, and the later of them supersedes only its own series.
+        // Ordered kind (registry order) then label, so tiles keep a stable order across loads.
         var asOf = DateTime.UtcNow.Date;
-        _current = TermKindVisuals.All
-            .Select(kind => _terms
-                .Where(t => t.TermKind == kind && t.EffectiveFrom.Date <= asOf)
+        var kindOrder = TermKindVisuals.All
+            .Select((kind, index) => (kind, index))
+            .ToDictionary(x => x.kind, x => x.index);
+
+        _current = _terms
+            .Where(t => t.EffectiveFrom.Date <= asOf)
+            .GroupBy(t => (t.TermKind, LabelKey: TermLabel.Key(t.Label)))
+            .Select(group => group
                 .OrderByDescending(t => t.EffectiveFrom).ThenByDescending(t => t.CreatedAtUtc)
-                .FirstOrDefault())
-            .Where(t => t is not null)
-            .Select(t => t!)
+                .First())
+            .OrderBy(t => kindOrder.TryGetValue(t.TermKind, out var i) ? i : int.MaxValue)
+            .ThenBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
             .ToList();
         _currentIds = _current.Select(t => t.AccountTermId).ToHashSet();
 
@@ -115,10 +123,10 @@ public partial class AccountTermsSection
 
     private async Task DeleteAsync(ExistingAccountTerm term)
     {
-        var info = TermKindVisuals.Info(term.TermKind);
+        // Named by what the user called it, so a card with several fees says which one is going.
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete term?",
-            $"Remove the {info.Label} entry effective {term.EffectiveFrom:MMM dd, yyyy}? This can’t be undone.",
+            $"Remove the {TermKindVisuals.DisplayName(term, Account)} entry effective {term.EffectiveFrom:MMM dd, yyyy}? This can’t be undone.",
             yesText: "Delete", cancelText: "Cancel");
 
         if (confirmed != true)
@@ -148,6 +156,8 @@ public partial class AccountTermsSection
         if (kind is null)
             return null;
 
+        // A rate is refused a label, so its kind IS its series — there is never a second rate series
+        // to choose between here.
         var info = TermKindVisuals.Info(kind.Value);
         var ascending = _terms
             .Where(t => t.TermKind == kind.Value)

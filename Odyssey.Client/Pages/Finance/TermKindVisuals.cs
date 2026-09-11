@@ -32,14 +32,11 @@ public static class TermKindVisuals
 {
     private static readonly IReadOnlyDictionary<TermKind, TermKindInfo> Registry = new Dictionary<TermKind, TermKindInfo>
     {
-        // ---- Rates ----
+        // ---- Rates: each is a distinct quoted number some surface must single out ----
         [TermKind.InterestRate]   = new("Interest rate",   TermGroup.Rate, "percent",      "oklch(0.78 0.13 200)", "oklch(0.78 0.13 200 / 0.15)", TermValueUnit.Percentage),
         [TermKind.ExpectedReturn] = new("Expected return", TermGroup.Rate, "trending_up",  "oklch(0.72 0.16 295)", "oklch(0.72 0.16 295 / 0.15)", TermValueUnit.Percentage),
-        // ---- Fees ----
-        [TermKind.ManagementFee]  = new("Management fee",  TermGroup.Fee,  "pie_chart",    "oklch(0.77 0.14 55)",  "oklch(0.77 0.14 55 / 0.15)",  TermValueUnit.Percentage),
-        [TermKind.ServiceFee]     = new("Service fee",     TermGroup.Fee,  "event_repeat", "oklch(0.76 0.13 225)", "oklch(0.76 0.13 225 / 0.15)", TermValueUnit.Amount),
-        [TermKind.TransactionFee] = new("Transaction fee", TermGroup.Fee,  "swap_horiz",   "oklch(0.75 0.16 330)", "oklch(0.75 0.16 330 / 0.15)", TermValueUnit.Amount),
-        [TermKind.OtherFee]       = new("Other fee",       TermGroup.Fee,  "receipt_long", "oklch(0.74 0.02 250)", "oklch(0.74 0.02 250 / 0.15)", TermValueUnit.Amount),
+        // ---- Fee: one kind, named by the term's own label ----
+        [TermKind.Fee]            = new("Fee",             TermGroup.Fee,  "receipt_long", "oklch(0.77 0.14 55)",  "oklch(0.77 0.14 55 / 0.15)",  TermValueUnit.Amount),
     };
 
     /// <summary>Term kinds in registry order (rates first), excluding <see cref="TermKind.Unknown"/>.</summary>
@@ -66,8 +63,13 @@ public static class TermKindVisuals
     public static BillingPeriodInfo? BillingInfo(BillingPeriod? period) =>
         period is { } p && Billing.TryGetValue(p, out var info) ? info : null;
 
+    /// <summary>The billing period a new fee opens on. One honest default: with a single fee kind
+    /// there is nothing left to guess from, and the four kind-specific guesses were wrong three times
+    /// in four.</summary>
+    public const BillingPeriod DefaultFeeBillingPeriod = BillingPeriod.Monthly;
+
     // Eligibility matrix — mirrors the backend (AccountTermService): interest only on
-    // interest-bearing accounts, expected return on investment/pension, fees on every type.
+    // interest-bearing accounts, expected return on investment/pension, Fee on every type.
     private static readonly IReadOnlySet<AccountType> InterestRateTypes = new HashSet<AccountType>
     {
         AccountType.CheckingAccount, AccountType.SavingsAccount, AccountType.PensionAccount,
@@ -84,7 +86,7 @@ public static class TermKindVisuals
     {
         TermKind.InterestRate => InterestRateTypes.Contains(accountType),
         TermKind.ExpectedReturn => ExpectedReturnTypes.Contains(accountType),
-        TermKind.ManagementFee or TermKind.ServiceFee or TermKind.TransactionFee or TermKind.OtherFee => true,
+        TermKind.Fee => true,
         _ => false,
     };
 
@@ -114,6 +116,19 @@ public static class TermKindVisuals
     /// value is tinted, the way a balance pairs its color with a signed amount.</summary>
     public static string LabelFor(ExistingAccountTerm term, ExistingAccount account) =>
         IsCostRate(term, account) ? "Interest charged" : Info(term.TermKind).Label;
+
+    /// <summary>What a term is CALLED: its own label where it has one, else its kind wording. The
+    /// fallback is <see cref="LabelFor"/> and not the bare registry label, so an unlabelled interest
+    /// rate on a liability still reads "Interest charged" — reaching for <c>Info(kind).Label</c> here
+    /// would undo that non-colour cue silently, on a surface that still looks right for every other
+    /// term. A rate is refused a label, so a cost rate can only ever take the fallback arm.</summary>
+    public static string DisplayName(ExistingAccountTerm term, ExistingAccount account) =>
+        TermLabel.Normalize(term.Label) ?? LabelFor(term, account);
+
+    /// <summary>Whether a term carries a label, and so renders its kind wording as a caption beneath
+    /// its name rather than as the name itself.</summary>
+    public static bool IsLabelled(ExistingAccountTerm term) =>
+        TermLabel.Normalize(term.Label) is not null;
 
     /// <summary>The direction glyph for a rate change, from the rate as stored. A liability's rising
     /// APR trends <em>up</em>: nothing re-signs a cost rate, which is what used to invert this.</summary>

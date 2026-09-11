@@ -38,6 +38,15 @@ public class AccountTermServiceTests
         EffectiveFrom = effectiveFrom,
     };
 
+    private static NewAccountTerm Fee(string? label, decimal value, DateTime effectiveFrom) => new()
+    {
+        TermKind = TermKind.Fee,
+        Label = label,
+        ValueUnit = TermValueUnit.Amount,
+        Value = value,
+        EffectiveFrom = effectiveFrom,
+    };
+
     [Fact]
     public async Task Create_InterestRateOnSavingsAccount_Persists()
     {
@@ -66,7 +75,8 @@ public class AccountTermServiceTests
 
         var created = await service.Create(accountId, new NewAccountTerm
         {
-            TermKind = TermKind.ServiceFee,
+            TermKind = TermKind.Fee,
+            Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 5m,
             EffectiveFrom = new DateTime(2026, 1, 1),
@@ -84,7 +94,8 @@ public class AccountTermServiceTests
 
         await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewAccountTerm
         {
-            TermKind = TermKind.ServiceFee,
+            TermKind = TermKind.Fee,
+            Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 5m,
             CurrencyCode = "ZZZ",
@@ -164,7 +175,8 @@ public class AccountTermServiceTests
 
         await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewAccountTerm
         {
-            TermKind = TermKind.ServiceFee,
+            TermKind = TermKind.Fee,
+            Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = -1m,
             EffectiveFrom = new DateTime(2026, 1, 1),
@@ -219,7 +231,7 @@ public class AccountTermServiceTests
     }
 
     [Fact]
-    public async Task Create_ServiceFeeWithBillingPeriod_RoundTrips()
+    public async Task Create_FeeWithBillingPeriod_RoundTrips()
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
@@ -227,7 +239,8 @@ public class AccountTermServiceTests
 
         await service.Create(accountId, new NewAccountTerm
         {
-            TermKind = TermKind.ServiceFee,
+            TermKind = TermKind.Fee,
+            Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 2m,
             BillingPeriod = BillingPeriod.Daily,
@@ -240,7 +253,7 @@ public class AccountTermServiceTests
     }
 
     [Fact]
-    public async Task Create_DuplicateKindAndEffectiveFrom_Throws()
+    public async Task Create_DuplicateSeriesAndEffectiveFrom_Throws()
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
@@ -264,7 +277,7 @@ public class AccountTermServiceTests
     }
 
     [Fact]
-    public async Task GetCurrent_ReturnsLatestEntryPerKindOnOrBeforeAsOf()
+    public async Task GetCurrent_ReturnsLatestEntryPerSeriesOnOrBeforeAsOf()
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
@@ -300,7 +313,7 @@ public class AccountTermServiceTests
     }
 
     [Fact]
-    public async Task GetCurrent_OnePerKind()
+    public async Task GetCurrent_OnePerSeries_AcrossKinds()
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
@@ -309,7 +322,8 @@ public class AccountTermServiceTests
         await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
         await service.Create(accountId, new NewAccountTerm
         {
-            TermKind = TermKind.ServiceFee,
+            TermKind = TermKind.Fee,
+            Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 5m,
             EffectiveFrom = new DateTime(2026, 1, 1),
@@ -318,7 +332,7 @@ public class AccountTermServiceTests
         var current = await service.GetCurrent(accountId);
         Assert.Equal(2, current!.Count);
         Assert.Contains(current, t => t.TermKind == TermKind.InterestRate);
-        Assert.Contains(current, t => t.TermKind == TermKind.ServiceFee);
+        Assert.Contains(current, t => t.TermKind == TermKind.Fee);
     }
 
     [Fact]
@@ -331,7 +345,8 @@ public class AccountTermServiceTests
         await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
         await service.Create(accountId, new NewAccountTerm
         {
-            TermKind = TermKind.ServiceFee,
+            TermKind = TermKind.Fee,
+            Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 5m,
             EffectiveFrom = new DateTime(2026, 1, 1),
@@ -416,5 +431,249 @@ public class AccountTermServiceTests
         await context.SaveChangesAsync();
 
         Assert.Empty(await context.AccountTerms.ToListAsync());
+    }
+
+    // ── Series labels ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Create_TwoLabelledFeesOnOneDate_BothAreInForce()
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new AccountTermService(context);
+
+        var date = new DateTime(2026, 1, 1);
+        await service.Create(accountId, Fee("ATM · abroad", 25m, date));
+        await service.Create(accountId, Fee("ATM · domestic", 5m, date));
+
+        var current = await service.GetCurrent(accountId, date);
+        Assert.Equal(2, current!.Count);
+        Assert.Equal(new[] { "ATM · abroad", "ATM · domestic" }, current.Select(t => t.Label));
+    }
+
+    [Fact]
+    public async Task GetCurrent_SupersessionHappensWithinOneLabelOnly()
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new AccountTermService(context);
+
+        await service.Create(accountId, Fee("ATM · abroad", 25m, new DateTime(2026, 1, 1)));
+        await service.Create(accountId, Fee("ATM · domestic", 5m, new DateTime(2026, 1, 1)));
+        await service.Create(accountId, Fee("ATM · abroad", 30m, new DateTime(2026, 6, 1)));
+
+        var current = await service.GetCurrent(accountId, new DateTime(2026, 12, 1));
+        Assert.Equal(2, current!.Count);
+        Assert.Equal(30m, current.Single(t => t.Label == "ATM · abroad").Value);
+        Assert.Equal(5m, current.Single(t => t.Label == "ATM · domestic").Value);
+    }
+
+    [Fact]
+    public async Task GetCurrent_UnlabelledRateAndLabelledFeeAreSeparateSeries()
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new AccountTermService(context);
+
+        await service.Create(accountId, InterestRate(0.22m, new DateTime(2026, 1, 1)));
+        await service.Create(accountId, Fee("Annual card fee", 95m, new DateTime(2026, 1, 1)));
+
+        var current = await service.GetCurrent(accountId, new DateTime(2026, 2, 1));
+        Assert.Equal(2, current!.Count);
+        Assert.Null(current.Single(t => t.TermKind == TermKind.InterestRate).Label);
+        Assert.Equal("Annual card fee", current.Single(t => t.TermKind == TermKind.Fee).Label);
+    }
+
+    [Theory]
+    [InlineData("atm · abroad")]
+    [InlineData("  ATM   ·   abroad  ")]
+    [InlineData("AtM · AbRoAd")]
+    public async Task Create_LabelDifferingOnlyByCaseOrSpacing_Conflicts(string collidingLabel)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new AccountTermService(context);
+
+        var date = new DateTime(2026, 1, 1);
+        await service.Create(accountId, Fee("ATM · abroad", 25m, date));
+
+        await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Create(accountId, Fee(collidingLabel, 30m, date)));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Create_FeeWithoutLabel_Throws(string? label)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new AccountTermService(context);
+
+        await Assert.ThrowsAsync<DomainValidationException>(
+            () => service.Create(accountId, Fee(label, 25m, new DateTime(2026, 1, 1))));
+    }
+
+    /// <summary>
+    /// Criterion 5, stated over the WHOLE enum rather than a hand-picked sample: there is no fee kind
+    /// for which a label is optional, so there is no account type on which one is. Enumerating the
+    /// enum is the point — a future account type is covered the day it is added, where a list of
+    /// InlineData would silently leave it out.
+    /// </summary>
+    public static TheoryData<DtoAccountType> EveryAccountType()
+    {
+        var data = new TheoryData<DtoAccountType>();
+        foreach (var type in Enum.GetValues<DtoAccountType>().Where(t => t != DtoAccountType.Unknown))
+            data.Add(type);
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(EveryAccountType))]
+    public async Task Create_FeeWithoutLabel_ThrowsOnEveryAccountType(DtoAccountType accountType)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, accountType);
+        var service = new AccountTermService(context);
+
+        // Fee is eligible everywhere, so this can only ever fail on the label rule — which is what
+        // makes the assertion about the rule rather than about eligibility.
+        Assert.True(TermLabel.RuleFor(TermKind.Fee) == TermLabelRule.Required);
+
+        await Assert.ThrowsAsync<DomainValidationException>(
+            () => service.Create(accountId, Fee(null, 25m, new DateTime(2026, 1, 1))));
+    }
+
+    /// <summary>The other half of the same criterion: a NAMED fee is accepted on every account type,
+    /// so the rule above is refusing the missing label and not the kind.</summary>
+    [Theory]
+    [MemberData(nameof(EveryAccountType))]
+    public async Task Create_NamedFee_IsAcceptedOnEveryAccountType(DtoAccountType accountType)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, accountType);
+        var service = new AccountTermService(context);
+
+        var created = await service.Create(accountId, Fee("Account fee", 25m, new DateTime(2026, 1, 1)));
+
+        Assert.Equal("Account fee", created.Label);
+    }
+
+    [Theory]
+    [InlineData(TermKind.InterestRate, DtoAccountType.SavingsAccount)]
+    [InlineData(TermKind.ExpectedReturn, DtoAccountType.InvestmentAccount)]
+    public async Task Create_RateKindWithLabel_Throws(TermKind kind, DtoAccountType accountType)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, accountType);
+        var service = new AccountTermService(context);
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewAccountTerm
+        {
+            TermKind = kind,
+            Label = "Headline",
+            ValueUnit = TermValueUnit.Percentage,
+            Value = 0.03m,
+            EffectiveFrom = new DateTime(2026, 1, 1),
+        }));
+    }
+
+    [Fact]
+    public async Task Create_OverlongLabel_Throws()
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new AccountTermService(context);
+
+        await Assert.ThrowsAsync<DomainValidationException>(
+            () => service.Create(accountId, Fee(new string('x', TermLabel.MaxLength + 1), 5m, new DateTime(2026, 1, 1))));
+    }
+
+    [Fact]
+    public async Task Create_NormalizesLabelAndRoundTripsThroughHistory()
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new AccountTermService(context);
+
+        var created = await service.Create(accountId, Fee("  ATM   Abroad  ", 25m, new DateTime(2026, 1, 1)));
+
+        Assert.Equal("ATM Abroad", created.Label);
+        var history = await service.GetHistory(accountId);
+        Assert.Equal("ATM Abroad", Assert.Single(history!).Label);
+    }
+
+    [Fact]
+    public async Task Create_DerivesLabelKeyFromLabelAlone()
+    {
+        // Mass assignment: LabelKey is on no request DTO, so the only thing that can set it is the
+        // service's own derivation from Label.
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new AccountTermService(context);
+
+        var created = await service.Create(accountId, Fee("  ATM   Abroad  ", 25m, new DateTime(2026, 1, 1)));
+
+        var stored = await context.AccountTerms.AsNoTracking()
+            .SingleAsync(t => t.AccountTermId == created.AccountTermId);
+        Assert.Equal("ATM Abroad", stored.Label);
+        Assert.Equal("atm abroad", stored.LabelKey);
+    }
+
+    [Fact]
+    public async Task Update_ChangingOnlyTheLabel_MovesTheTermToItsOwnSeries()
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new AccountTermService(context);
+
+        await service.Create(accountId, Fee("ATM", 25m, new DateTime(2026, 1, 1)));
+        var second = await service.Create(accountId, Fee("ATM", 30m, new DateTime(2026, 6, 1)));
+
+        // One series, so the later entry supersedes: one current entry.
+        Assert.Single((await service.GetCurrent(accountId, new DateTime(2026, 12, 1)))!);
+
+        Assert.True(await service.Update(accountId, second.AccountTermId, Fee("ATM · abroad", 30m, new DateTime(2026, 6, 1))));
+
+        var current = await service.GetCurrent(accountId, new DateTime(2026, 12, 1));
+        Assert.Equal(2, current!.Count);
+        Assert.Equal(new[] { "ATM", "ATM · abroad" }, current.Select(t => t.Label));
+    }
+
+    [Fact]
+    public async Task GetCurrent_UnlabelledRateResolvesExactlyAsBefore()
+    {
+        // A term written before labels existed carries a null label, which IS the unnamed series.
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
+        var service = new AccountTermService(context);
+
+        var account = await context.Accounts.FirstAsync(a => a.AccountId == accountId);
+        context.AccountTerms.AddRange(
+            new AccountTerm
+            {
+                AccountId = account.AccountId,
+                TermKind = Odyssey.Context.TermKind.InterestRate,
+                ValueUnit = Odyssey.Context.TermValueUnit.Percentage,
+                Value = 0.03m,
+                EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            },
+            new AccountTerm
+            {
+                AccountId = account.AccountId,
+                TermKind = Odyssey.Context.TermKind.InterestRate,
+                ValueUnit = Odyssey.Context.TermValueUnit.Percentage,
+                Value = 0.02m,
+                EffectiveFrom = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+                CreatedAtUtc = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            });
+        await context.SaveChangesAsync();
+
+        var current = await service.GetCurrent(accountId, new DateTime(2026, 12, 1));
+        var entry = Assert.Single(current!);
+        Assert.Equal(0.02m, entry.Value);
+        Assert.Null(entry.Label);
     }
 }
