@@ -511,42 +511,45 @@ public class DataExportApiTests
     // ── Deterministic ordering, every collection (spec §10.1.9) ───────────────
 
     /// <summary>
-    /// The collections and the key columns each is ordered by. Every collection the export writes
-    /// appears here: ordering was pinned for <c>accounts</c> alone, so a dropped or wrong
-    /// <c>OrderBy</c> on any of the other 27 queries passed the whole suite. Deterministic order is
-    /// what makes two exports of unchanged data diffable, so it is a property of the format, not of
-    /// one table.
+    /// The collections and the key columns each is ordered by, with the kind of comparison that
+    /// key uses. All 28 of them appear here — ordering was pinned for <c>accounts</c> alone, so a
+    /// dropped or wrong <c>OrderBy</c> on any of the other 27 queries passed the whole suite.
+    /// Deterministic order is what makes two exports of unchanged data diffable, so it is a
+    /// property of the format, not of one table.
     /// </summary>
-    public static TheoryData<string, string[]> OrderedCollections() => new()
+    public static TheoryData<string, string[], KeyKind> OrderedCollections() => new()
     {
-        { "accounts", ["accountId"] },
-        { "accountTerms", ["accountTermId"] },
-        { "budgets", ["budgetId"] },
-        { "budgetItems", ["budgetItemId"] },
-        { "contacts", ["contactId"] },
-        { "exchangeRates", ["exchangeRateId"] },
-        { "transactions", ["transactionId"] },
-        { "transactionTags", ["transactionTagId"] },
-        { "fileMetadata", ["id"] },
-        { "accountFiles", ["id"] },
-        { "transactionFiles", ["id"] },
-        { "accountEstimates", ["accountEstimateId"] },
+        { "accounts", ["accountId"], KeyKind.Guid },
+        { "accountTerms", ["accountTermId"], KeyKind.Guid },
+        { "budgets", ["budgetId"], KeyKind.Guid },
+        { "budgetItems", ["budgetItemId"], KeyKind.Guid },
+        { "contacts", ["contactId"], KeyKind.Guid },
+        // The one text-keyed collection. Its ordering was never covered, which is how it
+        // came to be left out of an assertion that claimed to cover everything.
+        { "currencies", ["currencyCode"], KeyKind.Text },
+        { "exchangeRates", ["exchangeRateId"], KeyKind.Guid },
+        { "transactions", ["transactionId"], KeyKind.Guid },
+        { "transactionTags", ["transactionTagId"], KeyKind.Guid },
+        { "fileMetadata", ["id"], KeyKind.Guid },
+        { "accountFiles", ["id"], KeyKind.Guid },
+        { "transactionFiles", ["id"], KeyKind.Guid },
+        { "accountEstimates", ["accountEstimateId"], KeyKind.Guid },
         // Composite-keyed: ordered by both key columns, in that order.
-        { "accountSmartTags", ["accountId", "transactionTagId"] },
-        { "taxStatements", ["taxStatementId"] },
-        { "taxStatementTags", ["id"] },
-        { "taxStatementFiles", ["id"] },
-        { "insurancePolicies", ["insurancePolicyId"] },
-        { "insurancePolicyInsurers", ["id"] },
-        { "insurancePolicyInsuredAccounts", ["id"] },
-        { "insurancePolicyInsuredContacts", ["id"] },
-        { "insurancePolicyBeneficiaries", ["id"] },
-        { "policyRenewals", ["policyRenewalId"] },
-        { "policyRenewalFiles", ["id"] },
-        { "contracts", ["contractId"] },
-        { "contractParties", ["contractPartyId"] },
-        { "contractFiles", ["contractFileId"] },
-        { "subscriptions", ["subscriptionId"] },
+        { "accountSmartTags", ["accountId", "transactionTagId"], KeyKind.Guid },
+        { "taxStatements", ["taxStatementId"], KeyKind.Guid },
+        { "taxStatementTags", ["id"], KeyKind.Guid },
+        { "taxStatementFiles", ["id"], KeyKind.Guid },
+        { "insurancePolicies", ["insurancePolicyId"], KeyKind.Guid },
+        { "insurancePolicyInsurers", ["id"], KeyKind.Guid },
+        { "insurancePolicyInsuredAccounts", ["id"], KeyKind.Guid },
+        { "insurancePolicyInsuredContacts", ["id"], KeyKind.Guid },
+        { "insurancePolicyBeneficiaries", ["id"], KeyKind.Guid },
+        { "policyRenewals", ["policyRenewalId"], KeyKind.Guid },
+        { "policyRenewalFiles", ["id"], KeyKind.Guid },
+        { "contracts", ["contractId"], KeyKind.Guid },
+        { "contractParties", ["contractPartyId"], KeyKind.Guid },
+        { "contractFiles", ["contractFileId"], KeyKind.Guid },
+        { "subscriptions", ["subscriptionId"], KeyKind.Guid },
     };
 
     /// <summary>
@@ -554,9 +557,19 @@ public class DataExportApiTests
     /// order is not already key order — without that a missing <c>OrderBy</c> still returns sorted
     /// rows on the in-memory provider and the assertion proves nothing.
     /// </summary>
+    /// <summary>How a collection's key columns compare. A Guid key must NOT be compared as text:
+    /// <see cref="Guid.CompareTo(Guid)"/> reads the first three groups in a different byte order
+    /// than their printed form, so the two orderings genuinely disagree.</summary>
+    public enum KeyKind
+    {
+        Guid,
+        Text,
+    }
+
     [Theory]
     [MemberData(nameof(OrderedCollections))]
-    public async Task Export_EveryCollection_IsOrderedByPrimaryKey(string collection, string[] keyProperties)
+    public async Task Export_EveryCollection_IsOrderedByPrimaryKey(
+        string collection, string[] keyProperties, KeyKind keyKind)
     {
         await using var factory = new ApiFactory([PermissionClaims.DataExport]);
         await SeedFinanceAsync(factory);
@@ -566,31 +579,39 @@ public class DataExportApiTests
         using var document = await GetExportDocumentAsync(client);
         var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
 
-        var keys = finance.GetProperty(collection).EnumerateArray()
-            .Select(row => keyProperties.Select(property => row.GetProperty(property).GetGuid()).ToList())
-            .ToList();
+        var rows = finance.GetProperty(collection).EnumerateArray().ToList();
 
         // Guards the guard: on one row every ordering is trivially correct, so a collection the
         // fixture stopped seeding would pass this silently.
-        Assert.True(keys.Count >= 2,
-            $"'{collection}' has {keys.Count} row(s); the fixture must seed at least two or this "
+        Assert.True(rows.Count >= 2,
+            $"'{collection}' has {rows.Count} row(s); the fixture must seed at least two or this "
             + "assertion cannot fail.");
 
-        for (var i = 1; i < keys.Count; i++)
+        for (var i = 1; i < rows.Count; i++)
         {
-            Assert.True(CompareKeys(keys[i - 1], keys[i]) < 0,
+            Assert.True(CompareKeys(rows[i - 1], rows[i], keyProperties, keyKind) < 0,
                 $"'{collection}' is not ordered by {string.Join(" + ", keyProperties)}: row {i - 1} "
-                + $"({string.Join(", ", keys[i - 1])}) precedes row {i} ({string.Join(", ", keys[i])}).");
+                + $"({KeyText(rows[i - 1], keyProperties)}) precedes row {i} "
+                + $"({KeyText(rows[i], keyProperties)}).");
         }
     }
 
-    // Ordinal Guid comparison, matching what the provider's OrderBy uses. Comparing the textual
-    // form instead would disagree with it on the first three (endian-swapped) groups.
-    private static int CompareKeys(IReadOnlyList<Guid> left, IReadOnlyList<Guid> right)
+    // Compares the way the provider's OrderBy does: Guid.CompareTo for a Guid key, ordinal for a
+    // text one. The fixture keeps text keys to ASCII so ordinal and the provider's culture-aware
+    // default cannot disagree on them.
+    private static int CompareKeys(
+        JsonElement left, JsonElement right, string[] keyProperties, KeyKind keyKind)
     {
-        for (var i = 0; i < left.Count; i++)
+        foreach (var property in keyProperties)
         {
-            var comparison = left[i].CompareTo(right[i]);
+            var comparison = keyKind switch
+            {
+                KeyKind.Guid => left.GetProperty(property).GetGuid()
+                    .CompareTo(right.GetProperty(property).GetGuid()),
+                _ => string.CompareOrdinal(
+                    left.GetProperty(property).GetString(), right.GetProperty(property).GetString()),
+            };
+
             if (comparison != 0)
             {
                 return comparison;
@@ -599,6 +620,9 @@ public class DataExportApiTests
 
         return 0;
     }
+
+    private static string KeyText(JsonElement row, string[] keyProperties) =>
+        string.Join(", ", keyProperties.Select(property => row.GetProperty(property).ToString()));
 
     /// <summary>
     /// Ids that differ only in their final byte, so <see cref="Guid.CompareTo(Guid)"/> reduces to
@@ -749,6 +773,17 @@ public class DataExportApiTests
                 SubscriptionId = id, Name = $"Sub {sequence}",
                 StartDate = DateOnly.FromDateTime(now), Amount = 1m,
                 FirstBillingDate = DateOnly.FromDateTime(now), CreatedAtUtc = now,
+            });
+        }
+
+        // Text-keyed, so its inversion comes from the codes. ASCII-only and outside the ISO set the
+        // migration seeds, so they neither collide with it nor let ordinal and culture-aware
+        // comparison disagree.
+        foreach (var code in new[] { "ZZB", "ZZA" })
+        {
+            context.Currencies.Add(new Currency
+            {
+                CurrencyCode = code, Name = $"Test {code}", MinorUnits = 2,
             });
         }
 
