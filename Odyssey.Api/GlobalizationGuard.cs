@@ -34,10 +34,24 @@ internal static class GlobalizationGuard
     /// equal under <c>IgnoreNonSpace</c> exactly when accent folding works.
     /// </para>
     /// </summary>
-    public static void EnsureIcuAvailable()
+    public static void EnsureIcuAvailable() => EnsureIcuAvailable(AccentFoldingWorks());
+
+    /// <summary>
+    /// Whether <c>IgnoreNonSpace</c> actually folds accents in this process — the single fact the
+    /// guard turns on. Public so a test can pin that it is a real discriminator rather than a
+    /// comparison that is always equal.
+    /// </summary>
+    public static bool AccentFoldingWorks() =>
+        string.Compare("e", "é", CultureInfo.InvariantCulture, CompareOptions.IgnoreNonSpace) == 0;
+
+    /// <summary>
+    /// The guard's RESPONSE, split from its measurement so both halves are testable. Invariant mode is
+    /// fixed at runtime startup and cannot be flipped in-process, so a test can pin the measurement
+    /// only in the healthy direction; this overload is how the refusal itself is asserted.
+    /// </summary>
+    internal static void EnsureIcuAvailable(bool accentFoldingWorks)
     {
-        var folded = string.Compare("e", "é", CultureInfo.InvariantCulture, CompareOptions.IgnoreNonSpace) == 0;
-        if (folded)
+        if (accentFoldingWorks)
         {
             return;
         }
