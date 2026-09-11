@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- @dsCard group="Reference data" name="Contact-method labels" subtitle="The AddressLabel / EmailLabel / PhoneLabel vocabularies and their per-contact-type scope — which labels a Person may carry, which an Organization may, the per-type default, and the clamp target. Driven by ContactLabelScope." viewport="1180x1180" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Contact-method labels</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<script src="../_ds_bundle.js"></script>
+<style>
+html,body{min-height:0;background:var(--mud-palette-background)}
+body{width:1180px;padding:24px;box-sizing:border-box;font-family:var(--font-sans);color:var(--mud-palette-text-primary)}
+.spec-doc{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:12px;padding:20px 22px;margin-bottom:20px}
+.spec-doc h2{font:600 16px/1.3 var(--font-sans);margin:0 0 7px}
+.spec-lead{font:400 13px/1.6 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0 0 14px;max-width:96ch}
+.spec-lead b{color:var(--tide-400);font-weight:500}
+.spec-src{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.spec-src .pill{font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-secondary);background:rgba(255,255,255,.05);border:1px solid var(--mud-palette-divider);border-radius:999px;padding:6px 11px}
+.spec-src .pill b{color:var(--tide-400);font-weight:600}
+.stage-label{font:500 11px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:4px 0 12px 2px;display:flex;align-items:center;gap:8px}
+.stage-label .material-icons{font-size:15px;color:var(--tide-400)}
+.tbl{width:100%;border-collapse:collapse;background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:10px;overflow:hidden;margin-bottom:22px}
+.tbl caption{text-align:left;font:600 13px/1.3 var(--font-sans);padding:14px 16px 10px;color:var(--mud-palette-text-primary)}
+.tbl caption span{font:500 11.5px/1.3 var(--font-mono);color:var(--mud-palette-text-secondary);margin-left:8px}
+.tbl th{font:600 9.5px/1.4 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mud-palette-text-secondary);text-align:left;padding:8px 14px;border-bottom:1px solid var(--mud-palette-divider)}
+.tbl th.c,.tbl td.c{text-align:center;width:78px}
+.tbl td{padding:9px 14px;border-bottom:1px solid var(--mud-palette-divider-light);font:400 12.5px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td.k{font:500 12.5px/1.5 var(--font-sans);color:var(--mud-palette-text-primary);white-space:nowrap}
+.tbl td.k .material-icons{font-size:16px;vertical-align:-3px;margin-right:7px;color:oklch(0.74 0.02 250)}
+.tbl td.o{font:500 12px/1.5 var(--font-mono);color:var(--mud-palette-text-secondary);width:56px}
+.tag{font:600 9px/1 var(--font-sans);letter-spacing:.07em;text-transform:uppercase;border-radius:999px;padding:3px 6px;margin-left:8px;white-space:nowrap}
+.tag.new{color:var(--tide-400);border:1px solid color-mix(in oklch,var(--tide-400) 45%,transparent)}
+.tag.def{color:var(--sea-400);border:1px solid color-mix(in oklch,var(--sea-400) 45%,transparent)}
+.yes{color:var(--tide-400);font-size:17px!important}
+.no{color:var(--mud-palette-divider);font-size:17px!important}
+.spec-notes{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.spec-notes li{position:relative;padding-left:22px;font:400 12.5px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.spec-notes li b{color:var(--mud-palette-text-primary);font-weight:500}
+.spec-notes li code{font:500 11.5px/1 var(--font-mono);color:var(--tide-400)}
+.spec-notes li .material-icons{position:absolute;left:0;top:0;font-size:16px;color:var(--tide-400)}
+</style>
+</head>
+<body>
+<div class="spec-doc">
+  <h2>Contact-method labels</h2>
+  <p class="spec-lead">Each row in a contact's <b>Addresses</b>, <b>EmailAddresses</b> and <b>PhoneNumbers</b> collections carries a <b>Label</b>. The three enums were written for a person — Home / Work / Mobile — and Odyssey's contact list is overwhelmingly organizations, where "Home phone" means nothing. Each enum now also carries an <b>organization vocabulary</b>, and every label is <b>scoped to the contact types it is valid for</b>. One invariant holds everywhere: <b>a contact method's label is valid for its contact's type</b> — the picker offers only valid labels, the write path refuses the rest with a <b>422</b>, and import and type-switch <b>clamp to Other</b> rather than dropping a record.</p>
+  <div class="spec-src">
+    <span class="pill">Enums <b>AddressLabel · EmailLabel · PhoneLabel</b></span>
+    <span class="pill">Scope map <b>ContactLabelScope</b></span>
+    <span class="pill">Picker <b>ContactMethodLabelSelect</b></span>
+    <span class="pill">Consumed by <b>Contacts.jsx</b></span>
+  </div>
+</div>
+
+<div class="stage-label"><span class="material-icons">label</span>The three vocabularies · ordinal · scope · meaning</div>
+<div id="tables"></div>
+
+<div class="spec-doc">
+  <ul class="spec-notes">
+    <li><span class="material-icons">tag</span><b>The ordinal is the wire contract</b>, not the member name — these enums serialize as integers. <b>1–19 is the person/shared band, 20+ the organization band</b>, per enum; the bands are <b>not</b> aligned across the three and nothing should assume they are. The scope map, never the ordinal, decides validity. <code>PhoneLabel</code> ordinal 5 is left unused (it was <code>Fax</code> in draft v1).</li>
+    <li><span class="material-icons">start</span><b>The default is the first offered member</b> — <code>defaultFor(kind, type)</code> equals <code>labelsFor(kind, type)[0]</code>, so display order and default cannot drift apart. A new organization phone opens on <b>Switchboard</b>; a new person phone on <b>Home</b>.</li>
+    <li><span class="material-icons">category</span><b>Other is valid for both types in all three enums</b>, unconditionally — that is what makes it a legal clamp target. The clamp writes <code>Other</code> and never guesses a "closest" label, so a Person → Organization → Person round trip is lossy by design.</li>
+    <li><span class="material-icons">warning</span><b>Widening a label's scope is free; narrowing it is not.</b> Adding a type to a row leaves every existing row valid. Removing one — or removing a member — breaks the invariant with no migration and no guard: it compiles, passes every test, and silently strands stored rows. A narrowing edit needs its own remap migration in the same commit.</li>
+    <li><span class="material-icons">key</span><b>Unknown keys resolve Other by key, never by position.</b> Organization members are appended <i>after</i> <code>Other</code> in all three registries, so a last-entry fallback would render an undefined ordinal as <code>Branch</code> / <code>Claims</code> / <code>Direct</code> — plausible, specific and wrong.</li>
+    <li><span class="material-icons">palette</span><b>No new colour.</b> Every entry reuses the neutral <code>oklch(0.74 0.02 250)</code> glyph the label registries already used — a label names a channel, it does not encode status. Meaning is carried by the label <b>text</b> on the tile, never by icon or colour.</li>
+    <li><span class="material-icons">import_export</span><b>vCard.</b> Export emits the nearest standard <code>TYPE</code> token plus <code>X-ODYSSEY-LABEL=&lt;MemberName&gt;</code> — and the parameter only where the label has no standard token of its own, so a file with no organization labels is byte-identical to before. Import prefers the parameter, matched against the enum's member <b>names</b>, then falls back to the standard token, then clamps.</li>
+    <li><span class="material-icons">translate</span><b>Norwegian anchors:</b> <i>fakturaadresse</i> → Billing · <i>postadresse</i> → Postal · <i>besøksadresse</i> → Visiting · <i>forretningsadresse</i> → Registered · <i>sentralbord</i> → Switchboard · <i>kundeservice</i> → Support · <i>skade</i> → Claims.</li>
+  </ul>
+</div>
+
+<script>
+(function () {
+  const NS = window.OdysseyDesignSystem_d5aa51 || {};
+  const S = NS.ContactLabelScope;
+  const mount = document.getElementById('tables');
+  if (!S) { mount.textContent = 'Bundle not compiled yet.'; return; }
+  const NEW = { address: ['Postal', 'Visiting', 'Registered', 'Branch'], email: ['General', 'Support', 'Sales', 'Billing', 'Claims'], phone: ['Switchboard', 'Support', 'Sales', 'Billing', 'Claims', 'Emergency', 'Direct'] };
+  const MEANING = {
+    address: {
+      Home: 'The person\u2019s residence.', Work: 'The person\u2019s workplace.',
+      Billing: 'Where invoices are sent (fakturaadresse).', Other: 'The fallback, the clamp target and the remap target.',
+      Postal: 'A mailing-only address \u2014 P.O. box, postboks (postadresse).',
+      Visiting: 'Where you physically turn up (bes\u00f8ksadresse).',
+      Registered: 'The address in the business register (forretningsadresse).',
+      Branch: 'A named local office, distinct from the head office.',
+    },
+    email: {
+      Home: 'The person\u2019s private address. Persisted as Home, displayed as \u201cPersonal\u201d.',
+      Work: 'The person\u2019s workplace address.', Other: 'The fallback, the clamp target and the remap target.',
+      General: 'The catch-all published address (post@, firmapost@).', Support: 'Customer service (kundeservice).',
+      Sales: 'New business, quotes, opening a product.', Billing: 'Invoicing and accounts (faktura, EHF contact).',
+      Claims: 'Insurance claims (skade).',
+    },
+    phone: {
+      Home: 'Landline at the person\u2019s residence.', Work: 'The person\u2019s number at their workplace.',
+      Mobile: 'A mobile number. Shared \u2014 a sole proprietor genuinely has one.',
+      Other: 'The fallback, the clamp target and the remap target.',
+      Switchboard: 'The main published number (sentralbord).', Support: 'Customer service.',
+      Sales: 'New business.', Billing: 'Invoicing and accounts.', Claims: 'Insurance claims.',
+      Emergency: 'A 24-hour line \u2014 card blocking, roadside assistance, emergency claims.',
+      Direct: 'A named individual\u2019s direct line inside the organization.',
+    },
+  };
+  const KINDS = [
+    { kind: 'address', enumName: 'AddressLabel', title: 'AddressLabel', col: 'Addresses.Label' },
+    { kind: 'email', enumName: 'EmailLabel', title: 'EmailLabel', col: 'EmailAddresses.Label' },
+    { kind: 'phone', enumName: 'PhoneLabel', title: 'PhoneLabel', col: 'PhoneNumbers.Label' },
+  ];
+  const tick = (on) => on
+    ? '<span class="material-icons yes">check</span>'
+    : '<span class="material-icons no">remove</span>';
+  mount.innerHTML = KINDS.map(({ kind, title, col }) => {
+    const defPerson = S.defaultFor(kind, 'Person'), defOrg = S.defaultFor(kind, 'Organization');
+    const rows = S.all(kind).map((l) => {
+      const p = S.isValidFor(kind, l.key, 'Person'), o = S.isValidFor(kind, l.key, 'Organization');
+      const tags = (NEW[kind].indexOf(l.key) >= 0 ? '<span class="tag new">new</span>' : '')
+        + (l.key === defPerson && l.key === defOrg ? '<span class="tag def">default</span>'
+          : l.key === defPerson ? '<span class="tag def">person default</span>'
+          : l.key === defOrg ? '<span class="tag def">org default</span>' : '');
+      const display = l.label !== l.key ? ' <span style="color:var(--mud-palette-text-secondary);font-weight:400">\u2192 \u201c' + l.label + '\u201d</span>' : '';
+      return '<tr><td class="k"><span class="material-icons">' + l.icon + '</span>' + l.key + display + tags
+        + '</td><td class="o">' + l.ordinal + '</td><td class="c">' + tick(p) + '</td><td class="c">' + tick(o)
+        + '</td><td>' + (MEANING[kind][l.key] || '') + '</td></tr>';
+    }).join('');
+    return '<table class="tbl"><caption>' + title + '<span>' + col + ' \u00b7 int column, no schema change</span></caption>'
+      + '<thead><tr><th>Member</th><th>Ordinal</th><th class="c">Person</th><th class="c">Organization</th><th>Meaning</th></tr></thead>'
+      + '<tbody>' + rows + '</tbody></table>';
+  }).join('');
+})();
+</script>
+</body>
+</html>

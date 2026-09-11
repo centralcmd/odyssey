@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Dialogs" name="New term" subtitle="AddTermModal — create / edit an account rate or fee: eligibility-gated kind, percentage-or-amount value, currency, effective date, billing period, note. Live." viewport="760x900" -->
+<!-- @dsCard group="Dialogs" name="New term" subtitle="AddTermModal — create / edit an account rate or fee: eligibility-gated kind (no picker where one kind applies), a required series Name on fees, percentage-or-amount value, currency, effective date, billing period, note. Live." viewport="760x900" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -45,11 +45,13 @@
     window.ACCOUNT_TYPE_LABEL = Object.fromEntries(D.accountTypes.map(t => [t.key, t.label]));
 
     const AddTermModal = window.AddTermModal;
-    // Amex Platinum (CreditCard): interest rate + the four fees are eligible,
-    // expected return is not — so the dialog shows its eligibility note.
+    // Amex Platinum (CreditCard): Interest rate and Fee are both eligible, expected
+    // return is not — so the picker renders, with its eligibility note. Opens on
+    // Fee, where the Name field is required; a rate kind does not render it at all.
+    // On a cash or property account only Fee is eligible and no picker appears.
     const account = D.accountById['3'];
     ReactDOM.createRoot(document.getElementById('root')).render(
-      <AddTermModal account={account} onClose={() => {}} onSave={() => {}} />
+      <AddTermModal account={account} initialKind="Fee" existing={D.accountTerms['3']} onClose={() => {}} onSave={() => {}} />
     );
   </script>
 </body>

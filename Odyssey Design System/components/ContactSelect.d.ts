@@ -9,6 +9,14 @@ export interface ContactSelectContact {
   type?: string;
   /** Archived contacts are not selectable. */
   archived?: string | null;
+  /**
+   * Person date of death (`YYYY-MM-DD`). Present → the option label gains a
+   * ` · Deceased` suffix. The contact stays selectable: recording a death
+   * removes no capability.
+   */
+  dateOfDeath?: string | null;
+  /** Organization dissolved date — same treatment, ` · Dissolved`. */
+  dissolvedDate?: string | null;
 }
 
 export interface ContactCreateKind {

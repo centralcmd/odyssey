@@ -20,6 +20,12 @@ export interface ActionMenuItem {
 export interface ActionMenuProps {
   /** Ordered list of menu items / dividers. */
   items: ActionMenuItem[];
+  /**
+   * Accessible name for the trigger. Default "More actions" — pass a
+   * record-naming string ("Actions for alias: Hansen") where several menus sit
+   * in one grid.
+   */
+  ariaLabel?: string;
 }
 
 /** Row overflow menu (`more_vert` kebab) with a fixed, auto-dismissing popover. */

@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"c0ff965931f8","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"068d17440abe","components/ContactChip.jsx":"595200f6059a","components/ContactSelect.jsx":"9728227b0d66","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"eb29f4abc14f","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"c025efc795cb","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"63773ec5d23e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"301e57a7a9bb","ui_kits/web/AddAccountModal.jsx":"af7807f9a07b","ui_kits/web/AddBudgetItemModal.jsx":"987e1fdecb12","ui_kits/web/AddBudgetModal.jsx":"9bf3e6a081f8","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"bb8ebb0c14a6","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"1a6914aab912","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"ed18b3c414ea","ui_kits/web/AddTaxStatementModal.jsx":"949d785d8d15","ui_kits/web/AddTermModal.jsx":"dc6bf97cb769","ui_kits/web/AddTransactionModal.jsx":"44c0de9b2f94","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"35f03e541aee","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"a38b3b7e1965","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"4e61559e938b","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"d430ca57572f","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"7095f7173156","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"842864201bb9","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"068d17440abe","components/ContactAliases.jsx":"9fd0f007e13f","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"42bbbd5d8835","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"eb29f4abc14f","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"c025efc795cb","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"f48fe06c58a4","ui_kits/web/AddAccountModal.jsx":"af7807f9a07b","ui_kits/web/AddBudgetItemModal.jsx":"987e1fdecb12","ui_kits/web/AddBudgetModal.jsx":"9bf3e6a081f8","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"bb8ebb0c14a6","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"1a6914aab912","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"ed18b3c414ea","ui_kits/web/AddTaxStatementModal.jsx":"949d785d8d15","ui_kits/web/AddTermModal.jsx":"8d2277da3d61","ui_kits/web/AddTransactionModal.jsx":"44c0de9b2f94","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"35f03e541aee","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"6035236a2e3d","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"f77aa2d44ff9","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"d430ca57572f","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"7095f7173156","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"fa3dd0c98218","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -991,9 +991,14 @@ try { (() => {
  *
  * RecordTable renders this for you (build the items from its `actions` prop);
  * use it directly for bespoke list rows (Files, Budgets, …).
+ *
+ * `ariaLabel` names the trigger for the row it acts on ("Actions for alias:
+ * Hansen") — pass it wherever several menus sit in one grid and "More actions"
+ * alone would not say which record is about to change.
  */
 function ActionMenu({
-  items
+  items,
+  ariaLabel
 }) {
   const {
     useState,
@@ -1127,7 +1132,7 @@ function ActionMenu({
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: "odc-iconbtn",
-    "aria-label": "More actions",
+    "aria-label": ariaLabel || 'More actions',
     "aria-haspopup": "menu",
     "aria-expanded": open,
     onClick: toggle
@@ -3320,6 +3325,334 @@ function Combobox({
 Object.assign(__ds_scope, { Combobox });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/Combobox.jsx", error: String((e && e.message) || e) }); }
 
+// components/ContactAliases.jsx
+try { (() => {
+/**
+ * Odyssey DS — ContactAliases
+ * The **Aliases** section of a contact record: the ordered list of alternative
+ * names a contact is actually known by (a nickname, a maiden name, a former
+ * company name, an abbreviation), each carrying an optional **free-text label**
+ * saying what kind of alias it is.
+ *
+ * Aliases are *names*, not contact methods, so this is its own section — placed
+ * ABOVE `Contact information` under its own `SectionDivider`, which the record
+ * card emits (the card owns the headings; this component renders bare).
+ *
+ * It introduces **no new widget type**. Every alias is a tile in this
+ * component's own grid, reusing the record-tile shape and the `ActionMenu` slot
+ * the address / email / phone tiles use — deliberately NOT a `Chip` (a ~23px
+ * nowrap pill cannot host a ⋯ menu at a 24×24 target) and NOT the contact-method
+ * tile grid (whose model is positional, carries Primary, and counts only the
+ * three method collections). The add / edit dialog is the DS `Modal` + two
+ * `Field`s.
+ *
+ * Ordering is **the order the caller passes**, i.e. the order the API returned:
+ * a .NET/JS comparer cannot reproduce a MariaDB `_ci` ordering on accented
+ * input, so no client re-sort happens here.
+ *
+ * Write contract — `onAdd(value, label)` / `onEdit(id, value, label)` return
+ * either nothing (accepted) or an **error string**, which the dialog renders
+ * inline on the value field, sets `aria-invalid` on it and moves focus there,
+ * with no toast. That is how a duplicate (409), a cap breach (422) and a
+ * validation failure (400) surface. Duplicates are pre-checked here the same
+ * way the service does — case- **and accent**-insensitively, on the value
+ * alone, so two labels cannot smuggle in a second "Hansen".
+ *
+ * Menu gates are distinct on purpose: the copy items are unconditional (so the
+ * trigger is always rendered and the menu is never empty), Edit needs
+ * `canUpdate` **and** a non-archived contact, Delete needs `canDelete` — a
+ * principal holding `contacts.update` without `contacts.delete` must not be
+ * offered a Delete that 403s. Deleting an alias is immediate: no confirm
+ * dialog, matching the sibling tiles, since an alias is cheap to re-add.
+ *
+ * a11y: outcomes announce through one polite region owned here (messages carry
+ * an invisible nonce so an identical string re-announces); in the Blazor host
+ * this component's announcements route to the card's single `LiveAnnouncer`
+ * instead — pass `onAnnounce` and the local region stays silent. A failed
+ * delete and the 404 that closes the dialog are announced explicitly: they have
+ * neither a dialog to hold open nor a field to focus.
+ */
+
+const CONTACT_ALIAS_CAP = 32;
+const CONTACT_ALIAS_MAX = 128;
+const CONTACT_ALIAS_LABEL_MAX = 64;
+
+/** Case- and accent-insensitive equality — what the service, the unique index and this pre-check agree on. */
+function aliasEquals(a, b) {
+  const x = String(a == null ? '' : a).trim();
+  const y = String(b == null ? '' : b).trim();
+  try {
+    return x.localeCompare(y, undefined, {
+      sensitivity: 'base'
+    }) === 0;
+  } catch (e) {
+    return x.toLowerCase() === y.toLowerCase();
+  }
+}
+
+/** Trim + collapse runs of whitespace — the canonical form stored on write. */
+function canonicalAlias(v) {
+  return String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+}
+const ALIAS_CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
+function ContactAliases({
+  aliases = [],
+  canCreate = false,
+  canUpdate = false,
+  canDelete = false,
+  archived = false,
+  cap = CONTACT_ALIAS_CAP,
+  addRequest,
+  onConsumeAddRequest,
+  onAdd,
+  onEdit,
+  onDelete,
+  onAnnounce,
+  className = ''
+}) {
+  const {
+    useState,
+    useRef,
+    useEffect
+  } = React;
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    Modal,
+    Field,
+    Button,
+    ActionMenu,
+    MIcon
+  } = NS;
+  const [dialog, setDialog] = useState(null); // { mode:'add'|'edit', id, value, label }
+  const [error, setError] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+  const [live, setLive] = useState('');
+  const nonce = useRef(0);
+  const copyTimer = useRef(null);
+  const valueRef = useRef(null);
+  const focusedFor = useRef(null);
+  const say = text => {
+    if (onAnnounce) {
+      onAnnounce(text);
+      return;
+    }
+    nonce.current += 1;
+    setLive(`${text}${'\u200B'.repeat(nonce.current % 4 + 1)}`);
+  };
+
+  // The card's ⋯ menu drives adding, exactly as it does for addresses / emails
+  // / phones: `addRequest` is a { nonce } token, consumed once acted on.
+  useEffect(() => {
+    if (addRequest && canCreate && !archived) {
+      setError(null);
+      setDialog({
+        mode: 'add',
+        value: '',
+        label: ''
+      });
+      onConsumeAddRequest && onConsumeAddRequest();
+    }
+  }, [addRequest && addRequest.nonce]);
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
+
+  // The dialog takes focus on the value field ONCE, when it opens — guarded by a
+  // ref, not by an effect dependency, so typing in the label field never yanks
+  // focus back to the value field. (Modal owns the trap and restores focus to
+  // the invoking ⋯ trigger on close.)
+  useEffect(() => {
+    if (!dialog) {
+      focusedFor.current = null;
+      return;
+    }
+    const key = `${dialog.mode}:${dialog.id || 'new'}`;
+    if (focusedFor.current === key) return;
+    focusedFor.current = key;
+    setTimeout(focusValue, 0);
+  });
+  const focusValue = () => {
+    const el = valueRef.current && valueRef.current.querySelector('input');
+    if (el) el.focus();
+  };
+  const reject = message => {
+    setError(message);
+    setTimeout(focusValue, 0);
+  };
+  // Stable: `Modal`'s focus/trap effect keys on `onClose`, so a fresh arrow per
+  // render would re-run it on every keystroke and yank focus back to the first
+  // body input (the value field) while the user types in the label.
+  const close = React.useCallback(() => {
+    setDialog(null);
+    setError(null);
+  }, []);
+  const copy = (text, id) => {
+    const done = () => {
+      setCopiedId(id);
+      clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopiedId(null), 1400);
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, done);else done();
+  };
+  const submit = () => {
+    const value = canonicalAlias(dialog.value);
+    const label = canonicalAlias(dialog.label) || null;
+    if (!value) {
+      reject('Enter an alias.');
+      return;
+    }
+    if (value.length > CONTACT_ALIAS_MAX) {
+      reject(`Keep the alias to ${CONTACT_ALIAS_MAX} characters or fewer.`);
+      return;
+    }
+    if (ALIAS_CONTROL_CHARS.test(value) || label && ALIAS_CONTROL_CHARS.test(label)) {
+      reject('Remove the line breaks and control characters.');
+      return;
+    }
+    if (label && label.length > CONTACT_ALIAS_LABEL_MAX) {
+      reject(`Keep the label to ${CONTACT_ALIAS_LABEL_MAX} characters or fewer.`);
+      return;
+    }
+    // Uniqueness is per contact, on the VALUE alone — the label is not part of the key.
+    const clash = aliases.some(a => a.id !== dialog.id && aliasEquals(a.value, value));
+    if (clash) {
+      reject('This contact already has that alias.');
+      return;
+    }
+    if (dialog.mode === 'add' && aliases.length >= cap) {
+      reject(`A contact can have at most ${cap} aliases.`);
+      return;
+    }
+    const problem = dialog.mode === 'add' ? onAdd && onAdd(value, label) : onEdit && onEdit(dialog.id, value, label);
+    if (typeof problem === 'string' && problem) {
+      reject(problem);
+      return;
+    }
+    setDialog(null);
+    setError(null);
+    say(dialog.mode === 'add' ? `Alias ${value} added.` : `Alias ${value} updated.`);
+  };
+  const remove = a => {
+    const problem = onDelete && onDelete(a.id);
+    // A failed delete has no dialog and no field, so it is announced.
+    if (typeof problem === 'string' && problem) {
+      say(problem);
+      return;
+    }
+    say(`Alias ${a.value} deleted.`);
+  };
+  const empty = canCreate && !archived ? 'No aliases yet — use the ⋯ menu to add one.' : 'No aliases.';
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-aliases${className ? ' ' + className : ''}`
+  }, aliases.length === 0 ? /*#__PURE__*/React.createElement("p", {
+    className: "odc-aliases-empty"
+  }, empty) : /*#__PURE__*/React.createElement("div", {
+    className: "odc-alias-grid"
+  }, aliases.map(a => {
+    const items = [{
+      icon: copiedId === a.id ? 'check' : 'content_copy',
+      label: copiedId === a.id ? 'Copied' : 'Copy alias',
+      onClick: () => copy(a.value, a.id)
+    }, ...(canUpdate && !archived ? [{
+      icon: 'edit',
+      label: 'Edit',
+      onClick: () => {
+        setError(null);
+        setDialog({
+          mode: 'edit',
+          id: a.id,
+          value: a.value,
+          label: a.label || ''
+        });
+      }
+    }] : []), {
+      icon: 'fingerprint',
+      label: 'Copy ID',
+      trailingIcon: 'content_copy',
+      onClick: () => copy(a.id, `${a.id}-id`)
+    }, ...(canDelete && !archived ? [{
+      divider: true
+    }, {
+      icon: 'delete',
+      label: 'Delete',
+      danger: true,
+      onClick: () => remove(a)
+    }] : [])];
+    return /*#__PURE__*/React.createElement("div", {
+      key: a.id,
+      className: "odc-alias-tile"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "odc-alias-menu"
+    }, ActionMenu ? /*#__PURE__*/React.createElement(ActionMenu, {
+      items: items,
+      ariaLabel: `Actions for alias: ${a.value}`
+    }) : null), /*#__PURE__*/React.createElement("div", {
+      className: "odc-alias-top"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "odc-alias-ic",
+      "aria-hidden": "true"
+    }, MIcon ? /*#__PURE__*/React.createElement(MIcon, {
+      name: "badge",
+      size: 15
+    }) : null), /*#__PURE__*/React.createElement("span", {
+      className: "odc-alias-kind"
+    }, "Alias")), /*#__PURE__*/React.createElement("div", {
+      className: "odc-alias-value",
+      title: a.value
+    }, a.value), a.label ? /*#__PURE__*/React.createElement("div", {
+      className: "odc-alias-foot",
+      title: a.label
+    }, a.label) : null);
+  })), dialog && Modal && Field ? /*#__PURE__*/React.createElement(Modal, {
+    title: dialog.mode === 'edit' ? 'Edit alias' : 'New alias',
+    subtitle: "Another name this contact is known by.",
+    icon: "badge",
+    onClose: close,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: close
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: dialog.mode === 'edit' ? 'check' : 'add',
+      onClick: submit
+    }, dialog.mode === 'edit' ? 'Save changes' : 'Create alias'))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "odc-alias-form",
+    ref: valueRef
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Alias",
+    required: true,
+    maxLength: CONTACT_ALIAS_MAX,
+    value: dialog.value,
+    onChange: v => {
+      setDialog(d => ({
+        ...d,
+        value: v
+      }));
+      if (error) setError(null);
+    },
+    error: error || undefined,
+    placeholder: "e.g. Kari",
+    help: error ? undefined : 'The name to also find this contact by'
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Label",
+    optional: true,
+    maxLength: CONTACT_ALIAS_LABEL_MAX,
+    value: dialog.label,
+    onChange: v => setDialog(d => ({
+      ...d,
+      label: v
+    })),
+    placeholder: "e.g. maiden name",
+    help: "Optional \u2014 e.g. maiden name, nickname, trading as"
+  }))) : null, onAnnounce ? null : /*#__PURE__*/React.createElement("div", {
+    className: "odc-sr-only",
+    role: "status",
+    "aria-live": "polite"
+  }, live));
+}
+Object.assign(__ds_scope, { CONTACT_ALIAS_CAP, CONTACT_ALIAS_MAX, CONTACT_ALIAS_LABEL_MAX, aliasEquals, canonicalAlias, ContactAliases });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/ContactAliases.jsx", error: String((e && e.message) || e) }); }
+
 // components/ContactChip.jsx
 try { (() => {
 /**
@@ -3431,6 +3764,126 @@ function ContactChip({
 Object.assign(__ds_scope, { contactTypeMeta, ContactChip });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/ContactChip.jsx", error: String((e && e.message) || e) }); }
 
+// components/ContactMethodLabelSelect.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/**
+ * Odyssey DS — ContactMethodLabelSelect
+ * The Label picker on a contact method (address / email / phone). Unlike every
+ * other registry picker, its option list is **derived from two inputs**: the
+ * method's `kind` AND the parent contact's `ContactType`. A person has no
+ * switchboard; an organization has no home address.
+ *
+ * The vocabulary and its per-type scope live in `ContactLabelScope` below —
+ * the design system's mirror of the C# `ContactLabelScope` (Odyssey.Dtos).
+ * The server validates against it, the client filters *and* validates with it;
+ * a client-side copy of the rule is a defect, not a convenience.
+ *
+ * Value is the enum member name ('Switchboard'), never the ordinal. The trigger
+ * renders its placeholder when `value` is not in the offered set — a stored
+ * label that has become invalid (a concurrent type switch, a hand-edited row)
+ * reads as *empty*, so the message on it is "Label is required", never a
+ * message naming a value that is nowhere on screen.
+ */
+
+/* Every label reuses the neutral categorical foreground — a label names a
+   channel, it does not encode status, so it gets no hue of its own. */
+const LABEL_FG = 'oklch(0.74 0.02 250)';
+const L = (key, label, icon, ordinal) => ({
+  key,
+  label,
+  icon,
+  ordinal,
+  color: LABEL_FG
+});
+
+/** AddressLabel — 1–19 person/shared band, 20+ organization band. */
+const ADDRESS_LABELS = [L('Home', 'Home', 'home', 1), L('Work', 'Work', 'work', 2), L('Billing', 'Billing', 'receipt_long', 3), L('Other', 'Other', 'category', 4), L('Postal', 'Postal', 'markunread_mailbox', 5), L('Visiting', 'Visiting', 'storefront', 20), L('Registered', 'Registered', 'account_balance', 21), L('Branch', 'Branch', 'apartment', 22)];
+
+/** EmailLabel — `Home` is persisted as `Home` and displayed as "Personal". */
+const EMAIL_LABELS = [L('Home', 'Personal', 'home', 1), L('Work', 'Work', 'work', 2), L('Other', 'Other', 'category', 3), L('General', 'General', 'alternate_email', 20), L('Support', 'Support', 'support_agent', 21), L('Sales', 'Sales', 'sell', 22), L('Billing', 'Billing', 'receipt_long', 23), L('Claims', 'Claims', 'assignment_late', 24)];
+
+/** PhoneLabel — ordinal 5 is deliberately unused (it was `Fax` in draft v1). */
+const PHONE_LABELS = [L('Home', 'Home', 'home', 1), L('Work', 'Work', 'work', 2), L('Mobile', 'Mobile', 'smartphone', 3), L('Other', 'Other', 'category', 4), L('Switchboard', 'Switchboard', 'phone_in_talk', 20), L('Support', 'Support', 'support_agent', 21), L('Sales', 'Sales', 'sell', 22), L('Billing', 'Billing', 'receipt_long', 23), L('Claims', 'Claims', 'assignment_late', 24), L('Emergency', 'Emergency', 'emergency', 25), L('Direct', 'Direct', 'phone_forwarded', 26)];
+const REGISTRY = {
+  address: ADDRESS_LABELS,
+  email: EMAIL_LABELS,
+  phone: PHONE_LABELS
+};
+
+/* Declared in DISPLAY order, per (kind, type) — the default a new method opens
+   on is always the first member, so order and default cannot drift apart.
+   `Other` is valid for both types everywhere, which is what makes it a legal
+   clamp target. Widening a list is free; NARROWING one strands existing rows
+   and needs its own remap migration in the same commit. */
+const SCOPE = {
+  address: {
+    Person: ['Home', 'Work', 'Billing', 'Postal', 'Other'],
+    Organization: ['Visiting', 'Registered', 'Branch', 'Billing', 'Postal', 'Other']
+  },
+  email: {
+    Person: ['Home', 'Work', 'Other'],
+    Organization: ['General', 'Support', 'Sales', 'Billing', 'Claims', 'Other']
+  },
+  phone: {
+    Person: ['Home', 'Work', 'Mobile', 'Other'],
+    Organization: ['Switchboard', 'Support', 'Sales', 'Billing', 'Claims', 'Emergency', 'Direct', 'Mobile', 'Other']
+  }
+};
+const byKey = (kind, key) => (REGISTRY[kind] || []).find(l => l.key === key) || null;
+
+/** The one place the vocabulary's per-type scope is expressed. */
+const ContactLabelScope = {
+  /** Every member of a kind's enum, in ordinal order. */
+  all: kind => REGISTRY[kind] || [],
+  /** The offered set for a (kind, contactType), in display order. */
+  labelsFor: (kind, type) => (SCOPE[kind] && SCOPE[kind][type] || []).map(k => byKey(kind, k)).filter(Boolean),
+  /** The label a new method opens on — the first member of the offered set. */
+  defaultFor: (kind, type) => {
+    const list = ContactLabelScope.labelsFor(kind, type);
+    return list.length ? list[0].key : '';
+  },
+  /** Write-path check. Server and client run this same predicate. */
+  isValidFor: (kind, key, type) => ContactLabelScope.labelsFor(kind, type).some(l => l.key === key),
+  /** Import + type-switch remap: resolve to a valid label, never drop the row. */
+  clamp: (kind, key, type) => ContactLabelScope.isValidFor(kind, key, type) ? key : 'Other',
+  /**
+   * Descriptor for a stored key. The fallback resolves `Other` **by key** — a
+   * positional `[^1]` would now render an undefined ordinal as `Branch` /
+   * `Claims` / `Direct`: plausible, specific and wrong.
+   */
+  metaFor: (kind, key) => byKey(kind, key) || byKey(kind, 'Other'),
+  /** Ordinal for a member name — the wire contract is the ordinal. */
+  ordinalOf: (kind, key) => {
+    const m = byKey(kind, key);
+    return m ? m.ordinal : null;
+  }
+};
+function ContactMethodLabelSelect({
+  kind = 'phone',
+  contactType = 'Person',
+  value,
+  onChange,
+  label = 'Label',
+  placeholder = 'Select label…',
+  ...rest
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    RegistrySelect
+  } = NS;
+  if (!RegistrySelect) return null;
+  return /*#__PURE__*/React.createElement(RegistrySelect, _extends({
+    value: value,
+    onChange: onChange,
+    label: label,
+    placeholder: placeholder,
+    types: ContactLabelScope.labelsFor(kind, contactType)
+  }, rest));
+}
+Object.assign(__ds_scope, { ADDRESS_LABELS, EMAIL_LABELS, PHONE_LABELS, ContactLabelScope, ContactMethodLabelSelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/ContactMethodLabelSelect.jsx", error: String((e && e.message) || e) }); }
+
 // components/ContactSelect.jsx
 try { (() => {
 /**
@@ -3459,8 +3912,16 @@ try { (() => {
  *
  * `bare` drops the label/help chrome for a control that sits in a table cell or
  * inside a caller-supplied FieldShell.
+ *
+ * **Lifecycle suffix.** A contact carrying a `dateOfDeath` (Person) or a
+ * `dissolvedDate` (Organization) is still fully selectable — recording either
+ * date removes no capability — but its option reads `Kari Nordmann · Deceased`.
+ * The suffix goes into the option's **label**, not a separate sub-line: that
+ * puts it in the accessible name by construction, and `Combobox` renders no
+ * sub-line anyway.
  */
 
+const CS_LIFECYCLE = c => c.dateOfDeath ? 'Deceased' : c.dissolvedDate ? 'Dissolved' : null;
 const CS_FALLBACK_TYPES = {
   Merchant: {
     icon: 'storefront',
@@ -3556,9 +4017,10 @@ function ContactSelect({
     });
     options = list.filter(c => !c.archived).map(c => {
       const meta = contactTypeMeta(c.type);
+      const state = CS_LIFECYCLE(c);
       return {
         value: idOf(c),
-        label: c.name,
+        label: state ? `${c.name} · ${state}` : c.name,
         icon: meta.icon,
         iconColor: meta.color
       };
@@ -3566,9 +4028,10 @@ function ContactSelect({
     if (value && !options.some(o => o.value === value) && byId[value]) {
       const c = byId[value];
       const meta = contactTypeMeta(c.type);
+      const state = CS_LIFECYCLE(c);
       options = [{
         value,
-        label: c.name,
+        label: state ? `${c.name} · ${state}` : c.name,
         icon: meta.icon,
         iconColor: meta.color
       }, ...options];
@@ -17807,14 +18270,18 @@ try { (() => {
    (Accounts → account detail), beside Files & Transactions.
 
    Backs the AccountTerm feature (interest-rate & fee history): a time-versioned
-   list of TERMS per account. The latest entry on/before a date is the value in
-   force (implicit supersession — no EffectiveTo). This surface renders three
-   things from that history, leading with the interest rate:
+   list of TERMS per account. A term's series key is (TermKind, Label) — one kind
+   can hold several concurrently in-force terms, told apart by a user-authored
+   label ("ATM withdrawal · abroad"); within one label, the latest entry on/before
+   a date is the value in force (implicit supersession — no EffectiveTo). Every
+   fee carries a label; a rate is refused one, so a rate is always the unnamed
+   series of its own kind. This surface renders three things from that history,
+   leading with the interest rate:
 
      1. HERO     — a step-line chart of the rate over time (rates hold flat and
                    jump on each change). Falls back to expected return; hidden
                    when the account has no chartable rate series.
-     2. CURRENT  — the values in force for every kind (the GET …/terms/current
+     2. CURRENT  — the values in force for every series (the GET …/terms/current
                    view). Three summary styles: tiles · row · chips.
      3. HISTORY  — the full GET …/terms list, grouped Rate then Fees, as a table
                    or a vertical timeline, each row editable / deletable.
@@ -17831,23 +18298,46 @@ const D = window.OdysseyData;
 const trmToday = () => new Date().toISOString().slice(0, 10);
 const trmKindInfo = k => H.termKindInfo(k);
 
-/* ---- per-list resolvers (operate on a live array so edits reflect at once) ---- */
+/* ---- per-list resolvers (operate on a live array so edits reflect at once) ----
+   The series key is (kind, labelKey), so one kind can hold several concurrently
+   in-force terms; within a label, the latest EffectiveFrom still wins. */
+const trmKey = t => H.termSeriesKey(t);
 const trmCurrentFromList = (terms, asOf) => {
   const cutoff = asOf || trmToday();
-  const byKind = {};
+  const bySeries = {};
   for (const t of terms) {
     if (t.effectiveFrom > cutoff) continue;
-    const cur = byKind[t.kind];
-    if (!cur || t.effectiveFrom > cur.effectiveFrom) byKind[t.kind] = t;
+    const k = trmKey(t);
+    const cur = bySeries[k];
+    if (!cur || t.effectiveFrom > cur.effectiveFrom || t.effectiveFrom === cur.effectiveFrom && (t.createdAtUtc || '') > (cur.createdAtUtc || '')) bySeries[k] = t;
   }
-  return D.termKinds.map(k => byKind[k.key]).filter(Boolean);
+  return H.sortTermsBySeries(Object.values(bySeries));
 };
-const trmSeriesFromList = (terms, kind) => terms.filter(t => t.kind === kind).map(t => ({
+const trmSeriesFromList = (terms, kind, labelKey = null) => terms.filter(t => t.kind === kind && (t.labelKey || H.termLabelKey(t.label) || null) === labelKey).map(t => ({
   id: t.id,
   date: t.effectiveFrom,
   value: t.value,
   note: t.note
 })).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+
+/* A term's name (its label, else the kind wording) plus the kind caption that
+   sits beneath a labelled one — both plain TEXT, so nothing is carried by the
+   glyph or its hue alone. */
+const TermName = ({
+  t,
+  account,
+  nameClass,
+  captionClass = 'trm-kind-caption'
+}) => {
+  const labelled = !!H.termLabelNormalize(t.label);
+  return /*#__PURE__*/React.createElement("span", {
+    className: "trm-name"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: nameClass
+  }, H.termDisplayName(t, account)), labelled && /*#__PURE__*/React.createElement("span", {
+    className: captionClass
+  }, H.termKindLabelFor(t, account)));
+};
 
 /* Short month-year for axis + deltas: "Feb ’24" */
 const trmMonY = iso => {
@@ -18054,15 +18544,16 @@ const TermHero = ({
   const kind = trmSeriesFromList(terms, 'InterestRate').length ? 'InterestRate' : trmSeriesFromList(terms, 'ExpectedReturn').length ? 'ExpectedReturn' : null;
   if (!kind) return null;
   const info = trmKindInfo(kind);
-  // Interest charged on a liability is a cost — negative + expense-colored.
+  // Interest charged on a liability is a cost — carried by the label + expense
+  // color, never by flipping the sign. The series is plotted as stored, so a
+  // rising APR trends UP (and a genuinely negative rate stays negative).
   const cost = kind === 'InterestRate' && H.accountIsLiability(account);
   const color = cost ? 'var(--finance-expense)' : info.color;
+  const label = H.termKindLabelFor({
+    kind
+  }, account); // rate kinds never carry a label
   const fmt = v => (v < 0 ? '−' : '') + H.pctStr(Math.abs(v));
-  const raw = trmSeriesFromList(terms, kind);
-  const series = cost ? raw.map(s => ({
-    ...s,
-    value: -Math.abs(s.value)
-  })) : raw;
+  const series = trmSeriesFromList(terms, kind);
   const current = series[series.length - 1];
   const prev = series.length > 1 ? series[series.length - 2] : null;
   const diff = prev ? current.value - prev.value : 0;
@@ -18084,14 +18575,14 @@ const TermHero = ({
     className: "trm-hero-titles"
   }, /*#__PURE__*/React.createElement("div", {
     className: "trm-hero-kind"
-  }, info.label, " ", /*#__PURE__*/React.createElement("span", {
+  }, label, " ", /*#__PURE__*/React.createElement("span", {
     style: {
       color: 'var(--mud-palette-text-secondary)',
       fontWeight: 400
     }
   }, "\xB7 history")), /*#__PURE__*/React.createElement("div", {
     className: "trm-hero-sub"
-  }, series.length, " change", series.length === 1 ? '' : 's', " since ", trmMonY(series[0].date), " \xB7 in force since ", H.dateLong(current.date))), /*#__PURE__*/React.createElement("div", {
+  }, cost ? 'Rate you pay · ' : '', series.length, " change", series.length === 1 ? '' : 's', " since ", trmMonY(series[0].date), " \xB7 in force since ", H.dateLong(current.date))), /*#__PURE__*/React.createElement("div", {
     className: "trm-hero-figs"
   }, /*#__PURE__*/React.createElement("div", {
     className: "trm-hero-value",
@@ -18103,7 +18594,7 @@ const TermHero = ({
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: dir === 'up' ? 'arrow_upward' : dir === 'down' ? 'arrow_downward' : 'remove',
     size: 14
-  }), H.pctStr(Math.abs(diff)), " vs ", trmMonY(prev.date)))), /*#__PURE__*/React.createElement("div", {
+  }), H.pctStr(Math.abs(diff)), " ", dir === 'up' ? 'higher' : dir === 'down' ? 'lower' : 'same', " vs ", trmMonY(prev.date)))), /*#__PURE__*/React.createElement("div", {
     className: "trm-chart-wrap"
   }, /*#__PURE__*/React.createElement(TermStepChart, {
     series: series,
@@ -18136,7 +18627,7 @@ const CurrentTermsSummary = ({
       const info = trmKindInfo(t.kind);
       return /*#__PURE__*/React.createElement("div", {
         className: "trm-srow",
-        key: t.kind
+        key: trmKey(t)
       }, /*#__PURE__*/React.createElement("span", {
         className: "trm-kind-ic sm",
         style: {
@@ -18146,9 +18637,11 @@ const CurrentTermsSummary = ({
       }, /*#__PURE__*/React.createElement(MIcon, {
         name: info.icon,
         size: 16
-      })), /*#__PURE__*/React.createElement("span", {
-        className: "trm-srow-kind"
-      }, info.label), /*#__PURE__*/React.createElement("span", {
+      })), /*#__PURE__*/React.createElement(TermName, {
+        t: t,
+        account: account,
+        nameClass: "trm-srow-kind"
+      }), /*#__PURE__*/React.createElement("span", {
         className: "trm-srow-meta"
       }, /*#__PURE__*/React.createElement(BillTag, {
         billingPeriod: t.billingPeriod
@@ -18169,7 +18662,7 @@ const CurrentTermsSummary = ({
       const info = trmKindInfo(t.kind);
       return /*#__PURE__*/React.createElement("div", {
         className: "trm-cchip",
-        key: t.kind
+        key: trmKey(t)
       }, /*#__PURE__*/React.createElement("span", {
         className: "trm-kind-ic sm",
         style: {
@@ -18181,9 +18674,12 @@ const CurrentTermsSummary = ({
       }, /*#__PURE__*/React.createElement(MIcon, {
         name: info.icon,
         size: 15
-      })), /*#__PURE__*/React.createElement("span", {
-        className: "trm-cchip-kind"
-      }, info.label), /*#__PURE__*/React.createElement("span", {
+      })), /*#__PURE__*/React.createElement(TermName, {
+        t: t,
+        account: account,
+        nameClass: "trm-cchip-kind",
+        captionClass: "trm-kind-caption inline"
+      }), /*#__PURE__*/React.createElement("span", {
         className: "trm-cchip-value",
         style: {
           color: H.costColor(t, account) || undefined
@@ -18199,7 +18695,7 @@ const CurrentTermsSummary = ({
     const info = trmKindInfo(t.kind);
     return /*#__PURE__*/React.createElement("div", {
       className: "trm-tile",
-      key: t.kind
+      key: trmKey(t)
     }, /*#__PURE__*/React.createElement("div", {
       className: "trm-tile-top"
     }, /*#__PURE__*/React.createElement("span", {
@@ -18211,9 +18707,11 @@ const CurrentTermsSummary = ({
     }, /*#__PURE__*/React.createElement(MIcon, {
       name: info.icon,
       size: 18
-    })), /*#__PURE__*/React.createElement("span", {
-      className: "trm-tile-kind"
-    }, info.label)), /*#__PURE__*/React.createElement("div", {
+    })), /*#__PURE__*/React.createElement(TermName, {
+      t: t,
+      account: account,
+      nameClass: H.termLabelNormalize(t.label) ? 'trm-tile-name' : 'trm-tile-kind'
+    })), /*#__PURE__*/React.createElement("div", {
       className: "trm-tile-value",
       style: {
         color: H.costColor(t, account) || info.color
@@ -18311,9 +18809,11 @@ const TermTable = ({
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: info.icon,
     size: 15
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "trm-row-kind-name"
-  }, info.label), t.note && /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(TermName, {
+    t: t,
+    account: account,
+    nameClass: "trm-row-kind-name"
+  }), t.note && /*#__PURE__*/React.createElement("div", {
     className: "trm-row-note"
   }, t.note)))), /*#__PURE__*/React.createElement("td", {
     className: "trm-cell-date"
@@ -18363,9 +18863,12 @@ const TermTimeline = ({
     className: "trm-tl-body"
   }, /*#__PURE__*/React.createElement("div", {
     className: "trm-tl-top"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "trm-tl-kind"
-  }, info.label), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement(TermName, {
+    t: t,
+    account: account,
+    nameClass: "trm-tl-kind",
+    captionClass: "trm-kind-caption inline"
+  }), /*#__PURE__*/React.createElement("span", {
     className: "trm-tl-date"
   }, H.dateLong(t.effectiveFrom)), /*#__PURE__*/React.createElement(TermStatus, {
     t: t,
@@ -18583,10 +19086,12 @@ Object.assign(window, {
   TermHero,
   CurrentTermsSummary,
   TermHistory,
+  TermName,
   trmCurrentFromList,
   trmSeriesFromList,
   trmKindInfo,
-  trmToday
+  trmToday,
+  trmKey
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AccountTerms.jsx", error: String((e && e.message) || e) }); }
 
@@ -19980,18 +20485,22 @@ const AccountDetail = ({
       // $695 monthly one, so it rides in the foot beside the date.
       const bill = t.billingPeriod ? H.billingInfo(t.billingPeriod) : null;
       const period = bill && bill.key !== 'OneTime' ? bill.label : null;
+      // A fee is NAMED by its label, with the kind wording leading the
+      // caption — so six fees read as six distinct tiles, in text, not
+      // six identical ones.
+      const labelled = !!H.termLabelNormalize(t.label);
       return /*#__PURE__*/React.createElement(InfoTile, {
-        key: t.kind,
+        key: window.trmKey(t),
         icon: info.icon,
         iconColor: info.color,
         iconSoft: info.soft,
-        label: info.label,
+        label: H.termDisplayName(t, a),
         value: /*#__PURE__*/React.createElement("span", {
           style: {
             color: H.costColor(t, a) || info.color
           }
         }, H.fmtTermValueFor(t, a)),
-        foot: `since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`
+        foot: `${labelled ? `${H.termKindLabelFor(t, a)} · ` : ''}since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`
       });
     })));
   })(), estimates.length > 0 ? /*#__PURE__*/React.createElement("div", {
@@ -20275,7 +20784,7 @@ const AccountListItem = ({
       size: 14
     }), /*#__PURE__*/React.createElement("span", null, acct.accountNumber)) : null, rateTerm ? /*#__PURE__*/React.createElement("span", {
       className: "acct-rate mono",
-      title: window.trmKindInfo(rateTerm.kind).label,
+      title: H.termKindLabelFor(rateTerm, acct),
       style: {
         color: H.costColor(rateTerm, acct) || window.trmKindInfo(rateTerm.kind).color,
         fontVariantNumeric: 'tabular-nums',
@@ -23490,8 +23999,14 @@ try { (() => {
    the NewAccountTerm DTO and enforces the spec's validation:
 
      • TermKind        — eligibility-gated by the account's AccountType (matrix in
-                         data.js). Interest rate only on interest-bearing accounts,
-                         expected return only on investment/pension, fees broadly.
+                         data.js). Three values: InterestRate (interest-bearing
+                         accounts), ExpectedReturn (investment/pension) and Fee
+                         (everywhere). Where only ONE kind is eligible — cash,
+                         property, vehicle, any type with no rate — the picker is
+                         not rendered at all and the form opens on that kind.
+     • Label           — the series name. Refused on rate kinds, REQUIRED on every
+                         fee. Normalized (trim + collapse whitespace) by the
+                         shared rule; ≤ 64 chars.
      • ValueUnit       — Percentage | Amount. Locked to Percentage for rate kinds.
      • Value           — Percentage: typed as a percent, stored as a fraction in
                          [-1, 1] (3.40 → 0.0340; negative allowed). Amount: ≥ 0.
@@ -23501,8 +24016,9 @@ try { (() => {
      • EffectiveFrom   — required; past or future allowed (future = scheduled).
      • Note            — optional, ≤ 512 chars.
 
-   Rejects an exact (TermKind, EffectiveFrom) duplicate (the server's 409). On
-   confirm, onSave(dto, id?) receives the term-shaped object (id present on edit). */
+   Rejects a (TermKind, Label, EffectiveFrom) duplicate on the case-folded label
+   key (the server's 409). On confirm, onSave(dto, id?) receives the term-shaped
+   object (id present on edit). */
 
 const TRM_SYM = window.ATM_CURRENCY_SYMBOL || {
   USD: '$',
@@ -23518,13 +24034,9 @@ const TRM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.arch
   label: c.name
 }));
 
-/* sensible default billing period per fee kind */
-const TRM_DEFAULT_BILLING = {
-  ManagementFee: 'Annually',
-  ServiceFee: 'Monthly',
-  TransactionFee: 'PerTransaction',
-  OtherFee: 'OneTime'
-};
+/* One default billing period for a new fee — there is no longer a fee kind to
+   guess from, and the four kind-specific guesses went away with the kinds. */
+const trmDefaultBilling = () => window.OdysseyData.defaultFeeBillingPeriod;
 
 /* percent fraction → editable percent string ("0.0340" → "3.4") */
 const fracToPctStr = f => {
@@ -23535,6 +24047,7 @@ const AddTermModal = ({
   account,
   term,
   existing = [],
+  initialKind,
   onClose,
   onSave
 }) => {
@@ -23546,21 +24059,24 @@ const AddTermModal = ({
   const H = window.OdysseyHelpers;
   const eligible = H.eligibleTermKinds(account.type);
   const eligibleKinds = D.termKinds.filter(k => eligible.includes(k.key));
-  const initKind = term ? term.kind : eligibleKinds[0] && eligibleKinds[0].key || 'OtherFee';
+  const initKind = term ? term.kind : initialKind && eligible.includes(initialKind) ? initialKind : eligibleKinds[0] && eligibleKinds[0].key || 'Fee';
   const initInfo = H.termKindInfo(initKind);
   const [draft, setDraft] = useState(() => ({
     kind: initKind,
     unit: term ? term.unit : initInfo.defaultUnit,
     valueStr: term ? term.unit === 'Percentage' ? fracToPctStr(term.value) : String(term.value) : '',
     currency: term ? term.currency || account.currency || 'USD' : account.currency || 'USD',
-    billingPeriod: term ? term.billingPeriod || '' : initInfo.group === 'fee' ? TRM_DEFAULT_BILLING[initKind] || '' : '',
+    billingPeriod: term ? term.billingPeriod || '' : initInfo.group === 'fee' ? trmDefaultBilling() : '',
     effectiveFrom: term ? term.effectiveFrom : new Date().toISOString().slice(0, 10),
+    label: term ? term.label || '' : '',
     note: term ? term.note || '' : ''
   }));
   const [errors, setErrors] = useState({});
   const info = H.termKindInfo(draft.kind);
   const isRate = info.group === 'rate';
   const isPct = draft.unit === 'Percentage';
+  const labelRule = H.termLabelRule(draft.kind); // hidden | optional | required
+
   const set = k => v => {
     setDraft(d => ({
       ...d,
@@ -23577,7 +24093,9 @@ const AddTermModal = ({
       ...d,
       kind: k,
       unit: ki.defaultUnit,
-      billingPeriod: ki.group === 'fee' ? TRM_DEFAULT_BILLING[k] || d.billingPeriod || '' : ''
+      // A rate kind refuses a label, so a typed one is discarded on the switch.
+      label: H.termLabelRule(k) === 'hidden' ? '' : d.label,
+      billingPeriod: ki.group === 'fee' ? d.billingPeriod || trmDefaultBilling() : ''
     }));
     setErrors({});
   };
@@ -23596,9 +24114,17 @@ const AddTermModal = ({
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
     if (draft.note.length > 512) next.note = 'Keep the note under 512 characters.';
 
-    // Duplicate (kind, effectiveFrom) → 409, excluding the row being edited.
-    const dup = existing.some(t => t.id !== (term && term.id) && t.kind === draft.kind && t.effectiveFrom === draft.effectiveFrom);
-    if (dup) next.effectiveFrom = 'This kind already has an entry on that date.';
+    // Label rules — refused on rate kinds, required on every fee, ≤ 64 chars.
+    const label = labelRule === 'hidden' ? null : H.termLabelNormalize(draft.label);
+    if (labelRule === 'required' && !label) next.label = 'Name this fee so it keeps its own history.';
+    if (label && label.length > 64) next.label = 'Keep the name under 64 characters.';
+
+    // Duplicate (kind, label, effectiveFrom) → 409, excluding the row being edited.
+    // Compared on the SAME normalized, case-folded key the server writes, so
+    // "ATM abroad" and "  atm   Abroad " collide here exactly as they would there.
+    const key = H.termLabelKey(label);
+    const dup = existing.some(t => t.id !== (term && term.id) && t.kind === draft.kind && (t.labelKey || H.termLabelKey(t.label) || null) === (key || null) && t.effectiveFrom === draft.effectiveFrom);
+    if (dup) next.effectiveFrom = label ? `“${label}” already has an entry on that date.` : 'This kind already has an entry on that date.';
     if (Object.keys(next).length) {
       setErrors(next);
       return;
@@ -23611,6 +24137,10 @@ const AddTermModal = ({
       currency: isPct ? null : draft.currency,
       billingPeriod: isRate ? null : draft.billingPeriod || null,
       effectiveFrom: draft.effectiveFrom,
+      label,
+      // LabelKey is derived, never posted — this stands in for the server's
+      // write path, which is the only thing allowed to set it.
+      labelKey: key,
       note: draft.note.trim() || null
     }, term && term.id);
   };
@@ -23634,7 +24164,7 @@ const AddTermModal = ({
       icon: isEdit ? 'check' : 'add',
       onClick: submit
     }, isEdit ? 'Save changes' : 'Create term'))
-  }, /*#__PURE__*/React.createElement("div", {
+  }, (isEdit || eligibleKinds.length > 1) && /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement("div", {
     className: "label"
@@ -23691,7 +24221,15 @@ const AddTermModal = ({
     className: "trm-kind-ineligible"
   }, "Some kinds don\u2019t apply to a ", /*#__PURE__*/React.createElement("b", null, window.ACCOUNT_TYPE_LABEL[account.type] || account.type), " account and are hidden.")), errors.kind && /*#__PURE__*/React.createElement("div", {
     className: "helper aam-err"
-  }, errors.kind)), /*#__PURE__*/React.createElement("div", {
+  }, errors.kind)), labelRule !== 'hidden' && /*#__PURE__*/React.createElement(Field, {
+    label: "Name",
+    required: true,
+    value: draft.label,
+    onChange: set('label'),
+    placeholder: "e.g. ATM withdrawal \xB7 abroad",
+    error: errors.label,
+    help: "Names this fee so it keeps its own history, separate from the account's other fees."
+  }), /*#__PURE__*/React.createElement("div", {
     className: "trm-value-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "trm-field-head"
@@ -28974,6 +29512,35 @@ const FormRow = props => {
 // per option). `helper`→`help`, same as Select; value is the ContactType key.
 // Falls back to a registry-fed DS.Select until the bundle carries the typed
 // component (keeps the live screen working across a bundle rebuild).
+// ContactMethodLabelSelect — the Label picker on a contact method. Its option
+// list depends on TWO inputs: the method `kind` and the PARENT contact's type,
+// both required. Falls back to a ContactLabelScope-fed DS.Select until the
+// bundle carries the typed component.
+const ContactMethodLabelSelect = ({
+  helper,
+  ...props
+}) => {
+  if (DS.ContactMethodLabelSelect) return /*#__PURE__*/React.createElement(DS.ContactMethodLabelSelect, _extends({
+    help: helper
+  }, props));
+  const S = DS.ContactLabelScope;
+  const list = S ? S.labelsFor(props.kind || 'phone', props.contactType || 'Person') : [];
+  const {
+    kind,
+    contactType,
+    ...rest
+  } = props;
+  return /*#__PURE__*/React.createElement(DS.Select, _extends({
+    help: helper,
+    placeholder: "Select label\u2026",
+    options: list.map(l => ({
+      value: l.key,
+      label: l.label,
+      icon: l.icon,
+      iconColor: l.color
+    }))
+  }, rest));
+};
 const ContactTypeSelect = ({
   helper,
   ...props
@@ -30953,6 +31520,7 @@ Object.assign(window, {
   EmptyState,
   BrandMark,
   ContactTypeSelect,
+  ContactMethodLabelSelect,
   SettingRow,
   SettingField,
   CapacityField,
@@ -31576,12 +32144,23 @@ Object.assign(window, {
 
 // ui_kits/web/Contacts.jsx
 try { (() => {
-/* Contacts — v5 "Extended Contacts".
+/* Contacts — v6 "Aliases & lifecycle dates" (on top of v5 "Extended Contacts").
    A base Contact record (DisplayName override + computed fallback,
    audit timestamps) discriminated by Type into a Person or Organization
    sub-record, plus three independently-managed contact collections
    (Addresses / Emails / Phone numbers), each row carrying a Label + a single
-   Primary. Mirrors the Extended Contacts spec (v5).
+   Primary.
+
+   v6 adds a fourth child collection — ALIASES, the alternative names a contact
+   is actually known by, each with an optional FREE-TEXT label ("maiden name",
+   "nickname", "trading as") — and four optional lifecycle scalars: a Person's
+   MiddleName + DateOfDeath, an Organization's EstablishedDate + DissolvedDate.
+   Aliases are names, not contact methods, so they get their own section ABOVE
+   Contact information, rendered by the DS `ContactAliases` component. Alias
+   values and MiddleName are SEARCHED; an alias LABEL is metadata and is not.
+   Recording a death or a dissolution changes no state: the contact keeps its
+   links and stays selectable everywhere, and only reads as historical (a card
+   chip in text, a picker suffix).
 
    NOTE: this kit screen keeps its own local type registry + seed so the two
    downstream previews (page + New-contact dialog) render the new shape
@@ -31630,54 +32209,31 @@ const SEX_OPTIONS = [{
   value: 'Female',
   label: 'Female'
 }];
-const ADDRESS_LABELS = [{
-  value: 'Home',
-  label: 'Home',
-  icon: 'home'
-}, {
-  value: 'Work',
-  label: 'Work',
-  icon: 'work'
-}, {
-  value: 'Billing',
-  label: 'Billing',
-  icon: 'receipt_long'
-}, {
-  value: 'Other',
-  label: 'Other',
+/* ---- Contact-method labels: one scope map, read off the DS namespace ----
+   The three label enums now carry an organization vocabulary, and every member
+   is scoped to the contact types it is valid for. ONE invariant: a contact
+   method's label is valid for its contact's type — the picker offers only valid
+   labels, the write path refuses the rest with a 422, and import + the
+   type-switch remap CLAMP to Other rather than dropping a record.
+   The map is the DS `ContactLabelScope`; a second copy in the kit is precisely
+   the divergence the spec forbids. */
+const CP_DS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+const CP_SCOPE = CP_DS.ContactLabelScope;
+const labelsFor = (kind, type) => CP_SCOPE ? CP_SCOPE.labelsFor(kind, type) : [];
+const defaultLabel = (kind, type) => CP_SCOPE ? CP_SCOPE.defaultFor(kind, type) : '';
+const isLabelValid = (kind, key, type) => CP_SCOPE ? CP_SCOPE.isValidFor(kind, key, type) : true;
+const clampLabel = (kind, key, type) => CP_SCOPE ? CP_SCOPE.clamp(kind, key, type) : key;
+// Keyed `Other` fallback — organization members are appended AFTER Other, so a
+// positional last-entry fallback would render an undefined ordinal as Branch /
+// Claims / Direct: plausible, specific and wrong.
+const labelMeta = (kind, key) => CP_SCOPE ? CP_SCOPE.metaFor(kind, key) : {
+  key,
+  label: key,
   icon: 'category'
-}];
-const EMAIL_LABELS = [{
-  value: 'Home',
-  label: 'Home',
-  icon: 'home'
-}, {
-  value: 'Work',
-  label: 'Work',
-  icon: 'work'
-}, {
-  value: 'Other',
-  label: 'Other',
-  icon: 'category'
-}];
-const PHONE_LABELS = [{
-  value: 'Home',
-  label: 'Home',
-  icon: 'home'
-}, {
-  value: 'Work',
-  label: 'Work',
-  icon: 'work'
-}, {
-  value: 'Mobile',
-  label: 'Mobile',
-  icon: 'smartphone'
-}, {
-  value: 'Other',
-  label: 'Other',
-  icon: 'category'
-}];
-const labelMeta = (labels, v) => labels.find(l => l.value === v) || labels[labels.length - 1];
+};
+// The 422 a contact-method write returns when the label is out of scope. Named
+// here because the client surfaces the server's own message verbatim.
+const labelScopeMessage = (kind, key, type) => `Label '${key}' is not valid for ${type === 'Organization' ? 'an Organization' : 'a Person'} contact. ` + `Valid labels: ${labelsFor(kind, type).map(l => l.key).join(', ')}.`;
 
 /* ---- Resolution + formatting ---- */
 const resolvedName = c => {
@@ -31691,13 +32247,30 @@ const addressLines = a => {
   return [a.line1, a.line2, cityLine, a.countryCode].filter(v => v && v.trim());
 };
 const uid = p => `${p}-${Math.random().toString(36).slice(2, 8)}`;
+const cpToday = () => new Date().toISOString().slice(0, 10);
 
 /* Atoms not bridged to the kit globals — read straight off the DS namespace. */
 const {
   Menu: DSMenu,
   Toast: DSToast,
-  ToastStack: DSToastStack
+  ToastStack: DSToastStack,
+  ContactAliases: DSContactAliases
 } = window.OdysseyDesignSystem_d5aa51 || {};
+
+/* ---- Lifecycle state (deceased / dissolved) ----
+   The meaning is always the chip's visible TEXT; the date makes it specific.
+   Recording either date removes no capability. */
+const cpLifecycle = c => {
+  const H = window.OdysseyHelpers;
+  const d = c.type === 'Person' ? (c.person || {}).dateOfDeath : (c.org || {}).dissolvedDate;
+  if (!d) return null;
+  const word = c.type === 'Person' ? 'Deceased' : 'Dissolved';
+  return {
+    word,
+    date: d,
+    text: `${word} ${H ? H.dateLong(d) : d}`
+  };
+};
 
 /* ================= vCard (RFC 6350 v4.0) export + import sim (spec §6/§9) =================
    Export is real — each row serializes to an RFC-shaped VCARD block with §3.3
@@ -31724,24 +32297,58 @@ const vcRev = iso => {
     return '';
   }
 };
-const ADR_TYPE = {
-  Home: 'home',
-  Work: 'work',
-  Billing: 'billing',
-  Other: 'other'
+/* The nearest standard TYPE token for every label, and the labels that have
+   none of their own — those and only those also emit X-ODYSSEY-LABEL, so an
+   export carrying no organization label is byte-identical to the pre-change
+   output. RFC 6350 dropped 3.0's `postal` ADR type, which is why Postal maps to
+   `home` plus the extension. */
+const VC_STD_TYPE = {
+  address: {
+    Home: 'home',
+    Work: 'work',
+    Billing: 'billing',
+    Other: 'other',
+    Postal: 'home',
+    Visiting: 'work',
+    Registered: 'work',
+    Branch: 'work'
+  },
+  email: {
+    Home: 'home',
+    Work: 'work',
+    Other: 'other',
+    General: 'work',
+    Support: 'work',
+    Sales: 'work',
+    Billing: 'work',
+    Claims: 'work'
+  },
+  phone: {
+    Home: 'home',
+    Work: 'work',
+    Mobile: 'cell',
+    Other: 'other',
+    Switchboard: 'voice,work',
+    Support: 'voice,work',
+    Sales: 'voice,work',
+    Billing: 'voice,work',
+    Claims: 'voice,work',
+    Emergency: 'voice,work',
+    Direct: 'voice,work'
+  }
 };
-const TEL_TYPE = {
-  Home: 'home',
-  Work: 'work',
-  Mobile: 'cell',
-  Other: 'other'
+const VC_EXT_LABELS = {
+  address: ['Postal', 'Visiting', 'Registered', 'Branch'],
+  email: ['General', 'Support', 'Sales', 'Billing', 'Claims'],
+  phone: ['Switchboard', 'Support', 'Sales', 'Billing', 'Claims', 'Emergency', 'Direct']
 };
-const EMAIL_TYPE = {
-  Home: 'home',
-  Work: 'work',
-  Other: 'other'
+// The X-ODYSSEY-LABEL value is always an enum member name from a closed set, so
+// nothing user-supplied reaches the vCard parameter grammar.
+const vcParam = (kind, label, pref) => {
+  const token = (VC_STD_TYPE[kind] || {})[label];
+  const ext = (VC_EXT_LABELS[kind] || []).indexOf(label) >= 0;
+  return `${token ? ';TYPE=' + token : ''}${pref ? ';PREF=1' : ''}${ext ? ';X-ODYSSEY-LABEL=' + label : ''}`;
 };
-const vcParam = (type, pref) => `${type ? ';TYPE=' + type : ''}${pref ? ';PREF=1' : ''}`;
 const buildVCard = c => {
   const L = ['BEGIN:VCARD', 'VERSION:4.0'];
   L.push('UID:' + cpExternalUid(c));
@@ -31749,10 +32356,11 @@ const buildVCard = c => {
   if (c.type === 'Person') {
     const p = c.person || {};
     L.push('KIND:individual');
-    L.push(`N:${vcEsc(p.lastName)};${vcEsc(p.firstName)};;;`);
+    L.push(`N:${vcEsc(p.lastName)};${vcEsc(p.firstName)};${vcEsc(p.middleName)};;`);
     if (p.title) L.push('TITLE:' + vcEsc(p.title));
     if (p.company) L.push('ORG:' + vcEsc(p.company));
     if (p.dateOfBirth) L.push('BDAY:' + p.dateOfBirth.replace(/-/g, ''));
+    if (p.dateOfDeath) L.push('DEATHDATE:' + p.dateOfDeath.replace(/-/g, ''));
     if (p.sex === 'Male' || p.sex === 'Female') L.push('GENDER:' + (p.sex === 'Male' ? 'M' : 'F'));
     if (p.relationshipType) L.push('X-ODYSSEY-RELATIONSHIP:' + vcEsc(p.relationshipType));
   } else {
@@ -31761,14 +32369,26 @@ const buildVCard = c => {
     L.push('ORG:' + vcEsc(o.legalName));
     if (o.website && /^https?:\/\//i.test(o.website)) L.push('URL:' + o.website);
     if (o.organizationNumber) L.push('X-ODYSSEY-ORG-NUMBER:' + vcEsc(o.organizationNumber));
+    if (o.establishedDate) L.push('X-ODYSSEY-ESTABLISHED:' + o.establishedDate.replace(/-/g, ''));
+    if (o.dissolvedDate) L.push('X-ODYSSEY-DISSOLVED:' + o.dissolvedDate.replace(/-/g, ''));
   }
+  /* Aliases: one GROUPED pair per alias, in API order — the label is a grouped
+     PROPERTY, never a parameter. RFC 6350's quoted param-value excludes DQUOTE,
+     so free text in a parameter has no in-band escape and would let `"` / `;`
+     / `:` inject parameters downstream address books honour. A property value
+     is TEXT, which the existing escaper round-trips losslessly. A contact with
+     no aliases emits nothing, so its card is byte-identical to v5's. */
+  (c.aliases || []).forEach((a, i) => {
+    L.push(`item${i + 1}.NICKNAME:${vcEsc(a.value)}`);
+    if (a.label) L.push(`item${i + 1}.X-ODYSSEY-ALIAS-LABEL:${vcEsc(a.label)}`);
+  });
   (c.addresses || []).forEach(a => {
     const street = [a.line1, a.line2].filter(Boolean).join(' ');
     const val = `;;${vcEsc(street)};${vcEsc(a.city)};${vcEsc(a.region)};${vcEsc(a.postalCode)};${vcEsc(a.countryCode)}`;
-    L.push(`ADR${vcParam(ADR_TYPE[a.label], a.isPrimary)}:${val}`);
+    L.push(`ADR${vcParam('address', a.label, a.isPrimary)}:${val}`);
   });
-  (c.emails || []).forEach(e => L.push(`EMAIL${vcParam(EMAIL_TYPE[e.label], e.isPrimary)}:${vcEsc(e.value)}`));
-  (c.phones || []).forEach(t => L.push(`TEL${vcParam(TEL_TYPE[t.label], t.isPrimary)}:${vcEsc(t.value)}`));
+  (c.emails || []).forEach(e => L.push(`EMAIL${vcParam('email', e.label, e.isPrimary)}:${vcEsc(e.value)}`));
+  (c.phones || []).forEach(t => L.push(`TEL${vcParam('phone', t.label, t.isPrimary)}:${vcEsc(t.value)}`));
   if (c.notes) L.push('NOTE:' + vcEsc(c.notes));
   if (c.updatedAt) L.push('REV:' + vcRev(c.updatedAt));
   L.push('END:VCARD');
@@ -31818,15 +32438,20 @@ const vcMakeCreated = n => {
       person: {
         firstName: first,
         lastName: last,
+        middleName: null,
         dateOfBirth: null,
+        dateOfDeath: null,
         sex: null,
         title: null,
         company: null
       },
+      aliases: [],
+      // Every imported row's label goes through the clamp before it is written:
+      // an out-of-scope label becomes Other, never a dropped property.
       addresses: [],
       emails: [{
         id: uid('e'),
-        label: 'Home',
+        label: clampLabel('email', 'Home', 'Person'),
         isPrimary: true,
         value: `${first}.${last}`.toLowerCase() + '@example.com'
       }],
@@ -31895,11 +32520,22 @@ const CP_SEED = [{
   person: {
     firstName: 'Michael',
     lastName: 'Chen',
+    middleName: 'Wei',
     dateOfBirth: '1990-04-12',
+    dateOfDeath: null,
     sex: 'Male',
     title: 'Senior Engineer',
     company: 'Northwind Labs'
   },
+  aliases: [{
+    id: 'al1',
+    value: 'Mike',
+    label: 'nickname'
+  }, {
+    id: 'al2',
+    value: 'M. W. Chen',
+    label: null
+  }],
   addresses: [{
     id: 'a1',
     label: 'Home',
@@ -31909,6 +32545,15 @@ const CP_SEED = [{
     city: 'Oslo',
     region: '',
     postalCode: '0555',
+    countryCode: 'NO'
+  }, {
+    id: 'a1b',
+    label: 'Postal',
+    isPrimary: false,
+    line1: 'Postboks 234 Sentrum',
+    city: 'Oslo',
+    region: '',
+    postalCode: '0103',
     countryCode: 'NO'
   }],
   emails: [{
@@ -31939,8 +32584,15 @@ const CP_SEED = [{
   org: {
     legalName: 'Lakeside Property Management LLC',
     organizationNumber: '81-2233445',
-    website: 'https://lakesidepm.example.com'
+    website: 'https://lakesidepm.example.com',
+    establishedDate: '2009-03-02',
+    dissolvedDate: null
   },
+  aliases: [{
+    id: 'al3',
+    value: 'Lakeside Lettings',
+    label: 'trading as'
+  }],
   addresses: [{
     id: 'a2',
     label: 'Billing',
@@ -31953,7 +32605,7 @@ const CP_SEED = [{
     countryCode: 'NO'
   }, {
     id: 'a3',
-    label: 'Work',
+    label: 'Branch',
     isPrimary: false,
     line1: 'Strandveien 200',
     city: 'Bergen',
@@ -31963,13 +32615,13 @@ const CP_SEED = [{
   }],
   emails: [{
     id: 'e2',
-    label: 'Work',
+    label: 'Billing',
     isPrimary: true,
     value: 'billing@lakesidepm.example.com'
   }],
   phones: [{
     id: 'p3',
-    label: 'Work',
+    label: 'Switchboard',
     isPrimary: true,
     value: '+1 510 555 0110'
   }]
@@ -31984,11 +32636,18 @@ const CP_SEED = [{
   person: {
     firstName: 'Priya',
     lastName: 'Nair',
-    dateOfBirth: null,
+    middleName: null,
+    dateOfBirth: '1962-07-19',
+    dateOfDeath: '2024-03-11',
     sex: 'Female',
     title: 'Physician',
     company: 'Bay Area Health Partners'
   },
+  aliases: [{
+    id: 'al4',
+    value: 'Priya Menon',
+    label: 'maiden name'
+  }],
   addresses: [],
   emails: [{
     id: 'e3',
@@ -32013,11 +32672,18 @@ const CP_SEED = [{
   org: {
     legalName: 'Northwind Labs, Inc.',
     organizationNumber: '98-7654321',
-    website: 'https://northwind.example.com'
+    website: 'https://northwind.example.com',
+    establishedDate: '1998-11-04',
+    dissolvedDate: null
   },
+  aliases: [{
+    id: 'al5',
+    value: 'Northwind',
+    label: null
+  }],
   addresses: [{
     id: 'a4',
-    label: 'Work',
+    label: 'Visiting',
     isPrimary: true,
     line1: 'Brobekkveien 80',
     city: 'Oslo',
@@ -32027,7 +32693,7 @@ const CP_SEED = [{
   }],
   emails: [{
     id: 'e4',
-    label: 'Work',
+    label: 'Billing',
     isPrimary: true,
     value: 'payroll@northwind.example.com'
   }],
@@ -32043,11 +32709,18 @@ const CP_SEED = [{
   person: {
     firstName: 'Sarah',
     lastName: 'Whitfield',
+    middleName: null,
     dateOfBirth: '1985-11-30',
+    dateOfDeath: null,
     sex: 'Female',
     title: null,
     company: 'Lakeside Property Management LLC'
   },
+  aliases: [{
+    id: 'al6',
+    value: 'Sarah Boyd',
+    label: 'maiden name'
+  }],
   addresses: [],
   emails: [{
     id: 'e5',
@@ -32072,11 +32745,22 @@ const CP_SEED = [{
   org: {
     legalName: 'Pacific Home Insurance Co.',
     organizationNumber: '45-6677889',
-    website: null
+    website: null,
+    establishedDate: '1974-06-01',
+    dissolvedDate: '2023-06-30'
   },
+  aliases: [{
+    id: 'al7',
+    value: 'Pacific Home Assurance',
+    label: 'pre-merger name'
+  }, {
+    id: 'al8',
+    value: 'PHI',
+    label: null
+  }],
   addresses: [{
     id: 'a6',
-    label: 'Other',
+    label: 'Registered',
     isPrimary: true,
     line1: 'Markveien 35',
     line2: '12. etg.',
@@ -32087,15 +32771,25 @@ const CP_SEED = [{
   }],
   emails: [{
     id: 'e6',
-    label: 'Other',
+    label: 'Claims',
     isPrimary: true,
     value: 'claims@pacifichome.example.com'
   }],
   phones: [{
     id: 'p6',
-    label: 'Other',
+    label: 'Switchboard',
     isPrimary: true,
     value: '+1 800 555 0199'
+  }, {
+    id: 'p6b',
+    label: 'Claims',
+    isPrimary: false,
+    value: '+1 800 555 0177'
+  }, {
+    id: 'p6c',
+    label: 'Emergency',
+    isPrimary: false,
+    value: '+1 800 555 0100'
   }]
 }, {
   id: 'c7',
@@ -32108,11 +32802,14 @@ const CP_SEED = [{
   person: {
     firstName: 'Diego',
     lastName: 'Ramos',
+    middleName: null,
     dateOfBirth: null,
+    dateOfDeath: null,
     sex: null,
     title: null,
     company: null
   },
+  aliases: [],
   addresses: [],
   emails: [],
   phones: [{
@@ -32132,8 +32829,11 @@ const CP_SEED = [{
   org: {
     legalName: 'FitZone Gym',
     organizationNumber: null,
-    website: null
+    website: null,
+    establishedDate: null,
+    dissolvedDate: null
   },
+  aliases: [],
   addresses: [],
   emails: [],
   phones: []
@@ -32147,10 +32847,10 @@ const PrimaryBadge = () => /*#__PURE__*/React.createElement(Chip, {
   dot: true
 }, "Primary");
 const LabelChip = ({
-  labels,
+  kind,
   value
 }) => {
-  const m = labelMeta(labels, value);
+  const m = labelMeta(kind, value);
   return /*#__PURE__*/React.createElement(Chip, {
     tone: "outline",
     icon: m.icon
@@ -32187,12 +32887,14 @@ const cpSectionHead = (icon, title, count) => /*#__PURE__*/React.createElement("
    arbitration the service enforces (§9) runs here — setting one primary clears
    the siblings; the collection is the sole owner of the flag. */
 
+/* The label vocabulary is no longer part of this config — it depends on the
+   parent contact's type as well as the kind, so it is resolved per render
+   through ContactLabelScope. */
 const CONTACT_KINDS = {
   address: {
     title: 'Addresses',
     icon: 'home',
     addTitle: 'Add address',
-    labels: ADDRESS_LABELS,
     avatar: 'location_on',
     soft: 'oklch(0.77 0.14 55 / 0.15)',
     fg: 'oklch(0.77 0.14 55)'
@@ -32201,7 +32903,6 @@ const CONTACT_KINDS = {
     title: 'Emails',
     icon: 'mail',
     addTitle: 'Add email',
-    labels: EMAIL_LABELS,
     avatar: 'alternate_email',
     soft: 'oklch(0.72 0.16 295 / 0.15)',
     fg: 'oklch(0.72 0.16 295)'
@@ -32210,7 +32911,6 @@ const CONTACT_KINDS = {
     title: 'Phone numbers',
     icon: 'call',
     addTitle: 'Add phone number',
-    labels: PHONE_LABELS,
     avatar: 'call',
     soft: 'oklch(0.78 0.13 200 / 0.15)',
     fg: 'oklch(0.78 0.13 200)'
@@ -32239,6 +32939,7 @@ const blankFor = (kind, defaultLabel) => {
 };
 const ContactForm = ({
   kind,
+  contactType,
   item,
   onCommit,
   onCancel,
@@ -32261,8 +32962,14 @@ const ContactForm = ({
       [k]: undefined
     }));
   };
+  const offered = labelsFor(kind, contactType);
   const validate = () => {
     const e = {};
+    // Set membership, NOT non-emptiness. A label outside the offered set renders
+    // the trigger's placeholder while the draft still holds it, so a merely
+    // non-empty check would let an invisible value through to a server 422 on a
+    // field the user never touched. Required-style wording for the same reason.
+    if (!isLabelValid(kind, d.label, contactType)) e.label = 'Label is required.';
     if (kind === 'address') {
       if (!d.line1.trim()) e.line1 = 'Line 1 is required.';
       if (!d.city.trim()) e.city = 'City is required.';
@@ -32304,11 +33011,14 @@ const ContactForm = ({
       display: 'grid',
       gap: 12
     }
-  }, /*#__PURE__*/React.createElement(Select, {
-    label: "Label",
+  }, /*#__PURE__*/React.createElement(ContactMethodLabelSelect, {
+    kind: kind,
+    contactType: contactType,
     value: d.label,
     onChange: set('label'),
-    options: cfg.labels
+    required: true,
+    error: err.label,
+    helper: err.label ? undefined : `${offered.length} offered for ${contactType === 'Organization' ? 'an organization' : 'a person'}`
   }), kind === 'address' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
     label: "Line 1",
     value: d.line1,
@@ -32432,7 +33142,8 @@ const ContactList = ({
   addReq,
   onConsumeAdd,
   styleMode,
-  bare
+  bare,
+  onProblem
 }) => {
   const {
     useState,
@@ -32475,7 +33186,19 @@ const ContactList = ({
     change(kind, next);
     setAdding(null);
   };
-  const setPrimary = (kind, id) => change(kind, applyPrimary(listOf(kind), id));
+  const setPrimary = (kind, id) => {
+    const row = listOf(kind).find(x => x.id === id);
+    // "Set as primary" rebuilds the whole row from what is stored and re-PUTs
+    // it, bypassing the picker — so a stored label that is out of scope for the
+    // contact's type replays and the server refuses it with a 422. The user sees
+    // the server's own message; nothing is lost, and editing the label once
+    // clears it.
+    if (row && !isLabelValid(kind, row.label, c.type)) {
+      onProblem && onProblem(`Update failed: ${labelScopeMessage(kind, row.label, c.type)}`);
+      return;
+    }
+    change(kind, applyPrimary(listOf(kind), id));
+  };
   const remove = (kind, id) => {
     let next = listOf(kind).filter(x => x.id !== id);
     if (next.length && !next.some(x => x.isPrimary)) next = applyPrimary(next, next[0].id);
@@ -32603,7 +33326,7 @@ const ContactList = ({
         }
       }, valueEl), /*#__PURE__*/React.createElement("div", {
         className: "cp-tile-foot"
-      }, /*#__PURE__*/React.createElement("span", null, labelMeta(cfg.labels, item.label).label), item.isPrimary && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      }, /*#__PURE__*/React.createElement("span", null, labelMeta(kind, item.label).label), item.isPrimary && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
         className: "cp-tile-sep"
       }, "\xB7"), /*#__PURE__*/React.createElement("span", {
         className: "cp-tile-primary"
@@ -32633,7 +33356,7 @@ const ContactList = ({
         marginBottom: 4
       }
     }, /*#__PURE__*/React.createElement(LabelChip, {
-      labels: cfg.labels,
+      kind: kind,
       value: item.label
     }), item.isPrimary && /*#__PURE__*/React.createElement(PrimaryBadge, null)), /*#__PURE__*/React.createElement(ContactValue, {
       kind: kind,
@@ -32646,13 +33369,15 @@ const ContactList = ({
   })), !readOnly && adding && /*#__PURE__*/React.createElement(ContactForm, {
     mode: "add",
     kind: adding,
-    item: blankFor(adding, CONTACT_KINDS[adding].labels[0].value),
+    contactType: c.type,
+    item: blankFor(adding, defaultLabel(adding, c.type)),
     isFirst: listOf(adding).length === 0,
     onCommit: data => commitAdd(adding, data),
     onCancel: () => setAdding(null)
   }), !readOnly && editing && /*#__PURE__*/React.createElement(ContactForm, {
     mode: "edit",
     kind: editing.kind,
+    contactType: c.type,
     item: listOf(editing.kind).find(x => x.id === editing.id),
     isFirst: listOf(editing.kind).length === 1,
     onCommit: data => commitEdit(editing.kind, editing.id, data),
@@ -32679,7 +33404,9 @@ const CpTiles = ({
   const p = c.person || {},
     o = c.org || {};
   const website = o.website && /^https?:\/\//i.test(o.website) ? o.website : null;
-  return /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
+  return /*#__PURE__*/React.createElement(InfoTileGrid, {
+    dense: true
+  }, /*#__PURE__*/React.createElement(InfoTile, {
     icon: "badge",
     label: "Display name",
     value: resolvedName(c) || '—',
@@ -32698,7 +33425,12 @@ const CpTiles = ({
     label: "First name",
     value: p.firstName || '—',
     valueVariant: "text"
-  }), /*#__PURE__*/React.createElement(InfoTile, {
+  }), p.middleName ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "person",
+    label: "Middle name",
+    value: p.middleName,
+    valueVariant: "text"
+  }) : null, /*#__PURE__*/React.createElement(InfoTile, {
     icon: "person",
     label: "Last name",
     value: p.lastName || '—',
@@ -32708,6 +33440,12 @@ const CpTiles = ({
     label: "Date of birth",
     value: H.dateLong(p.dateOfBirth),
     valueVariant: "sm"
+  }) : null, p.dateOfDeath ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "event_busy",
+    label: "Date of death",
+    value: H.dateLong(p.dateOfDeath),
+    valueVariant: "sm",
+    foot: "the record stays live \u2014 nothing is archived"
   }) : null, p.sex ? /*#__PURE__*/React.createElement(InfoTile, {
     icon: "wc",
     label: "Sex",
@@ -32742,6 +33480,17 @@ const CpTiles = ({
       target: "_blank",
       rel: "noopener noreferrer"
     }, o.website) : o.website
+  }) : null, o.establishedDate ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "foundation",
+    label: "Established",
+    value: H.dateLong(o.establishedDate),
+    valueVariant: "sm"
+  }) : null, o.dissolvedDate ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "event_busy",
+    label: "Dissolved",
+    value: H.dateLong(o.dissolvedDate),
+    valueVariant: "sm",
+    foot: "reads as historical \u2014 still linkable"
   }) : null), /*#__PURE__*/React.createElement(InfoTile, {
     icon: c.archived ? 'inventory_2' : 'task_alt',
     label: "Status",
@@ -32759,7 +33508,7 @@ const CpTiles = ({
     label: "Updated",
     value: H.dateTime(c.updatedAt),
     valueVariant: "sm",
-    foot: "bumped by any address, email or phone change"
+    foot: "bumped by any address, email, phone or alias change"
   }));
 };
 
@@ -32772,8 +33521,13 @@ const CpRecordCard = ({
   onSave,
   onDelete,
   onContacts,
+  onAliases,
   onExportRow,
-  contactStyle
+  contactStyle,
+  onProblem,
+  onAnnounce,
+  perms = {},
+  aliasCap
 }) => {
   const {
     useState
@@ -32792,6 +33546,11 @@ const CpRecordCard = ({
     addr = primaryOf(c.addresses);
   const role = isPerson ? [p.title, p.company].filter(Boolean).join(' · ') : o.organizationNumber || o.website || '';
   const entries = contactCount(c);
+  const aliases = c.aliases || [];
+  const life = cpLifecycle(c);
+  const canUpdate = perms.update !== false;
+  const canCreate = perms.create !== false;
+  const canDelete = perms.delete !== false;
   const requestAdd = kind => {
     if (!open) onToggle(true);
     setAddReq({
@@ -32799,6 +33558,19 @@ const CpRecordCard = ({
       nonce: Date.now()
     });
   };
+  /* Alias writes are ordinary child-collection writes: each one bumps the
+     parent UpdatedAt, exactly as an address / email / phone change does. */
+  const addAlias = (value, label) => onAliases(c.id, [...aliases, {
+    id: uid('al'),
+    value,
+    label
+  }]);
+  const editAlias = (id, value, label) => onAliases(c.id, aliases.map(a => a.id === id ? {
+    ...a,
+    value,
+    label
+  } : a));
+  const deleteAlias = id => onAliases(c.id, aliases.filter(a => a.id !== id));
   if (!RecordCard || !InfoTileGrid || !InfoTile) return null;
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(RecordCard, {
     icon: meta.icon,
@@ -32808,10 +33580,10 @@ const CpRecordCard = ({
     chips: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Chip, {
       tone: status.tone,
       dot: true
-    }, status.label), c.displayName ? /*#__PURE__*/React.createElement(Chip, {
+    }, status.label), life ? /*#__PURE__*/React.createElement(Chip, {
       tone: "outline",
-      icon: "badge"
-    }, "Display name") : null),
+      icon: "event_busy"
+    }, life.text) : null),
     meta: [/*#__PURE__*/React.createElement("span", {
       className: "row gap-1",
       style: {
@@ -32884,7 +33656,11 @@ const CpRecordCard = ({
         onClick: () => onExportRow && onExportRow(c)
       }, ...(c.archived ? [] : [{
         divider: true
-      }, {
+      }, ...(canCreate ? [{
+        icon: 'badge',
+        label: 'New alias',
+        onClick: () => requestAdd('alias')
+      }] : []), {
         icon: 'add_location_alt',
         label: 'New address',
         onClick: () => requestAdd('address')
@@ -32932,6 +33708,50 @@ const CpRecordCard = ({
       className: c.notes ? undefined : 'muted'
     }))
   }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Aliases",
+    meta: `${aliases.length} ${aliases.length === 1 ? 'alias' : 'aliases'}`
+  }), DSContactAliases ? /*#__PURE__*/React.createElement(DSContactAliases, {
+    aliases: aliases,
+    canCreate: canCreate,
+    canUpdate: canUpdate,
+    canDelete: canDelete,
+    archived: !!c.archived,
+    cap: aliasCap,
+    addRequest: addReq && addReq.kind === 'alias' ? addReq : null,
+    onConsumeAddRequest: () => setAddReq(null),
+    onAdd: addAlias,
+    onEdit: editAlias,
+    onDelete: deleteAlias,
+    onAnnounce: onAnnounce
+  }) :
+  /*#__PURE__*/
+  /* Bundle-lag fallback (same pattern as SeverityIcon / DateField): the
+     alias tiles read, but adding and editing live in the DS component. */
+  React.createElement("div", {
+    className: "odc-aliases"
+  }, aliases.length === 0 ? /*#__PURE__*/React.createElement("p", {
+    className: "odc-aliases-empty"
+  }, "No aliases yet \u2014 use the \u22EF menu to add one.") : /*#__PURE__*/React.createElement("div", {
+    className: "odc-alias-grid"
+  }, aliases.map(a => /*#__PURE__*/React.createElement("div", {
+    key: a.id,
+    className: "odc-alias-tile"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "odc-alias-top"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-alias-ic",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "badge",
+    size: 15
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "odc-alias-kind"
+  }, "Alias")), /*#__PURE__*/React.createElement("div", {
+    className: "odc-alias-value",
+    title: a.value
+  }, a.value), a.label ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-alias-foot"
+  }, a.label) : null)))), /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Contact information",
     meta: `${entries} ${entries === 1 ? 'entry' : 'entries'}`
   }), /*#__PURE__*/React.createElement(ContactList, {
@@ -32939,7 +33759,8 @@ const CpRecordCard = ({
     onContacts: onContacts,
     readOnly: !!c.archived,
     bare: true,
-    addReq: addReq,
+    onProblem: onProblem,
+    addReq: addReq && addReq.kind !== 'alias' ? addReq : null,
     onConsumeAdd: () => setAddReq(null),
     styleMode: contactStyle
   })), showEdit && /*#__PURE__*/React.createElement(AddContactModal, {
@@ -32973,27 +33794,44 @@ const PersonFields = ({
   error: err.lastName,
   required: true,
   maxLength: 128
-})), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(Field, {
+})), /*#__PURE__*/React.createElement(Field, {
+  label: "Middle name",
+  value: d.middleName,
+  onChange: set('middleName'),
+  placeholder: "As it appears on a passport or bank record",
+  helper: "Optional \xB7 not part of the display name",
+  maxLength: 128
+}), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
   label: "Date of birth",
-  type: "date",
-  value: d.dateOfBirth,
+  value: d.dateOfBirth || null,
   onChange: set('dateOfBirth'),
-  helper: "Optional \xB7 cannot be in the future"
-}), /*#__PURE__*/React.createElement(Select, {
+  max: cpToday(),
+  error: err.dateOfBirth,
+  optional: true,
+  help: err.dateOfBirth ? undefined : 'Cannot be in the future'
+}), /*#__PURE__*/React.createElement(DateField, {
+  label: "Date of death",
+  value: d.dateOfDeath || null,
+  onChange: set('dateOfDeath'),
+  max: cpToday(),
+  error: err.dateOfDeath,
+  optional: true,
+  help: err.dateOfDeath ? undefined : 'Recording it archives nothing'
+})), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(Select, {
   label: "Sex",
   value: d.sex,
   onChange: set('sex'),
   options: SEX_OPTIONS,
   helper: "Optional",
   placeholder: "Unspecified"
-})), /*#__PURE__*/React.createElement(Field, {
+}), /*#__PURE__*/React.createElement(Field, {
   label: "Job title",
   value: d.title,
   onChange: set('title'),
   placeholder: "e.g. Senior Engineer",
   helper: "Optional",
   maxLength: 128
-}), /*#__PURE__*/React.createElement(Field, {
+})), /*#__PURE__*/React.createElement(Field, {
   label: "Company",
   value: d.company,
   onChange: set('company'),
@@ -33028,6 +33866,22 @@ const OrgFields = ({
   placeholder: "https://example.com",
   helper: "http/https only",
   maxLength: 2048
+})), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
+  label: "Established",
+  value: d.establishedDate || null,
+  onChange: set('establishedDate'),
+  max: cpToday(),
+  error: err.establishedDate,
+  optional: true,
+  help: err.establishedDate ? undefined : 'Cannot be in the future'
+}), /*#__PURE__*/React.createElement(DateField, {
+  label: "Dissolved",
+  value: d.dissolvedDate || null,
+  onChange: set('dissolvedDate'),
+  max: cpToday(),
+  error: err.dissolvedDate,
+  optional: true,
+  help: err.dissolvedDate ? undefined : 'Reads as historical — still linkable'
 })));
 const displayNameHint = type => type === 'Person' ? 'Defaults to "First Last" if left blank' : 'Defaults to the legal name if left blank';
 
@@ -33066,13 +33920,17 @@ const AddContactModal = ({
   const [draft, setDraft] = useState({
     firstName: cp.person && cp.person.firstName || '',
     lastName: cp.person && cp.person.lastName || '',
+    middleName: cp.person && cp.person.middleName || '',
     dateOfBirth: cp.person && cp.person.dateOfBirth || '',
+    dateOfDeath: cp.person && cp.person.dateOfDeath || '',
     sex: cp.person && cp.person.sex || '',
     title: cp.person && cp.person.title || '',
     company: cp.person && cp.person.company || '',
     legalName: cp.org && cp.org.legalName || '',
     organizationNumber: cp.org && cp.org.organizationNumber || '',
     website: cp.org && cp.org.website || '',
+    establishedDate: cp.org && cp.org.establishedDate || '',
+    dissolvedDate: cp.org && cp.org.dissolvedDate || '',
     notes: cp.notes || ''
   });
   const [err, setErr] = useState({});
@@ -33097,70 +33955,86 @@ const AddContactModal = ({
     setDraft(s => ({
       firstName: '',
       lastName: '',
+      middleName: '',
       dateOfBirth: '',
+      dateOfDeath: '',
       sex: '',
       title: '',
       company: '',
       legalName: '',
       organizationNumber: '',
       website: '',
+      establishedDate: '',
+      dissolvedDate: '',
       notes: s.notes
     }));
   };
   const submit = () => {
     const e = {};
+    const today = cpToday();
     if (type === 'Person') {
       if (!draft.firstName.trim()) e.firstName = 'Required.';
       if (!draft.lastName.trim()) e.lastName = 'Required.';
+      if (draft.dateOfBirth && draft.dateOfBirth > today) e.dateOfBirth = 'Cannot be in the future.';
+      if (draft.dateOfDeath && draft.dateOfDeath > today) e.dateOfDeath = 'Cannot be in the future.';
+      // The pair is checked from BOTH sides, so the invariant cannot be broken
+      // by editing either field: the error renders on the field just changed.
+      if (draft.dateOfBirth && draft.dateOfDeath && draft.dateOfDeath < draft.dateOfBirth) {
+        e.dateOfDeath = 'Cannot be before the date of birth.';
+      }
     } else {
       if (!draft.legalName.trim()) e.legalName = 'Legal name is required for an organization.';
       if (draft.website && !/^https?:\/\//i.test(draft.website.trim())) e.website = 'Must start with http:// or https://';
+      if (draft.establishedDate && draft.establishedDate > today) e.establishedDate = 'Cannot be in the future.';
+      if (draft.dissolvedDate && draft.dissolvedDate > today) e.dissolvedDate = 'Cannot be in the future.';
+      if (draft.establishedDate && draft.dissolvedDate && draft.dissolvedDate < draft.establishedDate) {
+        e.dissolvedDate = 'Cannot be before the established date.';
+      }
     }
     if (Object.keys(e).length) {
       setErr(e);
       return;
     }
+    const personPatch = () => ({
+      firstName: draft.firstName.trim(),
+      lastName: draft.lastName.trim(),
+      middleName: draft.middleName.trim() || null,
+      dateOfBirth: draft.dateOfBirth || null,
+      dateOfDeath: draft.dateOfDeath || null,
+      sex: draft.sex || null,
+      title: draft.title.trim() || null,
+      company: draft.company.trim() || null
+    });
+    const orgPatch = () => ({
+      legalName: draft.legalName.trim(),
+      organizationNumber: draft.organizationNumber.trim() || null,
+      website: draft.website.trim() || null,
+      establishedDate: draft.establishedDate || null,
+      dissolvedDate: draft.dissolvedDate || null
+    });
     if (isEdit) {
       const patch = {
         displayName: displayName.trim() || null,
         notes: draft.notes.trim() || null
       };
-      if (type === 'Person') patch.person = {
-        firstName: draft.firstName.trim(),
-        lastName: draft.lastName.trim(),
-        dateOfBirth: draft.dateOfBirth || null,
-        sex: draft.sex || null,
-        title: draft.title.trim() || null,
-        company: draft.company.trim() || null
-      };else patch.org = {
-        legalName: draft.legalName.trim(),
-        organizationNumber: draft.organizationNumber.trim() || null,
-        website: draft.website.trim() || null
-      };
+      if (type === 'Person') patch.person = personPatch();else patch.org = orgPatch();
       onSave && onSave(cp.id, patch);
       return;
     }
+    // Aliases are NOT part of the create dialog: they are added from the
+    // expanded card once the contact exists, exactly as addresses, emails and
+    // phone numbers are. So the create DTO carries an empty list.
     const dto = {
       type,
       displayName: displayName.trim() || null,
       notes: draft.notes.trim() || null,
       archived: null,
+      aliases: [],
       addresses: [],
       emails: [],
       phones: []
     };
-    if (type === 'Person') dto.person = {
-      firstName: draft.firstName.trim(),
-      lastName: draft.lastName.trim(),
-      dateOfBirth: draft.dateOfBirth || null,
-      sex: draft.sex || null,
-      title: draft.title.trim() || null,
-      company: draft.company.trim() || null
-    };else dto.org = {
-      legalName: draft.legalName.trim(),
-      organizationNumber: draft.organizationNumber.trim() || null,
-      website: draft.website.trim() || null
-    };
+    if (type === 'Person') dto.person = personPatch();else dto.org = orgPatch();
     onCreate && onCreate(dto);
   };
   const typeMeta = CP_TYPE_BY_KEY[type] || CP_TYPE_BY_KEY.Person;
@@ -33255,6 +34129,22 @@ const Contacts = ({
     const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => clearTimeout(t);
   }, [q]);
+
+  // Residual state (§9): a row whose STORED label is invalid for its contact's
+  // type. Unreachable through the UI — it takes a concurrent type switch on the
+  // API (the contact PUT carries no concurrency token), a rollback then
+  // roll-forward, or a hand-edited row. Toggle it to see the picker fall back to
+  // its placeholder and "Set as primary" refuse with the server's 422 message.
+  const residual = !!tweaks.cpResidualLabel;
+  useEffect(() => {
+    setRows(prev => prev.map(c => c.id === 'c2' ? {
+      ...c,
+      phones: (c.phones || []).map(p => p.id === 'p3' ? {
+        ...p,
+        label: residual ? 'Home' : 'Switchboard'
+      } : p)
+    } : c));
+  }, [residual]);
   const touch = c => ({
     ...c,
     updatedAt: new Date().toISOString()
@@ -33297,12 +34187,38 @@ const Contacts = ({
     ...c,
     [coll]: value
   }) : c));
+  // Aliases are the fourth child collection, on the same rule.
+  const onAliases = (id, value) => setRows(prev => prev.map(c => c.id === id ? touch({
+    ...c,
+    aliases: value
+  }) : c));
+  // ONE polite live region for the whole list — alias outcomes, and the two
+  // failure paths with neither a dialog to hold open nor a field to focus (a
+  // failed delete, and a 404 that closes the dialog), route through it. An
+  // aria-atomic region will not re-announce an identical string, so each
+  // message carries an invisible nonce.
+  const [announce, setAnnounce] = useState('');
+  const announceNonce = React.useRef(0);
+  const say = msg => {
+    announceNonce.current += 1;
+    setAnnounce(`${msg}${'\u200B'.repeat(announceNonce.current % 4 + 1)}`);
+  };
+  const perms = {
+    create: tweaks.cpCanCreate !== false,
+    update: tweaks.cpCanUpdate !== false,
+    delete: tweaks.cpCanDelete !== false
+  };
   const filtered = useMemo(() => rows.filter(c => {
     const st = c.archived ? 'archived' : 'active';
     if (statusFilter.length && !statusFilter.includes(st)) return false;
     if (typeFilter.length && !typeFilter.includes(c.type)) return false;
     if (debouncedQ) {
-      const hay = `${resolvedName(c)} ${window.OdysseyHelpers.normalizeName(resolvedName(c))} ${c.notes || ''}`.toLowerCase();
+      // Alias VALUES and the middle name are searched alongside the resolved
+      // and normalized name and the notes. An alias LABEL is metadata and is
+      // NOT searched — which is why the placeholder does not promise it.
+      const aliasHay = (c.aliases || []).map(a => a.value).join(' ');
+      const middle = c.person && c.person.middleName || '';
+      const hay = `${resolvedName(c)} ${window.OdysseyHelpers.normalizeName(resolvedName(c))} ${middle} ${aliasHay} ${c.notes || ''}`.toLowerCase();
       if (!hay.includes(debouncedQ.toLowerCase())) return false;
     }
     return true;
@@ -33368,7 +34284,11 @@ const Contacts = ({
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "col gap-6"
-  }, /*#__PURE__*/React.createElement(PageHeader, {
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "odc-sr-only",
+    role: "status",
+    "aria-live": "polite"
+  }, announce), /*#__PURE__*/React.createElement(PageHeader, {
     title: "Contacts",
     icon: "groups",
     sub: `${activeCount} active · ${archivedCount} archived`,
@@ -33407,7 +34327,7 @@ const Contacts = ({
         flex: 1
       }
     }, /*#__PURE__*/React.createElement(SearchField, {
-      placeholder: "Search name or notes\u2026",
+      placeholder: "Search name, alias or notes\u2026",
       value: q,
       onChange: setQ
     })), /*#__PURE__*/React.createElement("div", {
@@ -33499,7 +34419,12 @@ const Contacts = ({
       onSave: onSave,
       onDelete: onDelete,
       onContacts: onContacts,
-      onExportRow: exportRow
+      onAliases: onAliases,
+      onExportRow: exportRow,
+      perms: perms,
+      aliasCap: tweaks.cpAliasCap || 32,
+      onAnnounce: say,
+      onProblem: m => pushToast('error', m)
     }),
     empty: /*#__PURE__*/React.createElement(EmptyState, {
       icon: "store",
@@ -54883,9 +55808,20 @@ Object.assign(window.OdysseyHelpers, {
    single source of truth for a kind's label / group / icon / color / default unit,
    so a term reads identically in the summary, chart, history table and picker.
    Hues sit in the shared categorical band (L~0.74–0.80, C~0.13–0.16); brand tide
-   stays out of it. Interest rate leads (group 'rate'); fees are the second group. */
+   stays out of it. Interest rate leads (group 'rate'); Fee is the second group.
+
+   THREE values, not six. A kind earns an enum value when the application treats
+   it differently — eligibility, ordering, or a headline surface that must pick it
+   out. The two rates qualify: the account row headlines the rate, the step chart
+   picks its series, and the cost-rate tint / "Interest charged" caption keys off
+   InterestRate, and no label can tell any of them which number is THE rate. The
+   four old fee kinds (ManagementFee / ServiceFee / TransactionFee / OtherFee)
+   qualified for none of it — all four were eligible everywhere and differed only
+   by a display label, an icon and a default billing period, which is exactly what
+   the term's own Label carries better. They collapse into one Fee. */
 window.OdysseyData.termKinds = [
-// ---- Rates ----
+// ---- Rates: not taxonomy. Each is a distinct quoted number some surface
+//      must single out, so neither can be a label. ----
 {
   key: 'InterestRate',
   label: 'Interest rate',
@@ -54907,51 +55843,23 @@ window.OdysseyData.termKinds = [
   soft: 'oklch(0.72 0.16 295 / 0.15)',
   desc: 'Optional target / expected annual return for a variable-return holding.'
 },
-// ---- Fees ----
+// ---- Fee: one kind, always named by its Label. Keeps ordinal 10 (the head of
+//      the old fee band) so former ManagementFee rows need no remap. ----
 {
-  key: 'ManagementFee',
-  label: 'Management fee',
+  key: 'Fee',
+  label: 'Fee',
   group: 'fee',
   enumValue: 10,
-  defaultUnit: 'Percentage',
-  icon: 'pie_chart',
-  color: 'oklch(0.77 0.14 55)',
-  soft: 'oklch(0.77 0.14 55 / 0.15)',
-  desc: 'Fund / platform / management fee — usually a percentage of assets.'
-}, {
-  key: 'ServiceFee',
-  label: 'Service fee',
-  group: 'fee',
-  enumValue: 11,
-  defaultUnit: 'Amount',
-  icon: 'event_repeat',
-  color: 'oklch(0.76 0.13 225)',
-  soft: 'oklch(0.76 0.13 225 / 0.15)',
-  desc: 'Periodic account / service fee — usually a flat amount.'
-}, {
-  key: 'TransactionFee',
-  label: 'Transaction fee',
-  group: 'fee',
-  enumValue: 12,
-  defaultUnit: 'Amount',
-  icon: 'swap_horiz',
-  color: 'oklch(0.75 0.16 330)',
-  soft: 'oklch(0.75 0.16 330 / 0.15)',
-  desc: 'Per-transaction fee — an amount or a percentage.'
-}, {
-  key: 'OtherFee',
-  label: 'Other fee',
-  group: 'fee',
-  enumValue: 99,
   defaultUnit: 'Amount',
   icon: 'receipt_long',
-  color: 'oklch(0.74 0.02 250)',
-  soft: 'oklch(0.74 0.02 250 / 0.15)',
-  desc: 'Any other fee outside the categories above.'
+  color: 'oklch(0.77 0.14 55)',
+  soft: 'oklch(0.77 0.14 55 / 0.15)',
+  desc: 'A price the account charges — named by its own label, with its own history.'
 }];
 window.OdysseyData.termKindByKey = Object.fromEntries(window.OdysseyData.termKinds.map(t => [t.key, t]));
 
-/* BillingPeriod enum — optional context for fees; null for rates. */
+/* BillingPeriod enum — optional context for fees; null for rates. A new fee
+   defaults to Monthly: one default, since there is no longer a kind to guess from. */
 window.OdysseyData.billingPeriods = [{
   key: 'OneTime',
   label: 'One-time',
@@ -54990,20 +55898,22 @@ window.OdysseyData.billingPeriods = [{
   suffix: '/yr'
 }];
 window.OdysseyData.billingPeriodByKey = Object.fromEntries(window.OdysseyData.billingPeriods.map(b => [b.key, b]));
+window.OdysseyData.defaultFeeBillingPeriod = 'Monthly';
 
 /* Eligibility matrix (TermKind → permitted AccountTypes). Lives in code, not the
-   DB, so it can evolve without a migration. 'ALL' = every account type. */
+   DB, so it can evolve without a migration. 'ALL' = every account type. With one
+   fee kind, most account types leave exactly ONE eligible kind — the dialog then
+   renders no kind picker at all. */
 window.OdysseyData.termKindEligibility = {
   InterestRate: ['CheckingAccount', 'SavingsAccount', 'PensionAccount', 'CreditCard', 'Mortgage', 'StudentLoan', 'PersonalLoan', 'CarLoan', 'TaxDebt'],
   ExpectedReturn: ['InvestmentAccount', 'PensionAccount'],
-  ManagementFee: 'ALL',
-  ServiceFee: 'ALL',
-  TransactionFee: 'ALL',
-  OtherFee: 'ALL'
+  Fee: 'ALL'
 };
 
 /* Seed AccountTerm history, keyed by accountId. EffectiveFrom ascending here for
-   readability; the helpers sort as needed. Percentages stored as fractions. */
+   readability; the helpers sort as needed. Percentages stored as fractions.
+   Every fee is kind 'Fee' and carries a Label — the shape the collapse migration
+   leaves behind, with the old kind names backfilled as labels where a row had none. */
 window.OdysseyData.accountTerms = {
   // Ally Savings — a high-yield rate stepped DOWN over two years (the headline story).
   '2': [{
@@ -55064,16 +55974,33 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-2-6',
     accountId: '2',
-    kind: 'TransactionFee',
+    kind: 'Fee',
     unit: 'Amount',
     value: 10.00,
     currency: 'USD',
     billingPeriod: 'PerTransaction',
     effectiveFrom: '2024-02-01',
-    note: 'Excess withdrawal fee (over 6 / month)',
+    label: 'Excess withdrawal',
+    labelKey: 'excess withdrawal',
+    note: 'Over 6 withdrawals a month',
+    createdAtUtc: '2024-02-01T09:00:00Z'
+  }, {
+    id: 'tm-2-7',
+    accountId: '2',
+    kind: 'Fee',
+    unit: 'Amount',
+    value: 35.00,
+    currency: 'USD',
+    billingPeriod: 'PerTransaction',
+    effectiveFrom: '2024-02-01',
+    label: 'Outgoing wire · international',
+    labelKey: 'outgoing wire · international',
+    note: null,
     createdAtUtc: '2024-02-01T09:00:00Z'
   }],
-  // Amex Platinum — purchase APR stepped UP, plus an annual fee and a cash-advance fee.
+  // Amex Platinum — a travel card: purchase APR stepped UP, plus SIX named fees,
+  // every one of them kind 'Fee'. Before the collapse these were four kinds that
+  // resolved to two in-force tiles; now they are six, told apart by their names.
   '3': [{
     id: 'tm-3-1',
     accountId: '3',
@@ -55110,27 +56037,101 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-3-4',
     accountId: '3',
-    kind: 'ServiceFee',
+    kind: 'Fee',
     unit: 'Amount',
     value: 695.00,
     currency: 'USD',
     billingPeriod: 'Annually',
     effectiveFrom: '2023-01-01',
-    note: 'Annual membership fee',
+    label: 'Annual card fee',
+    labelKey: 'annual card fee',
+    note: 'Membership fee',
     createdAtUtc: '2023-01-01T09:00:00Z'
   }, {
     id: 'tm-3-5',
     accountId: '3',
-    kind: 'TransactionFee',
+    kind: 'Fee',
     unit: 'Percentage',
-    value: 0.0500,
+    value: 0.0275,
     currency: null,
     billingPeriod: 'PerTransaction',
     effectiveFrom: '2023-01-01',
-    note: 'Cash-advance fee',
+    label: 'Currency conversion',
+    labelKey: 'currency conversion',
+    note: 'Markup on the network rate',
+    createdAtUtc: '2023-01-01T09:00:00Z'
+  }, {
+    id: 'tm-3-6',
+    accountId: '3',
+    kind: 'Fee',
+    unit: 'Amount',
+    value: 5.00,
+    currency: 'USD',
+    billingPeriod: 'PerTransaction',
+    effectiveFrom: '2023-01-01',
+    label: 'ATM withdrawal · domestic',
+    labelKey: 'atm withdrawal · domestic',
+    note: null,
+    createdAtUtc: '2023-01-01T09:00:00Z'
+  }, {
+    id: 'tm-3-7',
+    accountId: '3',
+    kind: 'Fee',
+    unit: 'Amount',
+    value: 25.00,
+    currency: 'USD',
+    billingPeriod: 'PerTransaction',
+    effectiveFrom: '2023-01-01',
+    label: 'ATM withdrawal · abroad',
+    labelKey: 'atm withdrawal · abroad',
+    note: null,
+    createdAtUtc: '2023-01-01T09:00:00Z'
+  },
+  // Same label, later date → supersedes only its own series; the domestic
+  // charge above is untouched.
+  {
+    id: 'tm-3-8',
+    accountId: '3',
+    kind: 'Fee',
+    unit: 'Amount',
+    value: 30.00,
+    currency: 'USD',
+    billingPeriod: 'PerTransaction',
+    effectiveFrom: '2025-03-01',
+    label: 'ATM withdrawal · abroad',
+    labelKey: 'atm withdrawal · abroad',
+    note: 'Overseas network charge increase',
+    createdAtUtc: '2025-03-01T09:00:00Z'
+  }, {
+    id: 'tm-3-9',
+    accountId: '3',
+    kind: 'Fee',
+    unit: 'Amount',
+    value: 15.00,
+    currency: 'USD',
+    billingPeriod: 'OneTime',
+    effectiveFrom: '2023-01-01',
+    label: 'Card replacement',
+    labelKey: 'card replacement',
+    note: null,
+    createdAtUtc: '2023-01-01T09:00:00Z'
+  }, {
+    id: 'tm-3-10',
+    accountId: '3',
+    kind: 'Fee',
+    unit: 'Amount',
+    value: 2.00,
+    currency: 'USD',
+    billingPeriod: 'Monthly',
+    effectiveFrom: '2023-01-01',
+    label: 'Paper statement',
+    labelKey: 'paper statement',
+    note: null,
     createdAtUtc: '2023-01-01T09:00:00Z'
   }],
   // Vanguard Brokerage — an expected-return target (lowered once) + an expense ratio.
+  // The expense-ratio rows were ManagementFee; the migration backfilled the old
+  // kind name as their label, which is why they read "Management fee".
   '4': [{
     id: 'tm-4-1',
     accountId: '4',
@@ -55156,23 +56157,27 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-4-3',
     accountId: '4',
-    kind: 'ManagementFee',
+    kind: 'Fee',
     unit: 'Percentage',
     value: 0.0004,
     currency: null,
     billingPeriod: 'Annually',
     effectiveFrom: '2023-01-01',
+    label: 'Management fee',
+    labelKey: 'management fee',
     note: 'Blended expense ratio',
     createdAtUtc: '2023-01-01T09:00:00Z'
   }, {
     id: 'tm-4-4',
     accountId: '4',
-    kind: 'ManagementFee',
+    kind: 'Fee',
     unit: 'Percentage',
     value: 0.0003,
     currency: null,
     billingPeriod: 'Annually',
     effectiveFrom: '2025-01-01',
+    label: 'Management fee',
+    labelKey: 'management fee',
     note: 'Expense ratio reduction',
     createdAtUtc: '2025-01-01T09:00:00Z'
   }],
@@ -55191,17 +56196,24 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-5-2',
     accountId: '5',
-    kind: 'OtherFee',
+    kind: 'Fee',
     unit: 'Amount',
     value: 15.00,
     currency: 'USD',
     billingPeriod: 'PerTransaction',
     effectiveFrom: '2023-06-01',
-    note: 'Late-payment fee',
+    label: 'Late payment',
+    labelKey: 'late payment',
+    note: null,
     createdAtUtc: '2023-06-01T09:00:00Z'
   }]
   // Chase Checking ('1') intentionally has no terms — drives the empty state.
 };
+
+/* Every fee is named by its Label; the series key is (kind, labelKey). A rate is
+   refused a label, so it is always the unnamed series of its own kind — exactly
+   how it resolved before labels existed. */
+window.OdysseyData.termLabelMaxLength = 64;
 Object.assign(window.OdysseyHelpers, {
   termKindInfo(kind) {
     return window.OdysseyData.termKindByKey[kind] || {
@@ -55237,22 +56249,69 @@ Object.assign(window.OdysseyHelpers, {
     const a = window.OdysseyData.termKindEligibility[kind];
     return a === 'ALL' || !!a && a.includes(accountType);
   },
-  // The currently-effective entry per kind as of `asOf` (default: today): for each
-  // kind with ≥1 entry, the one with the greatest EffectiveFrom ≤ asOf. Returns
-  // them in registry order (rates first). This is the GET …/terms/current view.
+  // ---- Series labels: one TermKind can hold several named series --------
+  // ONE normalization rule, shared by the write path and the client's
+  // duplicate pre-check: trim, collapse internal whitespace, blank → null.
+  termLabelNormalize(raw) {
+    if (raw == null) return null;
+    const s = String(raw).trim().replace(/\s+/g, ' ');
+    return s.length ? s : null;
+  },
+  // The comparison form — the display form, case-folded. This is what the
+  // series key uses, so "ATM abroad" / "atm  abroad" are one series.
+  termLabelKey(raw) {
+    const s = window.OdysseyHelpers.termLabelNormalize(raw);
+    return s == null ? null : s.toLowerCase();
+  },
+  // Whether a kind takes a label: refused on the rate kinds (the headline rate
+  // must stay unambiguous), REQUIRED on every fee. With one fee kind, two
+  // unnamed fees could not be told apart — so the old OtherFee-only rule
+  // collapses into one unconditional rule.
+  termLabelRule(kind) {
+    return window.OdysseyHelpers.termKindInfo(kind).group === 'rate' ? 'hidden' : 'required';
+  },
+  // The series a term belongs to: (TermKind, LabelKey).
+  termSeriesKey(t) {
+    return `${t.kind}\u0000${t.labelKey || window.OdysseyHelpers.termLabelKey(t.label) || ''}`;
+  },
+  // What a term is CALLED: its label when it has one, else the kind wording.
+  // Falls back to termKindLabelFor (not the bare registry label) so an
+  // unlabelled interest rate on a liability still reads "Interest charged".
+  termDisplayName(t, account) {
+    return window.OdysseyHelpers.termLabelNormalize(t.label) || window.OdysseyHelpers.termKindLabelFor(t, account);
+  },
+  // The currently-effective entry per SERIES as of `asOf` (default: today): for
+  // each (kind, label) with ≥1 entry, the one with the greatest EffectiveFrom ≤
+  // asOf. Ordered kind (registry order) then label (ordinal), so tiles and rows
+  // keep a stable order across loads. This is the GET …/terms/current view.
   currentTerms(accountId, asOf) {
     const cutoff = asOf || new Date().toISOString().slice(0, 10);
-    const byKind = {};
+    const bySeries = {};
     for (const t of window.OdysseyData.accountTerms[accountId] || []) {
       if (t.effectiveFrom > cutoff) continue; // future-dated, not yet in force
-      const cur = byKind[t.kind];
-      if (!cur || t.effectiveFrom > cur.effectiveFrom) byKind[t.kind] = t;
+      const key = window.OdysseyHelpers.termSeriesKey(t);
+      const cur = bySeries[key];
+      if (!cur || t.effectiveFrom > cur.effectiveFrom || t.effectiveFrom === cur.effectiveFrom && t.createdAtUtc > cur.createdAtUtc) bySeries[key] = t;
     }
-    return window.OdysseyData.termKinds.map(k => byKind[k.key]).filter(Boolean);
+    return window.OdysseyHelpers.sortTermsBySeries(Object.values(bySeries));
   },
-  // Ascending {date,value,note,id} series for one kind — for the step chart.
-  termSeries(accountId, kind) {
-    return (window.OdysseyData.accountTerms[accountId] || []).filter(t => t.kind === kind).map(t => ({
+  // Kind in registry order, then label ordinal (the unnamed series first).
+  sortTermsBySeries(list) {
+    const order = Object.fromEntries(window.OdysseyData.termKinds.map((k, i) => [k.key, i]));
+    return list.slice().sort((a, b) => {
+      const ka = order[a.kind] ?? 99,
+        kb = order[b.kind] ?? 99;
+      if (ka !== kb) return ka - kb;
+      const la = a.label || '',
+        lb = b.label || '';
+      return la < lb ? -1 : la > lb ? 1 : 0;
+    });
+  },
+  // Ascending {date,value,note,id} series for one kind + label — the step chart
+  // plots one series, never two labelled fees mixed together.
+  termSeries(accountId, kind, labelKey) {
+    const key = labelKey === undefined ? null : window.OdysseyHelpers.termLabelKey(labelKey) || null;
+    return (window.OdysseyData.accountTerms[accountId] || []).filter(t => t.kind === kind && (t.labelKey || null) === key).map(t => ({
       id: t.id,
       date: t.effectiveFrom,
       value: t.value,
@@ -55270,32 +56329,41 @@ Object.assign(window.OdysseyHelpers, {
     if (t.unit === 'Percentage') return window.OdysseyHelpers.pctStr(t.value);
     return window.OdysseyHelpers.money(t.value, t.currency || 'USD');
   },
-  // ---- Rate sign: a loan's interest is a COST -------------------------------
-  // Interest you're charged on a liability (loan, credit card, …) is money out,
-  // so its rate reads negative + expense-colored — mirroring how the account's
-  // balance is shown. Interest earned on an asset (savings) and an expected
-  // return on an investment stay positive. Fees keep their own (price) framing.
+  // ---- Cost rates: a loan's interest is a COST, but not a negative number ---
+  // Interest you're charged on a liability (loan, credit card, …) is money out.
+  // The cost is carried by WORDS ("Interest charged") and the expense color —
+  // never by flipping the sign: a rate is a ratio that is never summed across
+  // the asset/liability boundary, and "−6.49% interest" already means the
+  // lender pays the borrower. The stored sign is rendered as-is, so a genuinely
+  // negative rate stays distinguishable from its positive counterpart.
   accountIsLiability(account) {
     const ti = account && window.OdysseyData.accountTypeById[account.type];
     return !!ti && ti.group === 'liability';
   },
-  // Does this term read as a cost (negative) for its account? An interest rate
-  // on a liability. (Expected return only exists on assets; fees stay positive.)
-  termIsNegative(t, account) {
+  // Does this term read as a cost for its account? An interest rate on a
+  // liability. (Expected return only exists on assets; fees stay positive.)
+  termIsCostRate(t, account) {
     return t.unit === 'Percentage' && t.kind === 'InterestRate' && window.OdysseyHelpers.accountIsLiability(account);
   },
-  // The value with the cost sign applied (for the chart + deltas).
-  signedTermValue(t, account) {
-    return window.OdysseyHelpers.termIsNegative(t, account) ? -Math.abs(t.value) : t.value;
+  // The value as charted / delta'd — the stored value, sign preserved.
+  termChartValue(t) {
+    return t.value;
   },
   // Expense color for a cost-rate, else null (caller keeps its own color).
   costColor(t, account) {
-    return window.OdysseyHelpers.termIsNegative(t, account) ? 'var(--finance-expense)' : null;
+    return window.OdysseyHelpers.termIsCostRate(t, account) ? 'var(--finance-expense)' : null;
   },
-  // Display string, signed for cost-rates: "−6.49%" on a loan, "3.40%" on savings.
+  // The label that says what the rate IS: cost framing lives here, not in the sign.
+  termKindLabelFor(t, account) {
+    if (t.kind !== 'InterestRate') return window.OdysseyHelpers.termKindInfo(t.kind).label;
+    return window.OdysseyHelpers.accountIsLiability(account) ? 'Interest charged' : 'Interest earned';
+  },
+  // Display string — the stored sign, never a synthesized one: "6.49%" on a
+  // loan (coral, labelled "Interest charged"), "3.40%" on savings, "−0.50%"
+  // only when the stored rate really is negative.
   fmtTermValueFor(t, account) {
     if (t.unit !== 'Percentage') return window.OdysseyHelpers.money(t.value, t.currency || 'USD');
-    const v = window.OdysseyHelpers.signedTermValue(t, account);
+    const v = t.value;
     return (v < 0 ? '−' : '') + window.OdysseyHelpers.pctStr(Math.abs(v));
   }
 });
@@ -60239,7 +61307,25 @@ __ds_ns.ColorSwatchSelect = __ds_scope.ColorSwatchSelect;
 
 __ds_ns.Combobox = __ds_scope.Combobox;
 
+__ds_ns.CONTACT_ALIAS_CAP = __ds_scope.CONTACT_ALIAS_CAP;
+
+__ds_ns.CONTACT_ALIAS_MAX = __ds_scope.CONTACT_ALIAS_MAX;
+
+__ds_ns.CONTACT_ALIAS_LABEL_MAX = __ds_scope.CONTACT_ALIAS_LABEL_MAX;
+
+__ds_ns.ContactAliases = __ds_scope.ContactAliases;
+
 __ds_ns.ContactChip = __ds_scope.ContactChip;
+
+__ds_ns.ADDRESS_LABELS = __ds_scope.ADDRESS_LABELS;
+
+__ds_ns.EMAIL_LABELS = __ds_scope.EMAIL_LABELS;
+
+__ds_ns.PHONE_LABELS = __ds_scope.PHONE_LABELS;
+
+__ds_ns.ContactLabelScope = __ds_scope.ContactLabelScope;
+
+__ds_ns.ContactMethodLabelSelect = __ds_scope.ContactMethodLabelSelect;
 
 __ds_ns.CONTACT_CREATE_KINDS = __ds_scope.CONTACT_CREATE_KINDS;
 

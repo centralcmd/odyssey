@@ -2,14 +2,18 @@
    (Accounts → account detail), beside Files & Transactions.
 
    Backs the AccountTerm feature (interest-rate & fee history): a time-versioned
-   list of TERMS per account. The latest entry on/before a date is the value in
-   force (implicit supersession — no EffectiveTo). This surface renders three
-   things from that history, leading with the interest rate:
+   list of TERMS per account. A term's series key is (TermKind, Label) — one kind
+   can hold several concurrently in-force terms, told apart by a user-authored
+   label ("ATM withdrawal · abroad"); within one label, the latest entry on/before
+   a date is the value in force (implicit supersession — no EffectiveTo). Every
+   fee carries a label; a rate is refused one, so a rate is always the unnamed
+   series of its own kind. This surface renders three things from that history,
+   leading with the interest rate:
 
      1. HERO     — a step-line chart of the rate over time (rates hold flat and
                    jump on each change). Falls back to expected return; hidden
                    when the account has no chartable rate series.
-     2. CURRENT  — the values in force for every kind (the GET …/terms/current
+     2. CURRENT  — the values in force for every series (the GET …/terms/current
                    view). Three summary styles: tiles · row · chips.
      3. HISTORY  — the full GET …/terms list, grouped Rate then Fees, as a table
                    or a vertical timeline, each row editable / deletable.
@@ -27,21 +31,39 @@ const D = window.OdysseyData;
 const trmToday = () => new Date().toISOString().slice(0, 10);
 const trmKindInfo = (k) => H.termKindInfo(k);
 
-/* ---- per-list resolvers (operate on a live array so edits reflect at once) ---- */
+/* ---- per-list resolvers (operate on a live array so edits reflect at once) ----
+   The series key is (kind, labelKey), so one kind can hold several concurrently
+   in-force terms; within a label, the latest EffectiveFrom still wins. */
+const trmKey = (t) => H.termSeriesKey(t);
 const trmCurrentFromList = (terms, asOf) => {
   const cutoff = asOf || trmToday();
-  const byKind = {};
+  const bySeries = {};
   for (const t of terms) {
     if (t.effectiveFrom > cutoff) continue;
-    const cur = byKind[t.kind];
-    if (!cur || t.effectiveFrom > cur.effectiveFrom) byKind[t.kind] = t;
+    const k = trmKey(t);
+    const cur = bySeries[k];
+    if (!cur || t.effectiveFrom > cur.effectiveFrom
+      || (t.effectiveFrom === cur.effectiveFrom && (t.createdAtUtc || '') > (cur.createdAtUtc || ''))) bySeries[k] = t;
   }
-  return D.termKinds.map(k => byKind[k.key]).filter(Boolean);
+  return H.sortTermsBySeries(Object.values(bySeries));
 };
-const trmSeriesFromList = (terms, kind) => terms
-  .filter(t => t.kind === kind)
+const trmSeriesFromList = (terms, kind, labelKey = null) => terms
+  .filter(t => t.kind === kind && (t.labelKey || H.termLabelKey(t.label) || null) === labelKey)
   .map(t => ({ id: t.id, date: t.effectiveFrom, value: t.value, note: t.note }))
   .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+/* A term's name (its label, else the kind wording) plus the kind caption that
+   sits beneath a labelled one — both plain TEXT, so nothing is carried by the
+   glyph or its hue alone. */
+const TermName = ({ t, account, nameClass, captionClass = 'trm-kind-caption' }) => {
+  const labelled = !!H.termLabelNormalize(t.label);
+  return (
+    <span className="trm-name">
+      <span className={nameClass}>{H.termDisplayName(t, account)}</span>
+      {labelled && <span className={captionClass}>{H.termKindLabelFor(t, account)}</span>}
+    </span>
+  );
+};
 
 /* Short month-year for axis + deltas: "Feb ’24" */
 const trmMonY = (iso) => {
@@ -175,12 +197,14 @@ const TermHero = ({ terms, account }) => {
     : trmSeriesFromList(terms, 'ExpectedReturn').length ? 'ExpectedReturn' : null;
   if (!kind) return null;
   const info = trmKindInfo(kind);
-  // Interest charged on a liability is a cost — negative + expense-colored.
+  // Interest charged on a liability is a cost — carried by the label + expense
+  // color, never by flipping the sign. The series is plotted as stored, so a
+  // rising APR trends UP (and a genuinely negative rate stays negative).
   const cost = kind === 'InterestRate' && H.accountIsLiability(account);
   const color = cost ? 'var(--finance-expense)' : info.color;
+  const label = H.termKindLabelFor({ kind }, account); // rate kinds never carry a label
   const fmt = (v) => (v < 0 ? '−' : '') + H.pctStr(Math.abs(v));
-  const raw = trmSeriesFromList(terms, kind);
-  const series = cost ? raw.map(s => ({ ...s, value: -Math.abs(s.value) })) : raw;
+  const series = trmSeriesFromList(terms, kind);
   const current = series[series.length - 1];
   const prev = series.length > 1 ? series[series.length - 2] : null;
   const diff = prev ? (current.value - prev.value) : 0;
@@ -193,9 +217,9 @@ const TermHero = ({ terms, account }) => {
           <MIcon name={info.icon} size={22} />
         </span>
         <div className="trm-hero-titles">
-          <div className="trm-hero-kind">{info.label} <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400 }}>· history</span></div>
+          <div className="trm-hero-kind">{label} <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400 }}>· history</span></div>
           <div className="trm-hero-sub">
-            {series.length} change{series.length === 1 ? '' : 's'} since {trmMonY(series[0].date)} · in force since {H.dateLong(current.date)}
+            {cost ? 'Rate you pay · ' : ''}{series.length} change{series.length === 1 ? '' : 's'} since {trmMonY(series[0].date)} · in force since {H.dateLong(current.date)}
           </div>
         </div>
         <div className="trm-hero-figs">
@@ -203,7 +227,7 @@ const TermHero = ({ terms, account }) => {
           {prev && (
             <span className="trm-delta flat">
               <MIcon name={dir === 'up' ? 'arrow_upward' : dir === 'down' ? 'arrow_downward' : 'remove'} size={14} />
-              {H.pctStr(Math.abs(diff))} vs {trmMonY(prev.date)}
+              {H.pctStr(Math.abs(diff))} {dir === 'up' ? 'higher' : dir === 'down' ? 'lower' : 'same'} vs {trmMonY(prev.date)}
             </span>
           )}
         </div>
@@ -233,11 +257,11 @@ const CurrentTermsSummary = ({ current, style, account }) => {
         {current.map(t => {
           const info = trmKindInfo(t.kind);
           return (
-            <div className="trm-srow" key={t.kind}>
+            <div className="trm-srow" key={trmKey(t)}>
               <span className="trm-kind-ic sm" style={{ background: info.soft, color: info.color }}>
                 <MIcon name={info.icon} size={16} />
               </span>
-              <span className="trm-srow-kind">{info.label}</span>
+              <TermName t={t} account={account} nameClass="trm-srow-kind" />
               <span className="trm-srow-meta">
                 <BillTag billingPeriod={t.billingPeriod} />
                 <span className="trm-srow-date">since {trmMonY(t.effectiveFrom)}</span>
@@ -256,11 +280,11 @@ const CurrentTermsSummary = ({ current, style, account }) => {
         {current.map(t => {
           const info = trmKindInfo(t.kind);
           return (
-            <div className="trm-cchip" key={t.kind}>
+            <div className="trm-cchip" key={trmKey(t)}>
               <span className="trm-kind-ic sm" style={{ width: 26, height: 26, background: info.soft, color: info.color }}>
                 <MIcon name={info.icon} size={15} />
               </span>
-              <span className="trm-cchip-kind">{info.label}</span>
+              <TermName t={t} account={account} nameClass="trm-cchip-kind" captionClass="trm-kind-caption inline" />
               <span className="trm-cchip-value" style={{ color: H.costColor(t, account) || undefined }}>{H.fmtTermValueFor(t, account)}</span>
             </div>
           );
@@ -275,12 +299,13 @@ const CurrentTermsSummary = ({ current, style, account }) => {
       {current.map(t => {
         const info = trmKindInfo(t.kind);
         return (
-          <div className="trm-tile" key={t.kind}>
+          <div className="trm-tile" key={trmKey(t)}>
             <div className="trm-tile-top">
               <span className="trm-kind-ic md" style={{ background: info.soft, color: info.color }}>
                 <MIcon name={info.icon} size={18} />
               </span>
-              <span className="trm-tile-kind">{info.label}</span>
+              <TermName t={t} account={account}
+                nameClass={H.termLabelNormalize(t.label) ? 'trm-tile-name' : 'trm-tile-kind'} />
             </div>
             <div className="trm-tile-value" style={{ color: H.costColor(t, account) || info.color }}>{H.fmtTermValueFor(t, account)}</div>
             <div className="trm-tile-foot">
@@ -334,7 +359,7 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
                   <MIcon name={info.icon} size={15} />
                 </span>
                 <div>
-                  <div className="trm-row-kind-name">{info.label}</div>
+                  <TermName t={t} account={account} nameClass="trm-row-kind-name" />
                   {t.note && <div className="trm-row-note">{t.note}</div>}
                 </div>
               </div>
@@ -364,7 +389,7 @@ const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account }) => (
           </div>
           <div className="trm-tl-body">
             <div className="trm-tl-top">
-              <span className="trm-tl-kind">{info.label}</span>
+              <TermName t={t} account={account} nameClass="trm-tl-kind" captionClass="trm-kind-caption inline" />
               <span className="trm-tl-date">{H.dateLong(t.effectiveFrom)}</span>
               <TermStatus t={t} currentIds={currentIds} />
             </div>
@@ -517,6 +542,6 @@ const AccountTerms = ({ account, summaryStyle = 'tiles', historyStyle = 'table',
 };
 
 Object.assign(window, {
-  AccountTerms, TermStepChart, TermHero, CurrentTermsSummary, TermHistory,
-  trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmToday,
+  AccountTerms, TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName,
+  trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmToday, trmKey,
 });

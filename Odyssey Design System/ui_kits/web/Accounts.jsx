@@ -538,11 +538,15 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
                 // $695 monthly one, so it rides in the foot beside the date.
                 const bill = t.billingPeriod ? H.billingInfo(t.billingPeriod) : null;
                 const period = bill && bill.key !== 'OneTime' ? bill.label : null;
+                // A fee is NAMED by its label, with the kind wording leading the
+                // caption — so six fees read as six distinct tiles, in text, not
+                // six identical ones.
+                const labelled = !!H.termLabelNormalize(t.label);
                 return (
-                  <InfoTile key={t.kind} icon={info.icon} iconColor={info.color} iconSoft={info.soft}
-                    label={info.label}
+                  <InfoTile key={window.trmKey(t)} icon={info.icon} iconColor={info.color} iconSoft={info.soft}
+                    label={H.termDisplayName(t, a)}
                     value={<span style={{ color: H.costColor(t, a) || info.color }}>{H.fmtTermValueFor(t, a)}</span>}
-                    foot={`since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`} />
+                    foot={`${labelled ? `${H.termKindLabelFor(t, a)} · ` : ''}since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`} />
                 );
               })}
             </InfoTileGrid>
@@ -759,7 +763,7 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
           ti.label,
           acct.accountNumber ? <span className="mono"><MIcon name="tag" size={14} /><span>{acct.accountNumber}</span></span> : null,
           rateTerm ? (
-            <span className="acct-rate mono" title={window.trmKindInfo(rateTerm.kind).label}
+            <span className="acct-rate mono" title={H.termKindLabelFor(rateTerm, acct)}
               style={{ color: H.costColor(rateTerm, acct) || window.trmKindInfo(rateTerm.kind).color, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
               {H.fmtTermValueFor(rateTerm, acct)}
             </span>
