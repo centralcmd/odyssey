@@ -245,6 +245,7 @@ public partial class ContactsCard
         if (_canCreate && c.Archived is null)
         {
             items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem { Icon = "badge", Label = "New alias", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, "alias")) });
             items.Add(new OdsMenuItem { Icon = "add_location_alt", Label = "New address", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, "address")) });
             items.Add(new OdsMenuItem { Icon = "alternate_email", Label = "New email", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, "email")) });
             items.Add(new OdsMenuItem { Icon = "add_call", Label = "New phone number", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, "phone")) });
@@ -272,8 +273,25 @@ public partial class ContactsCard
         return items;
     }
 
+    // The ONE polite live region for the page is OdsLiveAnnouncer, bound to _announce and set today
+    // only by list-load outcomes. Alias outcomes — and the two failure paths with neither a dialog to
+    // hold open nor a field to focus (a failed delete, and the 404 that closes the dialog) — reach it
+    // through this callback.
+    //
+    // The region is aria-atomic and will NOT re-announce an identical string, so each message carries
+    // an invisible zero-width nonce: adding two aliases in succession must produce two announcements.
+    private int _announceNonce;
+
+    private void Announce(string message)
+    {
+        _announceNonce++;
+        _announce = message + new string('\u200B', (_announceNonce % 4) + 1);
+        StateHasChanged();
+    }
+
     // A pending add-contact request routed to the expanded row's detail panel (DS requestAdd): a fresh
-    // nonce each time so re-picking the same kind re-triggers the form.
+    // nonce each time so re-picking the same kind re-triggers the form. "alias" is the fourth kind;
+    // the alias section consumes it and ContactDetailPanel ignores it.
     private (Guid Id, string Kind, Guid Nonce)? _addRequest;
 
     private void RequestAddContact(ExistingContact c, string kind)

@@ -1,0 +1,68 @@
+@*
+    ContactAliasSection — the Aliases section of an expanded contact card
+    (Odyssey Design System · components/ContactAliases).
+
+    Aliases are NAMES, not contact methods, so this is its own section, placed ABOVE
+    "Contact information". The section heading is the card's own OdsSectionDivider, so this component
+    renders bare — one heading, not two, exactly as ContactDetailPanel does.
+
+    It introduces no new widget type: every alias is a tile in THIS component's own grid, reusing the
+    tile shape and the OdsMenu slot the address / email / phone tiles use. Deliberately not an OdsChip
+    (a ~23px nowrap pill with no positioning context cannot host a ⋯ menu at a 24×24 target) and
+    deliberately not ContactDetailPanel's .cp-tile-grid, whose tile model is positional, carries
+    IsPrimary / SetPrimary and a registry Label, and whose entry count covers only the three
+    contact-method collections.
+*@
+@using Odyssey.Dtos.Journal
+@inject IClipboardService Clipboard
+@inject IContactsApiClient Contacts
+@inject ISnackbar Snackbar
+
+<div class="odc-aliases">
+    @if (_aliases.Count == 0)
+    {
+        @* The alias section's OWN empty line — not .cp-empty-row, whose copy names only address,
+           email and phone. There is no load-failure variant: aliases arrive inline on the contact,
+           so there is no per-card fetch to fail. *@
+        <p class="odc-aliases-empty">
+            @(CanCreate && !IsArchived
+                ? "No aliases yet — use the ⋯ menu to add one."
+                : "No aliases.")
+        </p>
+    }
+    else
+    {
+        @* In the order the API returned them: no client re-sort, since a .NET comparer cannot
+           reproduce a MariaDB _ci ordering on accented input. *@
+        <div class="odc-alias-grid">
+            @foreach (var alias in _aliases)
+            {
+                <div class="odc-alias-tile">
+                    <span class="odc-alias-menu">
+                        <OdsMenu Items="TileMenu(alias)" AriaLabel="@($"Actions for alias: {alias.Value}")" />
+                    </span>
+                    <div class="odc-alias-top">
+                        <span class="odc-alias-ic">
+                            <span class="material-icons" aria-hidden="true" style="font-size:15px;">badge</span>
+                        </span>
+                        <span class="odc-alias-kind">Alias</span>
+                    </div>
+                    @* The value truncates with an ellipsis; the full string reaches assistive tech
+                       through the menu's accessible name, never through `title` alone. *@
+                    <div class="odc-alias-value" title="@alias.Value">@alias.Value</div>
+                    @if (!string.IsNullOrWhiteSpace(alias.Label))
+                    {
+                        <div class="odc-alias-foot" title="@alias.Label">@alias.Label</div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (_dialogOpen)
+{
+    <ContactAliasDialog @key="_dialogKey" @bind-Open="_dialogOpen"
+                        Alias="_dialogTarget"
+                        OnCommit="CommitAsync" />
+}

@@ -127,8 +127,8 @@ public class JournalEntryIcsIntegrationTests(MariaDbFixture fixture)
         public Task<IReadOnlyDictionary<Guid, ContactRef>> ResolveRefsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyDictionary<Guid, ContactRef>>(new Dictionary<Guid, ContactRef>());
 
-        public Task<IReadOnlyDictionary<Guid, ExistingContact>> ResolveContactsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyDictionary<Guid, ExistingContact>>(new Dictionary<Guid, ExistingContact>());
+        public Task<IReadOnlyDictionary<Guid, ContactEmbed>> ResolveContactsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, ContactEmbed>>(new Dictionary<Guid, ContactEmbed>());
 
         public Task<IReadOnlyList<Guid>> SearchIdsByNameAsync(string term, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<Guid>>([]);

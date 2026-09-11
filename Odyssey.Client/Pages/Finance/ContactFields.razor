@@ -14,13 +14,27 @@
         <OdsField Label="Last name" @bind-Value="Draft.LastName" Required="true"
                   Error="@(FieldErrors.GetValueOrDefault("lastName"))" MaxLength="128" />
     </OdsFormRow>
+    @* Stored and searchable, but deliberately outside the "First Last" display-name fallback — so
+       adding one shifts no name and no sort position. *@
+    <OdsField Label="Middle name" @bind-Value="Draft.MiddleName" Optional="true"
+              Placeholder="As it appears on a passport or bank record"
+              Help="Not part of the display name" MaxLength="128" />
+    @* BOTH dates are OdsDateFields, not bare OdsDatePickers (issue #48). The birth/death pair is
+       checked from both sides, so each needs its own Error / aria-invalid channel — which
+       OdsDatePicker does not have. That is why date of birth migrates here too. *@
     <OdsFormRow>
-        <OdsDatePicker Label="Date of birth" @bind-Value="Draft.DateOfBirth" Max="DateTime.Today"
-                       HelperText="Optional · cannot be in the future" />
+        <OdsDateField Label="Date of birth" @bind-Value="Draft.DateOfBirth" Max="DateTime.Today" Optional="true"
+                      Error="@(FieldErrors.GetValueOrDefault("dateOfBirth"))"
+                      Help="Cannot be in the future" />
+        <OdsDateField Label="Date of death" @bind-Value="Draft.DateOfDeath" Max="DateTime.Today" Optional="true"
+                      Error="@(FieldErrors.GetValueOrDefault("dateOfDeath"))"
+                      Help="Recording it archives nothing" />
+    </OdsFormRow>
+    <OdsFormRow>
         <OdsSelect Label="Sex" Value="@Draft.Sex" ValueChanged="@(v => Draft.Sex = v)"
                    Options="OdsTypeRegistries.SexOptions" Placeholder="Unspecified" Optional="true" Help="Optional" />
+        <OdsField Label="Job title" @bind-Value="Draft.Title" Placeholder="e.g. Senior Engineer" Help="Optional" MaxLength="128" />
     </OdsFormRow>
-    <OdsField Label="Job title" @bind-Value="Draft.Title" Placeholder="e.g. Senior Engineer" Help="Optional" MaxLength="128" />
     <OdsField Label="Company" @bind-Value="Draft.Company" Placeholder="Employer name (optional)"
               Help="A free-text note — not linked to another contact" MaxLength="256" />
 }
@@ -33,6 +47,16 @@ else
         <OdsField Label="Organization number" @bind-Value="Draft.OrganizationNumber" Placeholder="Optional" MaxLength="64" />
         <OdsField Label="Website" @bind-Value="Draft.Website" Error="@(FieldErrors.GetValueOrDefault("website"))"
                   Placeholder="https://example.com" Help="http/https only" MaxLength="2048" />
+    </OdsFormRow>
+    @* "Dissolved", the term a business register publishes (Norwegian oppløst) — not "closed". Either
+       date may stand without the other. *@
+    <OdsFormRow>
+        <OdsDateField Label="Established" @bind-Value="Draft.EstablishedDate" Max="DateTime.Today" Optional="true"
+                      Error="@(FieldErrors.GetValueOrDefault("establishedDate"))"
+                      Help="Cannot be in the future" />
+        <OdsDateField Label="Dissolved" @bind-Value="Draft.DissolvedDate" Max="DateTime.Today" Optional="true"
+                      Error="@(FieldErrors.GetValueOrDefault("dissolvedDate"))"
+                      Help="Reads as historical — still linkable" />
     </OdsFormRow>
 }
 <OdsField Label="Display name" @bind-Value="Draft.DisplayName" Placeholder="Optional override"

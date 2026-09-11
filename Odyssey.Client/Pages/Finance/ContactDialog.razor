@@ -89,12 +89,37 @@
         {
             // Preserve the current archival state — archive/restore is a separate row action.
             var body = _draft.ToNew(Contact!.Archived is not null);
-            return Invalidated((await Contacts.UpdateAsync(Contact.ContactId, body)).Toast(Snackbar,
-                "Update failed", "Contact updated."));
+            var updated = await Contacts.UpdateAsync(Contact.ContactId, body);
+            return Invalidated(AdoptFieldErrors(updated).Toast(Snackbar, "Update failed", "Contact updated."));
         }
 
-        return Invalidated((await Contacts.CreateAsync(_draft.ToNew(archived: false))).Toast(Snackbar,
-            "Unable to create contact", "Contact created."));
+        var created = await Contacts.CreateAsync(_draft.ToNew(archived: false));
+        return Invalidated(AdoptFieldErrors(created).Toast(Snackbar, "Unable to create contact", "Contact created."));
+    }
+
+    /// <summary>
+    /// Renders a server-side per-field rejection on the offending control instead of only in a toast.
+    ///
+    /// <para>
+    /// The client mirrors both date rules, so this is a backstop rather than the usual path — but the
+    /// rules it mirrors are cross-field ones evaluated against the CURRENT stored record, and a
+    /// concurrent edit can make a draft that passed locally fail on the server. The join key is the
+    /// <c>errors</c> dictionary's own — <c>dateOfBirth</c>, <c>dateOfDeath</c>,
+    /// <c>establishedDate</c>, <c>dissolvedDate</c> — which ContactFields already reads.
+    /// </para>
+    /// </summary>
+    private ApiClient.ApiResult AdoptFieldErrors(ApiClient.ApiResult result)
+    {
+        if (result.Problem?.Errors is { Count: > 0 } errors)
+        {
+            foreach (var (field, messages) in errors)
+            {
+                if (messages is { Length: > 0 })
+                    _errors[field] = messages[0];
+            }
+        }
+
+        return result;
     }
 
     // Contacts are cached for the whole session (issue #372) — a successful write here has to drop

@@ -509,6 +509,16 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey<OrganizationDetails>(o => o.ContactId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Aliases (issue #48): the fourth child collection. CASCADE like its three siblings — an
+            // alias has no independent existence and no cross-module referent, so neither the
+            // SET NULL of the optional cross-module links nor the RESTRICT of the insurance ones
+            // applies. Declared BEFORE the unique (ContactId, Value) index is considered so EF's
+            // FK-index suppression sees the composite and emits no redundant IX_ContactAliases_ContactId.
+            entity.HasMany(c => c.Aliases)
+                .WithOne(a => a.Contact)
+                .HasForeignKey(a => a.ContactId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // n:1 contact collections; cascade-delete with the contact.
             entity.HasMany(c => c.Addresses)
                 .WithOne(a => a.Contact)
@@ -1251,6 +1261,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<Contact> Contacts { get; set; }
     public DbSet<PersonDetails> PersonDetails { get; set; }
     public DbSet<OrganizationDetails> OrganizationDetails { get; set; }
+    public DbSet<ContactAlias> ContactAliases { get; set; }
     public DbSet<Address> Addresses { get; set; }
     public DbSet<EmailAddress> EmailAddresses { get; set; }
     public DbSet<PhoneNumber> PhoneNumbers { get; set; }

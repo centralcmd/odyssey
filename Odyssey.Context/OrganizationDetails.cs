@@ -25,4 +25,15 @@ public class OrganizationDetails
     /// <summary>Optional website — validated as a well-formed http/https URL (§9, security finding F3).</summary>
     [StringLength(2048)]
     public string? Website { get; set; }
+
+    /// <summary>Optional founding date (issue #48). Either lifecycle date may stand without the
+    /// other — the founding date of an old institution is frequently unknown.</summary>
+    public DateOnly? EstablishedDate { get; set; }
+
+    /// <summary>
+    /// Optional dissolution date (issue #48) — "dissolved" rather than "closed", the standard
+    /// corporate term (Norwegian <i>oppløst</i>) matching what a business register publishes.
+    /// Recording it archives nothing; the organization merely reads as historical.
+    /// </summary>
+    public DateOnly? DissolvedDate { get; set; }
 }

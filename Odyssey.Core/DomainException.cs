@@ -101,6 +101,24 @@ public sealed class DomainConflictException : DomainException
     public DomainConflictException(string message) : base(message)
     {
     }
+
+    /// <summary>
+    /// As above, plus the <paramref name="field"/> this conflict belongs to, surfaced in the
+    /// problem-details <c>errors</c> dictionary so a form can render the message on the offending
+    /// control rather than only in a toast (issue #48 §7.2). Mirrors
+    /// <see cref="DomainUnprocessableException(string, string)"/>.
+    ///
+    /// <para>
+    /// Both routes to a given conflict must throw the <b>same</b> overload. A duplicate alias is
+    /// rejected twice over — by the service's in-memory pre-check and, on the race, by the unique
+    /// index — and if only the first named the field, the concurrent caller would silently get a
+    /// <c>409</c> the form could not attach to a control.
+    /// </para>
+    /// </summary>
+    public DomainConflictException(string message, string field) : base(message)
+    {
+        Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { [field] = [message] };
+    }
 }
 
 /// <summary>

@@ -1,6 +1,7 @@
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using System.Data;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Odyssey.Context;
@@ -54,6 +55,7 @@ public class ContactService
         .AsNoTracking()
         .Include(c => c.PersonDetails)
         .Include(c => c.OrganizationDetails)
+        .Include(c => c.Aliases)
         .Include(c => c.Addresses)
         .Include(c => c.EmailAddresses)
         .Include(c => c.PhoneNumbers)
@@ -159,10 +161,19 @@ public class ContactService
         {
             var pattern = ListQuery.ContainsPattern(term);
             var normalizedPattern = ListQuery.ContainsPattern(ContactNaming.Normalize(term));
+            // The alias and middle-name arms use the RAW pattern — un-uppercased, but still escaped by
+            // ListQuery.ContainsPattern, so there is no LIKE-wildcard injection. Case-insensitivity
+            // comes from the column's _ci collation, which means both arms are case-SENSITIVE on the
+            // EF InMemory provider: the coverage for them lives in Odyssey.IntegrationTests (issue #48
+            // §5). The alias LABEL is deliberately not searched (Goal 3), so the placeholder promises
+            // only name, alias and notes.
             q = q.Where(c =>
                 EF.Functions.Like(c.NormalizedName, normalizedPattern) ||
                 (c.DisplayName != null && EF.Functions.Like(c.DisplayName, pattern)) ||
-                (c.Notes != null && EF.Functions.Like(c.Notes, pattern)));
+                (c.Notes != null && EF.Functions.Like(c.Notes, pattern)) ||
+                c.Aliases.Any(a => EF.Functions.Like(a.Value, pattern)) ||
+                (c.PersonDetails != null && c.PersonDetails.MiddleName != null
+                    && EF.Functions.Like(c.PersonDetails.MiddleName, pattern)));
         }
 
         if (query.Types is { Length: > 0 } types)
@@ -191,6 +202,10 @@ public class ContactService
     private static ExistingContact MapWithOrderedContacts(Contact contact)
     {
         var dto = contact.Adapt<ExistingContact>();
+        // Aliases have no primary, so they sort by value then id — the same order the dedicated
+        // GET .../aliases returns, modulo collation: a collation-ordered and an OrdinalIgnoreCase-
+        // ordered list can differ on accented input, which is accepted (issue #48 §6).
+        dto.Aliases = [.. dto.Aliases.OrderBy(a => a.Value, StringComparer.OrdinalIgnoreCase).ThenBy(a => a.Id)];
         dto.Addresses = [.. dto.Addresses.OrderByDescending(a => a.IsPrimary).ThenBy(a => a.Id)];
         dto.EmailAddresses = [.. dto.EmailAddresses.OrderByDescending(e => e.IsPrimary).ThenBy(e => e.Id)];
         dto.PhoneNumbers = [.. dto.PhoneNumbers.OrderByDescending(p => p.IsPrimary).ThenBy(p => p.Id)];
@@ -432,11 +447,13 @@ public class ContactService
             }
 
             var details = source.PersonDetails!;
-            var dob = ValidateDateOfBirth(details.DateOfBirth);
+            var (dob, dod) = ValidatePersonDates(details.DateOfBirth, details.DateOfDeath);
             contact.PersonDetails ??= new PersonDetails { FirstName = string.Empty, LastName = string.Empty };
             contact.PersonDetails.FirstName = CleanRequired(details.FirstName, 128, "First name");
             contact.PersonDetails.LastName = CleanRequired(details.LastName, 128, "Last name");
+            contact.PersonDetails.MiddleName = CleanOptional(details.MiddleName, 128, "Middle name");
             contact.PersonDetails.DateOfBirth = dob;
+            contact.PersonDetails.DateOfDeath = dod;
             contact.PersonDetails.RelationshipType = details.RelationshipType;
             contact.PersonDetails.Sex = details.Sex;
             contact.PersonDetails.Title = CleanOptional(details.Title, 128, "Title");
@@ -451,26 +468,66 @@ public class ContactService
             }
 
             var details = source.OrganizationDetails!;
+            var (established, dissolved) = ValidateOrganizationDates(details.EstablishedDate, details.DissolvedDate);
             contact.OrganizationDetails ??= new OrganizationDetails { LegalName = string.Empty };
             contact.OrganizationDetails.LegalName = CleanRequired(details.LegalName, 256, "Legal name");
             contact.OrganizationDetails.OrganizationNumber = CleanOptional(details.OrganizationNumber, 64, "Organization number");
             contact.OrganizationDetails.Website = ValidateWebsite(details.Website);
+            contact.OrganizationDetails.EstablishedDate = established;
+            contact.OrganizationDetails.DissolvedDate = dissolved;
         }
 
         contact.NormalizedName = ContactNaming.Normalize(ContactNaming.Resolve(contact));
     }
 
-    private DateOnly? ValidateDateOfBirth(DateTime? dateOfBirth)
+    /// <summary>
+    /// The birth/death pair (issue #48 §9). Checked <b>from both sides</b>: editing a date of birth
+    /// past an existing date of death is rejected on <c>dateOfBirth</c>, and the reverse on
+    /// <c>dateOfDeath</c>, so the invariant cannot be broken by touching either field. That is also
+    /// why the client's birth-date control is an <c>OdsDateField</c> rather than a bare picker — it
+    /// needs an error channel of its own.
+    /// </summary>
+    private (DateOnly? DateOfBirth, DateOnly? DateOfDeath) ValidatePersonDates(DateTime? dateOfBirth, DateTime? dateOfDeath)
     {
-        if (dateOfBirth is null)
-            return null;
-
-        var value = DateOnly.FromDateTime(dateOfBirth.Value);
         var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
-        if (value > today)
-            throw new DomainValidationException("Date of birth cannot be in the future.");
 
-        return value;
+        DateOnly? birth = dateOfBirth is { } b ? DateOnly.FromDateTime(b) : null;
+        DateOnly? death = dateOfDeath is { } d ? DateOnly.FromDateTime(d) : null;
+
+        if (birth > today)
+            throw new DomainValidationException("Date of birth cannot be in the future.", code: null, field: "dateOfBirth");
+        if (death > today)
+            throw new DomainValidationException("Date of death cannot be in the future.", code: null, field: "dateOfDeath");
+
+        // The pair error is attributed to whichever field the caller is most likely to have just
+        // changed. A write carries both, so there is no way to tell here — and the death date is the
+        // later, more specific one, so it is where the message renders.
+        if (birth is { } bv && death is { } dv && dv < bv)
+            throw new DomainValidationException("Date of death cannot be before the date of birth.", code: null, field: "dateOfDeath");
+
+        return (birth, death);
+    }
+
+    /// <summary>
+    /// The establishment/dissolution pair (issue #48 §9). Either may be set without the other — the
+    /// founding date of an old institution is frequently unknown — but neither may be in the future
+    /// and a dissolution cannot precede an establishment.
+    /// </summary>
+    private (DateOnly? Established, DateOnly? Dissolved) ValidateOrganizationDates(DateTime? established, DateTime? dissolved)
+    {
+        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+
+        DateOnly? from = established is { } e ? DateOnly.FromDateTime(e) : null;
+        DateOnly? to = dissolved is { } d ? DateOnly.FromDateTime(d) : null;
+
+        if (from > today)
+            throw new DomainValidationException("Established date cannot be in the future.", code: null, field: "establishedDate");
+        if (to > today)
+            throw new DomainValidationException("Dissolved date cannot be in the future.", code: null, field: "dissolvedDate");
+        if (from is { } fv && to is { } tv && tv < fv)
+            throw new DomainValidationException("Dissolved date cannot be before the established date.", code: null, field: "dissolvedDate");
+
+        return (from, to);
     }
 
     private static string? ValidateWebsite(string? website)
@@ -519,6 +576,178 @@ public class ContactService
             contact.Archived = timeProvider.GetUtcNow().UtcDateTime;
         else if (currentArchived && !requestedArchived)
             contact.Archived = null;
+    }
+
+    // ── Alias sub-resource (issue #48 §7) ─────────────────────────────────────
+
+    /// <summary>
+    /// Case- <b>and accent</b>-insensitive comparison of two alias values. The index is
+    /// <c>utf8mb4_*_ci</c>, which is insensitive to both, so an <c>OrdinalIgnoreCase</c> pre-check
+    /// would pass <c>"Renee"</c> against a stored <c>"Renée"</c> and let the <i>index</i> reject it —
+    /// a 500-shaped failure on an ordinary write, not just under concurrency. Setting both options
+    /// makes the service, the index and the accent- and case-sensitive EF InMemory provider agree.
+    ///
+    /// <para>
+    /// <b>This is ICU-dependent.</b> <c>IgnoreNonSpace</c> is culture-aware, so under invariant
+    /// globalization accent folding silently stops — passing on a dev box and on both fast test tiers
+    /// and degrading only where it matters. The API image installs <c>icu-libs</c> and a startup
+    /// guard refuses to serve an invariant-globalization process (issue #48 §5, AC 42).
+    /// </para>
+    /// </summary>
+    private static bool AliasEquals(string left, string right) =>
+        string.Compare(left, right, CultureInfo.InvariantCulture,
+            CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) == 0;
+
+    public async Task<IReadOnlyList<ExistingContactAlias>?> GetAliases(Guid contactId, CancellationToken cancellationToken = default)
+    {
+        if (!await context.Contacts.AnyAsync(c => c.ContactId == contactId, cancellationToken))
+            return null;
+
+        // Ordered by the column's own collation, then id — which is why the inline
+        // ExistingContact.Aliases list (sorted in memory with OrdinalIgnoreCase) matches this only
+        // modulo collation on accented input. Stated in §6 as accepted, not as a defect.
+        var rows = await context.ContactAliases.AsNoTracking()
+            .Where(a => a.ContactId == contactId)
+            .OrderBy(a => a.Value).ThenBy(a => a.Id)
+            .ToListAsync(cancellationToken);
+        return rows.Adapt<List<ExistingContactAlias>>();
+    }
+
+    public async Task<ExistingContactAlias?> CreateAlias(Guid contactId, NewContactAlias request, CancellationToken cancellationToken = default)
+    {
+        var contact = await LoadForChildMutation(contactId, cancellationToken);
+        if (contact is null)
+            return null;
+
+        var value = CleanAliasValue(request.Value);
+        var label = CleanAliasLabel(request.Label);
+
+        var siblings = await context.ContactAliases.Where(a => a.ContactId == contactId).ToListAsync(cancellationToken);
+        if (siblings.Any(a => AliasEquals(a.Value, value)))
+            throw DuplicateAlias();
+        if (siblings.Count >= ContactAliasRules.MaxPerContact)
+            throw new DomainUnprocessableException(
+                $"A contact can have at most {ContactAliasRules.MaxPerContact} aliases.", "value");
+
+        var alias = new ContactAlias { ContactId = contactId, Value = value, Label = label };
+        context.ContactAliases.Add(alias);
+        Touch(contact);
+        await SaveAliasChangeAsync(cancellationToken);
+        return alias.Adapt<ExistingContactAlias>();
+    }
+
+    public async Task<bool> UpdateAlias(Guid contactId, Guid aliasId, NewContactAlias request, CancellationToken cancellationToken = default)
+    {
+        var contact = await LoadForChildMutation(contactId, cancellationToken);
+        if (contact is null)
+            return false;
+
+        // Containment: the alias is resolved SCOPED to the parent, so an id belonging to another
+        // contact is a 404 rather than a cross-parent write (§10.1).
+        var alias = await context.ContactAliases.FirstOrDefaultAsync(a => a.Id == aliasId && a.ContactId == contactId, cancellationToken);
+        if (alias is null)
+            return false;
+
+        var value = CleanAliasValue(request.Value);
+        var label = CleanAliasLabel(request.Label);
+
+        var siblings = await context.ContactAliases
+            .Where(a => a.ContactId == contactId && a.Id != aliasId)
+            .ToListAsync(cancellationToken);
+        if (siblings.Any(a => AliasEquals(a.Value, value)))
+            throw DuplicateAlias();
+
+        alias.Value = value;
+        // A replace, not a patch: an omitted or blank label CLEARS a previously-set one, matching the
+        // siblings' PUT semantics. No cap check — a replace cannot grow the collection, which is why
+        // this verb has no 422.
+        alias.Label = label;
+        Touch(contact);
+        await SaveAliasChangeAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> DeleteAlias(Guid contactId, Guid aliasId, CancellationToken cancellationToken = default)
+    {
+        var contact = await LoadForChildMutation(contactId, cancellationToken);
+        if (contact is null)
+            return false;
+
+        var alias = await context.ContactAliases.FirstOrDefaultAsync(a => a.Id == aliasId && a.ContactId == contactId, cancellationToken);
+        if (alias is null)
+            return false;
+
+        context.ContactAliases.Remove(alias);
+        Touch(contact);
+        await context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// The duplicate-alias rejection, as one factory so the pre-check and the 1062 race path can
+    /// never disagree about the message or the field (issue #48 §5 step 7, AC 11).
+    /// <b>It names neither the submitted value nor the label</b> — the value is frequently a maiden
+    /// name, and a response body has a wider audience than the contacts table (§10.6). This is a
+    /// deliberate deviation from <c>JournalTagService.EnsureNameAvailable</c>, which does echo: right
+    /// for a tag, wrong here. Do not "fix" it toward that precedent.
+    /// </summary>
+    private static DomainConflictException DuplicateAlias() =>
+        new("This contact already has that alias.", "value");
+
+    /// <summary>
+    /// Saves an alias insert or update, translating the unique index's 1062 into the same
+    /// <see cref="DuplicateAlias"/> the in-memory pre-check throws.
+    ///
+    /// <para>
+    /// This catch is both the concurrency backstop <b>and</b> a redaction fix. Letting the
+    /// <c>DbUpdateException</c> reach <c>GlobalExceptionHandler</c> would map it to the right status
+    /// code but pass the exception OBJECT to the logger, serialising MariaDB's
+    /// <c>Duplicate entry 'xxx-Hansen' for key …</c> — the alias value itself — into a log line.
+    /// </para>
+    /// </summary>
+    private async Task SaveAliasChangeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKey(ex))
+        {
+            // The failed insert/update is still tracked; leaving it would flush on the next save.
+            context.ChangeTracker.Clear();
+            throw DuplicateAlias();
+        }
+    }
+
+    private static string CleanAliasValue(string value)
+    {
+        var cleaned = MultiWhitespaceRegex.Replace((value ?? string.Empty).Trim(), " ");
+        if (cleaned.Length == 0)
+            throw new DomainValidationException("An alias is required.", code: null, field: "value");
+        if (cleaned.Length > ContactAliasRules.MaxValueLength)
+            throw new DomainValidationException(
+                $"An alias cannot exceed {ContactAliasRules.MaxValueLength} characters.", code: null, field: "value");
+        // Defence-in-depth behind ContactAliasRules.Pattern, which rejects the same set in model
+        // validation on the HTTP path — this one covers direct, non-HTTP callers.
+        if (cleaned.Any(char.IsControl))
+            throw new DomainValidationException(ContactAliasRules.ValueErrorMessage, code: null, field: "value");
+        return cleaned;
+    }
+
+    private static string? CleanAliasLabel(string? label)
+    {
+        if (label is null)
+            return null;
+        var cleaned = MultiWhitespaceRegex.Replace(label.Trim(), " ");
+        // Empty collapses to null so "" and absent are never two states.
+        if (cleaned.Length == 0)
+            return null;
+        if (cleaned.Length > ContactAliasRules.MaxLabelLength)
+            throw new DomainValidationException(
+                $"An alias label cannot exceed {ContactAliasRules.MaxLabelLength} characters.", code: null, field: "label");
+        if (cleaned.Any(char.IsControl))
+            throw new DomainValidationException(ContactAliasRules.LabelErrorMessage, code: null, field: "label");
+        return cleaned;
     }
 
     // ── Address sub-resource ──────────────────────────────────────────────────

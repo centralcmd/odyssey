@@ -12,7 +12,10 @@
 @using Odyssey.Dtos
 @using Odyssey.Dtos.Journal
 
-<OdsInfoTileGrid>
+@* Dense (issue #48): a Person card already rendered up to nine tiles against OdsInfoTileGrid's
+   ceiling of eight, and the middle name and date of death take it to eleven. Dense is the grid's own
+   answer for record types whose facts are many and short — set per record type, never mixed. *@
+<OdsInfoTileGrid Dense="true">
     <OdsInfoTile Icon="badge" Label="Display name" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true"
                  Foot="@OdsInfoTile.Caption(string.IsNullOrWhiteSpace(Contact.DisplayName) ? "computed from the name fields" : "override")">
         <Value>@Dash(Contact.ResolvedDisplayName)</Value>
@@ -29,6 +32,14 @@
         <OdsInfoTile Icon="person" Label="First name" ValueVariant="OdsInfoTileVariant.Text">
             <Value>@Dash(person.FirstName)</Value>
         </OdsInfoTile>
+        @* Stored, rendered and searchable — but outside the "First Last" fallback, so adding one
+           shifts no name and no sort position. No value renders NO tile, per the grid's own rule. *@
+        @if (!string.IsNullOrWhiteSpace(person.MiddleName))
+        {
+            <OdsInfoTile Icon="person" Label="Middle name" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@person.MiddleName</Value>
+            </OdsInfoTile>
+        }
         <OdsInfoTile Icon="person" Label="Last name" ValueVariant="OdsInfoTileVariant.Text">
             <Value>@Dash(person.LastName)</Value>
         </OdsInfoTile>
@@ -36,6 +47,13 @@
         {
             <OdsInfoTile Icon="cake" Label="Date of birth" ValueVariant="OdsInfoTileVariant.Sm">
                 <Value>@LongDate(dob)</Value>
+            </OdsInfoTile>
+        }
+        @if (person.DateOfDeath is { } dod)
+        {
+            <OdsInfoTile Icon="event_busy" Label="Date of death" ValueVariant="OdsInfoTileVariant.Sm"
+                         Foot="@OdsInfoTile.Caption("the record stays live — nothing is archived")">
+                <Value>@LongDate(dod)</Value>
             </OdsInfoTile>
         }
         @if (person.Sex is { } sex)
@@ -84,6 +102,21 @@
                 </Value>
             </OdsInfoTile>
         }
+        @* Either date stands alone: the founding date of an old institution is frequently unknown,
+           and a dissolved body may have none recorded. *@
+        @if (org.EstablishedDate is { } established)
+        {
+            <OdsInfoTile Icon="foundation" Label="Established" ValueVariant="OdsInfoTileVariant.Sm">
+                <Value>@LongDate(established)</Value>
+            </OdsInfoTile>
+        }
+        @if (org.DissolvedDate is { } dissolved)
+        {
+            <OdsInfoTile Icon="event_busy" Label="Dissolved" ValueVariant="OdsInfoTileVariant.Sm"
+                         Foot="@OdsInfoTile.Caption("reads as historical — still linkable")">
+                <Value>@LongDate(dissolved)</Value>
+            </OdsInfoTile>
+        }
     }
 
     <OdsInfoTile Icon="@(IsArchived ? "inventory_2" : "task_alt")" Label="Status"
@@ -98,7 +131,7 @@
     </OdsInfoTile>
 
     <OdsInfoTile Icon="update" Label="Updated" ValueVariant="OdsInfoTileVariant.Sm"
-                 Foot="@OdsInfoTile.Caption("bumped by any address, email or phone change")">
+                 Foot="@OdsInfoTile.Caption("bumped by any address, email, phone or alias change")">
         <Value>@ShortDateTime(Contact.UpdatedAt)</Value>
     </OdsInfoTile>
 </OdsInfoTileGrid>

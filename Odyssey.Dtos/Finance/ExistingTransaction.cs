@@ -13,7 +13,13 @@ public sealed record ExistingTransaction
     public ExistingAccount? Account { get; set; }
     public Guid? ContactId { get; set; }
     public List<ExistingTransactionTag> TransactionTags { get; set; } = [];
-    public ExistingContact? Contact { get; set; }
+    /// <summary>
+    /// The counterparty, as the deliberately-narrow <see cref="ContactEmbed"/> — id and resolved
+    /// display name, nothing else (issue #48 §10.2). This endpoint is gated by
+    /// <c>transactions.read</c>, not <c>contacts.read</c>, so it must not carry the full contact
+    /// record. The one non-additive wire change of that issue, and a deliberate narrowing.
+    /// </summary>
+    public ContactEmbed? Contact { get; set; }
 
     [StringLength(3)]
     public string CurrencyCode { get; set; } = "USD";

@@ -6,8 +6,17 @@ namespace Odyssey.Dtos.Journal;
 /// <summary>
 /// Read projection of a contact (issue #325). Returns both the raw <see cref="DisplayName"/>
 /// (nullable — what the edit form shows) and the always-populated <see cref="ResolvedDisplayName"/>
-/// (what every other surface renders), plus the type-specific detail sub-object and the three contact
-/// collections inline (all gated by the same <c>contacts.read</c> claim, §10.6).
+/// (what every other surface renders), plus the type-specific detail sub-object, the alias list and
+/// the three contact-method collections inline.
+///
+/// <para>
+/// <b>Every member of this projection is gated by <c>contacts.read</c> and is reachable through no
+/// other claim</b> (issue #48 §10.2). That was previously stated as if it followed from the DTO's
+/// own shape; it does not. <c>IContactLookup.ResolveContactsAsync</c> used to hand this whole record
+/// to the finance read paths, so a caller holding only <c>transactions.read</c>, <c>accounts.read</c>
+/// or <c>budgets.read</c> received it. That path now returns <see cref="ContactEmbed"/> — two members
+/// and nothing else — which is what makes the sentence above true. Do not widen it back.
+/// </para>
 /// </summary>
 public sealed record ExistingContact
 {
@@ -43,6 +52,13 @@ public sealed record ExistingContact
     public PersonDetailsDto? PersonDetails { get; set; }
 
     public OrganizationDetailsDto? OrganizationDetails { get; set; }
+
+    /// <summary>
+    /// The contact's alternative names (issue #48), inline in the same shape as the three
+    /// contact-method collections and ordered the same way the dedicated
+    /// <c>GET /api/contacts/{id}/aliases</c> orders them — by value, then id — modulo collation.
+    /// </summary>
+    public IReadOnlyList<ExistingContactAlias> Aliases { get; set; } = [];
 
     public IReadOnlyList<ExistingAddress> Addresses { get; set; } = [];
 

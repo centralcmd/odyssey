@@ -57,12 +57,18 @@ public class Contact
 
     /// <summary>
     /// Last-modification timestamp (UTC), new in issue #325 — bumped on the contact's own save
-    /// and on any Address/EmailAddress/PhoneNumber child mutation (§9).
+    /// and on any Address/EmailAddress/PhoneNumber/ContactAlias child mutation (§9; issue #48).
     /// </summary>
     public DateTime UpdatedAt { get; set; }
 
     public PersonDetails? PersonDetails { get; set; }
     public OrganizationDetails? OrganizationDetails { get; set; }
+    /// <summary>
+    /// The contact's alternative names (issue #48). A first-class child collection mirroring the
+    /// three below; it is a name, not a contact method, so it is surfaced in its own section.
+    /// </summary>
+    public ICollection<ContactAlias> Aliases { get; set; } = new List<ContactAlias>();
+
     public ICollection<Address> Addresses { get; set; } = new List<Address>();
     public ICollection<EmailAddress> EmailAddresses { get; set; } = new List<EmailAddress>();
     public ICollection<PhoneNumber> PhoneNumbers { get; set; } = new List<PhoneNumber>();
