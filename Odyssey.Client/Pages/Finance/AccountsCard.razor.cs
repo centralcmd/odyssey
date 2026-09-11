@@ -644,7 +644,10 @@ public partial class AccountsCard
     /// when it took effect, plus its billing period where it has one. The kind is text here rather
     /// than only the tile's glyph and hue, and the period is what separates a 695 annual fee from a
     /// 695 monthly one, so both ride along.</summary>
-    private static string TermFoot(ExistingAccountTerm term, ExistingAccount account)
+    // internal rather than private so the caption composition can be asserted directly: it is what
+    // carries the kind wording as TEXT on the record card, which is a WCAG 1.4.1 commitment rather
+    // than a formatting detail. Odyssey.Client already grants InternalsVisibleTo to its test project.
+    internal static string TermFoot(ExistingAccountTerm term, ExistingAccount account)
     {
         var since = $"since {term.EffectiveFrom.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture)}";
         if (TermKindVisuals.IsLabelled(term))

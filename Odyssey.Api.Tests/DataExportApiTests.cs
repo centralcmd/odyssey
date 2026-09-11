@@ -258,6 +258,58 @@ public class DataExportApiTests
         Assert.Equal(JsonValueKind.Number, term.GetProperty("termKind").ValueKind);
         Assert.Equal(JsonValueKind.Number, term.GetProperty("valueUnit").ValueKind);
         Assert.False(term.TryGetProperty("account", out _));
+
+        // The series columns are exported, and an unlabelled rate exports both as null — the unnamed
+        // series is a value the export has to state, not a column it may omit.
+        Assert.Equal(JsonValueKind.Null, term.GetProperty("label").ValueKind);
+        Assert.Equal(JsonValueKind.Null, term.GetProperty("labelKey").ValueKind);
+    }
+
+    /// <summary>
+    /// A labelled fee exports BOTH its display label and the folded key that carries its series. The
+    /// key is derived server-side and never round-trips through a request DTO, so the export is the
+    /// only place it is observable — and an export that dropped it could not reproduce the series
+    /// membership it encodes.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesAccountTermSeriesLabels()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        await AddLabelledFeeAsync(factory, "ATM · Abroad", "atm · abroad");
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var fee = finance.GetProperty("accountTerms").EnumerateArray()
+            .Single(t => t.GetProperty("label").ValueKind != JsonValueKind.Null);
+
+        Assert.Equal("ATM · Abroad", fee.GetProperty("label").GetString());
+        Assert.Equal("atm · abroad", fee.GetProperty("labelKey").GetString());
+    }
+
+    private static async Task AddLabelledFeeAsync(
+        WebApplicationFactory<Program> factory, string label, string labelKey)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var accountId = await context.Accounts.Select(a => a.AccountId).FirstAsync();
+
+        context.AccountTerms.Add(new AccountTerm
+        {
+            AccountTermId = Guid.NewGuid(),
+            AccountId = accountId,
+            TermKind = TermKind.Fee,
+            Label = label,
+            LabelKey = labelKey,
+            ValueUnit = TermValueUnit.Amount,
+            Value = 25m,
+            CurrencyCode = "USD",
+            EffectiveFrom = DateTime.UtcNow,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        await context.SaveChangesAsync();
     }
 
     // ── Deterministic ordering (spec §10.1.9) ─────────────────────────────────

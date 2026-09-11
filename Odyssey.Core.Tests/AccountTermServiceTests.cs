@@ -515,22 +515,49 @@ public class AccountTermServiceTests
             () => service.Create(accountId, Fee(label, 25m, new DateTime(2026, 1, 1))));
     }
 
-    // There is no fee kind for which a label is optional, so the rule holds on every account type —
-    // including the ones whose only eligible kind is Fee.
+    /// <summary>
+    /// Criterion 5, stated over the WHOLE enum rather than a hand-picked sample: there is no fee kind
+    /// for which a label is optional, so there is no account type on which one is. Enumerating the
+    /// enum is the point — a future account type is covered the day it is added, where a list of
+    /// InlineData would silently leave it out.
+    /// </summary>
+    public static TheoryData<DtoAccountType> EveryAccountType()
+    {
+        var data = new TheoryData<DtoAccountType>();
+        foreach (var type in Enum.GetValues<DtoAccountType>().Where(t => t != DtoAccountType.Unknown))
+            data.Add(type);
+        return data;
+    }
+
     [Theory]
-    [InlineData(DtoAccountType.Cash)]
-    [InlineData(DtoAccountType.Property)]
-    [InlineData(DtoAccountType.Vehicle)]
-    [InlineData(DtoAccountType.CheckingAccount)]
-    [InlineData(DtoAccountType.InvestmentAccount)]
+    [MemberData(nameof(EveryAccountType))]
     public async Task Create_FeeWithoutLabel_ThrowsOnEveryAccountType(DtoAccountType accountType)
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, accountType);
         var service = new AccountTermService(context);
 
+        // Fee is eligible everywhere, so this can only ever fail on the label rule — which is what
+        // makes the assertion about the rule rather than about eligibility.
+        Assert.True(TermLabel.RuleFor(TermKind.Fee) == TermLabelRule.Required);
+
         await Assert.ThrowsAsync<DomainValidationException>(
             () => service.Create(accountId, Fee(null, 25m, new DateTime(2026, 1, 1))));
+    }
+
+    /// <summary>The other half of the same criterion: a NAMED fee is accepted on every account type,
+    /// so the rule above is refusing the missing label and not the kind.</summary>
+    [Theory]
+    [MemberData(nameof(EveryAccountType))]
+    public async Task Create_NamedFee_IsAcceptedOnEveryAccountType(DtoAccountType accountType)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, accountType);
+        var service = new AccountTermService(context);
+
+        var created = await service.Create(accountId, Fee("Account fee", 25m, new DateTime(2026, 1, 1)));
+
+        Assert.Equal("Account fee", created.Label);
     }
 
     [Theory]
