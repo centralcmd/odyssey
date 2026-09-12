@@ -57,7 +57,7 @@
          had no renderer at all, so a component could ship unable to render and still "pass" — the
          OdsPasswordChangeForm precedent is exact: it threw on every render, took down two live pages,
          and no test caught it. -->
-    <PackageVersion Include="bunit" Version="2.9.0" />
+    <PackageVersion Include="bunit" Version="2.10.3" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
