@@ -44,12 +44,36 @@ namespace Odyssey.Context.Migrations
                     `Description` = VALUES(`Description`),
                     `ArchivedAt` = VALUES(`ArchivedAt`);");
 
-            // 2. The old identity index goes before the column it is built on.
+            // 2. The NEW identity index comes FIRST, and that ordering is load-bearing rather than
+            //    cosmetic. InnoDB requires every foreign key to be covered by an index whose leading
+            //    column is the key's, and there is no standalone IX_BudgetItems_BudgetId — EF never
+            //    created one, because the unique (BudgetId, Name) index already covered the Budgets
+            //    key. Dropping that index first therefore fails outright:
+            //
+            //        Cannot drop index 'IX_BudgetItems_BudgetId_Name': needed in a foreign key constraint
+            //
+            //    This index also leads with BudgetId, so creating it first hands the key a new cover
+            //    and makes the old one droppable.
+            //
+            //    It is created while TransactionTagId is still NULLABLE, which is safe: migration 2
+            //    already deleted every untagged row and every duplicate-tag row, so there is nothing
+            //    for the uniqueness to reject (and MySQL would not treat NULLs as duplicates anyway).
+            //
+            //    The plain IX_BudgetItems_TransactionTagId is deliberately KEPT: this composite index
+            //    leads with BudgetId and cannot serve a lookup by tag alone — which is exactly what the
+            //    RESTRICT key does on every tag delete. Do not let a later migration drop it as redundant.
+            migrationBuilder.CreateIndex(
+                name: "IX_BudgetItems_BudgetId_TransactionTagId",
+                table: "BudgetItems",
+                columns: new[] { "BudgetId", "TransactionTagId" },
+                unique: true);
+
+            // 3. Now the old identity index can go.
             migrationBuilder.DropIndex(
                 name: "IX_BudgetItems_BudgetId_Name",
                 table: "BudgetItems");
 
-            // 3. The tag becomes required. DeleteBehavior.Restrict is explicit on both sides, and the
+            // 4. The tag becomes required. DeleteBehavior.Restrict is explicit on both sides, and the
             //    scaffold emitted no foreign-key drop/re-add around this alter — MariaDB narrows a
             //    nullable column to NOT NULL in place without touching the key.
             //
@@ -69,16 +93,6 @@ namespace Odyssey.Context.Migrations
                 oldNullable: true)
                 .OldAnnotation("Relational:Collation", "ascii_general_ci");
 
-            // 4. The new identity index. The plain IX_BudgetItems_TransactionTagId the foreign key needs
-            //    is deliberately KEPT: this composite index leads with BudgetId and cannot serve a lookup
-            //    by tag alone — which is exactly what the RESTRICT key does on every tag delete. Do not
-            //    let a later migration drop it as redundant.
-            migrationBuilder.CreateIndex(
-                name: "IX_BudgetItems_BudgetId_TransactionTagId",
-                table: "BudgetItems",
-                columns: new[] { "BudgetId", "TransactionTagId" },
-                unique: true);
-
             // 5. The labels themselves.
             migrationBuilder.DropColumn(
                 name: "Description",
@@ -92,26 +106,15 @@ namespace Odyssey.Context.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // 1. Reverses Up 4.
-            migrationBuilder.DropIndex(
-                name: "IX_BudgetItems_BudgetId_TransactionTagId",
-                table: "BudgetItems");
+            // The index order mirrors Up's, and for the same InnoDB reason: the Budgets foreign key
+            // must be covered by a BudgetId-leading index at every point, so the replacement is created
+            // BEFORE the one it replaces is dropped. Dropping first fails with
+            // "Cannot drop index …: needed in a foreign key constraint".
 
-            // 2. Reverses Up 3.
-            migrationBuilder.AlterColumn<Guid>(
-                name: "TransactionTagId",
-                table: "BudgetItems",
-                type: "char(36)",
-                nullable: true,
-                collation: "ascii_general_ci",
-                oldClrType: typeof(Guid),
-                oldType: "char(36)")
-                .OldAnnotation("Relational:Collation", "ascii_general_ci");
-
-            // 3. Reverses Up 5 — and Name comes back NULLABLE, not `NOT NULL DEFAULT ''`. Adding it as
-            //    NOT NULL would be legal, but recreating the unique (BudgetId, Name) index before step 4
-            //    had restored the values would then collide on the second item of every budget. Step 5
-            //    tightens it once the values are back.
+            // 1. Reverses Up 5 — and Name comes back NULLABLE, not `NOT NULL DEFAULT ''`. Adding it as
+            //    NOT NULL would be legal, but the unique (BudgetId, Name) index recreated in step 4
+            //    would then collide on the second item of every budget. Step 3 tightens it once the
+            //    values are back.
             migrationBuilder.AddColumn<string>(
                 name: "Description",
                 table: "BudgetItems",
@@ -128,8 +131,8 @@ namespace Odyssey.Context.Migrations
                 nullable: true)
                 .Annotation("MySql:CharSet", "utf8mb4");
 
-            // 4. Reverses Up 1. A row with no archive entry (created after the Up) has no name to
-            //    restore; it takes the item id so the NOT NULL in step 5 has something unique to hold.
+            // 2. Reverses Up 1. A row with no archive entry (created after the Up) has no name to
+            //    restore; it takes the item id, so step 3's NOT NULL has something unique to hold.
             migrationBuilder.Sql(@"
                 UPDATE `BudgetItems` bi
                 JOIN `_BudgetItemLabelArchive` a
@@ -145,7 +148,7 @@ namespace Odyssey.Context.Migrations
             // Clearing them is what keeps a Down/Up cycle at the same row count as a single Up (AC 24).
             migrationBuilder.Sql("DELETE FROM `_BudgetItemLabelArchive` WHERE `Disposition` = 'LabelsDropped';");
 
-            // 5. Name returns to NOT NULL, now that every row has one.
+            // 3. Name returns to NOT NULL, now that every row has one.
             migrationBuilder.AlterColumn<string>(
                 name: "Name",
                 table: "BudgetItems",
@@ -159,12 +162,29 @@ namespace Odyssey.Context.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4")
                 .OldAnnotation("MySql:CharSet", "utf8mb4");
 
-            // 6. Reverses Up 2.
+            // 4. Reverses Up 3, and re-covers the Budgets key before step 5 removes its current cover.
             migrationBuilder.CreateIndex(
                 name: "IX_BudgetItems_BudgetId_Name",
                 table: "BudgetItems",
                 columns: new[] { "BudgetId", "Name" },
                 unique: true);
+
+            // 5. Reverses Up 2.
+            migrationBuilder.DropIndex(
+                name: "IX_BudgetItems_BudgetId_TransactionTagId",
+                table: "BudgetItems");
+
+            // 6. Reverses Up 4. Last, because ArchiveAndRemoveUntaggableBudgetItems' Down runs next and
+            //    re-inserts the untagged rows this column has to accept again.
+            migrationBuilder.AlterColumn<Guid>(
+                name: "TransactionTagId",
+                table: "BudgetItems",
+                type: "char(36)",
+                nullable: true,
+                collation: "ascii_general_ci",
+                oldClrType: typeof(Guid),
+                oldType: "char(36)")
+                .OldAnnotation("Relational:Collation", "ascii_general_ci");
         }
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using MySqlConnector;
 using Odyssey.Context;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
@@ -448,12 +449,25 @@ public class BudgetItemTagMigrationTests(MariaDbFixture fixture)
         await InsertLegacyItemAsync(context, ItemValid, "Weekly shop", "Food and household", TagKept);
     }
 
+    /// <summary>
+    /// Inserts a pre-change budget item. Raw SQL, because the entity no longer HAS <c>Name</c> or
+    /// <c>Description</c> — EF cannot express the very rows this set exists to migrate.
+    /// </summary>
+    /// <remarks>
+    /// The nullable columns go through explicit <see cref="MySqlParameter"/>s rather than
+    /// <c>DBNull.Value</c> in the <c>params object[]</c> overload: EF maps each of those by its CLR
+    /// type and has no store mapping for <c>DBNull</c>, so it throws before reaching the server.
+    /// </remarks>
     private static Task InsertLegacyItemAsync(
         OdysseyContext context, Guid id, string name, string? description, Guid? tagId) =>
         context.Database.ExecuteSqlRawAsync(
             "INSERT INTO `BudgetItems` (`BudgetItemId`, `BudgetId`, `Name`, `Description`, `CategoryType`, "
-            + "`PlannedAmount`, `TransactionTagId`) VALUES ({0}, {1}, {2}, {3}, 0, 100, {4})",
-            id, BudgetId, name, (object?)description ?? DBNull.Value, (object?)tagId ?? DBNull.Value);
+            + "`PlannedAmount`, `TransactionTagId`) VALUES (@id, @budgetId, @name, @description, 0, 100, @tagId)",
+            new MySqlParameter("@id", id),
+            new MySqlParameter("@budgetId", BudgetId),
+            new MySqlParameter("@name", name),
+            new MySqlParameter("@description", (object?)description ?? DBNull.Value),
+            new MySqlParameter("@tagId", (object?)tagId ?? DBNull.Value));
 
     // ── Schema probes ─────────────────────────────────────────────────────────
 
