@@ -138,6 +138,37 @@ public class TransactionTagPickerTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// WCAG 1.3.1. The two no-control states replace the combobox with a message, so the shell must
+    /// NOT emit `&lt;label for&gt;` — the id it would name belongs to the combobox and is absent from the
+    /// DOM in those states. A label naming a missing control is a broken association; a label with no
+    /// `for` is a plain caption.
+    /// </summary>
+    [Fact]
+    public void The_label_names_no_control_in_the_states_that_render_none()
+    {
+        var failed = ctx.Render<OdsTransactionTagPicker>(parameters => parameters
+            .Add(p => p.InputId, "pick-n")
+            .Add(p => p.Tags, [])
+            .Add(p => p.LoadFailed, true));
+
+        Assert.Null(failed.Find("label.odc-field-label").GetAttribute("for"));
+        Assert.Empty(failed.FindAll("#pick-n"));
+
+        var empty = ctx.Render<OdsTransactionTagPicker>(parameters => parameters
+            .Add(p => p.InputId, "pick-o")
+            .Add(p => p.Tags, []));
+
+        Assert.Null(empty.Find("label.odc-field-label").GetAttribute("for"));
+
+        // …and it IS associated whenever the control is actually there.
+        var withControl = ctx.Render<OdsTransactionTagPicker>(parameters => parameters
+            .Add(p => p.InputId, "pick-p")
+            .Add(p => p.Tags, Tags()));
+
+        Assert.Equal("pick-p", withControl.Find("label.odc-field-label").GetAttribute("for"));
+    }
+
+    /// <summary>
     /// AC 34 and AC 38, second half. A caller that CAN create is never shown the empty state — the
     /// create row is the way forward — and a failed FETCH is a different message with a retry, never
     /// the "create a tag" copy, which would point the reader at the wrong problem.
@@ -288,6 +319,25 @@ public class TransactionTagPickerTests : IAsyncLifetime
         // 760px, so this label is the control's only accessible name there.
         Assert.Contains("hide-label", first.Find(".odc-tagpick").GetAttribute("class"));
         Assert.Contains("Transaction tag", first.Find("label.odc-field-label").TextContent);
+    }
+
+    /// <summary>
+    /// The tag IS the record's identity, so there is no "none" to clear to — and the clear (x) has to
+    /// be suppressed EXPLICITLY, because the two defaults disagree: the design system's Combobox
+    /// defaults `clearable` to false (and TransactionTagPicker never overrides it), while
+    /// <see cref="OdsCombobox.Clearable"/> defaults to true. Without the explicit false the affordance
+    /// blanks a required field — which the write paths then have to reject, turning a design-system
+    /// contract into a caught error.
+    /// </summary>
+    [Fact]
+    public void The_clear_affordance_is_suppressed_because_the_tag_is_the_identity()
+    {
+        var cut = ctx.Render<OdsTransactionTagPicker>(parameters => parameters
+            .Add(p => p.InputId, "pick-m")
+            .Add(p => p.Tags, Tags())
+            .Add(p => p.Value, GroceriesId));
+
+        Assert.False(cut.FindComponent<OdsCombobox>().Instance.Clearable);
     }
 
     /// <summary>

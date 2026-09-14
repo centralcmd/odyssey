@@ -33,7 +33,11 @@
     whose column header is display:none at narrow widths and so is no accessible name at all.
 *@
 
-<OdsFieldShell Label="@Label" HtmlFor="@InputId" Required="Required"
+@* HtmlFor is withheld in the two states that render NO control (WCAG 1.3.1): the shell would
+   otherwise emit `<label for="@InputId">` pointing at an id nothing in the DOM carries, since the
+   combobox is what owns that id. A label with no `for` is a plain caption; a label naming a missing
+   control is a broken association. *@
+<OdsFieldShell Label="@Label" HtmlFor="@(HasControl ? InputId : null)" Required="Required"
                Help="@HelpText" Error="@ShownError" Class="@ShellClass">
     @if (LoadFailed)
     {
@@ -56,6 +60,10 @@
     }
     else
     {
+        @* No clear (x): the tag IS the record's identity, so there is no "none" to clear to.
+           OdsCombobox defaults Clearable to TRUE while the design system's Combobox defaults it to
+           FALSE, so this has to be passed explicitly — without it the affordance blanks a required
+           field. OdsCurrencySelect does the same for the same reason. *@
         <OdsCombobox InputId="@InputId"
                      Value="@SelectedValue"
                      ValueChanged="OnValueChanged"
@@ -63,6 +71,7 @@
                      Placeholder="@Placeholder"
                      Disabled="Disabled"
                      Required="Required"
+                     Clearable="false"
                      Error="@(ShownError is not null)"
                      EmptyText="@EmptyText"
                      AriaDescribedBy="@DescribedBy"

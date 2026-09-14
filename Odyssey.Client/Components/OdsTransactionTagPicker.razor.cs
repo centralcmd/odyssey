@@ -90,6 +90,13 @@ public partial class OdsTransactionTagPicker
 
     private string? ShownError => Error ?? _duplicateError;
 
+    /// <summary>
+    /// Whether the combobox itself renders. The two no-control states replace it with a message, and
+    /// they are what <c>HtmlFor</c> and <see cref="DescribedBy"/> have to account for: both name ids
+    /// that only the combobox carries.
+    /// </summary>
+    private bool HasControl => !LoadFailed && !NoneSelectable;
+
     private string ShellClass =>
         string.Join(' ', new[] { "odc-tagpick", HideLabel ? "hide-label" : null, Dense ? "dense" : null, Class }
             .Where(value => !string.IsNullOrEmpty(value)));

@@ -54,6 +54,12 @@
                      Error="@Error"
                      @attributes="UserAttributes">
         <ItemTemplate Context="option">
+            @* aria-disabled rides on this span rather than on the row MudAutocomplete gives
+               role="option" — the template cannot reach that element. MudBlazor 9.9 emits no
+               aria-disabled of its own for a list item (ItemDisabledFunc blocks selection and styles
+               the row), so this is not redundant, but nor is it guaranteed to be announced as the
+               option's state. The meaning does not rest on it: OdsOption.Note carries the reason as
+               visible, readable TEXT ("in use"), which is the design system's actual contract. *@
             <span class="@ItemClass(option)" aria-disabled="@(option.Disabled ? "true" : null)">
                 @if (!string.IsNullOrEmpty(option.Icon))
                 {
