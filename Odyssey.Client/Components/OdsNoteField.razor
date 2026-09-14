@@ -22,6 +22,7 @@
               maxlength="@MaxLength"
               disabled="@Disabled"
               autofocus="@AutoFocus"
+              aria-required="@(Required ? "true" : null)"
               aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
               aria-describedby="@DescribedBy"
               @oninput="OnInput"

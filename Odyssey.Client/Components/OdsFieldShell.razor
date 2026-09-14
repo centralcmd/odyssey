@@ -53,6 +53,10 @@
     /// <summary>The control's id — associates the label and names the helper line.</summary>
     [Parameter] public string? HtmlFor { get; set; }
 
+    /// <summary>Id for the label element itself — for a composite control (a radiogroup such as
+    /// OdsCardSelect) that names itself with <c>aria-labelledby</c>, which a <c>for</c> cannot do.</summary>
+    [Parameter] public string? LabelId { get; set; }
+
     [Parameter] public bool Required { get; set; }
 
     /// <summary>Helper text shown below the control.</summary>
@@ -96,7 +100,7 @@
         string.Join(' ', new[] { "odc-field", string.IsNullOrEmpty(Error) ? null : "error", Class }
             .Where(value => !string.IsNullOrEmpty(value)));
 
-    private RenderFragment Label_() => @<label class="odc-field-label" for="@HtmlFor">
+    private RenderFragment Label_() => @<label class="odc-field-label" for="@HtmlFor" id="@LabelId">
         @Label
         @if (Required)
         {

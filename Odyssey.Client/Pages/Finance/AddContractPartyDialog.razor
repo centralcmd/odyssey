@@ -31,8 +31,8 @@
                SubmitLabel="Create party" OnSubmit="SaveAsync">
 
     @* The two kinds sit two-up and centred, so the pair balances the dialog rather than stretching. *@
-    <OdsFieldShell Label="Party kind" Required="true">
-        <OdsCardSelect AriaLabel="Party kind" Value="@_kind.ToString()" ValueChanged="PickKind"
+    <OdsFieldShell Label="Party kind" Required="true" LabelId="con-party-kind-label">
+        <OdsCardSelect AriaLabelledBy="con-party-kind-label" Required="true" Value="@_kind.ToString()" ValueChanged="PickKind"
                        Accent="var(--con-accent)" AccentLine="var(--con-accent-line)" AccentSoft="var(--con-accent-soft)"
                        Columns="2" MaxItemWidth="180" Center="true" Options="KindOptions" />
     </OdsFieldShell>

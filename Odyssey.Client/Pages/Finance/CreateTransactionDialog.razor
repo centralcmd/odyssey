@@ -82,7 +82,7 @@
                             <ActivatorContent>
                                 <button type="button" class="aam-type-trigger @(_accountError ? "has-error" : "")"
                                         aria-haspopup="menu" aria-expanded="@(_accountMenuOpen ? "true" : "false")"
-                                        aria-label="Account" @onclick="@context.ToggleAsync">
+                                        aria-label="Account, required" @onclick="@context.ToggleAsync">
                                     <span class="atm-acct-current">
                                         @if (_selectedAccount is not null)
                                         {

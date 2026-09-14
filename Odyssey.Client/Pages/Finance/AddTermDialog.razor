@@ -28,7 +28,7 @@
             @if (IsEdit || _eligibleKinds.Count > 1)
             {
             <div class="trm-field">
-                <div class="trm-label">Term<span class="odc-field-req" aria-hidden="true">*</span></div>
+                <div class="trm-label" id="trm-kind-label">Term<span class="odc-field-req" aria-hidden="true">*</span></div>
                 @if (IsEdit)
                 {
                     var info = TermKindVisuals.Info(_kind);
@@ -44,7 +44,7 @@
                 }
                 else
                 {
-                    <OdsCardSelect AriaLabel="Term" Value="@_kind.ToString()" ValueChanged="OnKindPicked"
+                    <OdsCardSelect AriaLabelledBy="trm-kind-label" Required="true" Value="@_kind.ToString()" ValueChanged="OnKindPicked"
                                    Options="KindOptions" />
                     @if (_eligibleKinds.Count < TermKindVisuals.All.Count)
                     {

@@ -67,6 +67,7 @@ else
             <input id="@FieldId" class="odc-input odc-stepper-num" type="number"
                    value="@(Value?.ToString(CultureInfo.InvariantCulture))"
                    min="@Min" max="@Max" step="@Step" disabled="@Disabled" autofocus="@AutoFocus"
+                   aria-required="@(Required ? "true" : null)"
                    aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
                    @oninput="OnInput" />
             @if (UnitLabel is not null)

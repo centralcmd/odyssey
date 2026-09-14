@@ -9,6 +9,7 @@ using MudBlazor;
 using MudBlazor.Services;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Client.Services;
 using Odyssey.Client.Theme;
@@ -19,7 +20,8 @@ namespace Odyssey.Client.Tests;
 
 /// <summary>
 /// The Edit-transaction dialog's attachments (design system · AddTransactionModal): a removed file and
-/// a new upload are both STAGED, and nothing reaches the server until Save.
+/// a new upload are both STAGED, and nothing reaches the server until Save. The same rig also pins the
+/// dialog's required date, the one Save-blocking rule the form adds on top of the DTO.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -252,6 +254,64 @@ public sealed class TransactionDialogAttachmentTests : IAsyncLifetime
             cut.FindAll(".atm-dialog .odc-field-help"),
             h => h.TextContent.Trim() == "No files attached to this transaction."));
         Assert.Empty(cut.FindAll(".atm-dialog .odc-upload-drop"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  The required date (design system · "forms mark required only")
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // NewTransaction.TimeStamp is nullable, so the server would accept the omission; the form refuses
+    // it, because the field is marked required and a marker that validation ignores is a lie.
+
+    private static IRenderedComponent<OdsDateField> DateField(IRenderedComponent<DialogHost> cut) =>
+        cut.FindComponents<OdsDateField>().Single(f => f.Instance.Label == "Date");
+
+    private static void SetDate(IRenderedComponent<DialogHost> cut, DateTime? value)
+    {
+        var field = DateField(cut);
+        cut.InvokeAsync(() => field.Instance.ValueChanged.InvokeAsync(value)).GetAwaiter().GetResult();
+    }
+
+    [Fact]
+    public void The_date_is_marked_required()
+    {
+        var cut = RenderEdit();
+
+        Assert.True(DateField(cut).Instance.Required);
+    }
+
+    [Fact]
+    public void Saving_with_the_date_cleared_is_refused_on_the_field_and_sends_nothing()
+    {
+        UpdateReturns(ApiResult.Success(HttpStatusCode.NoContent));
+        var cut = RenderEdit();
+
+        SetDate(cut, null);
+        ClickFooter(cut, "Save changes");
+
+        cut.WaitForAssertion(() => Assert.Equal("Pick the transaction date.", DateField(cut).Instance.Error));
+        Assert.Empty(calls);
+        Assert.False(cut.Instance.Closed);
+    }
+
+    [Fact]
+    public void Picking_a_date_again_clears_the_error_and_lets_the_save_through()
+    {
+        UpdateReturns(ApiResult.Success(HttpStatusCode.NoContent));
+        var cut = RenderEdit();
+        SetDate(cut, null);
+        ClickFooter(cut, "Save changes");
+        cut.WaitForAssertion(() => Assert.NotNull(DateField(cut).Instance.Error));
+
+        SetDate(cut, new DateTime(2026, 6, 18));
+        cut.WaitForAssertion(() => Assert.Null(DateField(cut).Instance.Error));
+
+        ClickFooter(cut, "Save changes");
+
+        cut.WaitForAssertion(() => Assert.Equal(["update"], calls));
+        transactions.Verify(t => t.UpdateAsync(TransactionId,
+            It.Is<NewTransaction>(n => n.TimeStamp != null && n.TimeStamp.Value.Date == new DateTime(2026, 6, 18)),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     /// <summary>A signed-out principal — the dialog's inline-create claims are not under test.</summary>
