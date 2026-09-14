@@ -12,6 +12,7 @@
 
     <ItemGroup>
       <PackageReference Include="Bogus" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore" />
     </ItemGroup>
 
 </Project>
