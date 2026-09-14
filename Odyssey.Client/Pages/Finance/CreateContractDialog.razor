@@ -23,11 +23,11 @@
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
 
-    <OdsField Label="Contract name" @bind-Value="_name" Placeholder="e.g. Maple St Residence — Lease"
+    <OdsField Label="Contract name" Required="true" @bind-Value="_name" Placeholder="e.g. Maple St Residence — Lease"
               Error="@_nameError" />
 
     <OdsFormRow>
-        <OdsContractTypeSelect Value="@_type"
+        <OdsContractTypeSelect Required="true" Value="@_type"
                                ValueChanged="@(v => { _type = v; _typeError = null; })"
                                Placeholder="Choose a type…" Error="@_typeError" />
         <OdsFieldShell Label="Term">
@@ -39,9 +39,9 @@
     @if (_mode == TermMode)
     {
         <OdsFormRow>
-            <OdsDateField Label="Starts" Optional="true" @bind-Value="_startDate"
+            <OdsDateField Label="Starts" @bind-Value="_startDate"
                           Placeholder="No start date" />
-            <OdsDateField Label="Ends" Optional="true" Value="_endDate"
+            <OdsDateField Label="Ends" Value="_endDate"
                           ValueChanged="@(v => { _endDate = v; _endError = null; })"
                           Placeholder="Open-ended"
                           Error="@_endError"
@@ -51,7 +51,7 @@
     else
     {
         <OdsFormRow>
-            <OdsDateField Label="Completion" Value="_completionDate"
+            <OdsDateField Label="Completion" Required="true" Value="_completionDate"
                           ValueChanged="@(v => { _completionDate = v; _completionError = null; })"
                           Placeholder="Completion date"
                           Error="@_completionError"
@@ -60,7 +60,7 @@
         </OdsFormRow>
     }
 
-    <OdsNoteField Label="Description" Optional="true" MaxLength="1024" @bind-Value="_description"
+    <OdsNoteField Label="Description" MaxLength="1024" @bind-Value="_description"
                   Placeholder="What this agreement covers, term, notice period, key conditions…" />
 </OdsFormDialog>
 

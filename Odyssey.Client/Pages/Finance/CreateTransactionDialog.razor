@@ -29,7 +29,7 @@
                      segment flips expense ↔ income and drives the sign of the posted Amount, so the
                      form needs no separate segmented toggle. -->
                 <div class="atm-amount-block odc-form-grid-wide">
-                    <OdsMoneyField Label="Amount" Size="lg" AllowNegative="false"
+                    <OdsMoneyField Label="Amount" Required="true" Size="lg" AllowNegative="false"
                                    Direction="@(_isExpense ? "expense" : "income")"
                                    DirectionChanged="OnDirectionChanged"
                                    Value="@_amountText" ValueChanged="OnAmountChanged"
@@ -41,11 +41,12 @@
                 </div>
 
                 <!-- Date -->
-                <OdsDateField Label="Date" @bind-Value="_timeStamp" Help="Defaults to today" />
+                <OdsDateField Label="Date" Required="true" Value="_timeStamp" ValueChanged="OnDateChanged"
+                              Help="Defaults to today" Error="@(_dateError ? "Pick the transaction date." : null)" />
 
                 <!-- Description (wide) -->
                 <div class="odc-form-grid-wide">
-                    <OdsTextInputField Label="Description" @bind-Value="_description"
+                    <OdsTextInputField Label="Description" Required="true" @bind-Value="_description"
                                        Placeholder="e.g. Whole Foods Market · Mission"
                                        MaxLength="256" Spellcheck="true"
                                        Error="@(_descError ? "Add a short description." : null)" />
@@ -53,7 +54,7 @@
 
                 <!-- Account -->
                 <div class="aam-field">
-                    <div class="aam-field-label">Account</div>
+                    <div class="aam-field-label">Account<span class="odc-field-req" aria-hidden="true">*</span></div>
                     @if (LockAccount && _selectedAccount is not null)
                     {
                         <div class="atm-acct-locked">
@@ -141,7 +142,7 @@
                    drift: the field is being filled in from a receipt or a statement line, where the
                    counterparty is the merchant on it, and the read surfaces name the RECORD it links
                    to — which is a contact, and may well be a person. *@
-                <OdsContactSelect Id="atm-cp" Label="Merchant" Optional
+                <OdsContactSelect Id="atm-cp" Label="Merchant"
                                   Value="@_contactId" ValueChanged="@(v => _contactId = v)"
                                   Options="_cpOptions" Placeholder="Who is it with?"
                                   AllowCreate="@_canCreateContact" OnCreate="CreateContactOption"
@@ -150,7 +151,6 @@
                 <!-- Tags (wide, many-to-many) -->
                 <div class="odc-form-grid-wide">
                     <OdsTagMultiSelect Label="Tags"
-                                       Optional
                                        @bind-Value="_selectedTagIds"
                                        Options="_tagOptions"
                                        Placeholder="No tags"
@@ -159,7 +159,7 @@
                                        Help="Add as many as fit — e.g. a category plus Reimbursable." />
                 </div>
 
-                <!-- Status (wide) — the optional metadata from the DTO, shown inline -->
+                <!-- Status (wide) — metadata from the DTO, shown inline -->
                 <OdsFieldShell Label="Status" Class="odc-form-grid-wide">
                     @* Single-select, so the chips are a radio group (matching OdsSegmentedControl): the
                        active one is conveyed by aria-checked (not colour alone), roving tabindex keeps a
@@ -187,17 +187,17 @@
 
                 <!-- Status comment (wide) -->
                 <div class="odc-form-grid-wide">
-                    <OdsTextInputField Label="Status comment" Optional="true" @bind-Value="_statusComment"
+                    <OdsTextInputField Label="Status comment" @bind-Value="_statusComment"
                                        MaxLength="256" Spellcheck="true" Placeholder="Why this status?" />
                 </div>
 
                 <!-- External ID + Internal ID -->
-                <OdsTextInputField Label="External ID" @bind-Value="_externalId" MaxLength="64" Placeholder="Optional" />
-                <OdsTextInputField Label="Internal ID" @bind-Value="_internalId" MaxLength="64" Placeholder="Optional" />
+                <OdsTextInputField Label="External ID" @bind-Value="_externalId" MaxLength="64" Placeholder="The bank's reference" />
+                <OdsTextInputField Label="Internal ID" @bind-Value="_internalId" MaxLength="64" Placeholder="Your own reference" />
 
                 <!-- Extra data (wide) -->
                 <div class="odc-form-grid-wide">
-                    <OdsNoteField Label="Extra data" Optional="true" MaxLength="1024" @bind-Value="_extraData"
+                    <OdsNoteField Label="Extra data" MaxLength="1024" @bind-Value="_extraData"
                                   Placeholder="Notes or raw metadata to keep with this transaction" />
                 </div>
 
@@ -206,7 +206,7 @@
                      drop zone. Nothing is written until Save: a removed file is staged and detached on
                      save, and new uploads are queued and attached on save — in both modes, so Cancel
                      leaves the transaction's attachments exactly as they were. -->
-                <OdsFieldShell Label="Attachments" Optional="true" Help="@AttachmentsHelp" Class="odc-form-grid-wide">
+                <OdsFieldShell Label="Attachments" Help="@AttachmentsHelp" Class="odc-form-grid-wide">
                     @if (IsEdit)
                     {
                         <TransactionFilesSection TransactionId="Transaction!.TransactionId"

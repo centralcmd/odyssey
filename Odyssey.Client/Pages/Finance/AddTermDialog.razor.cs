@@ -115,6 +115,18 @@ public partial class AddTermDialog
             ? TermKindVisuals.DefaultFeeBillingPeriod.ToString()
             : "";
 
+    // Each kind keeps its registry hue on the card, as it does on every tile and history row.
+    private IReadOnlyList<OdsCardSelectOption> KindOptions =>
+        [.. _eligibleKinds.Select(KindOption)];
+
+    private static OdsCardSelectOption KindOption(TermKind kind)
+    {
+        var info = TermKindVisuals.Info(kind);
+        return new OdsCardSelectOption { Value = kind.ToString(), Label = info.Label, Icon = info.Icon, Color = info.Color, Soft = info.Soft };
+    }
+
+    private void OnKindPicked(string value) => PickKind(Enum.Parse<TermKind>(value));
+
     private void PickKind(TermKind kind)
     {
         _kind = kind;

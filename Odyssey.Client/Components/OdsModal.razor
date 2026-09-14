@@ -6,6 +6,14 @@
     (@bind-Open). Wide is the 1240px / 96vw variant for batch grids / file
     analysis. OnClose fires on Esc, scrim click, and the close button; omit it
     (leave Open one-way) to hide the close affordance.
+
+    Field markers: the system marks REQUIRED only (a `*` after the label) — nothing
+    is ever labelled "Optional". The dialog explains the asterisk once: when the
+    body holds at least one required field, the footer grows a muted "* Required"
+    legend on the left. Detection is by what actually rendered (a CSS :has() over
+    the body for .odc-field-req / MudBlazor's .mud-input-required), so no host has
+    to declare it and a field that appears conditionally is picked up live. Pass
+    RequiredLegend="false" to suppress it.
 *@
 
 @implements IAsyncDisposable
@@ -21,6 +29,10 @@
         @ChildContent
     </DialogContent>
     <DialogActions>
+        @if (RequiredLegend)
+        {
+            <span class="ods-modal-legend"><span class="odc-field-req" aria-hidden="true">*</span> Required</span>
+        }
         @Footer
     </DialogActions>
 </MudDialog>

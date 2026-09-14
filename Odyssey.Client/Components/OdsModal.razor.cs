@@ -28,6 +28,10 @@ public partial class OdsModal
     /// <summary>Right-aligned footer actions (typically OdsButtons).</summary>
     [Parameter] public RenderFragment? Footer { get; set; }
 
+    /// <summary>Grow a muted "* Required" legend in the footer when the body holds a required field
+    /// (Odyssey Design System · Modal <c>requiredLegend</c>). Default true.</summary>
+    [Parameter] public bool RequiredLegend { get; set; } = true;
+
     /// <summary>Optional header actions rendered in the title bar, just before the close button
     /// (e.g. a favourite toggle on the photo lightbox). Mirrors the design-system Modal head slot.</summary>
     [Parameter] public RenderFragment? HeaderActions { get; set; }

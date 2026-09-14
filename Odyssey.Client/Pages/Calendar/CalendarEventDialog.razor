@@ -27,11 +27,11 @@
                 </div>
             }
 
-            <OdsField Label="Title" Value="@_draft.Title" MaxLength="200"
+            <OdsField Label="Title" Required="true" Value="@_draft.Title" MaxLength="200"
                       ValueChanged="@(v => { _draft.Title = v; _draft.TitleError = null; })" Error="@_draft.TitleError" />
 
             <OdsFormRow>
-                <OdsSelect Label="Calendar" Value="@(_draft.CalendarId?.ToString())"
+                <OdsSelect Label="Calendar" Required="true" Value="@(_draft.CalendarId?.ToString())"
                            ValueChanged="@(v => _draft.CalendarId = Guid.TryParse(v, out var id) ? id : null)"
                            Options="_calendarOptions" />
                 <OdsFieldShell Label="All day">
@@ -39,7 +39,7 @@
                 </OdsFieldShell>
             </OdsFormRow>
 
-            <OdsFieldShell Label="Starts" Error="@_draft.StartDateError">
+            <OdsFieldShell Label="Starts" Required="true" Error="@_draft.StartDateError">
                 <div class="cal-when-row">
                     <OdsDateField AriaLabel="Start date" Value="_draft.StartDate" ValueChanged="@(v => _draft.StartDate = v)" />
                     @if (!_draft.IsAllDay)
@@ -48,7 +48,7 @@
                     }
                 </div>
             </OdsFieldShell>
-            <OdsFieldShell Label="Ends" Error="@_draft.EndError" Help="@(_draft.IsAllDay ? "Inclusive — the last whole day." : null)">
+            <OdsFieldShell Label="Ends" Required="true" Error="@_draft.EndError" Help="@(_draft.IsAllDay ? "Inclusive — the last whole day." : null)">
                 <div class="cal-when-row">
                     <OdsDateField AriaLabel="End date" Value="_draft.EndDate" ValueChanged="@(v => _draft.EndDate = v)" Min="_draft.StartDate" />
                     @if (!_draft.IsAllDay)
@@ -58,9 +58,9 @@
                 </div>
             </OdsFieldShell>
 
-            <OdsField Label="Location" Optional="true" Value="@_draft.Location" MaxLength="300"
-                      ValueChanged="@(v => _draft.Location = v)" Placeholder="Optional" />
-            <OdsNoteField Label="Description" Optional="true" MaxLength="2000" Rows="3"
+            <OdsField Label="Location" Value="@_draft.Location" MaxLength="300"
+                      ValueChanged="@(v => _draft.Location = v)" Placeholder="Where it happens" />
+            <OdsNoteField Label="Description" MaxLength="2000" Rows="3"
                           Value="@_draft.Description" ValueChanged="@(v => _draft.Description = v)" Placeholder="Notes, agenda, links…" />
 
             @if (Mode == CalendarEventDialogMode.Series)
@@ -123,7 +123,7 @@
 
         @if (_draft.Frequency == RecurrenceFrequency.Weekly)
         {
-            <OdsFieldShell Label="Repeat on" Error="@_draft.DaysError">
+            <OdsFieldShell Label="Repeat on" Required="true" Error="@_draft.DaysError">
                 <div class="cal-daytoggle" role="group" aria-label="Repeat on">
                     @foreach (var (flag, label) in _dayToggles)
                     {
@@ -145,12 +145,12 @@
                                ValueChanged="@(v => _draft.MonthOfYear = int.TryParse(v, out var m) ? m : null)"
                                Options="_monthOptions" />
                 }
-                <OdsStepperField Label="Day of month" Value="_draft.DayOfMonth" ValueChanged="@(v => _draft.DayOfMonth = v)"
+                <OdsStepperField Label="Day of month" Required="true" Value="_draft.DayOfMonth" ValueChanged="@(v => _draft.DayOfMonth = v)"
                                   Min="1" Max="31" Error="@_draft.DayOfMonthError" />
             </OdsFormRow>
         }
 
-        <OdsFieldShell Label="Ends" Error="@(_draft.EndDateError ?? _draft.CountError)">
+        <OdsFieldShell Label="Ends" Required="true" Error="@(_draft.EndDateError ?? _draft.CountError)">
             <div class="cal-ends">
                 <label class="@("cal-ends-opt" + (_draft.EndMode == "date" ? " on" : ""))">
                     <input type="radio" name="cal-ends" checked="@(_draft.EndMode == "date")" @onchange="@(() => _draft.EndMode = "date")" />

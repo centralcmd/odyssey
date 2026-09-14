@@ -30,12 +30,12 @@
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
 
-    <OdsField Label="Name" @bind-Value="_name" Placeholder="e.g. Netflix" Error="@_nameError" />
+    <OdsField Label="Name" Required="true" @bind-Value="_name" Placeholder="e.g. Netflix" Error="@_nameError" />
 
     <OdsFormRow>
         <OdsField Label="External id" @bind-Value="_externalId" MaxLength="128"
-                  Placeholder="Optional — membership / account no." />
-        <OdsContactSelect Id="@CompanyFieldId" Label="Company" Optional
+                  Placeholder="e.g. 4471-908" />
+        <OdsContactSelect Id="@CompanyFieldId" Label="Company"
                           Value="@_contactId" ValueChanged="@(v => _contactId = v)"
                           Options="_companyOptions"
                           AllowCreate="@_canCreateContact" OnCreate="CreateContactOption"
@@ -44,7 +44,7 @@
 
     <OdsFormRow>
         <OdsDateField Label="Start date" Required="true" @bind-Value="_startDate" Error="@_startError" />
-        <OdsDateField Label="End date" Optional="true" @bind-Value="_endDate" Min="_startDate"
+        <OdsDateField Label="End date" @bind-Value="_endDate" Min="_startDate"
                       Placeholder="Open-ended" Error="@_endError" />
     </OdsFormRow>
 
@@ -54,7 +54,7 @@
                        Currency="@_currencyCode" CurrencyChanged="OnCurrencyChanged"
                        CurrencyOptions="CurrencyOptions" CurrencySearchThreshold="0"
                        Error="@_amountError" Class="sub-amount-expense" />
-        <OdsBillingIntervalSelect Value="@_interval"
+        <OdsBillingIntervalSelect Required="true" Value="@_interval"
                                   ValueChanged="OnIntervalChanged"
                                   Placeholder="Choose a cadence…" Error="@_intervalError"
                                   Help="@(_intervalError is null ? "How often it bills." : null)" />
@@ -67,6 +67,6 @@
                       Help="The billing day is derived from this." Error="@_firstBillingError" />
     </OdsFormRow>
 
-    <OdsNoteField Label="Notes" Optional="true" MaxLength="1024" @bind-Value="_notes"
+    <OdsNoteField Label="Notes" MaxLength="1024" @bind-Value="_notes"
                   Placeholder="Plan tier, seats, renewal notes…" />
 </OdsFormDialog>

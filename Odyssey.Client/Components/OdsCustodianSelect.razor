@@ -21,7 +21,7 @@
 
     Accessibility (the picker half of the WCAG 2.2 AA contract):
       • A11Y-1 — a persistent "Custodian" label, associated to the inner input by a
-                 real <label for> + InputId (not just aria-labelledby); optional in text.
+                 real <label for> + InputId (not just aria-labelledby).
       • A11Y-2/3 — combobox/listbox/option semantics + keyboard come from
                    MudAutocomplete; the clear (×) is its keyboard-operable button.
       • A11Y-4 — loading/empty/error states sit in two ALWAYS-mounted live regions
@@ -35,10 +35,6 @@
 <div class="@FieldClass">
     <label class="odc-field-label" for="@_inputId">
         @Label
-        @if (Optional)
-        {
-            <span class="odc-field-opt">Optional</span>
-        }
     </label>
 
     @* InputId + the <label for> above give a real label association on the inner input; Error lets
@@ -79,8 +75,6 @@
     [Parameter] public IReadOnlyList<ExistingContact> Contacts { get; set; } = [];
 
     [Parameter] public string Label { get; set; } = "Custodian";
-
-    [Parameter] public bool Optional { get; set; } = true;
 
     [Parameter] public string Placeholder { get; set; } = "Search contacts…";
 

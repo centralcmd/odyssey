@@ -20,11 +20,11 @@
         <div class="ods-modal-body">
             <OdsFormRow>
                 <OdsDatePicker Value="_fromDate" ValueChanged="@(d => { _fromDate = d; _errors.Remove("fromDate"); })"
-                               Label="Cover from" Error="@_errors.ContainsKey("fromDate")"
+                               Label="Cover from" Required="true" Error="@_errors.ContainsKey("fromDate")"
                                ErrorText="@_errors.GetValueOrDefault("fromDate")"
                                HelperText="Start of this period's cover." />
                 <OdsDatePicker Value="_toDate" ValueChanged="@(d => { _toDate = d; _errors.Remove("toDate"); })"
-                               Label="Cover to" Error="@_errors.ContainsKey("toDate")"
+                               Label="Cover to" Required="true" Error="@_errors.ContainsKey("toDate")"
                                ErrorText="@_errors.GetValueOrDefault("toDate")"
                                HelperText="End of this period's cover." />
             </OdsFormRow>
@@ -32,14 +32,14 @@
             @* Amount and currency are one control per figure, and the two currencies stay
                independent — a policy may insure in one currency and bill in another. *@
             <OdsFormRow>
-                <OdsMoneyField Label="Premium" SignEditable="true"
+                <OdsMoneyField Label="Premium" Required="true" SignEditable="true"
                                Value="@_premiumStr" ValueChanged="OnPremiumChanged"
                                Currency="@_premiumCurrency" CurrencyChanged="@(v => _premiumCurrency = v)"
                                CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
                                Error="@_errors.GetValueOrDefault("premium")"
                                Help="Premium for this term, as stored (not annualized)." />
 
-                <OdsMoneyField Label="Coverage amount" SignEditable="true"
+                <OdsMoneyField Label="Coverage amount" Required="true" SignEditable="true"
                                Value="@_coverageStr" ValueChanged="OnCoverageChanged"
                                Currency="@_coverageCurrency" CurrencyChanged="@(v => _coverageCurrency = v)"
                                CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
@@ -47,7 +47,7 @@
                                Help="Insured sum for this term." />
             </OdsFormRow>
 
-            <OdsNoteField Label="Notes" Optional="true" MaxLength="512"
+            <OdsNoteField Label="Notes" MaxLength="512"
                           Value="@_notes" ValueChanged="OnNotesChanged"
                           Placeholder="What changed this period — discount applied, coverage raised…"
                           Error="@_errors.GetValueOrDefault("notes")" />

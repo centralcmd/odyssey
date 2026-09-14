@@ -1,0 +1,183 @@
+@*
+    OdsCardSelect — a single-select picker drawn as a row of tappable cards
+    (Odyssey Design System · components/CardSelect).
+
+    Icon over label, centred, tinted in an accent when selected. The shape for the
+    "what kind of thing is this?" question at the top of a create dialog — contract
+    party kind, insurance policy role, account term kind — where the options are few,
+    equally weighted and want an icon to be told apart. Use OdsSegmentedControl for
+    dense 2–3 option switches, OdsRadioGroup when each option needs a sentence.
+
+    Controlled via @bind-Value. Proper radiogroup semantics — roving tabindex, ←/→
+    (and ↑/↓) move and select, Home/End jump; selection and focus move together.
+
+    Accent: Accent (icon), AccentLine (border, defaults to Accent) and AccentSoft
+    (selected background) tint the whole group — pass a module accent such as
+    "var(--ins-accent)". An option may carry its own Color / Line / Soft to override
+    it, the way the account-term kinds each have their own hue.
+
+    Layout: Columns fixes the column count (null fills the row); MaxItemWidth caps
+    each card, in px, and pairs with Center for a balanced two-up.
+
+    Hand-rolled buttons rather than MudToggleGroup, for the same reason as
+    OdsSegmentedControl: the design needs radiogroup/radio semantics with a roving
+    tabindex, which MudToggleGroup does not provide.
+*@
+
+<div class="odc-cardsel @(Center ? "center" : null)" role="radiogroup" aria-label="@AriaLabel"
+     style="@GroupStyle" @attributes="UserAttributes">
+    @for (var i = 0; i < Options.Count; i++)
+    {
+        var index = i;
+        var option = Options[index];
+        var active = option.Value == Value;
+        <button type="button"
+                role="radio"
+                aria-checked="@(active ? "true" : "false")"
+                tabindex="@(TabStop(index) ? 0 : -1)"
+                disabled="@option.Disabled"
+                class="odc-cardsel-opt"
+                style="@OptionStyle(option)"
+                @ref="_buttonRefs[index]"
+                @onclick="@(() => Select(option))"
+                @onkeydown="@(e => OnKeyDown(e))">
+            @if (!string.IsNullOrEmpty(option.Icon))
+            {
+                <span class="material-icons" aria-hidden="true">@option.Icon</span>
+            }
+            <span class="odc-cardsel-lab">@option.Label</span>
+            @if (!string.IsNullOrEmpty(option.Sub))
+            {
+                <span class="odc-cardsel-sub">@option.Sub</span>
+            }
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>The options, in display order.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsCardSelectOption> Options { get; set; } = [];
+
+    /// <summary>Selected value. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>Group accent — icon colour, and the border when <see cref="AccentLine"/> is absent.</summary>
+    [Parameter] public string? Accent { get; set; }
+
+    /// <summary>Group border colour when selected / hovered — defaults to <see cref="Accent"/>.</summary>
+    [Parameter] public string? AccentLine { get; set; }
+
+    /// <summary>Group soft tint — the selected card's background.</summary>
+    [Parameter] public string? AccentSoft { get; set; }
+
+    /// <summary>Fixed column count; null (default) fills the row with one column per option.</summary>
+    [Parameter] public int? Columns { get; set; }
+
+    /// <summary>Caps each card's width, in px — pair with <see cref="Center"/> for a balanced two-up.</summary>
+    [Parameter] public int? MaxItemWidth { get; set; }
+
+    /// <summary>Centre the grid instead of stretching it.</summary>
+    [Parameter] public bool Center { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private ElementReference[] _buttonRefs = [];
+
+    protected override void OnParametersSet()
+    {
+        if (_buttonRefs.Length != Options.Count)
+            _buttonRefs = new ElementReference[Options.Count];
+    }
+
+    private string GroupStyle
+    {
+        get
+        {
+            var track = MaxItemWidth is { } width ? $"{width}px" : "1fr";
+            var repeat = Columns is { } columns ? columns.ToString(System.Globalization.CultureInfo.InvariantCulture) : "auto-fit";
+            var style = $"grid-template-columns:repeat({repeat}, minmax(0, {track}));";
+            if (!string.IsNullOrEmpty(Accent))
+                style += $"--odc-cardsel-accent:{Accent};";
+            if (!string.IsNullOrEmpty(AccentLine ?? Accent))
+                style += $"--odc-cardsel-line:{AccentLine ?? Accent};";
+            if (!string.IsNullOrEmpty(AccentSoft))
+                style += $"--odc-cardsel-soft:{AccentSoft};";
+            return style;
+        }
+    }
+
+    private static string? OptionStyle(OdsCardSelectOption option)
+    {
+        var style = string.Empty;
+        if (!string.IsNullOrEmpty(option.Color))
+            style += $"--odc-cardsel-accent:{option.Color};";
+        if (!string.IsNullOrEmpty(option.Line ?? option.Color))
+            style += $"--odc-cardsel-line:{option.Line ?? option.Color};";
+        if (!string.IsNullOrEmpty(option.Soft))
+            style += $"--odc-cardsel-soft:{option.Soft};";
+        return style.Length == 0 ? null : style;
+    }
+
+    // The selected card is the group's tab stop; with nothing selected yet the first enabled card
+    // takes it, so the group is never unreachable from the keyboard.
+    private bool TabStop(int index)
+    {
+        var selected = SelectedIndex;
+        if (selected >= 0)
+            return index == selected;
+        for (var i = 0; i < Options.Count; i++)
+        {
+            if (!Options[i].Disabled)
+                return i == index;
+        }
+        return false;
+    }
+
+    private int SelectedIndex
+    {
+        get
+        {
+            for (var i = 0; i < Options.Count; i++)
+            {
+                if (Options[i].Value == Value)
+                    return i;
+            }
+            return -1;
+        }
+    }
+
+    private Task Select(OdsCardSelectOption option)
+    {
+        if (option.Disabled || option.Value == Value)
+            return Task.CompletedTask;
+        Value = option.Value;
+        return ValueChanged.InvokeAsync(option.Value);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        var index = SelectedIndex;
+        if (index < 0 || Options.Count == 0)
+            return;
+
+        var nextIndex = e.Key switch
+        {
+            "ArrowRight" or "ArrowDown" => (index + 1) % Options.Count,
+            "ArrowLeft" or "ArrowUp" => (index - 1 + Options.Count) % Options.Count,
+            "Home" => 0,
+            "End" => Options.Count - 1,
+            _ => -1,
+        };
+        if (nextIndex < 0 || Options[nextIndex].Disabled)
+            return;
+
+        await Select(Options[nextIndex]);
+        // APG radiogroup: selection and DOM focus move together (WCAG 2.1.1 / 4.1.2).
+        await _buttonRefs[nextIndex].FocusAsync();
+    }
+}

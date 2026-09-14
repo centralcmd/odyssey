@@ -35,7 +35,7 @@
         <div class="ods-modal-body">
             @if (_choosable)
             {
-                <OdsSelect Label="Attaching to" Value="@_target.ToString()" ValueChanged="OnTargetChanged"
+                <OdsSelect Label="Attaching to" Required="true" Value="@_target.ToString()" ValueChanged="OnTargetChanged"
                            Options="_periodOptions"
                            Help="Defaults to the period in force — pick an earlier one to file a document against it." />
             }

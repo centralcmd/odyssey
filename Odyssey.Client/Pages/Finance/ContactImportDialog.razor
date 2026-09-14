@@ -114,7 +114,7 @@
                 {
                     <OdsAlert Severity="Severity.Error">@_rejected</OdsAlert>
                 }
-                <OdsFieldShell Label="vCard file" Error="@_fileError">
+                <OdsFieldShell Label="vCard file" Required="true" Error="@_fileError">
                     <OdsFileUpload Files="_files" FilesChanged="OnFilesChanged"
                                    Multiple="false" ShowKinds="false" Compact="true"
                                    Accept=".vcf,text/vcard"

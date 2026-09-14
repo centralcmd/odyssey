@@ -31,7 +31,7 @@
                     <OdsAlert Severity="Severity.Error">@_error</OdsAlert>
                 }
 
-                <OdsFieldShell Label="iCalendar file" Error="@_fileError">
+                <OdsFieldShell Label="iCalendar file" Required="true" Error="@_fileError">
                     <OdsFileUpload Files="_files" FilesChanged="OnFilesChanged"
                                    Multiple="false" ShowKinds="false" Compact="true"
                                    Accept=".ics,text/calendar"

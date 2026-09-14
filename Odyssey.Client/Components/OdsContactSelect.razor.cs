@@ -26,8 +26,6 @@ public partial class OdsContactSelect
 
     [Parameter] public string Label { get; set; } = "Contact";
 
-    [Parameter] public bool Optional { get; set; }
-
     /// <summary>
     /// Marks the field required: the visible <c>*</c> beside the label AND <c>aria-required</c> on the
     /// input. The marker alone would state the constraint to sighted users only.

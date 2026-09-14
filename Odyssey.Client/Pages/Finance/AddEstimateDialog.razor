@@ -10,7 +10,7 @@
     NewAccountEstimate DTO and the AccountEstimateService validation: a required money value
     (≥ 0) in the account currency, the currency locked to the account currency (shown
     read-only — the server rejects a differing currency with 400), an effective date (past or
-    future), and an optional note. An estimate has no kind / unit / billing dimension — it is a
+    future), and a note. An estimate has no kind / unit / billing dimension — it is a
     single amount, so every account type may carry one. Rejects an exact (AccountId,
     EffectiveFrom) duplicate client-side; the API still has the final say (400 / 409 → toast).
 *@
@@ -23,7 +23,7 @@
 
             @* Value — the hero money input, its currency locked to the account's *@
             <div class="est-value-block">
-                <OdsMoneyField Label="Estimated value" Size="lg" AllowNegative="false"
+                <OdsMoneyField Label="Estimated value" Required="true" Size="lg" AllowNegative="false"
                                Value="@_valueStr" ValueChanged="OnValueChanged"
                                Currency="@Account.CurrencyCode" CurrencyEditable="false"
                                Error="@(_errors.TryGetValue("value", out var valErr) ? valErr : null)">
@@ -42,7 +42,7 @@
 
             @* Effective date — the currency now reads inside the money field *@
             <OdsFormRow>
-                <OdsDatePicker Value="_effectiveFrom" ValueChanged="OnEffectiveFromChanged" Label="Effective from"
+                <OdsDatePicker Value="_effectiveFrom" ValueChanged="OnEffectiveFromChanged" Label="Effective from" Required="true"
                                HelperText="When this value takes effect" />
             </OdsFormRow>
             @if (_errors.TryGetValue("effectiveFrom", out var dateErr))
@@ -51,7 +51,7 @@
             }
 
             @* Note *@
-            <OdsNoteField Label="Note" Optional="true" MaxLength="512"
+            <OdsNoteField Label="Note" MaxLength="512"
                           Value="@_note" ValueChanged="OnNoteChanged"
                           Placeholder="Where this came from — e.g. “Refinance appraisal” or “Comparable sales”."
                           Error="@(_errors.TryGetValue("note", out var noteErr) ? noteErr : null)" />

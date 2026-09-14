@@ -20,7 +20,7 @@
         {
             <OdsField Label="Line 1" @bind-Value="Draft.Line1" Required="true" Error="@Err("line1")"
                       Placeholder="Street name and number" MaxLength="256" />
-            <OdsField Label="Line 2" @bind-Value="Draft.Line2" Placeholder="Apartment, floor, etc. (optional)" MaxLength="256" />
+            <OdsField Label="Line 2" @bind-Value="Draft.Line2" Placeholder="Apartment, floor, etc." MaxLength="256" />
             <OdsFormRow Cols="2" Style="grid-template-columns:140px 1fr;">
                 <OdsField Label="Postal code" @bind-Value="Draft.PostalCode" Placeholder="0554" MaxLength="32" />
                 <OdsField Label="City" @bind-Value="Draft.City" Required="true" Error="@Err("city")" Placeholder="Oslo" MaxLength="128" />

@@ -29,16 +29,16 @@
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
 
-    <OdsField Label="Policy name" @bind-Value="_name" Placeholder="e.g. Home & Contents 2026"
+    <OdsField Label="Policy name" Required="true" @bind-Value="_name" Placeholder="e.g. Home & Contents 2026"
               Error="@_nameError" />
 
     <OdsFormRow>
-        <OdsField Label="Policy number" @bind-Value="_policyNumber" Placeholder="Optional — insurer's reference" />
-        <OdsInsurancePolicyTypeSelect Value="@_type"
+        <OdsField Label="Policy number" @bind-Value="_policyNumber" Placeholder="Insurer's reference" />
+        <OdsInsurancePolicyTypeSelect Required="true" Value="@_type"
                                       ValueChanged="@(v => { _type = v; _typeError = null; })"
                                       Placeholder="Choose a type…" Error="@_typeError" />
     </OdsFormRow>
 
-    <OdsNoteField Label="Notes" Optional="true" MaxLength="1024" @bind-Value="_notes"
+    <OdsNoteField Label="Notes" MaxLength="1024" @bind-Value="_notes"
                   Placeholder="What this policy covers, excess, claims history…" />
 </OdsFormDialog>

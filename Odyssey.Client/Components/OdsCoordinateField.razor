@@ -12,10 +12,10 @@
     <OdsFormRow Cols="2">
         <OdsNumberField Label="@LatLabel" Value="Lat" ValueChanged="OnLatChanged"
                         Placeholder="−90 … 90" Min="-90" Max="90" Step="0.000001"
-                        Required="Required" Optional="Optional" Disabled="Disabled" Error="@LatError" />
+                        Required="Required" Disabled="Disabled" Error="@LatError" />
         <OdsNumberField Label="@LngLabel" Value="Lng" ValueChanged="OnLngChanged"
                         Placeholder="−180 … 180" Min="-180" Max="180" Step="0.000001"
-                        Required="Required" Optional="Optional" Disabled="Disabled" Error="@LngError" />
+                        Required="Required" Disabled="Disabled" Error="@LngError" />
     </OdsFormRow>
     @if (Message is not null)
     {
@@ -45,8 +45,6 @@
     [Parameter] public string? Error { get; set; }
 
     [Parameter] public bool Required { get; set; }
-
-    [Parameter] public bool Optional { get; set; }
 
     [Parameter] public bool Disabled { get; set; }
 

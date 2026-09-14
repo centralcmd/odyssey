@@ -79,8 +79,6 @@ public partial class OdsMoneyField
 
     [Parameter] public bool Required { get; set; }
 
-    [Parameter] public bool Optional { get; set; }
-
     /// <summary>Disables the whole control (amount and currency).</summary>
     [Parameter] public bool Disabled { get; set; }
 
