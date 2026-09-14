@@ -50,15 +50,21 @@
                      ResetValueOnEmptyText="false"
                      Class="@Class"
                      InputId="@InputId"
+                     ItemDisabledFunc="@(o => o?.Disabled == true)"
                      Error="@Error"
                      @attributes="UserAttributes">
         <ItemTemplate Context="option">
-            <span class="@ItemClass(option)">
+            <span class="@ItemClass(option)" aria-disabled="@(option.Disabled ? "true" : null)">
                 @if (!string.IsNullOrEmpty(option.Icon))
                 {
                     <span class="material-icons odc-combo-opt-ic" style="@OptionIconStyle(option)" aria-hidden="true">@option.Icon</span>
                 }
                 <span class="odc-combo-opt-label">@option.Label</span>
+                @* A qualifier, always in WORDS — a row never says why it can't be picked by colour alone. *@
+                @if (!string.IsNullOrEmpty(option.Note))
+                {
+                    <span class="odc-combo-opt-note">@option.Note</span>
+                }
                 @* The type the row would create — muted and trailing, never competing with the action. *@
                 @if (KindOf(option) is { } kind)
                 {

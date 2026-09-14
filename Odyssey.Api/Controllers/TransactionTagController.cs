@@ -104,10 +104,12 @@ public class TransactionTagController : ControllerBase
     [HttpDelete("{id}", Name = "DeleteTransactionTag")]
     [Authorize(Policy = PermissionClaims.TransactionTagsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Delete a transaction tag based on the transaction tag ID.",
-        Description = @"Delete a transaction tag based on the transaction tag ID.")]
+        Description = @"Delete a transaction tag based on the transaction tag ID. A tag planned for by a budget 
+                        item is refused with a 409 naming how many items reference it.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the transaction tag to delete.")] Guid id, CancellationToken cancellationToken = default)

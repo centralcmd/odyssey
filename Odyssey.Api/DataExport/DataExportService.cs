@@ -288,8 +288,6 @@ public sealed class DataExportService
             {
                 BudgetItemId = budgetItem.BudgetItemId,
                 BudgetId = budgetItem.BudgetId,
-                Name = budgetItem.Name,
-                Description = budgetItem.Description,
                 CategoryType = (FinanceDtos.BudgetCategoryType)budgetItem.CategoryType,
                 PlannedAmount = budgetItem.PlannedAmount,
                 TransactionTagId = budgetItem.TransactionTagId,

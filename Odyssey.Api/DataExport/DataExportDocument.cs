@@ -181,15 +181,16 @@ public sealed class BudgetExport
     public string BaseCurrencyCode { get; init; } = string.Empty;
 }
 
+// A budget item has no name or description of its own (issue #75) — its transaction tag carries
+// them, and the tag is exported in its own table. The FK column only, matching the document's rule
+// everywhere else; no nested tag.
 public sealed class BudgetItemExport
 {
     public Guid BudgetItemId { get; init; }
     public Guid BudgetId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string? Description { get; init; }
     public BudgetCategoryType CategoryType { get; init; }
     public decimal PlannedAmount { get; init; }
-    public Guid? TransactionTagId { get; init; }
+    public Guid TransactionTagId { get; init; }
 }
 
 public sealed class ContactExport

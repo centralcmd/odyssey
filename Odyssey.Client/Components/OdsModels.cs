@@ -86,6 +86,19 @@ public sealed record OdsOption(string Value, string Label)
     /// insurance link pickers. Rendered by <c>OdsTagMultiSelect</c>; ignored elsewhere.
     /// </summary>
     public string? Sub { get; init; }
+
+    /// <summary>
+    /// Muted trailing text on the row — a reason or a qualifier, never colour or an icon alone
+    /// (e.g. "in use" on a transaction tag another budget item already plans for). Rendered by
+    /// <c>OdsCombobox</c>.
+    /// </summary>
+    public string? Note { get; init; }
+
+    /// <summary>
+    /// Renders the row as unselectable. Always pair it with <see cref="Note"/> saying why: a row that
+    /// cannot be picked must say so in words. Honoured by <c>OdsCombobox</c>.
+    /// </summary>
+    public bool Disabled { get; init; }
 }
 
 /// <summary>

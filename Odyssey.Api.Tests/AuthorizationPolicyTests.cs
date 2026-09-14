@@ -154,6 +154,42 @@ public class AuthorizationPolicyTests
             + string.Join(", ", gaps));
     }
 
+    /// <summary>
+    /// AC 26. Pins the premise issue #75 §10.2 rests on: a budget item read now carries the transaction
+    /// tag's name, description and archival date under <c>budgets.read</c>, which is not
+    /// <c>transactions.tags.read</c>.
+    ///
+    /// <para>
+    /// That crossover was accepted on the strength of an observation — every shipped role holds both
+    /// claims together, so no role actually gains a projection it could not already reach. An
+    /// observation is not an invariant, so this makes it one: the day a role is granted
+    /// <c>budgets.read</c> without the tag claim, the exposure argument has to be re-made rather than
+    /// quietly falling over.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void No_role_holds_BudgetsRead_without_TransactionTagsRead()
+    {
+        (string Role, string[] Claims)[] roles =
+        [
+            ("Admin", RolePermissions.AdminClaims),
+            ("Owner", RolePermissions.OwnerClaims),
+            ("User", RolePermissions.UserClaims),
+            ("Guest", RolePermissions.GuestClaims),
+        ];
+
+        var gaps = roles
+            .Where(role => role.Claims.Contains(PermissionClaims.BudgetsRead, StringComparer.Ordinal))
+            .Where(role => !role.Claims.Contains(PermissionClaims.TransactionTagsRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .ToList();
+
+        Assert.True(gaps.Count == 0,
+            "Issue #75 §10.2 accepts embedding the transaction tag on every budget item because no "
+            + "shipped role reaches budgets.read without transactions.tags.read. Re-make that argument "
+            + "before granting them apart. Roles that do: " + string.Join(", ", gaps));
+    }
+
     [Fact]
     public void PermissionClaimsConfigurePolicies()
     {

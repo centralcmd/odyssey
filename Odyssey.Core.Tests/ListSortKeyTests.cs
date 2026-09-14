@@ -233,8 +233,14 @@ public class ListSortKeyTests
         var service = new BudgetItemService(context);
 
         var budgetId = Guid.NewGuid();
-        var i1 = new BudgetItem { BudgetId = budgetId, Name = "Alpha", PlannedAmount = 20m, CategoryType = Context.BudgetCategoryType.Income };
-        var i2 = new BudgetItem { BudgetId = budgetId, Name = "Bravo", PlannedAmount = 10m, CategoryType = Context.BudgetCategoryType.Expense };
+        // The Name sort key means the JOINED TAG's name now (issue #75) — the item has none of its own.
+        var alpha = new Context.TransactionTag { Name = "Alpha" };
+        var bravo = new Context.TransactionTag { Name = "Bravo" };
+        context.TransactionTags.AddRange(alpha, bravo);
+        await context.SaveChangesAsync();
+
+        var i1 = new BudgetItem { BudgetId = budgetId, PlannedAmount = 20m, CategoryType = Context.BudgetCategoryType.Income, TransactionTagId = alpha.TransactionTagId };
+        var i2 = new BudgetItem { BudgetId = budgetId, PlannedAmount = 10m, CategoryType = Context.BudgetCategoryType.Expense, TransactionTagId = bravo.TransactionTagId };
         context.BudgetItems.AddRange(i1, i2);
         await context.SaveChangesAsync();
         var ids = new HashSet<Guid> { i1.BudgetItemId, i2.BudgetItemId };

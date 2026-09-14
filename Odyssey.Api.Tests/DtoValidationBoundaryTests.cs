@@ -138,9 +138,9 @@ public class DtoValidationBoundaryTests
     private static NewBudgetItem ValidBudgetItem(Guid budgetId) => new()
     {
         BudgetId = budgetId,
-        Name = "Rent",
         CategoryType = Odyssey.Dtos.Finance.BudgetCategoryType.Expense,
         PlannedAmount = 1000m,
+        TransactionTagId = Guid.NewGuid(),
     };
 
     // EF InMemory only materializes HasData reference rows (the supported currencies the account/
@@ -480,12 +480,41 @@ public class DtoValidationBoundaryTests
     // No positive control: a successful create needs a seeded budget (FK). Model-binding validation
     // runs before that lookup, so an annotation violation still short-circuits to 400.
 
+    // The item has no Name or Description of its own any more (issue #75): its REQUIRED transaction
+    // tag is its identity, and the boundary cases moved onto that field.
+
+    /// <summary>
+    /// AC 7. Omitting the tag entirely is caught by <c>[Required]</c> in model validation, before the
+    /// service ever runs.
+    /// </summary>
     [Fact]
-    public async Task CreateBudgetItem_NameOverStringLength_Returns400()
+    public async Task CreateBudgetItem_MissingTransactionTagId_Returns400()
+    {
+        await PostExpectingBadRequest("/api/budget-items", new
+        {
+            budgetId = Guid.NewGuid(),
+            categoryType = Odyssey.Dtos.Finance.BudgetCategoryType.Expense,
+            plannedAmount = 1000m,
+        });
+    }
+
+    /// <summary>
+    /// AC 8. <c>[Required]</c> does NOT reject <see cref="Guid.Empty"/> on a non-nullable
+    /// <see cref="Guid"/>, so this one is the service's own rejection, keyed to the same field.
+    /// </summary>
+    [Fact]
+    public async Task CreateBudgetItem_EmptyTransactionTagId_Returns400()
     {
         var body = ValidBudgetItem(Guid.NewGuid());
-        body.Name = new string('x', 65); // [StringLength(64)]
+        body.TransactionTagId = Guid.Empty;
         await PostExpectingBadRequest("/api/budget-items", body);
+    }
+
+    /// <summary>AC 9 — an unknown tag is a 400, not a 500, on the FK-free InMemory tier.</summary>
+    [Fact]
+    public async Task CreateBudgetItem_UnknownTransactionTagId_Returns400()
+    {
+        await PostExpectingBadRequest("/api/budget-items", ValidBudgetItem(Guid.NewGuid()));
     }
 
     [Fact]

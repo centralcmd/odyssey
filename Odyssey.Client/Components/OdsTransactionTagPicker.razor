@@ -1,0 +1,71 @@
+@using Odyssey.Dtos.Finance
+
+@*
+    OdsTransactionTagPicker — THE control for picking the transaction tag a record plans for
+    (Odyssey Design System · components/TransactionTagPicker).
+
+    Built for the budget item, where the tag is not a label on the item but the item's IDENTITY: the
+    row's name, its description and the thing its actuals are summed from all come from the tag
+    (issue #75).
+
+    It is NOT a new widget. It wraps OdsCombobox in an OdsFieldShell — the pairing every labelled
+    picker in the kit already uses — and adds only what a required, identity-bearing tag field needs:
+
+      • The selected tag's DESCRIPTION becomes the help line. With no description it falls back to the
+        standard helper, so the slot never renders empty — which is also what keeps the error line's
+        id stable: OdsFieldShell moves the error to {HtmlFor}-help-error only while help is present,
+        and aria-describedby names BOTH ids from the first render (the wiring is firstRender-only, so
+        an id introduced on a failed submit would never be applied).
+      • Tags already planned for are OFFERED but not selectable, marked with the trailing word
+        "in use" — never a colour or an icon alone.
+      • An archived tag reads "· Archived" in its option label, so the marker survives into the
+        collapsed input and the accessible name. An archived tag is offered only when it is already
+        this record's tag.
+      • Inline create, gated TWICE: pass OnCreateTag only where the caller holds
+        transactions.tags.create, and omit it on a surface with no submit to stage a create against —
+        an inline grid that saves on change must not put an unresolved tag id on the wire.
+      • Duplicate names are refused BEFORE the create is staged. Tag names are unique
+        case-insensitively, archived rows included, so the picker checks the typed name against the
+        list it already holds and renders the conflict at the field, naming the archived case, which
+        has no inline remedy.
+
+    HideLabel keeps the real <label for> association while removing it visually — for a grid cell
+    whose column header is display:none at narrow widths and so is no accessible name at all.
+*@
+
+<OdsFieldShell Label="@Label" HtmlFor="@InputId" Required="Required"
+               Help="@HelpText" Error="@ShownError" Class="@ShellClass">
+    @if (LoadFailed)
+    {
+        @* Explicitly NOT the "create a tag" empty state: telling someone to create a tag when the
+           list merely failed to load points them at the wrong problem. *@
+        <div class="odc-tagpick-unavailable">
+            <span>Unable to load the tag list.</span>
+            @if (OnRetry.HasDelegate)
+            {
+                <button type="button" class="odc-tagpick-link" @onclick="OnRetry">Retry</button>
+            }
+        </div>
+    }
+    else if (NoneSelectable)
+    {
+        <div class="odc-tagpick-empty">
+            <span>No tags left to plan for.</span>
+            <a class="odc-tagpick-link" href="@ManageHref">@ManageLabel</a>
+        </div>
+    }
+    else
+    {
+        <OdsCombobox InputId="@InputId"
+                     Value="@SelectedValue"
+                     ValueChanged="OnValueChanged"
+                     Options="@Options"
+                     Placeholder="@Placeholder"
+                     Disabled="Disabled"
+                     Required="Required"
+                     Error="@(ShownError is not null)"
+                     EmptyText="@EmptyText"
+                     AriaDescribedBy="@DescribedBy"
+                     OnCreate="@CreateHandler" />
+    }
+</OdsFieldShell>

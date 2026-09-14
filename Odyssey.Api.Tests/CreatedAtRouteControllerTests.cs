@@ -101,16 +101,19 @@ public class CreatedAtRouteControllerTests
             Archived = false,
         });
 
+        // A budget item is a plan for a TAG (issue #75), so the upsert needs a real one to name.
+        var tag = new Odyssey.Context.TransactionTag { Name = "Groceries", Description = "Food" };
+        context.TransactionTags.Add(tag);
+        await context.SaveChangesAsync();
+
         var controller = new BudgetItemController(NullLogger<BudgetItemController>.Instance, new BudgetItemService(context));
         var missingId = Guid.NewGuid();
         var result = await controller.Put(missingId, new NewBudgetItem
         {
             BudgetId = budget.BudgetId,
-            Name = "Groceries",
-            Description = "Food",
             CategoryType = BudgetCategoryType.Expense,
             PlannedAmount = 100,
-            TransactionTagId = null,
+            TransactionTagId = tag.TransactionTagId,
         });
 
         var createdResult = Assert.IsType<CreatedAtRouteResult>(result);

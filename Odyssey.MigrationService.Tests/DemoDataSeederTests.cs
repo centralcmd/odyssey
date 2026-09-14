@@ -73,6 +73,36 @@ public class DemoDataSeederTests
         Assert.Equal(externalUids.Count, externalUids.Distinct(StringComparer.Ordinal).Count());
 
         await AssertAliasAndLifecycleSeedAsync(journalForContacts, expected);
+        await AssertBudgetItemsAreAllTaggedAsync(finance, expected);
+    }
+
+    /// <summary>
+    /// AC 44 (issue #75). Every seeded budget carries the canonical seventeen lines, and every one of
+    /// them names a real transaction tag — the invariant the required foreign key now encodes, and the
+    /// one a demo seed silently violating it would hide until the first real migration.
+    /// </summary>
+    private static async Task AssertBudgetItemsAreAllTaggedAsync(OdysseyContext context, DemoDataSet expected)
+    {
+        Assert.Equal(expected.BudgetItems.Count, await context.BudgetItems.CountAsync());
+
+        var items = await context.BudgetItems.AsNoTracking().ToListAsync();
+        var budgetCount = await context.Budgets.CountAsync();
+
+        Assert.Equal(17 * budgetCount, items.Count);
+        Assert.All(items, item => Assert.NotEqual(Guid.Empty, item.TransactionTagId));
+
+        // Not merely non-empty: each id resolves to a seeded tag, which is what the FK will enforce.
+        var tagIds = await context.TransactionTags.Select(tag => tag.TransactionTagId).ToListAsync();
+        Assert.All(items, item => Assert.Contains(item.TransactionTagId, tagIds));
+
+        // And one item per tag per budget, the other half of the new unique index.
+        Assert.All(
+            items.GroupBy(item => item.BudgetId),
+            group => Assert.Equal(group.Count(), group.Select(item => item.TransactionTagId).Distinct().Count()));
+
+        // Tag names are unique case-insensitively now, so the demo set cannot seed a clash either.
+        var names = await context.TransactionTags.Select(tag => tag.Name).ToListAsync();
+        Assert.Equal(names.Count, names.Distinct(StringComparer.OrdinalIgnoreCase).Count());
     }
 
     /// <summary>

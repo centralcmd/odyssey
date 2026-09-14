@@ -1,33 +1,49 @@
 @using System.Globalization
 @using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Client.Services
 @using Odyssey.Dtos.Finance
 
 @* Add/edit budget item. Caller gates which mode by passing ExistingItem (edit) or not
-   (add); the matching budgets permission is enforced page-side and by the API. *@
+   (add); the matching budgets permission is enforced page-side and by the API.
+
+   Three fields, down from five (issue #75): a budget item has no name and no description of its
+   own — its transaction tag is REQUIRED, and the linked tag's name and description are the item's
+   identity wherever it is displayed.
+
+   Inline tag creation lives here and ONLY here. This dialog has a submit, so a staged create can
+   settle and resolve to a real id before the item is written; the edit-multiple grid saves on change
+   and is passed no create handler. *@
 @attribute [Authorize(Policy = PermissionClaims.TransactionTagsRead)]
 
 @inject IBudgetItemsApiClient BudgetItems
 @inject ISnackbar Snackbar
+@inject ITagQuickCreate<ExistingTransactionTag> TagCreator
+@inject IReferenceDataCache ReferenceData
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
                Icon="@(IsEdit ? "edit" : "playlist_add")"
                Title="@(IsEdit ? "Edit budget item" : "New budget item")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
                SubmitLabel="@(IsEdit ? "Save changes" : "Create budget item")"
+               SubmitDisabled="@Blocked"
                OnSubmit="SaveAsync">
     <SubtitleContent>
-        @(IsEdit ? "Update this line" : "Plan an income or expense line")@(string.IsNullOrWhiteSpace(BudgetName) ? "" : " for ")<strong>@BudgetName</strong>. Link a tag to track its actuals automatically.
+        @(IsEdit ? "Update this line" : "Plan an income or expense line")@(string.IsNullOrWhiteSpace(BudgetName) ? "" : " for ")<strong>@BudgetName</strong>. The tag you pick names the line and collects its actuals.
     </SubtitleContent>
     <ChildContent>
-        <!-- Item name -->
-        <MudTextField @bind-Value="_name"
-                      Label="Item name"
-                      Placeholder="e.g. Childcare"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense"
-                      Error="@_nameError"
-                      ErrorText="Give the item a name."
-                      Immediate="true" />
+        <!-- Transaction tag — the item's identity, not a label on it -->
+        <OdsTransactionTagPicker @ref="_tagPicker"
+                                 InputId="bi-tag-pick"
+                                 Value="@_tagId"
+                                 ValueChanged="OnTagChanged"
+                                 Tags="TransactionTags"
+                                 UsedTagIds="UsedTransactionTagIds"
+                                 Error="@_tagError"
+                                 LoadFailed="TagsLoadFailed"
+                                 OnRetry="OnRetryTags"
+                                 OnCreateTag="@(_canCreateTag ? CreateTagOption : null)" />
 
         <!-- Category + Planned amount -->
         <OdsFormRow>
@@ -39,118 +55,5 @@
                            Error="@(_plannedError ? "Enter a planned amount." : null)"
                            Help="@(_plannedError ? null : "Budget currency")" />
         </OdsFormRow>
-
-        <!-- Transaction tag -->
-        <MudSelect T="ExistingTransactionTag"
-                   Label="Transaction tag"
-                   @bind-Value="_selectedTag"
-                   Variant="Variant.Outlined"
-                   Margin="Margin.Dense"
-                   Dense="true"
-                   Clearable="true"
-                   Placeholder="No tag"
-                   HelperText="Optional — matched transactions become this item's actual.">
-            @foreach (var tag in AvailableTransactionTags)
-            {
-                var inUse = UsedTransactionTagIds.Contains(tag.TransactionTagId);
-                <MudSelectItem T="ExistingTransactionTag" Value="@tag" Disabled="@inUse">
-                    @tag.Name@(inUse ? " (in use)" : "")
-                </MudSelectItem>
-            }
-        </MudSelect>
-
-        <!-- Description -->
-        <MudTextField @bind-Value="_description"
-                      Label="Description"
-                      Placeholder="Optional"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense" />
     </ChildContent>
 </OdsFormDialog>
-
-@code {
-    [Parameter] public bool Open { get; set; }
-
-    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
-
-    /// <summary>Raised after a successful add/edit so the host can refresh.</summary>
-    [Parameter] public EventCallback OnSaved { get; set; }
-
-    [Parameter]
-    public Guid BudgetId { get; set; }
-
-    [Parameter]
-    public string? BudgetName { get; set; }
-
-    /// <summary>The budget's base currency — the only currency a planned amount can be in, so the
-    /// money editor shows it locked rather than offering a picker.</summary>
-    [Parameter]
-    public string BudgetCurrencyCode { get; set; } = "USD";
-
-    [Parameter]
-    public List<ExistingTransactionTag> TransactionTags { get; set; } = [];
-
-    [Parameter]
-    public List<Guid> UsedTransactionTagIds { get; set; } = [];
-
-    // When set, the dialog edits this item (PUT) instead of creating a new one (POST).
-    [Parameter]
-    public ExistingBudgetItem? ExistingItem { get; set; }
-
-    private bool IsEdit => ExistingItem is not null;
-
-    private string? _name;
-    private string? _description;
-    private BudgetCategoryType _categoryType = BudgetCategoryType.Expense;
-    private ExistingTransactionTag? _selectedTag;
-    // Held as text, not decimal?: OdsMoneyField is a string control, and round-tripping through
-    // decimal? on every keystroke would rewrite a partial entry ("1250.") the moment it was typed.
-    private string? _plannedAmountText;
-
-    private bool _nameError;
-    private bool _plannedError;
-
-    protected override void OnInitialized()
-    {
-        if (ExistingItem is null)
-            return;
-
-        _name = ExistingItem.Name;
-        _description = ExistingItem.Description;
-        _categoryType = ExistingItem.CategoryType;
-        _plannedAmountText = ExistingItem.PlannedAmount.ToString(CultureInfo.InvariantCulture);
-        _selectedTag = TransactionTags.FirstOrDefault(t => t.TransactionTagId == ExistingItem.TransactionTagId);
-    }
-
-    // Show every active tag so the selector is never empty; tags already claimed by
-    // another item in this budget are rendered disabled (see markup) rather than hidden.
-    private IEnumerable<ExistingTransactionTag> AvailableTransactionTags =>
-        TransactionTags
-            .Where(tag => tag.Archived is null)
-            .OrderBy(tag => tag.Name);
-
-    private static decimal? ParsePlanned(string? text) => OdsMoneyText.Parse(text);
-
-    private async Task<bool> SaveAsync()
-    {
-        var planned = ParsePlanned(_plannedAmountText);
-        _nameError = string.IsNullOrWhiteSpace(_name);
-        _plannedError = planned is null;
-        if (_nameError || _plannedError)
-            return false;
-
-        var payload = new NewBudgetItem
-        {
-            BudgetId = BudgetId,
-            Name = _name!.Trim(),
-            Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
-            CategoryType = _categoryType,
-            PlannedAmount = planned!.Value,
-            TransactionTagId = _selectedTag?.TransactionTagId,
-        };
-
-        return IsEdit
-            ? (await BudgetItems.UpdateAsync(ExistingItem!.BudgetItemId, payload)).Toast(Snackbar, "Unable to save item", "Budget item updated.")
-            : (await BudgetItems.CreateAsync(payload)).Toast(Snackbar, "Unable to add item", "Budget item added.");
-    }
-}

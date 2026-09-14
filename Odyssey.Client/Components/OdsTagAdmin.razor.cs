@@ -247,7 +247,7 @@ public partial class OdsTagAdmin<TRow>
     private bool _editArchived;
     private string? _draftName;
     private string? _draftDescription;
-    private bool _draftNameError;
+    private string? _draftNameError;
 
     private bool _isEditing => _editId != Guid.Empty;
 
@@ -260,7 +260,7 @@ public partial class OdsTagAdmin<TRow>
         _editArchived = false;
         _draftName = null;
         _draftDescription = null;
-        _draftNameError = false;
+        _draftNameError = null;
         _formKey = Guid.NewGuid();
         _formOpen = true;
     }
@@ -274,7 +274,7 @@ public partial class OdsTagAdmin<TRow>
         _editArchived = Archived(tag) is not null;
         _draftName = Name(tag);
         _draftDescription = Description(tag);
-        _draftNameError = false;
+        _draftNameError = null;
         _formKey = Guid.NewGuid();
         _formOpen = true;
     }
@@ -284,9 +284,13 @@ public partial class OdsTagAdmin<TRow>
         if (_isEditing ? !_canUpdate : !_canCreate)
             return false;
 
-        _draftNameError = string.IsNullOrWhiteSpace(_draftName);
-        if (_draftNameError)
+        if (string.IsNullOrWhiteSpace(_draftName))
+        {
+            _draftNameError = "Give the tag a name.";
             return false;
+        }
+
+        _draftNameError = null;
 
         // Archive / restore is a separate row action, so an edit preserves the current state.
         var body = new TagWrite(
@@ -294,9 +298,30 @@ public partial class OdsTagAdmin<TRow>
             string.IsNullOrWhiteSpace(_draftDescription) ? null : _draftDescription!.Trim(),
             Archived: _isEditing && _editArchived);
 
-        return Invalidated(_isEditing
-            ? (await Tags.UpdateAsync(_editId, body)).Toast(Snackbar, "Update failed", "Tag updated.")
-            : (await Tags.CreateAsync(body)).Toast(Snackbar, "Unable to create tag", "Tag created."));
+        var result = _isEditing
+            ? await Tags.UpdateAsync(_editId, body)
+            : await Tags.CreateAsync(body);
+
+        // A duplicate name is a 409 keyed to `name` (issue #75 §5.11). Rendering it at the FIELD is the
+        // point: the generic handling below would surface "a tag called X already exists" as an
+        // unattributed "Update failed" toast, leaving this page worse at explaining the uniqueness rule
+        // than the budget-item dialog that merely consumes it. Everything else still toasts.
+        if (result.Problem?.ErrorFor("name") is { } fieldError)
+        {
+            _draftNameError = fieldError;
+            return false;
+        }
+
+        return Invalidated(result.Toast(Snackbar,
+            _isEditing ? "Update failed" : "Unable to create tag",
+            _isEditing ? "Tag updated." : "Tag created."));
+    }
+
+    // Typing clears the server's verdict — the name it was about is no longer the name in the field.
+    private void OnDraftNameChanged(string? value)
+    {
+        _draftName = value;
+        _draftNameError = null;
     }
 
     // Transaction tags are cached for the whole session so the pickers don't re-fetch them per dialog

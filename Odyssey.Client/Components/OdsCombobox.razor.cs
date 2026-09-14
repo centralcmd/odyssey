@@ -172,6 +172,12 @@ public partial class OdsCombobox
 
     private async Task OnSelected(OdsOption? option)
     {
+        // ItemDisabledFunc greys the row and blocks the click, but a disabled option can still arrive
+        // here — MudAutocomplete coerces a typed value that matches one by label. Ignoring it keeps the
+        // selection where it was rather than silently accepting a row the user was told they can't pick.
+        if (option is { Disabled: true })
+            return;
+
         if (option is not null && IsCreateRow(option))
         {
             var payload = option.Value[CreatePrefix.Length..];

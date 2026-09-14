@@ -72,6 +72,15 @@ public partial class BudgetsCard
     private bool _canDelete;
     private bool _canReadTransactions;
 
+    // A budget item IS a plan for a tag (issue #75), so both item surfaces need the tag vocabulary:
+    // the batch grid and the dialog are tag pickers with three other fields around them. The create
+    // claim is read by the dialog itself, which is the only surface that offers inline creation.
+    private bool _canReadTags;
+
+    // The tag fetch FAILED, as opposed to returning nothing. Reading budget items is unaffected —
+    // every row renders its name from the payload — but the pickers must say which problem to fix.
+    private bool _tagsLoadFailed;
+
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
@@ -139,6 +148,7 @@ public partial class BudgetsCard
         _canUpdate = user.HasPermission(PermissionClaims.BudgetsUpdate);
         _canDelete = user.HasPermission(PermissionClaims.BudgetsDelete);
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
+        _canReadTags = user.HasPermission(PermissionClaims.TransactionTagsRead);
     }
 
     // Server-side fetch (issue #277): name search + status filter + sort applied by the API.
@@ -199,7 +209,20 @@ public partial class BudgetsCard
 
     private async Task LoadTransactionTags()
     {
-        _transactionTags = [.. await ReferenceData.TransactionTagsAsync()];
+        // Not fetched at all without the claim: the request would 403 and the cache would toast
+        // "Unable to load transaction tags" at a reader who is simply not entitled to the list and
+        // does not need it — every budget row already renders its name from its own payload.
+        if (!_canReadTags)
+        {
+            _transactionTags = [];
+            _tagsLoadFailed = false;
+            return;
+        }
+
+        var load = await ReferenceData.TransactionTagsLoadAsync();
+        _transactionTags = [.. load.Items];
+        _tagsLoadFailed = load.Failed;
+        StateHasChanged();
     }
 
     private async Task ToggleExpand(Guid budgetId)
@@ -277,11 +300,13 @@ public partial class BudgetsCard
     private int ActiveCount => _summary?.ActiveCount ?? 0;
     private decimal PlannedBalance => _summary?.PlannedBalance ?? 0m;
 
-    // Planned amounts by item name within a single budget, for that budget's detail donuts.
+    // Planned amounts by TAG NAME within a single budget, for that budget's detail donuts — the item
+    // has no name of its own. The label comes from the embedded tag, not from a second lookup, so a
+    // slice is never labelled from a list the caller may not hold.
     private static List<KeyValuePair<string, decimal>> BudgetItemSlices(ExistingBudget budget, BudgetCategoryType category) =>
         budget.BudgetItems
             .Where(i => i.CategoryType == category && i.PlannedAmount > 0)
-            .GroupBy(i => i.Name)
+            .GroupBy(i => i.Tag.Name)
             .Select(g => new KeyValuePair<string, decimal>(g.Key, g.Sum(i => i.PlannedAmount)))
             .OrderByDescending(kv => kv.Value)
             .ToList();
@@ -303,19 +328,18 @@ public partial class BudgetsCard
 
     private static decimal ActualIncome(ExistingBudget budget, Dictionary<Guid, decimal> actualByTag) =>
         budget.BudgetItems
-            .Where(i => i.CategoryType == BudgetCategoryType.Income && i.TransactionTagId is not null)
-            .Sum(i => actualByTag.GetValueOrDefault(i.TransactionTagId!.Value));
+            .Where(i => i.CategoryType == BudgetCategoryType.Income)
+            .Sum(i => actualByTag.GetValueOrDefault(i.TransactionTagId));
 
     private static decimal ActualExpenses(ExistingBudget budget, Dictionary<Guid, decimal> actualByTag) =>
         budget.BudgetItems
-            .Where(i => i.CategoryType == BudgetCategoryType.Expense && i.TransactionTagId is not null)
-            .Sum(i => Math.Abs(actualByTag.GetValueOrDefault(i.TransactionTagId!.Value)));
+            .Where(i => i.CategoryType == BudgetCategoryType.Expense)
+            .Sum(i => Math.Abs(actualByTag.GetValueOrDefault(i.TransactionTagId)));
 
     // Distinct transaction-tag ids referenced by a budget's items, used to fetch its transactions.
     private static List<Guid> BudgetTagIds(ExistingBudget budget) =>
         budget.BudgetItems
-            .Where(i => i.TransactionTagId is not null)
-            .Select(i => i.TransactionTagId!.Value)
+            .Select(i => i.TransactionTagId)
             .Distinct()
             .ToList();
 
@@ -367,8 +391,7 @@ public partial class BudgetsCard
             return;
 
         _itemUsedTagIds = budget.BudgetItems
-            .Where(i => i.TransactionTagId.HasValue)
-            .Select(i => i.TransactionTagId!.Value)
+            .Select(i => i.TransactionTagId)
             .Distinct()
             .ToList();
         _itemBudget = budget;
@@ -458,7 +481,11 @@ public partial class BudgetsCard
             });
         }
 
-        if (_canCreate)
+        // Both item surfaces are tag pickers with three other fields around them, so both need
+        // transactions.tags.read as well as the budgets claim — a reader without it would be offered a
+        // dialog whose one required field it cannot populate. The create dialog carries the same policy
+        // as its own [Authorize] attribute; this is the affordance half.
+        if (_canCreate && _canReadTags)
         {
             items.Add(new OdsMenuItem
             {
@@ -468,7 +495,7 @@ public partial class BudgetsCard
             });
         }
 
-        if (_canUpdate)
+        if (_canUpdate && _canReadTags)
         {
             items.Add(new OdsMenuItem
             {

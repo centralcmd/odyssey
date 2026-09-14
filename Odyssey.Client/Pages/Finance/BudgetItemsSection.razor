@@ -5,8 +5,10 @@
 @inject IBudgetItemsApiClient BudgetItems
 
 @* Budget items — grouped income/expense rows with an actual-vs-planned bar, plus an
-   inline "edit multiple" mode (name · category · tag · planned). Actuals come from the
-   parent's per-tag report sums; the parent reloads on change.
+   inline "edit multiple" mode (tag · category · planned). A budget item is a planned amount for a
+   TAG (issue #75): the tag's name is the row's label and its description the secondary line, so
+   there is no item name column in either mode. Actuals come from the parent's per-tag report sums;
+   the parent reloads on change.
 
    Inside an OdsRecordCard the host passes Chrome="false" and introduces the section with
    its own OdsSectionDivider, and both section-level actions ("New item", "Edit multiple")
@@ -24,10 +26,15 @@
             {
                 <!-- ── Edit multiple ─────────────────────────────────────── -->
                 <div class="bi-edit-grid">
+                    @* The first column is the tag picker, not a name field — and it is passed NO
+                       create handler: this grid saves on change, so there is no submit point at which
+                       to await WhenSettledAsync, and an unresolved temporary id must never reach the
+                       wire. Creating a tag happens in the dialog, which has a submit. The filler track
+                       sits between Category and Planned and carries nothing. *@
                     <div class="bi-edit-head">
-                        <span>Item</span>
-                        <span>Category</span>
                         <span>Transaction tag</span>
+                        <span>Category</span>
+                        <span class="bi-edit-filler"></span>
                         <span class="bi-right">Planned</span>
                         <span></span>
                     </div>
@@ -35,23 +42,28 @@
                     {
                         var draft = GetDraft(item);
                         <div class="bi-edit-row">
-                            <MudTextField T="string" Value="@draft.Name" ValueChanged="@(v => OnNameChanged(item, v))"
-                                          Variant="Variant.Outlined" Margin="Margin.Dense" FullWidth="true" />
+                            @* A per-ROW InputId, never a constant: OdsCombobox keys its aria wiring to
+                               it, and .bi-edit-head is display:none below 760px, so the row's own
+                               visually hidden label is the control's real accessible name. *@
+                            <OdsTransactionTagPicker InputId="@($"bi-tag-pick-{item.BudgetItemId}")"
+                                                     HideLabel="true" Dense="true"
+                                                     Value="@draft.TransactionTagId"
+                                                     ValueChanged="@(v => OnTagChanged(item, v))"
+                                                     Tags="TransactionTags"
+                                                     UsedTagIds="@UsedTagIds(item.BudgetItemId)"
+                                                     Error="@DraftError(item)"
+                                                     LoadFailed="TagsLoadFailed"
+                                                     OnRetry="OnRetryTags" />
                             <MudSelect T="BudgetCategoryType" Value="@draft.CategoryType" ValueChanged="@(v => OnCategoryChanged(item, v))"
-                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                                       Label="Category">
                                 <MudSelectItem T="BudgetCategoryType" Value="BudgetCategoryType.Income">Income</MudSelectItem>
                                 <MudSelectItem T="BudgetCategoryType" Value="BudgetCategoryType.Expense">Expense</MudSelectItem>
                             </MudSelect>
-                            <MudSelect T="Guid?" Value="@draft.TransactionTagId" ValueChanged="@(v => OnTagChanged(item, v))"
-                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                                <MudSelectItem T="Guid?" Value="@(null)">None</MudSelectItem>
-                                @foreach (var tag in AvailableTagsForItem(item.BudgetItemId))
-                                {
-                                    <MudSelectItem T="Guid?" Value="@tag.TransactionTagId">@tag.Name</MudSelectItem>
-                                }
-                            </MudSelect>
+                            <span class="bi-edit-filler"></span>
                             <MudNumericField T="decimal" Value="@draft.PlannedAmount" ValueChanged="@(v => OnPlannedChanged(item, v))"
                                              Variant="Variant.Outlined" Margin="Margin.Dense" HideSpinButtons="true"
+                                             Label="Planned amount"
                                              Class="bi-planned-input" />
                             <div class="bi-edit-actions">
                                 @if (CanDelete)
@@ -84,7 +96,7 @@
                    accent — no header band; the row color marks the split. *@
                 <div class="bi-table acct-table-frame odc-scroll">
                     <div class="bi-colhead">
-                        <span>Item</span>
+                        <span>Transaction tag</span>
                         <span>Actual vs planned</span>
                         <span class="bi-right">Actual</span>
                         <span class="bi-right">Planned</span>
@@ -103,16 +115,23 @@
                                 var pct = Math.Clamp(fraction, 0, 1) * 100;
                                 var over = !income && actual is not null && actual.Value > planned;
                                 var barTone = income ? OdsProgressTone.Income : (over ? OdsProgressTone.Over : OdsProgressTone.Expense);
+                                @* The tag IS the item's identity: its name on line 1, its description
+                                   muted on line 2, omitted entirely when there is none. There is no tag
+                                   pill — it would print the same string beside itself — and no untagged
+                                   state, since the tag is required and the read model embeds it.
+                                   "Archived" is a WORD, never colour or an icon alone. *@
                                 <div class="bi-row @(income ? "income" : "expense")">
                                     <div class="bi-item">
-                                        <span class="bi-item-name">@item.Name</span>
-                                        @if (item.TransactionTagId is not null)
+                                        <span class="bi-item-line">
+                                            <span class="bi-item-name">@item.Tag.Name</span>
+                                            @if (item.Tag.Archived is not null)
+                                            {
+                                                <span class="bi-item-archived">Archived</span>
+                                            }
+                                        </span>
+                                        @if (!string.IsNullOrWhiteSpace(item.Tag.Description))
                                         {
-                                            <span class="bi-tag">@TagName(item.TransactionTagId)</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="bi-tag untagged">Untagged</span>
+                                            <span class="bi-item-desc">@item.Tag.Description</span>
                                         }
                                     </div>
                                     <div class="bi-bar">
@@ -122,7 +141,7 @@
                                             <span class="bi-over">over by @Format(actual!.Value - planned, CurrencyCode)</span>
                                         }
                                     </div>
-                                    <div class="bi-actual mono @(item.TransactionTagId is null ? "muted" : "")">@(actual is null ? "—" : Format(actual.Value, CurrencyCode))</div>
+                                    <div class="bi-actual mono">@(actual is null ? "—" : Format(actual.Value, CurrencyCode))</div>
                                     <div class="bi-planned mono">@Format(planned, CurrencyCode)</div>
                                     <div class="bi-actions">
                                         <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"
@@ -165,6 +184,8 @@
                             BudgetCurrencyCode="@CurrencyCode"
                             TransactionTags="TransactionTags"
                             UsedTransactionTagIds="_dialogUsedTagIds"
+                            TagsLoadFailed="TagsLoadFailed"
+                            OnRetryTags="OnRetryTags"
                             ExistingItem="_editItem"
                             OnSaved="OnItemSaved" />
 }

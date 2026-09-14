@@ -203,8 +203,6 @@ public class BudgetServiceTests
         context.BudgetItems.Add(new BudgetItem
         {
             BudgetId = budget.BudgetId,
-            Name = "Food",
-            Description = "Food",
             PlannedAmount = 100,
             TransactionTagId = tag.TransactionTagId,
         });
@@ -275,7 +273,6 @@ public class BudgetServiceTests
         context.BudgetItems.Add(new BudgetItem
         {
             BudgetId = budget.BudgetId,
-            Name = "Food",
             PlannedAmount = 100,
             TransactionTagId = tag.TransactionTagId,
         });
@@ -343,8 +340,8 @@ public class BudgetServiceTests
 
         // Two budget items reference two different tags...
         context.BudgetItems.AddRange(
-            new BudgetItem { BudgetId = budget.BudgetId, Name = "Food", PlannedAmount = 100, TransactionTagId = food.TransactionTagId },
-            new BudgetItem { BudgetId = budget.BudgetId, Name = "Dining", PlannedAmount = 100, TransactionTagId = dining.TransactionTagId });
+            new BudgetItem { BudgetId = budget.BudgetId, PlannedAmount = 100, TransactionTagId = food.TransactionTagId },
+            new BudgetItem { BudgetId = budget.BudgetId, PlannedAmount = 100, TransactionTagId = dining.TransactionTagId });
 
         // ...and a single transaction carries BOTH of them.
         context.Transactions.Add(new Transaction
@@ -396,8 +393,8 @@ public class BudgetServiceTests
         });
 
         context.BudgetItems.AddRange(
-            new BudgetItem { BudgetId = budget.BudgetId, Name = "Food", PlannedAmount = 100, TransactionTagId = food.TransactionTagId },
-            new BudgetItem { BudgetId = budget.BudgetId, Name = "Dining", PlannedAmount = 100, TransactionTagId = dining.TransactionTagId });
+            new BudgetItem { BudgetId = budget.BudgetId, PlannedAmount = 100, TransactionTagId = food.TransactionTagId },
+            new BudgetItem { BudgetId = budget.BudgetId, PlannedAmount = 100, TransactionTagId = dining.TransactionTagId });
 
         context.Transactions.Add(new Transaction
         {

@@ -64,12 +64,15 @@ public class BudgetItemController : ControllerBase
     [HttpPost(Name = "PostBudgetItem")]
     [Authorize(Policy = PermissionClaims.BudgetsCreate)]
     [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Create a new budget item.",
-        Description = @"Create a new budget item. If a new budget item is created, the url for the new budget item is 
-                        returned in the location header.")]
+        Description = @"Create a new budget item. A budget item is a planned amount for a transaction tag, so 
+                        transactionTagId is required: a missing, empty, unknown or archived tag is a 400, and a tag 
+                        already planned for in the target budget is a 409. If a new budget item is created, the url 
+                        for the new budget item is returned in the location header.")]
     public async Task<IActionResult> Post(
         [FromBody] [SwaggerParameter("NewBudgetItem", Required = true,
             Description = "The new budget item to create.")] NewBudgetItem newBudgetItem, CancellationToken cancellationToken = default)
@@ -82,6 +85,7 @@ public class BudgetItemController : ControllerBase
     [Authorize(Policy = PermissionClaims.BudgetsUpdate)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(

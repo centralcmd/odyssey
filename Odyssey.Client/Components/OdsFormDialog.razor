@@ -27,7 +27,7 @@
         }
         @if (ShowSubmit)
         {
-            <OdsButton Variant="@SubmitVariant" Icon="@SubmitIcon" Loading="_isSaving" OnClick="SubmitAsync">
+            <OdsButton Variant="@SubmitVariant" Icon="@SubmitIcon" Loading="_isSaving" Disabled="SubmitDisabled" OnClick="SubmitAsync">
                 @SubmitLabel
             </OdsButton>
         }
@@ -74,6 +74,14 @@
     /// knows will 403.
     /// </summary>
     [Parameter] public bool ShowSubmit { get; set; } = true;
+
+    /// <summary>
+    /// Disable the submit button while the form cannot be completed at all — not for ordinary
+    /// validation, which belongs in <see cref="OnSubmit"/> so the reason lands on the offending field.
+    /// This is for a dialog with no viable path: a required picker with nothing selectable and no way
+    /// to create one, or reference data that failed to load.
+    /// </summary>
+    [Parameter] public bool SubmitDisabled { get; set; }
 
     [Parameter] public string SubmitLabel { get; set; } = "Save";
 
