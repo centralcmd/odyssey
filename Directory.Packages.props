@@ -31,7 +31,7 @@
     <!-- Pinned to 9.x: Pomelo.EntityFrameworkCore.MySql 9.0.0 (latest) requires EF Core 9.x -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.19" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.19" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.19" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.20" />
     <!-- Referenced explicitly by the context projects so the pinned patch flows to their
          consumers. Pomelo 9.0.0 only floors it at 9.0.0, which left Odyssey.TestData/
          Odyssey.E2ETests resolving 9.0.0 against DLLs compiled for the pinned patch (MSB3277).
