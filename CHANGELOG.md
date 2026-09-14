@@ -5,6 +5,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0](https://github.com/centralcmd/odyssey/compare/v0.27.0...v0.28.0) (2026-09-14)
+
+
+### Features
+
+* **migrations:** drop the issue [#75](https://github.com/centralcmd/odyssey/issues/75) change-archive tables ([53a76a2](https://github.com/centralcmd/odyssey/commit/53a76a2deed4b709e36906eda7763466c585e314)), closes [#78](https://github.com/centralcmd/odyssey/issues/78)
+
 ## [0.27.0](https://github.com/centralcmd/odyssey/compare/v0.26.0...v0.27.0) (2026-09-14)
 
 
