@@ -24,6 +24,7 @@
       <!-- Explicit so 9.0.13 flows to consumers of this project. Pomelo only floors
            Relational at 9.0.0, which produced an MSB3277 conflict downstream. -->
       <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
       <PackageReference Include="MySqlConnector" />
       <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" />
     </ItemGroup>
