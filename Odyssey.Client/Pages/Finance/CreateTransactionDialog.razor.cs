@@ -83,7 +83,10 @@ public partial class CreateTransactionDialog
         ? "Search an existing contact, or type a new name to add it as a company or a person."
         : "Search an existing contact.";
 
+    // Attachment changes are staged until Save in both modes: new uploads queue here, and in edit mode
+    // a removed existing file is held by id and detached only once the update has succeeded.
     private List<OdsUploadFile> _pendingFiles = [];
+    private IReadOnlyCollection<Guid> _stagedRemovals = [];
 
     // The TransactionFileType vocabulary projected to the OdsFileUpload kind shape (per-file picker).
     private static readonly IReadOnlyList<OdsFileKind> _txnKinds =
@@ -107,10 +110,21 @@ public partial class CreateTransactionDialog
     // validates against a sane number rather than zero.
     private UploadLimitsDto _uploadLimits = UploadLimitsCache.Fallback;
 
+    /// <summary>
+    /// Whether the dialog is running interactively; the claim and reference-data load is skipped
+    /// off-browser (prerender).
+    /// </summary>
+    /// <remarks>
+    /// A swappable seam, as <c>TransactionListView.InteractiveCheck</c> is, so bUnit can drive the
+    /// edit-mode save path. Process-wide: a test class that moves it must restore it and run in the
+    /// <c>TransactionDialogCollection</c>.
+    /// </remarks>
+    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+
     protected override async Task OnInitializedAsync()
     {
         _uploadLimits = await UploadLimits.GetAsync();
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
         var user = await AuthenticationStateProvider.GetUserAsync();
@@ -284,9 +298,21 @@ public partial class CreateTransactionDialog
         return Task.CompletedTask;
     }
 
+    // Files already attached and not staged for removal. The cap is per transaction, not per upload
+    // batch, so in edit mode they count against it (as FilesSectionBase counted them when edit mode
+    // uploaded in place). The DTO's own file list is the count the dialog was opened with.
+    private int RetainedFileCount =>
+        Transaction?.TransactionFiles.Count(f => !_stagedRemovals.Contains(f.FileMetadata.Id)) ?? 0;
+
+    // Edit mode, no upload claim and nothing left attached: the Attachments shell would otherwise be a
+    // bare label with nothing under it.
+    private string? AttachmentsHelp =>
+        IsEdit && !CanUploadFiles && RetainedFileCount == 0 ? "No files attached to this transaction." : null;
+
     // Controlled list — enforce the allow-list, per-file size cap and file-count cap.
     private void OnFilesChanged(IReadOnlyList<OdsUploadFile> files)
     {
+        var capacity = MaxFileCount - RetainedFileCount;
         var kept = new List<OdsUploadFile>();
         foreach (var f in files)
         {
@@ -301,8 +327,11 @@ public partial class CreateTransactionDialog
                 Snackbar.Add($"{f.Name}: exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.", Severity.Warning);
                 continue;
             }
-            if (kept.Count >= MaxFileCount)
+            if (kept.Count >= capacity)
+            {
+                Snackbar.Add($"Cannot exceed {MaxFileCount} files per transaction.", Severity.Warning);
                 break;
+            }
             kept.Add(f);
         }
         _pendingFiles = kept;
@@ -376,11 +405,18 @@ public partial class CreateTransactionDialog
             if (IsEdit)
             {
                 var update = BuildPayload(magnitude);
-                if ((await Transactions.UpdateAsync(Transaction!.TransactionId, update)).Toast(Snackbar, "Update failed", "Transaction updated."))
-                {
-                    await OnSaved.InvokeAsync();
-                    await OpenChanged.InvokeAsync(false);
-                }
+                if (!(await Transactions.UpdateAsync(Transaction!.TransactionId, update)).Toast(Snackbar, "Update failed"))
+                    return;
+
+                // Files follow the update rather than precede it, so a rejected update leaves the
+                // attachments untouched too.
+                await DetachStagedFilesAsync(Transaction.TransactionId);
+                if (_pendingFiles.Count > 0)
+                    await AttachPendingFilesAsync(Transaction.TransactionId);
+
+                Snackbar.Add("Transaction updated.", Severity.Success);
+                await OnSaved.InvokeAsync();
+                await OpenChanged.InvokeAsync(false);
                 return;
             }
 
@@ -414,6 +450,19 @@ public partial class CreateTransactionDialog
         {
             _isSaving = false;
         }
+    }
+
+    private async Task DetachStagedFilesAsync(Guid transactionId)
+    {
+        var failures = 0;
+        foreach (var fileId in _stagedRemovals)
+        {
+            if (!(await Transactions.DetachFileAsync(transactionId, fileId)).IsSuccess)
+                failures++;
+        }
+
+        if (failures > 0)
+            Snackbar.Add($"Transaction saved, but {failures} file(s) could not be removed.", Severity.Warning);
     }
 
     private async Task AttachPendingFilesAsync(Guid transactionId)

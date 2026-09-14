@@ -1,89 +1,91 @@
 @*
     Read-only detail panel shown when a transaction row is expanded in the
     OdsRecordTable (DS RecordTable renderDetail · ui_kits/web/Transactions
-    TxnDetail). A .odc-meta-grid of field wells followed by the attached-files
-    section.
+    TxnDetail). An OdsRecordBody InTable — the same surface an OdsRecordCard
+    expands into — whose Details slot is an OdsInfoTileGrid of the transaction's
+    fields, followed by the attached-files section introduced by an
+    OdsSectionDivider.
+
+    Status updated is a field the DS mock data does not carry; it keeps its own
+    tile rather than competing with the status comment for the Status foot.
 *@
 @using Odyssey.Dtos.Finance
 
-<div class="odc-meta-grid">
-    <OdsMetaTile>
-        <Label>Description</Label>
-        <ChildContent>@Transaction.Description</ChildContent>
-    </OdsMetaTile>
-    <OdsMetaTile>
-        <Label>Account</Label>
-        <ChildContent>@AccountLabel</ChildContent>
-    </OdsMetaTile>
-    <OdsMetaTile>
-        <Label>Contact</Label>
-        <ChildContent>@(string.IsNullOrWhiteSpace(Transaction.Contact?.ResolvedDisplayName) ? "—" : Transaction.Contact!.ResolvedDisplayName)</ChildContent>
-    </OdsMetaTile>
-    <OdsMetaTile>
-        <Label>@(Transaction.TransactionTags.Count == 1 ? "Tag" : "Tags")</Label>
-        <ChildContent>
-            <OdsTagChips Tags="Transaction.TransactionTags" />
-        </ChildContent>
-    </OdsMetaTile>
-    <OdsMetaTile>
-        <Label>Status</Label>
-        <ChildContent>
-            <OdsChip Tone="@StatusTone(Transaction.Status)" Dot="true">@Transaction.Status</OdsChip>
-        </ChildContent>
-    </OdsMetaTile>
-    <OdsMetaTile>
-        <Label>Direction</Label>
-        <ChildContent>@(IsIncome ? "Money in" : "Money out")</ChildContent>
-    </OdsMetaTile>
-    <OdsMetaTile Mono="true">
-        <Label>Amount</Label>
-        <ChildContent><span class="ods-signed @(IsIncome ? "income" : "expense")">@SignedAmount</span></ChildContent>
-    </OdsMetaTile>
-    <OdsMetaTile Mono="true">
-        <Label>Date</Label>
-        <ChildContent>@Transaction.TimeStamp.ToLocalTime().ToString("MMM dd, yyyy")</ChildContent>
-    </OdsMetaTile>
-    <OdsMetaTile Mono="true">
-        <Label>Currency</Label>
-        <ChildContent>@Transaction.CurrencyCode</ChildContent>
-    </OdsMetaTile>
-    @if (!string.IsNullOrWhiteSpace(Transaction.StatusComment))
-    {
-        <OdsMetaTile>
-            <Label>Status comment</Label>
-            <ChildContent>@Transaction.StatusComment</ChildContent>
-        </OdsMetaTile>
-    }
-    <OdsMetaTile Mono="true">
-        <Label>Status updated</Label>
-        <ChildContent>@Transaction.StatusChangedAt.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</ChildContent>
-    </OdsMetaTile>
-    @if (!string.IsNullOrWhiteSpace(Transaction.ExternalId) || !string.IsNullOrWhiteSpace(Transaction.InternalId))
-    {
-        <OdsMetaTile Mono="true">
-            <Label>External ID</Label>
-            <ChildContent>@(string.IsNullOrWhiteSpace(Transaction.ExternalId) ? "—" : Transaction.ExternalId)</ChildContent>
-        </OdsMetaTile>
-        <OdsMetaTile Mono="true">
-            <Label>Internal ID</Label>
-            <ChildContent>@(string.IsNullOrWhiteSpace(Transaction.InternalId) ? "—" : Transaction.InternalId)</ChildContent>
-        </OdsMetaTile>
-    }
-    @if (!string.IsNullOrWhiteSpace(Transaction.ExtraData))
-    {
-        <OdsMetaTile>
-            <Label>Extra data</Label>
-            <ChildContent>@Transaction.ExtraData</ChildContent>
-        </OdsMetaTile>
-    }
-</div>
-
-<div class="mt-3">
-    <TransactionFilesSection TransactionId="@Transaction.TransactionId"
-                             CanUpload="false"
-                             CanDownload="@CanDownloadFiles"
-                             CanDelete="false" />
-</div>
+<OdsRecordBody InTable="true">
+    <Details>
+        <OdsInfoTileGrid>
+            <OdsInfoTile Icon="payments" Label="Amount"
+                         Tone="@(IsIncome ? OdsInfoTileTone.Income : OdsInfoTileTone.Expense)"
+                         Foot="@OdsInfoTile.Caption(IsIncome ? "Money in" : "Money out")">
+                <Value>@SignedAmount</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="event" Label="Date" ValueVariant="OdsInfoTileVariant.Sm">
+                <Value>@Transaction.TimeStamp.ToLocalTime().ToString("MMM dd, yyyy")</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="flag" Label="Status" ValueVariant="OdsInfoTileVariant.Text"
+                         Foot="@OdsInfoTile.Caption(Transaction.StatusComment)">
+                <Value>
+                    <OdsChip Tone="@StatusTone(Transaction.Status)" Dot="true">@Transaction.Status</OdsChip>
+                </Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="update" Label="Status updated" ValueVariant="OdsInfoTileVariant.Sm">
+                <Value>@Transaction.StatusChangedAt.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="account_balance" Label="Account" ValueVariant="OdsInfoTileVariant.Text"
+                         Foot="@OdsInfoTile.Caption(string.IsNullOrWhiteSpace(Transaction.Account?.Name) ? null : Transaction.Account?.AccountNumber)">
+                <Value>@(string.IsNullOrWhiteSpace(Transaction.Account?.Name) ? "—" : Transaction.Account!.Name)</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="person" Label="Contact" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@(string.IsNullOrWhiteSpace(Transaction.Contact?.ResolvedDisplayName) ? "—" : Transaction.Contact!.ResolvedDisplayName)</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="sell" Label="@(Transaction.TransactionTags.Count == 1 ? "Tag" : "Tags")" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>
+                    @if (Transaction.TransactionTags.Count > 0)
+                    {
+                        <OdsTagChips Tags="Transaction.TransactionTags" />
+                    }
+                    else
+                    {
+                        @("—")
+                    }
+                </Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="paid" Label="Currency">
+                <Value>@Transaction.CurrencyCode</Value>
+            </OdsInfoTile>
+            @if (!string.IsNullOrWhiteSpace(Transaction.ExternalId) || !string.IsNullOrWhiteSpace(Transaction.InternalId))
+            {
+                <OdsInfoTile Icon="fingerprint" Label="External ID">
+                    <Value>@(string.IsNullOrWhiteSpace(Transaction.ExternalId) ? "—" : Transaction.ExternalId)</Value>
+                </OdsInfoTile>
+                <OdsInfoTile Icon="fingerprint" Label="Internal ID">
+                    <Value>@(string.IsNullOrWhiteSpace(Transaction.InternalId) ? "—" : Transaction.InternalId)</Value>
+                </OdsInfoTile>
+            }
+            @if (!string.IsNullOrWhiteSpace(Transaction.ExtraData))
+            {
+                <OdsInfoTile Icon="data_object" Label="Extra data" Wide="true" ValueVariant="OdsInfoTileVariant.Text">
+                    <Value>@Transaction.ExtraData</Value>
+                </OdsInfoTile>
+            }
+            <OdsInfoTile Icon="notes" Label="Description" Wide="true" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@Transaction.Description</Value>
+            </OdsInfoTile>
+        </OdsInfoTileGrid>
+    </Details>
+    <Sections>
+        <div class="acct-section">
+            <OdsSectionDivider Label="Files" Meta="@FilesMeta" />
+            <div class="acct-table-frame odc-scroll">
+                <TransactionFilesSection TransactionId="@Transaction.TransactionId"
+                                         Chrome="false"
+                                         CanUpload="false"
+                                         CanDownload="@CanDownloadFiles"
+                                         CanDelete="false" />
+            </div>
+        </div>
+    </Sections>
+</OdsRecordBody>
 
 @code {
     [Parameter, EditorRequired] public ExistingTransaction Transaction { get; set; } = default!;
@@ -92,15 +94,12 @@
 
     private bool IsIncome => Transaction.Amount >= 0;
 
-    private string AccountLabel
+    private string FilesMeta
     {
         get
         {
-            var name = Transaction.Account?.Name;
-            if (string.IsNullOrWhiteSpace(name))
-                return "—";
-            var number = Transaction.Account?.AccountNumber;
-            return string.IsNullOrWhiteSpace(number) ? name : $"{name} {number}";
+            var count = Transaction.TransactionFiles.Count;
+            return $"{count} file{(count == 1 ? "" : "s")}";
         }
     }
 

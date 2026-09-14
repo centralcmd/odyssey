@@ -47,11 +47,12 @@
     </div>
 
     <!-- Description -->
-    <MudTextField @bind-Value="_description"
+    <OdsNoteField @bind-Value="_description"
                   Label="Description"
                   Placeholder="Optional — what's this budget for?"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense" />
+                  Rows="3"
+                  MaxLength="256"
+                  Optional="true" />
 </OdsFormDialog>
 
 @code {

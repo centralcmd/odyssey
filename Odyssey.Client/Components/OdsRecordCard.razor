@@ -18,7 +18,8 @@
     never wrapped), the sub-collection counts, a headline figure and the row actions.
 
     The body order is structural, not editorial: Alert → Details → Content → Sections.
-    Pass only what the record has; you cannot reorder them, which is the point.
+    Pass only what the record has; you cannot reorder them, which is the point. The body
+    itself is OdsRecordBody, which a table-based record list renders directly (InTable).
 
     ONE ACCENT PER RECORD, for what belongs to THIS record. Accent / AccentSoft come from
     the record's TYPE colour — or its type-equivalent: a categorical registry the record
@@ -132,13 +133,11 @@
             </button>
         </div>
     </div>
+    @* The body is the shared OdsRecordBody — the same surface an OdsRecordTable detail row
+       renders, so a card and a table expand into an identical panel. The accent stays on the
+       card root, which the header mark reads too. *@
     @if (IsOpen)
     {
-        <div class="odc-record-body" id="@_bodyId">
-            @Alert
-            @Details
-            @Content
-            @Sections
-        </div>
+        <OdsRecordBody Id="@_bodyId" Alert="Alert" Details="Details" Content="Content" Sections="Sections" />
     }
 </div>

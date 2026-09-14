@@ -1,0 +1,74 @@
+@*
+    OdsRecordBody — the expanded-record body (Odyssey Design System · components/RecordBody).
+
+    Extracted from OdsRecordCard so a TABLE-based record list renders the identical detail
+    surface: a record card's expanded body and an OdsRecordTable's expanded detail row are the
+    same thing and must look the same. One padded column of slots in a fixed order —
+    Alert → Details → Content → Sections — which a caller cannot reorder, which is the point.
+
+    OdsRecordCard composes this for its own body. A table detail panel renders it directly with
+    InTable: the card's hairline top divider gives way to the table's primary accent rule, and the
+    panel sits on the surface colour against the detail cell's background tint. OdsRecordTable's
+    own panel steps aside for it (padding and rule), so the body is the one surface.
+
+    Accent / AccentSoft set --rec / --rec-soft, which the OdsInfoTileGrid inside Details reads for
+    its tile icon chips. Inside an OdsRecordCard they are already set on the card, so pass them only
+    when rendering standalone. Styled by the global .odc-record-body block in
+    wwwroot/css/odyssey-components.css.
+*@
+
+<div id="@Id" class="@BodyClass" style="@BodyStyle">
+    @Alert
+    @Details
+    @Content
+    @Sections
+</div>
+
+@code {
+    /// <summary>Slot 1 — an OdsProblemAlert / OdsAlert. Renders first, above everything else.</summary>
+    [Parameter] public RenderFragment? Alert { get; set; }
+
+    /// <summary>Slot 2 — the record's field set, an <see cref="OdsInfoTileGrid"/> of
+    /// <see cref="OdsInfoTile"/>s.</summary>
+    [Parameter] public RenderFragment? Details { get; set; }
+
+    /// <summary>Slot 3 — prose / chart / summary content below the field set.</summary>
+    [Parameter] public RenderFragment? Content { get; set; }
+
+    /// <summary>Slot 4 — the sub-collections, each introduced by an <see cref="OdsSectionDivider"/>.
+    /// (The DS calls this slot <c>children</c>; it is named here, as on OdsRecordCard, so content
+    /// cannot land in the wrong slot by accident.)</summary>
+    [Parameter] public RenderFragment? Sections { get; set; }
+
+    /// <summary>Record accent (sets <c>--rec</c>) — only when rendering outside an OdsRecordCard.</summary>
+    [Parameter] public string? Accent { get; set; }
+
+    /// <summary>Soft form of the accent (sets <c>--rec-soft</c>).</summary>
+    [Parameter] public string? AccentSoft { get; set; }
+
+    /// <summary>Rendering inside an OdsRecordTable detail cell rather than an OdsRecordCard.</summary>
+    [Parameter] public bool InTable { get; set; }
+
+    /// <summary>DOM id — the target of the owning trigger's aria-controls.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Style { get; set; }
+
+    private string BodyClass =>
+        string.Join(' ', new[] { "odc-record-body", InTable ? "in-table" : null, Class }
+            .Where(c => !string.IsNullOrEmpty(c)));
+
+    private string? BodyStyle
+    {
+        get
+        {
+            var rec = string.IsNullOrEmpty(Accent) ? null : $"--rec:{Accent};";
+            var soft = string.IsNullOrEmpty(AccentSoft) ? null : $"--rec-soft:{AccentSoft};";
+            var style = $"{rec}{soft}{Style}";
+            return style.Length == 0 ? null : style;
+        }
+    }
+}
