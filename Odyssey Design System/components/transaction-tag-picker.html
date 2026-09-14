@@ -1,0 +1,70 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="TransactionTagPicker" subtitle="The required tag-as-identity picker — a Combobox in a FieldShell whose help line is the selected tag's description, with tags already planned for marked “in use”, an archived tag marked in words, inline create where the caller both holds transactions.tags.create and has a submit to stage against, and the two no-control states (nothing left to plan for / tag list unavailable)." viewport="1000x780" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>TransactionTagPicker</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+<link rel="stylesheet" href="../styles.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--mud-palette-background);color:var(--mud-palette-text-primary);font-family:var(--font-sans);padding:36px 40px}
+.wrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 32px;max-width:900px}
+.note{grid-column:1/-1;margin:0;font:400 13px/1.6 var(--font-sans);color:var(--mud-palette-text-secondary);max-width:76ch}
+.note b{color:var(--mud-palette-text-primary);font-weight:500}
+.cap{margin:0 0 8px;font:500 11px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const NS = window.OdysseyDesignSystem_d5aa51 || {};
+const { TransactionTagPicker } = NS;
+const h = React.createElement;
+const TAGS = [
+  { id: 't1', name: 'Groceries', description: 'Supermarkets, food shops, and weekly stock-ups', archived: null },
+  { id: 't4', name: 'Rent', description: 'Monthly housing payments', archived: null },
+  { id: 't7', name: 'Utilities', description: 'Electricity, water, gas, and internet', archived: null },
+  { id: 't11', name: 'Freelance', description: null, archived: null },
+  { id: 't8', name: 'Vacation 2024', description: 'One-off travel spending from the 2024 trips', archived: '2025-01-08T09:00:00Z' },
+];
+function Cell(props) { return h('div', null, h('p', { className: 'cap' }, props.cap), props.children); }
+function Demo() {
+  const [a, setA] = React.useState('t1');
+  const [b, setB] = React.useState('');
+  const [c, setC] = React.useState('t8');
+  const [made, setMade] = React.useState([]);
+  if (!TransactionTagPicker) return h('div', null, 'Bundle not compiled yet.');
+  return h('div', { className: 'wrap' },
+    h('p', { className: 'note' },
+      h('b', null, 'The tag is the record\u2019s identity, not a label on it.'),
+      ' So the field is required, the selected tag\u2019s description becomes the help line (falling back to the standard helper, never empty \u2014 which is also what keeps the error line\u2019s id stable), and a tag already planned for in this budget is still listed, with the trailing words ',
+      h('b', null, 'in use'),
+      ', rather than vanishing and leaving the user wondering where it went.'),
+    h(Cell, { cap: 'Resolved \u2014 description as help' },
+      h(TransactionTagPicker, { id: 'ttp-a', value: a, onChange: setA, tags: TAGS, usedTagIds: ['t4', 't7'] })),
+    h(Cell, { cap: 'Missing \u2014 error at the field' },
+      h(TransactionTagPicker, { id: 'ttp-b', value: b, onChange: setB, tags: TAGS, usedTagIds: ['t4'], error: 'Choose a transaction tag.' })),
+    h(Cell, { cap: 'Archived tag \u2014 kept, marked in words' },
+      h(TransactionTagPicker, { id: 'ttp-c', value: c, onChange: setC, tags: TAGS })),
+    h(Cell, { cap: 'Inline create \u2014 dialog only' },
+      h(TransactionTagPicker, {
+        id: 'ttp-d', value: made.length ? made[0].id : '', onChange: function () {}, tags: made.concat(TAGS),
+        canCreate: true,
+        onCreateTag: function (name) { const t = { id: 'new-' + name, name: name, description: null, archived: null }; setMade([t]); return t; },
+        help: 'Type a name that matches nothing \u2014 or type \u201cGroceries\u201d to see the duplicate-name refusal.',
+      })),
+    h(Cell, { cap: 'Nothing left to plan for' },
+      h(TransactionTagPicker, { id: 'ttp-e', value: '', onChange: function () {}, tags: TAGS, usedTagIds: ['t1', 't4', 't7', 't11'] })),
+    h(Cell, { cap: 'Tag list unavailable \u2014 not \u201cno tags\u201d' },
+      h(TransactionTagPicker, { id: 'ttp-f', value: '', onChange: function () {}, tags: [], loadFailed: true, onRetry: function () {} })),
+    h(Cell, { cap: 'In a table cell \u2014 label hidden, still associated' },
+      h(TransactionTagPicker, { id: 'ttp-g', value: 't7', onChange: function () {}, tags: TAGS, hideLabel: true })),
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

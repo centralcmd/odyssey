@@ -118,6 +118,7 @@ export function Combobox({
   ariaLabel,
   ariaDescribedBy,
   invalid = false,
+  required = false,
 }) {
   const autoId = React.useId();
   const fieldId = id || autoId;
@@ -138,6 +139,22 @@ export function Combobox({
   const kinds = (createKinds && createKinds.length ? createKinds : [null]);
   const createRows = showCreate ? kinds : [];
   const rowCount = filtered.length + createRows.length;
+
+  // Start the highlight on the first SELECTABLE row: a disabled row (a tag
+  // already planned for) at index 0 would otherwise swallow the first Enter
+  // with no feedback. Same rule when arrowing — disabled rows are skipped.
+  const nextSelectable = (from, step) => {
+    for (let i = from; i >= 0 && i < rowCount; i += step) {
+      if (i >= filtered.length || !filtered[i].disabled) return i;
+    }
+    return -1;
+  };
+  React.useEffect(() => {
+    if (!open) return;
+    const first = nextSelectable(0, 1);
+    setActive(first === -1 ? 0 : first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, query]);
 
   // Keep the active option scrolled into view as the highlight moves.
   React.useEffect(() => {
@@ -162,6 +179,7 @@ export function Combobox({
   React.useEffect(() => { if (!open) setQuery(''); }, [open]);
 
   const pick = (o) => {
+    if (!o || o.disabled) return;
     if (onChange) onChange(o.value, o);
     closeAndClear();
   };
@@ -178,10 +196,10 @@ export function Combobox({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setOpen(true);
-      setActive((a) => Math.min(a + 1, rowCount - 1));
+      setActive((a) => { const n = nextSelectable(a + 1, 1); return n === -1 ? a : n; });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActive((a) => Math.max(a - 1, 0));
+      setActive((a) => { const n = nextSelectable(a - 1, -1); return n === -1 ? a : n; });
     } else if (e.key === 'Enter') {
       if (!open) return;
       e.preventDefault();
@@ -216,6 +234,7 @@ export function Combobox({
           aria-label={ariaLabel}
           aria-describedby={ariaDescribedBy}
           aria-invalid={invalid ? true : undefined}
+          aria-required={required ? true : undefined}
           aria-expanded={open}
           aria-controls={`${fieldId}-list`}
           aria-activedescendant={open && rowCount > 0 && active < rowCount ? `${fieldId}-opt-${active}` : undefined}
@@ -256,8 +275,9 @@ export function Combobox({
                 id={`${fieldId}-opt-${i}`}
                 role="option"
                 aria-selected={o.value === value}
-                className={`odc-combo-opt${i === active ? ' active' : ''}${o.value === value ? ' selected' : ''}`}
-                onMouseEnter={() => setActive(i)}
+                className={`odc-combo-opt${i === active ? ' active' : ''}${o.value === value ? ' selected' : ''}${o.disabled ? ' disabled' : ''}`}
+                aria-disabled={o.disabled ? true : undefined}
+                onMouseEnter={() => { if (!o.disabled) setActive(i); }}
                 onMouseDown={(e) => {
                   e.preventDefault();
                   pick(o);
@@ -267,6 +287,7 @@ export function Combobox({
                   <span className="material-icons odc-opt-icon" style={o.iconColor ? { color: o.iconColor } : undefined} aria-hidden="true">{o.icon}</span>
                 ) : null}
                 <span className="odc-combo-opt-label">{o.label}</span>
+                {o.note ? <span className="odc-combo-opt-note">{o.note}</span> : null}
                 {o.value === value ? (
                   <span className="material-icons odc-combo-opt-check" aria-hidden="true">check</span>
                 ) : null}

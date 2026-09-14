@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"068d17440abe","components/ContactAliases.jsx":"9fd0f007e13f","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"42bbbd5d8835","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"eb29f4abc14f","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"b0131d9ed58f","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"c025efc795cb","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"f48fe06c58a4","ui_kits/web/AddAccountModal.jsx":"70786f0463e1","ui_kits/web/AddBudgetItemModal.jsx":"987e1fdecb12","ui_kits/web/AddBudgetModal.jsx":"dd66264bab68","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"bb8ebb0c14a6","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"1a6914aab912","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"ed18b3c414ea","ui_kits/web/AddTaxStatementModal.jsx":"949d785d8d15","ui_kits/web/AddTermModal.jsx":"8d2277da3d61","ui_kits/web/AddTransactionModal.jsx":"44c0de9b2f94","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"35f03e541aee","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"a1440e5c7331","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c6f500b4e5dc","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"d430ca57572f","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"7095f7173156","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"9a6edb776707","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"fa3dd0c98218","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"9fd0f007e13f","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"42bbbd5d8835","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"eb29f4abc14f","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"b0131d9ed58f","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"c025efc795cb","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"f48fe06c58a4","ui_kits/web/AddAccountModal.jsx":"70786f0463e1","ui_kits/web/AddBudgetItemModal.jsx":"a3c99c2e2e44","ui_kits/web/AddBudgetModal.jsx":"dd66264bab68","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"bb8ebb0c14a6","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"1a6914aab912","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"ed18b3c414ea","ui_kits/web/AddTaxStatementModal.jsx":"949d785d8d15","ui_kits/web/AddTermModal.jsx":"8d2277da3d61","ui_kits/web/AddTransactionModal.jsx":"44c0de9b2f94","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"df38a457a307","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c6f500b4e5dc","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"d430ca57572f","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"7095f7173156","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"d88a5db07dad","ui_kits/web/Transactions.jsx":"9a6edb776707","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a520a2c04a06","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -3117,7 +3117,8 @@ function Combobox({
   loading = false,
   ariaLabel,
   ariaDescribedBy,
-  invalid = false
+  invalid = false,
+  required = false
 }) {
   const autoId = React.useId();
   const fieldId = id || autoId;
@@ -3148,6 +3149,22 @@ function Combobox({
   const createRows = showCreate ? kinds : [];
   const rowCount = filtered.length + createRows.length;
 
+  // Start the highlight on the first SELECTABLE row: a disabled row (a tag
+  // already planned for) at index 0 would otherwise swallow the first Enter
+  // with no feedback. Same rule when arrowing — disabled rows are skipped.
+  const nextSelectable = (from, step) => {
+    for (let i = from; i >= 0 && i < rowCount; i += step) {
+      if (i >= filtered.length || !filtered[i].disabled) return i;
+    }
+    return -1;
+  };
+  React.useEffect(() => {
+    if (!open) return;
+    const first = nextSelectable(0, 1);
+    setActive(first === -1 ? 0 : first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, query]);
+
   // Keep the active option scrolled into view as the highlight moves.
   React.useEffect(() => {
     if (!open || !popRef.current) return;
@@ -3170,6 +3187,7 @@ function Combobox({
     if (!open) setQuery('');
   }, [open]);
   const pick = o => {
+    if (!o || o.disabled) return;
     if (onChange) onChange(o.value, o);
     closeAndClear();
   };
@@ -3188,10 +3206,16 @@ function Combobox({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setOpen(true);
-      setActive(a => Math.min(a + 1, rowCount - 1));
+      setActive(a => {
+        const n = nextSelectable(a + 1, 1);
+        return n === -1 ? a : n;
+      });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActive(a => Math.max(a - 1, 0));
+      setActive(a => {
+        const n = nextSelectable(a - 1, -1);
+        return n === -1 ? a : n;
+      });
     } else if (e.key === 'Enter') {
       if (!open) return;
       e.preventDefault();
@@ -3227,6 +3251,7 @@ function Combobox({
     "aria-label": ariaLabel,
     "aria-describedby": ariaDescribedBy,
     "aria-invalid": invalid ? true : undefined,
+    "aria-required": required ? true : undefined,
     "aria-expanded": open,
     "aria-controls": `${fieldId}-list`,
     "aria-activedescendant": open && rowCount > 0 && active < rowCount ? `${fieldId}-opt-${active}` : undefined,
@@ -3277,8 +3302,11 @@ function Combobox({
     id: `${fieldId}-opt-${i}`,
     role: "option",
     "aria-selected": o.value === value,
-    className: `odc-combo-opt${i === active ? ' active' : ''}${o.value === value ? ' selected' : ''}`,
-    onMouseEnter: () => setActive(i),
+    className: `odc-combo-opt${i === active ? ' active' : ''}${o.value === value ? ' selected' : ''}${o.disabled ? ' disabled' : ''}`,
+    "aria-disabled": o.disabled ? true : undefined,
+    onMouseEnter: () => {
+      if (!o.disabled) setActive(i);
+    },
     onMouseDown: e => {
       e.preventDefault();
       pick(o);
@@ -3291,7 +3319,9 @@ function Combobox({
     "aria-hidden": "true"
   }, o.icon) : null, /*#__PURE__*/React.createElement("span", {
     className: "odc-combo-opt-label"
-  }, o.label), o.value === value ? /*#__PURE__*/React.createElement("span", {
+  }, o.label), o.note ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-combo-opt-note"
+  }, o.note) : null, o.value === value ? /*#__PURE__*/React.createElement("span", {
     className: "material-icons odc-combo-opt-check",
     "aria-hidden": "true"
   }, "check") : null)), !loading && createRows.map((kind, k) => {
@@ -15417,6 +15447,169 @@ function TransactionFileTypeSelect({
 Object.assign(__ds_scope, { TRANSACTION_FILE_TYPES, TransactionFileTypeSelect });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/TransactionFileTypeSelect.jsx", error: String((e && e.message) || e) }); }
 
+// components/TransactionTagPicker.jsx
+try { (() => {
+/**
+ * Odyssey DS — TransactionTagPicker
+ * The one control for **picking the transaction tag a record plans for** — the
+ * budget item's tag being the case it was built for, where the tag is not a
+ * label on the item but the item's identity: the row's name, its description
+ * and the thing its actuals are summed from all come from the tag.
+ *
+ * It is not a new widget. It wraps the DS `Combobox` in a DS `FieldShell`, the
+ * pairing every labelled picker in the kit already uses, and adds only what a
+ * *required, identity-bearing* tag field needs:
+ *
+ *  • **The selected tag's description becomes the help line.** With no
+ *    description it falls back to the standard helper, so the slot never
+ *    renders empty — which is also what keeps the error line's id stable
+ *    (`FieldShell` moves the error to `{htmlFor}-help-error` only while help is
+ *    present, and `aria-describedby` names BOTH ids from the first render).
+ *  • **Tags already planned for are offered but not selectable** — shown with
+ *    the trailing words `in use`, never a colour or an icon alone.
+ *  • **An archived tag reads `· Archived` in its option label** so the marker
+ *    survives into the collapsed input and the accessible name. An archived tag
+ *    is offered only when it is already this record's tag.
+ *  • **Inline create, gated twice.** Pass `onCreateTag` only where the caller
+ *    holds `transactions.tags.create`; omit it (and no create row renders) on a
+ *    surface with no submit to stage a create against — an inline grid that
+ *    saves on change must not put an unresolved tag on the wire.
+ *  • **Duplicate names are refused before the create is staged.** Tag names are
+ *    unique case-insensitively, archived rows included, so the picker checks
+ *    the typed name against the list it already holds and renders the conflict
+ *    at the field — naming the archived case, which has no inline remedy.
+ *
+ * States: `resolved` · `archived` · `inUse` · `noneSelectable` (every live tag
+ * is already planned for, or none exists) · `unavailable` (the tag list failed
+ * to load — distinct from "no tags", and the retry belongs here, not in a
+ * create-a-tag empty state) · `error`.
+ *
+ * `bare` drops nothing structural — the FieldShell stays, because the error and
+ * the description line are the point. For a table cell, pass `hideLabel` to keep
+ * the real `<label for>` association while removing it visually: a grid whose
+ * column header is hidden at narrow widths has no other accessible name.
+ */
+
+const TTP_DEFAULT_HELP = "Matched transactions become this item's actual.";
+const ttpNorm = s => String(s || '').trim().toLowerCase();
+function TransactionTagPicker({
+  value,
+  onChange,
+  tags = [],
+  usedTagIds = [],
+  label = 'Transaction tag',
+  id,
+  required = true,
+  help,
+  error,
+  disabled = false,
+  hideLabel = false,
+  placeholder = 'Search tags…',
+  canCreate = false,
+  onCreateTag,
+  loadFailed = false,
+  onRetry,
+  manageHref = '#/transaction-tags',
+  manageLabel = 'Transaction tags',
+  className = ''
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    Combobox,
+    FieldShell
+  } = NS;
+  const autoId = React.useId();
+  const fieldId = id || `tagpick-${autoId}`;
+  const [dupError, setDupError] = React.useState(null);
+  const [created, setCreated] = React.useState([]);
+  const all = [...created, ...tags];
+  const byId = {};
+  all.forEach(t => {
+    byId[t.id || t.transactionTagId] = t;
+  });
+  const idOf = t => t.id || t.transactionTagId;
+  const used = new Set(usedTagIds.filter(x => x && x !== value));
+  const selected = value ? byId[value] : null;
+  const optionOf = t => ({
+    value: idOf(t),
+    label: t.archived ? `${t.name} · Archived` : t.name,
+    note: used.has(idOf(t)) ? 'in use' : undefined,
+    disabled: used.has(idOf(t)),
+    icon: 'local_offer'
+  });
+  let options = all.filter(t => !t.archived).map(optionOf);
+  // The record's own tag stays selectable even once archived — keeping a link
+  // that already exists removes no capability; making a new one does.
+  if (selected && selected.archived) options = [optionOf(selected), ...options];
+  const selectable = options.filter(o => !o.disabled).length;
+  const noneSelectable = !loadFailed && selectable === 0 && !selected;
+  const shownError = error || dupError;
+  const helpText = selected && selected.description || help || TTP_DEFAULT_HELP;
+  const helpId = `${fieldId}-help`;
+  const handleCreate = canCreate && onCreateTag ? text => {
+    const clean = String(text || '').trim();
+    if (!clean) return undefined;
+    // Names are unique case-insensitively across ALL tags, archived included.
+    const clash = all.find(t => ttpNorm(t.name) === ttpNorm(clean));
+    if (clash) {
+      setDupError(clash.archived ? `A tag called “${clash.name}” already exists but is archived. Restore or rename it on ${manageLabel}.` : `A tag called “${clash.name}” already exists. Pick it from the list.`);
+      return undefined;
+    }
+    setDupError(null);
+    const made = onCreateTag(clean);
+    if (made == null) return undefined;
+    const tag = made.id || made.transactionTagId ? made : {
+      id: made,
+      name: clean
+    };
+    setCreated(prev => [...prev, tag]);
+    return optionOf(tag);
+  } : undefined;
+  if (!Combobox || !FieldShell) return null;
+  const control = loadFailed ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-tagpick-unavailable"
+  }, /*#__PURE__*/React.createElement("span", null, "Unable to load the tag list."), onRetry ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "odc-tagpick-link",
+    onClick: onRetry
+  }, "Retry") : null) : noneSelectable ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-tagpick-empty"
+  }, /*#__PURE__*/React.createElement("span", null, "No tags left to plan for."), /*#__PURE__*/React.createElement("a", {
+    className: "odc-tagpick-link",
+    href: manageHref
+  }, manageLabel)) : /*#__PURE__*/React.createElement(Combobox, {
+    id: fieldId,
+    value: value || '',
+    onChange: (v, opt) => {
+      setDupError(null);
+      if (onChange) onChange(v || '', opt);
+    },
+    options: options,
+    placeholder: placeholder,
+    disabled: disabled,
+    required: required,
+    invalid: !!shownError,
+    emptyText: handleCreate ? 'No matches — type a name to create one' : 'No tags match',
+    onCreate: handleCreate,
+    createLabel: "Create"
+    // Constant from the first render, and naming BOTH the help and the error
+    // line: the error renders at a different id while help is present, and a
+    // description that only appears on a failed submit would never be read.
+    ,
+    ariaDescribedBy: `${helpId} ${helpId}-error`
+  });
+  return /*#__PURE__*/React.createElement(FieldShell, {
+    label: label,
+    htmlFor: fieldId,
+    required: required,
+    help: helpText,
+    error: shownError,
+    className: `odc-tagpick${hideLabel ? ' hide-label' : ''}${className ? ' ' + className : ''}`
+  }, control);
+}
+Object.assign(__ds_scope, { TransactionTagPicker });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/TransactionTagPicker.jsx", error: String((e && e.message) || e) }); }
+
 // components/TxnTable.jsx
 try { (() => {
 /**
@@ -21461,49 +21654,47 @@ Object.assign(window, {
 
 // ui_kits/web/AddBudgetItemModal.jsx
 try { (() => {
-/* AddBudgetItemModal — dialog opened from a budget card's action menu ("Add item")
-   and the "Add item" button on the Budget items section. Mirrors the codebase's
-   CreateBudgetItemDialog.razor.
+/* AddBudgetItemModal — dialog opened from a budget card's action menu ("New item")
+   and the "Edit" row action. Mirrors the codebase's CreateBudgetItemDialog.razor.
 
-   Fields map to the NewBudgetItem creation DTO:
-     • name           (required)  — BudgetItem.Name
-     • categoryType   (required)  — BudgetItem.CategoryType (Income | Expense)
-     • transactionTag (optional)  — BudgetItem.TransactionTagId (links actuals)
-     • plannedAmount  (required)  — BudgetItem.PlannedAmount
-     • description    (optional)  — BudgetItem.Description
-   Only tags not already used by an item in this budget are offered, exactly like
-   CreateBudgetItemDialog's AvailableTransactionTags. */
+   Three fields, down from five. A budget item has no name and no description of
+   its own: its TransactionTagId is REQUIRED and the linked tag's name and
+   description are the item's identity wherever it is displayed.
+
+     • transactionTagId (required) — BudgetItem.TransactionTagId
+     • categoryType     (required) — BudgetItem.CategoryType (Income | Expense)
+     • plannedAmount    (required) — BudgetItem.PlannedAmount
+
+   Only one item per tag per budget: tags already planned for are offered but
+   marked "in use" and unselectable (the item's own tag stays selectable, even
+   when archived). Inline tag creation lives here and only here — this dialog has
+   a submit, so a staged create can settle and resolve to a real id before the
+   item is written; the edit-multiple grid saves on change and is passed no
+   create handler. */
 
 const AddBudgetItemModal = ({
   budget,
   item,
   onClose,
-  onCreate
+  onCreate,
+  canCreateTag = true,
+  tagsFailed = false
 }) => {
   const {
-    useState,
-    useEffect
+    useState
   } = React;
   const D = window.OdysseyData;
   const isEdit = !!item;
-
-  // Tags already used by OTHER items are unavailable; the item's own tag stays selectable.
-  const usedTags = new Set(budget.items.filter(i => i.tagId && i.id !== (item && item.id)).map(i => i.tagId));
-  const tagOptions = [{
-    value: '',
-    label: 'None'
-  }].concat(D.tags.filter(t => !usedTags.has(t.id)).map(t => ({
-    value: t.id,
-    label: t.name
-  })));
   const [draft, setDraft] = useState({
-    name: item ? item.name : '',
-    description: item ? item.description || '' : '',
     categoryType: item ? item.categoryType : 'Expense',
-    tagId: item ? item.tagId || '' : '',
+    tagId: item ? item.tagId : '',
     planned: item ? String(item.planned) : ''
   });
   const [errors, setErrors] = useState({});
+  // Tags staged by the inline create row. The POST runs behind the gesture; the
+  // dialog waits for it to settle on submit and sends the RESOLVED id, never the
+  // temporary one — and registers the tag so every other surface sees it.
+  const [staged, setStaged] = useState([]);
   const set = k => v => {
     setDraft(d => ({
       ...d,
@@ -21514,13 +21705,29 @@ const AddBudgetItemModal = ({
       [k]: undefined
     }));
   };
+  const tags = staged.concat(D.tags);
+  const used = budget.items.filter(i => !item || i.id !== item.id).map(i => i.tagId);
 
   // (Esc-to-close, scrim click and focus handling come from the DS Modal shell.)
 
+  const createTag = name => {
+    const tag = {
+      id: `tag-${Date.now()}`,
+      name,
+      description: null,
+      archived: null
+    };
+    setStaged(prev => [tag, ...prev]);
+    // Registering it in the shared reference data is what the real dialog does by
+    // invalidating the tag cache once the staged create settles.
+    D.tags.unshift(tag);
+    D.tagById[tag.id] = tag;
+    return tag;
+  };
   const submit = () => {
     const next = {};
     const planned = parseFloat(draft.planned);
-    if (!draft.name.trim()) next.name = 'Give the item a name.';
+    if (!draft.tagId) next.tagId = 'Choose a transaction tag.';else if (used.includes(draft.tagId)) next.tagId = 'This budget already plans for that tag.';
     if (draft.planned === '' || isNaN(planned)) next.planned = 'Enter a planned amount.';
     if (Object.keys(next).length) {
       setErrors(next);
@@ -21528,16 +21735,16 @@ const AddBudgetItemModal = ({
     }
     onCreate && onCreate({
       id: isEdit ? item.id : `bi-${Date.now()}`,
-      name: draft.name.trim(),
-      description: draft.description.trim(),
       categoryType: draft.categoryType,
-      tagId: draft.tagId || null,
+      tagId: draft.tagId,
       planned
     });
   };
+  const selectable = D.tags.filter(t => !t.archived && !used.includes(t.id)).length;
+  const blocked = tagsFailed || selectable === 0 && !canCreateTag && !draft.tagId;
   return /*#__PURE__*/React.createElement(Modal, {
     title: isEdit ? 'Edit budget item' : 'New budget item',
-    subtitle: /*#__PURE__*/React.createElement(React.Fragment, null, isEdit ? 'Update this line for ' : 'Plan an income or expense line for ', /*#__PURE__*/React.createElement("strong", null, budget.name), ". Link a tag to track its actuals automatically."),
+    subtitle: /*#__PURE__*/React.createElement(React.Fragment, null, isEdit ? 'Update this line for ' : 'Plan an income or expense line for ', /*#__PURE__*/React.createElement("strong", null, budget.name), ". The tag you pick names the line and collects its actuals."),
     icon: isEdit ? 'edit' : 'playlist_add',
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -21546,16 +21753,21 @@ const AddBudgetItemModal = ({
     }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
       variant: "filled",
       color: "primary",
+      disabled: blocked,
       icon: isEdit ? 'check' : 'add',
       onClick: submit
     }, isEdit ? 'Save changes' : 'Create budget item'))
-  }, /*#__PURE__*/React.createElement(Field, {
-    label: "Item name",
-    value: draft.name,
-    onChange: set('name'),
-    placeholder: "e.g. Childcare",
-    error: errors.name,
-    autoFocus: true
+  }, /*#__PURE__*/React.createElement(TransactionTagPicker, {
+    id: "bgt-item-tag",
+    value: draft.tagId,
+    onChange: set('tagId'),
+    tags: tags,
+    usedTagIds: used,
+    error: errors.tagId,
+    canCreate: canCreateTag,
+    onCreateTag: createTag,
+    loadFailed: tagsFailed,
+    onRetry: () => {}
   }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(BudgetCategoryTypeSelect, {
     label: "Category",
     value: draft.categoryType,
@@ -21570,18 +21782,7 @@ const AddBudgetItemModal = ({
     placeholder: "0.00",
     error: errors.planned,
     helper: errors.planned ? undefined : 'Budget currency'
-  })), /*#__PURE__*/React.createElement(Select, {
-    label: "Transaction tag",
-    value: draft.tagId,
-    onChange: set('tagId'),
-    options: tagOptions,
-    helper: "Optional \u2014 matched transactions become this item's actual."
-  }), /*#__PURE__*/React.createElement(Field, {
-    label: "Description",
-    value: draft.description,
-    onChange: set('description'),
-    placeholder: "Optional"
-  }));
+  })));
 };
 Object.assign(window, {
   AddBudgetItemModal
@@ -26997,7 +27198,12 @@ const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD'].map(c
 const INCOME_COLORS = ['var(--mint-500)', 'var(--tide-400)', 'var(--sea-400)', 'var(--violet-500)'];
 const EXPENSE_COLORS = ['var(--coral-500)', 'var(--amber-500)', 'var(--violet-500)', 'var(--sea-400)', 'var(--tide-400)', 'var(--mint-500)'];
 
-/* ---- One planned-vs-actual item row ---- */
+/* ---- One planned-vs-actual item row ----
+   The item's tag IS its identity: the tag's name is the row's primary label and
+   the tag's description its secondary line. There is no separate item name and
+   no tag pill — the two would be the same string side by side — and no untagged
+   state, since TransactionTagId is required and the read model embeds the tag.
+   An archived tag adds the literal text marker "Archived"; never colour alone. */
 const BudgetItemRow = ({
   item,
   budget,
@@ -27005,7 +27211,7 @@ const BudgetItemRow = ({
   onDelete
 }) => {
   const actual = H.budgetItemActual(item, budget);
-  const tag = item.tagId ? D.tagById[item.tagId] : null;
+  const tag = D.tagById[item.tagId];
   const pct = item.planned > 0 ? Math.min(100, actual / item.planned * 100) : 0;
   const isIncome = item.categoryType === 'Income';
   const over = !isIncome && actual > item.planned;
@@ -27015,12 +27221,14 @@ const BudgetItemRow = ({
   }, /*#__PURE__*/React.createElement("div", {
     className: "bgt-item-id"
   }, /*#__PURE__*/React.createElement("span", {
+    className: "bgt-item-line"
+  }, /*#__PURE__*/React.createElement("span", {
     className: "bgt-item-name"
-  }, item.name), tag ? /*#__PURE__*/React.createElement(Chip, {
-    tone: "tag"
-  }, tag.name) : /*#__PURE__*/React.createElement(Chip, {
-    tone: "outline"
-  }, "Untagged")), /*#__PURE__*/React.createElement("div", {
+  }, tag ? tag.name : item.tagId), tag && tag.archived ? /*#__PURE__*/React.createElement("span", {
+    className: "bgt-item-archived"
+  }, "Archived") : null), tag && tag.description ? /*#__PURE__*/React.createElement("span", {
+    className: "bgt-item-desc"
+  }, tag.description) : null), /*#__PURE__*/React.createElement("div", {
     className: "bgt-bar-wrap"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bar"
@@ -27032,8 +27240,8 @@ const BudgetItemRow = ({
   })), over && /*#__PURE__*/React.createElement("span", {
     className: "bgt-over"
   }, "over by ", H.money(actual - item.planned))), /*#__PURE__*/React.createElement("div", {
-    className: `bgt-num bgt-actual mono ${item.tagId ? '' : 'muted'}`
-  }, item.tagId ? H.money(actual) : '—'), /*#__PURE__*/React.createElement("div", {
+    className: "bgt-num bgt-actual mono"
+  }, H.money(actual)), /*#__PURE__*/React.createElement("div", {
     className: "bgt-num bgt-planned mono"
   }, H.money(item.planned)), /*#__PURE__*/React.createElement("div", {
     className: "bgt-item-act"
@@ -27080,41 +27288,40 @@ const BudgetItemGroup = ({
   })));
 };
 
-/* ---- One inline-editable item row ("Edit multiple" batch mode) ---- */
+/* ---- One inline-editable item row ("Edit multiple" batch mode) ----
+   The first column is the tag picker, not a name field — and it is passed NO
+   create handler: this grid saves on change, so there is no submit point to
+   resolve a staged create against, and an unresolved tag id must never reach
+   the wire. Creating a tag happens in the dialog, which has a submit. Each row
+   needs its OWN field id (the column header is hidden at narrow widths, so the
+   row's visually hidden label is the control's real accessible name). */
 const EditItemRow = ({
   item,
   budget,
   onChange,
-  onDelete
+  onDelete,
+  tagsFailed
 }) => {
-  const used = new Set(budget.items.filter(i => i.tagId && i.id !== item.id).map(i => i.tagId));
-  const tagOptions = [{
-    value: '',
-    label: 'None'
-  }].concat(D.tags.filter(t => !used.has(t.id)).map(t => ({
-    value: t.id,
-    label: t.name
-  })));
+  const used = budget.items.filter(i => i.id !== item.id).map(i => i.tagId);
   return /*#__PURE__*/React.createElement("div", {
     className: "bgt-edit-row"
-  }, /*#__PURE__*/React.createElement("input", {
-    className: "bgt-edit-input",
-    defaultValue: item.name,
-    "aria-label": "Item name",
-    onChange: e => onChange(item.id, {
-      name: e.target.value
-    })
+  }, /*#__PURE__*/React.createElement(TransactionTagPicker, {
+    id: `bgt-tag-${item.id}`,
+    hideLabel: true,
+    value: item.tagId,
+    onChange: v => onChange(item.id, {
+      tagId: v
+    }),
+    tags: D.tags,
+    usedTagIds: used,
+    loadFailed: tagsFailed
   }), /*#__PURE__*/React.createElement(BudgetCategoryTypeSelect, {
     value: item.categoryType,
     onChange: v => onChange(item.id, {
       categoryType: v
     })
-  }), /*#__PURE__*/React.createElement(Select, {
-    value: item.tagId || '',
-    onChange: v => onChange(item.id, {
-      tagId: v || null
-    }),
-    options: tagOptions
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "bgt-edit-filler"
   }), /*#__PURE__*/React.createElement("input", {
     type: "number",
     className: "bgt-edit-input ta-r",
@@ -27233,7 +27440,8 @@ const BudgetDetail = ({
   onAddItem,
   onEditItem,
   editMulti,
-  setEditMulti
+  setEditMulti,
+  tagsFailed
 }) => {
   const {
     useState
@@ -27247,12 +27455,14 @@ const BudgetDetail = ({
   const income = budget.items.filter(i => i.categoryType === 'Income');
   const expense = budget.items.filter(i => i.categoryType === 'Expense');
   // Per-budget allocation slices — this budget's own planned lines, biggest first.
+  // Slice labels come from the item's tag — the item has no name of its own.
+  const sliceName = i => D.tagById[i.tagId] ? D.tagById[i.tagId].name : i.tagId;
   const incomeSlices = income.map(i => ({
-    name: i.name,
+    name: sliceName(i),
     value: i.planned
   })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
   const expenseSlices = expense.map(i => ({
-    name: i.name,
+    name: sliceName(i),
     value: i.planned
   })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
   const deleteItem = id => setItems(prev => prev.filter(i => i.id !== id));
@@ -27296,14 +27506,17 @@ const BudgetDetail = ({
     className: "bgt-items"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bgt-edit-head"
-  }, /*#__PURE__*/React.createElement("span", null, "Item"), /*#__PURE__*/React.createElement("span", null, "Category"), /*#__PURE__*/React.createElement("span", null, "Transaction tag"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", null, "Transaction tag"), /*#__PURE__*/React.createElement("span", null, "Category"), /*#__PURE__*/React.createElement("span", {
+    className: "bgt-edit-filler"
+  }), /*#__PURE__*/React.createElement("span", {
     className: "ta-r"
   }, "Planned"), /*#__PURE__*/React.createElement("span", null)), budget.items.map(it => /*#__PURE__*/React.createElement(EditItemRow, {
     key: it.id,
     item: it,
     budget: budget,
     onChange: updateItem,
-    onDelete: deleteItem
+    onDelete: deleteItem,
+    tagsFailed: tagsFailed
   })), /*#__PURE__*/React.createElement("div", {
     className: "bgt-edit-foot"
   }, /*#__PURE__*/React.createElement("span", {
@@ -27317,7 +27530,7 @@ const BudgetDetail = ({
     className: "bgt-items acct-table-frame odc-scroll"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bgt-item-head"
-  }, /*#__PURE__*/React.createElement("span", null, "Item"), /*#__PURE__*/React.createElement("span", null, "Actual vs planned"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", null, "Transaction tag"), /*#__PURE__*/React.createElement("span", null, "Actual vs planned"), /*#__PURE__*/React.createElement("span", {
     className: "ta-r"
   }, "Actual"), /*#__PURE__*/React.createElement("span", {
     className: "ta-r"
@@ -27361,7 +27574,9 @@ const BudgetRecordCard = ({
   open,
   onToggle,
   onDelete,
-  onNavigate
+  onNavigate,
+  canCreateTag,
+  tagsFailed
 }) => {
   const {
     useState
@@ -27505,7 +27720,8 @@ const BudgetRecordCard = ({
     onAddItem: openAddItem,
     onEditItem: openEditItem,
     editMulti: editMulti,
-    setEditMulti: setEditMulti
+    setEditMulti: setEditMulti,
+    tagsFailed: tagsFailed
   })), showEdit && /*#__PURE__*/React.createElement(AddBudgetModal, {
     budget: budget,
     onClose: () => setShowEdit(false),
@@ -27513,16 +27729,24 @@ const BudgetRecordCard = ({
   }), itemModal && /*#__PURE__*/React.createElement(AddBudgetItemModal, {
     budget: budget,
     item: itemModal.item,
+    canCreateTag: canCreateTag,
+    tagsFailed: tagsFailed,
     onClose: () => setItemModal(null),
     onCreate: addItem
   }));
 };
 const Budgets = ({
-  onNavigate
+  onNavigate,
+  tweaks = {}
 }) => {
   const {
     useState
   } = React;
+  // Two claim / availability gates the tag-as-identity picker reads:
+  // transactions.tags.create decides whether inline create is offered in the
+  // dialog at all, and a failed tag fetch is NOT the same as "no tags exist".
+  const canCreateTag = tweaks.bgtCanCreateTag !== false;
+  const tagsFailed = !!tweaks.bgtTagsFailed;
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
@@ -27649,7 +27873,9 @@ const Budgets = ({
       open: openId === b.id,
       onToggle: o => setOpenId(o ? b.id : null),
       onDelete: deleteBudget,
-      onNavigate: onNavigate
+      onNavigate: onNavigate,
+      canCreateTag: canCreateTag,
+      tagsFailed: tagsFailed
     }),
     empty: /*#__PURE__*/React.createElement("div", {
       className: "empty-line",
@@ -31203,6 +31429,53 @@ const RevealPanel = props => {
   const C = (window.OdysseyDesignSystem_d5aa51 || {}).RevealPanel;
   return C ? /*#__PURE__*/React.createElement(C, props) : null;
 };
+// TransactionTagPicker — the required tag-as-identity picker (Combobox in a
+// FieldShell, tags already planned for marked "in use", inline create where the
+// caller both holds transactions.tags.create and has a submit to stage against).
+// Resolved lazily so it appears as soon as the bundle carries it.
+const TransactionTagPicker = props => {
+  const C = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagPicker;
+  if (C) return /*#__PURE__*/React.createElement(C, props);
+  // Bundle-lag fallback (same pattern as PasswordRules / CustodianSelect): the
+  // same composition, minus the states that need the newer Combobox.
+  const {
+    id,
+    label = 'Transaction tag',
+    value,
+    onChange,
+    tags = [],
+    usedTagIds = [],
+    error,
+    help,
+    hideLabel,
+    disabled
+  } = props;
+  const used = new Set(usedTagIds.filter(t => t && t !== value));
+  const sel = tags.find(t => (t.id || t.transactionTagId) === value);
+  const opts = tags.filter(t => !t.archived || (t.id || t.transactionTagId) === value).map(t => ({
+    value: t.id || t.transactionTagId,
+    label: t.archived ? `${t.name} · Archived` : t.name,
+    disabled: used.has(t.id || t.transactionTagId),
+    note: used.has(t.id || t.transactionTagId) ? 'in use' : undefined
+  }));
+  return /*#__PURE__*/React.createElement(FieldShell, {
+    label: label,
+    htmlFor: id,
+    required: true,
+    helper: sel && sel.description || help || "Matched transactions become this item's actual.",
+    error: error,
+    className: `odc-tagpick${hideLabel ? ' hide-label' : ''}`
+  }, /*#__PURE__*/React.createElement(Combobox, {
+    id: id,
+    value: value || '',
+    onChange: (v, o) => onChange && onChange(v || '', o),
+    options: opts,
+    placeholder: "Search tags\u2026",
+    disabled: disabled,
+    invalid: !!error,
+    ariaDescribedBy: `${id}-help ${id}-help-error`
+  }));
+};
 // Password policy + rules checklist — the ONE shared source for the 16-char +
 // four-class rules, consumed by Register, /account change-password, and
 // /reset-password. Prefer the typed DS export; fall back to a local mirror so
@@ -31626,6 +31899,7 @@ Object.assign(window, {
   SubscriptionStatusChip,
   SegmentedControl,
   ContactSelect,
+  TransactionTagPicker,
   ODC_TONE,
   odcTypeRows,
   odcStatusRows,
@@ -49775,12 +50049,20 @@ const TagTable = ({
 
 /* ---------- New / Edit tag dialog (New/ExistingTransactionTag DTO) ----------
    One dialog serves both create and edit: pass an existing `tag` to prefill and
-   switch into edit mode (title, submit copy, and save callback all follow). */
+   switch into edit mode (title, submit copy, and save callback all follow).
+
+   Tag names are unique case-insensitively, ARCHIVED ROWS INCLUDED — a tag name
+   is an identity now (it names every budget item planning for the tag), so two
+   same-named tags would render as two indistinguishable budget rows. The server
+   answers a clash with a 409 keyed to `name`; this dialog renders it at the name
+   field, naming the archived case, which has no inline remedy: restoring or
+   renaming an archived tag is a row action on this page. */
 const AddTagModal = ({
   onClose,
   onCreate,
   onSave,
   tag = null,
+  siblings = [],
   subtitle = 'Tags group transactions and budget items by category.'
 }) => {
   const {
@@ -49806,14 +50088,22 @@ const AddTagModal = ({
   // (Esc-to-close, scrim click and focus handling come from the DS Modal shell.)
 
   const submit = () => {
-    if (!draft.name.trim()) {
+    const name = draft.name.trim();
+    if (!name) {
       setErrors({
         name: 'Give the tag a name.'
       });
       return;
     }
+    const clash = siblings.find(t => t.id !== (tag && tag.id) && t.name.trim().toLowerCase() === name.toLowerCase());
+    if (clash) {
+      setErrors({
+        name: clash.archived ? `A tag called “${clash.name}” already exists but is archived. Restore it, or rename it, to reuse the name.` : `A tag called “${clash.name}” already exists. Pick a different name.`
+      });
+      return;
+    }
     const dto = {
-      name: draft.name.trim(),
+      name,
       description: draft.description.trim() || undefined
     };
     if (editing) {
@@ -49846,7 +50136,7 @@ const AddTagModal = ({
     onChange: set('name'),
     placeholder: "e.g. Groceries",
     error: errors.name,
-    helper: "Up to 64 characters",
+    helper: "Up to 64 characters \xB7 must be unique",
     autoFocus: true
   }), /*#__PURE__*/React.createElement(Field, {
     label: "Description",
@@ -50002,11 +50292,13 @@ const createTagsPage = cfg => () => {
   }), adding && /*#__PURE__*/React.createElement(AddTagModal, {
     onClose: () => setAdding(false),
     onCreate: createTag,
+    siblings: tags,
     subtitle: cfg.modalSubtitle
   }), editingTag && /*#__PURE__*/React.createElement(AddTagModal, {
     tag: editingTag,
     onClose: () => setEditingTag(null),
     onSave: onSave,
+    siblings: tags,
     subtitle: cfg.modalSubtitle
   }), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(CardBody, {
     style: {
@@ -53663,6 +53955,26 @@ window.OdysseyData = {
     description: 'Work-related spending, tracked for the books',
     archived: null
   }, {
+    id: 't11',
+    name: 'Freelance',
+    description: 'Consulting and side-project income',
+    archived: null
+  }, {
+    id: 't12',
+    name: 'Bonus',
+    description: 'Performance and year-end bonuses',
+    archived: null
+  }, {
+    id: 't13',
+    name: 'Gifts',
+    description: 'Presents for family and friends',
+    archived: null
+  }, {
+    id: 't14',
+    name: 'Travel',
+    description: 'Flights, hotels, and trips away',
+    archived: null
+  }, {
     id: 't8',
     name: 'Vacation 2024',
     description: 'One-off travel spending from the 2024 trips',
@@ -54362,10 +54674,12 @@ window.OdysseyData = {
     dir: 'expense'
   }],
   // Budgets — ExistingBudget[] (BudgetsCard list) + each budget's ExistingBudgetItem[]
-  // (BudgetCard detail). An item's `actual` is NOT stored: it's derived from the
-  // transactions whose tag matches the item's `tagId` within the budget's date range
-  // — exactly how the server's BudgetReport computes per-tag sums. Items with no
-  // tagId are plan-only (no matched actual), which the real TransactionTagId allows.
+  // (BudgetCard detail). An item has NO name and NO description of its own: its
+  // TransactionTagId is required, and the linked tag's name and description are the
+  // item's identity everywhere it is displayed (ExistingBudgetItem.Tag). An item's
+  // `actual` is NOT stored either: it's derived from the transactions whose tag
+  // matches the item's `tagId` within the budget's date range — exactly how the
+  // server's BudgetReport computes per-tag sums. One item per tag per budget.
   budgets: [{
     id: 'b1',
     name: 'November 2024',
@@ -54378,57 +54692,41 @@ window.OdysseyData = {
     tone: 'tide',
     items: [{
       id: 'bi1',
-      name: 'Salary',
-      description: 'Base monthly pay',
       categoryType: 'Income',
       tagId: 't5',
       planned: 3250
     }, {
       id: 'bi2',
-      name: 'Side projects',
-      description: 'Freelance & consulting',
       categoryType: 'Income',
-      tagId: null,
+      tagId: 't11',
       planned: 400
     }, {
       id: 'bi3',
-      name: 'Rent',
-      description: 'Lakeside apartment',
       categoryType: 'Expense',
       tagId: 't4',
       planned: 2400
     }, {
       id: 'bi4',
-      name: 'Groceries',
-      description: 'Weekly food shop',
       categoryType: 'Expense',
       tagId: 't1',
       planned: 600
     }, {
       id: 'bi5',
-      name: 'Utilities',
-      description: 'Electric, water, internet',
       categoryType: 'Expense',
       tagId: 't7',
       planned: 180
     }, {
       id: 'bi6',
-      name: 'Subscriptions',
-      description: 'Streaming & software',
       categoryType: 'Expense',
       tagId: 't2',
       planned: 40
     }, {
       id: 'bi7',
-      name: 'Transit',
-      description: 'Transit & rideshare',
       categoryType: 'Expense',
       tagId: 't3',
       planned: 120
     }, {
       id: 'bi8',
-      name: 'Dining out',
-      description: 'Restaurants & cafés',
       categoryType: 'Expense',
       tagId: 't6',
       planned: 150
@@ -54445,59 +54743,43 @@ window.OdysseyData = {
     tone: 'violet',
     items: [{
       id: 'bi9',
-      name: 'Salary',
-      description: 'Base monthly pay',
       categoryType: 'Income',
       tagId: 't5',
       planned: 3250
     }, {
       id: 'bi10',
-      name: 'Year-end bonus',
-      description: 'Expected Q4 bonus',
       categoryType: 'Income',
-      tagId: null,
+      tagId: 't12',
       planned: 1500
     }, {
       id: 'bi11',
-      name: 'Rent',
-      description: 'Lakeside apartment',
       categoryType: 'Expense',
       tagId: 't4',
       planned: 2400
     }, {
       id: 'bi12',
-      name: 'Groceries',
-      description: 'Holiday hosting',
       categoryType: 'Expense',
       tagId: 't1',
       planned: 650
     }, {
       id: 'bi13',
-      name: 'Utilities',
-      description: 'Higher winter usage',
       categoryType: 'Expense',
       tagId: 't7',
       planned: 200
     }, {
       id: 'bi14',
-      name: 'Subscriptions',
-      description: 'Streaming & software',
       categoryType: 'Expense',
       tagId: 't2',
       planned: 40
     }, {
       id: 'bi15',
-      name: 'Holiday gifts',
-      description: 'Family & friends',
       categoryType: 'Expense',
-      tagId: null,
+      tagId: 't13',
       planned: 800
     }, {
       id: 'bi16',
-      name: 'Travel',
-      description: 'Flights home',
       categoryType: 'Expense',
-      tagId: null,
+      tagId: 't14',
       planned: 600
     }]
   }, {
@@ -54512,46 +54794,42 @@ window.OdysseyData = {
     tone: 'sea',
     items: [{
       id: 'bi17',
-      name: 'Salary',
-      description: 'Base monthly pay',
       categoryType: 'Income',
       tagId: 't5',
       planned: 3250
     }, {
       id: 'bi18',
-      name: 'Rent',
-      description: 'Lakeside apartment',
       categoryType: 'Expense',
       tagId: 't4',
       planned: 2400
     }, {
       id: 'bi19',
-      name: 'Groceries',
-      description: 'Monthly stock-up',
       categoryType: 'Expense',
       tagId: 't1',
       planned: 500
     }, {
       id: 'bi20',
-      name: 'Utilities',
-      description: 'Electric & water',
       categoryType: 'Expense',
       tagId: 't7',
       planned: 180
     }, {
       id: 'bi21',
-      name: 'Dining out',
-      description: 'Restaurants & cafés',
       categoryType: 'Expense',
       tagId: 't6',
       planned: 150
     }, {
       id: 'bi22',
-      name: 'Transit',
-      description: 'Transit & rideshare',
       categoryType: 'Expense',
       tagId: 't3',
       planned: 100
+    },
+    // The tag was archived after this budget closed: the item still renders
+    // its name and description, plus the literal text marker "Archived".
+    {
+      id: 'bi23',
+      categoryType: 'Expense',
+      tagId: 't8',
+      planned: 600
     }]
   }]
 };
@@ -55747,7 +56025,7 @@ window.OdysseyHelpers = {
   // — so the per-tag buckets can sum to more than the de-duplicated transaction
   // total (no amount splitting in v1, per spec §9). Untagged items stay plan-only.
   budgetItemActual(item, b) {
-    if (!item.tagId) return 0;
+    if (!item.tagId) return 0; // unreachable: TransactionTagId is required
     return window.OdysseyData.transactions.filter(t => window.OdysseyData.txnTagIds(t).includes(item.tagId) && t.date >= b.startDate && t.date <= b.endDate).reduce((s, t) => s + Math.abs(t.amount), 0);
   },
   // Roll-up: planned + actual income/expense and their differences.
@@ -61620,6 +61898,8 @@ __ds_ns.TransactionFileTypeMultiSelect = __ds_scope.TransactionFileTypeMultiSele
 __ds_ns.TRANSACTION_FILE_TYPES = __ds_scope.TRANSACTION_FILE_TYPES;
 
 __ds_ns.TransactionFileTypeSelect = __ds_scope.TransactionFileTypeSelect;
+
+__ds_ns.TransactionTagPicker = __ds_scope.TransactionTagPicker;
 
 __ds_ns.TxnTable = __ds_scope.TxnTable;
 

@@ -73,8 +73,15 @@ const TagTable = ({ tags, onSave, onDelete, onEdit, sort, onSortChange, empty, a
 
 /* ---------- New / Edit tag dialog (New/ExistingTransactionTag DTO) ----------
    One dialog serves both create and edit: pass an existing `tag` to prefill and
-   switch into edit mode (title, submit copy, and save callback all follow). */
-const AddTagModal = ({ onClose, onCreate, onSave, tag = null, subtitle = 'Tags group transactions and budget items by category.' }) => {
+   switch into edit mode (title, submit copy, and save callback all follow).
+
+   Tag names are unique case-insensitively, ARCHIVED ROWS INCLUDED — a tag name
+   is an identity now (it names every budget item planning for the tag), so two
+   same-named tags would render as two indistinguishable budget rows. The server
+   answers a clash with a 409 keyed to `name`; this dialog renders it at the name
+   field, naming the archived case, which has no inline remedy: restoring or
+   renaming an archived tag is a row action on this page. */
+const AddTagModal = ({ onClose, onCreate, onSave, tag = null, siblings = [], subtitle = 'Tags group transactions and budget items by category.' }) => {
   const { useState } = React;
   const editing = !!tag;
   const [draft, setDraft] = useState({ name: tag?.name || '', description: tag?.description || '' });
@@ -87,9 +94,17 @@ const AddTagModal = ({ onClose, onCreate, onSave, tag = null, subtitle = 'Tags g
   // (Esc-to-close, scrim click and focus handling come from the DS Modal shell.)
 
   const submit = () => {
-    if (!draft.name.trim()) { setErrors({ name: 'Give the tag a name.' }); return; }
+    const name = draft.name.trim();
+    if (!name) { setErrors({ name: 'Give the tag a name.' }); return; }
+    const clash = siblings.find(t => t.id !== (tag && tag.id) && t.name.trim().toLowerCase() === name.toLowerCase());
+    if (clash) {
+      setErrors({ name: clash.archived
+        ? `A tag called “${clash.name}” already exists but is archived. Restore it, or rename it, to reuse the name.`
+        : `A tag called “${clash.name}” already exists. Pick a different name.` });
+      return;
+    }
     const dto = {
-      name: draft.name.trim(),
+      name,
       description: draft.description.trim() || undefined,
     };
     if (editing) {
@@ -115,7 +130,7 @@ const AddTagModal = ({ onClose, onCreate, onSave, tag = null, subtitle = 'Tags g
         </React.Fragment>
       }>
       <Field label="Name" value={draft.name} onChange={set('name')}
-        placeholder="e.g. Groceries" error={errors.name} helper="Up to 64 characters" autoFocus />
+        placeholder="e.g. Groceries" error={errors.name} helper="Up to 64 characters · must be unique" autoFocus />
       <Field label="Description" value={draft.description} onChange={set('description')}
         placeholder="Optional — what this tag is for" helper="Up to 256 characters" />
     </Modal>
@@ -212,8 +227,8 @@ const createTagsPage = (cfg) => () => {
         primary={{ label: 'New tag', icon: 'add', onClick: () => setAdding(true) }}
       />
 
-      {adding && <AddTagModal onClose={() => setAdding(false)} onCreate={createTag} subtitle={cfg.modalSubtitle} />}
-      {editingTag && <AddTagModal tag={editingTag} onClose={() => setEditingTag(null)} onSave={onSave} subtitle={cfg.modalSubtitle} />}
+      {adding && <AddTagModal onClose={() => setAdding(false)} onCreate={createTag} siblings={tags} subtitle={cfg.modalSubtitle} />}
+      {editingTag && <AddTagModal tag={editingTag} onClose={() => setEditingTag(null)} onSave={onSave} siblings={tags} subtitle={cfg.modalSubtitle} />}
 
       <Card>
         <CardBody style={{ padding: 0 }}>

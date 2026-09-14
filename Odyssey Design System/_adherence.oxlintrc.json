@@ -223,8 +223,8 @@
         "message": "<CalendarSwatch> doesn't accept that prop. Declared props: key, name, hex, fg."
       },
       {
-        "selector": "JSXOpeningElement[name.name='ComboboxOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|icon|iconColor|key|ref|className|style|children)$/]",
-        "message": "<ComboboxOption> doesn't accept that prop. Declared props: value, label, icon, iconColor."
+        "selector": "JSXOpeningElement[name.name='ComboboxOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|icon|iconColor|note|disabled|key|ref|className|style|children)$/]",
+        "message": "<ComboboxOption> doesn't accept that prop. Declared props: value, label, icon, iconColor, note, disabled."
       },
       {
         "selector": "JSXOpeningElement[name.name='ContactAlias'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|value|label|contactId|key|ref|className|style|children)$/]",
@@ -727,6 +727,10 @@
         "message": "<TransactionFileType> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
       },
       {
+        "selector": "JSXOpeningElement[name.name='TransactionTagOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|transactionTagId|name|description|archived|key|ref|className|style|children)$/]",
+        "message": "<TransactionTagOption> doesn't accept that prop. Declared props: id, transactionTagId, name, description, archived."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='TxnTableRow'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|desc|status|amount|date|dir|icon|currency|contact|accountLabel|accountNumber|tagLabel|key|ref|className|style|children)$/]",
         "message": "<TxnTableRow> doesn't accept that prop. Declared props: id, desc, status, amount, date, dir, icon, currency, contact, accountLabel, accountNumber, tagLabel."
       },
@@ -1101,6 +1105,9 @@
         "replaces": []
       },
       "TransactionFileType": {
+        "replaces": []
+      },
+      "TransactionTagOption": {
         "replaces": []
       },
       "TxnTableRow": {

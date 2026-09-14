@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Dialogs" name="New / Edit budget item" subtitle="AddBudgetItemModal — one dialog, two modes: create a line or edit an existing one. Switch between them. Live." viewport="780x720" -->
+<!-- @dsCard group="Dialogs" name="New / Edit budget item" subtitle="AddBudgetItemModal — three fields, because the transaction tag IS the item: the tag names the line and collects its actuals. Switch between create, edit, the missing-tag error, a caller without transactions.tags.create, and a tag list that failed to load. Live." viewport="820x680" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -47,17 +47,26 @@
     const { useState } = React;
     const AddBudgetItemModal = window.AddBudgetItemModal;
     const budget = window.OdysseyData.budgets[0];
-    const anItem = (budget.items || []).find(i => i.name) || null;
+    const anItem = (budget.items || [])[3] || null;
+    const MODES = [
+      { key: 'create', label: 'Create' },
+      { key: 'edit', label: 'Edit' },
+      { key: 'nocreate', label: 'No create claim' },
+      { key: 'failed', label: 'Tags unavailable' },
+    ];
     function Specimen() {
       const [mode, setMode] = useState('create');
       return (
         <React.Fragment>
           <div className="switcher">
-            <button className={mode === 'create' ? 'on' : ''} onClick={() => setMode('create')}>Create</button>
-            <button className={mode === 'edit' ? 'on' : ''} onClick={() => setMode('edit')}>Edit</button>
+            {MODES.map(m => (
+              <button key={m.key} className={mode === m.key ? 'on' : ''} onClick={() => setMode(m.key)}>{m.label}</button>
+            ))}
           </div>
           <AddBudgetItemModal key={mode} budget={budget}
             item={mode === 'edit' ? anItem : null}
+            canCreateTag={mode !== 'nocreate'}
+            tagsFailed={mode === 'failed'}
             onClose={() => {}} onCreate={() => {}} />
         </React.Fragment>
       );

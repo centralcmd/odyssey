@@ -24,10 +24,15 @@ const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD'].map(c
 const INCOME_COLORS  = ['var(--mint-500)', 'var(--tide-400)', 'var(--sea-400)', 'var(--violet-500)'];
 const EXPENSE_COLORS = ['var(--coral-500)', 'var(--amber-500)', 'var(--violet-500)', 'var(--sea-400)', 'var(--tide-400)', 'var(--mint-500)'];
 
-/* ---- One planned-vs-actual item row ---- */
+/* ---- One planned-vs-actual item row ----
+   The item's tag IS its identity: the tag's name is the row's primary label and
+   the tag's description its secondary line. There is no separate item name and
+   no tag pill — the two would be the same string side by side — and no untagged
+   state, since TransactionTagId is required and the read model embeds the tag.
+   An archived tag adds the literal text marker "Archived"; never colour alone. */
 const BudgetItemRow = ({ item, budget, onEdit, onDelete }) => {
   const actual = H.budgetItemActual(item, budget);
-  const tag = item.tagId ? D.tagById[item.tagId] : null;
+  const tag = D.tagById[item.tagId];
   const pct = item.planned > 0 ? Math.min(100, (actual / item.planned) * 100) : 0;
   const isIncome = item.categoryType === 'Income';
   const over = !isIncome && actual > item.planned;
@@ -35,18 +40,17 @@ const BudgetItemRow = ({ item, budget, onEdit, onDelete }) => {
   return (
     <div className={`bgt-item-row ${isIncome ? 'income' : 'expense'}`}>
       <div className="bgt-item-id">
-        <span className="bgt-item-name">{item.name}</span>
-        {tag
-          ? <Chip tone="tag">{tag.name}</Chip>
-          : <Chip tone="outline">Untagged</Chip>}
+        <span className="bgt-item-line">
+          <span className="bgt-item-name">{tag ? tag.name : item.tagId}</span>
+          {tag && tag.archived ? <span className="bgt-item-archived">Archived</span> : null}
+        </span>
+        {tag && tag.description ? <span className="bgt-item-desc">{tag.description}</span> : null}
       </div>
       <div className="bgt-bar-wrap">
         <div className="bar"><div className={`fill ${fillClass}`} style={{ width: `${pct}%` }} /></div>
         {over && <span className="bgt-over">over by {H.money(actual - item.planned)}</span>}
       </div>
-      <div className={`bgt-num bgt-actual mono ${item.tagId ? '' : 'muted'}`}>
-        {item.tagId ? H.money(actual) : '—'}
-      </div>
+      <div className="bgt-num bgt-actual mono">{H.money(actual)}</div>
       <div className="bgt-num bgt-planned mono">{H.money(item.planned)}</div>
       <div className="bgt-item-act">
         <ActionMenu items={[
@@ -74,17 +78,22 @@ const BudgetItemGroup = ({ items, budget, onEdit, onDelete }) => {
   );
 };
 
-/* ---- One inline-editable item row ("Edit multiple" batch mode) ---- */
-const EditItemRow = ({ item, budget, onChange, onDelete }) => {
-  const used = new Set(budget.items.filter(i => i.tagId && i.id !== item.id).map(i => i.tagId));
-  const tagOptions = [{ value: '', label: 'None' }].concat(
-    D.tags.filter(t => !used.has(t.id)).map(t => ({ value: t.id, label: t.name })));
+/* ---- One inline-editable item row ("Edit multiple" batch mode) ----
+   The first column is the tag picker, not a name field — and it is passed NO
+   create handler: this grid saves on change, so there is no submit point to
+   resolve a staged create against, and an unresolved tag id must never reach
+   the wire. Creating a tag happens in the dialog, which has a submit. Each row
+   needs its OWN field id (the column header is hidden at narrow widths, so the
+   row's visually hidden label is the control's real accessible name). */
+const EditItemRow = ({ item, budget, onChange, onDelete, tagsFailed }) => {
+  const used = budget.items.filter(i => i.id !== item.id).map(i => i.tagId);
   return (
     <div className="bgt-edit-row">
-      <input className="bgt-edit-input" defaultValue={item.name} aria-label="Item name"
-        onChange={(e) => onChange(item.id, { name: e.target.value })} />
+      <TransactionTagPicker id={`bgt-tag-${item.id}`} hideLabel
+        value={item.tagId} onChange={(v) => onChange(item.id, { tagId: v })}
+        tags={D.tags} usedTagIds={used} loadFailed={tagsFailed} />
       <BudgetCategoryTypeSelect value={item.categoryType} onChange={(v) => onChange(item.id, { categoryType: v })} />
-      <Select value={item.tagId || ''} onChange={(v) => onChange(item.id, { tagId: v || null })} options={tagOptions} />
+      <span className="bgt-edit-filler" />
       <input type="number" className="bgt-edit-input ta-r" defaultValue={item.planned} aria-label="Planned amount"
         onChange={(e) => onChange(item.id, { planned: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
       <div className="bgt-item-act">
@@ -139,7 +148,7 @@ const BudgetTiles = ({ budget }) => {
 };
 
 /* ---- Body sections: allocation + items + transactions ---- */
-const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, editMulti, setEditMulti }) => {
+const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, editMulti, setEditMulti, tagsFailed }) => {
   const { useState } = React;
   const [txns, setTxns] = useState(() => H.budgetMatchedTxns(budget));
   const saveTxn = (id, patch) => setTxns(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
@@ -147,8 +156,10 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
   const income  = budget.items.filter(i => i.categoryType === 'Income');
   const expense = budget.items.filter(i => i.categoryType === 'Expense');
   // Per-budget allocation slices — this budget's own planned lines, biggest first.
-  const incomeSlices  = income.map(i => ({ name: i.name, value: i.planned })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
-  const expenseSlices = expense.map(i => ({ name: i.name, value: i.planned })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
+  // Slice labels come from the item's tag — the item has no name of its own.
+  const sliceName = (i) => (D.tagById[i.tagId] ? D.tagById[i.tagId].name : i.tagId);
+  const incomeSlices  = income.map(i => ({ name: sliceName(i), value: i.planned })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
+  const expenseSlices = expense.map(i => ({ name: sliceName(i), value: i.planned })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
 
   const deleteItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
   const updateItem = (id, patch) => setItems(prev => prev.map(i => (i.id === id ? { ...i, ...patch } : i)));
@@ -181,14 +192,14 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
         ) : editMulti ? (
           <div className="bgt-items">
             <div className="bgt-edit-head">
-              <span>Item</span>
-              <span>Category</span>
               <span>Transaction tag</span>
+              <span>Category</span>
+              <span className="bgt-edit-filler" />
               <span className="ta-r">Planned</span>
               <span />
             </div>
             {budget.items.map(it => (
-              <EditItemRow key={it.id} item={it} budget={budget} onChange={updateItem} onDelete={deleteItem} />
+              <EditItemRow key={it.id} item={it} budget={budget} onChange={updateItem} onDelete={deleteItem} tagsFailed={tagsFailed} />
             ))}
             <div className="bgt-edit-foot">
               <span className="muted">Changes apply as you type.</span>
@@ -199,7 +210,7 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
         ) : (
           <div className="bgt-items acct-table-frame odc-scroll">
             <div className="bgt-item-head">
-              <span>Item</span>
+              <span>Transaction tag</span>
               <span>Actual vs planned</span>
               <span className="ta-r">Actual</span>
               <span className="ta-r">Planned</span>
@@ -231,7 +242,7 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
 };
 
 /* ---- One budget record (DS RecordCard) ---- */
-const BudgetRecordCard = ({ b, open, onToggle, onDelete, onNavigate }) => {
+const BudgetRecordCard = ({ b, open, onToggle, onDelete, onNavigate, canCreateTag, tagsFailed }) => {
   const { useState } = React;
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
   const { RecordCard, InfoTileGrid, InfoTile } = DS;
@@ -312,16 +323,22 @@ const BudgetRecordCard = ({ b, open, onToggle, onDelete, onNavigate }) => {
       >
         <BudgetDetail budget={budget} setItems={setItems} onNavigate={onNavigate}
           onAddItem={openAddItem} onEditItem={openEditItem}
-          editMulti={editMulti} setEditMulti={setEditMulti} />
+          editMulti={editMulti} setEditMulti={setEditMulti} tagsFailed={tagsFailed} />
       </RecordCard>
       {showEdit && <AddBudgetModal budget={budget} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
-      {itemModal && <AddBudgetItemModal budget={budget} item={itemModal.item} onClose={() => setItemModal(null)} onCreate={addItem} />}
+      {itemModal && <AddBudgetItemModal budget={budget} item={itemModal.item} canCreateTag={canCreateTag}
+        tagsFailed={tagsFailed} onClose={() => setItemModal(null)} onCreate={addItem} />}
     </div>
   );
 };
 
-const Budgets = ({ onNavigate }) => {
+const Budgets = ({ onNavigate, tweaks = {} }) => {
   const { useState } = React;
+  // Two claim / availability gates the tag-as-identity picker reads:
+  // transactions.tags.create decides whether inline create is offered in the
+  // dialog at all, and a failed tag fetch is NOT the same as "no tags exist".
+  const canCreateTag = tweaks.bgtCanCreateTag !== false;
+  const tagsFailed = !!tweaks.bgtTagsFailed;
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
@@ -409,7 +426,8 @@ const Budgets = ({ onNavigate }) => {
           noun="budgets"
           renderItem={(b) => (
             <BudgetRecordCard b={b} open={openId === b.id} onToggle={(o) => setOpenId(o ? b.id : null)}
-              onDelete={deleteBudget} onNavigate={onNavigate} />
+              onDelete={deleteBudget} onNavigate={onNavigate}
+              canCreateTag={canCreateTag} tagsFailed={tagsFailed} />
           )}
           empty={(
             <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>

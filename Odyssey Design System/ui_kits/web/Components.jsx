@@ -1204,6 +1204,29 @@ const CoordinateField = (props) => { const C = (window.OdysseyDesignSystem_d5aa5
 const StepperField = (props) => { const C = (window.OdysseyDesignSystem_d5aa51 || {}).StepperField; return C ? <C {...props} /> : null; };
 const ColorSwatchSelect = (props) => { const C = (window.OdysseyDesignSystem_d5aa51 || {}).ColorSwatchSelect; return C ? <C {...props} /> : null; };
 const RevealPanel = (props) => { const C = (window.OdysseyDesignSystem_d5aa51 || {}).RevealPanel; return C ? <C {...props} /> : null; };
+// TransactionTagPicker — the required tag-as-identity picker (Combobox in a
+// FieldShell, tags already planned for marked "in use", inline create where the
+// caller both holds transactions.tags.create and has a submit to stage against).
+// Resolved lazily so it appears as soon as the bundle carries it.
+const TransactionTagPicker = (props) => {
+  const C = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagPicker;
+  if (C) return <C {...props} />;
+  // Bundle-lag fallback (same pattern as PasswordRules / CustodianSelect): the
+  // same composition, minus the states that need the newer Combobox.
+  const { id, label = 'Transaction tag', value, onChange, tags = [], usedTagIds = [], error, help, hideLabel, disabled } = props;
+  const used = new Set(usedTagIds.filter(t => t && t !== value));
+  const sel = tags.find(t => (t.id || t.transactionTagId) === value);
+  const opts = tags.filter(t => !t.archived || (t.id || t.transactionTagId) === value)
+    .map(t => ({ value: t.id || t.transactionTagId, label: t.archived ? `${t.name} · Archived` : t.name, disabled: used.has(t.id || t.transactionTagId), note: used.has(t.id || t.transactionTagId) ? 'in use' : undefined }));
+  return (
+    <FieldShell label={label} htmlFor={id} required helper={(sel && sel.description) || help || "Matched transactions become this item's actual."}
+      error={error} className={`odc-tagpick${hideLabel ? ' hide-label' : ''}`}>
+      <Combobox id={id} value={value || ''} onChange={(v, o) => onChange && onChange(v || '', o)} options={opts}
+        placeholder="Search tags…" disabled={disabled} invalid={!!error}
+        ariaDescribedBy={`${id}-help ${id}-help-error`} />
+    </FieldShell>
+  );
+};
 // Password policy + rules checklist — the ONE shared source for the 16-char +
 // four-class rules, consumed by Register, /account change-password, and
 // /reset-password. Prefer the typed DS export; fall back to a local mirror so
@@ -1392,7 +1415,7 @@ Object.assign(window, {
   TaxStatementFileTypeSelect, TaxStatementFileTypeMultiSelect,
   InsurancePolicyTypeSelect, PolicyFileTypeSelect, PolicyFileTypeMultiSelect, CoverageStatusChip, Combobox, MatchIndicator,
   BillingIntervalSelect, BillingIntervalMultiSelect, BillingIntervalChip, SubscriptionStatusChip,
-  SegmentedControl, ContactSelect,
+  SegmentedControl, ContactSelect, TransactionTagPicker,
   ODC_TONE, odcTypeRows, odcStatusRows,
   ContractTypeSelect,
   BudgetCategoryTypeSelect,

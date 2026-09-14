@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now with contact import/export across the productivity surfaces — Contacts import/export as vCard (.vcf), Tasks as iCalendar VTODO (.ics), Journal entries as iCalendar VJOURNAL (.ics), and Calendar events export as iCalendar VEVENT — each reached from the page-header overflow (⋯) menu (export all / export filtered / import), with per-row / per-item export in the action menus and a UID-matched update-in-place import that summarises created / updated / skipped. Plus the Calendar module — a shared household Calendar (/calendar) of colour-coded calendars with one-off and recurring events across month, week, day and agenda views, keyboard-navigable date and time pickers, a manage-calendars dialog, and ICS (.ics) import/export. Plus the User Profile, the Journal module (Journal, Tasks kanban), Subscriptions, Contracts, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
+<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Budgets, where a budget item has no name of its own: its transaction tag is required and the tag's name and description are the item's identity — two-line rows, an Archived text marker, a four-column Edit-multiple grid whose first column is the tag picker, and a three-field New/Edit item dialog with gated inline tag creation (Tweaks toggle the create claim and a failed tag fetch). Plus the contact import/export family across the productivity surfaces — Contacts as vCard (.vcf), Tasks as iCalendar VTODO, Journal as VJOURNAL, Calendar events as VEVENT — the Calendar module, the User Profile, Subscriptions, Contracts, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -116,10 +116,10 @@
 
     function App() {
       const [authed, setAuthed] = useState(true); // start on dashboard for review
-      const [view, setView] = useState('contacts'); // open on Contacts to review aliases + lifecycle dates
+      const [view, setView] = useState('budgets'); // open on Budgets to review the tag-as-identity items
       const [authMode, setAuthMode] = useState('login');
       const [dark, setDark] = useState(true);
-      const [tweaks, setTweak] = useTweaks({ reportLayout: 'table', summaryBaseCurrency: 'USD', endingWindowDays: 45, showOnboarding: false, cpCanImport: true, cpExportCap: false, cpImportOutcome: 'skips', cpResidualLabel: false, cpCanCreate: true, cpCanUpdate: true, cpCanDelete: true, cpAliasCap: 32, tCanImport: true, tExportCap: false, tImportOutcome: 'skips', jCanImport: true, jCanReadCp: true, jExportCap: false, jImportOutcome: 'skips', showPasswordGate: false, cprOutcome: 'success', usersResetOutcome: 'delivered' });
+      const [tweaks, setTweak] = useTweaks({ reportLayout: 'table', summaryBaseCurrency: 'USD', endingWindowDays: 45, showOnboarding: false, cpCanImport: true, cpExportCap: false, cpImportOutcome: 'skips', cpResidualLabel: false, cpCanCreate: true, cpCanUpdate: true, cpCanDelete: true, cpAliasCap: 32, tCanImport: true, tExportCap: false, tImportOutcome: 'skips', jCanImport: true, jCanReadCp: true, jExportCap: false, jImportOutcome: 'skips', showPasswordGate: false, cprOutcome: 'success', usersResetOutcome: 'delivered', bgtCanCreateTag: true, bgtTagsFailed: false });
 
       // The "Sort by" control's anatomy, read by the SortSelect bridge in
       // Components.jsx at render time — a tweak change re-renders the tree.
@@ -194,7 +194,7 @@
           {view === 'contacts' && <Contacts tweaks={tweaks} />}
           {view === 'currencies'     && <Currencies />}
           {view === 'exchange-rates' && <ExchangeRates />}
-          {view === 'budgets'      && <Budgets onNavigate={setView} />}
+          {view === 'budgets'      && <Budgets onNavigate={setView} tweaks={tweaks} />}
           {view === 'tax-statements' && <TaxStatements tweaks={tweaks} onNavigate={setView} />}
           {view === 'insurance'    && <Insurance tweaks={tweaks} onNavigate={setView} />}
           {view === 'contracts'    && <Contracts tweaks={tweaks} onNavigate={setView} />}
@@ -228,6 +228,15 @@
               <TweakRadio label="Reset outcome" value={tweaks.usersResetOutcome}
                           options={[{ value: 'delivered', label: 'Link sent' }, { value: 'undelivered', label: 'Applied, email failed' }, { value: 'no-email', label: 'No confirmed email' }, { value: 'throttled', label: 'Throttled' }]}
                           onChange={(v) => setTweak('usersResetOutcome', v)} />
+            </React.Fragment>
+          )}
+          {view === 'budgets' && (
+            <React.Fragment>
+              <TweakSection label="Budget items · transaction tag" />
+              <TweakToggle label="Holds transactions.tags.create (inline create offered)" value={tweaks.bgtCanCreateTag}
+                           onChange={(v) => setTweak('bgtCanCreateTag', v)} />
+              <TweakToggle label="Tag list failed to load" value={tweaks.bgtTagsFailed}
+                           onChange={(v) => setTweak('bgtTagsFailed', v)} />
             </React.Fragment>
           )}
           {view === 'tax-statements' && (

@@ -7,6 +7,13 @@ export interface ComboboxOption {
   icon?: string;
   /** Color for `icon`. */
   iconColor?: string;
+  /**
+   * Muted trailing text on the row — a reason or qualifier, never colour or
+   * icon alone (e.g. "in use", "Archived" on a transaction-tag option).
+   */
+  note?: string;
+  /** Render the row as unselectable (aria-disabled); pair with `note` saying why. */
+  disabled?: boolean;
 }
 
 export interface ComboboxCreateKind {
@@ -52,6 +59,8 @@ export interface ComboboxProps {
   ariaDescribedBy?: string;
   /** Flip the input to aria-invalid (paired with an error message). */
   invalid?: boolean;
+  /** Mark the input aria-required — the visible marker belongs to the FieldShell. */
+  required?: boolean;
   disabled?: boolean;
   id?: string;
 }

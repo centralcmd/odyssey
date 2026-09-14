@@ -175,6 +175,10 @@ window.OdysseyData = {
     { id: 't7', name: 'Utilities',     description: 'Electricity, water, gas, and internet',            archived: null },
     { id: 't9', name: 'Reimbursable',  description: 'Expensable — to be claimed back from work or a peer', archived: null },
     { id: 't10', name: 'Business',     description: 'Work-related spending, tracked for the books',     archived: null },
+    { id: 't11', name: 'Freelance',    description: 'Consulting and side-project income',               archived: null },
+    { id: 't12', name: 'Bonus',        description: 'Performance and year-end bonuses',                 archived: null },
+    { id: 't13', name: 'Gifts',        description: 'Presents for family and friends',                  archived: null },
+    { id: 't14', name: 'Travel',       description: 'Flights, hotels, and trips away',                  archived: null },
     { id: 't8', name: 'Vacation 2024', description: 'One-off travel spending from the 2024 trips',      archived: '2025-01-08T09:00:00Z' },
   ],
 
@@ -310,24 +314,26 @@ window.OdysseyData = {
   ],
 
   // Budgets — ExistingBudget[] (BudgetsCard list) + each budget's ExistingBudgetItem[]
-  // (BudgetCard detail). An item's `actual` is NOT stored: it's derived from the
-  // transactions whose tag matches the item's `tagId` within the budget's date range
-  // — exactly how the server's BudgetReport computes per-tag sums. Items with no
-  // tagId are plan-only (no matched actual), which the real TransactionTagId allows.
+  // (BudgetCard detail). An item has NO name and NO description of its own: its
+  // TransactionTagId is required, and the linked tag's name and description are the
+  // item's identity everywhere it is displayed (ExistingBudgetItem.Tag). An item's
+  // `actual` is NOT stored either: it's derived from the transactions whose tag
+  // matches the item's `tagId` within the budget's date range — exactly how the
+  // server's BudgetReport computes per-tag sums. One item per tag per budget.
   budgets: [
     {
       id: 'b1', name: 'November 2024', description: 'Primary monthly household budget.',
       currency: 'USD', startDate: '2024-11-01', endDate: '2024-11-30', archived: null,
       icon: 'pie_chart', tone: 'tide',
       items: [
-        { id: 'bi1', name: 'Salary',        description: 'Base monthly pay',        categoryType: 'Income',  tagId: 't5', planned: 3250 },
-        { id: 'bi2', name: 'Side projects', description: 'Freelance & consulting',   categoryType: 'Income',  tagId: null, planned:  400 },
-        { id: 'bi3', name: 'Rent',          description: 'Lakeside apartment',       categoryType: 'Expense', tagId: 't4', planned: 2400 },
-        { id: 'bi4', name: 'Groceries',     description: 'Weekly food shop',         categoryType: 'Expense', tagId: 't1', planned:  600 },
-        { id: 'bi5', name: 'Utilities',     description: 'Electric, water, internet', categoryType: 'Expense', tagId: 't7', planned:  180 },
-        { id: 'bi6', name: 'Subscriptions', description: 'Streaming & software',     categoryType: 'Expense', tagId: 't2', planned:   40 },
-        { id: 'bi7', name: 'Transit',       description: 'Transit & rideshare',      categoryType: 'Expense', tagId: 't3', planned:  120 },
-        { id: 'bi8', name: 'Dining out',    description: 'Restaurants & cafés',      categoryType: 'Expense', tagId: 't6', planned:  150 },
+        { id: 'bi1', categoryType: 'Income',  tagId: 't5',  planned: 3250 },
+        { id: 'bi2', categoryType: 'Income',  tagId: 't11', planned:  400 },
+        { id: 'bi3', categoryType: 'Expense', tagId: 't4',  planned: 2400 },
+        { id: 'bi4', categoryType: 'Expense', tagId: 't1',  planned:  600 },
+        { id: 'bi5', categoryType: 'Expense', tagId: 't7',  planned:  180 },
+        { id: 'bi6', categoryType: 'Expense', tagId: 't2',  planned:   40 },
+        { id: 'bi7', categoryType: 'Expense', tagId: 't3',  planned:  120 },
+        { id: 'bi8', categoryType: 'Expense', tagId: 't6',  planned:  150 },
       ],
     },
     {
@@ -335,14 +341,14 @@ window.OdysseyData = {
       currency: 'USD', startDate: '2024-12-01', endDate: '2024-12-31', archived: null,
       icon: 'pie_chart', tone: 'violet',
       items: [
-        { id: 'bi9',  name: 'Salary',         description: 'Base monthly pay',     categoryType: 'Income',  tagId: 't5', planned: 3250 },
-        { id: 'bi10', name: 'Year-end bonus',  description: 'Expected Q4 bonus',    categoryType: 'Income',  tagId: null, planned: 1500 },
-        { id: 'bi11', name: 'Rent',            description: 'Lakeside apartment',   categoryType: 'Expense', tagId: 't4', planned: 2400 },
-        { id: 'bi12', name: 'Groceries',       description: 'Holiday hosting',      categoryType: 'Expense', tagId: 't1', planned:  650 },
-        { id: 'bi13', name: 'Utilities',       description: 'Higher winter usage',  categoryType: 'Expense', tagId: 't7', planned:  200 },
-        { id: 'bi14', name: 'Subscriptions',   description: 'Streaming & software', categoryType: 'Expense', tagId: 't2', planned:   40 },
-        { id: 'bi15', name: 'Holiday gifts',   description: 'Family & friends',     categoryType: 'Expense', tagId: null, planned:  800 },
-        { id: 'bi16', name: 'Travel',          description: 'Flights home',         categoryType: 'Expense', tagId: null, planned:  600 },
+        { id: 'bi9',  categoryType: 'Income',  tagId: 't5',  planned: 3250 },
+        { id: 'bi10', categoryType: 'Income',  tagId: 't12', planned: 1500 },
+        { id: 'bi11', categoryType: 'Expense', tagId: 't4',  planned: 2400 },
+        { id: 'bi12', categoryType: 'Expense', tagId: 't1',  planned:  650 },
+        { id: 'bi13', categoryType: 'Expense', tagId: 't7',  planned:  200 },
+        { id: 'bi14', categoryType: 'Expense', tagId: 't2',  planned:   40 },
+        { id: 'bi15', categoryType: 'Expense', tagId: 't13', planned:  800 },
+        { id: 'bi16', categoryType: 'Expense', tagId: 't14', planned:  600 },
       ],
     },
     {
@@ -350,12 +356,15 @@ window.OdysseyData = {
       currency: 'USD', startDate: '2024-10-01', endDate: '2024-10-31', archived: '2024-11-02T09:00:00Z',
       icon: 'pie_chart', tone: 'sea',
       items: [
-        { id: 'bi17', name: 'Salary',     description: 'Base monthly pay',     categoryType: 'Income',  tagId: 't5', planned: 3250 },
-        { id: 'bi18', name: 'Rent',       description: 'Lakeside apartment',   categoryType: 'Expense', tagId: 't4', planned: 2400 },
-        { id: 'bi19', name: 'Groceries',  description: 'Monthly stock-up',     categoryType: 'Expense', tagId: 't1', planned:  500 },
-        { id: 'bi20', name: 'Utilities',  description: 'Electric & water',     categoryType: 'Expense', tagId: 't7', planned:  180 },
-        { id: 'bi21', name: 'Dining out', description: 'Restaurants & cafés',  categoryType: 'Expense', tagId: 't6', planned:  150 },
-        { id: 'bi22', name: 'Transit',    description: 'Transit & rideshare',  categoryType: 'Expense', tagId: 't3', planned:  100 },
+        { id: 'bi17', categoryType: 'Income',  tagId: 't5', planned: 3250 },
+        { id: 'bi18', categoryType: 'Expense', tagId: 't4', planned: 2400 },
+        { id: 'bi19', categoryType: 'Expense', tagId: 't1', planned:  500 },
+        { id: 'bi20', categoryType: 'Expense', tagId: 't7', planned:  180 },
+        { id: 'bi21', categoryType: 'Expense', tagId: 't6', planned:  150 },
+        { id: 'bi22', categoryType: 'Expense', tagId: 't3', planned:  100 },
+        // The tag was archived after this budget closed: the item still renders
+        // its name and description, plus the literal text marker "Archived".
+        { id: 'bi23', categoryType: 'Expense', tagId: 't8', planned:  600 },
       ],
     },
   ],
@@ -1013,7 +1022,7 @@ window.OdysseyHelpers = {
   // — so the per-tag buckets can sum to more than the de-duplicated transaction
   // total (no amount splitting in v1, per spec §9). Untagged items stay plan-only.
   budgetItemActual(item, b) {
-    if (!item.tagId) return 0;
+    if (!item.tagId) return 0; // unreachable: TransactionTagId is required
     return window.OdysseyData.transactions
       .filter(t => window.OdysseyData.txnTagIds(t).includes(item.tagId) && t.date >= b.startDate && t.date <= b.endDate)
       .reduce((s, t) => s + Math.abs(t.amount), 0);
