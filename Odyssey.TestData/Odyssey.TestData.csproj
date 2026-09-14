@@ -12,6 +12,8 @@
 
     <ItemGroup>
       <PackageReference Include="Bogus" />
+      <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     </ItemGroup>
 
 </Project>
