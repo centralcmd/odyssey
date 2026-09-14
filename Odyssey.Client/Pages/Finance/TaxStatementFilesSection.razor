@@ -56,6 +56,7 @@
 
         <OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
             <OdsFilesTable Files="pageRows"
+                           Kinds="OdsTypeRegistries.TaxStatementFileOptions"
                            TypeFor="@(row => KindMeta(FileById(row.Id).FileType))"
                            Actions="@BuildMenu"
                            OnDelete="@DeleteAction"

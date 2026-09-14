@@ -2,9 +2,13 @@
 @inherits FilesSectionBase<ExistingTransactionFile>
 @inject ITransactionsApiClient Transactions
 
-<OdsCollapsible Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="attach_file">
+@* A staged host (the Edit-transaction dialog) that has nothing to show renders nothing at all — the
+   design lists existing attachments only when there are some, above the dialog's own drop zone. *@
+@if (!HideWhenEmpty || (!isLoading && VisibleItems.Any()))
+{
+<OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Lead="attach_file">
     <Title>Files</Title>
-    <Count>@items.Count</Count>
+    <Count>@VisibleItems.Count()</Count>
     <ChildContent>
         @if (CanUpload)
         {
@@ -44,7 +48,7 @@
         {
             <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
         }
-        else if (items.Count == 0)
+        else if (!VisibleItems.Any())
         {
             <div class="empty-line">No files attached to this transaction yet.</div>
         }
@@ -52,6 +56,7 @@
         {
             <OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
                 <OdsFilesTable Files="pageRows"
+                               Kinds="OdsTypeRegistries.TransactionFileOptions"
                                TypeFor="@(row => KindMeta(FileById(row.Id).Type))"
                                Actions="@(row => BuildMenu(FileById(row.Id)))"
                                OnDelete="@DeleteAction" />
@@ -59,6 +64,7 @@
         }
     </ChildContent>
 </OdsCollapsible>
+}
 
 @if (_preview is not null)
 {
@@ -71,6 +77,29 @@
 
 @code {
     [Parameter] public Guid TransactionId { get; set; }
+
+    /// <summary>
+    /// False renders the bare form — no disclosure shell, no header — for a host that introduces the
+    /// section itself with an OdsSectionDivider (the transaction detail row's OdsRecordBody).
+    /// </summary>
+    [Parameter] public bool Chrome { get; set; } = true;
+
+    /// <summary>
+    /// Files removed but not yet detached. Binding it (<c>@bind-StagedRemovals</c>) switches Delete from
+    /// confirm-and-detach-now to staging: the row leaves the table and the host detaches on save, so a
+    /// Cancel on the host discards the removal (design system · AddTransactionModal's existing files).
+    /// </summary>
+    [Parameter] public IReadOnlyCollection<Guid> StagedRemovals { get; set; } = [];
+
+    [Parameter] public EventCallback<IReadOnlyCollection<Guid>> StagedRemovalsChanged { get; set; }
+
+    /// <summary>Render nothing — no shell, no empty line — when there are no files to list.</summary>
+    [Parameter] public bool HideWhenEmpty { get; set; }
+
+    private bool IsStaged => StagedRemovalsChanged.HasDelegate;
+
+    private IEnumerable<ExistingTransactionFile> VisibleItems =>
+        StagedRemovals.Count == 0 ? items : items.Where(f => !StagedRemovals.Contains(f.FileMetadata.Id));
 
     private bool _isOpen = false;
     // Bound to OdsTransactionFileTypeSelect (the DS picker keys on the enum name).
@@ -107,7 +136,7 @@
     // The shared table reads denormalized rows; the TransactionFileType drives the kind
     // chip + avatar (its registry icon/color/soft), and a row maps back to its file by
     // id for the kind lookup and the action menu.
-    private IEnumerable<OdsFilesRow> FileRows => items.Select(f => new OdsFilesRow
+    private IEnumerable<OdsFilesRow> FileRows => VisibleItems.Select(f => new OdsFilesRow
     {
         Id = f.FileMetadata.Id.ToString(),
         Name = f.FileMetadata.FileName,
@@ -143,5 +172,12 @@
 
     // The table appends Delete whenever OnDelete has a handler — gate it on permission.
     private EventCallback<OdsFilesRow> DeleteAction =>
-        CanDelete ? EventCallback.Factory.Create<OdsFilesRow>(this, row => ConfirmDeleteAsync(FileById(row.Id))) : default;
+        !CanDelete ? default
+        : IsStaged ? EventCallback.Factory.Create<OdsFilesRow>(this, StageRemovalAsync)
+        : EventCallback.Factory.Create<OdsFilesRow>(this, row => ConfirmDeleteAsync(FileById(row.Id)));
+
+    // Staged removal needs no confirmation: nothing is detached until the host saves, and its Cancel
+    // is the undo.
+    private Task StageRemovalAsync(OdsFilesRow row) =>
+        StagedRemovalsChanged.InvokeAsync([.. StagedRemovals, FileById(row.Id).FileMetadata.Id]);
 }

@@ -41,20 +41,14 @@
                 </div>
 
                 <!-- Date -->
-                <OdsDatePicker @bind-Value="_timeStamp"
-                               Label="Date"
-                               HelperText="Defaults to today" />
+                <OdsDateField Label="Date" @bind-Value="_timeStamp" Help="Defaults to today" />
 
                 <!-- Description (wide) -->
                 <div class="odc-form-grid-wide">
-                    <MudTextField @bind-Value="_description"
-                                  Label="Description"
-                                  Placeholder="e.g. Whole Foods Market · Mission"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Error="@_descError"
-                                  ErrorText="Add a short description."
-                                  Immediate="true" />
+                    <OdsTextInputField Label="Description" @bind-Value="_description"
+                                       Placeholder="e.g. Whole Foods Market · Mission"
+                                       MaxLength="256" Spellcheck="true"
+                                       Error="@(_descError ? "Add a short description." : null)" />
                 </div>
 
                 <!-- Account -->
@@ -193,26 +187,13 @@
 
                 <!-- Status comment (wide) -->
                 <div class="odc-form-grid-wide">
-                    <MudTextField @bind-Value="_statusComment"
-                                  Label="Status comment (optional)"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  MaxLength="256"
-                                  Counter="256"
-                                  Immediate="true" />
+                    <OdsTextInputField Label="Status comment" Optional="true" @bind-Value="_statusComment"
+                                       MaxLength="256" Spellcheck="true" Placeholder="Why this status?" />
                 </div>
 
                 <!-- External ID + Internal ID -->
-                <MudTextField @bind-Value="_externalId"
-                              Label="External ID (optional)"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              MaxLength="64" />
-                <MudTextField @bind-Value="_internalId"
-                              Label="Internal ID (optional)"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              MaxLength="64" />
+                <OdsTextInputField Label="External ID" @bind-Value="_externalId" MaxLength="64" Placeholder="Optional" />
+                <OdsTextInputField Label="Internal ID" @bind-Value="_internalId" MaxLength="64" Placeholder="Optional" />
 
                 <!-- Extra data (wide) -->
                 <div class="odc-form-grid-wide">
@@ -221,26 +202,29 @@
                 </div>
 
                 <!-- Attachments (wide) — last, since the file list grows downward as files are added.
-                     Edit mode manages files against the already-existing transaction directly (upload/
-                     download/delete in place, via the shared files table); create mode queues files
-                     locally since the transaction doesn't have an ID yet to attach them to. -->
-                <div class="aam-field odc-form-grid-wide">
-                    <div class="aam-field-label">Attachments <span class="atm-opt">Optional</span></div>
+                     Edit mode lists the files already attached (only when there are some) above the
+                     drop zone. Nothing is written until Save: a removed file is staged and detached on
+                     save, and new uploads are queued and attached on save — in both modes, so Cancel
+                     leaves the transaction's attachments exactly as they were. -->
+                <OdsFieldShell Label="Attachments" Optional="true" Class="odc-form-grid-wide">
                     @if (IsEdit)
                     {
                         <TransactionFilesSection TransactionId="Transaction!.TransactionId"
-                                                 CanUpload="CanUploadFiles"
+                                                 Chrome="false"
+                                                 HideWhenEmpty="true"
+                                                 CanUpload="false"
                                                  CanDownload="CanDownloadFiles"
-                                                 CanDelete="CanDeleteFiles" />
+                                                 CanDelete="CanDeleteFiles"
+                                                 @bind-StagedRemovals="_stagedRemovals" />
                     }
-                    else
+                    @if (!IsEdit || CanUploadFiles)
                     {
                         <OdsFileUpload Files="_pendingFiles" FilesChanged="OnFilesChanged"
                                        Accept=".pdf,.jpg,.jpeg,.png"
                                        Kinds="_txnKinds" GuessKind="GuessKind" Compact="true"
-                                       Hint="@($"PDF, JPG, PNG · up to {_uploadLimits.MaxUploadMegabytes} MB each")" />
+                                       Hint="@($"Attach a receipt or document · PDF, JPG, PNG · up to {_uploadLimits.MaxUploadMegabytes} MB each")" />
                     }
-                </div>
+                </OdsFieldShell>
 
           </div>
         </div>

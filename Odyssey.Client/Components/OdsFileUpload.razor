@@ -36,6 +36,9 @@
                 <div class="odc-upload-drop-hint">@EffectiveHint</div>
             </div>
         </CustomContent>
+        @* Empty on purpose: without a SelectedTemplate MudFileUpload renders its own chip per picked
+           file, a second file list above the ready-file list below — which is the DS's only one. *@
+        <SelectedTemplate Context="_" />
     </MudFileUpload>
 
     @if (!string.IsNullOrEmpty(Error))

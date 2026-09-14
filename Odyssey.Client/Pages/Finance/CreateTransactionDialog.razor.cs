@@ -83,7 +83,10 @@ public partial class CreateTransactionDialog
         ? "Search an existing contact, or type a new name to add it as a company or a person."
         : "Search an existing contact.";
 
+    // Attachment changes are staged until Save in both modes: new uploads queue here, and in edit mode
+    // a removed existing file is held by id and detached only once the update has succeeded.
     private List<OdsUploadFile> _pendingFiles = [];
+    private IReadOnlyCollection<Guid> _stagedRemovals = [];
 
     // The TransactionFileType vocabulary projected to the OdsFileUpload kind shape (per-file picker).
     private static readonly IReadOnlyList<OdsFileKind> _txnKinds =
@@ -376,11 +379,18 @@ public partial class CreateTransactionDialog
             if (IsEdit)
             {
                 var update = BuildPayload(magnitude);
-                if ((await Transactions.UpdateAsync(Transaction!.TransactionId, update)).Toast(Snackbar, "Update failed", "Transaction updated."))
-                {
-                    await OnSaved.InvokeAsync();
-                    await OpenChanged.InvokeAsync(false);
-                }
+                if (!(await Transactions.UpdateAsync(Transaction!.TransactionId, update)).Toast(Snackbar, "Update failed"))
+                    return;
+
+                // Files follow the update rather than precede it, so a rejected update leaves the
+                // attachments untouched too.
+                await DetachStagedFilesAsync(Transaction.TransactionId);
+                if (_pendingFiles.Count > 0)
+                    await AttachPendingFilesAsync(Transaction.TransactionId);
+
+                Snackbar.Add("Transaction updated.", Severity.Success);
+                await OnSaved.InvokeAsync();
+                await OpenChanged.InvokeAsync(false);
                 return;
             }
 
@@ -414,6 +424,19 @@ public partial class CreateTransactionDialog
         {
             _isSaving = false;
         }
+    }
+
+    private async Task DetachStagedFilesAsync(Guid transactionId)
+    {
+        var failures = 0;
+        foreach (var fileId in _stagedRemovals)
+        {
+            if (!(await Transactions.DetachFileAsync(transactionId, fileId)).IsSuccess)
+                failures++;
+        }
+
+        if (failures > 0)
+            Snackbar.Add($"Transaction saved, but {failures} file(s) could not be removed.", Severity.Warning);
     }
 
     private async Task AttachPendingFilesAsync(Guid transactionId)

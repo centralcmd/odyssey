@@ -36,21 +36,28 @@
     <OdsAccountTypeSelect Value="_accountType" ValueChanged="OnAccountTypeChanged"
                           Error="@(_typeError ? "Pick an account type." : null)" />
 
-    <!-- Currency + Opened -->
-    <OdsFormRow>
-        <OdsCurrencySelect Value="@_currencyCode" ValueChanged="OnCurrencyChanged"
-                           Options="_currencyOptions" />
+    <!-- Currency -->
+    <OdsCurrencySelect Value="@_currencyCode" ValueChanged="OnCurrencyChanged"
+                       Options="_currencyOptions" />
+
+    <!-- Lifecycle dates — Opened alone on create; Opened + Closed side by side on edit -->
+    @if (IsEdit)
+    {
+        <OdsFormRow>
+            <OdsDatePicker @bind-Value="_opened"
+                           Label="Opened"
+                           HelperText="Defaults to today" />
+            <OdsDatePicker @bind-Value="_closed"
+                           Label="Closed"
+                           HelperText="Empty while active"
+                           Clearable="true" />
+        </OdsFormRow>
+    }
+    else
+    {
         <OdsDatePicker @bind-Value="_opened"
                        Label="Opened"
                        HelperText="Defaults to today" />
-    </OdsFormRow>
-
-    @if (IsEdit)
-    {
-        <OdsDatePicker @bind-Value="_closed"
-                       Label="Closed"
-                       HelperText="Leave empty while the account is active"
-                       Clearable="true" />
     }
 
     <!-- Account number -->
@@ -70,9 +77,10 @@
                         Help="@CustodianHelp" />
 
     <!-- Description -->
-    <MudTextField @bind-Value="_description"
+    <OdsNoteField @bind-Value="_description"
                   Label="Description"
                   Placeholder="Optional — what's this account for?"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense" />
+                  Rows="3"
+                  MaxLength="256"
+                  Optional="true" />
 </OdsFormDialog>
