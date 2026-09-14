@@ -29,6 +29,12 @@ public class BudgetItemTagMigrationTests(MariaDbFixture fixture)
     /// <summary>The migration immediately before this change's set.</summary>
     private const string Baseline = "DropPersonDetailsRelationshipType";
 
+    /// <summary>
+    /// The last migration of this change's set. The archives these tests read are dropped by the NEXT
+    /// migration (issue #78), so the set is run to here rather than to head.
+    /// </summary>
+    private const string LastOfSet = "MakeBudgetItemTagRequiredAndDropItemNames";
+
     // Fixed ids so "lowest" is deterministic: BudgetItemId and TransactionTagId are char(36), so the
     // migrations' ordering is LEXICOGRAPHIC on these strings, not chronological.
     private static readonly Guid TagKept = new("11111111-1111-1111-1111-111111111111");
@@ -64,7 +70,7 @@ public class BudgetItemTagMigrationTests(MariaDbFixture fixture)
 
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
+                await MigrationSeam.MigrateToAsync(context, LastOfSet);
 
                 // ── The rows that survive ────────────────────────────────────────
                 var survivors = await context.BudgetItems.AsNoTracking()
@@ -337,7 +343,7 @@ public class BudgetItemTagMigrationTests(MariaDbFixture fixture)
             long archiveAfterFirstUp;
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
+                await MigrationSeam.MigrateToAsync(context, LastOfSet);
                 archiveAfterFirstUp = await MigrationSeam.CountAsync(
                     context, "SELECT COUNT(*) FROM `_BudgetItemLabelArchive`");
             }
@@ -370,7 +376,7 @@ public class BudgetItemTagMigrationTests(MariaDbFixture fixture)
 
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
+                await MigrationSeam.MigrateToAsync(context, LastOfSet);
 
                 Assert.Equal(archiveAfterFirstUp, await MigrationSeam.CountAsync(
                     context, "SELECT COUNT(*) FROM `_BudgetItemLabelArchive`"));
