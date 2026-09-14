@@ -24,18 +24,18 @@
     </OdsFormRow>
 
     <OdsFormRow Cols="2">
-        <OdsField Label="Middle name" Optional Value="@Model.MiddleName"
+        <OdsField Label="Middle name" Value="@Model.MiddleName"
                   ValueChanged="@(v => OnField(m => m.MiddleName = v))"
                   MaxLength="128" Placeholder="—" Error="@Err(nameof(ProfileDto.MiddleName))"
                   id="@($"{IdPrefix}-middle")" autocomplete="additional-name" />
-        <OdsField Label="Title" Optional Value="@Model.Title"
+        <OdsField Label="Title" Value="@Model.Title"
                   ValueChanged="@(v => OnField(m => m.Title = v))"
                   MaxLength="128" Placeholder="e.g. Dr., CFO" Error="@Err(nameof(ProfileDto.Title))"
                   Help="A free-text title. Not shown in attribution."
                   id="@($"{IdPrefix}-title")" />
     </OdsFormRow>
 
-    <OdsField Label="Display name" Optional Value="@Model.DisplayName"
+    <OdsField Label="Display name" Value="@Model.DisplayName"
               ValueChanged="@(v => OnField(m => m.DisplayName = v))"
               MaxLength="256" Placeholder="@DisplayPlaceholder" Error="@Err(nameof(ProfileDto.DisplayName))"
               Help="How you appear to others. Leave blank to use your first name."
@@ -69,8 +69,8 @@
 
     private static readonly IReadOnlyList<OdsOption> SexOptions =
     [
-        new(nameof(Sex.Female), "Female"),
-        new(nameof(Sex.Male), "Male"),
+        new(nameof(Sex.Female), "Female") { Icon = "woman" },
+        new(nameof(Sex.Male), "Male") { Icon = "man" },
     ];
 
     private static readonly DateTime MinDate = new(1900, 1, 1);

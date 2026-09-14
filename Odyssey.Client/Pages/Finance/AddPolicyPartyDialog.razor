@@ -37,25 +37,11 @@
           Icon="group_add" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="ins-dialog">
     <ChildContent>
         <div class="ods-modal-body">
-            <div class="odc-field">
-                <label class="odc-field-label" id="ins-party-role-label">Role</label>
-                <div class="ins-kind-seg" role="radiogroup" aria-labelledby="ins-party-role-label">
-                    @for (var i = 0; i < Roles.Count; i++)
-                    {
-                        var index = i;
-                        var def = Roles[index];
-                        <button type="button" role="radio" aria-checked="@(_role == def.Role ? "true" : "false")"
-                                tabindex="@(_role == def.Role ? 0 : -1)"
-                                @ref="_roleRefs[index]"
-                                class="ins-kind-opt @(_role == def.Role ? "on" : "")"
-                                @onclick="@(() => PickRole(def.Role))"
-                                @onkeydown="@(e => OnRoleKeyAsync(e, index))">
-                            <span class="material-icons" aria-hidden="true">@def.Icon</span>
-                            <span class="ins-kind-lab">@def.Label</span>
-                        </button>
-                    }
-                </div>
-            </div>
+            <OdsFieldShell Label="Role" Required="true">
+                <OdsCardSelect AriaLabel="Role" Value="@_role.ToString()" ValueChanged="PickRole"
+                               Accent="var(--ins-accent)" AccentLine="var(--ins-accent-line)" AccentSoft="var(--ins-accent-soft)"
+                               Options="RoleOptions" />
+            </OdsFieldShell>
 
             @* OdsFieldShell owns the label association AND the helper/error ids — the hand-rolled
                .odc-field markup this replaced had neither, so a screen-reader user never heard the
@@ -66,7 +52,7 @@
                AriaDescribedBy covers both states. *@
             @if (IsContactRole)
             {
-                <OdsContactSelect Id="ins-party-pick" Label="@Current.Label"
+                <OdsContactSelect Id="ins-party-pick" Label="@Current.Label" Required="true"
                                   Value="@_value" ValueChanged="OnValueChanged"
                                   Options="Available" Loading="OptionsLoading"
                                   Placeholder="Search contacts…"
@@ -75,7 +61,7 @@
             }
             else
             {
-                <OdsFieldShell Label="@Current.Label" HtmlFor="ins-party-pick"
+                <OdsFieldShell Label="@Current.Label" HtmlFor="ins-party-pick" Required="true"
                                Help="@(_error is null ? PickerHelp : null)" Error="@_error">
                     <OdsCombobox InputId="ins-party-pick" Value="@_value" ValueChanged="OnValueChanged"
                                  Options="Available" Loading="OptionsLoading"
@@ -86,7 +72,7 @@
 
             @* The term is the party's own fact, not the policy's: left as it lands, the party is on
                the policy for its whole life. *@
-            <OdsSectionDivider Label="In the role" Meta="optional" />
+            <OdsSectionDivider Label="In the role" />
             <OdsFormRow>
                 <OdsDatePicker Value="_fromDate" ValueChanged="OnFromChanged" Clearable="true"
                                Label="From"

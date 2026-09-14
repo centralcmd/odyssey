@@ -24,30 +24,30 @@
                Subtitle="Title, optional details, a deadline, tags, and attachments."
                SubmitLabel="@(_editing ? "Save changes" : "Create task")" OnSubmit="SaveAsync">
 
-    <OdsField Label="Title" Value="@_draft.Title" MaxLength="200" AutoFocus="true"
+    <OdsField Label="Title" Required="true" Value="@_draft.Title" MaxLength="200" AutoFocus="true"
               ValueChanged="@(v => { _draft.Title = v; _draft.TitleError = null; })" Error="@_draft.TitleError" />
 
     <OdsFormRow>
-        <OdsDateField Label="Deadline" Optional="true" Value="_draft.Deadline"
+        <OdsDateField Label="Deadline" Value="_draft.Deadline"
                       ValueChanged="@(v => _draft.Deadline = v)" Placeholder="No deadline" />
         @if (_editing)
         {
-            <OdsSelect Label="Status" Value="@_draft.Status.ToString()" Options="_statusOptions"
+            <OdsSelect Label="Status" Required="true" Value="@_draft.Status.ToString()" Options="_statusOptions"
                        ValueChanged="@(v => { if (Enum.TryParse<JournalTaskStatus>(v, out var s)) _draft.Status = s; })" />
         }
     </OdsFormRow>
 
     @* The create row mints a TASK tag — a field only offers the vocabulary it searches. *@
-    <OdsTagMultiSelect Label="Tags" Optional="true" Value="_draft.TagIds"
+    <OdsTagMultiSelect Label="Tags" Value="_draft.TagIds"
                        ValueChanged="@(v => _draft.TagIds = v)" Options="_tagOpts"
                        Placeholder="No tags" AddLabel="Add tag"
                        OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                        CreateKinds="OdsTypeRegistries.TagCreateKinds.Task" />
 
-    <OdsNoteField Label="Content" Optional="true" MaxLength="4096" Rows="4"
-                  Value="@_draft.Content" ValueChanged="@(v => _draft.Content = v)" Placeholder="Optional details" />
+    <OdsNoteField Label="Content" MaxLength="4096" Rows="4"
+                  Value="@_draft.Content" ValueChanged="@(v => _draft.Content = v)" Placeholder="Details, links, next steps…" />
 
-    <OdsFieldShell Label="Attachments" Optional="true" Help="PDFs and documents.">
+    <OdsFieldShell Label="Attachments" Help="PDFs and documents.">
         <OdsFileUpload ShowKinds="false" Compact="true"
                        MaxMegabytes="@_maxUploadMb"
                        Files="_draft.Attachments" FilesChanged="@(f => _draft.Attachments = f)" />

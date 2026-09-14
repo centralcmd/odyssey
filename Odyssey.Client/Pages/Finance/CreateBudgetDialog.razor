@@ -20,6 +20,7 @@
     <!-- Budget name -->
     <MudTextField @bind-Value="_name"
                   Label="Budget name"
+                  Required="true"
                   Placeholder="e.g. January 2025"
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
@@ -31,9 +32,11 @@
     <OdsFormRow>
         <OdsDatePicker @bind-Value="_startDate"
                        Label="Start date"
+                       Required="true"
                        HelperText="Defaults to today" />
         <OdsDatePicker @bind-Value="_endDate"
                        Label="End date"
+                       Required="true"
                        Error="@_dateError"
                        ErrorText="End date can't be before the start date."
                        HelperText="Defaults to +1 month" />
@@ -41,7 +44,7 @@
 
     <!-- Base currency -->
     <div class="aam-field">
-        <OdsCurrencySelect Label="Base currency" Value="@_baseCurrencyCode" ValueChanged="OnBaseCurrencyChanged"
+        <OdsCurrencySelect Label="Base currency" Required="true" Value="@_baseCurrencyCode" ValueChanged="OnBaseCurrencyChanged"
                            Options="_currencyOptions"
                            Help="All planned amounts use this currency." />
     </div>
@@ -49,10 +52,9 @@
     <!-- Description -->
     <OdsNoteField @bind-Value="_description"
                   Label="Description"
-                  Placeholder="Optional — what's this budget for?"
+                  Placeholder="What's this budget for?"
                   Rows="3"
-                  MaxLength="256"
-                  Optional="true" />
+                  MaxLength="256" />
 </OdsFormDialog>
 
 @code {

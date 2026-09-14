@@ -37,8 +37,6 @@ public partial class OdsTypeSelect
 
     [Parameter] public bool Required { get; set; }
 
-    [Parameter] public bool Optional { get; set; }
-
     [Parameter] public bool Disabled { get; set; }
 
     [Parameter] public string? Class { get; set; }

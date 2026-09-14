@@ -5,14 +5,14 @@
     The canonical "note / description / comment" field. Consolidates the textarea +
     counter that was hand-rolled across the create/edit dialogs (.trm-textarea +
     .trm-charcount / .est-charcount). Built on OdsFieldShell: the label row carries the
-    optional/required marker on the left and the "0/512" counter on the right; the
+    required marker on the left and the "0/512" counter on the right; the
     counter turns red once the length reaches MaxLength. For a single-line value use
     OdsField; for a money / numeric value use OdsAmountField.
 
     Controlled: bind via @bind-Value.
 *@
 
-<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"
                Help="@Help" Error="@Error" Class="@Class" Aside="@Counter">
     <textarea id="@FieldId"
               class="odc-input odc-input-multiline"
@@ -53,8 +53,6 @@
     [Parameter] public string? Error { get; set; }
 
     [Parameter] public bool Required { get; set; }
-
-    [Parameter] public bool Optional { get; set; }
 
     [Parameter] public bool Disabled { get; set; }
 

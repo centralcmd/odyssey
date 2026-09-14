@@ -258,6 +258,25 @@
 .odc-seg-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-seg-btn:disabled { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
 
+/* ---------- Card select (DS components/CardSelect — icon-over-label cards, "what kind is this?") ---------- */
+.odc-cardsel { display: grid; gap: var(--space-2); }
+.odc-cardsel.center { justify-content: center; }
+.odc-cardsel-opt {
+  appearance: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
+  padding: 14px var(--space-2); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  background: transparent; color: var(--mud-palette-text-secondary);
+  transition: border-color var(--duration-base) var(--ease-standard), background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
+}
+.odc-cardsel-opt:hover { border-color: var(--odc-cardsel-line, var(--odc-cardsel-accent, var(--mud-palette-primary))); color: var(--mud-palette-text-primary); }
+.odc-cardsel-opt[aria-checked="true"] { border-color: var(--odc-cardsel-line, var(--odc-cardsel-accent, var(--mud-palette-primary))); background: var(--odc-cardsel-soft, var(--mud-palette-action-default-hover)); color: var(--mud-palette-text-primary); }
+.odc-cardsel-opt .material-icons { font-size: 24px; color: var(--odc-cardsel-accent, var(--mud-palette-primary)); }
+.odc-cardsel-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-cardsel-opt:disabled { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
+.odc-cardsel-opt:disabled .material-icons { color: var(--mud-palette-action-disabled); }
+.odc-cardsel-lab { font: var(--fw-medium) 12px/1.2 var(--font-sans); }
+.odc-cardsel-sub { font: var(--fw-regular) 10.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
 /* ---------- Collapsible (disclosure) ---------- */
 .odc-collapsible { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
 .odc-collapsible.flush { border: none; border-radius: 0; background: none; }
@@ -593,6 +612,16 @@
    than filled ones, which reads as a vertical mismatch in the row. */
 .mud-dialog .mud-dialog-actions.ods-modal-foot > .mud-button-root { margin: 0; min-height: 40px; }
 [data-theme='dark'] .mud-dialog .mud-dialog-actions.ods-modal-foot { background: rgba(255, 255, 255, 0.04); }
+/* Footer legend explaining the required marker, once per dialog (DS .odc-modal-legend). Always
+   rendered, shown only while the body holds a required field — a hand-labelled .odc-field-req or a
+   MudBlazor control carrying .mud-input-required — so it tracks conditionally-rendered fields
+   without the dialog having to declare them. */
+.mud-dialog .mud-dialog-actions.ods-modal-foot > .ods-modal-legend {
+  display: none; margin-right: auto; align-items: center; gap: var(--space-1);
+  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.mud-dialog:has(.mud-dialog-content :is(.odc-field-req, .mud-input-required)) .mud-dialog-actions.ods-modal-foot > .ods-modal-legend { display: inline-flex; }
+.ods-modal-legend .odc-field-req { margin-left: 0; }
 
 /* ---------- Form fields (DS components/Field — label ABOVE the box) ----------
    MudBlazor outlined fields render a *floating* label notched into the top border;
@@ -621,6 +650,11 @@
 }
 .mud-input-control:focus-within > .mud-input-control-input-container > .mud-input-label.mud-input-label-outlined {
   color: var(--mud-palette-primary);
+}
+/* MudBlazor draws a required control's `*` as a label ::after; paint it as the DS .odc-field-req so a
+   Mud-backed field and a hand-labelled one mark obligation identically. */
+.mud-input-required > .mud-input-control-input-container > .mud-input-label::after {
+  margin-left: 2px; color: var(--mud-palette-error);
 }
 /* Drop the legend notch so the top border is continuous, and restyle the box.
    The surface fill goes on the input container (behind the text) — NOT on the
@@ -901,7 +935,6 @@
    always-mounted-live-regions shape (status + alert under .odc-field-msgs) and OdsFieldShell's
    plain Help+Error siblings alike. */
 .odc-field-help.error { color: var(--mud-palette-error); }
-.odc-field-opt { margin-left: 6px; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 /* OdsField Multiline — mirrors the DS .odc-input-multiline (a resizable textarea
    for long values like descriptions and notes). MudBlazor renders the textarea as
    .mud-input-slot inside the multiline OdsField wrapper. */
@@ -1068,7 +1101,7 @@
   padding: 12px; text-align: center;
   font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
 }
-/* One option row: tick · ISO code (mono, fixed gutter so the names line up) · name.
+/* One option row: ISO code (mono, fixed gutter so the names line up) · name · trailing tick.
    justify-content is explicit because MudBlazor's own button reset centers it, which would
    float each row's content and lose the code gutter the names line up against. */
 .odc-money-opt {
@@ -1083,7 +1116,7 @@
   outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -1px;
   background: var(--mud-palette-action-default-hover);
 }
-.odc-money-tick { flex: none; width: 18px; display: grid; place-items: center; color: var(--brand-text); }
+.odc-money-tick { flex: none; width: 18px; margin-left: auto; display: grid; place-items: center; color: var(--brand-text); }
 .odc-money-tick .material-icons { font-size: 17px; }
 .odc-money-opt-code {
   flex: none; min-width: 42px;
@@ -1662,15 +1695,13 @@
 .trm-tbl tbody tr:focus-within .trm-rowbtns { opacity: 1; }
 
 
-/* ---- NEW / EDIT TERM dialog ---- */
-.trm-kind-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* ---- NEW / EDIT TERM dialog — the kind picker is OdsCardSelect (.odc-cardsel); .trm-kind-opt is the edit-mode locked tile ---- */
 .trm-kind-opt { display: flex; align-items: center; gap: 10px; padding: 10px 11px; text-align: left; border: 1px solid var(--mud-palette-divider); border-radius: 9px; background: var(--mud-palette-background); cursor: pointer; transition: border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard); }
 .trm-kind-opt:hover { border-color: var(--mud-palette-text-secondary); }
 .trm-kind-opt.on { border-color: transparent; box-shadow: inset 0 0 0 2px var(--mud-palette-primary); background: var(--mud-palette-surface); }
 .trm-kind-opt-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .trm-kind-opt-name { font: 500 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
 .trm-kind-opt-grp { font: 400 10.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
-.trm-kind-check { margin-left: auto; color: var(--mud-palette-primary); }
 .trm-kind-ineligible { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 8px; }
 .trm-kind-ineligible b { color: var(--mud-palette-text-primary); font-weight: 500; }
 
@@ -1678,12 +1709,8 @@
 
 .trm-field { display: flex; flex-direction: column; gap: 6px; }
 .trm-label { font: 500 12px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
-.trm-opt { font: 400 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-left: 6px; }
 .trm-err { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-error); }
 .trm-field-head { display: flex; align-items: center; }
-.trm-locked { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border: 1px solid var(--mud-palette-divider); border-radius: 9px; opacity: 0.7; }
-.trm-locked .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
-.trm-locked-txt { font: 400 13px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* =============================================================
    Account value estimates — the "Estimates" section inside an
@@ -2092,21 +2119,6 @@
 .ins-tile-edit:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .ins-tile-edit:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 
-/* Role picker in the New party dialog — the contract party-kind cards, in the insurance accent,
-   with four roles instead of two kinds. */
-.ins-kind-seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
-.ins-kind-opt {
-  display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
-  padding: 14px 8px; border: 1px solid var(--mud-palette-divider); border-radius: 10px;
-  background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
-}
-.ins-kind-opt:hover { border-color: var(--ins-accent-line); color: var(--mud-palette-text-primary); }
-.ins-kind-opt.on { border-color: var(--ins-accent-line); background: var(--ins-accent-soft); color: var(--mud-palette-text-primary); }
-.ins-kind-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.ins-kind-opt .material-icons { font-size: 24px; color: var(--ins-accent); }
-.ins-kind-lab { font: var(--fw-medium) 12px/1.2 var(--font-sans); }
-
 /* The destructive action in the Edit party dialog sits apart from the Cancel / Save pair.
    The `.mud-dialog` prefix is what beats MudBlazor's own actions-row specificity — the same
    escalation every ods-modal-foot rule above needs. */
@@ -2272,22 +2284,6 @@
 .con-existing-ic { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; border-radius: 7px; }
 .con-existing-name { flex: 1; min-width: 0; font: 400 12.5px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .con-existing-kind { flex: none; font: 500 11px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
-
-/* The party-kind segmented selector in the New-party dialog. Two equal options, centred as a
-   pair so they balance the dialog rather than stretching to full width now that there are two
-   kinds instead of three. */
-.con-kind-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 180px)); gap: 8px; justify-content: center; }
-.con-kind-opt {
-  display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
-  padding: 14px 10px; border: 1px solid var(--mud-palette-divider); border-radius: 10px;
-  background: var(--mud-palette-background); cursor: pointer; color: var(--mud-palette-text-secondary);
-  transition: border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
-}
-.con-kind-opt:hover { border-color: var(--con-accent-line); color: var(--mud-palette-text-primary); }
-.con-kind-opt.on { border-color: var(--con-accent-line); background: var(--con-accent-soft); color: var(--mud-palette-text-primary); }
-.con-kind-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.con-kind-opt .material-icons { font-size: 24px; color: var(--con-accent); }
-.con-kind-lab { font: 500 12px/1.2 var(--font-sans); }
 
 /* ---------- Target-size helpers (WCAG 2.5.8) ----------
    The smart-tag remove (16px) stays visually small but gets an invisible ≥24px

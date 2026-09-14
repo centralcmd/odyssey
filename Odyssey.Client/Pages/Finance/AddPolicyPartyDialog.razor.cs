@@ -62,7 +62,8 @@ public partial class AddPolicyPartyDialog
         new(InsurancePartyRole.Beneficiary, "Beneficiary", "volunteer_activism", "contact", "Who receives on this policy."),
     ];
 
-    private readonly ElementReference[] _roleRefs = new ElementReference[Roles.Count];
+    private static readonly IReadOnlyList<OdsCardSelectOption> RoleOptions =
+        [.. Roles.Select(r => new OdsCardSelectOption { Value = r.Role.ToString(), Label = r.Label, Icon = r.Icon })];
 
     private RoleDef Current => Roles.First(r => r.Role == _role);
 
@@ -180,34 +181,15 @@ public partial class AddPolicyPartyDialog
         : $"Every {Current.Noun} is already linked to this policy in this role"
           + (IsContactRole && _canCreateContact ? " — or add a new one below." : ".");
 
-    private void PickRole(InsurancePartyRole role)
+    private void PickRole(string value)
     {
+        var role = Enum.Parse<InsurancePartyRole>(value);
         if (_role == role) return;
         _role = role;
         // The record is role-specific, so a role change clears it — except back on the edited link's
         // own role, where the party being edited is still the obvious selection.
         _value = Party is { } p && p.Role == role ? p.TargetId.ToString() : null;
         _error = null;
-    }
-
-    // Radiogroup keyboard model (WCAG 2.1.1 / 4.1.2, APG radio pattern): arrows + Home/End move the
-    // selection and the focus across the role options. Only the selected radio is in the tab order
-    // (roving tabindex), so the group is a single tab stop.
-    private async Task OnRoleKeyAsync(KeyboardEventArgs e, int index)
-    {
-        int? next = e.Key switch
-        {
-            "ArrowRight" or "ArrowDown" => (index + 1) % Roles.Count,
-            "ArrowLeft" or "ArrowUp" => (index - 1 + Roles.Count) % Roles.Count,
-            "Home" => 0,
-            "End" => Roles.Count - 1,
-            _ => null,
-        };
-        if (next is not { } ni)
-            return;
-
-        PickRole(Roles[ni].Role);
-        await _roleRefs[ni].FocusAsync();
     }
 
     private void OnValueChanged(string? value)

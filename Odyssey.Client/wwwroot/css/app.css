@@ -516,14 +516,6 @@ html:not([data-theme='dark']) .mud-elevation-16{ box-shadow: 0 24px 60px rgba(14
    Global for the same portal reason as the .aam-*/.afm-* rules above.
    ════════════════════════════════════════════════════════════════════ */
 
-/* ---- "Optional" label tag — unified with the design system's .odc-field-opt so
-   every "Optional" hint reads identically (sentence case, caption, muted) whether
-   it comes from a DS Field/Select or a hand-rolled kit label. ---- */
-.atm-opt {
-  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
-  color: var(--mud-palette-text-secondary); margin-left: 6px;
-}
-
 /* On large screens the New-transaction form uses the DS two-column form layout
    (.odc-form-grid) to take advantage of the width; the modal grows to 880px and
    collapses to one column (and shrinks to fit) on smaller viewports. The dialog

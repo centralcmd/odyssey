@@ -31,7 +31,7 @@
                      style="background-image: url('@Files.ContentUrl(_photo.FileId)');@(_photo is { PixelWidth: > 0 and { } bw, PixelHeight: > 0 and { } bh } ? $" aspect-ratio: {bw} / {bh};" : "")"></div>
             </div>
             <OdsField Label="Title" @bind-Value="_title" Icon="title" MaxLength="200"
-                      Placeholder="A short title (optional)" Help="Falls back to the file name when empty." />
+                      Placeholder="A short title" Help="Falls back to the file name when empty." />
             <OdsField Label="File name" @bind-Value="_fileName" Icon="image" MaxLength="256"
                       Disabled="@(!CanRenameFile)"
                       Help="@(CanRenameFile ? "The stored file's name." : null)" />
@@ -60,7 +60,7 @@
                       Placeholder="Write a caption…" />
             <OdsField Label="Location" @bind-Value="_location" Icon="place" MaxLength="256"
                       Placeholder="Add a place — e.g. Lisbon, Portugal" />
-            <OdsCoordinateField @bind-Lat="_lat" @bind-Lng="_lng" Optional="true" />
+            <OdsCoordinateField @bind-Lat="_lat" @bind-Lng="_lng" />
             @if (_lat is not null || _lng is not null || !string.IsNullOrWhiteSpace(_location))
             {
                 <div class="pl-rail-map" aria-hidden="true" style="height: 84px;"><span class="mono">map preview</span></div>

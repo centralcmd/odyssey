@@ -24,6 +24,7 @@
 
     <MudTextField @bind-Value="_name"
                   Label="Statement name"
+                  Required="true"
                   Placeholder="e.g. Tax year 2025"
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
@@ -33,18 +34,18 @@
 
     <OdsFormRow>
         <OdsNumberField Value="@((decimal?)_fiscalYear)" ValueChanged="OnYearChanged"
-                        Label="Fiscal year"
+                        Label="Fiscal year" Required="true"
                         Min="1900" Max="2200"
                         Help="The income year." />
-        <OdsCurrencySelect Label="Base currency" Value="@_baseCurrencyCode"
+        <OdsCurrencySelect Label="Base currency" Required="true" Value="@_baseCurrencyCode"
                            ValueChanged="@(v => _baseCurrencyCode = v)"
                            Options="_currencyOptions"
                            Help="Derived sums include only this currency." />
     </OdsFormRow>
 
     <OdsFormRow>
-        <OdsDatePicker @bind-Value="_startDate" Label="Period start" />
-        <OdsDatePicker @bind-Value="_endDate" Label="Period end"
+        <OdsDatePicker @bind-Value="_startDate" Label="Period start" Required="true" />
+        <OdsDatePicker @bind-Value="_endDate" Label="Period end" Required="true"
                        Error="@_dateError" ErrorText="End date can't be before the start date."
                        HelperText="Defaults to the calendar year." />
     </OdsFormRow>
@@ -52,7 +53,7 @@
     @* Declared figures are money, so each carries the statement's base currency inside the control,
        locked — a figure in another currency would not belong to this statement. They read the same
        on create and on edit: the collapsed create-only subset is gone. *@
-    <OdsSectionDivider Label="Declared figures" Meta="from the official statement · all optional" HeadingLevel="0" />
+    <OdsSectionDivider Label="Declared figures" Meta="from the official statement" HeadingLevel="0" />
     <OdsFormRow>
         <OdsMoneyField Label="Total assets" @bind-Value="_totalAssetsText" AllowNegative="false"
                        Currency="@_baseCurrencyCode" CurrencyEditable="false" />
@@ -99,13 +100,13 @@
         @* The picker is the tag FORM control (chips + a searchable list), not the ledger header's
            filter — and it can create, naming the vocabulary it mints: a transaction tag. *@
         <OdsFormRow>
-            <OdsTagMultiSelect Id="tax-statement-tax-tags" Label="Tax-payment tags" Optional
+            <OdsTagMultiSelect Id="tax-statement-tax-tags" Label="Tax-payment tags"
                                Value="_taxTags" ValueChanged="@(v => _taxTags = v)" Options="_tagOpts"
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
                                Help="Sum into derived advance tax paid (within the year)." />
-            <OdsTagMultiSelect Id="tax-statement-income-tags" Label="Income tags" Optional
+            <OdsTagMultiSelect Id="tax-statement-income-tags" Label="Income tags"
                                Value="_incomeTags" ValueChanged="@(v => _incomeTags = v)" Options="_tagOpts"
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(_canCreateTag ? CreateTagOption : null)"

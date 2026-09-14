@@ -57,9 +57,6 @@ public partial class OdsTagMultiSelect
 
     [Parameter] public bool Required { get; set; }
 
-    /// <summary>Render an "Optional" marker next to the label.</summary>
-    [Parameter] public bool Optional { get; set; }
-
     [Parameter] public bool Disabled { get; set; }
 
     /// <summary>Text shown when the search matches nothing and create is unavailable.</summary>

@@ -13,7 +13,7 @@
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync"
-          Icon="@Icon" IconTone="@IconTone" Wide="@Wide"
+          Icon="@Icon" IconTone="@IconTone" Wide="@Wide" RequiredLegend="@RequiredLegend"
           Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
         <div class="ods-modal-body">
@@ -47,6 +47,10 @@
 
     /// <summary>Wide variant — forwarded to OdsModal.</summary>
     [Parameter] public bool Wide { get; set; }
+
+    /// <summary>Show the footer's "* Required" legend when the body holds a required field — forwarded
+    /// to OdsModal. Default true.</summary>
+    [Parameter] public bool RequiredLegend { get; set; } = true;
 
     /// <summary>Header title text.</summary>
     [Parameter] public string? Title { get; set; }

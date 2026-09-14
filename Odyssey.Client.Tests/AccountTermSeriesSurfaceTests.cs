@@ -242,11 +242,11 @@ public class AccountTermSeriesSurfaceTests
     [Fact]
     public void The_kind_picker_is_not_rendered_when_one_kind_is_eligible()
     {
-        // Criterion 19: a cash account has only Fee to offer, so the one-option grid is dropped — and
+        // Criterion 19: a cash account has only Fee to offer, so the one-option card row is dropped — and
         // the form still opens on that kind and saves.
         var (cut, client) = RenderDialog(Card(AccountType.Cash), []);
 
-        Assert.Empty(cut.FindAll(".trm-kind-grid"));
+        Assert.Empty(cut.FindAll(".odc-cardsel"));
 
         Type(cut, "Name", "Safekeeping");
         Type(cut, "Value", "3");
@@ -262,7 +262,7 @@ public class AccountTermSeriesSurfaceTests
     {
         var (cut, _) = RenderDialog(Card(), []);
 
-        Assert.NotEmpty(cut.FindAll(".trm-kind-grid"));
+        Assert.NotEmpty(cut.FindAll(".odc-cardsel"));
     }
 
     [Fact]
@@ -435,7 +435,7 @@ public class AccountTermSeriesSurfaceTests
     }
 
     private static void PickKind(IRenderedComponent<DialogHost> cut, string kindLabel) =>
-        cut.FindAll(".trm-kind-opt")
+        cut.FindAll(".odc-cardsel-opt")
             .Single(b => b.TextContent.Contains(kindLabel, StringComparison.Ordinal))
             .Click();
 

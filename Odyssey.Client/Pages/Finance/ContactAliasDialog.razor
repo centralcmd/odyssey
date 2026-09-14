@@ -23,9 +23,9 @@
                   Placeholder="e.g. Kari"
                   Help="@(_error is null ? "The name to also find this contact by" : null)"
                   MaxLength="ContactAliasRules.MaxValueLength" id="@ValueFieldId" />
-        <OdsField Label="Label" @bind-Value="_label" Optional="true"
+        <OdsField Label="Label" @bind-Value="_label"
                   Placeholder="e.g. maiden name"
-                  Help="Optional — e.g. maiden name, nickname, trading as"
+                  Help="e.g. maiden name, nickname, trading as"
                   MaxLength="ContactAliasRules.MaxLabelLength" />
     </div>
 </OdsFormDialog>

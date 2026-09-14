@@ -47,10 +47,10 @@
 
         <!-- Category + Planned amount -->
         <OdsFormRow>
-            <OdsBudgetCategoryTypeSelect Label="Category" @bind-Value="_categoryType" />
+            <OdsBudgetCategoryTypeSelect Label="Category" Required="true" @bind-Value="_categoryType" />
             @* A planned amount is money, and the budget's base currency is the only one it can be
                in — so the code rides inside the control, locked. *@
-            <OdsMoneyField Label="Planned amount" @bind-Value="_plannedAmountText" AllowNegative="false"
+            <OdsMoneyField Label="Planned amount" Required="true" @bind-Value="_plannedAmountText" AllowNegative="false"
                            Currency="@BudgetCurrencyCode" CurrencyEditable="false"
                            Error="@(_plannedError ? "Enter a planned amount." : null)"
                            Help="@(_plannedError ? null : "Budget currency")" />

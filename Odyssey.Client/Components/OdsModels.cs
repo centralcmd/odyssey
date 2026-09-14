@@ -140,6 +140,24 @@ public sealed record OdsSegmentedOption
     public bool Disabled { get; init; }
 }
 
+/// <summary>One card in a <see cref="OdsCardSelect"/>.</summary>
+public sealed record OdsCardSelectOption
+{
+    public required string Value { get; init; }
+    public required string Label { get; init; }
+    /// <summary>Material Icons ligature shown above the label.</summary>
+    public string? Icon { get; init; }
+    /// <summary>Caption under the label.</summary>
+    public string? Sub { get; init; }
+    /// <summary>Per-option accent (icon, and the border unless <see cref="Line"/> is set) — overrides the group accent.</summary>
+    public string? Color { get; init; }
+    /// <summary>Per-option border colour when selected / hovered — defaults to <see cref="Color"/>.</summary>
+    public string? Line { get; init; }
+    /// <summary>Per-option soft tint used as the selected background.</summary>
+    public string? Soft { get; init; }
+    public bool Disabled { get; init; }
+}
+
 /// <summary>One tab in a <see cref="OdsTabs"/> strip.</summary>
 public sealed record OdsTabItem(string Value, string Label);
 

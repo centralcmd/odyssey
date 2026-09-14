@@ -81,7 +81,7 @@ public class AddPolicyPartyDialogTests
     {
         var cut = Render(Policy());
 
-        var roles = cut.FindAll(".ins-kind-opt .ins-kind-lab").Select(l => l.TextContent).ToList();
+        var roles = cut.FindAll(".odc-cardsel-opt .odc-cardsel-lab").Select(l => l.TextContent).ToList();
 
         Assert.Equal(
             ["Insurer", "Insured account", "Insured contact", "Beneficiary"],
@@ -177,7 +177,7 @@ public class AddPolicyPartyDialogTests
     private static void PickRole(IRenderedComponent<DialogHost> cut, string label)
     {
         cut.InvokeAsync(() => cut
-            .FindAll(".ins-kind-opt")
+            .FindAll(".odc-cardsel-opt")
             .Single(b => b.TextContent.Contains(label, StringComparison.Ordinal))
             .Click()).GetAwaiter().GetResult();
     }

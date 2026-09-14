@@ -9,7 +9,7 @@
     Backed by MudTimePicker (editable, 24-hour, HH:mm) the way OdsDatePicker is backed by MudDatePicker.
 *@
 
-<OdsFieldShell Label="@Label" HtmlFor="@_id" Required="Required" Optional="Optional"
+<OdsFieldShell Label="@Label" HtmlFor="@_id" Required="Required"
                Help="@Help" Error="@Error" Class="@Class">
     <MudTimePicker Time="Value"
                    TimeChanged="OnTimeChanged"
@@ -49,8 +49,6 @@
     [Parameter] public string? Error { get; set; }
 
     [Parameter] public bool Required { get; set; }
-
-    [Parameter] public bool Optional { get; set; }
 
     /// <summary>Popover alignment relative to the field. Start (default) / End.</summary>
     [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;

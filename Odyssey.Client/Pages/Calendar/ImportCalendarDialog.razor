@@ -23,10 +23,10 @@
         @if (_result is null)
         {
             <div class="cal-imp-form">
-                <OdsSelect Label="Import into" Value="@_calendarValue" ValueChanged="OnCalendarSelected"
+                <OdsSelect Label="Import into" Required="true" Value="@_calendarValue" ValueChanged="OnCalendarSelected"
                            Options="_calendarOptions" Placeholder="Choose a calendar…" Error="@_calendarError" />
 
-                <OdsFieldShell Label="Calendar file" Error="@_fileError">
+                <OdsFieldShell Label="Calendar file" Required="true" Error="@_fileError">
                     <OdsFileUpload Files="_files" FilesChanged="OnFilesChanged"
                                    Multiple="false" ShowKinds="false" Compact="true"
                                    Accept=".ics,text/calendar"

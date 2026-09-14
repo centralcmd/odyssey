@@ -21,6 +21,7 @@
                TransformOrigin="@(Align == OdsAlign.End ? Origin.TopRight : Origin.TopLeft)"
                Disabled="@Disabled"
                Clearable="@Clearable"
+               Required="@Required"
                HelperText="@HelperText"
                Style="@(Full ? null : "width:fit-content")"
                Class="@Class"
@@ -40,6 +41,11 @@
     [Parameter] public bool Clearable { get; set; }
 
     [Parameter] public string? HelperText { get; set; }
+
+    /// <summary>Marks the field required — the label's `*` (the system's single obligation marker). A
+    /// real bool parameter: passed as a stray unmatched attribute it would splat a string onto
+    /// MudDatePicker's bool and throw.</summary>
+    [Parameter] public bool Required { get; set; }
 
     /// <summary>Earliest selectable date. Earlier days are disabled.</summary>
     [Parameter] public DateTime? Min { get; set; }
