@@ -5,6 +5,37 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0](https://github.com/centralcmd/odyssey/compare/v0.26.0...v0.27.0) (2026-09-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** identify a budget item by its transaction tag
+
+### Features
+
+* **client:** mark required fields only and add card select ([6e381a4](https://github.com/centralcmd/odyssey/commit/6e381a4c229c820188334a973bfda9d55fb26f6a))
+* **client:** sync record body and transaction dialog to design system ([c23c42d](https://github.com/centralcmd/odyssey/commit/c23c42d11f82af84ae56d956ddc0cac8d0d0533f))
+* **core:** identify a budget item by its transaction tag ([f1204f1](https://github.com/centralcmd/odyssey/commit/f1204f165ed265e74277fc8dc62c77d09729e820))
+
+
+### Bug Fixes
+
+* **client:** expose required state to assistive tech and fix card select keys ([4365166](https://github.com/centralcmd/odyssey/commit/43651668f0a34db09d336accda0a9c480193e25f))
+
+
+### Documentation
+
+* update design system ([b0da16e](https://github.com/centralcmd/odyssey/commit/b0da16e583bd7549c179c61349953a3bce481e8b))
+* update design system ([551014f](https://github.com/centralcmd/odyssey/commit/551014fff1c55286e2d7cf3a31565276336b5f9c))
+* update design system ([351f182](https://github.com/centralcmd/odyssey/commit/351f182dc756a926c6d597560781973e9faa1c7b))
+
+
+### CI/CD
+
+* bump anthropics/claude-code-action in the actions group ([dfaec2c](https://github.com/centralcmd/odyssey/commit/dfaec2c2e92526abb4de75081d074cb1affd3967))
+* bump the docker group across 3 directories with 3 updates ([8b9fcb8](https://github.com/centralcmd/odyssey/commit/8b9fcb87f20cf5128e6c2eb435f48d3ecbfca727))
+
 ## [0.26.0](https://github.com/centralcmd/odyssey/compare/v0.25.0...v0.26.0) (2026-09-11)
 
 
