@@ -37,6 +37,13 @@
         </label>
     }
 
+    @if (Required)
+    {
+        @* The trigger is a button, which cannot carry aria-required, and the label's `*` is
+           aria-hidden — so the obligation reaches assistive technology through the description. *@
+        <span id="@RequiredId" class="sr-only">Required</span>
+    }
+
     <div class="odc-tagms">
         <MudMenu @ref="_menu"
                  AnchorOrigin="Origin.BottomLeft"
@@ -107,7 +114,7 @@
                             aria-expanded="@(_open ? "true" : "false")"
                             aria-label="@TriggerAriaLabel"
                             aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
-                            aria-describedby="@(string.IsNullOrEmpty(Message) ? null : MessageId)"
+                            aria-describedby="@TriggerDescribedBy"
                             @onclick="@context.ToggleAsync">
                         <span class="material-icons" aria-hidden="true">@(_open ? "expand_less" : "add")</span>
                         @* The label goes visually-hidden rather than away once there are chips (DS

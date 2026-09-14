@@ -30,6 +30,7 @@
                disabled="@Disabled"
                autofocus="@AutoFocus"
                style="@(Align == "right" ? "text-align:right" : null)"
+               aria-required="@(Required ? "true" : null)"
                aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
                aria-describedby="@DescribedBy"
                @oninput="OnInput"

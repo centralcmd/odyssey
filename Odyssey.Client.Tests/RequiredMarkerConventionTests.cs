@@ -19,6 +19,8 @@ public class RequiredMarkerConventionTests
 {
     private static readonly Regex RazorComment = new(@"@\*.*?\*@", RegexOptions.Singleline | RegexOptions.Compiled);
 
+    private static readonly Regex HtmlComment = new(@"<!--.*?-->", RegexOptions.Singleline | RegexOptions.Compiled);
+
     private static readonly Regex LineComment = new(@"^\s*//.*$", RegexOptions.Multiline | RegexOptions.Compiled);
 
     // `Optional="…"`, or the bare boolean form followed by the next attribute / the tag end.
@@ -71,7 +73,7 @@ public class RequiredMarkerConventionTests
         {
             var raw = File.ReadAllText(file);
             // Blank comments out rather than removing them, so reported line numbers stay true.
-            var text = LineComment.Replace(RazorComment.Replace(raw, Blank), Blank);
+            var text = LineComment.Replace(HtmlComment.Replace(RazorComment.Replace(raw, Blank), Blank), Blank);
             foreach (Match match in pattern.Matches(text))
                 violations.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)} — {describe(match)}");
         }

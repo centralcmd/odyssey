@@ -144,6 +144,21 @@ public partial class OdsTagMultiSelect
     private string LabelId => $"{TriggerId}-label";
     private string MessageId => $"{TriggerId}-help";
 
+    private string RequiredId => $"{TriggerId}-req";
+
+    private string? TriggerDescribedBy
+    {
+        get
+        {
+            var ids = string.Join(' ', new[]
+            {
+                string.IsNullOrEmpty(Message) ? null : MessageId,
+                Required ? RequiredId : null,
+            }.Where(id => id is not null));
+            return ids.Length == 0 ? null : ids;
+        }
+    }
+
     protected override void OnParametersSet()
     {
         _selected = [.. Value];

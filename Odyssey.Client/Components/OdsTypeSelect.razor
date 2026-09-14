@@ -137,6 +137,12 @@
             }
         </ChildContent>
     </MudMenu>
+    @if (Required)
+    {
+        @* A button cannot carry aria-required, and the label's `*` is aria-hidden, so the obligation
+           reaches assistive technology as part of the trigger's description instead. *@
+        <span id="@RequiredId" class="sr-only">Required</span>
+    }
     </div>
 </OdsFieldShell>
 

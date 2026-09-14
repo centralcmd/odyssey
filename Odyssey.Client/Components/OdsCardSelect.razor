@@ -9,12 +9,20 @@
     dense 2–3 option switches, OdsRadioGroup when each option needs a sentence.
 
     Controlled via @bind-Value. Proper radiogroup semantics — roving tabindex, ←/→
-    (and ↑/↓) move and select, Home/End jump; selection and focus move together.
+    (and ↑/↓) move and select, Home/End jump; selection and focus move together, and
+    disabled cards are skipped. Keys act from the focused card, so the group works
+    before anything is selected.
+
+    Name it with AriaLabelledBy pointing at the visible label (OdsFieldShell's LabelId)
+    rather than retyping that text into AriaLabel. Required puts aria-required on the
+    group — the visible `*` on the label is aria-hidden.
 
     Accent: Accent (icon), AccentLine (border, defaults to Accent) and AccentSoft
     (selected background) tint the whole group — pass a module accent such as
     "var(--ins-accent)". An option may carry its own Color / Line / Soft to override
-    it, the way the account-term kinds each have their own hue.
+    it, the way the account-term kinds each have their own hue. These are written into
+    an inline style, so a value that could close the declaration or load a resource
+    (`;`, braces, `url(`…) is dropped — pass colours and var() references only.
 
     Layout: Columns fixes the column count (null fills the row); MaxItemWidth caps
     each card, in px, and pairs with Center for a balanced two-up.
@@ -24,7 +32,9 @@
     tabindex, which MudToggleGroup does not provide.
 *@
 
-<div class="odc-cardsel @(Center ? "center" : null)" role="radiogroup" aria-label="@AriaLabel"
+<div class="odc-cardsel @(Center ? "center" : null)" role="radiogroup"
+     aria-label="@AriaLabel" aria-labelledby="@AriaLabelledBy"
+     aria-required="@(Required ? "true" : null)"
      style="@GroupStyle" @attributes="UserAttributes">
     @for (var i = 0; i < Options.Count; i++)
     {
@@ -40,7 +50,7 @@
                 style="@OptionStyle(option)"
                 @ref="_buttonRefs[index]"
                 @onclick="@(() => Select(option))"
-                @onkeydown="@(e => OnKeyDown(e))">
+                @onkeydown="@(e => OnKeyDown(e, index))">
             @if (!string.IsNullOrEmpty(option.Icon))
             {
                 <span class="material-icons" aria-hidden="true">@option.Icon</span>
@@ -63,7 +73,14 @@
 
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
+    /// <summary>Accessible name, when there is no visible label to point <see cref="AriaLabelledBy"/> at.</summary>
     [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>Id of the visible label that names the group — preferred over <see cref="AriaLabel"/>.</summary>
+    [Parameter] public string? AriaLabelledBy { get; set; }
+
+    /// <summary>Exposes the group as required (<c>aria-required</c>); the label's <c>*</c> is visual only.</summary>
+    [Parameter] public bool Required { get; set; }
 
     /// <summary>Group accent — icon colour, and the border when <see cref="AccentLine"/> is absent.</summary>
     [Parameter] public string? Accent { get; set; }
@@ -101,26 +118,32 @@
             var track = MaxItemWidth is { } width ? $"{width}px" : "1fr";
             var repeat = Columns is { } columns ? columns.ToString(System.Globalization.CultureInfo.InvariantCulture) : "auto-fit";
             var style = $"grid-template-columns:repeat({repeat}, minmax(0, {track}));";
-            if (!string.IsNullOrEmpty(Accent))
-                style += $"--odc-cardsel-accent:{Accent};";
-            if (!string.IsNullOrEmpty(AccentLine ?? Accent))
-                style += $"--odc-cardsel-line:{AccentLine ?? Accent};";
-            if (!string.IsNullOrEmpty(AccentSoft))
-                style += $"--odc-cardsel-soft:{AccentSoft};";
+            style += Declaration("--odc-cardsel-accent", Accent);
+            style += Declaration("--odc-cardsel-line", AccentLine ?? Accent);
+            style += Declaration("--odc-cardsel-soft", AccentSoft);
             return style;
         }
     }
 
     private static string? OptionStyle(OdsCardSelectOption option)
     {
-        var style = string.Empty;
-        if (!string.IsNullOrEmpty(option.Color))
-            style += $"--odc-cardsel-accent:{option.Color};";
-        if (!string.IsNullOrEmpty(option.Line ?? option.Color))
-            style += $"--odc-cardsel-line:{option.Line ?? option.Color};";
-        if (!string.IsNullOrEmpty(option.Soft))
-            style += $"--odc-cardsel-soft:{option.Soft};";
+        var style = Declaration("--odc-cardsel-accent", option.Color)
+                    + Declaration("--odc-cardsel-line", option.Line ?? option.Color)
+                    + Declaration("--odc-cardsel-soft", option.Soft);
         return style.Length == 0 ? null : style;
+    }
+
+    // One custom-property declaration, or nothing when the value is empty or could break out of it:
+    // a `;` or brace would start another declaration, and url()/image-set()/@import would fetch a
+    // resource from a style attribute. The accents are colours and var() references, never those.
+    private static string Declaration(string property, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)
+            || value.IndexOfAny([';', '{', '}', '<', '>', '"', '\\', '@']) >= 0
+            || value.Contains("url(", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("image", StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
+        return $"{property}:{value};";
     }
 
     // The selected card is the group's tab stop; with nothing selected yet the first enabled card
@@ -151,6 +174,19 @@
         }
     }
 
+    // The next enabled card from `from` in `direction`, wrapping; -1 when every card is disabled.
+    private int Step(int from, int direction)
+    {
+        var count = Options.Count;
+        for (var offset = 1; offset <= count; offset++)
+        {
+            var candidate = ((from + direction * offset) % count + count) % count;
+            if (!Options[candidate].Disabled)
+                return candidate;
+        }
+        return -1;
+    }
+
     private Task Select(OdsCardSelectOption option)
     {
         if (option.Disabled || option.Value == Value)
@@ -159,21 +195,19 @@
         return ValueChanged.InvokeAsync(option.Value);
     }
 
-    private async Task OnKeyDown(KeyboardEventArgs e)
+    // Keys act from the FOCUSED card, not the selected one: with nothing selected yet the first
+    // enabled card holds the tab stop, and arrows from it must still move (WCAG 2.1.1).
+    private async Task OnKeyDown(KeyboardEventArgs e, int focusedIndex)
     {
-        var index = SelectedIndex;
-        if (index < 0 || Options.Count == 0)
-            return;
-
         var nextIndex = e.Key switch
         {
-            "ArrowRight" or "ArrowDown" => (index + 1) % Options.Count,
-            "ArrowLeft" or "ArrowUp" => (index - 1 + Options.Count) % Options.Count,
-            "Home" => 0,
-            "End" => Options.Count - 1,
+            "ArrowRight" or "ArrowDown" => Step(focusedIndex, +1),
+            "ArrowLeft" or "ArrowUp" => Step(focusedIndex, -1),
+            "Home" => Step(-1, +1),
+            "End" => Step(Options.Count, -1),
             _ => -1,
         };
-        if (nextIndex < 0 || Options[nextIndex].Disabled)
+        if (nextIndex < 0)
             return;
 
         await Select(Options[nextIndex]);

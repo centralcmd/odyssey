@@ -37,8 +37,8 @@
           Icon="group_add" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="ins-dialog">
     <ChildContent>
         <div class="ods-modal-body">
-            <OdsFieldShell Label="Role" Required="true">
-                <OdsCardSelect AriaLabel="Role" Value="@_role.ToString()" ValueChanged="PickRole"
+            <OdsFieldShell Label="Role" Required="true" LabelId="ins-party-role-label">
+                <OdsCardSelect AriaLabelledBy="ins-party-role-label" Required="true" Value="@_role.ToString()" ValueChanged="PickRole"
                                Accent="var(--ins-accent)" AccentLine="var(--ins-accent-line)" AccentSoft="var(--ins-accent-soft)"
                                Options="RoleOptions" />
             </OdsFieldShell>
