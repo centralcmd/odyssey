@@ -165,19 +165,7 @@
 .odc-infotile:hover .ins-tile-edit, .ins-tile-edit:focus-visible { opacity: 1; }
 .ins-tile-edit:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 
-/* Role picker in the New party dialog — the contract party-kind cards, in the
-   insurance accent, with four roles instead of two kinds. */
-.ins-kind-seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
-.ins-kind-opt {
-  display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
-  padding: 14px 8px; border: 1px solid var(--mud-palette-divider); border-radius: 10px;
-  background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
-  transition: border-color .12s ease, background .12s ease, color .12s ease;
-}
-.ins-kind-opt:hover { border-color: var(--ins-accent-line); color: var(--mud-palette-text-primary); }
-.ins-kind-opt.on { border-color: var(--ins-accent-line); background: var(--ins-accent-soft); color: var(--mud-palette-text-primary); }
-.ins-kind-opt .material-icons { font-size: 24px; color: var(--ins-accent); }
-.ins-kind-lab { font: 500 12px/1.2 var(--font-sans); }
+/* Role picker in the New party dialog uses the DS CardSelect (components.css). */
 
 .ins-tiles {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;

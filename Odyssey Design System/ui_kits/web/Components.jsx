@@ -312,7 +312,7 @@ const AmountField = ({ helper, ...props }) => {
   const msg = error || helper;
   return (
     <div className={`odc-field${error ? ' error' : ''} ${className}`.trim()}>
-      {label ? <label className="odc-field-label">{label}{required ? <span className="odc-field-req">*</span> : null}{optional ? <span className="odc-field-opt">Optional</span> : null}</label> : null}
+      {label ? <label className="odc-field-label">{label}{required ? <span className="odc-field-req">*</span> : null}</label> : null}
       <div className={`odc-amount${size === 'lg' ? ' lg' : ''}${error ? ' error' : ''}${disabled ? ' disabled' : ''}`}>
         {prefix ? <span className="odc-amount-adorn pre">{prefix}</span> : null}
         <input className="odc-amount-input" inputMode="decimal" type="text" value={value} placeholder={placeholder} disabled={disabled} autoFocus={autoFocus}
@@ -364,7 +364,7 @@ const NoteField = ({ helper, ...props }) => {
     <div className={`odc-field${error ? ' error' : ''} ${className}`.trim()}>
       {(label || counted) ? (
         <div className="odc-field-head">
-          {label ? <label className="odc-field-label">{label}{required ? <span className="odc-field-req">*</span> : null}{optional ? <span className="odc-field-opt">Optional</span> : null}</label> : <span />}
+          {label ? <label className="odc-field-label">{label}{required ? <span className="odc-field-req">*</span> : null}</label> : <span />}
           {counted ? <span className={`odc-field-count${over ? ' over' : ''}`}>{value.length}/{maxLength}</span> : null}
         </div>
       ) : null}
@@ -385,8 +385,7 @@ const FieldShell = ({ helper, ...props }) => {
   const msg = error || helper;
   const labelNode = label ? (
     <label className="odc-field-label" htmlFor={htmlFor}>{label}
-      {required ? <span className="odc-field-req">*</span> : null}
-      {optional ? <span className="odc-field-opt">Optional</span> : null}</label>
+      {required ? <span className="odc-field-req">*</span> : null}</label>
   ) : null;
   return (
     <div className={`odc-field${error ? ' error' : ''} ${className}`.trim()}>
@@ -406,7 +405,7 @@ const NumberField = ({ helper, ...props }) => {
   const msg = error || helper;
   return (
     <div className={`odc-field${error ? ' error' : ''} ${className}`.trim()}>
-      {label ? <label className="odc-field-label">{label}{required ? <span className="odc-field-req">*</span> : null}{optional ? <span className="odc-field-opt">Optional</span> : null}</label> : null}
+      {label ? <label className="odc-field-label">{label}{required ? <span className="odc-field-req">*</span> : null}</label> : null}
       <input className="odc-input" type="number" value={value == null ? '' : value} placeholder={placeholder}
         min={min} max={max} step={step} disabled={disabled} style={align === 'right' ? { textAlign: 'right' } : undefined}
         onChange={(e) => onChange && onChange(e.target.value === '' ? null : parseFloat(e.target.value), e)} />
@@ -604,6 +603,11 @@ const ContactSelect = ({ allowCreate, onCreate, ...rest }) => (
 // SegmentedControl — compact 2–3 option toggle (the contract Term / One-off
 // switch, dense view switches). Aliased straight from the bundle.
 const SegmentedControl = DS.SegmentedControl;
+
+// CardSelect — icon-over-label card picker for the "what kind is this?" question
+// at the top of a create dialog (contract party kind, policy party role, term
+// kind). Aliased straight from the bundle.
+const CardSelect = DS.CardSelect;
 
 // ---- Overview breakdown helpers (shared by every page's header Overview) ----
 // Status tone → the finance accent it maps to, so "By status" rows tint
@@ -1348,7 +1352,7 @@ const CustodianSelect = DS.CustodianSelect || (({ value, onChange, contacts = []
   const msg = error || help;
   return (
     <div className={`odc-field${error ? ' error' : ''}`}>
-      <label className="odc-field-label">{label}{optional ? <span className="odc-field-opt">Optional</span> : null}</label>
+      <label className="odc-field-label">{label}</label>
       {DS.Combobox
         ? <DS.Combobox value={value || ''} onChange={(v) => onChange && onChange(v || '')} options={options} placeholder="Search contacts…" clearable loading={loading} disabled={disabled} onCreate={onCreate} createLabel="Add" createKinds={onCreate ? DS.CONTACT_CREATE_KINDS : undefined} />
         : <DS.Select value={value || ''} onChange={(v) => onChange && onChange(v || '')} options={options} placeholder="Search contacts…" />}
@@ -1415,7 +1419,7 @@ Object.assign(window, {
   TaxStatementFileTypeSelect, TaxStatementFileTypeMultiSelect,
   InsurancePolicyTypeSelect, PolicyFileTypeSelect, PolicyFileTypeMultiSelect, CoverageStatusChip, Combobox, MatchIndicator,
   BillingIntervalSelect, BillingIntervalMultiSelect, BillingIntervalChip, SubscriptionStatusChip,
-  SegmentedControl, ContactSelect, TransactionTagPicker,
+  SegmentedControl, CardSelect, ContactSelect, TransactionTagPicker,
   ODC_TONE, odcTypeRows, odcStatusRows,
   ContractTypeSelect,
   BudgetCategoryTypeSelect,

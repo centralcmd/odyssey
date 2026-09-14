@@ -90,11 +90,11 @@ const AddInsurancePolicyModal = ({ onClose, onCreate, onSave, policy = null }) =
           </Button>
         </React.Fragment>
       }>
-      <Field label="Policy name" value={draft.name} onChange={set('name')} placeholder="e.g. Home & Contents 2026" error={errors.name} autoFocus />
+      <Field label="Policy name" required value={draft.name} onChange={set('name')} placeholder="e.g. Home & Contents 2026" error={errors.name} autoFocus />
 
       <FormRow>
-        <Field label="Policy number" value={draft.policyNumber} onChange={set('policyNumber')} placeholder="Optional — insurer's reference" />
-        <InsurancePolicyTypeSelect value={draft.type} onChange={set('type')} error={errors.type} placeholder="Choose a type…" />
+        <Field label="Policy number" value={draft.policyNumber} onChange={set('policyNumber')} placeholder="Insurer's reference" />
+        <InsurancePolicyTypeSelect required value={draft.type} onChange={set('type')} error={errors.type} placeholder="Choose a type…" />
       </FormRow>
 
       <NoteField label="Notes" optional maxLength={1024} value={draft.notes} onChange={set('notes')}

@@ -69,10 +69,10 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
           </Button>
         </React.Fragment>
       }>
-      <Field label="Contract name" value={draft.name} onChange={set('name')} placeholder="e.g. Maple St Residence — Lease" error={errors.name} autoFocus />
+      <Field label="Contract name" required value={draft.name} onChange={set('name')} placeholder="e.g. Maple St Residence — Lease" error={errors.name} autoFocus />
 
       <FormRow>
-        <ContractTypeSelect value={draft.type} onChange={set('type')} error={errors.type} placeholder="Choose a type…" />
+        <ContractTypeSelect required value={draft.type} onChange={set('type')} error={errors.type} placeholder="Choose a type…" />
         <FieldShell label="Term">
           <SegmentedControl full value={mode} onChange={setMode}
             options={[{ value: 'term', label: 'Term' }, { value: 'oneoff', label: 'One-off' }]} />
@@ -82,10 +82,10 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
       {mode === 'term' ? (
         <FormRow>
           <div className="field">
-            <Field type="date" label="Starts (optional)" value={draft.startDate} onChange={set('startDate')} placeholder="No start date" />
+            <Field type="date" label="Starts" value={draft.startDate} onChange={set('startDate')} placeholder="No start date" />
           </div>
           <div className="field">
-            <Field type="date" label="Ends (optional)" value={draft.endDate} onChange={set('endDate')} placeholder="Open-ended" />
+            <Field type="date" label="Ends" value={draft.endDate} onChange={set('endDate')} placeholder="Open-ended" />
             {errors.endDate
               ? <div className="helper aam-err">{errors.endDate}</div>
               : <div className="helper">Leave empty for an open-ended agreement.</div>}
@@ -94,7 +94,7 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
       ) : (
         <FormRow>
           <div className="field">
-            <Field type="date" label="Completion" value={draft.completionDate} onChange={set('completionDate')} placeholder="Completion date" />
+            <Field type="date" label="Completion" required value={draft.completionDate} onChange={set('completionDate')} placeholder="Completion date" />
             {errors.completionDate
               ? <div className="helper aam-err">{errors.completionDate}</div>
               : <div className="helper">The one-off closing / delivery date — no ongoing term.</div>}

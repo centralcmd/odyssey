@@ -13,6 +13,7 @@ export interface TimeFieldProps {
   help?: React.ReactNode;
   error?: React.ReactNode;
   required?: boolean;
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   disabled?: boolean;
   /** Stretch to the container width. Default true. */

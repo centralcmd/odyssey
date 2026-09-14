@@ -23,6 +23,7 @@ export interface CurrencySelectProps {
   /** Error message — flips the control to its error state and replaces the helper. */
   error?: string;
   required?: boolean;
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   disabled?: boolean;
   className?: string;

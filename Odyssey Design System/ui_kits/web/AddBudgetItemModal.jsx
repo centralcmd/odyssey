@@ -95,9 +95,10 @@ const AddBudgetItemModal = ({ budget, item, onClose, onCreate, canCreateTag = tr
       />
 
       <FormRow>
-        <BudgetCategoryTypeSelect label="Category" value={draft.categoryType} onChange={set('categoryType')} />
+        <BudgetCategoryTypeSelect label="Category" required value={draft.categoryType} onChange={set('categoryType')} />
         <MoneyField
           label="Planned amount"
+          required
           value={draft.planned}
           onChange={set('planned')}
           currency={budget.currency}

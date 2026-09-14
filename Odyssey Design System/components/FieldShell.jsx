@@ -1,19 +1,18 @@
 /**
  * Odyssey DS — FieldShell
  * The labelled-field wrapper that every form control shares: the label row
- * (with the required `*` / muted "Optional" marker, and an optional right-aligned
- * `aside` slot — e.g. a character counter), the control itself (`children`), and
- * the helper / error line below.
+ * (with the required `*` marker — the system marks required only, never
+ * "Optional" — and an optional right-aligned `aside` slot, e.g. a character
+ * counter), the control itself (`children`), and the helper / error line below.
  *
  * This is the composition primitive behind `Field`, `AmountField`, `NoteField`
  * and `NumberField` — and the one to reach for when you need to label a control
  * the kit doesn't wrap yet (a `Combobox`, a `MultiSelect`, a segmented control,
  * a locked-value display, an upload dropzone). It replaces the hand-rolled
- * `.field` + `.label` + `.atm-opt` + `.helper`/`aam-err` markup scattered across
- * the dialogs, so the label, optional hint and error line read identically
- * everywhere.
+ * `.field` + `.label` + `.helper`/`aam-err` markup scattered across the dialogs,
+ * so the label, required marker and error line read identically everywhere.
  *
- *   <FieldShell label="Insured account" htmlFor="ins-acct" optional help={err}>
+ *   <FieldShell label="Insured account" htmlFor="ins-acct" help={err}>
  *     <Combobox id="ins-acct" … />
  *   </FieldShell>
  *
@@ -24,7 +23,7 @@ export function FieldShell({
   label,
   htmlFor,
   required = false,
-  optional = false,
+  optional = false, // eslint-disable-line no-unused-vars — retained no-op
   help,
   error,
   aside,
@@ -39,7 +38,6 @@ export function FieldShell({
     <label className="odc-field-label" htmlFor={htmlFor}>
       {label}
       {required ? <span className="odc-field-req" aria-hidden="true">*</span> : null}
-      {optional ? <span className="odc-field-opt">Optional</span> : null}
     </label>
   ) : null;
   return (

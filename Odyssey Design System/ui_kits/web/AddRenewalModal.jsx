@@ -68,18 +68,18 @@ const AddRenewalModal = ({ policy, renewal, onClose, onSave }) => {
         </React.Fragment>
       }>
       <FormRow>
-        <DateField label="Cover from" value={draft.fromDate} onChange={set('fromDate')}
+        <DateField label="Cover from" required value={draft.fromDate} onChange={set('fromDate')}
           help="Start of this period’s cover." error={errors.fromDate} />
-        <DateField label="Cover to" value={draft.toDate} onChange={set('toDate')}
+        <DateField label="Cover to" required value={draft.toDate} onChange={set('toDate')}
           help="End of this period’s cover." error={errors.toDate} />
       </FormRow>
 
       <FormRow>
-        <MoneyField label="Premium" value={draft.premium} onChange={set('premium')}
+        <MoneyField label="Premium" required value={draft.premium} onChange={set('premium')}
           currency={draft.premiumCurrencyCode} onCurrencyChange={set('premiumCurrencyCode')}
           currencyOptions={ARN_CURRENCIES} currencySearchThreshold={0} signEditable
           error={errors.premium} help="Premium for this term, as stored (not annualized)." />
-        <MoneyField label="Coverage amount" value={draft.coverageAmount} onChange={set('coverageAmount')}
+        <MoneyField label="Coverage amount" required value={draft.coverageAmount} onChange={set('coverageAmount')}
           currency={draft.coverageCurrencyCode} onCurrencyChange={set('coverageCurrencyCode')}
           currencyOptions={ARN_CURRENCIES} currencySearchThreshold={0} signEditable
           error={errors.coverageAmount} help="Insured sum for this term." />

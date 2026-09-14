@@ -15,6 +15,7 @@ export interface NumberFieldProps {
   /** Error message — flips to the error state and replaces the helper. */
   error?: string;
   required?: boolean;
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   disabled?: boolean;
   autoFocus?: boolean;

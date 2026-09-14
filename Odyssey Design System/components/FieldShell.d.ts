@@ -7,7 +7,7 @@ export interface FieldShellProps {
   htmlFor?: string;
   /** Adds a `*` after the label (the canonical required marker). */
   required?: boolean;
-  /** Adds a muted "Optional" hint after the label. Mutually exclusive with `required`. */
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   /** Helper text shown below the control. */
   help?: React.ReactNode;
@@ -21,5 +21,5 @@ export interface FieldShellProps {
   id?: string;
 }
 
-/** The labelled-field wrapper (label + required/optional marker + helper/error line) shared by every form control. */
+/** The labelled-field wrapper (label + required marker + helper/error line) shared by every form control. */
 export declare function FieldShell(props: FieldShellProps): JSX.Element;

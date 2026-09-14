@@ -75,7 +75,6 @@ export function DateField({
         <label className="odc-field-label" htmlFor={fieldId}>
           {label}
           {required ? <span className="odc-field-req" aria-hidden="true">*</span> : null}
-          {optional ? <span className="odc-field-opt">Optional</span> : null}
         </label>
       ) : null}
       {control}

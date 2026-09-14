@@ -20,6 +20,7 @@ export interface TextInputFieldProps {
   /** Error message — flips to the error state and adds a `role="alert"` line. */
   error?: string;
   required?: boolean;
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   disabled?: boolean;
   autoFocus?: boolean;

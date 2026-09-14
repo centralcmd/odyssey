@@ -166,7 +166,6 @@ export function Select({
         <label className="odc-field-label" htmlFor={fieldId}>
           {label}
           {required ? <span className="odc-field-req" aria-hidden="true">*</span> : null}
-          {optional ? <span className="odc-field-opt">Optional</span> : null}
         </label>
       ) : null}
       <div className="odc-select" ref={wrapRef}>
@@ -215,13 +214,15 @@ export function Select({
                     className={`odc-select-opt${on ? ' selected' : ''}`}
                     onClick={(e) => pick(o, e)}
                   >
-                    <span className="odc-select-tick">
-                      {on ? <span className="material-icons" aria-hidden="true">check</span> : null}
-                    </span>
                     {o.icon ? (
                       <span className="material-icons odc-opt-icon" style={o.iconColor ? { color: o.iconColor } : undefined} aria-hidden="true">{o.icon}</span>
                     ) : null}
                     <span className="odc-select-opt-label">{o.label}</span>
+                    {/* Tick trails the row so the icon + label stay flush left,
+                        the same alignment the closed trigger shows. */}
+                    <span className="odc-select-tick">
+                      {on ? <span className="material-icons" aria-hidden="true">check</span> : null}
+                    </span>
                   </button>
                 </li>
               );

@@ -160,7 +160,6 @@ export function ContactSelect({
       <label className="odc-field-label" htmlFor={fieldId}>
         {label}
         {required ? <span className="odc-field-req" aria-hidden="true">*</span> : null}
-        {optional && !required ? <span className="odc-field-opt">Optional</span> : null}
       </label>
       {control}
       {msg ? (

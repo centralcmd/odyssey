@@ -223,7 +223,7 @@ export function ContactAliases({
               value={dialog.label}
               onChange={(v) => setDialog((d) => ({ ...d, label: v }))}
               placeholder="e.g. maiden name"
-              help="Optional — e.g. maiden name, nickname, trading as" />
+              help="e.g. maiden name, nickname, trading as" />
           </div>
         </Modal>
       ) : null}

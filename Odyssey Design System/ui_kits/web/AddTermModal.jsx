@@ -170,7 +170,7 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
          selected is still written out on every tile and history row. */}
       {(isEdit || eligibleKinds.length > 1) && (
       <div className="field">
-        <div className="label">Term</div>
+        <div className="label">Term<span className="odc-field-req" aria-hidden="true">*</span></div>
         {isEdit ? (
           <div className="trm-kind-opt on" style={{ cursor: 'default' }}>
             <span className="trm-kind-ic md" style={{ background: info.soft, color: info.color }}>
@@ -183,23 +183,8 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
           </div>
         ) : (
           <React.Fragment>
-            <div className="trm-kind-grid">
-              {eligibleKinds.map(k => {
-                const on = k.key === draft.kind;
-                return (
-                  <button type="button" key={k.key} className={`trm-kind-opt ${on ? 'on' : ''}`} onClick={() => pickKind(k.key)}>
-                    <span className="trm-kind-ic md" style={{ background: k.soft, color: k.color }}>
-                      <MIcon name={k.icon} size={18} />
-                    </span>
-                    <span className="trm-kind-opt-txt">
-                      <span className="trm-kind-opt-name">{k.label}</span>
-                      <span className="trm-kind-opt-grp">{k.group === 'rate' ? 'Rate' : 'Fee'}</span>
-                    </span>
-                    {on && <MIcon name="check_circle" size={18} className="trm-kind-check" />}
-                  </button>
-                );
-              })}
-            </div>
+            <CardSelect ariaLabel="Term" value={draft.kind} onChange={pickKind}
+              options={eligibleKinds.map(k => ({ value: k.key, label: k.label, icon: k.icon, color: k.color, soft: k.soft }))} />
             {eligibleKinds.length < D.termKinds.length && (
               <div className="trm-kind-ineligible">
                 Some kinds don’t apply to a <b>{window.ACCOUNT_TYPE_LABEL[account.type] || account.type}</b> account and are hidden.
@@ -217,7 +202,7 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
       {labelRule !== 'hidden' && (
         <Field
           label="Name"
-          required
+          required={labelRule === 'required'}
           value={draft.label}
           onChange={set('label')}
           placeholder="e.g. ATM withdrawal · abroad"
@@ -229,7 +214,7 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
       {/* Unit + Value */}
       <div className="trm-value-block">
         <div className="trm-field-head">
-          <div className="label" style={{ marginBottom: 0 }}>Value</div>
+          <div className="label" style={{ marginBottom: 0 }}>Value<span className="odc-field-req" aria-hidden="true">*</span></div>
           {!isRate && (
             <div className="atm-seg" role="radiogroup" aria-label="Unit" style={{ marginLeft: 'auto' }}>
               <button type="button" role="radio" aria-checked={isPct}
@@ -249,6 +234,7 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
         {isPct ? (
           <AmountField
             size="lg"
+            required
             suffix="%"
             allowNegative
             autoFocus
@@ -260,6 +246,7 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
         ) : (
           <MoneyField
             size="lg"
+            required
             allowNegative
             signEditable
             autoFocus
@@ -275,33 +262,24 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
         )}
       </div>
 
-      {/* Effective date — currency now lives inside the money field (amount mode);
-         a rate has no currency, so that column only appears for percentages. */}
-      <FormRow cols={isPct ? 2 : 1}>
-        {isPct ? (
-          <div className="field">
-            <div className="label">Currency</div>
-            <div className="trm-kind-opt" style={{ cursor: 'default', height: 44, padding: '0 12px', opacity: 0.6 }}>
-              <MIcon name="block" size={16} style={{ color: 'var(--mud-palette-text-secondary)' }} />
-              <span className="trm-kind-opt-name" style={{ fontWeight: 400, color: 'var(--mud-palette-text-secondary)' }}>Not used for a rate</span>
-            </div>
-          </div>
-        ) : null}
-        <DateField label="Effective from" value={draft.effectiveFrom} onChange={set('effectiveFrom')}
+      {/* Effective date — currency lives inside the money field (amount mode); a
+         rate has no currency, so nothing about it is shown here. */}
+      <FormRow cols={1}>
+        <DateField label="Effective from" required value={draft.effectiveFrom} onChange={set('effectiveFrom')}
           helper={errors.effectiveFrom ? undefined : 'When this value takes effect'} />
       </FormRow>
       {errors.effectiveFrom && <div className="helper aam-err" style={{ marginTop: -6 }}>{errors.effectiveFrom}</div>}
 
       {/* Billing period — fees only */}
       {!isRate && (
-        <FieldShell label="Billing period" optional>
+        <FieldShell label="Billing period">
           <Select value={draft.billingPeriod} onChange={set('billingPeriod')}
             options={[{ value: '', label: 'Not specified' }, ...D.billingPeriods.map(b => ({ value: b.key, label: b.label }))]} />
         </FieldShell>
       )}
 
       {/* Note */}
-      <NoteField label="Note" optional maxLength={512} value={draft.note} onChange={set('note')}
+      <NoteField label="Note" maxLength={512} value={draft.note} onChange={set('note')}
         placeholder="What changed, and why — e.g. “Fed cut pass-through”."
         error={errors.note} />
     </Modal>

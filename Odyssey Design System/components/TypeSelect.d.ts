@@ -33,6 +33,7 @@ export interface TypeSelectProps {
   help?: string;
   error?: string;
   required?: boolean;
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   disabled?: boolean;
   className?: string;

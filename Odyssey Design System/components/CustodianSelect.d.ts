@@ -23,6 +23,7 @@ export interface CustodianSelectProps {
   /** Field label. Default "Custodian". */
   label?: string;
   /** Mark the field Optional in text. Default true. */
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   placeholder?: string;
   help?: string;

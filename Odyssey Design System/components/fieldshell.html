@@ -43,16 +43,16 @@
         e('div', { key: 'a' }, e('div', { className: 'cap' }, 'Wrapping a non-field control (e.g. a Combobox)'),
           e('div', { className: 'row' },
             e(FieldShell, { key: 1, label: 'Insurer', htmlFor: 'x1', help: 'The contact that issues this policy.' }, ctrl('Search insurers…', 'search')),
-            e(FieldShell, { key: 2, label: 'Insured account', htmlFor: 'x2', optional: true }, ctrl('Search accounts…', 'search')))),
+            e(FieldShell, { key: 2, label: 'Insured account', htmlFor: 'x2' }, ctrl('Search accounts…', 'search')))),
         e('div', { className: 'sep', key: 's1' }),
-        e('div', { key: 'b' }, e('div', { className: 'cap' }, ['Markers & states \u00b7 ', e('code', { key: 'c' }, 'required / optional / error')]),
+        e('div', { key: 'b' }, e('div', { className: 'cap' }, ['Markers & states \u00b7 ', e('code', { key: 'c' }, 'required / error')]),
           e('div', { className: 'row' },
             e(FieldShell, { key: 1, label: 'Party kind', htmlFor: 'x3', required: true, help: 'Pick exactly one target.' }, ctrl('Contact')),
             e(FieldShell, { key: 2, label: 'Insurer', htmlFor: 'x4', error: 'Select the issuing contact.' }, ctrl('Search insurers…', 'search')))),
         e('div', { className: 'sep', key: 's2' }),
         e('div', { key: 'c2' }, e('div', { className: 'cap' }, ['Right-aligned ', e('code', { key: 'c' }, 'aside'), ' slot (e.g. a counter)']),
           e('div', { style: { maxWidth: 360 } },
-            e(FieldShell, { label: 'Note', htmlFor: 'x5', optional: true,
+            e(FieldShell, { label: 'Note', htmlFor: 'x5',
               aside: e('span', { className: 'odc-field-count' }, '24/512') }, ctrl('Type a note…', 'edit'))))
       ];
 

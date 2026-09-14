@@ -9,8 +9,8 @@
 const CalRowEditor = ({ draft, setDraft, error }) => (
   <div className="cal-mgr-editor">
     <div className="cal-mgr-editor-grid">
-      <Field label="Name" value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} error={error} maxLength={150} autoFocus placeholder="e.g. Personal" />
-      <Field label="Description" value={draft.description} onChange={(v) => setDraft({ ...draft, description: v })} placeholder="Optional" maxLength={1000} />
+      <Field label="Name" required value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} error={error} maxLength={150} autoFocus placeholder="e.g. Personal" />
+      <Field label="Description" value={draft.description} onChange={(v) => setDraft({ ...draft, description: v })} placeholder="What this calendar holds" maxLength={1000} />
     </div>
     <FieldShell label="Colour">
       <ColorSwatchSelect value={draft.color} onChange={(hex) => setDraft({ ...draft, color: hex })} />

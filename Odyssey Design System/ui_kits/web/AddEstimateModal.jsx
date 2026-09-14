@@ -86,6 +86,7 @@ const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, l
       <div className="est-value-block">
         <MoneyField
           label="Estimated value"
+          required
           size="lg"
           allowNegative={false}
           autoFocus
@@ -102,7 +103,7 @@ const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, l
 
       {/* Effective date — the currency now reads inside the money field */}
       <div className="est-row2">
-        <DateField label="Effective from" value={draft.effectiveFrom} onChange={set('effectiveFrom')}
+        <DateField label="Effective from" required value={draft.effectiveFrom} onChange={set('effectiveFrom')}
           helper={errors.effectiveFrom ? undefined : 'When this value takes effect'} />
       </div>
       {errors.effectiveFrom && <div className="helper aam-err" style={{ marginTop: -6 }}>{errors.effectiveFrom}</div>}

@@ -40,6 +40,7 @@ export interface ContactSelectProps {
   options?: Array<{ value: string; label: string; icon?: string; iconColor?: string }>;
   /** Field label. Default "Contact". */
   label?: React.ReactNode;
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   required?: boolean;
   placeholder?: string;

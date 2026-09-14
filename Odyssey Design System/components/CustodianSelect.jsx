@@ -107,7 +107,6 @@ export function CustodianSelect({
     <div className={`odc-field${error ? ' error' : ''}${className ? ' ' + className : ''}`}>
       <label className="odc-field-label" htmlFor={fieldId}>
         {label}
-        {optional ? <span className="odc-field-opt">Optional</span> : null}
       </label>
       <Combobox
         id={fieldId}

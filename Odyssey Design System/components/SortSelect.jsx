@@ -291,10 +291,10 @@ export function SortSelect({
           className={`odc-select-opt${on ? ' selected' : ''}`}
           onClick={() => { pickField(f); pop.close(true); }}
         >
+          <span className="odc-select-opt-label">{f.label}</span>
           <span className="odc-select-tick">
             {on ? <span className="material-icons" aria-hidden="true">check</span> : null}
           </span>
-          <span className="odc-select-opt-label">{f.label}</span>
         </button>
       </li>
     );
@@ -337,11 +337,11 @@ export function SortSelect({
                     className={`odc-select-opt${on ? ' selected' : ''}`}
                     aria-label={`Sort ${d === 'asc' ? 'ascending' : 'descending'} — ${SortHelpers.dirLabel(field.type, d)}`}
                     onClick={() => { emit({ key: field.key, dir: d }); pop.close(true); }}>
+                    <span className="material-icons odc-opt-icon" aria-hidden="true">{d === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
+                    <span className="odc-select-opt-label">{SortHelpers.dirLabel(field.type, d)}</span>
                     <span className="odc-select-tick">
                       {on ? <span className="material-icons" aria-hidden="true">check</span> : null}
                     </span>
-                    <span className="material-icons odc-opt-icon" aria-hidden="true">{d === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
-                    <span className="odc-select-opt-label">{SortHelpers.dirLabel(field.type, d)}</span>
                   </button>
                 </li>
               );

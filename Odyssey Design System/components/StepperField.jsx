@@ -75,7 +75,7 @@ export function StepperField({
     const msg = error || help;
     return (
       <div className={`odc-field${error ? ' error' : ''}${className ? ' ' + className : ''}`}>
-        {label ? <label className="odc-field-label" htmlFor={fieldId}>{label}{required ? <span className="odc-field-req" aria-hidden="true">*</span> : null}{optional ? <span className="odc-field-opt">Optional</span> : null}</label> : null}
+        {label ? <label className="odc-field-label" htmlFor={fieldId}>{label}{required ? <span className="odc-field-req" aria-hidden="true">*</span> : null}</label> : null}
         {control}
         {msg ? <div className="odc-field-help" role={error ? 'alert' : undefined}>{msg}</div> : null}
       </div>

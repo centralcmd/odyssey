@@ -96,23 +96,17 @@ const AddPolicyPartyModal = ({ policy, party = null, optionsLoading = false, onC
           </Button>
         </React.Fragment>
       }>
-      <FieldShell label="Role">
-        <div className="ins-kind-seg" role="radiogroup" aria-label="Role">
-          {POLICY_PARTY_ROLES.map(r => (
-            <button type="button" key={r.role} role="radio" aria-checked={role === r.role}
-              className={`ins-kind-opt ${role === r.role ? 'on' : ''}`} onClick={() => pickRole(r.role)}>
-              <span className="material-icons" aria-hidden="true">{r.icon}</span>
-              <span className="ins-kind-lab">{r.label}</span>
-            </button>
-          ))}
-        </div>
+      <FieldShell label="Role" required>
+        <CardSelect ariaLabel="Role" value={role} onChange={pickRole}
+          accent="var(--ins-accent)" accentLine="var(--ins-accent-line)" accentSoft="var(--ins-accent-soft)"
+          options={POLICY_PARTY_ROLES.map(r => ({ value: r.role, label: r.label, icon: r.icon }))} />
       </FieldShell>
 
       {/* A contact role uses the canonical ContactSelect (create rows included —
           the contact you need to name may not exist yet); an account role keeps
           the plain Combobox over accounts. */}
       {def.noun === 'contact' ? (
-        <ContactSelect id="app-target" label={def.label} error={error} allowCreate
+        <ContactSelect id="app-target" label={def.label} required error={error} allowCreate
           help={error ? undefined : (options.length
             ? `${def.help} ${options.length} contact${options.length === 1 ? '' : 's'} available to link.`
             : `Every contact is already linked to this policy in this role — or add a new one below.`)}
@@ -120,7 +114,7 @@ const AddPolicyPartyModal = ({ policy, party = null, optionsLoading = false, onC
           options={options} loading={optionsLoading}
           placeholder="Search contacts…" ariaLabel={def.label} />
       ) : (
-        <FieldShell label={def.label} htmlFor="app-target" error={error}
+        <FieldShell label={def.label} htmlFor="app-target" required error={error}
           helper={error ? undefined : (options.length
             ? `${def.help} ${options.length} ${def.noun}${options.length === 1 ? '' : 's'} available to link.`
             : `Every ${def.noun} is already linked to this policy in this role.`)}>
@@ -133,7 +127,7 @@ const AddPolicyPartyModal = ({ policy, party = null, optionsLoading = false, onC
 
       {/* The term is the party's own fact, not the policy's: left as it lands,
           the party is on the policy for its whole life. */}
-      <SectionDivider label="In the role" meta="optional" />
+      <SectionDivider label="In the role" />
       <FormRow>
         <DateField label="From" value={fromDate}
           onChange={(v) => { setFromDate(v || null); setDateError(e => ({ ...e, fromDate: undefined })); }}

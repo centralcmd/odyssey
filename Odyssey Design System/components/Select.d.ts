@@ -22,7 +22,7 @@ export interface SelectProps {
   error?: string;
   /** Adds a `*` after the label (the canonical required marker). */
   required?: boolean;
-  /** Adds a muted "Optional" hint after the label (the canonical optional marker). Mutually exclusive with `required`. */
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   disabled?: boolean;
   className?: string;

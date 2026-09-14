@@ -59,29 +59,24 @@ const AddContractPartyModal = ({ contract, onClose, onAdd }) => {
           <Button variant="filled" color="primary" icon="add" onClick={submit}>Create party</Button>
         </React.Fragment>
       }>
-      <FieldShell label="Party kind">
-        <div className="con-kind-seg" role="radiogroup" aria-label="Party kind">
-          {CONTRACT_PARTY_KINDS.map(k => (
-            <button type="button" key={k.kind} role="radio" aria-checked={kind === k.kind}
-              className={`con-kind-opt ${kind === k.kind ? 'on' : ''}`} onClick={() => pickKind(k.kind)}>
-              <span className="material-icons" aria-hidden="true">{k.icon}</span>
-              <span className="con-kind-lab">{k.label}</span>
-            </button>
-          ))}
-        </div>
+      <FieldShell label="Party kind" required>
+        <CardSelect ariaLabel="Party kind" value={kind} onChange={pickKind}
+          accent="var(--con-accent)" accentLine="var(--con-accent-line)" accentSoft="var(--con-accent-soft)"
+          columns={2} maxItemWidth={180} center
+          options={CONTRACT_PARTY_KINDS.map(k => ({ value: k.kind, label: k.label, icon: k.icon }))} />
       </FieldShell>
 
       {/* The Contact kind uses the canonical ContactSelect, create rows and all;
           the Account kind keeps the plain Combobox over accounts. */}
       {kind === 'contact' ? (
-        <ContactSelect id="acp-target" label={def.label} error={error} allowCreate
+        <ContactSelect id="acp-target" label={def.label} required error={error} allowCreate
           help={error ? undefined : (options.length
             ? `${options.length} contact${options.length === 1 ? '' : 's'} available to link.`
             : 'Every contact is already linked to this contract — or add a new one below.')}
           value={value} onChange={(v) => { setValue(v || ''); if (error) setError(null); }}
           options={options} placeholder="Search contacts…" ariaLabel={def.label} />
       ) : (
-        <FieldShell label={def.label} htmlFor="acp-target" error={error}
+        <FieldShell label={def.label} htmlFor="acp-target" required error={error}
           helper={error ? undefined : (options.length
             ? `${options.length} ${def.label.toLowerCase()}${options.length === 1 ? '' : 's'} available to link.`
             : `Every ${def.label.toLowerCase()} is already linked to this contract.`)}>

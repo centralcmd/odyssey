@@ -20,6 +20,7 @@ export interface DateFieldProps {
   /** Show the required `*` marker on the label. */
   required?: boolean;
   /** Show the muted "Optional" marker on the label. */
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   /** Disable the trigger. */
   disabled?: boolean;

@@ -45,6 +45,7 @@ export interface TagMultiSelectProps {
   error?: React.ReactNode;
   required?: boolean;
   /** Show an "Optional" hint beside the label. */
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   disabled?: boolean;
   /** Text shown when the search matches nothing and create is unavailable. */

@@ -70,6 +70,7 @@ const AddBudgetModal = ({ onClose, onCreate, onSave, budget = null }) => {
       }>
       <Field
         label="Budget name"
+        required
         value={draft.name}
         onChange={set('name')}
         placeholder="e.g. January 2025"
@@ -78,17 +79,17 @@ const AddBudgetModal = ({ onClose, onCreate, onSave, budget = null }) => {
       />
 
       <FormRow>
-        <DateField label="Start date" value={draft.startDate} onChange={set('startDate')} help="Defaults to today" />
-        <DateField label="End date" value={draft.endDate} onChange={set('endDate')} help="Defaults to +1 month" error={errors.endDate} />
+        <DateField label="Start date" required value={draft.startDate} onChange={set('startDate')} help="Defaults to today" />
+        <DateField label="End date" required value={draft.endDate} onChange={set('endDate')} help="Defaults to +1 month" error={errors.endDate} />
       </FormRow>
 
-      <CurrencySelect label="Base currency" value={draft.currency} onChange={set('currency')} options={ABM_CURRENCIES} searchThreshold={0} helper="All planned amounts use this currency." />
+      <CurrencySelect label="Base currency" required value={draft.currency} onChange={set('currency')} options={ABM_CURRENCIES} searchThreshold={0} helper="All planned amounts use this currency." />
 
       <NoteField
         label="Description"
         value={draft.description}
         onChange={set('description')}
-        placeholder="Optional — what's this budget for?"
+        placeholder="What's this budget for?"
         rows={3}
         maxLength={512}
         optional

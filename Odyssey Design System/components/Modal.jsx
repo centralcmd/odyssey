@@ -13,12 +13,19 @@
  * of the title — a Material Icons ligature, or any non-ligature character
  * (e.g. "§") rendered as a typographic glyph; `iconTone` ('brand' | 'warning' | 'error',
  * default 'brand') tints it — use 'warning'/'error' for destructive/confirm dialogs.
+ *
+ * Field markers: the system marks REQUIRED only (a `*` after the label) — nothing
+ * is ever labelled "Optional". The dialog explains the asterisk once: when the
+ * body contains at least one required field, the footer grows a muted
+ * "* Required" legend on the left. Pass `requiredLegend={false}` to suppress it.
  */
 const ODC_FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open = true, title, subtitle, icon, iconTone = 'brand', onClose, footer, wide = false, ariaLabel, className = '', bodyClassName = '', children }) {
+export function Modal({ open = true, title, subtitle, icon, iconTone = 'brand', onClose, footer, wide = false, ariaLabel, className = '', bodyClassName = '', requiredLegend = true, children }) {
   const dialogRef = React.useRef(null);
+  const bodyRef = React.useRef(null);
+  const [hasRequired, setHasRequired] = React.useState(false);
   const prevFocus = React.useRef(null);
   const titleId = React.useId();
   const subId = React.useId();
@@ -81,6 +88,14 @@ export function Modal({ open = true, title, subtitle, icon, iconTone = 'brand', 
     };
   }, [open, onClose]);
 
+  // The legend is driven by what actually rendered, so no dialog has to declare
+  // whether it holds a required field.
+  React.useEffect(() => {
+    if (!open || !requiredLegend) { setHasRequired(false); return; }
+    const el = bodyRef.current;
+    setHasRequired(!!el && !!el.querySelector('.odc-field-req'));
+  }, [open, requiredLegend, children]);
+
   if (!open) return null;
 
   const onScrim = (e) => { if (e.target === e.currentTarget && onClose) onClose(); };
@@ -117,8 +132,13 @@ export function Modal({ open = true, title, subtitle, icon, iconTone = 'brand', 
             ) : null}
           </div>
         ) : null}
-        <div className={`odc-modal-body${bodyClassName ? ' ' + bodyClassName : ''}`}>{children}</div>
-        {footer ? <div className="odc-modal-foot">{footer}</div> : null}
+        <div ref={bodyRef} className={`odc-modal-body${bodyClassName ? ' ' + bodyClassName : ''}`}>{children}</div>
+        {(footer || (hasRequired && requiredLegend)) ? (
+          <div className="odc-modal-foot">
+            {hasRequired && requiredLegend ? <span className="odc-modal-legend"><span className="odc-field-req" aria-hidden="true">*</span> Required</span> : null}
+            {footer}
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -203,6 +203,10 @@
         "message": "<CardHeader> doesn't accept that prop. Declared props: title, action, children, className."
       },
       {
+        "selector": "JSXOpeningElement[name.name='CardSelectOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|icon|sub|color|line|soft|disabled|key|ref|className|style|children)$/]",
+        "message": "<CardSelectOption> doesn't accept that prop. Declared props: value, label, icon, sub, color, line, soft, disabled."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='Checkbox'] > JSXAttribute > JSXIdentifier[name!=/^(?:checked|indeterminate|onChange|label|disabled|id|key|ref|className|style|children)$/]",
         "message": "<Checkbox> doesn't accept that prop. Declared props: checked, indeterminate, onChange, label, disabled, id."
       },
@@ -411,8 +415,8 @@
         "message": "<MIcon> doesn't accept that prop. Declared props: name, size, className, style."
       },
       {
-        "selector": "JSXOpeningElement[name.name='Modal'] > JSXAttribute > JSXIdentifier[name!=/^(?:open|title|subtitle|icon|iconTone|onClose|footer|wide|ariaLabel|className|bodyClassName|children|key|ref|className|style|children)$/]",
-        "message": "<Modal> doesn't accept that prop. Declared props: open, title, subtitle, icon, iconTone, onClose, footer, wide, ariaLabel, className, bodyClassName, children."
+        "selector": "JSXOpeningElement[name.name='Modal'] > JSXAttribute > JSXIdentifier[name!=/^(?:open|title|subtitle|icon|iconTone|onClose|footer|wide|ariaLabel|className|bodyClassName|requiredLegend|children|key|ref|className|style|children)$/]",
+        "message": "<Modal> doesn't accept that prop. Declared props: open, title, subtitle, icon, iconTone, onClose, footer, wide, ariaLabel, className, bodyClassName, requiredLegend, children."
       },
       {
         "selector": "JSXOpeningElement[name.name='Modal'] > JSXAttribute[name.name='iconTone'] > Literal[value!=/^(?:brand|warning|error)$/]",
@@ -826,6 +830,9 @@
         "replaces": []
       },
       "CardHeader": {
+        "replaces": []
+      },
+      "CardSelectOption": {
         "replaces": []
       },
       "Checkbox": {

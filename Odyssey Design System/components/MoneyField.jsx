@@ -342,12 +342,12 @@ export function MoneyField({
                     className={`odc-select-opt${on ? ' selected' : ''}`}
                     onClick={(e) => { onCurrencyChange(o.value, e); close(true); }}
                   >
-                    <span className="odc-select-tick">
-                      {on ? <span className="material-icons" aria-hidden="true">check</span> : null}
-                    </span>
                     <span className="odc-money-opt-code">{o.value}</span>
                     {o.label && o.label !== o.value
                       ? <span className="odc-select-opt-label">{o.label}</span> : null}
+                    <span className="odc-select-tick">
+                      {on ? <span className="material-icons" aria-hidden="true">check</span> : null}
+                    </span>
                   </button>
                 </li>
               );
@@ -379,7 +379,6 @@ export function MoneyField({
         <label className="odc-field-label" htmlFor={fieldId}>
           {label}
           {required ? <span className="odc-field-req" aria-hidden="true">*</span> : null}
-          {optional ? <span className="odc-field-opt">Optional</span> : null}
         </label>
       ) : null}
       {control}

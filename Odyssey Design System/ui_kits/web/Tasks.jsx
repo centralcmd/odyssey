@@ -222,19 +222,19 @@ const AddTaskModal = ({ task, onClose, onSubmit }) => {
         <Button variant="filled" color="primary" icon="check" onClick={submit}>{editing ? 'Save changes' : 'Create task'}</Button>
       </React.Fragment>}>
       <div className="edit-grid je-create-grid">
-        <div className="edit-wide"><Field label="Title" value={draft.title} onChange={set('title')} error={errors.title} maxLength={200} autoFocus /></div>
+        <div className="edit-wide"><Field label="Title" required value={draft.title} onChange={set('title')} error={errors.title} maxLength={200} autoFocus /></div>
         {editing ? (
           <DateField label="Deadline" value={draft.deadline} onChange={set('deadline')} optional />
         ) : (
           <div className="edit-wide"><DateField label="Deadline" value={draft.deadline} onChange={set('deadline')} optional /></div>
         )}
         {editing ? (
-          <Select label="Status" value={draft.status} onChange={set('status')}
+          <Select label="Status" required value={draft.status} onChange={set('status')}
             options={(window.TODO_STATUSES || []).map((s) => ({ value: s.key, label: s.label }))} />
         ) : null}
         <div className="edit-wide"><TagMultiSelect label="Tags" value={draft.tagIds} onChange={set('tagIds')} options={TASK_TAG_OPTIONS()} optional
           onCreate={(name) => T_D.createTag('task', name)} createKinds={T_D.tagCreateKinds('task')} /></div>
-        <div className="edit-wide"><NoteField label="Content" value={draft.content} onChange={set('content')} maxLength={4096} rows={4} optional placeholder="Optional details" /></div>
+        <div className="edit-wide"><NoteField label="Content" value={draft.content} onChange={set('content')} maxLength={4096} rows={4} placeholder="Details, links, next steps…" /></div>
         <div className="edit-wide">
           <FieldShell label="Attachments" optional helper="PDFs and documents.">
             <FileUpload files={draft.attachments} onChange={set('attachments')} compact />

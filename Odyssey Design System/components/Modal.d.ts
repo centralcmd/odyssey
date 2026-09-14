@@ -20,6 +20,8 @@ export interface ModalProps {
   className?: string;
   /** Extra class on the scrollable body (e.g. 'fan-body'). */
   bodyClassName?: string;
+  /** Grow a muted `* Required` legend in the footer when the body holds a required field. Default true. */
+  requiredLegend?: boolean;
   children?: React.ReactNode;
 }
 

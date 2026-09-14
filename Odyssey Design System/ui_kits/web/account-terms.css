@@ -293,10 +293,7 @@
    ============================================================= */
 .trm-dialog { max-width: 560px; }
 
-/* Kind picker — eligibility-aware grid of selectable kinds */
-.trm-kind-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-}
+/* Kind picker uses the DS CardSelect (components.css), tinted per kind. */
 .trm-kind-opt {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 11px; text-align: left;

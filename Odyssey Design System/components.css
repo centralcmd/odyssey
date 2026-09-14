@@ -498,7 +498,7 @@
 .odc-select-opt:hover { background: var(--mud-palette-action-default-hover); }
 .odc-select-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-select-opt.selected { color: var(--brand-text); font-weight: var(--fw-medium); }
-.odc-select-tick { width: 16px; height: 16px; flex: none; display: grid; place-items: center; }
+.odc-select-tick { width: 16px; height: 16px; flex: none; margin-left: auto; display: grid; place-items: center; }
 .odc-select-tick .material-icons { font-size: 16px; color: var(--brand-text); }
 .odc-select-opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Optional per-option leading glyph (Select trigger + option rows, MultiSelect rows).
@@ -753,7 +753,7 @@
 .odc-menu-pop::-webkit-scrollbar-track, .odc-ms-pop::-webkit-scrollbar-track,
 .odc-tagms-list::-webkit-scrollbar-track, .odc-ms-list::-webkit-scrollbar-track { background: transparent; }
 .odc-modal-foot {
-  display: flex; justify-content: flex-end; gap: var(--space-2);
+  display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
   background: rgba(255,255,255,0.02);
   border-top: 1px solid var(--mud-palette-divider-light);
@@ -1537,7 +1537,6 @@
 .odc-tagchips-more { cursor: default; font-variant-numeric: tabular-nums; }
 
 /* ---------- TagMultiSelect (multi-tag form picker) ---------- */
-.odc-field-opt { margin-left: 6px; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-tagms { position: relative; }
 .odc-tagms-control {
   width: 100%; box-sizing: border-box;
@@ -1855,6 +1854,10 @@
 .odc-collapsible-body { border-top: 1px solid var(--mud-palette-divider-light); }
 .odc-collapsible.flush .odc-collapsible-trigger { padding-left: 0; padding-right: 0; }
 
+/* Footer legend explaining the required marker, once per dialog. */
+.odc-modal-legend { margin-right: auto; display: inline-flex; align-items: center; gap: 4px; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-modal-legend .odc-field-req { margin-left: 0; }
+
 /* ---------- Segmented control (single-select — txn direction Money in/out) ---------- */
 .odc-seg { display: inline-flex; background: var(--mud-palette-action-default-hover); border-radius: var(--radius-sm); padding: 3px; gap: 3px; }
 .odc-seg.full { display: flex; }
@@ -1873,6 +1876,25 @@
 .odc-seg-btn[aria-checked="true"].expense { color: var(--finance-expense); }
 .odc-seg-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-seg-btn:disabled { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
+
+/* ---------- Card select (icon-over-label cards — "what kind is this?") ---------- */
+.odc-cardsel { display: grid; gap: 8px; }
+.odc-cardsel.center { justify-content: center; }
+.odc-cardsel-opt {
+  appearance: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center;
+  padding: 14px 8px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md, 10px);
+  background: transparent; color: var(--mud-palette-text-secondary);
+  transition: border-color var(--duration-base) var(--ease-standard), background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
+}
+.odc-cardsel-opt:hover { border-color: var(--odc-cardsel-line, var(--odc-cardsel-accent, var(--mud-palette-primary))); color: var(--mud-palette-text-primary); }
+.odc-cardsel-opt[aria-checked="true"] { border-color: var(--odc-cardsel-line, var(--odc-cardsel-accent, var(--mud-palette-primary))); background: var(--odc-cardsel-soft, var(--mud-palette-action-default-hover)); color: var(--mud-palette-text-primary); }
+.odc-cardsel-opt .material-icons { font-size: 24px; color: var(--odc-cardsel-accent, var(--mud-palette-primary)); }
+.odc-cardsel-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-cardsel-opt:disabled { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
+.odc-cardsel-opt:disabled .material-icons { color: var(--mud-palette-action-disabled); }
+.odc-cardsel-lab { font: 500 12px/1.2 var(--font-sans); }
+.odc-cardsel-sub { font: 400 10.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* ---------- Date picker (calendar popover) ---------- */
 .odc-dp { position: relative; display: inline-flex; flex-direction: column; }

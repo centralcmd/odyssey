@@ -12,7 +12,8 @@
                                                  positive magnitude + an Expense/Income
                                                  toggle and emits a signed value.
      • AccountId         (required)            — Guid, preselected from launch context
-     • TimeStamp         (optional → today)    — DateTime?
+     • TimeStamp         (required → today)    — DateTime? (pre-filled with today;
+                                              the DTO allows null, the form does not)
      • TransactionTagIds Guid[] (zero, one, or many tags — many-to-many)
      • ContactId    (optional)            — Guid? (pick existing or create new)
      • CurrencyCode      (default "USD")       — 3-letter
@@ -109,7 +110,7 @@ const AccountPicker = ({ value, onChange, error, locked }) => {
 
   if (locked && sel) {
     return (
-      <FieldShell label="Account">
+      <FieldShell label="Account" required>
         <div className="atm-acct-locked">
           {tile(sel)}
           <span className="atm-locked-pill"><MIcon name="lock" size={13} />From this account</span>
@@ -119,7 +120,7 @@ const AccountPicker = ({ value, onChange, error, locked }) => {
   }
 
   return (
-    <FieldShell label="Account" error={error}>
+    <FieldShell label="Account" required error={error}>
       <div className="multiselect" ref={ref}>
         <button type="button" ref={btnRef}
           className={`multiselect-trigger ${open ? 'active' : ''} ${error ? 'has-error' : ''} ${sel ? '' : 'placeholder'}`}
@@ -224,6 +225,7 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
     const next = {};
     if (!draft.account) next.account = 'Choose which account this belongs to.';
     if (!draft.desc.trim()) next.desc = 'Add a short description.';
+    if (!draft.date) next.date = 'Pick the transaction date.';
     const mag = parseFloat(String(draft.amount).replace(/,/g, ''));
     if (!draft.amount || isNaN(mag) || mag <= 0) next.amount = 'Enter an amount greater than zero.';
     if (Object.keys(next).length) { setErrors(next); return; }
@@ -312,6 +314,7 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
           <div className="atm-amount-block odc-form-grid-wide">
             <MoneyField
               label="Amount"
+              required
               size="lg"
               direction={draft.dir}
               onDirectionChange={set('dir')}
@@ -329,11 +332,12 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
             />
           </div>
 
-          <DateField label="Date" value={draft.date} onChange={set('date')} help="Defaults to today" />
+          <DateField label="Date" required value={draft.date} onChange={set('date')} error={errors.date} help="Defaults to today" />
 
           <div className="odc-form-grid-wide">
             <Field
               label="Description"
+              required
               value={draft.desc}
               onChange={set('desc')}
               placeholder="e.g. Whole Foods Market · Mission"
@@ -393,8 +397,8 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
               placeholder="Why this status?" onChange={set('statusComment')} />
           </div>
 
-          <Field label="External ID" value={draft.externalId} onChange={set('externalId')} placeholder="Optional" />
-          <Field label="Internal ID" value={draft.internalId} onChange={set('internalId')} placeholder="Optional" />
+          <Field label="External ID" value={draft.externalId} onChange={set('externalId')} placeholder="The bank's reference" />
+          <Field label="Internal ID" value={draft.internalId} onChange={set('internalId')} placeholder="Your own reference" />
 
           <div className="odc-form-grid-wide">
             <NoteField label="Extra data" optional maxLength={1024} value={draft.extraData} onChange={set('extraData')}

@@ -1151,13 +1151,8 @@ html, body, #root {
    (.odc-form-grid) to take advantage of the width; the modal grows to 880px and
    collapses to one column (and shrinks to fit) on smaller viewports. */
 .atm-dialog { max-width: 880px; }
-/* Optional-field marker — unified with the design system's .odc-field-opt so
-   every "Optional" hint reads identically (sentence case, caption, muted)
-   whether it comes from a DS Field/Select or a hand-rolled kit label. */
-.atm-opt {
-  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
-  color: var(--mud-palette-text-secondary); margin-left: 6px;
-}
+/* The system marks REQUIRED only (.odc-field-req) — nothing is labelled
+   "Optional", so the old .atm-opt marker is gone. */
 
 /* ---- Amount block: the hero of the form ---- */
 .atm-amount-block { display: flex; flex-direction: column; gap: 10px; }

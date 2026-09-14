@@ -19,7 +19,7 @@ export interface FieldProps {
   error?: string;
   /** Adds a `*` after the label (the canonical required marker). */
   required?: boolean;
-  /** Adds a muted "Optional" hint after the label (the canonical optional marker). Mutually exclusive with `required`. */
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   disabled?: boolean;
   /** Show a clear (×) button when there's a value — for search fields. Calls onChange(''). */

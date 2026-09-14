@@ -17,8 +17,8 @@
    Ordinals mirror Odyssey.Finance.Dtos.Sex so the two never conflate as int;
    the UI conveys the two values in text (no colour/placeholder-only meaning). */
 const SEX_OPTIONS = [
-  { value: 'Female', label: 'Female' },
-  { value: 'Male',   label: 'Male' },
+  { value: 'Female', label: 'Female', icon: 'woman' },
+  { value: 'Male',   label: 'Male',   icon: 'man'   },
 ];
 
 /* ---- Field length caps (spec §6 MaxLength). Enforced client-side by

@@ -36,8 +36,8 @@ const cpTone = (type) => { const m = CP_TYPE_BY_KEY[type] || CP_TYPE_BY_KEY.Pers
 
 /* ---- Sub-vocabularies (new OdsTypeRegistries entries) ---- */
 const SEX_OPTIONS = [
-  { value: 'Male',   label: 'Male' },
-  { value: 'Female', label: 'Female' },
+  { value: 'Male',   label: 'Male',   icon: 'man' },
+  { value: 'Female', label: 'Female', icon: 'woman' },
 ];
 /* ---- Contact-method labels: one scope map, read off the DS namespace ----
    The three label enums now carry an organization vocabulary, and every member
@@ -408,7 +408,7 @@ const ContactForm = ({ kind, contactType, item, onCommit, onCancel, isFirst, mod
         {kind === 'address' && (
           <React.Fragment>
             <Field label="Line 1" value={d.line1} onChange={set('line1')} error={err.line1} placeholder="Street name and number" maxLength={256} />
-            <Field label="Line 2" value={d.line2} onChange={set('line2')} placeholder="Apartment, floor, etc. (optional)" maxLength={256} />
+            <Field label="Line 2" value={d.line2} onChange={set('line2')} placeholder="Apartment, floor, etc." maxLength={256} />
             <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 12 }}>
               <Field label="Postal code" value={d.postalCode} onChange={set('postalCode')} placeholder="0554" maxLength={32} />
               <Field label="City" value={d.city} onChange={set('city')} error={err.city} placeholder="Oslo" maxLength={128} />
@@ -797,7 +797,7 @@ const PersonFields = ({ d, set, err }) => (
     </FormRow>
     {/* Stored and searchable, but deliberately outside the "First Last"
         display-name fallback — so adding one shifts no name and no sort. */}
-    <Field label="Middle name" value={d.middleName} onChange={set('middleName')} placeholder="As it appears on a passport or bank record" helper="Optional · not part of the display name" maxLength={128} />
+    <Field label="Middle name" value={d.middleName} onChange={set('middleName')} placeholder="As it appears on a passport or bank record" helper="Not part of the display name" maxLength={128} />
     {/* Both dates are DateFields, not bare pickers: the birth/death pair is
         checked from BOTH sides, so each one needs its own error channel. */}
     <FormRow>
@@ -808,10 +808,10 @@ const PersonFields = ({ d, set, err }) => (
         help={err.dateOfDeath ? undefined : 'Recording it archives nothing'} />
     </FormRow>
     <FormRow>
-      <Select label="Sex" value={d.sex} onChange={set('sex')} options={SEX_OPTIONS} helper="Optional" placeholder="Unspecified" />
-      <Field label="Job title" value={d.title} onChange={set('title')} placeholder="e.g. Senior Engineer" helper="Optional" maxLength={128} />
+      <Select label="Sex" value={d.sex} onChange={set('sex')} options={SEX_OPTIONS} placeholder="Unspecified" />
+      <Field label="Job title" value={d.title} onChange={set('title')} placeholder="e.g. Senior Engineer" maxLength={128} />
     </FormRow>
-    <Field label="Company" value={d.company} onChange={set('company')} placeholder="Employer name (optional)" helper="A free-text note — not linked to another contact" maxLength={256} />
+    <Field label="Company" value={d.company} onChange={set('company')} placeholder="Employer name" helper="A free-text note — not linked to another contact" maxLength={256} />
   </React.Fragment>
 );
 
@@ -819,7 +819,7 @@ const OrgFields = ({ d, set, err }) => (
   <React.Fragment>
     <Field label="Legal name" value={d.legalName} onChange={set('legalName')} error={err.legalName} required autoFocus placeholder="e.g. Lakeside Property Management LLC" maxLength={256} />
     <FormRow>
-      <Field label="Organization number" value={d.organizationNumber} onChange={set('organizationNumber')} placeholder="Optional" maxLength={64} />
+      <Field label="Organization number" value={d.organizationNumber} onChange={set('organizationNumber')} placeholder="e.g. 924 738 981" maxLength={64} />
       <Field label="Website" value={d.website} onChange={set('website')} error={err.website} placeholder="https://example.com" helper="http/https only" maxLength={2048} />
     </FormRow>
     {/* "Dissolved", the term a business register publishes (No. oppløst) — not
@@ -938,7 +938,7 @@ const AddContactModal = ({ onClose, onCreate, contact, onSave }) => {
   return (
     <Modal
       title={isEdit ? 'Edit contact' : 'New contact'}
-      subtitle="A person or organization that money moves to or from."
+      subtitle="A person or organization."
       icon={isEdit ? 'edit' : 'store'}
       onClose={onClose}
       footer={<React.Fragment>
@@ -952,7 +952,7 @@ const AddContactModal = ({ onClose, onCreate, contact, onSave }) => {
         {type === 'Person'
           ? <PersonFields d={draft} set={set} err={err} />
           : <OrgFields d={draft} set={set} err={err} />}
-        <Field label="Display name" value={displayName} onChange={setDisplayName} placeholder="Optional override" helper={displayNameHint(type)} maxLength={128} />
+        <Field label="Display name" value={displayName} onChange={setDisplayName} placeholder="Override the derived name" helper={displayNameHint(type)} maxLength={128} />
         <NoteField label="Notes" optional maxLength={1024} value={draft.notes} onChange={set('notes')}
           placeholder={type === 'Person' ? 'How you know them, what they invoice for…' : 'What this organization is to you, billing quirks…'} />
       </div>

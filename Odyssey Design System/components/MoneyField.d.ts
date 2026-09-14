@@ -49,7 +49,7 @@ export interface MoneyFieldProps {
   error?: string;
   /** Adds a `*` after the label (the canonical required marker). */
   required?: boolean;
-  /** Adds a muted "Optional" hint after the label. Mutually exclusive with `required`. */
+  /** @deprecated No-op — the system marks required only, never optional. */
   optional?: boolean;
   /** Disables the whole control (amount and currency). */
   disabled?: boolean;

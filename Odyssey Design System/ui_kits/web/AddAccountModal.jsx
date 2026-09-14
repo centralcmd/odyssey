@@ -29,11 +29,11 @@ const AAM_TODAY = (() => {
 const AccountTypePicker = ({ value, onChange, error }) => {
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
   if (DS.AccountTypeSelect) {
-    return <DS.AccountTypeSelect value={value} onChange={onChange} error={error}
+    return <DS.AccountTypeSelect value={value} onChange={onChange} error={error} required
       types={AAM_TYPES.length ? AAM_TYPES : undefined} />;
   }
   const options = AAM_TYPES.map(t => ({ value: t.key, label: `${t.label} · ${t.group === 'asset' ? 'Asset' : 'Liability'}`, icon: t.icon, iconColor: t.color }));
-  return <Select label="Account type" value={value} onChange={onChange} options={options} placeholder="Choose a type…" helper={error} />;
+  return <Select label="Account type" required value={value} onChange={onChange} options={options} placeholder="Choose a type…" helper={error} />;
 };
 
 const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
@@ -86,6 +86,7 @@ const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
       }>
       <Field
         label="Account name"
+        required
         value={draft.name}
         onChange={set('name')}
         placeholder="e.g. Chase Sapphire"
@@ -107,7 +108,7 @@ const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
         </div>
       )}
 
-      <CurrencySelect value={draft.currency} onChange={set('currency')} options={AAM_CURRENCIES} searchThreshold={0} />
+      <CurrencySelect required value={draft.currency} onChange={set('currency')} options={AAM_CURRENCIES} searchThreshold={0} />
 
       {editing ? (
         <FormRow>
@@ -122,7 +123,7 @@ const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
         label="Account number"
         value={draft.accountNumber}
         onChange={set('accountNumber')}
-        placeholder="Optional"
+        placeholder="As it appears on your statement"
       />
 
       <CustodianSelect
@@ -137,7 +138,7 @@ const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
         label="Description"
         value={draft.description}
         onChange={set('description')}
-        placeholder="Optional — what's this account for?"
+        placeholder="What's this account for?"
         rows={3}
         maxLength={512}
         optional

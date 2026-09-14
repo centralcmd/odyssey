@@ -197,9 +197,9 @@ const AddCalendarEventModal = ({ mode = 'create', event, calendars = [], default
 
       <div className="edit-grid cal-event-grid">
         <div className="edit-wide">
-          <Field label="Title" value={d.title} onChange={set('title')} error={errors.title} maxLength={200} autoFocus placeholder="What's happening?" />
+          <Field label="Title" required value={d.title} onChange={set('title')} error={errors.title} maxLength={200} autoFocus placeholder="What's happening?" />
         </div>
-        <Select label="Calendar" value={d.calendarId} onChange={set('calendarId')} options={calOptions} />
+        <Select label="Calendar" required value={d.calendarId} onChange={set('calendarId')} options={calOptions} />
         <FieldShell label="All day">
           <div className="cal-allday-row">
             <Switch checked={d.isAllDay} onChange={set('isAllDay')} />
@@ -208,7 +208,7 @@ const AddCalendarEventModal = ({ mode = 'create', event, calendars = [], default
         </FieldShell>
 
         <div className="edit-wide">
-          <FieldShell label="Starts" error={errors.startDate}>
+          <FieldShell label="Starts" required error={errors.startDate}>
             <div className={`cal-when-row${d.isAllDay ? ' allday' : ''}`}>
               <DateField value={d.startDate} onChange={set('startDate')} />
               {!d.isAllDay ? <TimeField value={d.startTime} onChange={set('startTime')} step={15} /> : null}
@@ -216,7 +216,7 @@ const AddCalendarEventModal = ({ mode = 'create', event, calendars = [], default
           </FieldShell>
         </div>
         <div className="edit-wide">
-          <FieldShell label="Ends" error={errors.endDate || errors.endTime} help={d.isAllDay ? 'Inclusive — the last whole day.' : undefined}>
+          <FieldShell label="Ends" required error={errors.endDate || errors.endTime} help={d.isAllDay ? 'Inclusive — the last whole day.' : undefined}>
             <div className={`cal-when-row${d.isAllDay ? ' allday' : ''}`}>
               <DateField value={d.endDate} onChange={set('endDate')} min={d.startDate} />
               {!d.isAllDay ? <TimeField value={d.endTime} onChange={set('endTime')} step={15} /> : null}
@@ -225,7 +225,7 @@ const AddCalendarEventModal = ({ mode = 'create', event, calendars = [], default
         </div>
 
         <div className="edit-wide">
-          <Field label="Location" value={d.location} onChange={set('location')} placeholder="Optional" maxLength={300} />
+          <Field label="Location" value={d.location} onChange={set('location')} placeholder="Where it happens" maxLength={300} />
         </div>
         <div className="edit-wide">
           <NoteField label="Description" value={d.description} onChange={set('description')} maxLength={2000} rows={3} optional placeholder="Notes, agenda, links…" />

@@ -97,7 +97,7 @@ const AddSubscriptionModal = ({ onClose, onCreate, onSave, subscription = null }
         placeholder="e.g. Netflix" error={errors.name} helper="Up to 128 characters" autoFocus />
 
       <Field label="External id" value={draft.externalId} onChange={set('externalId')}
-        placeholder="Optional" optional maxLength={128}
+        placeholder="e.g. 4471-908" maxLength={128}
         helper="Membership, account, or subscription number — a reference label, not a key." />
 
       <ContactSelect label="Company" id="sub-new-cp" optional allowCreate value={draft.contactId}
@@ -113,11 +113,11 @@ const AddSubscriptionModal = ({ onClose, onCreate, onSave, subscription = null }
       </FormRow>
 
       <FormRow>
-        <MoneyField label="Price" value={draft.amount} onChange={set('amount')}
-          required allowNegative={false} currency={draft.currencyCode} onCurrencyChange={set('currencyCode')}
+        <MoneyField label="Price" required value={draft.amount} onChange={set('amount')}
+          allowNegative={false} currency={draft.currencyCode} onCurrencyChange={set('currencyCode')}
           currencyOptions={SUB_CURRENCY_OPTIONS()} currencySearchThreshold={0}
           error={errors.amount} placeholder="0.00" className="sub-amount-expense" />
-        <BillingIntervalSelect value={draft.interval} onChange={set('interval')}
+        <BillingIntervalSelect required value={draft.interval} onChange={set('interval')}
           error={errors.interval} placeholder="Choose a cadence…" helper={errors.interval ? undefined : 'How often it bills.'} />
       </FormRow>
 
@@ -131,7 +131,7 @@ const AddSubscriptionModal = ({ onClose, onCreate, onSave, subscription = null }
       </FormRow>
 
       <NoteField label="Notes" value={draft.notes} onChange={set('notes')}
-        optional maxLength={1024} placeholder="Optional — anything worth remembering." />
+        maxLength={1024} placeholder="Anything worth remembering." />
     </Modal>
   );
 };

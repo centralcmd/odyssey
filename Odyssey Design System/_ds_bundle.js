@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"9fd0f007e13f","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"42bbbd5d8835","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"eb29f4abc14f","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"b0131d9ed58f","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"c025efc795cb","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"f48fe06c58a4","ui_kits/web/AddAccountModal.jsx":"70786f0463e1","ui_kits/web/AddBudgetItemModal.jsx":"a3c99c2e2e44","ui_kits/web/AddBudgetModal.jsx":"dd66264bab68","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"bb8ebb0c14a6","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"1a6914aab912","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"ed18b3c414ea","ui_kits/web/AddTaxStatementModal.jsx":"949d785d8d15","ui_kits/web/AddTermModal.jsx":"8d2277da3d61","ui_kits/web/AddTransactionModal.jsx":"44c0de9b2f94","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"df38a457a307","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c6f500b4e5dc","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"d430ca57572f","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"7095f7173156","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"d88a5db07dad","ui_kits/web/Transactions.jsx":"9a6edb776707","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a520a2c04a06","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"b0131d9ed58f","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"f48fe06c58a4","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"b6392757f0f9","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"638b43648d4c","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"d1734e9c9e28","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"7ead633fe94a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"2f9ab86b7929","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"2e56ec542437","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"13fe90661c91","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"9a6edb776707","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a520a2c04a06","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -1369,9 +1369,7 @@ function AmountField({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
@@ -2617,6 +2615,108 @@ function CardHeader({
 Object.assign(__ds_scope, { CardHeader });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/CardHeader.jsx", error: String((e && e.message) || e) }); }
 
+// components/CardSelect.jsx
+try { (() => {
+/**
+ * Odyssey DS — CardSelect
+ * Single-select picker drawn as a row of tappable cards: icon over label,
+ * centred, tinted in an accent when selected. The shape used for the "what
+ * kind of thing is this" question at the top of a create dialog — contract
+ * party kind, insurance policy role, account term kind — where the options
+ * are few, equally weighted and want an icon to be told apart.
+ *
+ * Use SegmentedControl for dense 2–3 option switches, RadioGroup when each
+ * option needs a sentence of explanation. Maps to a MudToggleGroup of cards.
+ *
+ * Controlled: pass `value` + `onChange(value)`. Proper radiogroup semantics —
+ * roving tabindex, ←/→ (and ↑/↓) move and select, Home/End jump.
+ *
+ * Accent: `accent` (icon), `accentLine` (border, defaults to accent) and
+ * `accentSoft` (selected background) tint the whole group (pass a module accent,
+ * e.g. var(--ins-accent)); an option may carry its own `color` / `soft` to
+ * override it — the account-term kinds each have their own colour.
+ */
+function CardSelect({
+  options = [],
+  value,
+  onChange,
+  ariaLabel,
+  accent,
+  accentLine,
+  accentSoft,
+  columns = 'fit',
+  maxItemWidth,
+  center = false
+}) {
+  const items = options.map(o => typeof o === 'string' ? {
+    value: o,
+    label: o
+  } : o);
+  const ref = React.useRef(null);
+  const select = v => {
+    if (onChange) onChange(v);
+    requestAnimationFrame(() => {
+      const el = ref.current && ref.current.querySelector(`[data-val="${window.CSS && CSS.escape ? CSS.escape(v) : v}"]`);
+      if (el) el.focus();
+    });
+  };
+  const onKey = e => {
+    const idx = items.findIndex(o => o.value === value);
+    if (idx < 0 || !items.length) return;
+    let next = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = items[(idx + 1) % items.length];else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = items[(idx - 1 + items.length) % items.length];else if (e.key === 'Home') next = items[0];else if (e.key === 'End') next = items[items.length - 1];
+    if (next && !next.disabled) {
+      e.preventDefault();
+      select(next.value);
+    }
+  };
+  const track = typeof columns === 'number' ? `repeat(${columns}, minmax(0, ${maxItemWidth ? maxItemWidth + 'px' : '1fr'}))` : `repeat(auto-fit, minmax(0, ${maxItemWidth ? maxItemWidth + 'px' : '1fr'}))`;
+  const groupStyle = {
+    gridTemplateColumns: track
+  };
+  if (accent) groupStyle['--odc-cardsel-accent'] = accent;
+  if (accentLine || accent) groupStyle['--odc-cardsel-line'] = accentLine || accent;
+  if (accentSoft) groupStyle['--odc-cardsel-soft'] = accentSoft;
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-cardsel${center ? ' center' : ''}`,
+    role: "radiogroup",
+    "aria-label": ariaLabel,
+    style: groupStyle,
+    ref: ref,
+    onKeyDown: onKey
+  }, items.map(o => {
+    const active = o.value === value;
+    const style = {};
+    if (o.color) {
+      style['--odc-cardsel-accent'] = o.color;
+      if (!o.line) style['--odc-cardsel-line'] = o.color;
+    }
+    if (o.line) style['--odc-cardsel-line'] = o.line;
+    if (o.soft) style['--odc-cardsel-soft'] = o.soft;
+    return /*#__PURE__*/React.createElement("button", {
+      key: o.value,
+      type: "button",
+      role: "radio",
+      "aria-checked": active,
+      "data-val": o.value,
+      tabIndex: active ? 0 : -1,
+      disabled: o.disabled,
+      style: style,
+      className: "odc-cardsel-opt",
+      onClick: () => onChange && onChange(o.value)
+    }, o.icon ? /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, o.icon) : null, /*#__PURE__*/React.createElement("span", {
+      className: "odc-cardsel-lab"
+    }, o.label), o.sub ? /*#__PURE__*/React.createElement("span", {
+      className: "odc-cardsel-sub"
+    }, o.sub) : null);
+  }));
+}
+Object.assign(__ds_scope, { CardSelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/CardSelect.jsx", error: String((e && e.message) || e) }); }
+
 // components/Checkbox.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
@@ -3673,7 +3773,7 @@ function ContactAliases({
       label: v
     })),
     placeholder: "e.g. maiden name",
-    help: "Optional \u2014 e.g. maiden name, nickname, trading as"
+    help: "e.g. maiden name, nickname, trading as"
   }))) : null, onAnnounce ? null : /*#__PURE__*/React.createElement("div", {
     className: "odc-sr-only",
     role: "status",
@@ -4110,9 +4210,7 @@ function ContactSelect({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional && !required ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null), control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null), control, msg ? /*#__PURE__*/React.createElement("div", {
     className: `odc-field-help${error ? ' error' : ''}`,
     id: helpId,
     role: error ? 'alert' : undefined
@@ -4817,11 +4915,6 @@ function CurrencySelect({
       className: `odc-select-opt${on ? ' selected' : ''}`,
       onClick: e => pick(o, e)
     }, /*#__PURE__*/React.createElement("span", {
-      className: "odc-select-tick"
-    }, on ? /*#__PURE__*/React.createElement("span", {
-      className: "material-icons",
-      "aria-hidden": "true"
-    }, "check") : null), /*#__PURE__*/React.createElement("span", {
       className: "odc-money-opt-code",
       style: {
         ...codeStyle,
@@ -4832,7 +4925,12 @@ function CurrencySelect({
       style: {
         color: 'var(--mud-palette-text-secondary)'
       }
-    }, o.label) : null));
+    }, o.label) : null, /*#__PURE__*/React.createElement("span", {
+      className: "odc-select-tick"
+    }, on ? /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, "check") : null)));
   }), !shown.length ? /*#__PURE__*/React.createElement("li", {
     style: {
       listStyle: 'none',
@@ -4863,9 +4961,7 @@ function CurrencySelect({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
@@ -5143,9 +5239,7 @@ function CustodianSelect({
   }, /*#__PURE__*/React.createElement("label", {
     className: "odc-field-label",
     htmlFor: fieldId
-  }, label, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null), /*#__PURE__*/React.createElement(Combobox, {
+  }, label), /*#__PURE__*/React.createElement(Combobox, {
     id: fieldId,
     value: value || '',
     onChange: v => onChange && onChange(v || ''),
@@ -5255,9 +5349,7 @@ function DateField({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
@@ -6435,9 +6527,7 @@ function Field({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
@@ -6452,19 +6542,18 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 /**
  * Odyssey DS — FieldShell
  * The labelled-field wrapper that every form control shares: the label row
- * (with the required `*` / muted "Optional" marker, and an optional right-aligned
- * `aside` slot — e.g. a character counter), the control itself (`children`), and
- * the helper / error line below.
+ * (with the required `*` marker — the system marks required only, never
+ * "Optional" — and an optional right-aligned `aside` slot, e.g. a character
+ * counter), the control itself (`children`), and the helper / error line below.
  *
  * This is the composition primitive behind `Field`, `AmountField`, `NoteField`
  * and `NumberField` — and the one to reach for when you need to label a control
  * the kit doesn't wrap yet (a `Combobox`, a `MultiSelect`, a segmented control,
  * a locked-value display, an upload dropzone). It replaces the hand-rolled
- * `.field` + `.label` + `.atm-opt` + `.helper`/`aam-err` markup scattered across
- * the dialogs, so the label, optional hint and error line read identically
- * everywhere.
+ * `.field` + `.label` + `.helper`/`aam-err` markup scattered across the dialogs,
+ * so the label, required marker and error line read identically everywhere.
  *
- *   <FieldShell label="Insured account" htmlFor="ins-acct" optional help={err}>
+ *   <FieldShell label="Insured account" htmlFor="ins-acct" help={err}>
  *     <Combobox id="ins-acct" … />
  *   </FieldShell>
  *
@@ -6476,6 +6565,7 @@ function FieldShell({
   htmlFor,
   required = false,
   optional = false,
+  // eslint-disable-line no-unused-vars — retained no-op
   help,
   error,
   aside,
@@ -6492,9 +6582,7 @@ function FieldShell({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null;
+  }, "*") : null) : null;
   return /*#__PURE__*/React.createElement("div", _extends({
     className: `odc-field${error ? ' error' : ''}${className ? ' ' + className : ''}`,
     id: id
@@ -8325,6 +8413,11 @@ try { (() => {
  * of the title — a Material Icons ligature, or any non-ligature character
  * (e.g. "§") rendered as a typographic glyph; `iconTone` ('brand' | 'warning' | 'error',
  * default 'brand') tints it — use 'warning'/'error' for destructive/confirm dialogs.
+ *
+ * Field markers: the system marks REQUIRED only (a `*` after the label) — nothing
+ * is ever labelled "Optional". The dialog explains the asterisk once: when the
+ * body contains at least one required field, the footer grows a muted
+ * "* Required" legend on the left. Pass `requiredLegend={false}` to suppress it.
  */
 const ODC_FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 function Modal({
@@ -8339,9 +8432,12 @@ function Modal({
   ariaLabel,
   className = '',
   bodyClassName = '',
+  requiredLegend = true,
   children
 }) {
   const dialogRef = React.useRef(null);
+  const bodyRef = React.useRef(null);
+  const [hasRequired, setHasRequired] = React.useState(false);
   const prevFocus = React.useRef(null);
   const titleId = React.useId();
   const subId = React.useId();
@@ -8393,6 +8489,17 @@ function Modal({
       if (prevFocus.current && prevFocus.current.focus) prevFocus.current.focus();
     };
   }, [open, onClose]);
+
+  // The legend is driven by what actually rendered, so no dialog has to declare
+  // whether it holds a required field.
+  React.useEffect(() => {
+    if (!open || !requiredLegend) {
+      setHasRequired(false);
+      return;
+    }
+    const el = bodyRef.current;
+    setHasRequired(!!el && !!el.querySelector('.odc-field-req'));
+  }, [open, requiredLegend, children]);
   if (!open) return null;
   const onScrim = e => {
     if (e.target === e.currentTarget && onClose) onClose();
@@ -8436,10 +8543,16 @@ function Modal({
     className: "material-icons",
     "aria-hidden": "true"
   }, "close")) : null) : null, /*#__PURE__*/React.createElement("div", {
+    ref: bodyRef,
     className: `odc-modal-body${bodyClassName ? ' ' + bodyClassName : ''}`
-  }, children), footer ? /*#__PURE__*/React.createElement("div", {
+  }, children), footer || hasRequired && requiredLegend ? /*#__PURE__*/React.createElement("div", {
     className: "odc-modal-foot"
-  }, footer) : null));
+  }, hasRequired && requiredLegend ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-modal-legend"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-req",
+    "aria-hidden": "true"
+  }, "*"), " Required") : null, footer) : null));
 
   // Portal to <body> so the dialog escapes any overflow/transform ancestor
   // (cards, collapsibles, scaled stages). Falls back to in-place rendering
@@ -8888,15 +9001,15 @@ function MoneyField({
         close(true);
       }
     }, /*#__PURE__*/React.createElement("span", {
+      className: "odc-money-opt-code"
+    }, o.value), o.label && o.label !== o.value ? /*#__PURE__*/React.createElement("span", {
+      className: "odc-select-opt-label"
+    }, o.label) : null, /*#__PURE__*/React.createElement("span", {
       className: "odc-select-tick"
     }, on ? /*#__PURE__*/React.createElement("span", {
       className: "material-icons",
       "aria-hidden": "true"
-    }, "check") : null), /*#__PURE__*/React.createElement("span", {
-      className: "odc-money-opt-code"
-    }, o.value), o.label && o.label !== o.value ? /*#__PURE__*/React.createElement("span", {
-      className: "odc-select-opt-label"
-    }, o.label) : null));
+    }, "check") : null)));
   }), !shown.length ? /*#__PURE__*/React.createElement("li", {
     className: "odc-money-empty",
     style: {
@@ -8926,9 +9039,7 @@ function MoneyField({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
@@ -9349,9 +9460,7 @@ function NoteField({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : /*#__PURE__*/React.createElement("span", null), counter) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : /*#__PURE__*/React.createElement("span", null), counter) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
@@ -9470,9 +9579,7 @@ function NumberField({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
@@ -12045,9 +12152,7 @@ function Select({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, /*#__PURE__*/React.createElement("div", {
     className: "odc-select",
     ref: wrapRef
   }, /*#__PURE__*/React.createElement("button", {
@@ -12103,12 +12208,7 @@ function Select({
       tabIndex: -1,
       className: `odc-select-opt${on ? ' selected' : ''}`,
       onClick: e => pick(o, e)
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "odc-select-tick"
-    }, on ? /*#__PURE__*/React.createElement("span", {
-      className: "material-icons",
-      "aria-hidden": "true"
-    }, "check") : null), o.icon ? /*#__PURE__*/React.createElement("span", {
+    }, o.icon ? /*#__PURE__*/React.createElement("span", {
       className: "material-icons odc-opt-icon",
       style: o.iconColor ? {
         color: o.iconColor
@@ -12116,7 +12216,12 @@ function Select({
       "aria-hidden": "true"
     }, o.icon) : null, /*#__PURE__*/React.createElement("span", {
       className: "odc-select-opt-label"
-    }, o.label)));
+    }, o.label), /*#__PURE__*/React.createElement("span", {
+      className: "odc-select-tick"
+    }, on ? /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, "check") : null)));
   })) : null), msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
@@ -12908,13 +13013,13 @@ function SortSelect({
         pop.close(true);
       }
     }, /*#__PURE__*/React.createElement("span", {
+      className: "odc-select-opt-label"
+    }, f.label), /*#__PURE__*/React.createElement("span", {
       className: "odc-select-tick"
     }, on ? /*#__PURE__*/React.createElement("span", {
       className: "material-icons",
       "aria-hidden": "true"
-    }, "check") : null), /*#__PURE__*/React.createElement("span", {
-      className: "odc-select-opt-label"
-    }, f.label)));
+    }, "check") : null)));
   };
 
   /* ---- Combined-menu variant: one trigger, fields + direction in one pop ---- */
@@ -12980,16 +13085,16 @@ function SortSelect({
           pop.close(true);
         }
       }, /*#__PURE__*/React.createElement("span", {
-        className: "odc-select-tick"
-      }, on ? /*#__PURE__*/React.createElement("span", {
-        className: "material-icons",
-        "aria-hidden": "true"
-      }, "check") : null), /*#__PURE__*/React.createElement("span", {
         className: "material-icons odc-opt-icon",
         "aria-hidden": "true"
       }, d === 'asc' ? 'arrow_upward' : 'arrow_downward'), /*#__PURE__*/React.createElement("span", {
         className: "odc-select-opt-label"
-      }, SortHelpers.dirLabel(field.type, d))));
+      }, SortHelpers.dirLabel(field.type, d)), /*#__PURE__*/React.createElement("span", {
+        className: "odc-select-tick"
+      }, on ? /*#__PURE__*/React.createElement("span", {
+        className: "material-icons",
+        "aria-hidden": "true"
+      }, "check") : null)));
     })) : null);
   }
 
@@ -13277,9 +13382,7 @@ function StepperField({
     }, label, required ? /*#__PURE__*/React.createElement("span", {
       className: "odc-field-req",
       "aria-hidden": "true"
-    }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-      className: "odc-field-opt"
-    }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+    }, "*") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
       className: "odc-field-help",
       role: error ? 'alert' : undefined
     }, msg) : null);
@@ -14000,9 +14103,7 @@ function TagMultiSelect({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, /*#__PURE__*/React.createElement("div", {
     className: "odc-tagms",
     ref: anchorRef
   }, /*#__PURE__*/React.createElement("div", {
@@ -14575,9 +14676,7 @@ function TextInputField({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
@@ -14998,9 +15097,7 @@ function TimeField({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, control, msg ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     role: error ? 'alert' : undefined
   }, msg) : null);
@@ -16500,9 +16597,7 @@ function TypeSelect({
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, control, error || help ? /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, control, error || help ? /*#__PURE__*/React.createElement("div", {
     className: "odc-field-help",
     id: helpId,
     role: error ? 'alert' : undefined
@@ -21506,6 +21601,7 @@ const AccountTypePicker = ({
       value: value,
       onChange: onChange,
       error: error,
+      required: true,
       types: AAM_TYPES.length ? AAM_TYPES : undefined
     });
   }
@@ -21517,6 +21613,7 @@ const AccountTypePicker = ({
   }));
   return /*#__PURE__*/React.createElement(Select, {
     label: "Account type",
+    required: true,
     value: value,
     onChange: onChange,
     options: options,
@@ -21593,6 +21690,7 @@ const AddAccountModal = ({
     }, editing ? 'Save changes' : 'Create account'))
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Account name",
+    required: true,
     value: draft.name,
     onChange: set('name'),
     placeholder: "e.g. Chase Sapphire",
@@ -21607,6 +21705,7 @@ const AddAccountModal = ({
   }, /*#__PURE__*/React.createElement("span", {
     className: `aam-group-pill ${selType.group}`
   }, selType.group === 'asset' ? 'Asset' : 'Liability'), /*#__PURE__*/React.createElement("span", null, selType.group === 'asset' ? 'Counts toward your total assets.' : 'Counts toward what you owe.')), /*#__PURE__*/React.createElement(CurrencySelect, {
+    required: true,
     value: draft.currency,
     onChange: set('currency'),
     options: AAM_CURRENCIES,
@@ -21630,7 +21729,7 @@ const AddAccountModal = ({
     label: "Account number",
     value: draft.accountNumber,
     onChange: set('accountNumber'),
-    placeholder: "Optional"
+    placeholder: "As it appears on your statement"
   }), /*#__PURE__*/React.createElement(CustodianSelect, {
     value: draft.custodianId,
     onChange: set('custodianId'),
@@ -21641,7 +21740,7 @@ const AddAccountModal = ({
     label: "Description",
     value: draft.description,
     onChange: set('description'),
-    placeholder: "Optional \u2014 what's this account for?",
+    placeholder: "What's this account for?",
     rows: 3,
     maxLength: 512,
     optional: true
@@ -21770,10 +21869,12 @@ const AddBudgetItemModal = ({
     onRetry: () => {}
   }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(BudgetCategoryTypeSelect, {
     label: "Category",
+    required: true,
     value: draft.categoryType,
     onChange: set('categoryType')
   }), /*#__PURE__*/React.createElement(MoneyField, {
     label: "Planned amount",
+    required: true,
     value: draft.planned,
     onChange: set('planned'),
     currency: budget.currency,
@@ -21882,6 +21983,7 @@ const AddBudgetModal = ({
     }, editing ? 'Save changes' : 'Create budget'))
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Budget name",
+    required: true,
     value: draft.name,
     onChange: set('name'),
     placeholder: "e.g. January 2025",
@@ -21889,17 +21991,20 @@ const AddBudgetModal = ({
     autoFocus: true
   }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
     label: "Start date",
+    required: true,
     value: draft.startDate,
     onChange: set('startDate'),
     help: "Defaults to today"
   }), /*#__PURE__*/React.createElement(DateField, {
     label: "End date",
+    required: true,
     value: draft.endDate,
     onChange: set('endDate'),
     help: "Defaults to +1 month",
     error: errors.endDate
   })), /*#__PURE__*/React.createElement(CurrencySelect, {
     label: "Base currency",
+    required: true,
     value: draft.currency,
     onChange: set('currency'),
     options: ABM_CURRENCIES,
@@ -21909,7 +22014,7 @@ const AddBudgetModal = ({
     label: "Description",
     value: draft.description,
     onChange: set('description'),
-    placeholder: "Optional \u2014 what's this budget for?",
+    placeholder: "What's this budget for?",
     rows: 3,
     maxLength: 512,
     optional: true
@@ -22274,6 +22379,7 @@ const AddCalendarEventModal = ({
     className: "edit-wide"
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Title",
+    required: true,
     value: d.title,
     onChange: set('title'),
     error: errors.title,
@@ -22282,6 +22388,7 @@ const AddCalendarEventModal = ({
     placeholder: "What's happening?"
   })), /*#__PURE__*/React.createElement(Select, {
     label: "Calendar",
+    required: true,
     value: d.calendarId,
     onChange: set('calendarId'),
     options: calOptions
@@ -22298,6 +22405,7 @@ const AddCalendarEventModal = ({
     className: "edit-wide"
   }, /*#__PURE__*/React.createElement(FieldShell, {
     label: "Starts",
+    required: true,
     error: errors.startDate
   }, /*#__PURE__*/React.createElement("div", {
     className: `cal-when-row${d.isAllDay ? ' allday' : ''}`
@@ -22312,6 +22420,7 @@ const AddCalendarEventModal = ({
     className: "edit-wide"
   }, /*#__PURE__*/React.createElement(FieldShell, {
     label: "Ends",
+    required: true,
     error: errors.endDate || errors.endTime,
     help: d.isAllDay ? 'Inclusive — the last whole day.' : undefined
   }, /*#__PURE__*/React.createElement("div", {
@@ -22330,7 +22439,7 @@ const AddCalendarEventModal = ({
     label: "Location",
     value: d.location,
     onChange: set('location'),
-    placeholder: "Optional",
+    placeholder: "Where it happens",
     maxLength: 300
   })), /*#__PURE__*/React.createElement("div", {
     className: "edit-wide"
@@ -22579,12 +22688,14 @@ const AddContractModal = ({
     }, editing ? 'Save changes' : 'Create contract'))
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Contract name",
+    required: true,
     value: draft.name,
     onChange: set('name'),
     placeholder: "e.g. Maple St Residence \u2014 Lease",
     error: errors.name,
     autoFocus: true
   }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ContractTypeSelect, {
+    required: true,
     value: draft.type,
     onChange: set('type'),
     error: errors.type,
@@ -22606,7 +22717,7 @@ const AddContractModal = ({
     className: "field"
   }, /*#__PURE__*/React.createElement(Field, {
     type: "date",
-    label: "Starts (optional)",
+    label: "Starts",
     value: draft.startDate,
     onChange: set('startDate'),
     placeholder: "No start date"
@@ -22614,7 +22725,7 @@ const AddContractModal = ({
     className: "field"
   }, /*#__PURE__*/React.createElement(Field, {
     type: "date",
-    label: "Ends (optional)",
+    label: "Ends",
     value: draft.endDate,
     onChange: set('endDate'),
     placeholder: "Open-ended"
@@ -22627,6 +22738,7 @@ const AddContractModal = ({
   }, /*#__PURE__*/React.createElement(Field, {
     type: "date",
     label: "Completion",
+    required: true,
     value: draft.completionDate,
     onChange: set('completionDate'),
     placeholder: "Completion date"
@@ -22734,26 +22846,27 @@ const AddContractPartyModal = ({
       onClick: submit
     }, "Create party"))
   }, /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Party kind"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "con-kind-seg",
-    role: "radiogroup",
-    "aria-label": "Party kind"
-  }, CONTRACT_PARTY_KINDS.map(k => /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    key: k.kind,
-    role: "radio",
-    "aria-checked": kind === k.kind,
-    className: `con-kind-opt ${kind === k.kind ? 'on' : ''}`,
-    onClick: () => pickKind(k.kind)
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "material-icons",
-    "aria-hidden": "true"
-  }, k.icon), /*#__PURE__*/React.createElement("span", {
-    className: "con-kind-lab"
-  }, k.label))))), kind === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
+    label: "Party kind",
+    required: true
+  }, /*#__PURE__*/React.createElement(CardSelect, {
+    ariaLabel: "Party kind",
+    value: kind,
+    onChange: pickKind,
+    accent: "var(--con-accent)",
+    accentLine: "var(--con-accent-line)",
+    accentSoft: "var(--con-accent-soft)",
+    columns: 2,
+    maxItemWidth: 180,
+    center: true,
+    options: CONTRACT_PARTY_KINDS.map(k => ({
+      value: k.kind,
+      label: k.label,
+      icon: k.icon
+    }))
+  })), kind === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
     id: "acp-target",
     label: def.label,
+    required: true,
     error: error,
     allowCreate: true,
     help: error ? undefined : options.length ? `${options.length} contact${options.length === 1 ? '' : 's'} available to link.` : 'Every contact is already linked to this contract — or add a new one below.',
@@ -22768,6 +22881,7 @@ const AddContractPartyModal = ({
   }) : /*#__PURE__*/React.createElement(FieldShell, {
     label: def.label,
     htmlFor: "acp-target",
+    required: true,
     error: error,
     helper: error ? undefined : options.length ? `${options.length} ${def.label.toLowerCase()}${options.length === 1 ? '' : 's'} available to link.` : `Every ${def.label.toLowerCase()} is already linked to this contract.`
   }, /*#__PURE__*/React.createElement(Combobox, {
@@ -22891,6 +23005,7 @@ const AddEstimateModal = ({
     className: "est-value-block"
   }, /*#__PURE__*/React.createElement(MoneyField, {
     label: "Estimated value",
+    required: true,
     size: "lg",
     allowNegative: false,
     autoFocus: true,
@@ -22904,6 +23019,7 @@ const AddEstimateModal = ({
     className: "est-row2"
   }, /*#__PURE__*/React.createElement(DateField, {
     label: "Effective from",
+    required: true,
     value: draft.effectiveFrom,
     onChange: set('effectiveFrom'),
     helper: errors.effectiveFrom ? undefined : 'When this value takes effect'
@@ -23285,6 +23401,7 @@ const AddInsurancePolicyModal = ({
     }, editing ? 'Save changes' : 'Create policy'))
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Policy name",
+    required: true,
     value: draft.name,
     onChange: set('name'),
     placeholder: "e.g. Home & Contents 2026",
@@ -23294,8 +23411,9 @@ const AddInsurancePolicyModal = ({
     label: "Policy number",
     value: draft.policyNumber,
     onChange: set('policyNumber'),
-    placeholder: "Optional \u2014 insurer's reference"
+    placeholder: "Insurer's reference"
   }), /*#__PURE__*/React.createElement(InsurancePolicyTypeSelect, {
+    required: true,
     value: draft.type,
     onChange: set('type'),
     error: errors.type,
@@ -23467,26 +23585,24 @@ const AddPolicyPartyModal = ({
       onClick: submit
     }, editing ? 'Save changes' : 'Create party'))
   }, /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Role"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "ins-kind-seg",
-    role: "radiogroup",
-    "aria-label": "Role"
-  }, POLICY_PARTY_ROLES.map(r => /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    key: r.role,
-    role: "radio",
-    "aria-checked": role === r.role,
-    className: `ins-kind-opt ${role === r.role ? 'on' : ''}`,
-    onClick: () => pickRole(r.role)
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "material-icons",
-    "aria-hidden": "true"
-  }, r.icon), /*#__PURE__*/React.createElement("span", {
-    className: "ins-kind-lab"
-  }, r.label))))), def.noun === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
+    label: "Role",
+    required: true
+  }, /*#__PURE__*/React.createElement(CardSelect, {
+    ariaLabel: "Role",
+    value: role,
+    onChange: pickRole,
+    accent: "var(--ins-accent)",
+    accentLine: "var(--ins-accent-line)",
+    accentSoft: "var(--ins-accent-soft)",
+    options: POLICY_PARTY_ROLES.map(r => ({
+      value: r.role,
+      label: r.label,
+      icon: r.icon
+    }))
+  })), def.noun === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
     id: "app-target",
     label: def.label,
+    required: true,
     error: error,
     allowCreate: true,
     help: error ? undefined : options.length ? `${def.help} ${options.length} contact${options.length === 1 ? '' : 's'} available to link.` : `Every contact is already linked to this policy in this role — or add a new one below.`,
@@ -23502,6 +23618,7 @@ const AddPolicyPartyModal = ({
   }) : /*#__PURE__*/React.createElement(FieldShell, {
     label: def.label,
     htmlFor: "app-target",
+    required: true,
     error: error,
     helper: error ? undefined : options.length ? `${def.help} ${options.length} ${def.noun}${options.length === 1 ? '' : 's'} available to link.` : `Every ${def.noun} is already linked to this policy in this role.`
   }, /*#__PURE__*/React.createElement(Combobox, {
@@ -23517,8 +23634,7 @@ const AddPolicyPartyModal = ({
     ariaLabel: def.label,
     invalid: !!error
   })), /*#__PURE__*/React.createElement(SectionDivider, {
-    label: "In the role",
-    meta: "optional"
+    label: "In the role"
   }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
     label: "From",
     value: fromDate,
@@ -23641,18 +23757,21 @@ const AddRenewalModal = ({
     }, isEdit ? 'Save changes' : 'Create period'))
   }, /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
     label: "Cover from",
+    required: true,
     value: draft.fromDate,
     onChange: set('fromDate'),
     help: "Start of this period\u2019s cover.",
     error: errors.fromDate
   }), /*#__PURE__*/React.createElement(DateField, {
     label: "Cover to",
+    required: true,
     value: draft.toDate,
     onChange: set('toDate'),
     help: "End of this period\u2019s cover.",
     error: errors.toDate
   })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(MoneyField, {
     label: "Premium",
+    required: true,
     value: draft.premium,
     onChange: set('premium'),
     currency: draft.premiumCurrencyCode,
@@ -23664,6 +23783,7 @@ const AddRenewalModal = ({
     help: "Premium for this term, as stored (not annualized)."
   }), /*#__PURE__*/React.createElement(MoneyField, {
     label: "Coverage amount",
+    required: true,
     value: draft.coverageAmount,
     onChange: set('coverageAmount'),
     currency: draft.coverageCurrencyCode,
@@ -23828,8 +23948,7 @@ const AddSubscriptionModal = ({
     label: "External id",
     value: draft.externalId,
     onChange: set('externalId'),
-    placeholder: "Optional",
-    optional: true,
+    placeholder: "e.g. 4471-908",
     maxLength: 128,
     helper: "Membership, account, or subscription number \u2014 a reference label, not a key."
   }), /*#__PURE__*/React.createElement(ContactSelect, {
@@ -23858,9 +23977,9 @@ const AddSubscriptionModal = ({
     help: "Leave blank if ongoing."
   })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(MoneyField, {
     label: "Price",
+    required: true,
     value: draft.amount,
     onChange: set('amount'),
-    required: true,
     allowNegative: false,
     currency: draft.currencyCode,
     onCurrencyChange: set('currencyCode'),
@@ -23870,6 +23989,7 @@ const AddSubscriptionModal = ({
     placeholder: "0.00",
     className: "sub-amount-expense"
   }), /*#__PURE__*/React.createElement(BillingIntervalSelect, {
+    required: true,
     value: draft.interval,
     onChange: set('interval'),
     error: errors.interval,
@@ -23894,9 +24014,8 @@ const AddSubscriptionModal = ({
     label: "Notes",
     value: draft.notes,
     onChange: set('notes'),
-    optional: true,
     maxLength: 1024,
-    placeholder: "Optional \u2014 anything worth remembering."
+    placeholder: "Anything worth remembering."
   }));
 };
 Object.assign(window, {
@@ -24144,6 +24263,7 @@ const AddTaxStatementModal = ({
     }, editing ? 'Save changes' : 'Create statement'))
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Statement name",
+    required: true,
     value: draft.name,
     onChange: set('name'),
     placeholder: "e.g. Tax year 2025",
@@ -24151,11 +24271,13 @@ const AddTaxStatementModal = ({
     autoFocus: true
   }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ATS_NumField, {
     label: "Fiscal year",
+    required: true,
     value: draft.fiscalYear,
     onChange: editing ? v => set('fiscalYear')(v ? Math.round(v) : draft.fiscalYear) : setYear,
     help: errors.fiscalYear || 'The income year.'
   }), /*#__PURE__*/React.createElement(CurrencySelect, {
     label: "Base currency",
+    required: true,
     value: draft.baseCurrency,
     onChange: set('baseCurrency'),
     options: ATS_CURRENCIES,
@@ -24163,17 +24285,19 @@ const AddTaxStatementModal = ({
     helper: "Derived sums include only this currency."
   })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
     label: "Period start",
+    required: true,
     value: draft.startDate,
     onChange: set('startDate')
   }), /*#__PURE__*/React.createElement(DateField, {
     label: "Period end",
+    required: true,
     value: draft.endDate,
     onChange: set('endDate'),
     help: "Defaults to the calendar year.",
     error: errors.endDate
   })), /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Declared figures",
-    meta: "from the official statement \xB7 all optional"
+    meta: "from the official statement"
   }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(ATS_Money, {
     label: "Total assets",
     value: draft.declared.totalAssets,
@@ -24437,7 +24561,10 @@ const AddTermModal = ({
     className: "field"
   }, /*#__PURE__*/React.createElement("div", {
     className: "label"
-  }, "Term"), isEdit ? /*#__PURE__*/React.createElement("div", {
+  }, "Term", /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-req",
+    "aria-hidden": "true"
+  }, "*")), isEdit ? /*#__PURE__*/React.createElement("div", {
     className: "trm-kind-opt on",
     style: {
       cursor: 'default'
@@ -24457,42 +24584,24 @@ const AddTermModal = ({
     className: "trm-kind-opt-name"
   }, info.label), /*#__PURE__*/React.createElement("span", {
     className: "trm-kind-opt-grp"
-  }, info.group === 'rate' ? 'Rate' : 'Fee'))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "trm-kind-grid"
-  }, eligibleKinds.map(k => {
-    const on = k.key === draft.kind;
-    return /*#__PURE__*/React.createElement("button", {
-      type: "button",
-      key: k.key,
-      className: `trm-kind-opt ${on ? 'on' : ''}`,
-      onClick: () => pickKind(k.key)
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "trm-kind-ic md",
-      style: {
-        background: k.soft,
-        color: k.color
-      }
-    }, /*#__PURE__*/React.createElement(MIcon, {
-      name: k.icon,
-      size: 18
-    })), /*#__PURE__*/React.createElement("span", {
-      className: "trm-kind-opt-txt"
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "trm-kind-opt-name"
-    }, k.label), /*#__PURE__*/React.createElement("span", {
-      className: "trm-kind-opt-grp"
-    }, k.group === 'rate' ? 'Rate' : 'Fee')), on && /*#__PURE__*/React.createElement(MIcon, {
-      name: "check_circle",
-      size: 18,
-      className: "trm-kind-check"
-    }));
-  })), eligibleKinds.length < D.termKinds.length && /*#__PURE__*/React.createElement("div", {
+  }, info.group === 'rate' ? 'Rate' : 'Fee'))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(CardSelect, {
+    ariaLabel: "Term",
+    value: draft.kind,
+    onChange: pickKind,
+    options: eligibleKinds.map(k => ({
+      value: k.key,
+      label: k.label,
+      icon: k.icon,
+      color: k.color,
+      soft: k.soft
+    }))
+  }), eligibleKinds.length < D.termKinds.length && /*#__PURE__*/React.createElement("div", {
     className: "trm-kind-ineligible"
   }, "Some kinds don\u2019t apply to a ", /*#__PURE__*/React.createElement("b", null, window.ACCOUNT_TYPE_LABEL[account.type] || account.type), " account and are hidden.")), errors.kind && /*#__PURE__*/React.createElement("div", {
     className: "helper aam-err"
   }, errors.kind)), labelRule !== 'hidden' && /*#__PURE__*/React.createElement(Field, {
     label: "Name",
-    required: true,
+    required: labelRule === 'required',
     value: draft.label,
     onChange: set('label'),
     placeholder: "e.g. ATM withdrawal \xB7 abroad",
@@ -24507,7 +24616,10 @@ const AddTermModal = ({
     style: {
       marginBottom: 0
     }
-  }, "Value"), !isRate && /*#__PURE__*/React.createElement("div", {
+  }, "Value", /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-req",
+    "aria-hidden": "true"
+  }, "*")), !isRate && /*#__PURE__*/React.createElement("div", {
     className: "atm-seg",
     role: "radiogroup",
     "aria-label": "Unit",
@@ -24542,6 +24654,7 @@ const AddTermModal = ({
     size: 15
   }), "Amount"))), isPct ? /*#__PURE__*/React.createElement(AmountField, {
     size: "lg",
+    required: true,
     suffix: "%",
     allowNegative: true,
     autoFocus: true,
@@ -24551,6 +24664,7 @@ const AddTermModal = ({
     help: /*#__PURE__*/React.createElement(React.Fragment, null, "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), isRate ? ' · annual' : '')
   }) : /*#__PURE__*/React.createElement(MoneyField, {
     size: "lg",
+    required: true,
     allowNegative: true,
     signEditable: true,
     autoFocus: true,
@@ -24563,33 +24677,10 @@ const AddTermModal = ({
     error: errors.value,
     help: /*#__PURE__*/React.createElement(React.Fragment, null, "Flat amount in ", /*#__PURE__*/React.createElement("b", null, draft.currency), draft.billingPeriod && draft.billingPeriod !== 'OneTime' ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", (H.billingInfo(draft.billingPeriod) || {}).label) : '')
   })), /*#__PURE__*/React.createElement(FormRow, {
-    cols: isPct ? 2 : 1
-  }, isPct ? /*#__PURE__*/React.createElement("div", {
-    className: "field"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "label"
-  }, "Currency"), /*#__PURE__*/React.createElement("div", {
-    className: "trm-kind-opt",
-    style: {
-      cursor: 'default',
-      height: 44,
-      padding: '0 12px',
-      opacity: 0.6
-    }
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "block",
-    size: 16,
-    style: {
-      color: 'var(--mud-palette-text-secondary)'
-    }
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "trm-kind-opt-name",
-    style: {
-      fontWeight: 400,
-      color: 'var(--mud-palette-text-secondary)'
-    }
-  }, "Not used for a rate"))) : null, /*#__PURE__*/React.createElement(DateField, {
+    cols: 1
+  }, /*#__PURE__*/React.createElement(DateField, {
     label: "Effective from",
+    required: true,
     value: draft.effectiveFrom,
     onChange: set('effectiveFrom'),
     helper: errors.effectiveFrom ? undefined : 'When this value takes effect'
@@ -24599,8 +24690,7 @@ const AddTermModal = ({
       marginTop: -6
     }
   }, errors.effectiveFrom), !isRate && /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Billing period",
-    optional: true
+    label: "Billing period"
   }, /*#__PURE__*/React.createElement(Select, {
     value: draft.billingPeriod,
     onChange: set('billingPeriod'),
@@ -24613,7 +24703,6 @@ const AddTermModal = ({
     }))]
   })), /*#__PURE__*/React.createElement(NoteField, {
     label: "Note",
-    optional: true,
     maxLength: 512,
     value: draft.note,
     onChange: set('note'),
@@ -24642,7 +24731,8 @@ try { (() => {
                                                  positive magnitude + an Expense/Income
                                                  toggle and emits a signed value.
      • AccountId         (required)            — Guid, preselected from launch context
-     • TimeStamp         (optional → today)    — DateTime?
+     • TimeStamp         (required → today)    — DateTime? (pre-filled with today;
+                                              the DTO allows null, the form does not)
      • TransactionTagIds Guid[] (zero, one, or many tags — many-to-many)
      • ContactId    (optional)            — Guid? (pick existing or create new)
      • CurrencyCode      (default "USD")       — 3-letter
@@ -24786,7 +24876,8 @@ const AccountPicker = ({
   };
   if (locked && sel) {
     return /*#__PURE__*/React.createElement(FieldShell, {
-      label: "Account"
+      label: "Account",
+      required: true
     }, /*#__PURE__*/React.createElement("div", {
       className: "atm-acct-locked"
     }, tile(sel), /*#__PURE__*/React.createElement("span", {
@@ -24798,6 +24889,7 @@ const AccountPicker = ({
   }
   return /*#__PURE__*/React.createElement(FieldShell, {
     label: "Account",
+    required: true,
     error: error
   }, /*#__PURE__*/React.createElement("div", {
     className: "multiselect",
@@ -24955,6 +25047,7 @@ const AddTransactionModal = ({
     const next = {};
     if (!draft.account) next.account = 'Choose which account this belongs to.';
     if (!draft.desc.trim()) next.desc = 'Add a short description.';
+    if (!draft.date) next.date = 'Pick the transaction date.';
     const mag = parseFloat(String(draft.amount).replace(/,/g, ''));
     if (!draft.amount || isNaN(mag) || mag <= 0) next.amount = 'Enter an amount greater than zero.';
     if (Object.keys(next).length) {
@@ -25040,6 +25133,7 @@ const AddTransactionModal = ({
     className: "atm-amount-block odc-form-grid-wide"
   }, /*#__PURE__*/React.createElement(MoneyField, {
     label: "Amount",
+    required: true,
     size: "lg",
     direction: draft.dir,
     onDirectionChange: set('dir'),
@@ -25056,13 +25150,16 @@ const AddTransactionModal = ({
     help: draft.dir === 'expense' ? 'Expense — click the sign, or type + in the amount, for income.' : 'Income — click the sign, or type − in the amount, for expense.'
   })), /*#__PURE__*/React.createElement(DateField, {
     label: "Date",
+    required: true,
     value: draft.date,
     onChange: set('date'),
+    error: errors.date,
     help: "Defaults to today"
   }), /*#__PURE__*/React.createElement("div", {
     className: "odc-form-grid-wide"
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Description",
+    required: true,
     value: draft.desc,
     onChange: set('desc'),
     placeholder: "e.g. Whole Foods Market \xB7 Mission",
@@ -25125,12 +25222,12 @@ const AddTransactionModal = ({
     label: "External ID",
     value: draft.externalId,
     onChange: set('externalId'),
-    placeholder: "Optional"
+    placeholder: "The bank's reference"
   }), /*#__PURE__*/React.createElement(Field, {
     label: "Internal ID",
     value: draft.internalId,
     onChange: set('internalId'),
-    placeholder: "Optional"
+    placeholder: "Your own reference"
   }), /*#__PURE__*/React.createElement("div", {
     className: "odc-form-grid-wide"
   }, /*#__PURE__*/React.createElement(NoteField, {
@@ -29568,9 +29665,7 @@ const AmountField = ({
     className: "odc-field-label"
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, /*#__PURE__*/React.createElement("div", {
+  }, "*") : null) : null, /*#__PURE__*/React.createElement("div", {
     className: `odc-amount${size === 'lg' ? ' lg' : ''}${error ? ' error' : ''}${disabled ? ' disabled' : ''}`
   }, prefix ? /*#__PURE__*/React.createElement("span", {
     className: "odc-amount-adorn pre"
@@ -29682,9 +29777,7 @@ const NoteField = ({
     className: "odc-field-label"
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : /*#__PURE__*/React.createElement("span", null), counted ? /*#__PURE__*/React.createElement("span", {
+  }, "*") : null) : /*#__PURE__*/React.createElement("span", null), counted ? /*#__PURE__*/React.createElement("span", {
     className: `odc-field-count${over ? ' over' : ''}`
   }, value.length, "/", maxLength) : null) : null, /*#__PURE__*/React.createElement("textarea", {
     className: "odc-input odc-input-multiline",
@@ -29727,9 +29820,7 @@ const FieldShell = ({
     htmlFor: htmlFor
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null;
+  }, "*") : null) : null;
   return /*#__PURE__*/React.createElement("div", {
     className: `odc-field${error ? ' error' : ''} ${className}`.trim()
   }, label || aside ? aside ? /*#__PURE__*/React.createElement("div", {
@@ -29772,9 +29863,7 @@ const NumberField = ({
     className: "odc-field-label"
   }, label, required ? /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req"
-  }, "*") : null, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null) : null, /*#__PURE__*/React.createElement("input", {
+  }, "*") : null) : null, /*#__PURE__*/React.createElement("input", {
     className: "odc-input",
     type: "number",
     value: value == null ? '' : value,
@@ -30274,6 +30363,11 @@ const ContactSelect = ({
 // SegmentedControl — compact 2–3 option toggle (the contract Term / One-off
 // switch, dense view switches). Aliased straight from the bundle.
 const SegmentedControl = DS.SegmentedControl;
+
+// CardSelect — icon-over-label card picker for the "what kind is this?" question
+// at the top of a create dialog (contract party kind, policy party role, term
+// kind). Aliased straight from the bundle.
+const CardSelect = DS.CardSelect;
 
 // ---- Overview breakdown helpers (shared by every page's header Overview) ----
 // Status tone → the finance accent it maps to, so "By status" rows tint
@@ -31744,9 +31838,7 @@ const CustodianSelect = DS.CustodianSelect || (({
     className: `odc-field${error ? ' error' : ''}`
   }, /*#__PURE__*/React.createElement("label", {
     className: "odc-field-label"
-  }, label, optional ? /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-opt"
-  }, "Optional") : null), DS.Combobox ? /*#__PURE__*/React.createElement(DS.Combobox, {
+  }, label), DS.Combobox ? /*#__PURE__*/React.createElement(DS.Combobox, {
     value: value || '',
     onChange: v => onChange && onChange(v || ''),
     options: options,
@@ -31898,6 +31990,7 @@ Object.assign(window, {
   BillingIntervalChip,
   SubscriptionStatusChip,
   SegmentedControl,
+  CardSelect,
   ContactSelect,
   TransactionTagPicker,
   ODC_TONE,
@@ -32561,10 +32654,12 @@ const cpTone = type => {
 /* ---- Sub-vocabularies (new OdsTypeRegistries entries) ---- */
 const SEX_OPTIONS = [{
   value: 'Male',
-  label: 'Male'
+  label: 'Male',
+  icon: 'man'
 }, {
   value: 'Female',
-  label: 'Female'
+  label: 'Female',
+  icon: 'woman'
 }];
 /* ---- Contact-method labels: one scope map, read off the DS namespace ----
    The three label enums now carry an organization vocabulary, and every member
@@ -33386,7 +33481,7 @@ const ContactForm = ({
     label: "Line 2",
     value: d.line2,
     onChange: set('line2'),
-    placeholder: "Apartment, floor, etc. (optional)",
+    placeholder: "Apartment, floor, etc.",
     maxLength: 256
   }), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -34155,7 +34250,7 @@ const PersonFields = ({
   value: d.middleName,
   onChange: set('middleName'),
   placeholder: "As it appears on a passport or bank record",
-  helper: "Optional \xB7 not part of the display name",
+  helper: "Not part of the display name",
   maxLength: 128
 }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
   label: "Date of birth",
@@ -34178,20 +34273,18 @@ const PersonFields = ({
   value: d.sex,
   onChange: set('sex'),
   options: SEX_OPTIONS,
-  helper: "Optional",
   placeholder: "Unspecified"
 }), /*#__PURE__*/React.createElement(Field, {
   label: "Job title",
   value: d.title,
   onChange: set('title'),
   placeholder: "e.g. Senior Engineer",
-  helper: "Optional",
   maxLength: 128
 })), /*#__PURE__*/React.createElement(Field, {
   label: "Company",
   value: d.company,
   onChange: set('company'),
-  placeholder: "Employer name (optional)",
+  placeholder: "Employer name",
   helper: "A free-text note \u2014 not linked to another contact",
   maxLength: 256
 }));
@@ -34212,7 +34305,7 @@ const OrgFields = ({
   label: "Organization number",
   value: d.organizationNumber,
   onChange: set('organizationNumber'),
-  placeholder: "Optional",
+  placeholder: "e.g. 924 738 981",
   maxLength: 64
 }), /*#__PURE__*/React.createElement(Field, {
   label: "Website",
@@ -34396,7 +34489,7 @@ const AddContactModal = ({
   const typeMeta = CP_TYPE_BY_KEY[type] || CP_TYPE_BY_KEY.Person;
   return /*#__PURE__*/React.createElement(Modal, {
     title: isEdit ? 'Edit contact' : 'New contact',
-    subtitle: "A person or organization that money moves to or from.",
+    subtitle: "A person or organization.",
     icon: isEdit ? 'edit' : 'store',
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -34436,7 +34529,7 @@ const AddContactModal = ({
     label: "Display name",
     value: displayName,
     onChange: setDisplayName,
-    placeholder: "Optional override",
+    placeholder: "Override the derived name",
     helper: displayNameHint(type),
     maxLength: 128
   }), /*#__PURE__*/React.createElement(NoteField, {
@@ -41540,6 +41633,7 @@ const AddJournalEntryModal = ({
     className: "edit-wide"
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Title",
+    required: true,
     value: draft.title,
     onChange: set('title'),
     error: errors.title,
@@ -41547,6 +41641,7 @@ const AddJournalEntryModal = ({
     autoFocus: true
   })), /*#__PURE__*/React.createElement(DateField, {
     label: "Entry date",
+    required: true,
     value: draft.entryDate,
     onChange: set('entryDate'),
     error: errors.entryDate
@@ -41554,7 +41649,7 @@ const AddJournalEntryModal = ({
     label: "Location",
     value: draft.location,
     onChange: set('location'),
-    placeholder: "Optional",
+    placeholder: "Where this happened",
     maxLength: 300
   }), /*#__PURE__*/React.createElement(TagMultiSelect, {
     label: "Tags",
@@ -41583,6 +41678,7 @@ const AddJournalEntryModal = ({
     className: "edit-wide"
   }, /*#__PURE__*/React.createElement(NoteField, {
     label: "Content",
+    required: true,
     value: draft.content,
     onChange: set('content'),
     maxLength: 4096,
@@ -42788,6 +42884,7 @@ const CalRowEditor = ({
   className: "cal-mgr-editor-grid"
 }, /*#__PURE__*/React.createElement(Field, {
   label: "Name",
+  required: true,
   value: draft.name,
   onChange: v => setDraft({
     ...draft,
@@ -42804,7 +42901,7 @@ const CalRowEditor = ({
     ...draft,
     description: v
   }),
-  placeholder: "Optional",
+  placeholder: "What this calendar holds",
   maxLength: 1000
 })), /*#__PURE__*/React.createElement(FieldShell, {
   label: "Colour"
@@ -48143,6 +48240,7 @@ const AddTaskModal = ({
     className: "edit-wide"
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Title",
+    required: true,
     value: draft.title,
     onChange: set('title'),
     error: errors.title,
@@ -48162,6 +48260,7 @@ const AddTaskModal = ({
     optional: true
   })), editing ? /*#__PURE__*/React.createElement(Select, {
     label: "Status",
+    required: true,
     value: draft.status,
     onChange: set('status'),
     options: (window.TODO_STATUSES || []).map(s => ({
@@ -48186,8 +48285,7 @@ const AddTaskModal = ({
     onChange: set('content'),
     maxLength: 4096,
     rows: 4,
-    optional: true,
-    placeholder: "Optional details"
+    placeholder: "Details, links, next steps\u2026"
   })), /*#__PURE__*/React.createElement("div", {
     className: "edit-wide"
   }, /*#__PURE__*/React.createElement(FieldShell, {
@@ -50142,7 +50240,7 @@ const AddTagModal = ({
     label: "Description",
     value: draft.description,
     onChange: set('description'),
-    placeholder: "Optional \u2014 what this tag is for",
+    placeholder: "What this tag is for",
     helper: "Up to 256 characters"
   }));
 };
@@ -58741,10 +58839,12 @@ try { (() => {
    the UI conveys the two values in text (no colour/placeholder-only meaning). */
 const SEX_OPTIONS = [{
   value: 'Female',
-  label: 'Female'
+  label: 'Female',
+  icon: 'woman'
 }, {
   value: 'Male',
-  label: 'Male'
+  label: 'Male',
+  icon: 'man'
 }];
 
 /* ---- Field length caps (spec §6 MaxLength). Enforced client-side by
@@ -61660,6 +61760,8 @@ __ds_ns.Card = __ds_scope.Card;
 __ds_ns.CardBody = __ds_scope.CardBody;
 
 __ds_ns.CardHeader = __ds_scope.CardHeader;
+
+__ds_ns.CardSelect = __ds_scope.CardSelect;
 
 __ds_ns.Checkbox = __ds_scope.Checkbox;
 

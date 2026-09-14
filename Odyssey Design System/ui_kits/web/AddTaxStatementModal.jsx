@@ -164,6 +164,7 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
       }>
       <Field
         label="Statement name"
+        required
         value={draft.name}
         onChange={set('name')}
         placeholder="e.g. Tax year 2025"
@@ -172,18 +173,18 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
       />
 
       <FormRow>
-        <ATS_NumField label="Fiscal year" value={draft.fiscalYear}
+        <ATS_NumField label="Fiscal year" required value={draft.fiscalYear}
           onChange={editing ? ((v) => set('fiscalYear')(v ? Math.round(v) : draft.fiscalYear)) : setYear}
           help={errors.fiscalYear || 'The income year.'} />
-        <CurrencySelect label="Base currency" value={draft.baseCurrency} onChange={set('baseCurrency')} options={ATS_CURRENCIES} searchThreshold={0} helper="Derived sums include only this currency." />
+        <CurrencySelect label="Base currency" required value={draft.baseCurrency} onChange={set('baseCurrency')} options={ATS_CURRENCIES} searchThreshold={0} helper="Derived sums include only this currency." />
       </FormRow>
 
       <FormRow>
-        <DateField label="Period start" value={draft.startDate} onChange={set('startDate')} />
-        <DateField label="Period end" value={draft.endDate} onChange={set('endDate')} help="Defaults to the calendar year." error={errors.endDate} />
+        <DateField label="Period start" required value={draft.startDate} onChange={set('startDate')} />
+        <DateField label="Period end" required value={draft.endDate} onChange={set('endDate')} help="Defaults to the calendar year." error={errors.endDate} />
       </FormRow>
 
-      <SectionDivider label="Declared figures" meta="from the official statement · all optional" />
+      <SectionDivider label="Declared figures" meta="from the official statement" />
       <FormRow>
         <ATS_Money label="Total assets" value={draft.declared.totalAssets} onChange={setDec('totalAssets')} currency={draft.baseCurrency} />
         <ATS_Money label="Total liabilities" value={draft.declared.totalLiabilities} onChange={setDec('totalLiabilities')} currency={draft.baseCurrency} />

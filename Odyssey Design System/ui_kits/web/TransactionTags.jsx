@@ -132,7 +132,7 @@ const AddTagModal = ({ onClose, onCreate, onSave, tag = null, siblings = [], sub
       <Field label="Name" value={draft.name} onChange={set('name')}
         placeholder="e.g. Groceries" error={errors.name} helper="Up to 64 characters · must be unique" autoFocus />
       <Field label="Description" value={draft.description} onChange={set('description')}
-        placeholder="Optional — what this tag is for" helper="Up to 256 characters" />
+        placeholder="What this tag is for" helper="Up to 256 characters" />
     </Modal>
   );
 };
