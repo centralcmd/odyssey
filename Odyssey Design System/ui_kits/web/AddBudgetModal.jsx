@@ -84,11 +84,14 @@ const AddBudgetModal = ({ onClose, onCreate, onSave, budget = null }) => {
 
       <CurrencySelect label="Base currency" value={draft.currency} onChange={set('currency')} options={ABM_CURRENCIES} searchThreshold={0} helper="All planned amounts use this currency." />
 
-      <Field
+      <NoteField
         label="Description"
         value={draft.description}
         onChange={set('description')}
         placeholder="Optional — what's this budget for?"
+        rows={3}
+        maxLength={512}
+        optional
       />
     </Modal>
   );

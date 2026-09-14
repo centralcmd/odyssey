@@ -26,40 +26,47 @@ const TxnDetail = ({ t, onNavigate }) => {
   const cp = t.contact && d.contacts ? d.contacts.find(c => c.id === t.contact) : null;
   const files = H.filesForTransaction(t);
   return (
-    <div className="acct-detail">
-      <div className="meta-grid">
-        <MetaTile label="Description" value={t.desc} />
-        <MetaTile label="Account" value={acct ? `${acct.name} ${acct.number}` : '—'} />
-        <MetaTile label="Contact" value={cp ? cp.name : (txnContact(t) || '—')} />
-        <MetaTile label={tags.length === 1 ? 'Tag' : 'Tags'} value={<TagChips tags={tags.map(tg => ({ id: tg.id, label: tg.name }))} />} />
-        <MetaTile label="Status" value={<Chip tone={STATUS_TONE[t.status]} dot>{t.status}</Chip>} />
-        <MetaTile label="Direction" value={t.dir === 'income' ? 'Money in' : 'Money out'} />
-        <MetaTile label="Amount" value={H.signedMoney(t.amount)} mono valueClass={t.dir} />
-        <MetaTile label="Date" value={H.dateLong(t.date)} mono />
-        <MetaTile label="Currency" value={t.currency || 'USD'} mono />
-        {t.statusComment && <MetaTile label="Status comment" value={t.statusComment} />}
-        {(t.externalId || t.internalId) && (
-          <React.Fragment>
-            <MetaTile label="External ID" value={t.externalId || '—'} mono />
-            <MetaTile label="Internal ID" value={t.internalId || '—'} mono />
-          </React.Fragment>
-        )}
-        {t.extraData && <MetaTile label="Extra data" value={t.extraData} />}
+    <RecordBody
+      inTable
+      details={
+        <InfoTileGrid>
+          <InfoTile icon="payments" label="Amount" value={H.signedMoney(t.amount)} className={`tone-${t.dir}`}
+            foot={t.dir === 'income' ? 'Money in' : 'Money out'} />
+          <InfoTile icon="event" label="Date" value={H.dateLong(t.date)} valueVariant="sm" />
+          <InfoTile icon="flag" label="Status" valueVariant="text"
+            value={<Chip tone={STATUS_TONE[t.status]} dot>{t.status}</Chip>}
+            foot={t.statusComment || null} />
+          <InfoTile icon="account_balance" label="Account" valueVariant="text"
+            value={acct ? acct.name : '—'} foot={acct ? acct.number : null} />
+          <InfoTile icon="person" label="Contact" valueVariant="text" value={cp ? cp.name : (txnContact(t) || '—')} />
+          <InfoTile icon="sell" label={tags.length === 1 ? 'Tag' : 'Tags'} valueVariant="text"
+            value={tags.length ? <TagChips tags={tags.map(tg => ({ id: tg.id, label: tg.name }))} /> : '—'} />
+          <InfoTile icon="paid" label="Currency" value={t.currency || 'USD'} />
+          {(t.externalId || t.internalId) && (
+            <React.Fragment>
+              <InfoTile icon="fingerprint" label="External ID" value={t.externalId || '—'} />
+              <InfoTile icon="fingerprint" label="Internal ID" value={t.internalId || '—'} />
+            </React.Fragment>
+          )}
+          {t.extraData && <InfoTile icon="data_object" label="Extra data" wide value={t.extraData} valueVariant="text" />}
+          <InfoTile icon="notes" label="Description" wide value={t.desc} valueVariant="text" />
+        </InfoTileGrid>
+      }
+    >
+      <div className="acct-section">
+        <SectionDivider label="Files" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
+        <div className="acct-table-frame odc-scroll">
+          {files.length === 0 ? (
+            <div className="empty-line">No files attached to this transaction yet.</div>
+          ) : (
+            <InlinePager items={files}>
+              {(pageRows) => <FilesTable files={pageRows} account={acct}
+                kinds={window.OdysseyData.transactionFileTypes} showValidity={false} />}
+            </InlinePager>
+          )}
+        </div>
       </div>
-
-      <Collapsible icon="attach_file" title="Files" count={files.length} defaultOpen={files.length > 0}
-        action={<Button variant="text" color="primary" iconRight="arrow_forward" onClick={() => onNavigate && onNavigate('files')}>View all</Button>}
-      >
-        {files.length === 0 ? (
-          <div className="empty-line">No files attached to this transaction yet.</div>
-        ) : (
-          <InlinePager items={files}>
-            {(pageRows) => <FilesTable files={pageRows} account={acct}
-              kinds={window.OdysseyData.transactionFileTypes} showValidity={false} />}
-          </InlinePager>
-        )}
-      </Collapsible>
-    </div>
+    </RecordBody>
   );
 };
 

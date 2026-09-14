@@ -107,13 +107,15 @@ const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
         </div>
       )}
 
-      <FormRow>
-        <CurrencySelect value={draft.currency} onChange={set('currency')} options={AAM_CURRENCIES} searchThreshold={0} />
-        <DateField label="Opened" value={draft.opened} onChange={set('opened')} help="Defaults to today" />
-      </FormRow>
+      <CurrencySelect value={draft.currency} onChange={set('currency')} options={AAM_CURRENCIES} searchThreshold={0} />
 
-      {editing && (
-        <DateField label="Closed" value={draft.closed} onChange={set('closed')} help="Leave empty while the account is active" />
+      {editing ? (
+        <FormRow>
+          <DateField label="Opened" value={draft.opened} onChange={set('opened')} help="Defaults to today" />
+          <DateField label="Closed" value={draft.closed} onChange={set('closed')} help="Empty while active" />
+        </FormRow>
+      ) : (
+        <DateField label="Opened" value={draft.opened} onChange={set('opened')} help="Defaults to today" />
       )}
 
       <Field
@@ -131,11 +133,14 @@ const AddAccountModal = ({ onClose, onCreate, onSave, account = null }) => {
         help="The bank, broker, or provider that holds this account — add it here if it isn't listed."
       />
 
-      <Field
+      <NoteField
         label="Description"
         value={draft.description}
         onChange={set('description')}
         placeholder="Optional — what's this account for?"
+        rows={3}
+        maxLength={512}
+        optional
       />
     </Modal>
   );

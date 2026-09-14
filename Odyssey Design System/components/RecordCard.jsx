@@ -85,6 +85,23 @@ export function RecordCard({
     className,
   ].filter(Boolean).join(' ');
 
+  // The body is the shared RecordBody component (components/RecordBody.jsx) —
+  // the same surface a RecordTable detail row renders, so the card and the
+  // table expand into an identical panel. Sibling components resolve through
+  // the window namespace (they can't import each other); the inline fallback
+  // is the same markup, for a bundle that lags a freshly-added component.
+  const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
+  const body = NS.RecordBody
+    ? <NS.RecordBody id={bodyId} alert={alert} details={details} content={content}>{children}</NS.RecordBody>
+    : (
+      <div className="odc-record-body" id={bodyId}>
+        {alert}
+        {details}
+        {content}
+        {children}
+      </div>
+    );
+
   const trigger = (
     <button
       type="button"
@@ -162,14 +179,7 @@ export function RecordCard({
           </button>
         </div>
       </div>
-      {isOpen ? (
-        <div className="odc-record-body" id={bodyId}>
-          {alert}
-          {details}
-          {content}
-          {children}
-        </div>
-      ) : null}
+      {isOpen ? body : null}
     </div>
   );
 }

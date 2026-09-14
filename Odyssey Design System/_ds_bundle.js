@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"068d17440abe","components/ContactAliases.jsx":"9fd0f007e13f","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"42bbbd5d8835","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"eb29f4abc14f","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordCard.jsx":"d89c6fe6050d","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"c025efc795cb","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"f48fe06c58a4","ui_kits/web/AddAccountModal.jsx":"af7807f9a07b","ui_kits/web/AddBudgetItemModal.jsx":"987e1fdecb12","ui_kits/web/AddBudgetModal.jsx":"9bf3e6a081f8","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"bb8ebb0c14a6","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"1a6914aab912","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"ed18b3c414ea","ui_kits/web/AddTaxStatementModal.jsx":"949d785d8d15","ui_kits/web/AddTermModal.jsx":"8d2277da3d61","ui_kits/web/AddTransactionModal.jsx":"44c0de9b2f94","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"35f03e541aee","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"6035236a2e3d","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c6f500b4e5dc","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"d430ca57572f","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"7095f7173156","ui_kits/web/TaxStatements.jsx":"83c33dcfda7a","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"e10ced350b10","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"fa3dd0c98218","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"3dfe636cff7e","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"068d17440abe","components/ContactAliases.jsx":"9fd0f007e13f","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"42bbbd5d8835","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"afe378a83b6c","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"eb29f4abc14f","components/DateField.jsx":"43fd98717010","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7ea431a3f867","components/FieldShell.jsx":"1cba9d6b7edc","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"71efaa3a3432","components/MoneyField.jsx":"e344f3ba4867","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"08a3a09d8cc9","components/NumberField.jsx":"98aa50105c9e","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"b0131d9ed58f","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"f417e34a4f2b","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"601ccdb86ccf","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"f225a6f0195c","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"c025efc795cb","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"0949616ada7f","components/TimeField.jsx":"664737851bcc","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b1a118569e96","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"f48fe06c58a4","ui_kits/web/AddAccountModal.jsx":"70786f0463e1","ui_kits/web/AddBudgetItemModal.jsx":"987e1fdecb12","ui_kits/web/AddBudgetModal.jsx":"dd66264bab68","ui_kits/web/AddCalendarEventModal.jsx":"2bb9a7c7350f","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"c06a00e7eede","ui_kits/web/AddContractPartyModal.jsx":"bb8ebb0c14a6","ui_kits/web/AddEstimateModal.jsx":"0a9c30e2b249","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"39c3300eb81f","ui_kits/web/AddPolicyPartyModal.jsx":"1a6914aab912","ui_kits/web/AddRenewalModal.jsx":"5eb8276baa82","ui_kits/web/AddSubscriptionModal.jsx":"ed18b3c414ea","ui_kits/web/AddTaxStatementModal.jsx":"949d785d8d15","ui_kits/web/AddTermModal.jsx":"8d2277da3d61","ui_kits/web/AddTransactionModal.jsx":"44c0de9b2f94","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"35f03e541aee","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"a1440e5c7331","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"c6f500b4e5dc","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"d430ca57572f","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"f0201cfb6259","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"7095f7173156","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"c8c83fa270b6","ui_kits/web/Transactions.jsx":"9a6edb776707","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"fa3dd0c98218","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"e8cdd5b310a2","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -10442,6 +10442,50 @@ function RadioGroup({
 Object.assign(__ds_scope, { RadioGroup });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/RadioGroup.jsx", error: String((e && e.message) || e) }); }
 
+// components/RecordBody.jsx
+try { (() => {
+/**
+ * Odyssey DS — RecordBody
+ * The expanded-record body, extracted from RecordCard so a TABLE-based record
+ * list can render the identical detail surface. A RecordCard's expanded body
+ * and a RecordTable's expanded detail row are the same thing and must look the
+ * same: one padded column of slots, `alert` → `details` → `content` →
+ * `children`, in that fixed order.
+ *
+ * RecordCard composes this for its own body; a table detail panel renders it
+ * directly with `inTable` (drops the card's top divider for the table's own
+ * accent rule and sits on the surface colour inside the zero-padding cell).
+ *
+ * `accent` / `accentSoft` set --rec / --rec-soft, which the InfoTileGrid inside
+ * `details` reads for its tile icon chips — inside a RecordCard they are
+ * already set on the card, so pass them only when rendering standalone.
+ * Styled by .odc-record-body in components.css.
+ */
+function RecordBody({
+  alert,
+  details,
+  content,
+  accent,
+  accentSoft,
+  inTable = false,
+  id,
+  className = '',
+  style,
+  children
+}) {
+  const cls = ['odc-record-body', inTable ? 'in-table' : '', className].filter(Boolean).join(' ');
+  const st = Object.assign({}, style);
+  if (accent) st['--rec'] = accent;
+  if (accentSoft) st['--rec-soft'] = accentSoft;
+  return /*#__PURE__*/React.createElement("div", {
+    className: cls,
+    id: id,
+    style: Object.keys(st).length ? st : undefined
+  }, alert, details, content, children);
+}
+Object.assign(__ds_scope, { RecordBody });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/RecordBody.jsx", error: String((e && e.message) || e) }); }
+
 // components/RecordCard.jsx
 try { (() => {
 /**
@@ -10522,6 +10566,22 @@ function RecordCard({
   if (accent) style['--rec'] = accent;
   if (accentSoft) style['--rec-soft'] = accentSoft;
   const cls = ['odc-record', isOpen ? 'open' : '', dimmed ? 'dimmed' : '', highlight ? 'flash' : '', className].filter(Boolean).join(' ');
+
+  // The body is the shared RecordBody component (components/RecordBody.jsx) —
+  // the same surface a RecordTable detail row renders, so the card and the
+  // table expand into an identical panel. Sibling components resolve through
+  // the window namespace (they can't import each other); the inline fallback
+  // is the same markup, for a bundle that lags a freshly-added component.
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const body = NS.RecordBody ? /*#__PURE__*/React.createElement(NS.RecordBody, {
+    id: bodyId,
+    alert: alert,
+    details: details,
+    content: content
+  }, children) : /*#__PURE__*/React.createElement("div", {
+    className: "odc-record-body",
+    id: bodyId
+  }, alert, details, content, children);
   const trigger = /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: "odc-record-trigger",
@@ -10599,10 +10659,7 @@ function RecordCard({
     onClick: toggle
   }, /*#__PURE__*/React.createElement("span", {
     className: "material-icons"
-  }, "expand_more")))), isOpen ? /*#__PURE__*/React.createElement("div", {
-    className: "odc-record-body",
-    id: bodyId
-  }, alert, details, content, children) : null);
+  }, "expand_more")))), isOpen ? body : null);
 }
 Object.assign(__ds_scope, { RecordCard });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/RecordCard.jsx", error: String((e && e.message) || e) }); }
@@ -21356,21 +21413,26 @@ const AddAccountModal = ({
     className: "aam-group-note"
   }, /*#__PURE__*/React.createElement("span", {
     className: `aam-group-pill ${selType.group}`
-  }, selType.group === 'asset' ? 'Asset' : 'Liability'), /*#__PURE__*/React.createElement("span", null, selType.group === 'asset' ? 'Counts toward your total assets.' : 'Counts toward what you owe.')), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(CurrencySelect, {
+  }, selType.group === 'asset' ? 'Asset' : 'Liability'), /*#__PURE__*/React.createElement("span", null, selType.group === 'asset' ? 'Counts toward your total assets.' : 'Counts toward what you owe.')), /*#__PURE__*/React.createElement(CurrencySelect, {
     value: draft.currency,
     onChange: set('currency'),
     options: AAM_CURRENCIES,
     searchThreshold: 0
-  }), /*#__PURE__*/React.createElement(DateField, {
+  }), editing ? /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
     label: "Opened",
     value: draft.opened,
     onChange: set('opened'),
     help: "Defaults to today"
-  })), editing && /*#__PURE__*/React.createElement(DateField, {
+  }), /*#__PURE__*/React.createElement(DateField, {
     label: "Closed",
     value: draft.closed,
     onChange: set('closed'),
-    help: "Leave empty while the account is active"
+    help: "Empty while active"
+  })) : /*#__PURE__*/React.createElement(DateField, {
+    label: "Opened",
+    value: draft.opened,
+    onChange: set('opened'),
+    help: "Defaults to today"
   }), /*#__PURE__*/React.createElement(Field, {
     label: "Account number",
     value: draft.accountNumber,
@@ -21382,11 +21444,14 @@ const AddAccountModal = ({
     contacts: window.OdysseyData.contacts || [],
     onCreate: (name, kind) => window.OdysseyData.contactOption(window.OdysseyData.createContact(name, kind)),
     help: "The bank, broker, or provider that holds this account \u2014 add it here if it isn't listed."
-  }), /*#__PURE__*/React.createElement(Field, {
+  }), /*#__PURE__*/React.createElement(NoteField, {
     label: "Description",
     value: draft.description,
     onChange: set('description'),
-    placeholder: "Optional \u2014 what's this account for?"
+    placeholder: "Optional \u2014 what's this account for?",
+    rows: 3,
+    maxLength: 512,
+    optional: true
   }));
 };
 Object.assign(window, {
@@ -21639,11 +21704,14 @@ const AddBudgetModal = ({
     options: ABM_CURRENCIES,
     searchThreshold: 0,
     helper: "All planned amounts use this currency."
-  }), /*#__PURE__*/React.createElement(Field, {
+  }), /*#__PURE__*/React.createElement(NoteField, {
     label: "Description",
     value: draft.description,
     onChange: set('description'),
-    placeholder: "Optional \u2014 what's this budget for?"
+    placeholder: "Optional \u2014 what's this budget for?",
+    rows: 3,
+    maxLength: 512,
+    optional: true
   }));
 };
 Object.assign(window, {
@@ -28839,6 +28907,20 @@ const MetaTile = DS.MetaTile;
 // RecordCard / InfoTileGrid / SectionDivider — the record-card pattern, aliased
 // straight from the bundle (no kit fallbacks: the pattern IS the DS component).
 const RecordCard = DS.RecordCard;
+// RecordBody — the expanded-record body shared by RecordCard and the table
+// detail rows, so both expand into the identical panel.
+const RecordBody = DS.RecordBody || (({
+  alert,
+  details,
+  content,
+  inTable = false,
+  className = '',
+  style,
+  children
+}) => /*#__PURE__*/React.createElement("div", {
+  className: ['odc-record-body', inTable ? 'in-table' : '', className].filter(Boolean).join(' '),
+  style: style
+}, alert, details, content, children));
 const InfoTileGrid = DS.InfoTileGrid || (({
   dense = false,
   className = '',
@@ -31555,6 +31637,7 @@ Object.assign(window, {
   MetaTile,
   InfoTile,
   RecordCard,
+  RecordBody,
   InfoTileGrid,
   SectionDivider,
   RecordTable,
@@ -49068,7 +49151,8 @@ const TaxDetail = ({
     items: s.files
   }, pageRows => /*#__PURE__*/React.createElement(FilesTable, {
     files: pageRows,
-    onDelete: removeFile
+    onDelete: removeFile,
+    kinds: TS_D.taxStatementFileTypes
   })))));
 };
 
@@ -50046,74 +50130,81 @@ const TxnDetail = ({
   const tags = d.txnTags(t);
   const cp = t.contact && d.contacts ? d.contacts.find(c => c.id === t.contact) : null;
   const files = H.filesForTransaction(t);
-  return /*#__PURE__*/React.createElement("div", {
-    className: "acct-detail"
+  return /*#__PURE__*/React.createElement(RecordBody, {
+    inTable: true,
+    details: /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "payments",
+      label: "Amount",
+      value: H.signedMoney(t.amount),
+      className: `tone-${t.dir}`,
+      foot: t.dir === 'income' ? 'Money in' : 'Money out'
+    }), /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "event",
+      label: "Date",
+      value: H.dateLong(t.date),
+      valueVariant: "sm"
+    }), /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "flag",
+      label: "Status",
+      valueVariant: "text",
+      value: /*#__PURE__*/React.createElement(Chip, {
+        tone: STATUS_TONE[t.status],
+        dot: true
+      }, t.status),
+      foot: t.statusComment || null
+    }), /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "account_balance",
+      label: "Account",
+      valueVariant: "text",
+      value: acct ? acct.name : '—',
+      foot: acct ? acct.number : null
+    }), /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "person",
+      label: "Contact",
+      valueVariant: "text",
+      value: cp ? cp.name : txnContact(t) || '—'
+    }), /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "sell",
+      label: tags.length === 1 ? 'Tag' : 'Tags',
+      valueVariant: "text",
+      value: tags.length ? /*#__PURE__*/React.createElement(TagChips, {
+        tags: tags.map(tg => ({
+          id: tg.id,
+          label: tg.name
+        }))
+      }) : '—'
+    }), /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "paid",
+      label: "Currency",
+      value: t.currency || 'USD'
+    }), (t.externalId || t.internalId) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "fingerprint",
+      label: "External ID",
+      value: t.externalId || '—'
+    }), /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "fingerprint",
+      label: "Internal ID",
+      value: t.internalId || '—'
+    })), t.extraData && /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "data_object",
+      label: "Extra data",
+      wide: true,
+      value: t.extraData,
+      valueVariant: "text"
+    }), /*#__PURE__*/React.createElement(InfoTile, {
+      icon: "notes",
+      label: "Description",
+      wide: true,
+      value: t.desc,
+      valueVariant: "text"
+    }))
   }, /*#__PURE__*/React.createElement("div", {
-    className: "meta-grid"
-  }, /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Description",
-    value: t.desc
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Account",
-    value: acct ? `${acct.name} ${acct.number}` : '—'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Contact",
-    value: cp ? cp.name : txnContact(t) || '—'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: tags.length === 1 ? 'Tag' : 'Tags',
-    value: /*#__PURE__*/React.createElement(TagChips, {
-      tags: tags.map(tg => ({
-        id: tg.id,
-        label: tg.name
-      }))
-    })
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Status",
-    value: /*#__PURE__*/React.createElement(Chip, {
-      tone: STATUS_TONE[t.status],
-      dot: true
-    }, t.status)
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Direction",
-    value: t.dir === 'income' ? 'Money in' : 'Money out'
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Amount",
-    value: H.signedMoney(t.amount),
-    mono: true,
-    valueClass: t.dir
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Date",
-    value: H.dateLong(t.date),
-    mono: true
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Currency",
-    value: t.currency || 'USD',
-    mono: true
-  }), t.statusComment && /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Status comment",
-    value: t.statusComment
-  }), (t.externalId || t.internalId) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MetaTile, {
-    label: "External ID",
-    value: t.externalId || '—',
-    mono: true
-  }), /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Internal ID",
-    value: t.internalId || '—',
-    mono: true
-  })), t.extraData && /*#__PURE__*/React.createElement(MetaTile, {
-    label: "Extra data",
-    value: t.extraData
-  })), /*#__PURE__*/React.createElement(Collapsible, {
-    icon: "attach_file",
-    title: "Files",
-    count: files.length,
-    defaultOpen: files.length > 0,
-    action: /*#__PURE__*/React.createElement(Button, {
-      variant: "text",
-      color: "primary",
-      iconRight: "arrow_forward",
-      onClick: () => onNavigate && onNavigate('files')
-    }, "View all")
+    className: "acct-section"
+  }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Files",
+    meta: `${files.length} file${files.length === 1 ? '' : 's'}`
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "acct-table-frame odc-scroll"
   }, files.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "empty-line"
   }, "No files attached to this transaction yet.") : /*#__PURE__*/React.createElement(InlinePager, {
@@ -50123,7 +50214,7 @@ const TxnDetail = ({
     account: acct,
     kinds: window.OdysseyData.transactionFileTypes,
     showValidity: false
-  }))));
+  })))));
 };
 
 /* ---------- Reusable transactions table ----------
@@ -61435,6 +61526,8 @@ __ds_ns.PolicyFileTypeSelect = __ds_scope.PolicyFileTypeSelect;
 __ds_ns.ProblemAlert = __ds_scope.ProblemAlert;
 
 __ds_ns.RadioGroup = __ds_scope.RadioGroup;
+
+__ds_ns.RecordBody = __ds_scope.RecordBody;
 
 __ds_ns.RecordCard = __ds_scope.RecordCard;
 

@@ -2632,6 +2632,10 @@
   border-top: 1px solid var(--mud-palette-divider-light, var(--mud-palette-divider));
   padding: var(--space-4, 16px); display: flex; flex-direction: column; gap: 14px;
 }
+/* Same body inside a RecordTable detail cell (.ua-detail-cell, zero padding):
+   the table owns the accent rule that separates row from panel, and the panel
+   sits on the surface colour against the cell's background tint. */
+.odc-record-body.in-table { border-top: 1px solid var(--mud-palette-primary); background: var(--mud-palette-surface); padding: 18px; }
 
 /* Value tone — a tile whose value carries a state colour (an upcoming date in
    info blue, a lapsed one in expense coral) rather than the neutral ink. */

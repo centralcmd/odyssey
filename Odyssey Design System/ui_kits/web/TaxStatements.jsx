@@ -486,7 +486,8 @@ const TaxDetail = ({ s, layout, focusDocs, onNavigate, setStatement }) => {
             <div className="empty-line">No documents attached yet — upload the tax return / assessment PDFs.</div>
           ) : (
             <InlinePager items={s.files}>
-              {(pageRows) => <FilesTable files={pageRows} onDelete={removeFile} />}
+              {(pageRows) => <FilesTable files={pageRows} onDelete={removeFile}
+                kinds={TS_D.taxStatementFileTypes} />}
             </InlinePager>
           )}
         </div>

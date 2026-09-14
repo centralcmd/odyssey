@@ -487,6 +487,10 @@
         "message": "<RadioOption> doesn't accept that prop. Declared props: value, label, disabled."
       },
       {
+        "selector": "JSXOpeningElement[name.name='RecordBody'] > JSXAttribute > JSXIdentifier[name!=/^(?:alert|details|content|accent|accentSoft|inTable|id|className|style|children|key|ref|className|style|children)$/]",
+        "message": "<RecordBody> doesn't accept that prop. Declared props: alert, details, content, accent, accentSoft, inTable, id, className, style, children."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='RecordCardCount'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|value|label|key|ref|className|style|children)$/]",
         "message": "<RecordCardCount> doesn't accept that prop. Declared props: icon, value, label."
       },
@@ -980,6 +984,9 @@
         "replaces": []
       },
       "RadioOption": {
+        "replaces": []
+      },
+      "RecordBody": {
         "replaces": []
       },
       "RecordCardCount": {

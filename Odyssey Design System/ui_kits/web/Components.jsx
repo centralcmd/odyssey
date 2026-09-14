@@ -45,6 +45,11 @@ const MetaTile    = DS.MetaTile;
 // RecordCard / InfoTileGrid / SectionDivider — the record-card pattern, aliased
 // straight from the bundle (no kit fallbacks: the pattern IS the DS component).
 const RecordCard = DS.RecordCard;
+// RecordBody — the expanded-record body shared by RecordCard and the table
+// detail rows, so both expand into the identical panel.
+const RecordBody = DS.RecordBody || (({ alert, details, content, inTable = false, className = '', style, children }) => (
+  <div className={['odc-record-body', inTable ? 'in-table' : '', className].filter(Boolean).join(' ')} style={style}>{alert}{details}{content}{children}</div>
+));
 const InfoTileGrid = DS.InfoTileGrid || (({ dense = false, className = '', style, children }) => (
   <div className={['odc-tilegrid', dense ? 'dense' : '', className].filter(Boolean).join(' ')} style={style}>{children}</div>
 ));
@@ -1392,7 +1397,7 @@ Object.assign(window, {
   ContractTypeSelect,
   BudgetCategoryTypeSelect,
   AddRow,
-  ActionMenu, SortHeader, MetaTile, InfoTile, RecordCard, InfoTileGrid, SectionDivider, RecordTable, SortSelect, SortHelpers, Collapsible, LineChart, Delta, ProblemAlert,
+  ActionMenu, SortHeader, MetaTile, InfoTile, RecordCard, RecordBody, InfoTileGrid, SectionDivider, RecordTable, SortSelect, SortHelpers, Collapsible, LineChart, Delta, ProblemAlert,
   BreakdownTile,
   FileUpload,
   Pager, PageSizeSelect, InlinePager, InfiniteList,
