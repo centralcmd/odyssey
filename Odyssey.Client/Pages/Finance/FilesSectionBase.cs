@@ -72,9 +72,21 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected static bool IsPreviewable(string contentType) =>
         PreviewableContentTypes.Contains(contentType, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Whether the section is running interactively; the file load is skipped off-browser (prerender).
+    /// </summary>
+    /// <remarks>
+    /// A swappable seam, as <c>TransactionListView.InteractiveCheck</c> is: a bUnit host is not a
+    /// browser either, so a hard <c>OperatingSystem.IsBrowser()</c> would leave every host that stages
+    /// changes to these files untestable. It is static on the CLOSED generic type, so a test moves
+    /// <c>FilesSectionBase&lt;ExistingTransactionFile&gt;.InteractiveCheck</c>, must restore it, and
+    /// must not run in parallel with another class that moves it.
+    /// </remarks>
+    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser()) return;
+        if (!InteractiveCheck()) return;
         uploadLimits = await UploadLimits.GetAsync();
         await LoadFilesAsync();
     }

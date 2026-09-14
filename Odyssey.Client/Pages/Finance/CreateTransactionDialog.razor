@@ -206,7 +206,7 @@
                      drop zone. Nothing is written until Save: a removed file is staged and detached on
                      save, and new uploads are queued and attached on save — in both modes, so Cancel
                      leaves the transaction's attachments exactly as they were. -->
-                <OdsFieldShell Label="Attachments" Optional="true" Class="odc-form-grid-wide">
+                <OdsFieldShell Label="Attachments" Optional="true" Help="@AttachmentsHelp" Class="odc-form-grid-wide">
                     @if (IsEdit)
                     {
                         <TransactionFilesSection TransactionId="Transaction!.TransactionId"

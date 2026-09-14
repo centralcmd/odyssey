@@ -110,10 +110,21 @@ public partial class CreateTransactionDialog
     // validates against a sane number rather than zero.
     private UploadLimitsDto _uploadLimits = UploadLimitsCache.Fallback;
 
+    /// <summary>
+    /// Whether the dialog is running interactively; the claim and reference-data load is skipped
+    /// off-browser (prerender).
+    /// </summary>
+    /// <remarks>
+    /// A swappable seam, as <c>TransactionListView.InteractiveCheck</c> is, so bUnit can drive the
+    /// edit-mode save path. Process-wide: a test class that moves it must restore it and run in the
+    /// <c>TransactionDialogCollection</c>.
+    /// </remarks>
+    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+
     protected override async Task OnInitializedAsync()
     {
         _uploadLimits = await UploadLimits.GetAsync();
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
         var user = await AuthenticationStateProvider.GetUserAsync();
@@ -287,9 +298,21 @@ public partial class CreateTransactionDialog
         return Task.CompletedTask;
     }
 
+    // Files already attached and not staged for removal. The cap is per transaction, not per upload
+    // batch, so in edit mode they count against it (as FilesSectionBase counted them when edit mode
+    // uploaded in place). The DTO's own file list is the count the dialog was opened with.
+    private int RetainedFileCount =>
+        Transaction?.TransactionFiles.Count(f => !_stagedRemovals.Contains(f.FileMetadata.Id)) ?? 0;
+
+    // Edit mode, no upload claim and nothing left attached: the Attachments shell would otherwise be a
+    // bare label with nothing under it.
+    private string? AttachmentsHelp =>
+        IsEdit && !CanUploadFiles && RetainedFileCount == 0 ? "No files attached to this transaction." : null;
+
     // Controlled list — enforce the allow-list, per-file size cap and file-count cap.
     private void OnFilesChanged(IReadOnlyList<OdsUploadFile> files)
     {
+        var capacity = MaxFileCount - RetainedFileCount;
         var kept = new List<OdsUploadFile>();
         foreach (var f in files)
         {
@@ -304,8 +327,11 @@ public partial class CreateTransactionDialog
                 Snackbar.Add($"{f.Name}: exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.", Severity.Warning);
                 continue;
             }
-            if (kept.Count >= MaxFileCount)
+            if (kept.Count >= capacity)
+            {
+                Snackbar.Add($"Cannot exceed {MaxFileCount} files per transaction.", Severity.Warning);
                 break;
+            }
             kept.Add(f);
         }
         _pendingFiles = kept;
