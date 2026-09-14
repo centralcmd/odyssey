@@ -48,20 +48,41 @@ public class ContactDeleteTests(ApiStackFixture fixture)
 
         var client = await fixture.CreateAuthenticatedClientAsync(Admin.Email, Admin.Password);
         var insurerId = await CreateOrganizationContactAsync(client, "E2E Insurer");
-        var policyId = await CreateInsurancePolicyAsync(client, insurerId, "E2E Policy");
+        Guid? policyId = null;
 
-        // Former required + ON DELETE RESTRICT FK, now enforced by IContactReferenceGuard: the guard
-        // sees the policy and ContactService.Delete throws a DomainConflictException → 409.
-        var delete = await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contacts/{insurerId}");
-        Assert.Equal(HttpStatusCode.Conflict, delete.StatusCode);
+        try
+        {
+            var policy = await CreateInsurancePolicyAsync(client, insurerId, "E2E Policy");
+            policyId = policy.Id;
 
-        // The contact is untouched — the block happened before any deletion.
-        var stillThere = await client.GetAsync($"/api/contacts/{insurerId}");
-        Assert.Equal(HttpStatusCode.OK, stillThere.StatusCode);
+            // The API ignores an unknown property, so a stale request shape creates a policy with no
+            // insurer and the 409 below passes or fails for the wrong reason. Prove the link exists first.
+            Assert.Equal([insurerId], policy.InsurerIds);
 
-        // Cleanup: drop the policy, then the now-unreferenced contact.
-        await fixture.DeleteWithAntiforgeryAsync(client, $"/api/insurance-policies/{policyId}");
-        await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contacts/{insurerId}");
+            // ContactController checks IContactReferenceGuard's insurance-link blockers before deleting,
+            // in front of the RESTRICT key on InsurancePolicyInsurer, so the caller gets an explained 409
+            // rather than a constraint violation.
+            var delete = await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contacts/{insurerId}");
+            Assert.Equal(HttpStatusCode.Conflict, delete.StatusCode);
+
+            using var problem = await delete.Content.ReadFromJsonAsync<JsonDocument>();
+            Assert.Equal(1, problem!.RootElement.GetProperty("insuranceLinks").GetProperty("totalLinks").GetInt32());
+
+            // The contact is untouched — the block happened before any deletion.
+            var stillThere = await client.GetAsync($"/api/contacts/{insurerId}");
+            Assert.Equal(HttpStatusCode.OK, stillThere.StatusCode);
+        }
+        finally
+        {
+            // Cleanup even on failure — this runs against a shared stack. Drop the policy first so the
+            // contact is no longer referenced.
+            if (policyId is not null)
+            {
+                await fixture.DeleteWithAntiforgeryAsync(client, $"/api/insurance-policies/{policyId}");
+            }
+
+            await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contacts/{insurerId}");
+        }
     }
 
     [SkippableFact]
@@ -97,17 +118,22 @@ public class ContactDeleteTests(ApiStackFixture fixture)
         return IdFromLocation(response);
     }
 
-    private async Task<Guid> CreateInsurancePolicyAsync(HttpClient client, Guid insurerId, string name)
+    private async Task<(Guid Id, List<Guid> InsurerIds)> CreateInsurancePolicyAsync(
+        HttpClient client, Guid insurerId, string name)
     {
         var response = await fixture.PostWithAntiforgeryAsync(client, "/api/insurance-policies", new
         {
             name,
-            insurerId,
+            insurerIds = new[] { insurerId },
             type = InsurancePolicyType.Other,
         });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         using var doc = await response.Content.ReadFromJsonAsync<JsonDocument>();
-        return doc!.RootElement.GetProperty("insurancePolicyId").GetGuid();
+        var root = doc!.RootElement;
+
+        return (
+            root.GetProperty("insurancePolicyId").GetGuid(),
+            [.. root.GetProperty("insurers").EnumerateArray().Select(insurer => insurer.GetProperty("contactId").GetGuid())]);
     }
 
     private async Task<Guid> CreateAccountAsync(HttpClient client, Guid custodianId, string name)
