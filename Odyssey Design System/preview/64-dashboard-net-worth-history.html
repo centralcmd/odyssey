@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Net-worth chart states" subtitle="The dashboard chart's ten states — loading, the three marked-series presentations, four cause-specific empty reasons, and the two partial-failure rules." viewport="700x760" -->
+<html lang="en" data-theme="dark"><head>
+  <title>Odyssey · Net-worth chart states</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+  <style>
+    .lead { font: 400 12px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 62ch; margin: 0 0 16px; text-wrap: pretty; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; vertical-align: top; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--mud-palette-divider); }
+    thead th { font: 500 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding-bottom: 8px; }
+    tbody th { font: 400 12px/1.45 var(--font-mono); color: var(--mud-palette-text-primary); white-space: nowrap; width: 218px; }
+    td { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    td q { color: var(--mud-palette-text-primary); font-style: normal; quotes: '"' '"'; }
+    .sect { font: 500 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-text); padding-top: 18px; }
+  </style>
+
+  <div class="label" style="margin-bottom:8px">Dashboard · Net worth</div>
+  <p class="lead">Every series point is reconstructed from stored data as of that point's instant. There is no fallback series: when the data is not there, the chart is not there, and the copy names which of the four causes applies rather than saying "no data".</p>
+
+  <table>
+    <thead><tr><th scope="col">State</th><th scope="col">Presentation</th></tr></thead>
+    <tbody>
+      <tr><th colspan="2" class="sect">Loading</th></tr>
+      <tr><th scope="row">Loading</th><td><code>Skeleton</code>, held until both the history and the accounts call settle.</td></tr>
+
+      <tr><th colspan="2" class="sect">Points</th></tr>
+      <tr><th scope="row">None flagged</th><td>Chart, head figure and the delta badge — an absolute money difference between the endpoints, not a percentage.</td></tr>
+      <tr><th scope="row">Some understated</th><td>Hollow markers, dashed adjoining segments, a note sentence naming the account and period. The delta is withheld when an endpoint is understated.</td></tr>
+      <tr><th scope="row">Some revalued</th><td>Ticked markers and their own note sentence. A revaluation is a real movement, so the delta still renders.</td></tr>
+
+      <tr><th colspan="2" class="sect">Empty — the cause is on the response</th></tr>
+      <tr><th scope="row">NotBuilt</th><td><q>Net-worth history is not available yet.</q></td></tr>
+      <tr><th scope="row">NoAccounts</th><td><q>No accounts to chart yet.</q></td></tr>
+      <tr><th scope="row">NothingConvertible</th><td><q>Net worth could not be converted to NOK for any period.</q></td></tr>
+      <tr><th scope="row">WindowBeforeFirstAccount</th><td><q>No accounts existed in this period.</q></td></tr>
+
+      <tr><th colspan="2" class="sect">Failure</th></tr>
+      <tr><th scope="row">History call failed</th><td><q>Net-worth history could not be loaded.</q> — plus the header problem rollup, never a toast.</td></tr>
+      <tr><th scope="row">Totals failed, history fine</th><td>The chart withholds unless the money <em>format</em> resolved. A figure must never render in the main currency's amount under another currency's symbol.</td></tr>
+      <tr><th scope="row">No <code>accounts.read</code></th><td>The section is not rendered at all.</td></tr>
+    </tbody>
+  </table>
+</body></html>

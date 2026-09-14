@@ -395,8 +395,8 @@
         "message": "<JournalPhoto> doesn't accept that prop. Declared props: id, photoId, fileId, name, src."
       },
       {
-        "selector": "JSXOpeningElement[name.name='LineChartPoint'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|key|ref|className|style|children)$/]",
-        "message": "<LineChartPoint> doesn't accept that prop. Declared props: label, value."
+        "selector": "JSXOpeningElement[name.name='LineChartPoint'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|kind|key|ref|className|style|children)$/]",
+        "message": "<LineChartPoint> doesn't accept that prop. Declared props: label, value, kind."
       },
       {
         "selector": "JSXOpeningElement[name.name='MatchIndicator'] > JSXAttribute > JSXIdentifier[name!=/^(?:state|confidence|name|applyLabel|onApply|onDismiss|createName|createLabel|onCreate|size|className|id|key|ref|className|style|children)$/]",

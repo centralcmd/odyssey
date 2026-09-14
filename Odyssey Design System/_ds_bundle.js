@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"0d19cafaeb2a","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"b6392757f0f9","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"d1734e9c9e28","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"7ead633fe94a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"2e56ec542437","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"13fe90661c91","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"9a6edb776707","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a520a2c04a06","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"0d19cafaeb2a","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"b6392757f0f9","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"d1734e9c9e28","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"7ead633fe94a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"2e56ec542437","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"13fe90661c91","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"9a6edb776707","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a520a2c04a06","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -7788,16 +7788,61 @@ try { (() => {
  * on the right) over an SVG line/area plot with horizontal gridlines and
  * value / category axis labels.
  *
- * Data is `series: { label, value }[]` (oldest → newest). Pass `format` for the
- * headline + axis numbers (e.g. a money formatter); `axisFormat` overrides the
- * y-axis ticks with a compact variant. `cumulative` plots the running total.
- * `showDelta` adds a latest-vs-first delta (mint up / coral down) with
- * `deltaSuffix` text (e.g. "all-time" or "vs 2024"). A single point renders as
- * a dot; an empty series renders the `emptyLabel`.
+ * Data is `series: { label, value, kind? }[]` (oldest → newest). Pass `format`
+ * for the headline + axis numbers (e.g. a money formatter); `axisFormat`
+ * overrides the y-axis ticks with a compact variant. `cumulative` plots the
+ * running total. `showDelta` adds a latest-vs-first delta (mint up / coral
+ * down) with `deltaSuffix` text. A single point renders as a dot; an empty
+ * series renders the `emptyLabel`.
+ *
+ * Reconstructed series (net-worth history) need three things a plain trend
+ * card doesn't:
+ *   • **Negatives.** The value domain drops below zero when it has to. The
+ *     area then anchors at `sy(0)` instead of the plot floor and a labelled
+ *     zero gridline is drawn. A domain that never goes negative keeps the
+ *     old floor-anchored fill and the old four gridlines exactly.
+ *   • **Point kinds**, not a flag: `normal` (measured) · `partial`
+ *     (understated — a contributing account had no exchange rate) ·
+ *     `revalued` (a real step, an estimate took effect). Shape and stroke
+ *     carry the meaning, never fill colour: filled dot · hollow dot with
+ *     dashed adjoining segments · filled dot with a vertical tick. A partial
+ *     **endpoint** suppresses the delta; a revalued one does not.
+ *   • **A text equivalent** — `textEquivalent` renders a visually-hidden
+ *     table of every point and its state. Opt-in, so existing consumers'
+ *     assistive-tech output is unchanged.
+ *
+ * `sub` is a node, so a consumer can hand it note sentences rather than a
+ * single caption string. `xTickEvery="auto"` picks a stride that never leaves
+ * two adjacent labels at the tail.
  *
  * Pure SVG + tokens (default stroke --chart-1) so it re-themes light/dark.
  * Styled by .odc-lc / .odc-line-svg in components.css.
  */
+const LINE_CHART_KINDS = {
+  normal: {
+    label: 'Measured',
+    desc: 'Measured'
+  },
+  partial: {
+    label: 'Understated',
+    desc: 'Understated — an account had no exchange rate for this period'
+  },
+  revalued: {
+    label: 'Revalued',
+    desc: 'Revalued — an estimate took effect in this period'
+  }
+};
+
+/** §3.5 stride rule: start at ceil(n / 8), then step up until the tail label
+ *  and the stride's last label are not adjacent. Exported shape is the
+ *  `xTickEvery="auto"` mode; the maths lives here so it is testable. */
+function lineChartTickEvery(n) {
+  if (n <= 1) return 1;
+  let every = Math.max(1, Math.ceil(n / 8));
+  let guard = 0;
+  while ((n - 1) % every === 1 && guard++ < n) every += 1;
+  return every;
+}
 function LineChart({
   series = [],
   color = 'var(--chart-1)',
@@ -7811,6 +7856,9 @@ function LineChart({
   figure,
   xTickEvery = 1,
   area = true,
+  markLegend = true,
+  textEquivalent = false,
+  textEquivalentLabel = 'Period',
   ariaLabel,
   className = '',
   emptyLabel = 'No data yet.'
@@ -7819,7 +7867,8 @@ function LineChart({
   const fmtAxis = axisFormat || format;
 
   // Build the plotted points (oldest → newest), applying the running total in
-  // cumulative mode.
+  // cumulative mode. Partial and revalued points are plotted and marked, never
+  // dropped — nulling one would move the delta's endpoints.
   const pts = [];
   let acc = 0;
   for (const p of series) {
@@ -7827,9 +7876,17 @@ function LineChart({
     acc += p.value;
     pts.push({
       label: p.label,
-      value: cumulative ? acc : p.value
+      value: cumulative ? acc : p.value,
+      kind: p.kind === 'partial' || p.kind === 'revalued' ? p.kind : 'normal',
+      assets: p.assets,
+      liabilities: p.liabilities
     });
   }
+  const first = pts[0],
+    last = pts[pts.length - 1];
+  // V15 — an understated endpoint makes the difference meaningless. A revalued
+  // endpoint is a real movement and does not suppress it.
+  const deltaOk = showDelta && pts.length > 1 && first.kind !== 'partial' && last.kind !== 'partial';
   const head = /*#__PURE__*/React.createElement("div", {
     className: "odc-lc-head"
   }, /*#__PURE__*/React.createElement("div", null, title ? /*#__PURE__*/React.createElement("div", {
@@ -7840,8 +7897,8 @@ function LineChart({
     className: "odc-lc-figure"
   }, /*#__PURE__*/React.createElement("div", {
     className: "odc-lc-num"
-  }, figure != null ? figure : format(pts[pts.length - 1].value)), showDelta && pts.length > 1 && (() => {
-    const delta = pts[pts.length - 1].value - pts[0].value;
+  }, figure != null ? figure : format(last.value)), deltaOk && (() => {
+    const delta = last.value - first.value;
     return /*#__PURE__*/React.createElement("div", {
       className: `odc-lc-delta ${delta >= 0 ? 'income' : 'expense'}`
     }, delta >= 0 ? '+' : '−', format(Math.abs(delta)), deltaSuffix ? ` ${deltaSuffix}` : '');
@@ -7862,14 +7919,32 @@ function LineChart({
   const lo = Math.min(...vals),
     hi = Math.max(...vals);
   const span = hi - lo || Math.abs(hi) || 1;
-  const yMin = Math.max(0, lo - span * 0.18),
-    yMax = hi + span * 0.18;
+  const pad = span * 0.18;
+  // The floor clamp at 0 is kept for series that never go negative, so every
+  // existing consumer renders byte-identically; a negative low drops the floor.
+  const yMin = lo < 0 ? lo - pad : Math.max(0, lo - pad);
+  const yMax = hi + pad;
+  const straddles = yMin < 0 && yMax > 0;
   const sx = i => single ? (x0 + x1) / 2 : x0 + i * (x1 - x0) / (pts.length - 1);
   const sy = v => yBot - (v - yMin) / (yMax - yMin || 1) * (yBot - yTop);
+  const baseline = straddles ? sy(0) : yBot;
   const linePts = pts.map((p, i) => `${sx(i).toFixed(1)},${sy(p.value).toFixed(1)}`).join(' ');
-  const areaPath = `M ${sx(0).toFixed(1)} ${yBot} ` + pts.map((p, i) => `L ${sx(i).toFixed(1)} ${sy(p.value).toFixed(1)}`).join(' ') + ` L ${sx(pts.length - 1).toFixed(1)} ${yBot} Z`;
-  const gridVals = [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
+  const areaPath = `M ${sx(0).toFixed(1)} ${baseline.toFixed(1)} ` + pts.map((p, i) => `L ${sx(i).toFixed(1)} ${sy(p.value).toFixed(1)}`).join(' ') + ` L ${sx(pts.length - 1).toFixed(1)} ${baseline.toFixed(1)} Z`;
+
+  // Four evenly-spaced values, as before — unless the domain straddles zero,
+  // in which case zero is a gridline of its own and each half is halved.
+  const gridVals = straddles ? [yMax, yMax / 2, 0, yMin / 2, yMin] : [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
+  const every = xTickEvery === 'auto' ? lineChartTickEvery(pts.length) : xTickEvery || 1;
+  const anyMarked = pts.some(p => p.kind !== 'normal');
   const fillId = `odc-lc-fill-${uid.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const segments = [];
+  for (let i = 1; i < pts.length; i++) {
+    const understated = pts[i - 1].kind === 'partial' || pts[i].kind === 'partial';
+    segments.push({
+      i,
+      understated
+    });
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: `odc-lc${className ? ' ' + className : ''}`
   }, head, /*#__PURE__*/React.createElement("svg", {
@@ -7881,7 +7956,7 @@ function LineChart({
   }, /*#__PURE__*/React.createElement("g", {
     stroke: "var(--chart-grid)",
     strokeWidth: "1"
-  }, gridVals.map((v, i) => /*#__PURE__*/React.createElement("line", {
+  }, gridVals.map((v, i) => v === 0 ? null : /*#__PURE__*/React.createElement("line", {
     key: i,
     x1: x0,
     y1: sy(v).toFixed(1),
@@ -7893,10 +7968,11 @@ function LineChart({
     key: i,
     x: x0 - 12,
     y: (sy(v) + 4).toFixed(1),
-    textAnchor: "end"
+    textAnchor: "end",
+    className: v === 0 ? 'odc-lc-axis-zero' : undefined
   }, fmtAxis(Math.round(v))))), /*#__PURE__*/React.createElement("g", {
     className: "odc-lc-axis"
-  }, pts.map((p, i) => (i % xTickEvery === 0 || i === pts.length - 1) && /*#__PURE__*/React.createElement("text", {
+  }, pts.map((p, i) => (i % every === 0 || i === pts.length - 1) && /*#__PURE__*/React.createElement("text", {
     key: i,
     x: sx(i).toFixed(1),
     y: yBot + 26,
@@ -7915,23 +7991,138 @@ function LineChart({
     offset: "100%",
     stopColor: color,
     stopOpacity: "0"
-  }))), area && !single && /*#__PURE__*/React.createElement("path", {
+  }))), area && !single && (straddles ? /*#__PURE__*/React.createElement("path", {
+    d: areaPath,
+    fill: color,
+    fillOpacity: "0.14"
+  }) : /*#__PURE__*/React.createElement("path", {
     d: areaPath,
     fill: `url(#${fillId})`
-  }), !single && /*#__PURE__*/React.createElement("polyline", {
+  })), straddles && /*#__PURE__*/React.createElement("line", {
+    className: "odc-lc-zero",
+    x1: x0,
+    y1: sy(0).toFixed(1),
+    x2: x1,
+    y2: sy(0).toFixed(1)
+  }), !single && !anyMarked && /*#__PURE__*/React.createElement("polyline", {
     points: linePts,
     fill: "none",
     stroke: color,
     strokeWidth: "2.4",
     strokeLinejoin: "round",
     strokeLinecap: "round"
-  }), pts.map((p, i) => /*#__PURE__*/React.createElement("circle", {
-    key: i,
-    cx: sx(i).toFixed(1),
-    cy: sy(p.value).toFixed(1),
-    r: i === pts.length - 1 ? 4 : 2.5,
+  }), !single && anyMarked && segments.map(s => /*#__PURE__*/React.createElement("line", {
+    key: s.i,
+    x1: sx(s.i - 1).toFixed(1),
+    y1: sy(pts[s.i - 1].value).toFixed(1),
+    x2: sx(s.i).toFixed(1),
+    y2: sy(pts[s.i].value).toFixed(1),
+    stroke: color,
+    strokeWidth: "2.4",
+    strokeLinecap: "round",
+    strokeDasharray: s.understated ? '2 5' : undefined
+  })), pts.map((p, i) => {
+    const cx = +sx(i).toFixed(1),
+      cy = +sy(p.value).toFixed(1);
+    const r = i === pts.length - 1 ? 4 : 2.5;
+    if (p.kind === 'partial') {
+      return /*#__PURE__*/React.createElement("circle", {
+        key: i,
+        cx: cx,
+        cy: cy,
+        r: r + 1.4,
+        fill: "var(--mud-palette-surface)",
+        stroke: color,
+        strokeWidth: "1.8"
+      });
+    }
+    if (p.kind === 'revalued') {
+      return /*#__PURE__*/React.createElement("g", {
+        key: i
+      }, /*#__PURE__*/React.createElement("line", {
+        x1: cx,
+        y1: cy - 8,
+        x2: cx,
+        y2: cy + 8,
+        stroke: color,
+        strokeWidth: "1.6"
+      }), /*#__PURE__*/React.createElement("circle", {
+        cx: cx,
+        cy: cy,
+        r: r,
+        fill: color
+      }));
+    }
+    return /*#__PURE__*/React.createElement("circle", {
+      key: i,
+      cx: cx,
+      cy: cy,
+      r: r,
+      fill: color
+    });
+  })), markLegend && anyMarked && /*#__PURE__*/React.createElement("div", {
+    className: "odc-lc-marks"
+  }, pts.some(p => p.kind === 'partial') && /*#__PURE__*/React.createElement("span", {
+    className: "odc-lc-mark"
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "26",
+    height: "10",
+    viewBox: "0 0 26 10",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("line", {
+    x1: "0",
+    y1: "5",
+    x2: "26",
+    y2: "5",
+    stroke: color,
+    strokeWidth: "2",
+    strokeDasharray: "2 5"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "13",
+    cy: "5",
+    r: "3.6",
+    fill: "var(--mud-palette-surface)",
+    stroke: color,
+    strokeWidth: "1.6"
+  })), "Understated"), pts.some(p => p.kind === 'revalued') && /*#__PURE__*/React.createElement("span", {
+    className: "odc-lc-mark"
+  }, /*#__PURE__*/React.createElement("svg", {
+    width: "26",
+    height: "10",
+    viewBox: "0 0 26 10",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("line", {
+    x1: "0",
+    y1: "5",
+    x2: "26",
+    y2: "5",
+    stroke: color,
+    strokeWidth: "2"
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: "13",
+    y1: "0",
+    x2: "13",
+    y2: "10",
+    stroke: color,
+    strokeWidth: "1.6"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "13",
+    cy: "5",
+    r: "2.6",
     fill: color
-  }))));
+  })), "Revalued")), textEquivalent && /*#__PURE__*/React.createElement("table", {
+    className: "odc-sr-only"
+  }, title ? /*#__PURE__*/React.createElement("caption", null, title) : null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, textEquivalentLabel), /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, "Value"), /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, "State"))), /*#__PURE__*/React.createElement("tbody", null, pts.map((p, i) => /*#__PURE__*/React.createElement("tr", {
+    key: i
+  }, /*#__PURE__*/React.createElement("th", {
+    scope: "row"
+  }, p.label), /*#__PURE__*/React.createElement("td", null, format(p.value)), /*#__PURE__*/React.createElement("td", null, LINE_CHART_KINDS[p.kind].desc))))));
 }
 Object.assign(__ds_scope, { LineChart });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/LineChart.jsx", error: String((e && e.message) || e) }); }
@@ -36760,131 +36951,85 @@ try { (() => {
 /* Dashboard — home view. Standard page header + a net-worth line chart +
    a summary stat band + the shared transactions table showing recent activity. */
 
-/* ---- Net-worth-over-time line chart (sum of all balances, since inception) ---- */
+/* ---- Net worth over time -------------------------------------------------
+   The series comes from the net-worth-history endpoint (net-worth-data.js):
+   every point is reconstructed from stored data as of that point's instant, so
+   the line can fall, can go negative, and ends on the same figure the accounts
+   rollup shows. Nothing is interpolated and no point is scaled by today's
+   number.
+
+   Two point kinds are disclosed rather than smoothed. An **understated** point
+   (a contributing account had no exchange rate that period) is drawn hollow on
+   a dashed segment and withholds the delta; a **revalued** point (an estimate
+   took effect) is drawn with a tick and keeps it. Both get a note sentence —
+   the marking never rests on colour alone.
+
+   `emptyReason` is the only discriminator for an empty series, so the copy can
+   name the cause instead of saying "no data". ------------------------------ */
 const NetWorthChart = () => {
   const H = window.OdysseyHelpers;
   const d = window.OdysseyData;
   const current = d.accounts.reduce((s, a) => s + a.balance, 0);
-  const startYear = Math.min(...d.accounts.map(a => +a.opened.slice(0, 4)));
-  const endYear = 2026;
-
-  // Net-worth growth as a fraction of today's figure, anchored to land exactly on `current`.
-  const curve = [0.017, 0.069, 0.137, 0.230, 0.338, 0.446, 0.546, 0.589, 0.748, 0.884, 1.0];
-  const years = [];
-  for (let y = startYear; y <= endYear; y++) years.push(y);
-  const series = years.map((y, i) => ({
-    y,
-    v: Math.round(current * (curve[i] != null ? curve[i] : (i + 1) / years.length))
-  }));
-  const x0 = 64,
-    x1 = 968,
-    yTop = 28,
-    yBot = 212;
-  const vals = series.map(p => p.v);
-  const lo = Math.min(...vals),
-    hi = Math.max(...vals);
-  const yMin = Math.max(0, lo - (hi - lo) * 0.12),
-    yMax = hi + (hi - lo) * 0.12;
-  const sx = i => x0 + i * (x1 - x0) / (series.length - 1);
-  const sy = v => yBot - (v - yMin) / (yMax - yMin) * (yBot - yTop);
-  const linePts = series.map((p, i) => `${sx(i).toFixed(1)},${sy(p.v).toFixed(1)}`).join(' ');
-  const areaPath = `M ${sx(0).toFixed(1)} ${yBot} ` + series.map((p, i) => `L ${sx(i).toFixed(1)} ${sy(p.v).toFixed(1)}`).join(' ') + ` L ${sx(series.length - 1).toFixed(1)} ${yBot} Z`;
-  const gridVals = [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
-  const kLabel = v => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`;
-  const delta = current - series[0].v;
-
-  // Prefer the design-system LineChart once the bundle exposes it (the kit's
-  // DS-or-local-fallback convention). The local SVG below is the fallback.
+  const history = d.buildNetWorthHistory(current);
+  const currency = history.mainCurrencyCode;
   const DSLineChart = (window.OdysseyDesignSystem_d5aa51 || {}).LineChart;
-  if (DSLineChart) {
-    return /*#__PURE__*/React.createElement(DSLineChart, {
-      title: "Net worth",
-      sub: `Since ${startYear} · USD`,
-      series: series.map(p => ({
-        label: `'${String(p.y).slice(2)}`,
-        value: p.v
-      })),
-      color: "var(--chart-1)",
-      format: v => H.money(v),
-      axisFormat: kLabel,
-      showDelta: true,
-      deltaSuffix: "all-time",
-      xTickEvery: 2,
-      ariaLabel: "Net worth over time"
-    });
+  const kLabel = v => {
+    const k = Math.round(v / 1000);
+    return (v < 0 ? '−$' : '$') + Math.abs(k) + 'k';
+  };
+  const money = v => v < 0 ? '−' + H.money(Math.abs(v)) : H.money(v);
+  const pts = history.points;
+  const emptyCopy = history.emptyReason ? (d.netWorthEmptyCopy[history.emptyReason] || '').replace('{currency}', currency) : null;
+  const partial = pts.filter(p => p.unconvertedAccountCount > 0);
+  const revalued = pts.filter(p => p.revaluedAccountCount > 0);
+  const unconverted = history.unconvertedAccounts;
+
+  // The sub-line is the caption plus one sentence per disclosure. Every
+  // condition the markers show is also stated in text.
+  const sub = /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", null, pts.length, " monthly points \xB7 ", pts[0] ? pts[0].label : '', " \u2013 ", pts.length ? pts[pts.length - 1].label : '', " \xB7 ", currency), partial.length > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "odc-lc-note"
+  }, partial.length === 1 ? `${partial[0].label} is` : `${partial.length} periods are`, " understated", unconverted.length === 1 ? ` — ${unconverted[0].name} (${unconverted[0].currencyCode}) had no exchange rate` : ' — an account had no exchange rate', ".", ' ', "The change since the first period is withheld while an endpoint is understated."), revalued.length > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "odc-lc-note"
+  }, revalued.length === 1 ? `${revalued[0].label} steps` : `${revalued.length} periods step`, " because an account estimate took effect \u2014 a real movement, not a correction."));
+  if (!DSLineChart) {
+    return /*#__PURE__*/React.createElement(Card, {
+      className: "chart-card"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "chart-head"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "chart-ttl"
+    }, "Net worth"), /*#__PURE__*/React.createElement("div", {
+      className: "chart-sub"
+    }, pts.length, " monthly points \xB7 ", currency)), /*#__PURE__*/React.createElement("div", {
+      className: "chart-figure"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "chart-figure-num mono"
+    }, money(current)))), /*#__PURE__*/React.createElement("div", {
+      className: "chart-sub",
+      style: {
+        padding: '24px 0 8px'
+      }
+    }, "Net-worth history could not be loaded."));
   }
-  return /*#__PURE__*/React.createElement(Card, {
-    className: "chart-card"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "chart-head"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "chart-ttl"
-  }, "Net worth"), /*#__PURE__*/React.createElement("div", {
-    className: "chart-sub"
-  }, "Since ", startYear, " \xB7 USD")), /*#__PURE__*/React.createElement("div", {
-    className: "chart-figure"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "chart-figure-num mono"
-  }, H.money(current)), /*#__PURE__*/React.createElement("div", {
-    className: "chart-figure-delta mono income"
-  }, "+", H.money(delta), " all-time"))), /*#__PURE__*/React.createElement("svg", {
-    className: "line-svg",
-    viewBox: "0 0 1000 252",
-    preserveAspectRatio: "xMidYMid meet"
-  }, /*#__PURE__*/React.createElement("g", {
-    stroke: "var(--chart-grid)",
-    strokeWidth: "1"
-  }, gridVals.map((v, i) => /*#__PURE__*/React.createElement("line", {
-    key: i,
-    x1: x0,
-    y1: sy(v).toFixed(1),
-    x2: x1,
-    y2: sy(v).toFixed(1)
-  }))), /*#__PURE__*/React.createElement("g", {
-    className: "line-axis"
-  }, gridVals.map((v, i) => /*#__PURE__*/React.createElement("text", {
-    key: i,
-    x: x0 - 12,
-    y: (sy(v) + 4).toFixed(1),
-    textAnchor: "end"
-  }, kLabel(v)))), /*#__PURE__*/React.createElement("g", {
-    className: "line-axis"
-  }, series.map((p, i) => (i % 2 === 0 || i === series.length - 1) && /*#__PURE__*/React.createElement("text", {
-    key: i,
-    x: sx(i).toFixed(1),
-    y: yBot + 26,
-    textAnchor: "middle"
-  }, `'${String(p.y).slice(2)}`))), /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("linearGradient", {
-    id: "netFill",
-    x1: "0",
-    y1: "0",
-    x2: "0",
-    y2: "1"
-  }, /*#__PURE__*/React.createElement("stop", {
-    offset: "0%",
-    stopColor: "var(--chart-1)",
-    stopOpacity: "0.26"
-  }), /*#__PURE__*/React.createElement("stop", {
-    offset: "100%",
-    stopColor: "var(--chart-1)",
-    stopOpacity: "0"
-  }))), /*#__PURE__*/React.createElement("path", {
-    d: areaPath,
-    fill: "url(#netFill)"
-  }), /*#__PURE__*/React.createElement("polyline", {
-    points: linePts,
-    fill: "none",
-    stroke: "var(--chart-1)",
-    strokeWidth: "2.4",
-    strokeLinejoin: "round",
-    strokeLinecap: "round"
-  }), series.map((p, i) => /*#__PURE__*/React.createElement("circle", {
-    key: i,
-    cx: sx(i).toFixed(1),
-    cy: sy(p.v).toFixed(1),
-    r: i === series.length - 1 ? 4 : 2.5,
-    fill: "var(--chart-1)"
-  }))));
+  return /*#__PURE__*/React.createElement(DSLineChart, {
+    title: "Net worth",
+    sub: history.emptyReason ? `Monthly · ${currency}` : sub,
+    series: pts.map(p => ({
+      label: p.label,
+      value: p.netWorth,
+      kind: p.kind
+    })),
+    color: "var(--chart-1)",
+    format: money,
+    axisFormat: kLabel,
+    showDelta: true,
+    deltaSuffix: pts.length ? `since ${pts[0].label}` : undefined,
+    xTickEvery: "auto",
+    textEquivalent: true,
+    textEquivalentLabel: "Month",
+    emptyLabel: emptyCopy,
+    ariaLabel: `Net worth over time, ${pts.length} monthly points from ${pts.length ? pts[0].label : ''} to ${pts.length ? pts[pts.length - 1].label : ''}`
+  });
 };
 const Dashboard = ({
   onNavigate
@@ -58981,6 +59126,193 @@ ${rev.note}`;
   };
 })();
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/legal-data.js", error: String((e && e.message) || e) }); }
+
+// ui_kits/web/net-worth-data.js
+try { (() => {
+/* Net-worth history — the reconstructed series behind the dashboard chart.
+   Mirrors GET /api/accounts/net-worth-history: every point is a figure as of
+   that point's instant, a point is labelled and dated at its period END, and a
+   point carries counts (never lists) saying how it was arrived at.
+
+   Nothing here is scaled by today's figure. The series is built from monthly
+   movements walked BACK from the real current total, so the last point equals
+   the accounts rollup exactly and every earlier point differs from its
+   neighbour by a real movement. */
+(function () {
+  const D = window.OdysseyData;
+
+  /* Monthly movement (period end → the change over that period), oldest last.
+     Two periods are not plain measurements:
+       • 'partial'  — Vanguard Brokerage (EUR) has no EUR → USD rate for that
+                      month, so it contributed 0 and the figure is understated.
+                      Same condition the Accounts page flags for account 4.
+       • 'revalued' — a Maple St Residence estimate took effect that month, so
+                      the step is a real revaluation, disclosed not smoothed. */
+  const NWH_PERIODS = [{
+    date: '2024-12-01',
+    label: 'Nov ’24',
+    move: 18420
+  }, {
+    date: '2025-01-01',
+    label: 'Dec',
+    move: 9880
+  }, {
+    date: '2025-02-01',
+    label: 'Jan ’25',
+    move: 21460
+  }, {
+    date: '2025-03-01',
+    label: 'Feb',
+    move: -6350
+  }, {
+    date: '2025-04-01',
+    label: 'Mar',
+    move: 17230
+  }, {
+    date: '2025-05-01',
+    label: 'Apr',
+    move: 24110
+  }, {
+    date: '2025-06-01',
+    label: 'May',
+    move: 12640
+  }, {
+    date: '2025-07-01',
+    label: 'Jun',
+    move: 19870
+  }, {
+    date: '2025-08-01',
+    label: 'Jul',
+    move: -41500,
+    kind: 'partial'
+  }, {
+    date: '2025-09-01',
+    label: 'Aug',
+    move: 63240
+  }, {
+    date: '2025-10-01',
+    label: 'Sep',
+    move: 14380
+  }, {
+    date: '2025-11-01',
+    label: 'Oct',
+    move: -9120
+  }, {
+    date: '2025-12-01',
+    label: 'Nov',
+    move: 22750
+  }, {
+    date: '2026-01-01',
+    label: 'Dec',
+    move: -4460
+  }, {
+    date: '2026-02-01',
+    label: 'Jan ’26',
+    move: 27310
+  }, {
+    date: '2026-03-01',
+    label: 'Feb',
+    move: 16490
+  }, {
+    date: '2026-04-01',
+    label: 'Mar',
+    move: -2870
+  }, {
+    date: '2026-05-01',
+    label: 'Apr',
+    move: 20140
+  }, {
+    date: '2026-06-01',
+    label: 'May',
+    move: 11760
+  }, {
+    date: '2026-07-01',
+    label: 'Jun',
+    move: 48200,
+    kind: 'revalued'
+  }, {
+    date: '2026-08-01',
+    label: 'Jul',
+    move: 13920
+  }, {
+    date: '2026-09-01',
+    label: 'Aug',
+    move: 8640
+  }, {
+    date: '2026-09-16',
+    label: 'Sep',
+    move: 15310
+  }];
+
+  // The share of net worth held in liabilities, per period — the response
+  // carries assets and liabilities separately, not just the net figure.
+  const NWH_LIABILITY_SHARE = 0.34;
+
+  /* Build the response for a given current net worth. `emptyReason` is one of
+     NotBuilt · NoAccounts · NothingConvertible · WindowBeforeFirstAccount and
+     is the ONLY thing that discriminates an empty series — the client is never
+     asked to infer a cause the payload does not carry. */
+  D.buildNetWorthHistory = function (currentNetWorth, options) {
+    const o = options || {};
+    if (o.emptyReason) {
+      return {
+        mainCurrencyCode: o.mainCurrencyCode || 'USD',
+        interval: 'Monthly',
+        from: NWH_PERIODS[0].date,
+        to: NWH_PERIODS[NWH_PERIODS.length - 1].date,
+        emptyReason: o.emptyReason,
+        points: [],
+        unconvertedAccounts: []
+      };
+    }
+
+    // Walk backwards from the real figure so the last point IS the real figure.
+    const values = new Array(NWH_PERIODS.length);
+    let v = currentNetWorth;
+    for (let i = NWH_PERIODS.length - 1; i >= 0; i--) {
+      values[i] = Math.round(v);
+      v -= NWH_PERIODS[i].move;
+    }
+    const points = NWH_PERIODS.map(function (p, i) {
+      const net = values[i];
+      const liabilities = Math.round(Math.abs(net) * NWH_LIABILITY_SHARE);
+      return {
+        date: p.date,
+        label: p.label,
+        netWorth: net,
+        totalAssets: net + liabilities,
+        totalLiabilities: liabilities,
+        unconvertedAccountCount: p.kind === 'partial' ? 1 : 0,
+        revaluedAccountCount: p.kind === 'revalued' ? 1 : 0,
+        contributingAccountCount: p.kind === 'partial' ? 5 : 6,
+        kind: p.kind || 'normal'
+      };
+    });
+    return {
+      mainCurrencyCode: 'USD',
+      interval: 'Monthly',
+      from: NWH_PERIODS[0].date,
+      to: NWH_PERIODS[NWH_PERIODS.length - 1].date,
+      emptyReason: null,
+      points: points,
+      unconvertedAccounts: [{
+        accountId: '4',
+        name: 'Vanguard Brokerage',
+        currencyCode: 'EUR'
+      }]
+    };
+  };
+
+  // The copy for each empty cause. Never "no data" — the cause is known.
+  D.netWorthEmptyCopy = {
+    NotBuilt: 'Net-worth history is not available yet.',
+    NoAccounts: 'No accounts to chart yet.',
+    NothingConvertible: 'Net worth could not be converted to {currency} for any period.',
+    WindowBeforeFirstAccount: 'No accounts existed in this period.',
+    LoadFailed: 'Net-worth history could not be loaded.'
+  };
+})();
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/net-worth-data.js", error: String((e && e.message) || e) }); }
 
 // ui_kits/web/page-header.jsx
 try { (() => {

@@ -104,7 +104,7 @@
   // Plain JS first (compiled bundle + seed data), then the kit's JSX in the
   // same order ui_kits/web/index.html loads it. Eval order matters (shared
   // window globals), so we FETCH every file in parallel but EVAL in sequence.
-  const PLAIN = ['_ds_bundle.js', 'ui_kits/web/data.js', 'ui_kits/web/tax-data.js', 'ui_kits/web/insurance-data.js', 'ui_kits/web/contracts-data.js', 'ui_kits/web/subscriptions-data.js', 'ui_kits/web/journal-data.js', 'ui_kits/web/photos-data.js', 'ui_kits/web/calendar-data.js', 'ui_kits/web/system-settings-data.js', 'ui_kits/web/legal-data.js'];
+  const PLAIN = ['_ds_bundle.js', 'ui_kits/web/data.js', 'ui_kits/web/tax-data.js', 'ui_kits/web/insurance-data.js', 'ui_kits/web/contracts-data.js', 'ui_kits/web/subscriptions-data.js', 'ui_kits/web/journal-data.js', 'ui_kits/web/photos-data.js', 'ui_kits/web/calendar-data.js', 'ui_kits/web/system-settings-data.js', 'ui_kits/web/net-worth-data.js', 'ui_kits/web/legal-data.js'];
   const JSX = [
     'Components.jsx', 'profile-fields.jsx', 'page-header.jsx', 'AppShell.jsx', 'Login.jsx', 'ForgotPassword.jsx', 'ResetPassword.jsx', 'ChangePasswordRequired.jsx', 'Onboarding.jsx', 'Dashboard.jsx',
     'AddAccountModal.jsx', 'AddFileModal.jsx', 'FileViewerModal.jsx', 'AnalyzeFileModal.jsx',

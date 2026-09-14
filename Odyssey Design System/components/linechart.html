@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="LineChart" subtitle="Axis'd trend card — gridlines, value/category axes, head figure + delta, and a cumulative running-total mode. Mounted from the DS namespace." viewport="900x760" -->
+<!-- @dsCard group="Components" name="LineChart" subtitle="Axis'd trend card — gridlines, value/category axes, head figure + delta, cumulative mode, and the reconstructed-series set: negatives across a labelled zero, understated / revalued point kinds, note slot and cause-specific empty states." viewport="900x1420" -->
 <html lang="en" data-theme="dark">
 <head>
   <title>Odyssey · LineChart</title>
@@ -26,7 +26,15 @@
 <body>
   <div class="block">
     <div class="cap">LineChart <code>&lt;LineChart series color format showDelta cumulative /&gt;</code> — the axis'd trend card</div>
-    <div id="root" class="two"></div>
+    <div id="root-a" class="two"></div>
+  </div>
+  <div class="block">
+    <div class="cap">Reconstructed series <code>series[].kind</code> + <code>xTickEvery="auto"</code> + <code>textEquivalent</code> — negatives across a labelled zero, understated and revalued points</div>
+    <div id="root-b"></div>
+  </div>
+  <div class="block">
+    <div class="cap">Empty <code>emptyLabel</code> — the copy names the cause; a reconstruction that has nothing to show never draws a line</div>
+    <div id="root-c" class="two"></div>
   </div>
 
   <script>
@@ -35,8 +43,14 @@
       var LineChart = (window.OdysseyDesignSystem_d5aa51 || {}).LineChart;
       var usd = function (n) { return '$ ' + Math.round(n).toLocaleString('en-US'); };
       var usdK = function (n) { return n >= 1000 ? '$' + Math.round(n / 1000) + 'k' : '$' + n; };
-      var nok = function (n) { return 'kr ' + Math.round(n).toLocaleString('en-US'); };
-      var nokK = function (n) { return Math.abs(n) >= 1000 ? 'kr ' + (n / 1000).toFixed(0) + 'k' : 'kr ' + n; };
+      var nok = function (n) {
+        var s = Math.abs(Math.round(n)).toLocaleString('en-US');
+        return (n < 0 ? '− kr ' : 'kr ') + s;
+      };
+      var nokK = function (n) {
+        var k = Math.round(n / 1000);
+        return (n < 0 ? '−kr ' : 'kr ') + Math.abs(k) + 'k';
+      };
 
       var netWorth = [
         { label: "'21", value: 14200 }, { label: "'22", value: 28800 },
@@ -47,7 +61,33 @@
         { label: "'24", value: 210000 }, { label: "'25", value: 232000 },
       ];
 
-      ReactDOM.createRoot(document.getElementById('root')).render(
+      // 23 monthly points reconstructed from stored data: a mortgage draw puts
+      // the household under water at the start, one period is understated (an
+      // account had no rate), one steps on a revaluation.
+      var raw = [
+        -827700, -742100, -655400, -588900, -402300, -261500, -96800, 38400,
+        11900, 164200, 302600, 455100, 612800, 590400, 781300, 968500,
+        1204600, 1188200, 1432900, 1866400, 2154800, 2488300, 2801756,
+      ];
+      var months = ['Nov \u201924', 'Dec', 'Jan \u201925', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan \u201926', 'Feb', 'Mar',
+        'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
+      var history = raw.map(function (v, i) {
+        return {
+          label: months[i], value: v,
+          kind: i === 8 ? 'partial' : i === 19 ? 'revalued' : 'normal',
+        };
+      });
+
+      var notes = e(React.Fragment, null,
+        e('span', null, '23 monthly points \u00b7 Nov 2024 \u2013 Sep 2026 \u00b7 NOK'),
+        e('span', { className: 'odc-lc-note' },
+          'Jul 2025 is understated \u2014 Zurich brokerage (CHF) had no exchange rate for that period.'),
+        e('span', { className: 'odc-lc-note' },
+          'Jun 2026 steps because a property estimate took effect that month.')
+      );
+
+      ReactDOM.createRoot(document.getElementById('root-a')).render(
         e(React.Fragment, null,
           e(LineChart, {
             title: 'Net worth', sub: 'Since 2021 · USD', series: netWorth,
@@ -58,6 +98,31 @@
             title: 'Accumulated tax', sub: 'Assessed · all years · NOK', series: assessed,
             color: 'var(--chart-4)', format: nok, axisFormat: nokK, cumulative: true,
             showDelta: true, deltaSuffix: 'vs 2024', ariaLabel: 'Accumulated assessed tax',
+          })
+        )
+      );
+
+      ReactDOM.createRoot(document.getElementById('root-b')).render(
+        e(LineChart, {
+          title: 'Net worth', sub: notes, series: history,
+          color: 'var(--chart-1)', format: nok, axisFormat: nokK,
+          showDelta: true, deltaSuffix: 'over 23 months', xTickEvery: 'auto',
+          textEquivalent: true, textEquivalentLabel: 'Month',
+          ariaLabel: 'Net worth over time, 23 monthly points from November 2024 to September 2026',
+        })
+      );
+
+      ReactDOM.createRoot(document.getElementById('root-c')).render(
+        e(React.Fragment, null,
+          e(LineChart, {
+            title: 'Net worth', sub: 'Monthly · NOK', series: [],
+            emptyLabel: 'Net-worth history is not available yet.',
+            ariaLabel: 'Net worth over time, no data',
+          }),
+          e(LineChart, {
+            title: 'Net worth', sub: 'Monthly · NOK', series: [],
+            emptyLabel: 'Net worth could not be converted to NOK for any period.',
+            ariaLabel: 'Net worth over time, no data',
           })
         )
       );
