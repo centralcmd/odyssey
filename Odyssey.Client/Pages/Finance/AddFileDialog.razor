@@ -71,7 +71,7 @@
                                   ValueChanged="@(v => Patch(ctx, f => f.ValidTo = v))" />
                     <OdsDateField Label="Issued" Value="ctx.File.IssuedAt"
                                   ValueChanged="@(v => Patch(ctx, f => f.IssuedAt = v))" />
-                    <OdsContactSelect Label="Issued by" Optional Value="@ctx.File.IssuedBy"
+                    <OdsContactSelect Label="Issued by" Value="@ctx.File.IssuedBy"
                                       Options="_issuerOptions"
                                       AllowCreate="@_canCreateContact" OnCreate="CreateContactOption"
                                       ValueChanged="@(v => Patch(ctx, f => f.IssuedBy = v))" />

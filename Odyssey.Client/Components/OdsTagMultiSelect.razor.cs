@@ -57,9 +57,6 @@ public partial class OdsTagMultiSelect
 
     [Parameter] public bool Required { get; set; }
 
-    /// <summary>Render an "Optional" marker next to the label.</summary>
-    [Parameter] public bool Optional { get; set; }
-
     [Parameter] public bool Disabled { get; set; }
 
     /// <summary>Text shown when the search matches nothing and create is unavailable.</summary>
@@ -146,6 +143,21 @@ public partial class OdsTagMultiSelect
     private string TriggerId => Id ?? _autoId;
     private string LabelId => $"{TriggerId}-label";
     private string MessageId => $"{TriggerId}-help";
+
+    private string RequiredId => $"{TriggerId}-req";
+
+    private string? TriggerDescribedBy
+    {
+        get
+        {
+            var ids = string.Join(' ', new[]
+            {
+                string.IsNullOrEmpty(Message) ? null : MessageId,
+                Required ? RequiredId : null,
+            }.Where(id => id is not null));
+            return ids.Length == 0 ? null : ids;
+        }
+    }
 
     protected override void OnParametersSet()
     {

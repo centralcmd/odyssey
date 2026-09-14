@@ -19,6 +19,7 @@
                    Label="@Label"
                    Placeholder="@Placeholder"
                    Error="@Error"
+                   Required="@Required"
                    Disabled="@Disabled" />
     @if (ShowGroupHint && Value != AccountType.Unknown)
     {
@@ -42,6 +43,8 @@
 
     /// <summary>Error message shown below the field; also flags the trigger red.</summary>
     [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
 
     /// <summary>Show the asset/liability pill + one-line note under the field once a type is picked.</summary>
     [Parameter] public bool ShowGroupHint { get; set; } = true;

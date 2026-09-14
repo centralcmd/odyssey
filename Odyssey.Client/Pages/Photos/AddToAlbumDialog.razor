@@ -34,7 +34,7 @@
             @if (_creating)
             {
                 <div class="pl-albcreate">
-                    <OdsField Label="New album name" @bind-Value="_newName" Placeholder="Album name" />
+                    <OdsField Label="New album name" Required="true" @bind-Value="_newName" Placeholder="Album name" />
                     <div class="pl-albcreate-actions">
                         <OdsButton Variant="OdsButtonVariant.Text" OnClick="() => _creating = false">Cancel</OdsButton>
                         <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="CreateAsync"

@@ -28,7 +28,7 @@
 
 @inject IJSRuntime Js
 
-<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"
                Help="@Help" HelpContent="@HelpContent" Error="@Error" Class="@Class">
     <div class="@BoxClass">
         @if (DirectionMode || SignMode)
@@ -60,6 +60,7 @@
                autofocus="@AutoFocus"
                style="@(Align == "right" ? "text-align:right" : null)"
                aria-label="@AmountAriaLabel"
+               aria-required="@(Required ? "true" : null)"
                aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
                aria-describedby="@DescribedBy"
                @oninput="OnAmountInputAsync"
@@ -124,17 +125,19 @@
                                             tabindex="-1"
                                             class="odc-money-opt"
                                             @onclick="@(() => PickAsync(option.Value))">
+                                        <span class="odc-money-opt-code">@option.Value</span>
+                                        @if (!string.IsNullOrEmpty(option.Label) && option.Label != option.Value)
+                                        {
+                                            <span class="odc-money-opt-label">@option.Label</span>
+                                        }
+                                        @* The tick trails the row so code + name stay flush left, where the
+                                           closed trigger shows them (DS "option rows read left to right"). *@
                                         <span class="odc-money-tick" aria-hidden="true">
                                             @if (on)
                                             {
                                                 <span class="material-icons">check</span>
                                             }
                                         </span>
-                                        <span class="odc-money-opt-code">@option.Value</span>
-                                        @if (!string.IsNullOrEmpty(option.Label) && option.Label != option.Value)
-                                        {
-                                            <span class="odc-money-opt-label">@option.Label</span>
-                                        }
                                     </button>
                                 </li>
                             }

@@ -3,9 +3,9 @@
     (Odyssey Design System · components/FieldShell).
 
     The composition primitive behind OdsAmountField / OdsNoteField / OdsNumberField:
-    the label row (with the required `*` / muted "Optional" marker and an optional
-    right-aligned Aside slot — e.g. a character counter), the control itself
-    (ChildContent), and the helper / error line below. Reach for it directly when
+    the label row (with the required `*` marker — the system marks required only,
+    never "Optional" — and an optional right-aligned Aside slot, e.g. a character
+    counter), the control itself (ChildContent), and the helper / error line below. Reach for it directly when
     you need to label a control the kit doesn't wrap yet.
 
     Pass HtmlFor matching your control's id so the label is associated and the
@@ -53,10 +53,11 @@
     /// <summary>The control's id — associates the label and names the helper line.</summary>
     [Parameter] public string? HtmlFor { get; set; }
 
-    [Parameter] public bool Required { get; set; }
+    /// <summary>Id for the label element itself — for a composite control (a radiogroup such as
+    /// OdsCardSelect) that names itself with <c>aria-labelledby</c>, which a <c>for</c> cannot do.</summary>
+    [Parameter] public string? LabelId { get; set; }
 
-    /// <summary>Render a muted "Optional" marker after the label.</summary>
-    [Parameter] public bool Optional { get; set; }
+    [Parameter] public bool Required { get; set; }
 
     /// <summary>Helper text shown below the control.</summary>
     [Parameter] public string? Help { get; set; }
@@ -99,15 +100,11 @@
         string.Join(' ', new[] { "odc-field", string.IsNullOrEmpty(Error) ? null : "error", Class }
             .Where(value => !string.IsNullOrEmpty(value)));
 
-    private RenderFragment Label_() => @<label class="odc-field-label" for="@HtmlFor">
+    private RenderFragment Label_() => @<label class="odc-field-label" for="@HtmlFor" id="@LabelId">
         @Label
         @if (Required)
         {
             <span class="odc-field-req" aria-hidden="true">*</span>
-        }
-        @if (Optional)
-        {
-            <span class="odc-field-opt">Optional</span>
         }
     </label>;
 }

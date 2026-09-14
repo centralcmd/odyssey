@@ -11,7 +11,7 @@
     Controlled: bind via @bind-Value.
 *@
 
-<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"
                Help="@Help" Error="@Error" Class="@Class">
     @* The unit needs a positioned wrapper to sit inside the input's trailing edge, so it is only
        introduced when there IS a unit — the ~40 unit-less consumers keep their bare input. *@
@@ -40,6 +40,7 @@
            disabled="@Disabled"
            autofocus="@AutoFocus"
            style="@(Align == "right" ? "text-align:right" : null)"
+           aria-required="@(Required ? "true" : null)"
            aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
            aria-describedby="@DescribedBy"
            aria-labelledby="@AriaLabelledBy"
@@ -78,8 +79,6 @@
     [Parameter] public string? Error { get; set; }
 
     [Parameter] public bool Required { get; set; }
-
-    [Parameter] public bool Optional { get; set; }
 
     [Parameter] public bool Disabled { get; set; }
 

@@ -14,7 +14,7 @@
     (optionally, with AllowNegative) a leading minus — parse on submit.
 *@
 
-<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"
                Help="@Help" HelpContent="@HelpContent" Error="@Error" Class="@Class">
     <div class="@BoxClass">
         @if (!string.IsNullOrEmpty(Prefix))
@@ -30,6 +30,7 @@
                disabled="@Disabled"
                autofocus="@AutoFocus"
                style="@(Align == "right" ? "text-align:right" : null)"
+               aria-required="@(Required ? "true" : null)"
                aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
                aria-describedby="@DescribedBy"
                @oninput="OnInput"
@@ -75,8 +76,6 @@
     [Parameter] public string? Error { get; set; }
 
     [Parameter] public bool Required { get; set; }
-
-    [Parameter] public bool Optional { get; set; }
 
     [Parameter] public bool Disabled { get; set; }
 

@@ -139,11 +139,11 @@
                    SubmitLabel="@(_isEditing ? "Save changes" : "Create tag")"
                    SubmitIcon="@(_isEditing ? "check" : "add")"
                    OnSubmit="SaveAsync" OnSaved="OnFormSaved">
-        <OdsField Label="Name" ValueChanged="OnDraftNameChanged" Value="@_draftName" Placeholder="@NamePlaceholder"
+        <OdsField Label="Name" Required="true" ValueChanged="OnDraftNameChanged" Value="@_draftName" Placeholder="@NamePlaceholder"
                   Help="Up to 64 characters · must be unique" MaxLength="@TagWrite.MaxNameLength" AutoFocus="true"
                   Error="@_draftNameError" />
-        <OdsField Label="Description" Optional="true" @bind-Value="_draftDescription"
-                  Placeholder="Optional — what this tag is for" Help="Up to 256 characters"
+        <OdsField Label="Description" @bind-Value="_draftDescription"
+                  Placeholder="What this tag is for" Help="Up to 256 characters"
                   MaxLength="@TagWrite.MaxDescriptionLength" Multiline="true" />
     </OdsFormDialog>
 }

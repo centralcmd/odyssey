@@ -37,8 +37,6 @@ public partial class OdsTypeSelect
 
     [Parameter] public bool Required { get; set; }
 
-    [Parameter] public bool Optional { get; set; }
-
     [Parameter] public bool Disabled { get; set; }
 
     [Parameter] public string? Class { get; set; }
@@ -78,8 +76,20 @@ public partial class OdsTypeSelect
 
     private OdsTypeOption? Selected => Ordered.FirstOrDefault(o => o.Key == Value);
 
-    private string? DescribedBy =>
-        (string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help)) ? null : $"{FieldId}-help";
+    private string RequiredId => $"{FieldId}-req";
+
+    private string? DescribedBy
+    {
+        get
+        {
+            var ids = string.Join(' ', new[]
+            {
+                string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help) ? null : $"{FieldId}-help",
+                Required ? RequiredId : null,
+            }.Where(id => id is not null));
+            return ids.Length == 0 ? null : ids;
+        }
+    }
 
     private string OptionId(string key) => $"{FieldId}-opt-{key}";
 

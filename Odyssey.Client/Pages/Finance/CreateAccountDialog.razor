@@ -25,6 +25,7 @@
     <!-- Account name -->
     <MudTextField @bind-Value="_name"
                   Label="Account name"
+                  Required="true"
                   Placeholder="e.g. Chase Sapphire"
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
@@ -33,11 +34,11 @@
                   Immediate="true" />
 
     <!-- Account type picker (colored glyphs, grouped popover) -->
-    <OdsAccountTypeSelect Value="_accountType" ValueChanged="OnAccountTypeChanged"
+    <OdsAccountTypeSelect Value="_accountType" ValueChanged="OnAccountTypeChanged" Required="true"
                           Error="@(_typeError ? "Pick an account type." : null)" />
 
     <!-- Currency -->
-    <OdsCurrencySelect Value="@_currencyCode" ValueChanged="OnCurrencyChanged"
+    <OdsCurrencySelect Value="@_currencyCode" ValueChanged="OnCurrencyChanged" Required="true"
                        Options="_currencyOptions" />
 
     <!-- Lifecycle dates — Opened alone on create; Opened + Closed side by side on edit -->
@@ -63,12 +64,12 @@
     <!-- Account number -->
     <MudTextField @bind-Value="_accountNumber"
                   Label="Account number"
-                  Placeholder="Optional"
+                  Placeholder="As it appears on your statement"
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
                   MaxLength="64" />
 
-    <!-- Custodian — the contact that holds this account (optional) -->
+    <!-- Custodian — the contact that holds this account -->
     <OdsCustodianSelect Value="@_custodianId" ValueChanged="OnCustodianChanged"
                         Contacts="_contacts"
                         Loading="_contactsLoading"
@@ -79,8 +80,7 @@
     <!-- Description -->
     <OdsNoteField @bind-Value="_description"
                   Label="Description"
-                  Placeholder="Optional — what's this account for?"
+                  Placeholder="What's this account for?"
                   Rows="3"
-                  MaxLength="256"
-                  Optional="true" />
+                  MaxLength="256" />
 </OdsFormDialog>

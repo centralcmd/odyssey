@@ -436,7 +436,8 @@ public static class OdsTypeRegistries
     // No AddressLabelOptions/EmailLabelOptions/PhoneLabelOptions: an unfiltered union of a label
     // registry is a picker that offers labels the server rejects. The per-contact-type projections
     // above supersede them (issue #47 §3).
-    public static readonly IReadOnlyList<OdsOption> SexOptions = [new("Male", "Male"), new("Female", "Female")];
+    public static readonly IReadOnlyList<OdsOption> SexOptions =
+        [new("Male", "Male") { Icon = "man" }, new("Female", "Female") { Icon = "woman" }];
     public static readonly IReadOnlyList<OdsOption> AccountFileOptions = ToOptions(AccountFileTypes);
     public static readonly IReadOnlyList<OdsOption> TransactionFileOptions = ToOptions(TransactionFileTypes);
     public static readonly IReadOnlyList<OdsOption> TaxStatementFileOptions = ToOptions(TaxStatementFileTypes);

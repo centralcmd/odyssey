@@ -21,14 +21,14 @@
     <ChildContent>
         <div class="ods-modal-body">
 
-            @* Term kind — eligibility-gated grid (new) · locked tile (edit) · nothing at all when
-               the account type leaves one eligible kind. Dropping a one-option button grid removes a
-               control, not information: the kind it would have selected is still written out on every
-               tile and history row. *@
+            @* Term kind — eligibility-gated OdsCardSelect, each kind in its own hue (new) · locked
+               tile (edit) · nothing at all when the account type leaves one eligible kind. Dropping a
+               one-option card row removes a control, not information: the kind it would have selected
+               is still written out on every tile and history row. *@
             @if (IsEdit || _eligibleKinds.Count > 1)
             {
             <div class="trm-field">
-                <div class="trm-label">Term</div>
+                <div class="trm-label" id="trm-kind-label">Term<span class="odc-field-req" aria-hidden="true">*</span></div>
                 @if (IsEdit)
                 {
                     var info = TermKindVisuals.Info(_kind);
@@ -44,26 +44,8 @@
                 }
                 else
                 {
-                    <div class="trm-kind-grid">
-                        @foreach (var k in _eligibleKinds)
-                        {
-                            var info = TermKindVisuals.Info(k);
-                            var on = k == _kind;
-                            <button type="button" class="trm-kind-opt @(on ? "on" : "")" @onclick="@(() => PickKind(k))">
-                                <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
-                                    <span class="material-icons" style="font-size:18px;">@info.Icon</span>
-                                </span>
-                                <span class="trm-kind-opt-txt">
-                                    <span class="trm-kind-opt-name">@info.Label</span>
-                                    <span class="trm-kind-opt-grp">@(info.Group == TermGroup.Rate ? "Rate" : "Fee")</span>
-                                </span>
-                                @if (on)
-                                {
-                                    <span class="material-icons trm-kind-check" style="font-size:18px;">check_circle</span>
-                                }
-                            </button>
-                        }
-                    </div>
+                    <OdsCardSelect AriaLabelledBy="trm-kind-label" Required="true" Value="@_kind.ToString()" ValueChanged="OnKindPicked"
+                                   Options="KindOptions" />
                     @if (_eligibleKinds.Count < TermKindVisuals.All.Count)
                     {
                         <div class="trm-kind-ineligible">
@@ -95,7 +77,7 @@
             @* Unit + value — the hero input *@
             <div class="trm-value-block">
                 <div class="trm-field-head">
-                    <div class="trm-label" style="margin-bottom:0;">Value</div>
+                    <div class="trm-label" style="margin-bottom:0;">Value<span class="odc-field-req" aria-hidden="true">*</span></div>
                     @if (!IsRate)
                     {
                         <div style="margin-left:auto;">
@@ -111,7 +93,7 @@
                 {
                     @* The caption is the "Value" heading above, beside the unit toggle — not a label
                        element — so the input carries its own accessible name. *@
-                    <OdsAmountField Size="lg" AllowNegative="true" Suffix="%"
+                    <OdsAmountField Size="lg" Required="true" AllowNegative="true" Suffix="%"
                                     Value="@_valueStr" ValueChanged="OnValueChanged"
                                     aria-label="Value"
                                     Error="@(_errors.TryGetValue("value", out var pctErr) ? pctErr : null)">
@@ -127,7 +109,7 @@
                        −/+ toggle would offer a state the form always refuses. The DS kit carries the
                        same contradiction — its own submit() rejects a negative fee. The rate branch
                        above keeps its sign, where a negative genuinely means something. *@
-                    <OdsMoneyField Size="lg" AllowNegative="false"
+                    <OdsMoneyField Size="lg" Required="true" AllowNegative="false"
                                    Value="@_valueStr" ValueChanged="OnValueChanged"
                                    Currency="@_currency" CurrencyChanged="OnCurrencyChanged"
                                    CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
@@ -140,21 +122,11 @@
                 }
             </div>
 
-            @* Effective date — the currency now lives inside the money field, so that column only
-               appears for a percentage, where it says why there is none. *@
-            <OdsFormRow Cols="@(IsPercentage ? 2 : 1)">
-                @if (IsPercentage)
-                {
-                    <div class="trm-field">
-                        <div class="trm-label">Currency</div>
-                        <div class="trm-locked">
-                            <span class="material-icons">block</span>
-                            <span class="trm-locked-txt">Not used for a rate</span>
-                        </div>
-                    </div>
-                }
+            @* Effective date — the currency lives inside the money field (amount mode); a rate has no
+               currency, so nothing about it is shown here. *@
+            <OdsFormRow Cols="1">
                 <OdsDatePicker Value="_effectiveFrom" ValueChanged="OnEffectiveFromChanged"
-                               Label="Effective from" />
+                               Label="Effective from" Required="true" />
             </OdsFormRow>
             @if (_errors.TryGetValue("effectiveFrom", out var dateErr))
             {
@@ -165,13 +137,13 @@
             @if (!IsRate)
             {
                 <div class="trm-field">
-                    <div class="trm-label">Billing period <span class="trm-opt">Optional</span></div>
+                    <div class="trm-label">Billing period</div>
                     <OdsSelect Value="@_billingPeriod" ValueChanged="OnBillingChanged" Options="_billingOptions" />
                 </div>
             }
 
             @* Note *@
-            <OdsNoteField Label="Note" Optional="true" MaxLength="512"
+            <OdsNoteField Label="Note" MaxLength="512"
                           Value="@_note" ValueChanged="OnNoteChanged"
                           Placeholder="What changed, and why — e.g. “Fed cut pass-through”."
                           Error="@(_errors.TryGetValue("note", out var noteErr) ? noteErr : null)" />

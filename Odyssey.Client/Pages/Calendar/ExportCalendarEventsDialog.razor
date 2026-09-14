@@ -43,7 +43,7 @@
                         </div>
                     </OdsFieldShell>
                     <OdsMultiSelect Label="Calendars" Values="_calendarValues" ValuesChanged="OnCalendarsChanged" Options="_calendarOptions" Icon="calendar_month" />
-                    <OdsField Label="Search" Optional="true" Value="@_search" ValueChanged="@(v => _search = v)"
+                    <OdsField Label="Search" Value="@_search" ValueChanged="@(v => _search = v)"
                               Placeholder="Filter by title…" Help="Matches event titles only" />
                 </div>
             }

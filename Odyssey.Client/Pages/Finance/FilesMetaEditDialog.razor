@@ -16,8 +16,8 @@
                OnSubmit="SubmitAsync">
     <OdsField Label="File name" @bind-Value="_name" Required="true" AutoFocus="true"
               Error="@(_touched && !_valid ? "A file needs a name." : null)" />
-    <OdsField Label="Description" Optional="true" @bind-Value="_description"
-              Placeholder="Optional — what this file is." />
+    <OdsField Label="Description" @bind-Value="_description"
+              Placeholder="What this file is" />
 </OdsFormDialog>
 
 @code {

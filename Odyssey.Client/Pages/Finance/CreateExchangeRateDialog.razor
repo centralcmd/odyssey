@@ -33,19 +33,19 @@
     else
     {
         <OdsFormRow>
-            <OdsCurrencySelect Label="From currency" @bind-Value="_from" Options="_currencyOptions" />
-            <OdsCurrencySelect Label="To currency" @bind-Value="_to" Options="_currencyOptions" />
+            <OdsCurrencySelect Label="From currency" Required="true" @bind-Value="_from" Options="_currencyOptions" />
+            <OdsCurrencySelect Label="To currency" Required="true" @bind-Value="_to" Options="_currencyOptions" />
         </OdsFormRow>
     }
 
     <!-- Rate -->
-    <MudNumericField T="decimal" @bind-Value="_rate" Label="Rate" Variant="Variant.Outlined" Margin="Margin.Dense"
+    <MudNumericField T="decimal" @bind-Value="_rate" Label="Rate" Required="true" Variant="Variant.Outlined" Margin="Margin.Dense"
                      Min="0" Step="0.0001M" HideSpinButtons="true"
                      HelperText="@RateHelperText" />
 
     <!-- As of -->
-    <OdsDatePicker @bind-Value="_asOf" Label="As of" Clearable="@(!IsEdit)"
-                   HelperText="@(IsEdit ? "When this rate takes effect." : "Optional — defaults to now when left empty.")" />
+    <OdsDatePicker @bind-Value="_asOf" Label="As of" Required="@IsEdit" Clearable="@(!IsEdit)"
+                   HelperText="@(IsEdit ? "When this rate takes effect." : "Defaults to now when left empty.")" />
 </OdsFormDialog>
 
 @code {

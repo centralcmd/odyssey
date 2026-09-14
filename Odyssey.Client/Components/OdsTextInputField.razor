@@ -18,7 +18,7 @@
     For search / filter boxes use OdsSearchField; for long values OdsNoteField.
 *@
 
-<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"
                Help="@Help" Error="@Error" Class="@Class" Aside="@Counter">
     <input id="@FieldId"
            class="odc-input"
@@ -31,6 +31,7 @@
            spellcheck="@(Spellcheck ? null : "false")"
            disabled="@Disabled"
            autofocus="@AutoFocus"
+           aria-required="@(Required ? "true" : null)"
            aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
            aria-describedby="@DescribedBy"
            aria-labelledby="@AriaLabelledBy"
@@ -83,8 +84,6 @@
     [Parameter] public bool Spellcheck { get; set; }
 
     [Parameter] public bool Required { get; set; }
-
-    [Parameter] public bool Optional { get; set; }
 
     [Parameter] public string? Help { get; set; }
 

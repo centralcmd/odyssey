@@ -24,7 +24,7 @@
                  OpenChanged="@(open => _open = open)"
                  SearchFunc="Search"
                  ToStringFunc="@TriggerText"
-                 Label="@EffectiveLabel"
+                 Label="@Label"
                  Placeholder="@Placeholder"
                  Variant="@Variant"
                  Margin="Margin.Dense"
@@ -80,10 +80,6 @@
 
     [Parameter] public bool Required { get; set; }
 
-    /// <summary>Mark the field as optional — appends a muted "(optional)" to the label.
-    /// (MudBlazor owns this control's label element, so the marker is folded into the text.)</summary>
-    [Parameter] public bool Optional { get; set; }
-
     [Parameter] public bool Disabled { get; set; }
 
     /// <summary>The input chrome. Outlined (default) matches the form-row fields; Filled matches
@@ -123,9 +119,6 @@
     }
 
     private string WrapClass => string.IsNullOrEmpty(Class) ? "odc-cursel" : $"odc-cursel {Class}";
-
-    private string? EffectiveLabel =>
-        Optional && !string.IsNullOrEmpty(Label) ? $"{Label} (optional)" : Label;
 
     private OdsOption? Selected =>
         Options.FirstOrDefault(o => string.Equals(o.Value, Value, StringComparison.OrdinalIgnoreCase));

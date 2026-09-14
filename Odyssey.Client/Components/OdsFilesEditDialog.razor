@@ -36,7 +36,7 @@
             <div class="odc-rec-edit-err">“Valid to” can’t be before “Valid from”.</div>
         }
         <OdsDatePicker Label="Issued" @bind-Value="_issuedAt" />
-        <OdsContactSelect Label="Issued by" Optional @bind-Value="_issuedBy"
+        <OdsContactSelect Label="Issued by" @bind-Value="_issuedBy"
                           Options="_issuerOptions"
                           AllowCreate="@(OnCreateContact is not null)" OnCreate="CreateContactOption" />
     }

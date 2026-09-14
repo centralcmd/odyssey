@@ -64,7 +64,7 @@
 
 @inject IJSRuntime Js
 
-<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required" Optional="@Optional"
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"
                Help="@Help" Error="@Error" Class="@Class">
     <div class="odc-typesel">
     @* AnchorOrigin/TransformOrigin + MudBlazor's default FlipOnOpen overflow behaviour flip the
@@ -137,6 +137,12 @@
             }
         </ChildContent>
     </MudMenu>
+    @if (Required)
+    {
+        @* A button cannot carry aria-required, and the label's `*` is aria-hidden, so the obligation
+           reaches assistive technology as part of the trigger's description instead. *@
+        <span id="@RequiredId" class="sr-only">Required</span>
+    }
     </div>
 </OdsFieldShell>
 

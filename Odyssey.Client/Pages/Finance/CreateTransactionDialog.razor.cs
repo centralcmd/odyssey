@@ -56,6 +56,7 @@ public partial class CreateTransactionDialog
     private bool _descError;
     private bool _amountError;
     private bool _accountError;
+    private bool _dateError;
 
     // Disclosure state for the account trigger, so it reports aria-expanded.
     // Driven by MudMenu.OpenChanged (reading MudMenu.Open directly trips MUD0012).
@@ -226,6 +227,13 @@ public partial class CreateTransactionDialog
             _amountError = false;
     }
 
+    private void OnDateChanged(DateTime? value)
+    {
+        _timeStamp = value;
+        if (value is not null)
+            _dateError = false;
+    }
+
     private void OnDirectionChanged(string direction) => _isExpense = direction == "expense";
 
     private void SelectAccount(ExistingAccount account)
@@ -387,7 +395,10 @@ public partial class CreateTransactionDialog
         _descError = string.IsNullOrWhiteSpace(_description);
         _amountError = !TryParseAmount(out var magnitude);
         _accountError = _selectedAccount is null;
-        if (_descError || _amountError || _accountError)
+        // The DTO allows a null TimeStamp; the form does not — it is pre-filled with today and marked
+        // required, so clearing it is refused here rather than silently posted.
+        _dateError = _timeStamp is null;
+        if (_descError || _amountError || _accountError || _dateError)
             return;
 
         if (string.IsNullOrWhiteSpace(_currencyCode))

@@ -45,10 +45,10 @@
                         {
                             <div class="cal-mgr-editor">
                                 <OdsFormRow>
-                                    <OdsField Label="Name" Value="@_editDraft.Name" MaxLength="150" AutoFocus="true"
+                                    <OdsField Label="Name" Required="true" Value="@_editDraft.Name" MaxLength="150" AutoFocus="true"
                                               ValueChanged="@(v => _editDraft.Name = v)" Error="@_editError" />
-                                    <OdsField Label="Description" Optional="true" Value="@_editDraft.Description" MaxLength="1000"
-                                              ValueChanged="@(v => _editDraft.Description = v)" Placeholder="Optional" />
+                                    <OdsField Label="Description" Value="@_editDraft.Description" MaxLength="1000"
+                                              ValueChanged="@(v => _editDraft.Description = v)" Placeholder="What this calendar holds" />
                                 </OdsFormRow>
                                 <OdsFieldShell Label="Colour">
                                     <OdsColorSwatchSelect Value="@_editDraft.Color" ValueChanged="@(v => _editDraft.Color = v)" />
@@ -72,10 +72,10 @@
                     </div>
                     <div class="cal-mgr-editor">
                         <OdsFormRow>
-                            <OdsField Label="Name" Value="@_newDraft.Name" MaxLength="150" AutoFocus="true"
+                            <OdsField Label="Name" Required="true" Value="@_newDraft.Name" MaxLength="150" AutoFocus="true"
                                       ValueChanged="@(v => _newDraft.Name = v)" Error="@_addError" />
-                            <OdsField Label="Description" Optional="true" Value="@_newDraft.Description" MaxLength="1000"
-                                      ValueChanged="@(v => _newDraft.Description = v)" Placeholder="Optional" />
+                            <OdsField Label="Description" Value="@_newDraft.Description" MaxLength="1000"
+                                      ValueChanged="@(v => _newDraft.Description = v)" Placeholder="What this calendar holds" />
                         </OdsFormRow>
                         <OdsFieldShell Label="Colour">
                             <OdsColorSwatchSelect Value="@_newDraft.Color" ValueChanged="@(v => _newDraft.Color = v)" />

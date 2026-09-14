@@ -1,8 +1,8 @@
 @*
     OdsDateField — the labelled single-date field (Odyssey Design System ·
     components/DateField): the OdsDatePicker calendar wrapped in the shared
-    OdsFieldShell chrome (label row with the required `*` / muted "Optional"
-    marker, and the helper / error line below). The date sibling of OdsField /
+    OdsFieldShell chrome (label row with the required `*` marker, and the
+    helper / error line below). The date sibling of OdsField /
     OdsAmountField / OdsNumberField / OdsNoteField, so a date entry reads and
     aligns identically to every other labelled control in a form.
 
@@ -11,7 +11,7 @@
     Min / Max disable out-of-range days.
 *@
 
-<OdsFieldShell Label="@Label" HtmlFor="@_id" Required="Required" Optional="Optional"
+<OdsFieldShell Label="@Label" HtmlFor="@_id" Required="Required"
                Help="@Help" Error="@Error" Class="@Class">
     <OdsDatePicker Value="Value" ValueChanged="ValueChanged" Placeholder="@Placeholder"
                    Min="Min" Max="Max" Align="Align" Full="Full" Disabled="Disabled" id="@_id"
@@ -49,8 +49,6 @@
     [Parameter] public string? Error { get; set; }
 
     [Parameter] public bool Required { get; set; }
-
-    [Parameter] public bool Optional { get; set; }
 
     /// <summary>Popover alignment relative to the field. Start (default) / End.</summary>
     [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
