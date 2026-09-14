@@ -355,13 +355,16 @@ public class SummaryEndpointsApiTests
         Archived = archived ? new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc) : null,
     };
 
-    private static BudgetItem BudgetItem(string name, ContextBudgetCategoryType category, decimal planned) => new()
+    // `tagName` is for readability here only: the summary sums PlannedAmount and never resolves a tag,
+    // and this tier's InMemory provider enforces no foreign key, so a synthetic tag id is enough to
+    // satisfy the required column (issue #75).
+    private static BudgetItem BudgetItem(string tagName, ContextBudgetCategoryType category, decimal planned) => new()
     {
         BudgetItemId = Guid.NewGuid(),
         BudgetId = Guid.Empty, // set by the owning Budget's collection fixup
-        Name = name,
         CategoryType = category,
         PlannedAmount = planned,
+        TransactionTagId = Guid.NewGuid(),
     };
 
     private static TaxStatement TaxStatement(int year, decimal netWorth, decimal assessedTax, bool archived = false) => new()

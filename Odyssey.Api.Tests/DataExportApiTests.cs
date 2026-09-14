@@ -671,7 +671,7 @@ public class DataExportApiTests
             });
             context.BudgetItems.Add(new BudgetItem
             {
-                BudgetItemId = id, BudgetId = budgetId, Name = $"Item {sequence}", PlannedAmount = 10m,
+                BudgetItemId = id, BudgetId = budgetId, PlannedAmount = 10m, TransactionTagId = id,
             });
             context.Contacts.Add(new Contact
             {
@@ -917,8 +917,8 @@ public class DataExportApiTests
         {
             BudgetItemId = Guid.NewGuid(),
             BudgetId = budgetId,
-            Name = "Food",
             PlannedAmount = 300m,
+            TransactionTagId = tagId,
         });
 
         var blobId = Guid.NewGuid();

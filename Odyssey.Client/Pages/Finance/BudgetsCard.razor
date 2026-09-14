@@ -222,6 +222,8 @@
                                                 ActualByTag="@actualByTag"
                                                 HasReport="@hasReport"
                                                 TransactionTags="@_transactionTags"
+                                                TagsLoadFailed="@_tagsLoadFailed"
+                                                OnRetryTags="@LoadTransactionTags"
                                                 Format="@FormatMoney"
                                                 CurrencyCode="@budget.BaseCurrencyCode"
                                                 Chrome="false"
@@ -294,6 +296,8 @@
                             BudgetCurrencyCode="@_itemBudget.BaseCurrencyCode"
                             TransactionTags="_transactionTags"
                             UsedTransactionTagIds="_itemUsedTagIds"
+                            TagsLoadFailed="_tagsLoadFailed"
+                            OnRetryTags="LoadTransactionTags"
                             OnSaved="OnItemSaved" />
 }
 

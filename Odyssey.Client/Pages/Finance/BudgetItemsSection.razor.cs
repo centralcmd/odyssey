@@ -13,6 +13,16 @@ public partial class BudgetItemsSection
     [Parameter] public Dictionary<Guid, decimal> ActualByTag { get; set; } = new();
     [Parameter] public bool HasReport { get; set; }
     [Parameter] public List<ExistingTransactionTag> TransactionTags { get; set; } = new();
+
+    /// <summary>
+    /// The tag list failed to load, as opposed to being empty (issue #75 §11). Reading is unaffected —
+    /// every row renders its name from the payload — but the pickers say so and offer a retry, which is
+    /// NOT the "create a tag" empty state: that would point the reader at the wrong problem.
+    /// </summary>
+    [Parameter] public bool TagsLoadFailed { get; set; }
+
+    /// <summary>Re-fetch the tag list after a failed load.</summary>
+    [Parameter] public EventCallback OnRetryTags { get; set; }
     [Parameter] public Func<decimal, string?, string> Format { get; set; } = (value, _) => value.ToString("C2");
     [Parameter] public string CurrencyCode { get; set; } = "USD";
 
@@ -40,6 +50,13 @@ public partial class BudgetItemsSection
     private bool _isBusy;
     private bool _seededFor;
     private readonly Dictionary<Guid, Draft> _drafts = new();
+
+    // Per-row field errors for the batch grid (issue #75 §3) — the view rows have no editable field
+    // and so need none.
+    private readonly Dictionary<Guid, string> _draftErrors = new();
+
+    // Serialises the grid's save-on-change writes without dropping any of them.
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
 
     private void ToggleOpen() => _isOpen = !_isOpen;
 
@@ -69,23 +86,15 @@ public partial class BudgetItemsSection
 
     private sealed record ItemGroup(string Label, BudgetCategoryType Category, List<ExistingBudgetItem> Items);
 
-    // Display actual for an item: income uses the raw sum, expense uses its magnitude.
-    // A null tag (or, before the report loads, an unmatched tag) reads as "—".
+    // Display actual for an item: income uses the raw sum, expense uses its magnitude. Every item has
+    // a tag now, so the only "—" left is the one before the report has loaded.
     private decimal? ItemActual(ExistingBudgetItem item)
     {
-        if (item.TransactionTagId is null || !HasReport)
+        if (!HasReport)
             return null;
-        if (!ActualByTag.TryGetValue(item.TransactionTagId.Value, out var sum))
+        if (!ActualByTag.TryGetValue(item.TransactionTagId, out var sum))
             return 0m;
         return item.CategoryType == BudgetCategoryType.Income ? sum : Math.Abs(sum);
-    }
-
-    private string TagName(Guid? tagId)
-    {
-        if (tagId is null)
-            return "Untagged";
-        var tag = TransactionTags.FirstOrDefault(t => t.TransactionTagId == tagId.Value);
-        return tag?.Name ?? "Untagged";
     }
 
     // ── Edit mode ────────────────────────────────────────────────────────
@@ -94,6 +103,7 @@ public partial class BudgetItemsSection
     private void SeedDrafts()
     {
         _drafts.Clear();
+        _draftErrors.Clear();
         foreach (var item in Items)
             _drafts[item.BudgetItemId] = new Draft(item);
     }
@@ -108,12 +118,6 @@ public partial class BudgetItemsSection
         return draft;
     }
 
-    private async Task OnNameChanged(ExistingBudgetItem item, string value)
-    {
-        GetDraft(item).Name = value;
-        await SaveItem(item);
-    }
-
     private async Task OnCategoryChanged(ExistingBudgetItem item, BudgetCategoryType value)
     {
         GetDraft(item).CategoryType = value;
@@ -122,7 +126,18 @@ public partial class BudgetItemsSection
 
     private async Task OnTagChanged(ExistingBudgetItem item, Guid? value)
     {
-        GetDraft(item).TransactionTagId = value;
+        var draft = GetDraft(item);
+        if (value is null || value == Guid.Empty)
+        {
+            // The picker is required and offers no clear-to-nothing path to a saved row, so an empty
+            // value is a transient UI state, not a write.
+            _draftErrors[item.BudgetItemId] = "Choose a transaction tag.";
+            draft.TransactionTagId = value;
+            StateHasChanged();
+            return;
+        }
+
+        draft.TransactionTagId = value;
         await SaveItem(item);
     }
 
@@ -132,45 +147,65 @@ public partial class BudgetItemsSection
         await SaveItem(item);
     }
 
+    /// <summary>
+    /// Saves one row of the batch grid.
+    /// </summary>
+    /// <remarks>
+    /// It does <b>not</b> optimistically patch the parameter-supplied item. <c>PUT</c> returns
+    /// <c>204</c>, so there is no <c>Tag</c> to write back — and the tag is now the row's whole
+    /// identity, so a retag patched from the request would leave the row rendering the PREVIOUS tag's
+    /// name and description until something else reloaded it. The parent's reload is awaited instead.
+    /// </remarks>
     private async Task SaveItem(ExistingBudgetItem item)
     {
-        if (!CanUpdate || _isBusy)
+        if (!CanUpdate)
             return;
 
         var draft = GetDraft(item);
-        if (string.IsNullOrWhiteSpace(draft.Name))
+        if (draft.TransactionTagId is not { } tagId || tagId == Guid.Empty)
         {
-            Snackbar.Add("Budget item name is required.", Severity.Error);
+            _draftErrors[item.BudgetItemId] = "Choose a transaction tag.";
+            StateHasChanged();
             return;
         }
 
+        // An in-flight save on ANOTHER row must not drop this one: the grid saves on change, so a
+        // reader tabbing along a row would otherwise lose an edit to a save it never saw. Each row
+        // awaits its turn on the shared gate instead.
+        await _saveGate.WaitAsync();
         _isBusy = true;
         try
         {
             var update = new NewBudgetItem
             {
                 BudgetId = BudgetId,
-                Name = draft.Name.Trim(),
-                Description = item.Description,
                 CategoryType = draft.CategoryType,
                 PlannedAmount = draft.PlannedAmount,
-                TransactionTagId = draft.TransactionTagId,
+                TransactionTagId = tagId,
             };
 
-            if ((await BudgetItems.UpdateAsync(item.BudgetItemId, update)).Toast(Snackbar, "Unable to save item"))
+            var result = await BudgetItems.UpdateAsync(item.BudgetItemId, update);
+
+            // The grid's own per-row error channel — without it a field-level rejection would have
+            // nowhere to render here and would fall back to an unattributed toast.
+            if (result.Problem?.ErrorFor(nameof(NewBudgetItem.TransactionTagId)) is { } fieldError)
             {
-                item.Name = update.Name;
-                item.CategoryType = update.CategoryType;
-                item.PlannedAmount = update.PlannedAmount;
-                item.TransactionTagId = update.TransactionTagId;
-                await OnChanged.InvokeAsync();
+                _draftErrors[item.BudgetItemId] = fieldError;
+                return;
             }
+
+            _draftErrors.Remove(item.BudgetItemId);
+            if (result.Toast(Snackbar, "Unable to save item"))
+                await OnChanged.InvokeAsync();
         }
         finally
         {
             _isBusy = false;
+            _saveGate.Release();
         }
     }
+
+    private string? DraftError(ExistingBudgetItem item) => _draftErrors.GetValueOrDefault(item.BudgetItemId);
 
     private bool _itemDialogOpen;
     private Guid _itemKey;
@@ -219,7 +254,7 @@ public partial class BudgetItemsSection
 
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete budget item",
-            $"Delete '{item.Name}'? This cannot be undone.",
+            $"Delete '{item.Tag.Name}'? This cannot be undone.",
             yesText: "Delete", cancelText: "Cancel");
         if (confirmed != true)
             return;
@@ -239,33 +274,28 @@ public partial class BudgetItemsSection
     private Task CopyItemId(ExistingBudgetItem item) =>
         Clipboard.CopyAsync(item.BudgetItemId.ToString(), "Budget item ID copied.");
 
+    // A tag can be planned for by one item only per budget; the picker marks the others "in use"
+    // rather than hiding them, and always exempts the row's own current tag.
     private List<Guid> UsedTagIds(Guid? exclude = null) =>
-        Items.Where(i => i.BudgetItemId != exclude && i.TransactionTagId.HasValue)
-             .Select(i => i.TransactionTagId!.Value)
+        Items.Where(i => i.BudgetItemId != exclude)
+             .Select(i => i.TransactionTagId)
              .Distinct()
              .ToList();
-
-    // A tag can be picked by one item only; the item keeps its current tag as an option.
-    private IEnumerable<ExistingTransactionTag> AvailableTagsForItem(Guid budgetItemId)
-    {
-        var used = UsedTagIds(budgetItemId);
-        var current = GetDraft(Items.First(i => i.BudgetItemId == budgetItemId)).TransactionTagId;
-        return TransactionTags.Where(t => !used.Contains(t.TransactionTagId) || t.TransactionTagId == current);
-    }
 
     private sealed class Draft
     {
         public Draft(ExistingBudgetItem item)
         {
-            Name = item.Name;
             CategoryType = item.CategoryType;
             PlannedAmount = item.PlannedAmount;
             TransactionTagId = item.TransactionTagId;
         }
 
-        public string Name { get; set; }
         public BudgetCategoryType CategoryType { get; set; }
         public decimal PlannedAmount { get; set; }
+
+        // Nullable only because the picker can be momentarily empty mid-edit; a write is refused
+        // until it is not.
         public Guid? TransactionTagId { get; set; }
     }
 }

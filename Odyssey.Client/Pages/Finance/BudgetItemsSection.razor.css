@@ -1,5 +1,5 @@
 /* ── Budget items table (view mode) ──────────────────────────────────
-   Five columns: item (+tag) · actual-vs-planned bar · actual · planned · actions.
+   Five columns: transaction tag (name + description) · actual-vs-planned bar · actual · planned · actions.
    Rows are color-coded by kind (income mint / expense coral) with a left accent —
    no header band; the row color marks the Income / Expense split. */
 .bi-table { display: flex; flex-direction: column; }
@@ -45,11 +45,17 @@
 .bi-row.expense .bi-actual { color: var(--finance-expense); }
 .bi-row.income  .bi-planned { color: color-mix(in srgb, var(--finance-income) 48%, var(--mud-palette-text-secondary)); }
 .bi-row.expense .bi-planned { color: color-mix(in srgb, var(--finance-expense) 48%, var(--mud-palette-text-secondary)); }
-/* Untagged items have no actual — keep the dash neutral. */
-.bi-row .bi-actual.muted { color: var(--mud-palette-text-secondary); }
-
-/* Item name + tag chip */
+/* The item's identity is its TAG: name on line 1, the tag's description muted on line 2, omitted
+   entirely when there is none (no placeholder, no reserved height). There is NO tag pill — it would
+   repeat the name beside itself — and no untagged state, since the tag is required. */
 .bi-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.bi-item-line {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -64,23 +70,28 @@
     white-space: nowrap;
 }
 
-.bi-tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 0.6875rem;
-    font-weight: 500;
-    line-height: 1.3;
-    color: var(--finance-tag);
-    background: rgba(139, 92, 246, 0.14);
-    flex: none;
+.bi-item-desc {
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: var(--mud-palette-placeholder);
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 
-.bi-tag.untagged {
-    color: var(--mud-palette-text-secondary);
-    background: var(--mud-palette-action-disabled-background);
+/* Archived is a WORD — never a colour or an icon on its own. */
+.bi-item-archived {
+    flex: none;
+    font-size: 0.625rem;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mud-palette-placeholder);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 3px;
+    padding: 3px 5px;
 }
 
 /* Actual-vs-planned bar */
@@ -124,9 +135,12 @@
 /* ── Edit multiple ───────────────────────────────────────────────────── */
 .bi-edit-grid { padding: 8px 16px 4px; }
 
+/* Four columns plus a filler: the tag picker (the line's identity), category, planned, remove. The
+   picker gets roughly the width the name field had; the flexible filler track between Category and
+   Planned absorbs the slack so the picker doesn't stretch across a wide card. */
 .bi-edit-head {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) 140px minmax(0, 1.2fr) 120px 40px;
+    grid-template-columns: minmax(240px, 0.9fr) 140px minmax(0, 1fr) 120px 40px;
     gap: 10px;
     padding: 4px 0 8px;
     font-size: 0.6875rem;
@@ -138,11 +152,20 @@
 
 .bi-edit-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) 140px minmax(0, 1.2fr) 120px 40px;
+    grid-template-columns: minmax(240px, 0.9fr) 140px minmax(0, 1fr) 120px 40px;
     gap: 10px;
     align-items: center;
     padding: 4px 0;
 }
+
+.bi-edit-row .bi-edit-filler,
+.bi-edit-head .bi-edit-filler { min-width: 0; }
+
+/* The column headers label these cells, so a per-row visible label would repeat each one once per
+   item. Hidden visually, NOT from assistive tech: below 760px .bi-edit-head is display:none, so the
+   row's own label is the control's only accessible name. The tag picker gets the same treatment
+   through .odc-tagpick.hide-label. */
+.bi-edit-row ::deep .mud-input-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
 
 .bi-planned-input { text-align: right; }
 

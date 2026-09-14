@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Odyssey.Context;
 
@@ -11,9 +12,11 @@ using Odyssey.Context;
 namespace Odyssey.Context.Migrations
 {
     [DbContext(typeof(OdysseyContext))]
-    partial class OdysseyContextModelSnapshot : ModelSnapshot
+    [Migration("20260914145821_ArchiveAndRemoveUntaggableBudgetItems")]
+    partial class ArchiveAndRemoveUntaggableBudgetItems
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -553,18 +556,27 @@ namespace Odyssey.Context.Migrations
                     b.Property<int>("CategoryType")
                         .HasColumnType("int");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<decimal>("PlannedAmount")
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
 
-                    b.Property<Guid>("TransactionTagId")
+                    b.Property<Guid?>("TransactionTagId")
                         .HasColumnType("char(36)");
 
                     b.HasKey("BudgetItemId");
 
                     b.HasIndex("TransactionTagId");
 
-                    b.HasIndex("BudgetId", "TransactionTagId")
+                    b.HasIndex("BudgetId", "Name")
                         .IsUnique();
 
                     b.ToTable("BudgetItems");
@@ -4186,9 +4198,6 @@ namespace Odyssey.Context.Migrations
 
                     b.HasIndex("Archived");
 
-                    b.HasIndex("Name")
-                        .IsUnique();
-
                     b.ToTable("TransactionTags");
                 });
 
@@ -4438,8 +4447,7 @@ namespace Odyssey.Context.Migrations
                     b.HasOne("Odyssey.Context.TransactionTag", "TransactionTag")
                         .WithMany("BudgetItems")
                         .HasForeignKey("TransactionTagId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Budget");
 

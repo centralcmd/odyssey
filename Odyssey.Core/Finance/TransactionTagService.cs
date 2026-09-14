@@ -1,4 +1,6 @@
+using Odyssey.Core;
 using Odyssey.Context;
+using Odyssey.Core.Journal;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
@@ -62,6 +64,8 @@ public class TransactionTagService
 
     public async Task<ExistingTransactionTag> Create(NewTransactionTag newTransactionTag, CancellationToken cancellationToken = default)
     {
+        await EnsureNameIsUnique(newTransactionTag.Name, null, cancellationToken);
+
         var transactionTag = new TransactionTag
         {
             Name = newTransactionTag.Name,
@@ -70,7 +74,7 @@ public class TransactionTagService
         };
 
         context.TransactionTags.Add(transactionTag);
-        await context.SaveChangesAsync(cancellationToken);
+        await SaveGuardingDuplicateName(newTransactionTag.Name, cancellationToken);
 
         return transactionTag.Adapt<ExistingTransactionTag>();
     }
@@ -85,11 +89,13 @@ public class TransactionTagService
             return null;
         }
 
+        await EnsureNameIsUnique(putTransactionTag.Name, id, cancellationToken);
+
         transactionTag.Name = putTransactionTag.Name;
         transactionTag.Description = putTransactionTag.Description;
         ApplyArchiveTransition(transactionTag, putTransactionTag.Archived);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await SaveGuardingDuplicateName(putTransactionTag.Name, cancellationToken);
 
         return transactionTag.Adapt<ExistingTransactionTag>();
     }
@@ -104,9 +110,90 @@ public class TransactionTagService
             return;
         }
 
+        // A tag planned for by a budget item cannot be deleted (issue #75 §7.9). The RESTRICT key says
+        // the same on MariaDB, but its violation reaches GlobalExceptionHandler as a generic 409 naming
+        // no surface — and the EF InMemory tiers enforce no foreign keys at all, so there the delete
+        // would simply succeed. This pre-check is what makes the refusal explain itself, and what makes
+        // it happen on every tier. It names a COUNT and not the budgets: naming them would reach past
+        // transactions.tags.delete's own boundary.
+        var plannedFor = await context.BudgetItems
+            .CountAsync(item => item.TransactionTagId == id, cancellationToken);
+
+        if (plannedFor > 0)
+        {
+            throw new DomainConflictException(
+                $"This tag is planned for by {plannedFor} budget item{(plannedFor == 1 ? "" : "s")}. "
+                + "Remove those items on the Budgets page first.");
+        }
+
         context.TransactionTags.Remove(transactionTag);
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// A tag name is unique case-insensitively across ALL tags, archived included (issue #75 §5.11) —
+    /// it is an identity now, naming every budget item that plans for the tag, so two same-named tags
+    /// would render as two indistinguishable budget rows.
+    /// </summary>
+    /// <remarks>
+    /// The comparison is <see cref="StringComparison.OrdinalIgnoreCase"/> rather than a database
+    /// collation, so it holds on the EF InMemory tiers, which have no collation at all. The unique
+    /// index is the other half; this is what turns the violation into an explaining, field-keyed
+    /// <c>409</c>.
+    /// </remarks>
+    private async Task EnsureNameIsUnique(string name, Guid? transactionTagIdToIgnore, CancellationToken cancellationToken)
+    {
+        var candidate = (name ?? string.Empty).Trim();
+        if (candidate.Length == 0)
+        {
+            return;
+        }
+
+        // Materialised rather than compared in SQL: EF cannot translate OrdinalIgnoreCase, and the tag
+        // table is small reference data the pickers already load whole.
+        var clash = (await context.TransactionTags
+                .AsNoTracking()
+                .Where(tag => tag.TransactionTagId != transactionTagIdToIgnore)
+                .Select(tag => new { tag.TransactionTagId, tag.Name, tag.Archived })
+                .ToListAsync(cancellationToken))
+            .FirstOrDefault(tag => string.Equals(tag.Name, candidate, StringComparison.OrdinalIgnoreCase));
+
+        if (clash is null)
+        {
+            return;
+        }
+
+        throw DuplicateName(clash.Name, clash.Archived is not null);
+    }
+
+    /// <summary>
+    /// Saves, translating the unique index's duplicate-key error into the <b>same</b> field-keyed
+    /// <c>409</c> the pre-check throws, so the concurrent loser of a race is not handed a conflict the
+    /// form cannot attach to a control.
+    /// </summary>
+    private async Task SaveGuardingDuplicateName(string name, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKey(ex))
+        {
+            // The failed write is still tracked; leaving it would flush on the next save. The winner's
+            // archived state is not known here, so the message takes the plain form.
+            context.ChangeTracker.Clear();
+            throw DuplicateName((name ?? string.Empty).Trim(), archived: false);
+        }
+    }
+
+    // Keyed to `name` so the tag dialogs render it at the field rather than as an unattributed toast.
+    // Naming the archived case matters: an archived clash has no inline remedy — restoring or renaming
+    // the archived tag is an action on the transaction tags page.
+    private static DomainConflictException DuplicateName(string name, bool archived) =>
+        new(archived
+                ? $"A tag called '{name}' already exists but is archived. Restore it, or rename it, to reuse the name."
+                : $"A tag called '{name}' already exists. Pick a different name.",
+            nameof(NewTransactionTag.Name));
     private void ApplyArchiveTransition(TransactionTag transactionTag, bool requestedArchived)
     {
         var currentArchived = transactionTag.Archived is not null;

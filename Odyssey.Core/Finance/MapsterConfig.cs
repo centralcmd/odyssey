@@ -24,6 +24,8 @@ using ContextBillingPeriod = Odyssey.Context.BillingPeriod;
 using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using DtoBillingPeriod = Odyssey.Dtos.Finance.BillingPeriod;
+using ContextBudgetItem = Odyssey.Context.BudgetItem;
+using DtoExistingBudgetItem = Odyssey.Dtos.Finance.ExistingBudgetItem;
 
 namespace Odyssey.Core.Finance;
 
@@ -153,6 +155,17 @@ public static class MapsterConfig
             TypeAdapterConfig<DtoBillingPeriod, ContextBillingPeriod>
                 .NewConfig()
                 .MapWith(src => ConvertDtoToContext(src));
+
+            // A budget item's identity IS its tag (issue #75), so the read model embeds it — and this
+            // registration is what puts it there. Mapster maps by NAME convention otherwise, and
+            // BudgetItem.TransactionTag does not match ExistingBudgetItem.Tag, so without this line
+            // the property is silently left unset: `required` does not catch it either, because
+            // Mapster constructs through a runtime Expression.MemberInit which bypasses
+            // required-member enforcement. The whole design would degrade to a null tag with no
+            // compiler or test failure — hence the explicit mapping and the test that pins it.
+            TypeAdapterConfig<ContextBudgetItem, DtoExistingBudgetItem>
+                .NewConfig()
+                .Map(dest => dest.Tag, src => src.TransactionTag);
 
             // (The former Account→ExistingAccount Ignore(Custodian) pin was removed with the Contact
             // move: Account no longer has a Custodian navigation — only the scalar CustodianId — so there

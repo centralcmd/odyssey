@@ -782,6 +782,38 @@
   font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
 }
 .odc-combo-create-kind > .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); }
+/* Row qualifier ("in use", "Archived") — muted, trailing, always WORDS: a row never says why it
+   can't be picked by colour alone. */
+.odc-combo-opt-note {
+  flex: none; color: var(--mud-palette-text-secondary);
+  font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
+}
+.odc-combo-item[aria-disabled="true"] .odc-combo-opt-label { opacity: 0.7; }
+
+/* ---------- TransactionTagPicker (OdsCombobox inside OdsFieldShell) ----------
+   Only the states the bare combobox can't render: a hidden-but-associated label for a table cell,
+   and the two no-control states (no tags left to plan for / the tag list failed to load), which read
+   as words plus one action. */
+.odc-tagpick.hide-label > .odc-field-label {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+.odc-tagpick-empty, .odc-tagpick-unavailable {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+  min-height: 42px; box-sizing: border-box; padding: 10px 12px;
+  border: 1px dashed var(--mud-palette-lines-inputs); border-radius: var(--radius-sm);
+  background: var(--mud-palette-background);
+  color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans);
+}
+.odc-tagpick-link {
+  border: none; background: transparent; padding: 0; cursor: pointer;
+  color: var(--brand-text); font: var(--fw-medium) var(--fs-body2)/1.35 var(--font-sans); text-decoration: underline;
+}
+.odc-tagpick-link:hover { color: var(--mud-palette-primary); }
+/* In a dense grid row the picker carries no visible label (the column header does, and that header is
+   display:none below 760px — hence the row's visually hidden one), so its help line would only repeat
+   itself once per item. The ERROR line stays. */
+.odc-tagpick.dense .odc-field-help:not(.error) { display: none; }
 
 /* ---------- MatchIndicator (OdsMatchIndicator — AI merchant/category matching, issue #266) ----------
    Relocated here from app.css by issue #371: an .odc-* design-system atom belongs

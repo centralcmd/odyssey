@@ -52,6 +52,18 @@ public interface IReferenceDataCache
     /// <summary>Every transaction tag, archived included — call sites filter to taste.</summary>
     Task<IReadOnlyList<ExistingTransactionTag>> TransactionTagsAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// The tags plus whether the fetch <b>failed</b>, for a caller that must tell "no tags exist" from
+    /// "the tag list could not be loaded" (issue #75 §5.7).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="TransactionTagsAsync"/> unwraps a failure to an empty list, which renders the two
+    /// conditions identically — and the remedies are opposite: the first says create a tag, the second
+    /// says retry. A surface that offers a remedy needs this overload; one that only reads a list does
+    /// not.
+    /// </remarks>
+    Task<ReferenceDataLoad<ExistingTransactionTag>> TransactionTagsLoadAsync(CancellationToken ct = default);
+
     /// <summary>Every contact, archived included — call sites filter to taste.</summary>
     Task<IReadOnlyList<ExistingContact>> ContactsAsync(CancellationToken ct = default);
 
@@ -64,6 +76,13 @@ public interface IReferenceDataCache
     /// <summary>Drops the cached contacts; the next reader re-fetches.</summary>
     void InvalidateContacts();
 }
+
+/// <summary>
+/// A reference-data list plus whether the fetch failed. An empty <see cref="Items"/> with
+/// <see cref="Failed"/> false means the resource genuinely has no rows — a healthy state a caller may
+/// need to treat quite differently from a load failure.
+/// </summary>
+public readonly record struct ReferenceDataLoad<T>(IReadOnlyList<T> Items, bool Failed);
 
 /// <inheritdoc cref="IReferenceDataCache" />
 public sealed class ReferenceDataCache(
@@ -91,8 +110,11 @@ public sealed class ReferenceDataCache(
     public async Task<IReadOnlyList<OdsOption>> CurrencyOptionsAsync(CancellationToken ct = default) =>
         [.. (await ActiveCurrenciesAsync(ct)).Select(currency => new OdsOption(currency.CurrencyCode, currency.Name))];
 
-    public Task<IReadOnlyList<ExistingTransactionTag>> TransactionTagsAsync(CancellationToken ct = default) =>
-        Load(tagSlot, async () =>
+    public async Task<IReadOnlyList<ExistingTransactionTag>> TransactionTagsAsync(CancellationToken ct = default) =>
+        (await TransactionTagsLoadAsync(ct)).Items;
+
+    public Task<ReferenceDataLoad<ExistingTransactionTag>> TransactionTagsLoadAsync(CancellationToken ct = default) =>
+        LoadWithStatus(tagSlot, async () =>
         {
             var result = await transactionTags.ListAllAsync(ct: ct);
             return Unwrap(result.IsSuccess, result.ValueOr([]), result.Error, "transaction tags");
@@ -122,7 +144,10 @@ public sealed class ReferenceDataCache(
         return null;
     }
 
-    private static async Task<IReadOnlyList<T>> Load<T>(Slot<T> slot, Func<Task<IReadOnlyList<T>?>> load)
+    private static async Task<IReadOnlyList<T>> Load<T>(Slot<T> slot, Func<Task<IReadOnlyList<T>?>> load) =>
+        (await LoadWithStatus(slot, load)).Items;
+
+    private static async Task<ReferenceDataLoad<T>> LoadWithStatus<T>(Slot<T> slot, Func<Task<IReadOnlyList<T>?>> load)
     {
         // Readers that arrive while a fetch is in flight await that same task rather than issuing
         // their own — two dialogs opening back to back cost one request, not two.
@@ -130,14 +155,14 @@ public sealed class ReferenceDataCache(
         var items = await pending;
 
         if (items is not null)
-            return items;
+            return new ReferenceDataLoad<T>(items, Failed: false);
 
         // Only clear the slot if it still holds the failed task: an Invalidate (or a retry that
         // already succeeded) may have replaced it while this one was in flight.
         if (ReferenceEquals(slot.Pending, pending))
             slot.Pending = null;
 
-        return [];
+        return new ReferenceDataLoad<T>([], Failed: true);
     }
 
     private sealed class Slot<T>

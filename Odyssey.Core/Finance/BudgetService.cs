@@ -26,7 +26,12 @@ public class BudgetService
         BudgetsQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        var q = context.Budgets.AsNoTracking().Include(b => b.BudgetItems).AsQueryable();
+        // ThenInclude, not just Include: ExistingBudgetItem.Tag maps from the navigation, so without it
+        // every nested item would carry a null tag — and, once a caller touched one, an N+1 (issue #75 §5.3).
+        var q = context.Budgets.AsNoTracking()
+            .Include(b => b.BudgetItems)
+            .ThenInclude(i => i.TransactionTag)
+            .AsQueryable();
 
         var term = ListQuery.NormalizeSearch(query.Search);
         if (term is not null)
@@ -114,6 +119,7 @@ public class BudgetService
         var budget = await context.Budgets
             .AsNoTracking()
             .Include(b => b.BudgetItems)
+            .ThenInclude(i => i.TransactionTag)
             .FirstOrDefaultAsync(l => l.BudgetId == budgetId, cancellationToken);
         if (budget is null)
         {
@@ -135,8 +141,7 @@ public class BudgetService
 
         var allTagIds = budgets
             .SelectMany(b => b.BudgetItems)
-            .Where(i => i.TransactionTagId != null)
-            .Select(i => i.TransactionTagId!.Value)
+            .Select(i => i.TransactionTagId)
             .Distinct()
             .ToList();
 
@@ -165,8 +170,7 @@ public class BudgetService
         foreach (var budget in budgets)
         {
             var tagIds = budget.BudgetItems
-                .Where(i => i.TransactionTagId != null)
-                .Select(i => i.TransactionTagId!.Value)
+                .Select(i => i.TransactionTagId)
                 .ToHashSet();
 
             if (tagIds.Count == 0)
@@ -257,7 +261,6 @@ public class BudgetService
         }
         
         var transactionTags = budget.BudgetItems
-            .Where(i => i.TransactionTagId != null)
             .Select(i => i.TransactionTag)
             .ToList();
         
