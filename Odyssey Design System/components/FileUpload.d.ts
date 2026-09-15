@@ -29,6 +29,8 @@ export interface FileUploadProps {
   defaultFiles?: UploadFile[];
   /** Fires with the full next array on every add / rename / retype / remove. */
   onChange?: (files: UploadFile[]) => void;
+  /** Fires with the raw browser `File` objects on every add — for surfaces that must read the bytes (a client-side crop, a checksum, an in-browser preview), not just queue a name. Respects `multiple`. */
+  onFiles?: (files: File[]) => void;
   /** Native input `accept` filter (e.g. "image/*,.pdf"). */
   accept?: string;
   /** Allow selecting/dropping more than one file. Default true. When false the

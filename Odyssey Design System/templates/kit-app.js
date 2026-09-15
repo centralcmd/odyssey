@@ -110,7 +110,7 @@
     'AddAccountModal.jsx', 'AddFileModal.jsx', 'FileViewerModal.jsx', 'AnalyzeFileModal.jsx',
     'AddTransactionModal.jsx', 'AddTermModal.jsx', 'AccountTerms.jsx',
     'AddEstimateModal.jsx', 'AccountEstimates.jsx', 'Accounts.jsx',
-    'Files.jsx', 'Transactions.jsx', 'TransactionTags.jsx', 'ContactImportModal.jsx', 'Contacts.jsx',
+    'Files.jsx', 'Transactions.jsx', 'TransactionTags.jsx', 'ContactAvatarDialog.jsx', 'ContactImportModal.jsx', 'Contacts.jsx',
     'Currencies.jsx', 'ExchangeRates.jsx', 'AddBudgetModal.jsx', 'AddBudgetItemModal.jsx',
     'Budgets.jsx', 'AddTaxStatementModal.jsx', 'TaxStatements.jsx',
     'AddInsurancePolicyModal.jsx', 'AddRenewalModal.jsx', 'InsuranceUploadModal.jsx', 'AddPolicyPartyModal.jsx', 'Insurance.jsx',

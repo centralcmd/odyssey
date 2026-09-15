@@ -25,7 +25,7 @@ const POLICY_PARTY_ROLES = [
   { role: 'beneficiary', label: 'Beneficiary',    icon: 'volunteer_activism',       field: 'beneficiaryIds',    noun: 'contact', help: 'Who receives on this policy.' },
 ];
 
-const AddPolicyPartyModal = ({ policy, party = null, optionsLoading = false, onClose, onAdd, onSave, onRemove }) => {
+const AddPolicyPartyModal = ({ policy, party = null, optionsLoading = false, onClose, onAdd, onSave }) => {
   const { useState } = React;
   const D = window.OdysseyData;
   const editing = !!party;
@@ -82,14 +82,12 @@ const AddPolicyPartyModal = ({ policy, party = null, optionsLoading = false, onC
         : 'Link a contact or account to this policy in one of its four roles.'}
       icon="group_add"
       onClose={onClose}
+      /* Removing a party lives on the party TILE's ⋯ menu, not here: the dialog
+         edits one link and its footer carries that edit's own actions. A
+         destructive action in a footer beside Save also reads as the opposite of
+         Save, which is exactly where a mis-click hurts. */
       footer={
         <React.Fragment>
-          {/* Removing the party detaches the record from the policy — the
-              record itself is untouched, so this is not a delete. */}
-          {editing && onRemove ? (
-            <Button variant="danger" icon="link_off" className="ins-remove-party"
-              onClick={() => onRemove({ field: party.field, id: party.id })}>Remove party</Button>
-          ) : null}
           <Button variant="text" onClick={onClose}>Cancel</Button>
           <Button variant="filled" color="primary" icon={editing ? 'check' : 'add'} onClick={submit}>
             {editing ? 'Save changes' : 'Create party'}

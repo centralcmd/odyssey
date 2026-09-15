@@ -646,6 +646,29 @@
 .odc-avatar.mint   { background: var(--finance-income-soft);  color: var(--finance-income); }
 .odc-avatar.coral  { background: var(--finance-expense-soft); color: var(--finance-expense); }
 .odc-avatar.sq { border-radius: var(--radius-md); }
+/* fit="contain" — a logo, letterboxed on a neutral ground with a 3:1 boundary.
+   The inset ring is the boundary; the padding keeps a wordmark off the edge. */
+.odc-avatar.contain { background: var(--mud-palette-background); box-shadow: inset 0 0 0 1px var(--mud-palette-divider); }
+.odc-avatar.contain img { object-fit: contain; padding: 10%; box-sizing: border-box; }
+
+/* ---------- Range (odc-range) ----------
+   The product's one slider primitive: a 4px track on the divider tone, a 16px
+   brand thumb (a ≥24px hit area comes from the wrapper's padding), and a
+   focus-visible ring on the thumb itself. Tokens only, so it reads in both
+   themes. Vendor tracks are declared separately — a combined selector list is
+   dropped wholesale by both engines. */
+.odc-range { -webkit-appearance: none; appearance: none; width: 100%; height: 24px; margin: 0; padding: 0; background: transparent; cursor: pointer; }
+.odc-range:disabled { cursor: default; opacity: 0.45; }
+.odc-range::-webkit-slider-runnable-track { height: 4px; border-radius: var(--radius-pill); background: var(--mud-palette-divider); }
+.odc-range::-moz-range-track { height: 4px; border-radius: var(--radius-pill); background: var(--mud-palette-divider); }
+.odc-range::-moz-range-progress { height: 4px; border-radius: var(--radius-pill); background: var(--mud-palette-primary); }
+.odc-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -6px; border: 0; border-radius: var(--radius-pill); background: var(--mud-palette-primary); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.odc-range::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: var(--radius-pill); background: var(--mud-palette-primary); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.odc-range:hover::-webkit-slider-thumb { background: var(--brand-text); }
+.odc-range:hover::-moz-range-thumb { background: var(--brand-text); }
+.odc-range:focus { outline: none; }
+.odc-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring, var(--mud-palette-primary)), 0 0 0 6px color-mix(in oklab, var(--mud-palette-primary) 24%, transparent); }
+.odc-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring, var(--mud-palette-primary)), 0 0 0 6px color-mix(in oklab, var(--mud-palette-primary) 24%, transparent); }
 
 /* ---------- Modal / dialog shell ---------- */
 .odc-scrim {
@@ -2632,6 +2655,14 @@
   background: var(--rec-soft); color: var(--rec);
 }
 .odc-record-mark .material-icons { font-size: 24px; }
+/* Image mark — the record's own picture in place of its type glyph. The accent
+   stays with the card; only this mark's content (and, for a logo, its ground)
+   changes. `.ground` is the neutral letterbox; `.round` is a photograph. */
+.odc-record-mark.img { background: none; overflow: hidden; }
+.odc-record-mark.img.round { border-radius: var(--radius-pill); }
+.odc-record-mark.img.ground { background: var(--mud-palette-background); box-shadow: inset 0 0 0 1px var(--mud-palette-divider); }
+.odc-record-mark.img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.odc-record-mark.img.ground img { object-fit: contain; padding: 5px; box-sizing: border-box; }
 .odc-record-id { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .odc-record-namerow { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .odc-record-namerow > * { flex: none; }

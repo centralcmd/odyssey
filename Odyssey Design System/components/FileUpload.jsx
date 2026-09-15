@@ -13,6 +13,11 @@
  * editor beneath each file row (e.g. validity dates) — `patch(partial)` merges
  * fields into that file. Styled by .odc-upload-*.
  *
+ * `onFiles` hands the consumer the raw browser `File` objects alongside the
+ * row list — needed whenever the surface must read the BYTES rather than just
+ * queue a name (a client-side crop, a checksum, an in-browser preview). The row
+ * list stays the field's own model.
+ *
  * ## Never write a size limit into `hint` as a literal
  * Pass `maxMegabytes` and the size clause is composed from it. The limit is a
  * runtime setting an administrator can change, so a number typed into the hint
@@ -132,6 +137,7 @@ export function FileUpload({
   files,
   defaultFiles = [],
   onChange,
+  onFiles,
   accept,
   multiple = true,
   maxMegabytes,
@@ -158,9 +164,11 @@ export function FileUpload({
   };
 
   const addFiles = (fileList) => {
+    const raw = Array.from(fileList || []);
     let incoming = odcFilesFromList(fileList);
     if (guessKind) incoming = incoming.map((f) => ({ ...f, kind: guessKind(f.name) }));
     if (!incoming.length) return;
+    if (onFiles) onFiles(multiple ? raw : raw.slice(0, 1));
     // multiple=false is a genuine single-file field: a new pick/drop REPLACES the
     // current file rather than accumulating (the accumulation logic ignored the
     // flag before — a single-file picker would silently pile files up).

@@ -315,6 +315,35 @@ const CP_SEED = [
 
 /* ================= small building blocks ================= */
 
+/* ---- Contact image — one per contact (profile picture / company logo) ----
+   Stored in the existing Files store, so `avatarFileId` is the only new member
+   on the read DTO; `avatar` here stands in for the bytes the product streams
+   from GET /api/contacts/{id}/avatar?v={avatarFileId} (the key makes
+   revalidation after a replace a guaranteed 304).
+
+   The two contact types share one storage slot and differ only in PRESENTATION:
+   a person's photo is square-cropped into a circle, an organization's logo is
+   letterboxed on a neutral ground — logos carry transparency and are rarely
+   square, so cropping one to a circle destroys it. */
+const cpAvatarShape = (type) => type === 'Organization'
+  ? { fit: 'contain', round: false, noun: 'logo', label: 'Logo', altPrefix: 'Logo of' }
+  : { fit: 'cover', round: true, noun: 'picture', label: 'Profile picture', altPrefix: 'Profile picture of' };
+
+/* Two seeded contacts carry an image, from the demo generator — which emits
+   PNG, so the demo pair exercises the PNG path. */
+(() => {
+  if (typeof window === 'undefined' || !window.cavPlaceholder) return;
+  const person = CP_SEED.find((c) => c.type === 'Person');
+  const org = CP_SEED.find((c) => c.type === 'Organization');
+  if (person) { person.avatarFileId = 'av-seed-person'; person.avatar = window.cavPlaceholder('portrait', 3); }
+  if (org) { org.avatarFileId = 'av-seed-org'; org.avatar = window.cavPlaceholder('logo', 1); }
+})();
+
+/* The image has no tile and no dialog field: every avatar action lives in the
+   row's ⋯ menu (Add / Change / Remove picture — logo for an organization),
+   beside Edit contact. A contact is created first and given its image from the
+   menu afterwards, so no image upload ever rides on the create POST. */
+
 /* Primary marker — always visible TEXT (never icon/colour alone; §10 a11y). */
 const PrimaryBadge = () => <Chip tone="income" dot>Primary</Chip>;
 
@@ -604,7 +633,7 @@ const CpTiles = ({ c }) => {
   const p = c.person || {}, o = c.org || {};
   const website = o.website && /^https?:\/\//i.test(o.website) ? o.website : null;
   return (
-    <InfoTileGrid dense>
+    <InfoTileGrid>
       <InfoTile icon="badge" label="Display name" value={resolvedName(c) || '—'} valueVariant="text"
         foot={c.displayName ? 'override' : 'computed from the name fields'} />
       <InfoTile icon={meta.icon} iconColor={meta.color} iconSoft={meta.soft}
@@ -664,10 +693,12 @@ const CpTiles = ({ c }) => {
 
 /* One contact record (DS RecordCard). The list owns ONE openId, so opening a
    card closes its siblings. */
-const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onAliases, onExportRow, contactStyle, onProblem, onAnnounce, perms = {}, aliasCap }) => {
+const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onAliases, onExportRow, contactStyle, onProblem, onAnnounce, perms = {}, aliasCap, avatarOutcome = 'ok', avatarBroken = false }) => {
   const { useState } = React;
   const H = window.OdysseyHelpers;
   const [showEdit, setShowEdit] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [addReq, setAddReq] = useState(null); // {kind, nonce}
   const meta = CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person;
   const status = H.archivedStatus(c);
@@ -691,12 +722,30 @@ const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onAlias
   const editAlias = (id, value, label) => onAliases(c.id, aliases.map((a) => (a.id === id ? { ...a, value, label } : a)));
   const deleteAlias = (id) => onAliases(c.id, aliases.filter((a) => a.id !== id));
 
+  /* ---- contact image ----
+     The list mark is DECORATIVE (alt=""): the adjacent cell already names the
+     contact. `avatarBroken` stands in for a 404 on the avatar URL — the card
+     falls back to the type glyph with nothing surfaced. */
+  const shape = cpAvatarShape(c.type);
+  const avatarSrc = c.avatar ? (avatarBroken ? 'data:image/png;base64,Zm9v' : c.avatar) : null;
+  const saveAvatar = (dataUrl) => {
+    onSave(c.id, { avatar: dataUrl, avatarFileId: uid('av') });
+    setCropOpen(false);
+    if (onAnnounce) onAnnounce(`${shape.label} saved.`);
+  };
+  const removeAvatar = () => {
+    onSave(c.id, { avatar: null, avatarFileId: null });
+    setRemoveOpen(false);
+    if (onAnnounce) onAnnounce(`${shape.label} removed.`);
+  };
+
   if (!RecordCard || !InfoTileGrid || !InfoTile) return null;
 
   return (
     <div>
       <RecordCard
         icon={meta.icon}
+        image={avatarSrc ? { src: avatarSrc, fit: shape.fit, round: shape.round } : undefined}
         accent={meta.color}
         accentSoft={meta.soft}
         name={resolvedName(c)}
@@ -724,6 +773,10 @@ const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onAlias
         onToggle={onToggle}
         actions={<ActionMenu items={[
           { icon: 'edit', label: 'Edit contact', onClick: () => setShowEdit(true) },
+          ...(canUpdate && !c.archived ? [
+            { icon: c.avatar ? 'photo_camera' : 'add_photo_alternate', label: `${c.avatar ? 'Change' : 'Add'} ${shape.noun}`, onClick: () => { if (!open) onToggle(true); setCropOpen(true); } },
+            ...(c.avatar ? [{ icon: 'hide_image', label: `Remove ${shape.noun}`, onClick: () => setRemoveOpen(true) }] : []),
+          ] : []),
           { icon: 'download', label: 'Export vCard', onClick: () => onExportRow && onExportRow(c) },
           ...(c.archived ? [] : [
             { divider: true },
@@ -782,6 +835,29 @@ const CpRecordCard = ({ c, open, onToggle, onSave, onDelete, onContacts, onAlias
       </RecordCard>
       {showEdit && <AddContactModal contact={c} onClose={() => setShowEdit(false)}
         onSave={(id, patch) => { onSave(id, patch); setShowEdit(false); }} />}
+      {cropOpen && window.ContactAvatarDialog && (
+        <window.ContactAvatarDialog contact={{ id: c.id, type: c.type, name: resolvedName(c) }}
+          outcome={avatarOutcome}
+          onCancel={() => setCropOpen(false)}
+          onSaved={saveAvatar} />
+      )}
+      {/* Removal also deletes the file, so it is confirmed — the one contact
+          image action that is not reversible by re-picking the same crop. */}
+      {removeOpen && (
+        <Modal
+          title={`Remove ${shape.noun}?`}
+          icon="hide_image"
+          iconTone="warning"
+          onClose={() => setRemoveOpen(false)}
+          footer={<React.Fragment>
+            <Button variant="text" onClick={() => setRemoveOpen(false)}>Cancel</Button>
+            <Button variant="danger" icon="delete_outline" onClick={removeAvatar}>Remove {shape.noun}</Button>
+          </React.Fragment>}>
+          <p style={{ margin: 0, font: '400 13.5px/1.6 var(--font-sans)', color: 'var(--mud-palette-text-secondary)' }}>
+            The image file is deleted, not just detached — <b style={{ color: 'var(--mud-palette-text-primary)', fontWeight: 500 }}>{resolvedName(c)}</b> falls back to the {meta.label.toLowerCase()} glyph everywhere. The contact itself is unchanged.
+          </p>
+        </Modal>
+      )}
     </div>
   );
 };
@@ -997,8 +1073,13 @@ const Contacts = ({ tweaks = {} }) => {
   const touch = (c) => ({ ...c, updatedAt: new Date().toISOString() });
   const createCp = (dto) => {
     const now = new Date().toISOString();
-    setRows(prev => [{ id: uid('cp'), createdAt: now, updatedAt: now, ...dto }, ...prev]);
+    /* A new contact has no image: it is created first, then given a picture or
+       logo from its row's ⋯ menu, so no upload rides on the create POST and
+       there is no partial-success state to recover from. */
+    const row = { id: uid('cp'), createdAt: now, updatedAt: now, ...dto };
+    setRows(prev => [row, ...prev]);
     setAdding(false);
+    setOpenId(row.id);
   };
   const onSave = (id, patch) => setRows(prev => prev.map(c => c.id === id ? touch({ ...c, ...patch }) : c));
   // A contact named as an insurer, an insured contact or a beneficiary on any
@@ -1158,6 +1239,7 @@ const Contacts = ({ tweaks = {} }) => {
                 onToggle={(o) => setOpenId(o ? c.id : null)}
                 onSave={onSave} onDelete={onDelete} onContacts={onContacts} onAliases={onAliases} onExportRow={exportRow}
                 perms={perms} aliasCap={tweaks.cpAliasCap || 32} onAnnounce={say}
+                avatarOutcome={tweaks.cpAvatarOutcome || 'ok'} avatarBroken={!!tweaks.cpAvatarBroken}
                 onProblem={(m) => pushToast('error', m)} />
             )}
             empty={(

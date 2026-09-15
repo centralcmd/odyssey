@@ -69,6 +69,7 @@
   <script type="text/babel" src="Files.jsx"></script>
   <script type="text/babel" src="Transactions.jsx"></script>
   <script type="text/babel" src="TransactionTags.jsx"></script>
+  <script type="text/babel" src="ContactAvatarDialog.jsx"></script>
   <script type="text/babel" src="ContactImportModal.jsx"></script>
   <script type="text/babel" src="ContactLinksBlockedModal.jsx"></script>
   <script type="text/babel" src="Contacts.jsx"></script>
@@ -116,10 +117,10 @@
 
     function App() {
       const [authed, setAuthed] = useState(true); // start on dashboard for review
-      const [view, setView] = useState('budgets'); // open on Budgets to review the tag-as-identity items
+      const [view, setView] = useState('contacts'); // open on Contacts to review the contact image work
       const [authMode, setAuthMode] = useState('login');
       const [dark, setDark] = useState(true);
-      const [tweaks, setTweak] = useTweaks({ reportLayout: 'table', summaryBaseCurrency: 'USD', endingWindowDays: 45, showOnboarding: false, cpCanImport: true, cpExportCap: false, cpImportOutcome: 'skips', cpResidualLabel: false, cpCanCreate: true, cpCanUpdate: true, cpCanDelete: true, cpAliasCap: 32, tCanImport: true, tExportCap: false, tImportOutcome: 'skips', jCanImport: true, jCanReadCp: true, jExportCap: false, jImportOutcome: 'skips', showPasswordGate: false, cprOutcome: 'success', usersResetOutcome: 'delivered', bgtCanCreateTag: true, bgtTagsFailed: false });
+      const [tweaks, setTweak] = useTweaks({ reportLayout: 'table', summaryBaseCurrency: 'USD', endingWindowDays: 45, showOnboarding: false, cpCanImport: true, cpExportCap: false, cpImportOutcome: 'skips', cpResidualLabel: false, cpCanCreate: true, cpCanUpdate: true, cpCanDelete: true, cpAliasCap: 32, cpAvatarOutcome: 'ok', cpAvatarBroken: false, tCanImport: true, tExportCap: false, tImportOutcome: 'skips', jCanImport: true, jCanReadCp: true, jExportCap: false, jImportOutcome: 'skips', showPasswordGate: false, cprOutcome: 'success', usersResetOutcome: 'delivered', bgtCanCreateTag: true, bgtTagsFailed: false });
 
       // The "Sort by" control's anatomy, read by the SortSelect bridge in
       // Components.jsx at render time — a tweak change re-renders the tree.
@@ -288,6 +289,12 @@
               <TweakRadio label="Alias cap (server-enforced)" value={tweaks.cpAliasCap}
                           options={[{ value: 32, label: '32' }, { value: 2, label: '2 — see the 422' }]}
                           onChange={(v) => setTweak('cpAliasCap', v)} />
+              <TweakSection label="Contact image (picture / logo)" />
+              <TweakRadio label="Upload outcome" value={tweaks.cpAvatarOutcome}
+                          options={[{ value: 'ok', label: 'Saves' }, { value: 'too-large', label: 'Over the cap' }, { value: 'network', label: 'Network error' }]}
+                          onChange={(v) => setTweak('cpAvatarOutcome', v)} />
+              <TweakToggle label="Stored image 404s (falls back to the glyph)" value={tweaks.cpAvatarBroken}
+                           onChange={(v) => setTweak('cpAvatarBroken', v)} />
               <TweakSection label="Blocked delete (insurance links)" />
               <TweakToggle label="Holds insurance.read (names blocking policies)" value={tweaks.cpCanReadInsurance}
                            onChange={(v) => setTweak('cpCanReadInsurance', v)} />

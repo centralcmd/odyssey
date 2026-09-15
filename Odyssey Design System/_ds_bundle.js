@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"658e9ce1d257","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"bdecd10a240e","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"b0131d9ed58f","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"f48fe06c58a4","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"b6392757f0f9","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"638b43648d4c","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"d1734e9c9e28","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"7ead633fe94a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"2f9ab86b7929","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"928055acc756","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"2e56ec542437","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"13fe90661c91","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"9a6edb776707","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a520a2c04a06","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"93b97998d865","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"601a56eb696d","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"0d19cafaeb2a","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"b6392757f0f9","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"d1734e9c9e28","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"7ead633fe94a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"181d5632d08b","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"2e56ec542437","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"13fe90661c91","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"9a6edb776707","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a520a2c04a06","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -1387,6 +1387,18 @@ try { (() => {
  * md (40, default) / lg (56). `square` gives a rounded-rect (8px) instead of a
  * circle — for account / file / record tiles.
  *
+ * `fit` decides how an image meets the frame. `cover` (default) square-crops —
+ * a person's photograph. `contain` LETTERBOXES the image on a neutral ground
+ * with a 3:1 boundary — a company logo, which carries transparency, is rarely
+ * square and must never be cut. Choose it from what the image IS, not from the
+ * shape: a wordmark cropped to a circle is unrecognisable.
+ *
+ * The image is a plain <img> with `loading="lazy"` and `decoding="async"`: a
+ * 50-row list must not decode fifty pictures to show ten. `onError` fires when
+ * the image cannot load (deleted file, revoked access, offline) — the consumer
+ * uses it to swap back to its identity glyph, silently. Without it a broken
+ * image renders the browser's broken-image icon inside the frame.
+ *
  * `tone` is either a named categorical hue — neutral (default) · tide · sea ·
  * violet · mint · coral — or a custom `{ bg, fg }` object for an arbitrary
  * pair (e.g. a file-kind color). Named tones are theme-aware soft tints.
@@ -1400,12 +1412,15 @@ function Avatar({
   size = 'md',
   tone = 'neutral',
   square = false,
+  fit = 'cover',
+  onError,
   className = '',
   style,
   children
 }) {
   const namedTone = typeof tone === 'string';
-  const cls = `odc-avatar${size !== 'md' ? ' ' + size : ''}${square ? ' sq' : ''}${namedTone && tone !== 'neutral' ? ' ' + tone : ''}${className ? ' ' + className : ''}`;
+  const contain = !!src && fit === 'contain';
+  const cls = `odc-avatar${size !== 'md' ? ' ' + size : ''}${square ? ' sq' : ''}${contain ? ' contain' : ''}${namedTone && tone !== 'neutral' ? ' ' + tone : ''}${className ? ' ' + className : ''}`;
   const toneStyle = !namedTone && tone ? {
     background: tone.bg,
     color: tone.fg
@@ -1413,7 +1428,10 @@ function Avatar({
   let inner;
   if (src) inner = /*#__PURE__*/React.createElement("img", {
     src: src,
-    alt: alt
+    alt: alt,
+    loading: "lazy",
+    decoding: "async",
+    onError: onError
   });else if (icon) inner = /*#__PURE__*/React.createElement("span", {
     className: "material-icons",
     "aria-hidden": "true"
@@ -6618,6 +6636,11 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
  * editor beneath each file row (e.g. validity dates) — `patch(partial)` merges
  * fields into that file. Styled by .odc-upload-*.
  *
+ * `onFiles` hands the consumer the raw browser `File` objects alongside the
+ * row list — needed whenever the surface must read the BYTES rather than just
+ * queue a name (a client-side crop, a checksum, an in-browser preview). The row
+ * list stays the field's own model.
+ *
  * ## Never write a size limit into `hint` as a literal
  * Pass `maxMegabytes` and the size clause is composed from it. The limit is a
  * runtime setting an administrator can change, so a number typed into the hint
@@ -6793,6 +6816,7 @@ function FileUpload({
   files,
   defaultFiles = [],
   onChange,
+  onFiles,
   accept,
   multiple = true,
   maxMegabytes,
@@ -6817,12 +6841,14 @@ function FileUpload({
     if (onChange) onChange(next);
   };
   const addFiles = fileList => {
+    const raw = Array.from(fileList || []);
     let incoming = odcFilesFromList(fileList);
     if (guessKind) incoming = incoming.map(f => ({
       ...f,
       kind: guessKind(f.name)
     }));
     if (!incoming.length) return;
+    if (onFiles) onFiles(multiple ? raw : raw.slice(0, 1));
     // multiple=false is a genuine single-file field: a new pick/drop REPLACES the
     // current file rather than accumulating (the accumulation logic ignored the
     // flag before — a single-file picker would silently pile files up).
@@ -10648,6 +10674,15 @@ try { (() => {
  * in that object's own type icon and colour instead, so it stays recognisable as
  * the record it points at.
  *
+ * `image` makes the mark the record's own picture instead of its type glyph —
+ * a contact's profile photo or company logo. `fit: 'contain'` letterboxes it on
+ * a neutral ground (a logo is rarely square and must never be cut); `round`
+ * gives the circular mark a photograph wants. The image is decorative here
+ * (`alt=""`): the name sits in the very next cell. A load failure falls back to
+ * `icon` with nothing surfaced to the user, so pass `icon` as well. The accent
+ * does NOT move with it — `--rec` / `--rec-soft` still drive every icon chip
+ * and chart in the card; only the mark's content and its own ground change.
+ *
  * `accent` / `accentSoft` come from the record's TYPE
  * colour — or its type-equivalent: a categorical registry the record always has
  * exactly one of (a subscription's billing interval, a budget item's category).
@@ -10668,6 +10703,7 @@ try { (() => {
  */
 function RecordCard({
   icon,
+  image,
   accent,
   accentSoft,
   name,
@@ -10689,6 +10725,10 @@ function RecordCard({
   children
 }) {
   const isControlled = open !== undefined;
+  const [imageFailed, setImageFailed] = React.useState(false);
+  React.useEffect(() => {
+    setImageFailed(false);
+  }, [image && image.src]);
   const [internal, setInternal] = React.useState(defaultOpen);
   const isOpen = isControlled ? open : internal;
   const rid = React.useId();
@@ -10728,7 +10768,15 @@ function RecordCard({
     "aria-expanded": isOpen,
     "aria-controls": bodyId,
     onClick: toggle
-  }, icon ? /*#__PURE__*/React.createElement("span", {
+  }, image && image.src && !imageFailed ? /*#__PURE__*/React.createElement("span", {
+    className: `odc-record-mark img${image.fit === 'contain' ? ' ground' : ''}${image.round ? ' round' : ''}`
+  }, /*#__PURE__*/React.createElement("img", {
+    src: image.src,
+    alt: "",
+    loading: "lazy",
+    decoding: "async",
+    onError: () => setImageFailed(true)
+  })) : icon ? /*#__PURE__*/React.createElement("span", {
     className: "odc-record-mark"
   }, /*#__PURE__*/React.createElement("span", {
     className: "material-icons",
@@ -20448,7 +20496,7 @@ const AllocationDonuts = () => {
   })), /*#__PURE__*/React.createElement("div", {
     className: "acct-donut-card"
   }, /*#__PURE__*/React.createElement(DonutPanel, {
-    title: "Liabilities",
+    title: "Liability allocation",
     sub: `What you owe · ${liabilities.length} accounts`,
     centerLabel: "Total owed",
     centerIcon: "credit_card",
@@ -23489,8 +23537,7 @@ const AddPolicyPartyModal = ({
   optionsLoading = false,
   onClose,
   onAdd,
-  onSave,
-  onRemove
+  onSave
 }) => {
   const {
     useState
@@ -23566,16 +23613,12 @@ const AddPolicyPartyModal = ({
     title: editing ? 'Edit party' : 'New party',
     subtitle: editing ? 'Change the role, the linked record, or the dates this party is in the role.' : 'Link a contact or account to this policy in one of its four roles.',
     icon: "group_add",
-    onClose: onClose,
-    footer: /*#__PURE__*/React.createElement(React.Fragment, null, editing && onRemove ? /*#__PURE__*/React.createElement(Button, {
-      variant: "danger",
-      icon: "link_off",
-      className: "ins-remove-party",
-      onClick: () => onRemove({
-        field: party.field,
-        id: party.id
-      })
-    }, "Remove party") : null, /*#__PURE__*/React.createElement(Button, {
+    onClose: onClose
+    /* Removing a party lives on the party TILE's ⋯ menu, not here: the dialog
+       edits one link and its footer carries that edit's own actions. A
+       destructive action in a footer beside Save also reads as the opposite of
+       Save, which is exactly where a mis-click hurts. */,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
       variant: "text",
       onClick: onClose
     }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
@@ -32156,6 +32199,365 @@ Object.assign(window, {
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/ConfirmEmail.jsx", error: String((e && e.message) || e) }); }
 
+// ui_kits/web/ContactAvatarDialog.jsx
+try { (() => {
+/* ContactAvatarDialog — the client-side crop + downscale dialog behind
+   “Change picture” / “Change logo” (contact-avatar spec §3).
+
+   What this file is faithful to:
+   - ONE image per contact, stored in the existing Files store. The dialog
+     normalises what gets uploaded: a square 512 px cover crop for a Person, a
+     contained 512 px canvas for an Organization (a wordmark is never cut).
+   - Every number comes from CONTACT_AVATAR_LIMITS (the kit's stand-in for
+     `ContactAvatarLimits` in Odyssey.Dtos) combined with the live server cap
+     read from the upload-limits lookup. No literal cap at a call site.
+   - The controls are native <input type="range"> on the DS `.odc-range` style — Zoom, Horizontal, Vertical —
+     each labelled, each arrow/Home/End operable by construction. Pointer drag
+     on the canvas is an ADDITIONAL affordance, never the only one.
+   - The <canvas> is aria-hidden and the preview state is available as text
+     beside it; a canvas exposes no accessible structure and the three ranges
+     already carry the state.
+   - One validation-failure rule: a failure attributable to a control renders on
+     that control (aria-invalid + aria-describedby + focus, no role="alert", so
+     it is announced once); a server / network failure goes to a role="alert"
+     region, carries the ProblemDetails message verbatim, and does not move
+     focus. */
+
+const CONTACT_AVATAR_LIMITS = {
+  // Stored avatar — the server is authoritative. The effective byte cap is
+  // min(global upload cap, maxAvatarBytes): TightenTo is `min`, never `max`.
+  maxAvatarBytes: 2 * 1024 * 1024,
+  maxAvatarDimension: 1024,
+  // Source — what the crop dialog will open, in the browser only.
+  maxSourceBytes: 20 * 1024 * 1024,
+  maxSourceDimension: 8192,
+  // What the crop writes.
+  outputDimension: 512,
+  jpegQuality: 0.85,
+  types: ['image/png', 'image/jpeg', 'image/webp'],
+  typeLabel: 'PNG, JPEG or WebP'
+};
+const cavTightenTo = (globalCapBytes, surfaceCapBytes) => Math.min(globalCapBytes || Infinity, surfaceCapBytes);
+const cavMb = bytes => `${Math.round(bytes / (1024 * 1024) * 10) / 10} MB`;
+
+/* Deterministic stand-in imagery. The product seeds two demo contacts from the
+   existing DemoImages generator, which emits PNG — here it is a striped
+   placeholder with a monospace caption, so nothing pretends to be a photograph
+   the kit does not have. */
+const cavPlaceholder = (kind, seed = 0) => {
+  const S = 512;
+  const c = document.createElement('canvas');
+  c.width = S;
+  c.height = kind === 'logo' ? Math.round(S * 0.42) : S;
+  const g = c.getContext('2d');
+  const hue = kind === 'logo' ? 295 : 150;
+  g.fillStyle = kind === 'logo' ? 'oklch(0.28 0.03 295)' : 'oklch(0.34 0.05 150)';
+  g.fillRect(0, 0, c.width, c.height);
+  g.strokeStyle = kind === 'logo' ? 'oklch(0.72 0.16 295 / 0.5)' : 'oklch(0.80 0.15 150 / 0.4)';
+  g.lineWidth = 6;
+  for (let i = -c.height; i < c.width + c.height; i += 26 + seed % 5) {
+    g.beginPath();
+    g.moveTo(i, 0);
+    g.lineTo(i + c.height, c.height);
+    g.stroke();
+  }
+  g.fillStyle = `oklch(0.94 0.02 ${hue})`;
+  g.font = `500 ${Math.round(c.height * 0.1)}px ui-monospace, monospace`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(kind === 'logo' ? 'LOGO' : 'PORTRAIT', c.width / 2, c.height / 2);
+  return c.toDataURL('image/png');
+};
+const ContactAvatarDialog = ({
+  contact,
+  currentSrc,
+  onCancel,
+  onSaved,
+  outcome = 'ok',
+  globalCapBytes = 64 * 1024 * 1024
+}) => {
+  const {
+    useState,
+    useRef,
+    useEffect,
+    useCallback
+  } = React;
+  const isPerson = (contact && contact.type) !== 'Organization';
+  const L = CONTACT_AVATAR_LIMITS;
+  const effectiveCap = cavTightenTo(globalCapBytes, L.maxAvatarBytes);
+  const [src, setSrc] = useState(currentSrc || null);
+  const [img, setImg] = useState(null);
+  const [zoom, setZoom] = useState(100);
+  const [px, setPx] = useState(0);
+  const [py, setPy] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [fileError, setFileError] = useState(null); // attributable to the dropzone
+  const [rows, setRows] = useState([]); // the FileUpload field's own row model
+  const [serverError, setServerError] = useState(null); // ProblemDetails text
+  const [live, setLive] = useState('');
+  const canvasRef = useRef(null);
+  const dropRef = useRef(null);
+  const noun = isPerson ? 'picture' : 'logo';
+  useEffect(() => {
+    if (!src) {
+      setImg(null);
+      return;
+    }
+    const i = new Image();
+    i.onload = () => setImg(i);
+    i.onerror = () => {
+      setImg(null);
+      setFileError('Unable to read that image. Choose a PNG, JPEG or WebP file.');
+    };
+    i.src = src;
+  }, [src]);
+  const draw = useCallback(() => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    const S = L.outputDimension;
+    cv.width = S;
+    cv.height = S;
+    const g = cv.getContext('2d');
+    g.clearRect(0, 0, S, S);
+    if (!img) return;
+    const base = isPerson ? Math.max(S / img.naturalWidth, S / img.naturalHeight) // cover — square crop
+    : Math.min(S / img.naturalWidth, S / img.naturalHeight); // contain — letterboxed
+    const scale = base * (zoom / 100);
+    const dw = img.naturalWidth * scale,
+      dh = img.naturalHeight * scale;
+    const slackX = Math.max(0, (dw - S) / 2),
+      slackY = Math.max(0, (dh - S) / 2);
+    g.drawImage(img, (S - dw) / 2 + px / 100 * slackX, (S - dh) / 2 + py / 100 * slackY, dw, dh);
+  }, [img, zoom, px, py, isPerson, L.outputDimension]);
+  useEffect(() => {
+    draw();
+  }, [draw]);
+  const pick = file => {
+    setServerError(null);
+    if (!file) return;
+    if (L.types.indexOf(file.type) < 0) {
+      rejectFile(`That file is a ${file.type || 'unknown type'}. Choose a ${L.typeLabel} image.`);
+      return;
+    }
+    if (file.size > L.maxSourceBytes) {
+      rejectFile(`That file is ${cavMb(file.size)}. Choose an image of ${cavMb(L.maxSourceBytes)} or less.`);
+      return;
+    }
+    setFileError(null);
+    setRows(window.FileUpload ? window.FileUpload.filesFromList([file]) : []);
+    setZoom(100);
+    setPx(0);
+    setPy(0);
+    setSrc(URL.createObjectURL(file));
+  };
+  const rejectFile = msg => {
+    setFileError(msg);
+    setRows([]);
+  };
+
+  // Attributable failures move focus to the control they belong to — here the
+  // shared FileUpload field's own dropzone.
+  useEffect(() => {
+    if (!fileError) return;
+    const zone = dropRef.current && dropRef.current.querySelector('.odc-upload-drop');
+    if (zone) zone.focus();
+  }, [fileError]);
+  const reset = () => {
+    setZoom(100);
+    setPx(0);
+    setPy(0);
+  };
+  const save = () => {
+    if (!img) {
+      setFileError(`Choose an image to use as this contact's ${noun}.`);
+      return;
+    }
+    setServerError(null);
+    setBusy(true);
+    setLive(`Uploading ${noun}…`);
+    const encoded = canvasRef.current.toDataURL(isPerson ? 'image/jpeg' : 'image/png', L.jpegQuality);
+    window.setTimeout(() => {
+      if (outcome === 'too-large') {
+        setBusy(false);
+        setLive('');
+        // The server's own ProblemDetails message — it names the actual limit.
+        setServerError(`Unable to save the ${noun}. The image must be ${cavMb(effectiveCap)} or smaller. Crop a smaller area, or choose a different file.`);
+        return;
+      }
+      if (outcome === 'network') {
+        setBusy(false);
+        setLive('');
+        setServerError(`Unable to save the ${noun}. The server could not be reached. Check your connection and try again.`);
+        return;
+      }
+      setBusy(false);
+      setLive(isPerson ? 'Picture saved' : 'Logo saved');
+      onSaved && onSaved(encoded);
+    }, 650);
+  };
+
+  /* Pointer drag — an addition to the ranges, not a replacement. */
+  const dragRef = useRef(null);
+  const onDown = e => {
+    if (!img) return;
+    dragRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      px,
+      py
+    };
+  };
+  const onMove = e => {
+    const d = dragRef.current;
+    if (!d) return;
+    const k = 0.55;
+    setPx(Math.max(-100, Math.min(100, d.px - (e.clientX - d.x) * k)));
+    setPy(Math.max(-100, Math.min(100, d.py - (e.clientY - d.y) * k)));
+  };
+  const endDrag = () => {
+    dragRef.current = null;
+  };
+  const pctText = v => `${v} %`;
+  const offsetText = v => v === 0 ? 'centred' : `${Math.abs(v)} % ${v < 0 ? 'left of centre' : 'right of centre'}`;
+  const offsetTextV = v => v === 0 ? 'centred' : `${Math.abs(v)} % ${v < 0 ? 'above centre' : 'below centre'}`;
+  const stateText = img ? `Showing ${px === 0 && py === 0 ? 'the centre' : 'an off-centre area'} of your ${noun} at ${zoom} %.` : `No image chosen yet. The ${noun} is ${isPerson ? 'cropped to a square and shown as a circle' : 'contained, never cropped, on a neutral ground'}.`;
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: isPerson ? 'Crop profile picture' : 'Crop logo',
+    subtitle: `${L.typeLabel} · up to ${cavMb(L.maxSourceBytes)} · stored at ${L.outputDimension} × ${L.outputDimension}`,
+    icon: "crop",
+    className: "cav-dialog",
+    onClose: onCancel,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onCancel
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      icon: "check",
+      loading: busy,
+      onClick: save
+    }, "Save"))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "cav-body",
+    "aria-busy": busy || undefined
+  }, serverError ? /*#__PURE__*/React.createElement("div", {
+    className: "cav-alert",
+    role: "alert"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "error_outline",
+    size: 18
+  }), /*#__PURE__*/React.createElement("span", null, serverError)) : null, /*#__PURE__*/React.createElement(FieldShell, {
+    label: img ? 'Source image' : `Choose ${isPerson ? 'a picture' : 'a logo'}`
+  }, /*#__PURE__*/React.createElement("div", {
+    ref: dropRef
+  }, /*#__PURE__*/React.createElement(FileUpload, {
+    id: "cav-file",
+    compact: true,
+    multiple: false,
+    showKinds: false,
+    accept: L.types.join(','),
+    files: rows,
+    onChange: next => {
+      setRows(next);
+      if (!next.length) {
+        setSrc(null);
+        setFileError(null);
+      }
+    },
+    onFiles: files => pick(files[0]),
+    error: fileError || undefined,
+    hint: `${L.typeLabel} · up to ${cavMb(L.maxSourceBytes)} · ${L.maxSourceDimension} × ${L.maxSourceDimension} px · one image`
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "cav-stage"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: `cav-frame${isPerson ? ' round' : ' ground'}`,
+    onPointerDown: onDown,
+    onPointerMove: onMove,
+    onPointerUp: endDrag,
+    onPointerLeave: endDrag
+  }, /*#__PURE__*/React.createElement("canvas", {
+    ref: canvasRef,
+    "aria-hidden": "true"
+  }), !img ? /*#__PURE__*/React.createElement("span", {
+    className: "cav-frame-empty",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: isPerson ? 'person' : 'corporate_fare',
+    size: 30
+  })) : null), /*#__PURE__*/React.createElement("div", {
+    className: "cav-controls"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "cav-state"
+  }, stateText), /*#__PURE__*/React.createElement("label", {
+    className: "cav-ctl",
+    htmlFor: "cav-zoom"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "cav-ctl-l"
+  }, "Zoom", /*#__PURE__*/React.createElement("b", null, pctText(zoom))), /*#__PURE__*/React.createElement("input", {
+    id: "cav-zoom",
+    type: "range",
+    className: "odc-range",
+    min: 100,
+    max: 300,
+    step: 5,
+    value: zoom,
+    disabled: !img,
+    "aria-valuetext": pctText(zoom),
+    onChange: e => setZoom(Number(e.target.value))
+  })), /*#__PURE__*/React.createElement("label", {
+    className: "cav-ctl",
+    htmlFor: "cav-x"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "cav-ctl-l"
+  }, "Horizontal", /*#__PURE__*/React.createElement("b", null, offsetText(px))), /*#__PURE__*/React.createElement("input", {
+    id: "cav-x",
+    type: "range",
+    className: "odc-range",
+    min: -100,
+    max: 100,
+    step: 2,
+    value: px,
+    disabled: !img,
+    "aria-valuetext": offsetText(px),
+    onChange: e => setPx(Number(e.target.value))
+  })), /*#__PURE__*/React.createElement("label", {
+    className: "cav-ctl",
+    htmlFor: "cav-y"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "cav-ctl-l"
+  }, "Vertical", /*#__PURE__*/React.createElement("b", null, offsetTextV(py))), /*#__PURE__*/React.createElement("input", {
+    id: "cav-y",
+    type: "range",
+    className: "odc-range",
+    min: -100,
+    max: 100,
+    step: 2,
+    value: py,
+    disabled: !img,
+    "aria-valuetext": offsetTextV(py),
+    onChange: e => setPy(Number(e.target.value))
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "cav-reset"
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "text",
+    icon: "restart_alt",
+    onClick: reset
+  }, "Reset")))), /*#__PURE__*/React.createElement("p", {
+    className: "cav-note"
+  }, isPerson ? 'Saved as a square JPEG and shown as a circle. Location, capture time and device details are removed from the stored file.' : 'Saved as a PNG with its transparency and shown contained on a neutral ground — a wordmark is never cut. Metadata is removed from the stored file.'), /*#__PURE__*/React.createElement("span", {
+    className: "cav-live",
+    role: "status",
+    "aria-live": "polite"
+  }, live)));
+};
+Object.assign(window, {
+  ContactAvatarDialog,
+  CONTACT_AVATAR_LIMITS,
+  cavPlaceholder,
+  cavMb,
+  cavTightenTo
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/ContactAvatarDialog.jsx", error: String((e && e.message) || e) }); }
+
 // ui_kits/web/ContactImportModal.jsx
 try { (() => {
 /* ContactImportModal — the .vcf import dialog (spec §3 / §4 / §7 / §11).
@@ -33292,6 +33694,51 @@ const CP_SEED = [{
 
 /* ================= small building blocks ================= */
 
+/* ---- Contact image — one per contact (profile picture / company logo) ----
+   Stored in the existing Files store, so `avatarFileId` is the only new member
+   on the read DTO; `avatar` here stands in for the bytes the product streams
+   from GET /api/contacts/{id}/avatar?v={avatarFileId} (the key makes
+   revalidation after a replace a guaranteed 304).
+
+   The two contact types share one storage slot and differ only in PRESENTATION:
+   a person's photo is square-cropped into a circle, an organization's logo is
+   letterboxed on a neutral ground — logos carry transparency and are rarely
+   square, so cropping one to a circle destroys it. */
+const cpAvatarShape = type => type === 'Organization' ? {
+  fit: 'contain',
+  round: false,
+  noun: 'logo',
+  label: 'Logo',
+  altPrefix: 'Logo of'
+} : {
+  fit: 'cover',
+  round: true,
+  noun: 'picture',
+  label: 'Profile picture',
+  altPrefix: 'Profile picture of'
+};
+
+/* Two seeded contacts carry an image, from the demo generator — which emits
+   PNG, so the demo pair exercises the PNG path. */
+(() => {
+  if (typeof window === 'undefined' || !window.cavPlaceholder) return;
+  const person = CP_SEED.find(c => c.type === 'Person');
+  const org = CP_SEED.find(c => c.type === 'Organization');
+  if (person) {
+    person.avatarFileId = 'av-seed-person';
+    person.avatar = window.cavPlaceholder('portrait', 3);
+  }
+  if (org) {
+    org.avatarFileId = 'av-seed-org';
+    org.avatar = window.cavPlaceholder('logo', 1);
+  }
+})();
+
+/* The image has no tile and no dialog field: every avatar action lives in the
+   row's ⋯ menu (Add / Change / Remove picture — logo for an organization),
+   beside Edit contact. A contact is created first and given its image from the
+   menu afterwards, so no image upload ever rides on the create POST. */
+
 /* Primary marker — always visible TEXT (never icon/colour alone; §10 a11y). */
 const PrimaryBadge = () => /*#__PURE__*/React.createElement(Chip, {
   tone: "income",
@@ -33855,9 +34302,7 @@ const CpTiles = ({
   const p = c.person || {},
     o = c.org || {};
   const website = o.website && /^https?:\/\//i.test(o.website) ? o.website : null;
-  return /*#__PURE__*/React.createElement(InfoTileGrid, {
-    dense: true
-  }, /*#__PURE__*/React.createElement(InfoTile, {
+  return /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
     icon: "badge",
     label: "Display name",
     value: resolvedName(c) || '—',
@@ -33978,13 +34423,17 @@ const CpRecordCard = ({
   onProblem,
   onAnnounce,
   perms = {},
-  aliasCap
+  aliasCap,
+  avatarOutcome = 'ok',
+  avatarBroken = false
 }) => {
   const {
     useState
   } = React;
   const H = window.OdysseyHelpers;
   const [showEdit, setShowEdit] = useState(false);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [addReq, setAddReq] = useState(null); // {kind, nonce}
   const meta = CP_TYPE_BY_KEY[c.type] || CP_TYPE_BY_KEY.Person;
   const status = H.archivedStatus(c);
@@ -34022,9 +34471,37 @@ const CpRecordCard = ({
     label
   } : a));
   const deleteAlias = id => onAliases(c.id, aliases.filter(a => a.id !== id));
+
+  /* ---- contact image ----
+     The list mark is DECORATIVE (alt=""): the adjacent cell already names the
+     contact. `avatarBroken` stands in for a 404 on the avatar URL — the card
+     falls back to the type glyph with nothing surfaced. */
+  const shape = cpAvatarShape(c.type);
+  const avatarSrc = c.avatar ? avatarBroken ? 'data:image/png;base64,Zm9v' : c.avatar : null;
+  const saveAvatar = dataUrl => {
+    onSave(c.id, {
+      avatar: dataUrl,
+      avatarFileId: uid('av')
+    });
+    setCropOpen(false);
+    if (onAnnounce) onAnnounce(`${shape.label} saved.`);
+  };
+  const removeAvatar = () => {
+    onSave(c.id, {
+      avatar: null,
+      avatarFileId: null
+    });
+    setRemoveOpen(false);
+    if (onAnnounce) onAnnounce(`${shape.label} removed.`);
+  };
   if (!RecordCard || !InfoTileGrid || !InfoTile) return null;
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(RecordCard, {
     icon: meta.icon,
+    image: avatarSrc ? {
+      src: avatarSrc,
+      fit: shape.fit,
+      round: shape.round
+    } : undefined,
     accent: meta.color,
     accentSoft: meta.soft,
     name: resolvedName(c),
@@ -34101,7 +34578,18 @@ const CpRecordCard = ({
         icon: 'edit',
         label: 'Edit contact',
         onClick: () => setShowEdit(true)
-      }, {
+      }, ...(canUpdate && !c.archived ? [{
+        icon: c.avatar ? 'photo_camera' : 'add_photo_alternate',
+        label: `${c.avatar ? 'Change' : 'Add'} ${shape.noun}`,
+        onClick: () => {
+          if (!open) onToggle(true);
+          setCropOpen(true);
+        }
+      }, ...(c.avatar ? [{
+        icon: 'hide_image',
+        label: `Remove ${shape.noun}`,
+        onClick: () => setRemoveOpen(true)
+      }] : [])] : []), {
         icon: 'download',
         label: 'Export vCard',
         onClick: () => onExportRow && onExportRow(c)
@@ -34221,7 +34709,40 @@ const CpRecordCard = ({
       onSave(id, patch);
       setShowEdit(false);
     }
-  }));
+  }), cropOpen && window.ContactAvatarDialog && /*#__PURE__*/React.createElement(window.ContactAvatarDialog, {
+    contact: {
+      id: c.id,
+      type: c.type,
+      name: resolvedName(c)
+    },
+    outcome: avatarOutcome,
+    onCancel: () => setCropOpen(false),
+    onSaved: saveAvatar
+  }), removeOpen && /*#__PURE__*/React.createElement(Modal, {
+    title: `Remove ${shape.noun}?`,
+    icon: "hide_image",
+    iconTone: "warning",
+    onClose: () => setRemoveOpen(false),
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: () => setRemoveOpen(false)
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "danger",
+      icon: "delete_outline",
+      onClick: removeAvatar
+    }, "Remove ", shape.noun))
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      font: '400 13.5px/1.6 var(--font-sans)',
+      color: 'var(--mud-palette-text-secondary)'
+    }
+  }, "The image file is deleted, not just detached \u2014 ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: 'var(--mud-palette-text-primary)',
+      fontWeight: 500
+    }
+  }, resolvedName(c)), " falls back to the ", meta.label.toLowerCase(), " glyph everywhere. The contact itself is unchanged.")));
 };
 const contactCount = c => (c.addresses || []).length + (c.emails || []).length + (c.phones || []).length;
 
@@ -34600,13 +35121,18 @@ const Contacts = ({
   });
   const createCp = dto => {
     const now = new Date().toISOString();
-    setRows(prev => [{
+    /* A new contact has no image: it is created first, then given a picture or
+       logo from its row's ⋯ menu, so no upload rides on the create POST and
+       there is no partial-success state to recover from. */
+    const row = {
       id: uid('cp'),
       createdAt: now,
       updatedAt: now,
       ...dto
-    }, ...prev]);
+    };
+    setRows(prev => [row, ...prev]);
     setAdding(false);
+    setOpenId(row.id);
   };
   const onSave = (id, patch) => setRows(prev => prev.map(c => c.id === id ? touch({
     ...c,
@@ -34873,6 +35399,8 @@ const Contacts = ({
       perms: perms,
       aliasCap: tweaks.cpAliasCap || 32,
       onAnnounce: say,
+      avatarOutcome: tweaks.cpAvatarOutcome || 'ok',
+      avatarBroken: !!tweaks.cpAvatarBroken,
       onProblem: m => pushToast('error', m)
     }),
     empty: /*#__PURE__*/React.createElement(EmptyState, {
@@ -39484,7 +40012,9 @@ const InsLinkTiles = ({
   fallbackIcon,
   terms,
   field,
-  onEditParty
+  onEditParty,
+  onRemoveParty,
+  onNavigate
 }) => {
   const {
     useState
@@ -39510,22 +40040,54 @@ const InsLinkTiles = ({
       label: (() => {
         const id = r.contactId || r.accountId;
         const term = terms && terms(field, id);
-        /* The tile's own edit action — revealed on hover / keyboard focus,
-           and never offered for an unnamed member: its record is not in
-           the picker, so the dialog could not round-trip it. */
-        const edit = onEditParty && !unnamed ? /*#__PURE__*/React.createElement("button", {
-          type: "button",
-          className: "ins-tile-edit",
-          "aria-label": `Edit ${label.toLowerCase()} ${r.name}`,
-          onClick: () => onEditParty(field, id)
-        }, /*#__PURE__*/React.createElement("span", {
-          className: "material-icons",
-          "aria-hidden": "true"
-        }, "edit")) : null;
-        if (!term && !edit) return label;
+        /* The tile's ⋯ menu — the same affordance the contact-method tiles
+           carry, at the same 24px target in the same corner, so one tile
+           vocabulary covers both. `Copy ID` is unconditional, which is
+           what keeps the menu non-empty for an unnamed member: its record
+           is not in the picker (so Edit could not round-trip it) and its
+           name is not readable, but detaching it must stay possible —
+           that is the one link a user most needs to clean up. Remove
+           detaches the LINK; the contact or account itself is untouched. */
+        const menu = onEditParty || onRemoveParty ? /*#__PURE__*/React.createElement("span", {
+          className: "ins-tile-menu"
+        }, /*#__PURE__*/React.createElement(ActionMenu, {
+          items: [...(!unnamed ? [{
+            icon: 'content_copy',
+            label: 'Copy name',
+            onClick: () => {
+              if (navigator.clipboard) navigator.clipboard.writeText(r.name);
+            }
+          }] : []), ...(!unnamed && onNavigate ? [{
+            icon: kind === 'account' ? 'account_balance_wallet' : 'groups',
+            label: kind === 'account' ? 'Open account' : 'Open contact',
+            onClick: () => onNavigate(kind === 'account' ? 'accounts' : 'contacts')
+          }] : []), ...(!unnamed && onEditParty ? [{
+            icon: 'edit',
+            label: `Edit ${label.toLowerCase()}`,
+            onClick: () => onEditParty(field, id)
+          }] : []), {
+            icon: 'fingerprint',
+            label: 'Copy ID',
+            trailingIcon: 'content_copy',
+            onClick: () => {
+              if (navigator.clipboard) navigator.clipboard.writeText(id);
+            }
+          }, ...(onRemoveParty ? [{
+            divider: true
+          }, {
+            icon: 'link_off',
+            label: `Remove ${label.toLowerCase()}`,
+            danger: true,
+            onClick: () => onRemoveParty({
+              field,
+              id
+            })
+          }] : [])]
+        })) : null;
+        if (!term && !menu) return label;
         return /*#__PURE__*/React.createElement(React.Fragment, null, label, term ? /*#__PURE__*/React.createElement("span", {
           className: "ins-term"
-        }, term) : null, edit);
+        }, term) : null, menu);
       })(),
       valueVariant: "text",
       className: `wrapvalue${unnamed ? ' tone-muted' : ''}`,
@@ -39884,6 +40446,7 @@ const PolicyDetail = ({
   onNavigate,
   setPolicy,
   onEditParty,
+  onRemoveParty,
   onAddRenewal,
   onEditRenewal,
   onDeleteRenewal,
@@ -39995,7 +40558,9 @@ const PolicyDetail = ({
     fallbackIcon: "groups",
     terms: termText,
     field: "insurerIds",
-    onEditParty: onEditParty
+    onEditParty: onEditParty,
+    onRemoveParty: onRemoveParty,
+    onNavigate: onNavigate
   }), /*#__PURE__*/React.createElement(InsLinkTiles, {
     refs: insuredAccounts,
     kind: "account",
@@ -40003,7 +40568,9 @@ const PolicyDetail = ({
     fallbackIcon: "account_balance_wallet",
     terms: termText,
     field: "insuredAccountIds",
-    onEditParty: onEditParty
+    onEditParty: onEditParty,
+    onRemoveParty: onRemoveParty,
+    onNavigate: onNavigate
   }), /*#__PURE__*/React.createElement(InsLinkTiles, {
     refs: insuredContacts,
     kind: "contact",
@@ -40011,7 +40578,9 @@ const PolicyDetail = ({
     fallbackIcon: "person",
     terms: termText,
     field: "insuredContactIds",
-    onEditParty: onEditParty
+    onEditParty: onEditParty,
+    onRemoveParty: onRemoveParty,
+    onNavigate: onNavigate
   }), /*#__PURE__*/React.createElement(InsLinkTiles, {
     refs: beneficiaries,
     kind: "contact",
@@ -40019,7 +40588,9 @@ const PolicyDetail = ({
     fallbackIcon: "volunteer_activism",
     terms: termText,
     field: "beneficiaryIds",
-    onEditParty: onEditParty
+    onEditParty: onEditParty,
+    onRemoveParty: onRemoveParty,
+    onNavigate: onNavigate
   }))) : null;
   return /*#__PURE__*/React.createElement(React.Fragment, null, details, content, parties, current && /*#__PURE__*/React.createElement("div", {
     className: "ins-current"
@@ -40340,6 +40911,10 @@ const PolicyListItem = ({
         }
       });
     },
+    onRemoveParty: link => {
+      removeParty(link);
+      setAnnounce(`Party removed from ${p.name}. The linked record itself is unchanged.`);
+    },
     onAddRenewal: () => setModal({
       kind: 'renewal'
     }),
@@ -40367,8 +40942,7 @@ const PolicyListItem = ({
     optionsLoading: optionsLoading,
     onClose: () => setModal(null),
     onAdd: addParty,
-    onSave: saveParty,
-    onRemove: removeParty
+    onSave: saveParty
   }), modal && modal.kind === 'renewal' && /*#__PURE__*/React.createElement(AddRenewalModal, {
     policy: p,
     renewal: modal.renewal,

@@ -1,0 +1,142 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Avatar image & record mark" subtitle="One image per record: Avatar's fit (cover = a photograph, square-cropped; contain = a logo, letterboxed on a neutral ground with a 3:1 boundary) and onError (a load failure falls back to the identity glyph, silently), plus RecordCard's image mark — which changes the mark's content and, for a logo, its own ground, and leaves the record's accent driving every icon chip and chart in the card. Every avatar action lives in the record row's ⋯ menu, so the card body carries no image tile. Live." viewport="1220x880" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Avatar image &amp; record mark</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    a { color: var(--brand-text); }
+    a:hover { color: var(--mud-palette-primary); }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 0 0 16px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 20px 22px; min-width: 0; }
+    .panel.wide { grid-column: 1 / -1; }
+    .panel h3 { margin: 0 0 4px; font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+    .panel p.sub { margin: 0 0 16px; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .row { display: flex; align-items: flex-end; gap: 22px; flex-wrap: wrap; }
+    .spec { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .spec span { font: var(--fw-regular) var(--fs-caption)/1.2 var(--font-mono); color: var(--mud-palette-text-secondary); }
+    .stack { display: grid; gap: 12px; }
+    .note { margin: 20px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 104ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .note + .note { margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="cap">Avatar <code>&lt;Avatar src fit="cover | contain" onError /&gt;</code> · RecordCard <code>image={{ src, fit, round }}</code></div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51 || {};
+    const { Avatar, Button, RecordCard, InfoTileGrid, InfoTile, Chip, MIcon } = NS;
+
+    const PERSON = { color: 'oklch(0.80 0.15 150)', soft: 'oklch(0.80 0.15 150 / 0.16)', icon: 'person' };
+    const ORG = { color: 'oklch(0.72 0.16 295)', soft: 'oklch(0.72 0.16 295 / 0.16)', icon: 'corporate_fare' };
+
+    /* Stand-in imagery, drawn here — a striped placeholder with a monospace
+       caption, so nothing pretends to be a photograph the kit does not have.
+       The product seeds its demo pair from the existing PNG generator. */
+    const placeholder = (kind) => {
+      const S = 512;
+      const c = document.createElement('canvas');
+      c.width = S; c.height = kind === 'logo' ? Math.round(S * 0.42) : S;
+      const g = c.getContext('2d');
+      g.fillStyle = kind === 'logo' ? 'oklch(0.28 0.03 295)' : 'oklch(0.34 0.05 150)';
+      g.fillRect(0, 0, c.width, c.height);
+      g.strokeStyle = kind === 'logo' ? 'oklch(0.72 0.16 295 / 0.5)' : 'oklch(0.80 0.15 150 / 0.4)';
+      g.lineWidth = 6;
+      for (let i = -c.height; i < c.width + c.height; i += 28) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + c.height, c.height); g.stroke(); }
+      g.fillStyle = 'oklch(0.94 0.02 200)';
+      g.font = `500 ${Math.round(c.height * 0.1)}px ui-monospace, monospace`;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(kind === 'logo' ? 'LOGO' : 'PORTRAIT', c.width / 2, c.height / 2);
+      return c.toDataURL('image/png');
+    };
+    const BROKEN = 'data:image/png;base64,Zm9v';
+
+    function Demo() {
+      const photo = React.useMemo(() => placeholder('portrait'), []);
+      const logo = React.useMemo(() => placeholder('logo'), []);
+      if (!Avatar || !RecordCard) return <div className="panel">The compiled bundle does not carry the updated <code>Avatar</code> / <code>RecordCard</code> yet.</div>;
+      return (
+        <div className="grid">
+          <div className="panel">
+            <h3><code>fit="cover"</code> — a photograph</h3>
+            <p className="sub">Square-cropped to fill a circle. The subject of a portrait survives a crop; this is the Person framing.</p>
+            <div className="row">
+              {['sm', 'md', 'lg'].map((s) => (
+                <div className="spec" key={s}><Avatar size={s} src={photo} alt="" /><span>{s}</span></div>
+              ))}
+              <div className="spec"><Avatar size="lg" icon="person" tone={{ bg: PERSON.soft, fg: PERSON.color }} alt="" /><span>no image</span></div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3><code>fit="contain"</code> — a logo</h3>
+            <p className="sub">Letterboxed on a neutral ground with a 3:1 boundary and 10 % padding. A wide wordmark is never cut, and transparency reads against the ground rather than the accent tint.</p>
+            <div className="row">
+              {['sm', 'md', 'lg'].map((s) => (
+                <div className="spec" key={s}><Avatar size={s} square src={logo} fit="contain" alt="" /><span>{s}</span></div>
+              ))}
+              <div className="spec"><Avatar size="lg" square icon="corporate_fare" tone={{ bg: ORG.soft, fg: ORG.color }} alt="" /><span>no image</span></div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3><code>onError</code> — the fallback IS the mechanism</h3>
+            <p className="sub">These two point at an image that cannot decode. The glyph is back within a frame, nothing is announced and no broken-image icon appears. <code>no-cache</code> makes this state hotter, not rarer: a deleted image 404s on every revalidation.</p>
+            <div className="row">
+              <div className="spec"><FallbackMark type="Person" /><span>person</span></div>
+              <div className="spec"><FallbackMark type="Organization" /><span>organization</span></div>
+            </div>
+          </div>
+
+          <div className="panel wide">
+            <h3>Record mark — the list surface</h3>
+            <p className="sub">One row's mark is its own picture; the accent still belongs to the record's type, so the tile icons below keep their hue. The third row's image 404s and falls back to the type glyph.</p>
+            <div className="stack">
+              <RecordCard icon={PERSON.icon} accent={PERSON.color} accentSoft={PERSON.soft}
+                image={{ src: photo, fit: 'cover', round: true }}
+                name="Michael Chen" chips={<Chip tone="income" dot>Active</Chip>}
+                meta={['Person', 'Senior Engineer · Northwind Labs']}
+                details={<InfoTileGrid dense><InfoTile icon="person" label="First name" value="Michael" valueVariant="text" /><InfoTile icon="badge" label="Display name" value="Michael Chen" valueVariant="text" /></InfoTileGrid>} />
+              <RecordCard icon={ORG.icon} accent={ORG.color} accentSoft={ORG.soft}
+                image={{ src: logo, fit: 'contain' }}
+                name="Lakeside PM" chips={<Chip tone="income" dot>Active</Chip>}
+                meta={['Organization', '81-2233445']} />
+              <RecordCard icon={PERSON.icon} accent={PERSON.color} accentSoft={PERSON.soft}
+                image={{ src: BROKEN, fit: 'cover', round: true }}
+                name="Diego Ramos" chips={<Chip tone="income" dot>Active</Chip>}
+                meta={['Person', '+1 415 555 0270']} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function FallbackMark({ type }) {
+      const [failed, setFailed] = React.useState(false);
+      const isPerson = type === 'Person';
+      const meta = isPerson ? PERSON : ORG;
+      return failed
+        ? <Avatar size="lg" square={!isPerson} icon={meta.icon} tone={{ bg: meta.soft, fg: meta.color }} alt="" />
+        : <Avatar size="lg" square={!isPerson} src={BROKEN} fit={isPerson ? 'cover' : 'contain'} alt="" onError={() => setFailed(true)} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+
+  <p class="note"><b>Fit is chosen from what the image IS, not from the shape it lands in.</b> A person's photograph has a subject in the middle and survives a square crop, so it is <code>cover</code> in a circle. A logo is a shape on transparency with no safe crop — often a wide wordmark — so it is <code>contain</code> on a neutral ground. The two contact types share one storage slot and one upload pipeline; only the framing differs.</p>
+  <p class="note"><b>The mark is decorative in a list.</b> <code>alt=""</code> on the record mark: the adjacent cell already names the contact, and an <code>alt</code> there would read the name twice. Where the image is the subject of its own Change / Remove controls — the identity tile — it gets a descriptive <code>alt</code> built from the <i>resolved</i> display name, never the nullable one. Every list image also carries <code>loading="lazy"</code> and <code>decoding="async"</code>: a 50-row view must not decode fifty pictures to show ten.</p>
+  <p class="note"><b>The accent does not move with the image.</b> <code>accent</code> / <code>accentSoft</code> still set <code>--rec</code> / <code>--rec-soft</code> for every icon chip and single-series chart in the card. What the image mark changes is the mark's content, and for a contained logo the mark's own ground.</p>
+</body>
+</html>

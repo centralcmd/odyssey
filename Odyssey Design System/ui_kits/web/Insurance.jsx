@@ -93,7 +93,7 @@ const insRefMeta = (r, kind) => {
    A member whose ROLE TERM differs from the default (in-role for the whole
    policy) carries that term in its caption — the term is the party's own fact,
    so a renewal never rewrites it. */
-const InsLinkTiles = ({ refs, kind, label, fallbackIcon, terms, field, onEditParty }) => {
+const InsLinkTiles = ({ refs, kind, label, fallbackIcon, terms, field, onEditParty, onRemoveParty, onNavigate }) => {
   const { useState } = React;
   const [expanded, setExpanded] = useState(false);
   if (!refs.length) return null;
@@ -119,18 +119,27 @@ const InsLinkTiles = ({ refs, kind, label, fallbackIcon, terms, field, onEditPar
             label={(() => {
               const id = r.contactId || r.accountId;
               const term = terms && terms(field, id);
-              /* The tile's own edit action — revealed on hover / keyboard focus,
-                 and never offered for an unnamed member: its record is not in
-                 the picker, so the dialog could not round-trip it. */
-              const edit = onEditParty && !unnamed ? (
-                <button type="button" className="ins-tile-edit"
-                  aria-label={`Edit ${label.toLowerCase()} ${r.name}`}
-                  onClick={() => onEditParty(field, id)}>
-                  <span className="material-icons" aria-hidden="true">edit</span>
-                </button>
+              /* The tile's ⋯ menu — the same affordance the contact-method tiles
+                 carry, at the same 24px target in the same corner, so one tile
+                 vocabulary covers both. `Copy ID` is unconditional, which is
+                 what keeps the menu non-empty for an unnamed member: its record
+                 is not in the picker (so Edit could not round-trip it) and its
+                 name is not readable, but detaching it must stay possible —
+                 that is the one link a user most needs to clean up. Remove
+                 detaches the LINK; the contact or account itself is untouched. */
+              const menu = (onEditParty || onRemoveParty) ? (
+                <span className="ins-tile-menu">
+                  <ActionMenu items={[
+                    ...(!unnamed ? [{ icon: 'content_copy', label: 'Copy name', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(r.name); } }] : []),
+                    ...(!unnamed && onNavigate ? [{ icon: kind === 'account' ? 'account_balance_wallet' : 'groups', label: kind === 'account' ? 'Open account' : 'Open contact', onClick: () => onNavigate(kind === 'account' ? 'accounts' : 'contacts') }] : []),
+                    ...(!unnamed && onEditParty ? [{ icon: 'edit', label: `Edit ${label.toLowerCase()}`, onClick: () => onEditParty(field, id) }] : []),
+                    { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(id); } },
+                    ...(onRemoveParty ? [{ divider: true }, { icon: 'link_off', label: `Remove ${label.toLowerCase()}`, danger: true, onClick: () => onRemoveParty({ field, id }) }] : []),
+                  ]} />
+                </span>
               ) : null;
-              if (!term && !edit) return label;
-              return <React.Fragment>{label}{term ? <span className="ins-term">{term}</span> : null}{edit}</React.Fragment>;
+              if (!term && !menu) return label;
+              return <React.Fragment>{label}{term ? <span className="ins-term">{term}</span> : null}{menu}</React.Fragment>;
             })()}
             valueVariant="text"
             className={`wrapvalue${unnamed ? ' tone-muted' : ''}`}
@@ -367,7 +376,7 @@ const RenewalHistory = ({ policy, today, canWrite = true, onAddRenewal, onEditRe
 };
 
 /* ====================== Expanded detail ====================== */
-const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onEditParty, onAddRenewal, onEditRenewal, onDeleteRenewal, onUploadRenewal }) => {
+const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onEditParty, onRemoveParty, onAddRenewal, onEditRenewal, onDeleteRenewal, onUploadRenewal }) => {
   const insurers = INS_H.insInsurers(policy);
   const insuredAccounts = INS_H.insInsuredAccounts(policy);
   const insuredContacts = INS_H.insInsuredContacts(policy);
@@ -441,10 +450,10 @@ const PolicyDetail = ({ policy, today, onNavigate, setPolicy, onEditParty, onAdd
     <div className="ins-section">
       <SectionDivider label="Parties" meta={`${partyCount} link${partyCount === 1 ? '' : 's'}`} />
       <InfoTileGrid>
-        <InsLinkTiles refs={insurers} kind="contact" label="Insurer" fallbackIcon="groups" terms={termText} field="insurerIds" onEditParty={onEditParty} />
-        <InsLinkTiles refs={insuredAccounts} kind="account" label="Insured" fallbackIcon="account_balance_wallet" terms={termText} field="insuredAccountIds" onEditParty={onEditParty} />
-        <InsLinkTiles refs={insuredContacts} kind="contact" label="Insured" fallbackIcon="person" terms={termText} field="insuredContactIds" onEditParty={onEditParty} />
-        <InsLinkTiles refs={beneficiaries} kind="contact" label="Beneficiary" fallbackIcon="volunteer_activism" terms={termText} field="beneficiaryIds" onEditParty={onEditParty} />
+        <InsLinkTiles refs={insurers} kind="contact" label="Insurer" fallbackIcon="groups" terms={termText} field="insurerIds" onEditParty={onEditParty} onRemoveParty={onRemoveParty} onNavigate={onNavigate} />
+        <InsLinkTiles refs={insuredAccounts} kind="account" label="Insured" fallbackIcon="account_balance_wallet" terms={termText} field="insuredAccountIds" onEditParty={onEditParty} onRemoveParty={onRemoveParty} onNavigate={onNavigate} />
+        <InsLinkTiles refs={insuredContacts} kind="contact" label="Insured" fallbackIcon="person" terms={termText} field="insuredContactIds" onEditParty={onEditParty} onRemoveParty={onRemoveParty} onNavigate={onNavigate} />
+        <InsLinkTiles refs={beneficiaries} kind="contact" label="Beneficiary" fallbackIcon="volunteer_activism" terms={termText} field="beneficiaryIds" onEditParty={onEditParty} onRemoveParty={onRemoveParty} onNavigate={onNavigate} />
       </InfoTileGrid>
     </div>
   ) : null;
@@ -647,6 +656,7 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
             const t = (p.partyTerms || []).find(x => x.field === field && x.id === id);
             setModal({ kind: 'party', party: { field, id, fromDate: (t && t.fromDate) || null, toDate: (t && t.toDate) || null } });
           }}
+          onRemoveParty={(link) => { removeParty(link); setAnnounce(`Party removed from ${p.name}. The linked record itself is unchanged.`); }}
           onAddRenewal={() => setModal({ kind: 'renewal' })}
           onEditRenewal={(r) => setModal({ kind: 'renewal', renewal: r })}
           onDeleteRenewal={deleteRenewal}
@@ -657,7 +667,7 @@ const PolicyListItem = ({ pol, today, open: openProp, onToggle, highlight, onNav
 
       {modal && modal.kind === 'party' && (
         <AddPolicyPartyModal policy={p} party={modal.party || null} optionsLoading={optionsLoading}
-          onClose={() => setModal(null)} onAdd={addParty} onSave={saveParty} onRemove={removeParty} />
+          onClose={() => setModal(null)} onAdd={addParty} onSave={saveParty} />
       )}
       {modal && modal.kind === 'renewal' && (
         <AddRenewalModal policy={p} renewal={modal.renewal} onClose={() => setModal(null)} onSave={addRenewal} />

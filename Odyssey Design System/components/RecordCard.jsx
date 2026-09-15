@@ -21,6 +21,15 @@
  * in that object's own type icon and colour instead, so it stays recognisable as
  * the record it points at.
  *
+ * `image` makes the mark the record's own picture instead of its type glyph —
+ * a contact's profile photo or company logo. `fit: 'contain'` letterboxes it on
+ * a neutral ground (a logo is rarely square and must never be cut); `round`
+ * gives the circular mark a photograph wants. The image is decorative here
+ * (`alt=""`): the name sits in the very next cell. A load failure falls back to
+ * `icon` with nothing surfaced to the user, so pass `icon` as well. The accent
+ * does NOT move with it — `--rec` / `--rec-soft` still drive every icon chip
+ * and chart in the card; only the mark's content and its own ground change.
+ *
  * `accent` / `accentSoft` come from the record's TYPE
  * colour — or its type-equivalent: a categorical registry the record always has
  * exactly one of (a subscription's billing interval, a budget item's category).
@@ -41,6 +50,7 @@
  */
 export function RecordCard({
   icon,
+  image,
   accent,
   accentSoft,
   name,
@@ -62,6 +72,8 @@ export function RecordCard({
   children,
 }) {
   const isControlled = open !== undefined;
+  const [imageFailed, setImageFailed] = React.useState(false);
+  React.useEffect(() => { setImageFailed(false); }, [image && image.src]);
   const [internal, setInternal] = React.useState(defaultOpen);
   const isOpen = isControlled ? open : internal;
   const rid = React.useId();
@@ -111,7 +123,11 @@ export function RecordCard({
       aria-controls={bodyId}
       onClick={toggle}
     >
-      {icon ? (
+      {image && image.src && !imageFailed ? (
+        <span className={`odc-record-mark img${image.fit === 'contain' ? ' ground' : ''}${image.round ? ' round' : ''}`}>
+          <img src={image.src} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} />
+        </span>
+      ) : icon ? (
         <span className="odc-record-mark">
           <span className="material-icons" aria-hidden="true">{icon}</span>
         </span>

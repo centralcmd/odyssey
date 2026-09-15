@@ -269,7 +269,7 @@ const AllocationDonuts = () => {
       </div>
       <div className="acct-donut-card">
         <DonutPanel
-          title="Liabilities"
+          title="Liability allocation"
           sub={`What you owe · ${liabilities.length} accounts`}
           centerLabel="Total owed"
           centerIcon="credit_card"

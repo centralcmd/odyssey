@@ -18,9 +18,20 @@ export interface RecordCardFigure {
   tone?: 'income' | 'expense' | 'pending' | 'neutral';
 }
 
+export interface RecordCardImage {
+  /** Image URL. Keyed so a replaced image re-keys (e.g. `?v={fileId}`). */
+  src: string;
+  /** `cover` square-crops (a photograph); `contain` letterboxes on a neutral ground (a logo). Default `cover`. */
+  fit?: 'cover' | 'contain';
+  /** Circular mark instead of the 8px rounded rect — a person's photograph. */
+  round?: boolean;
+}
+
 export interface RecordCardProps {
   /** Material Icons ligature for the record's TYPE, or its type-equivalent — a categorical registry the record always has exactly one of (Accounts: account type; Subscriptions: billing interval). Never derived state. */
   icon?: string;
+  /** The record's own picture, rendered as the mark instead of `icon` — lazy, async-decoding, and `alt=""` because the name is in the next cell. On a load failure the card falls back to `icon` silently, so pass both. `accent`/`accentSoft` are still the record's type colour: only the mark's content, and for `contain` its ground, change. */
+  image?: RecordCardImage;
   /** The type's (or type-equivalent's) colour. Sets --rec on the card, inherited by every icon and single-series chart inside it. Omit for the brand accent. */
   accent?: string;
   /** The type's soft/background tint (usually the accent at 16%). Sets --rec-soft. */

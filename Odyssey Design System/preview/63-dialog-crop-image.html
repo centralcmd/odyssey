@@ -1,13 +1,13 @@
 <!doctype html>
-<!-- @dsCard group="Dialogs" name="New contact" subtitle="AddContactModal — Person/Organization type picker revealing the matching field set, the lifecycle dates (date of birth / death, established / dissolved) as DateFields with two-sided pair validation, the optional middle name, plus display-name override. A contact's picture or logo is not set here — it is attached from the row's ⋯ menu once the contact exists. Live." viewport="760x900" -->
+<!-- @dsCard group="Dialogs" name="Crop contact image" subtitle="ContactAvatarDialog — the client-side crop + downscale that normalises every contact image before upload: a square 512 px cover crop shown as a circle for a Person, a contained 512 px canvas on a neutral ground for an Organization (a wordmark is never cut). Zoom / Horizontal / Vertical are native range inputs — arrow-operable, each with an aria-valuetext percentage — and the canvas is aria-hidden with its state in text beside it; pointer drag is an addition, never the only way. Switch the type, then press Save to see the two failure classes: a server rejection carries the ProblemDetails message in a role=alert region and does not move focus. Live." viewport="1000x900" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Odyssey · New contact dialog</title>
+  <title>Odyssey · Crop contact image</title>
   <link rel="stylesheet" href="../colors_and_type.css" />
   <link rel="stylesheet" href="../ui_kits/web/kit.css" />
   <link rel="stylesheet" href="../ui_kits/web/account.css" />
-  <link rel="stylesheet" href="../ui_kits/web/admin.css" />
+  <link rel="stylesheet" href="../ui_kits/web/contacts.css" />
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -21,12 +21,10 @@
     body { margin: 0; background: var(--mud-palette-background); font-family: var(--font-sans); color: var(--mud-palette-text-primary); }
     .specimen-bg { position: fixed; inset: 0; padding: 40px 56px; opacity: 0.5; pointer-events: none; overflow: hidden; }
     .specimen-bg h1 { font: 300 32px/1 var(--font-sans); letter-spacing: -0.02em; color: var(--ink-50); margin: 0 0 6px; }
-    .specimen-bg p  { font: 400 13px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 24px; }
+    .specimen-bg p { font: 400 13px/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 24px; }
     .specimen-bg .bar { height: 46px; border-radius: 8px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); margin-bottom: 10px; }
-    /* Freeze the entrance animation so the card thumbnail captures the end state. */
-    .aam-scrim, .odc-scrim  { animation: none !important; }
-    .aam-dialog, .odc-modal { animation: none !important; opacity: 1 !important; transform: none !important; }
-    /* State switcher (sits above the dialog scrim) */
+    .odc-scrim { animation: none !important; }
+    .odc-modal { animation: none !important; opacity: 1 !important; transform: none !important; }
     .switcher { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 4000; display: flex; gap: 4px; padding: 5px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 999px; box-shadow: var(--mud-elevation-8); }
     .switcher button { border: none; background: transparent; cursor: pointer; font: 500 12px/1 var(--font-sans); letter-spacing: 0.02em; color: var(--mud-palette-text-secondary); padding: 8px 13px; border-radius: 999px; }
     .switcher button:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
@@ -36,18 +34,44 @@
 <body>
   <div class="specimen-bg">
     <h1>Contacts</h1>
-    <p>11 contacts</p>
+    <p>7 active · 1 archived</p>
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
   </div>
   <div id="root"></div>
   <script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
-  <script type="text/babel" src="../ui_kits/web/Contacts.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/ContactAvatarDialog.jsx"></script>
 
   <script type="text/babel" data-presets="env,react">
-    const AddContactModal = window.AddContactModal;
-    ReactDOM.createRoot(document.getElementById('root')).render(
-      <AddContactModal onClose={() => {}} onCreate={() => {}} />
-    );
+    const STATES = [
+      { key: 'person', label: 'Person', type: 'Person', kind: 'portrait', outcome: 'ok' },
+      { key: 'org', label: 'Organization', type: 'Organization', kind: 'logo', outcome: 'ok' },
+      { key: 'cap', label: 'Save → over the cap', type: 'Person', kind: 'portrait', outcome: 'too-large' },
+      { key: 'net', label: 'Save → network error', type: 'Organization', kind: 'logo', outcome: 'network' },
+    ];
+
+    function Demo() {
+      const [k, setK] = React.useState('person');
+      const s = STATES.find((x) => x.key === k);
+      const src = React.useMemo(() => window.cavPlaceholder(s.kind, 3), [s.kind]);
+      return (
+        <React.Fragment>
+          <div className="switcher">
+            {STATES.map((x) => (
+              <button key={x.key} className={x.key === k ? 'on' : ''} onClick={() => setK(x.key)}>{x.label}</button>
+            ))}
+          </div>
+          <window.ContactAvatarDialog
+            key={k}
+            contact={{ id: 'c1', type: s.type, name: s.type === 'Person' ? 'Michael Chen' : 'Lakeside PM' }}
+            currentSrc={src}
+            outcome={s.outcome}
+            onCancel={() => {}}
+            onSaved={() => {}} />
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
   </script>
 </body>
 </html>

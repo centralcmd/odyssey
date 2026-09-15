@@ -111,12 +111,16 @@
         "message": "<AmountField> align must be one of 'left' | 'right'."
       },
       {
-        "selector": "JSXOpeningElement[name.name='Avatar'] > JSXAttribute > JSXIdentifier[name!=/^(?:src|alt|initials|icon|size|square|tone|className|children|key|ref|className|style|children)$/]",
-        "message": "<Avatar> doesn't accept that prop. Declared props: src, alt, initials, icon, size, square, tone, className, children."
+        "selector": "JSXOpeningElement[name.name='Avatar'] > JSXAttribute > JSXIdentifier[name!=/^(?:src|alt|initials|icon|size|square|fit|onError|tone|className|children|key|ref|className|style|children)$/]",
+        "message": "<Avatar> doesn't accept that prop. Declared props: src, alt, initials, icon, size, square, fit, onError, tone, className, children."
       },
       {
         "selector": "JSXOpeningElement[name.name='Avatar'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
         "message": "<Avatar> size must be one of 'sm' | 'md' | 'lg'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Avatar'] > JSXAttribute[name.name='fit'] > Literal[value!=/^(?:cover|contain)$/]",
+        "message": "<Avatar> fit must be one of 'cover' | 'contain'."
       },
       {
         "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute > JSXIdentifier[name!=/^(?:tone|dot|count|max|children|key|ref|className|style|children)$/]",
