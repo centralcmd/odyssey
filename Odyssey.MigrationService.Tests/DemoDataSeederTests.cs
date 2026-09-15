@@ -62,8 +62,15 @@ public class DemoDataSeederTests
         Assert.Equal(expected.TaxStatements.Count, await finance.TaxStatements.CountAsync());
         Assert.Equal(expected.TaxStatementTags.Count, await finance.TaxStatementTags.CountAsync());
         Assert.Equal(expected.TaxStatementFiles.Count, await finance.TaxStatementFiles.CountAsync());
-        Assert.Equal(expected.FileMetadata.Count, await finance.FileMetadata.CountAsync());
-        Assert.Equal(expected.FileBlobs.Count, await finance.FileBlob.CountAsync());
+        // The contact images are ordinary Files-store rows and land in the same two tables, but they are
+        // carried separately on the data set because Contact.AvatarFileId is a real FK and contacts are
+        // seeded before the rest of the store (issue #86 §13).
+        Assert.Equal(
+            expected.FileMetadata.Count + expected.ContactAvatarFiles.Count,
+            await finance.FileMetadata.CountAsync());
+        Assert.Equal(
+            expected.FileBlobs.Count + expected.ContactAvatarBlobs.Count,
+            await finance.FileBlob.CountAsync());
 
         // Every seeded contact has a non-null, unique ExternalUid (issue #338 §6, AC #9).
         // Contacts moved to OdysseyContext (issue #325 follow-up).

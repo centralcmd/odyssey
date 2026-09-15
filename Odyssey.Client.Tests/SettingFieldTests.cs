@@ -368,8 +368,9 @@ public class SettingFieldTests
             }
         }
 
-        // The component's own fallback is the other half: it must not name a number either.
-        var upload = Component("OdsFileUpload.razor");
+        // The component's own fallback is the other half: it must not name a number either. It lives in
+        // the code-behind partial, where the @code block moved when it outgrew the inline-block limit.
+        var upload = Component("OdsFileUpload.razor.cs");
         var fallback = upload[upload.IndexOf("private string EffectiveHint =>", StringComparison.Ordinal)..];
         Assert.DoesNotContain("25 MB", fallback[..fallback.IndexOf(';')], StringComparison.Ordinal);
 

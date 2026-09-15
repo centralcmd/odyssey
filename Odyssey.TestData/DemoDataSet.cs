@@ -37,6 +37,12 @@ public sealed class DemoDataSet
     public required IReadOnlyList<TaxStatementTag> TaxStatementTags { get; init; }
     public required IReadOnlyList<FileBlob> FileBlobs { get; init; }
     public required IReadOnlyList<FileMetadata> FileMetadata { get; init; }
+
+    // The seeded contact images (issue #86). Kept OUT of the two lists above because Contact.AvatarFileId
+    // is a real foreign key and contacts are seeded before finance — so these have to be written with
+    // the contacts rather than with the rest of the Files store.
+    public required IReadOnlyList<FileBlob> ContactAvatarBlobs { get; init; }
+    public required IReadOnlyList<FileMetadata> ContactAvatarFiles { get; init; }
     public required IReadOnlyList<TaxStatementFile> TaxStatementFiles { get; init; }
     public required IReadOnlyList<Subscription> Subscriptions { get; init; }
 
@@ -102,11 +108,15 @@ public sealed class DemoDataSet
         // the standalone demo photos, deduped by FileId (a journal photo is one library Photo).
         var allPhotos = journal.LibraryPhotos.Concat(photoLibrary.Photos).ToList();
 
+        var contactAvatars = Catalog.Contacts.BuildAvatarFiles();
+
         return new DemoDataSet
         {
             Users = DemoUsers.All,
             Tags = Catalog.Tags.Build(),
             Contacts = Catalog.Contacts.Build(),
+            ContactAvatarBlobs = contactAvatars.Blobs,
+            ContactAvatarFiles = contactAvatars.Files,
             Accounts = accounts,
             AccountEstimates = AccountEstimateGenerator.Build(),
             AccountTerms = AccountTermGenerator.Build(),

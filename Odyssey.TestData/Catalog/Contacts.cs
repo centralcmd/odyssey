@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using Odyssey.TestData.Generators;
 using Odyssey.Dtos;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
@@ -128,6 +130,74 @@ public static class Contacts
     private static string Normalize(string value) =>
         string.Join(' ', value.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
 
+    /// <summary>
+    /// The two contacts that carry a seeded image (issue #86 §13) — one Person with a profile picture
+    /// and one Organization with a logo, so the demo shows both framings: a cover-cropped circle and a
+    /// letterboxed rounded rect on a neutral ground.
+    ///
+    /// <para>
+    /// The landlord rather than the policyholder, and the bank rather than an insurer, purely so the
+    /// pair sits high in the default (name-ordered) list without any test having to page for it.
+    /// </para>
+    /// </summary>
+    public static readonly (string ContactKey, bool IsLogo)[] WithAvatars =
+    [
+        (Landlord, false),
+        (FirstNationalBank, true),
+    ];
+
+    /// <summary>The <see cref="FileMetadata"/> id of a seeded contact's image.</summary>
+    public static Guid AvatarFileIdFor(string contactKey) =>
+        DeterministicGuid.From($"contact-avatar-file::{contactKey}");
+
+    private static Guid AvatarBlobIdFor(string contactKey) =>
+        DeterministicGuid.From($"contact-avatar-blob::{contactKey}");
+
+    /// <summary>
+    /// The Files-store rows behind <see cref="WithAvatars"/>. These are ORDINARY file rows — the
+    /// description is the same fixed, non-PII marker the upload path writes, and the filename is
+    /// generated from the contact id rather than carrying a person's name.
+    ///
+    /// <para>
+    /// They are returned separately from <see cref="Build"/> because <c>Contact.AvatarFileId</c> is a
+    /// real foreign key, so the seeder has to write these <b>before</b> the contacts that point at them
+    /// — earlier than the rest of the Files store, which is seeded with finance.
+    /// </para>
+    /// </summary>
+    public static (List<FileBlob> Blobs, List<FileMetadata> Files) BuildAvatarFiles()
+    {
+        var blobs = new List<FileBlob>();
+        var files = new List<FileMetadata>();
+
+        for (var i = 0; i < WithAvatars.Length; i++)
+        {
+            var (contactKey, isLogo) = WithAvatars[i];
+
+            // DemoImages emits PNG, so the seeded pair exercises the PNG half of the strip/validate
+            // pipeline; a JPEG assertion uses a purpose-built fixture instead of seeded data.
+            var content = isLogo
+                ? DemoImages.GradientPng(DemoImages.ContactLogoWidth, DemoImages.ContactLogoHeight, seed: 3 + i)
+                : DemoImages.GradientPng(DemoImages.ContactAvatarSize, seed: 3 + i);
+
+            var blobId = AvatarBlobIdFor(contactKey);
+            blobs.Add(new FileBlob { Id = blobId, Content = content });
+            files.Add(new FileMetadata
+            {
+                Id = AvatarFileIdFor(contactKey),
+                UploadedByUserId = null,
+                FileName = $"contact-avatar-{IdFor(contactKey).ToString("N")[..8]}.png",
+                ContentType = "image/png",
+                SizeBytes = content.LongLength,
+                Sha256Hash = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant(),
+                FileBlobId = blobId,
+                Description = "Contact image",
+                UploadedAtUtc = SeededAt,
+            });
+        }
+
+        return (blobs, files);
+    }
+
     public static List<Contact> Build()
     {
         var contacts = Organizations
@@ -176,6 +246,17 @@ public static class Contacts
             dateOfBirth: new DateOnly(1951, 9, 2), dateOfDeath: new DateOnly(2024, 3, 11)));
 
         AttachAliases(contacts);
+
+        // One person with a picture, one organization with a logo (issue #86). Attached here rather
+        // than in the definitions above so the pair is named in exactly one place.
+        foreach (var (contactKey, _) in WithAvatars)
+        {
+            var target = contacts.FirstOrDefault(c => c.ContactId == IdFor(contactKey));
+            if (target is not null)
+            {
+                target.AvatarFileId = AvatarFileIdFor(contactKey);
+            }
+        }
 
         return contacts;
     }
