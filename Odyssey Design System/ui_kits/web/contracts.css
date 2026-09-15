@@ -31,6 +31,11 @@
 .con-charge-term { font: var(--fw-regular) 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .con-charge-amt { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); color: var(--mud-palette-text-primary); }
 .con-charge-go { font: var(--fw-medium) 12px/1 var(--font-sans); color: var(--brand-text); white-space: nowrap; }
+/* Next receipts sit in the same panel, in rows of the same shape: the GROUP
+   HEADING names the direction, and the amount is the only thing that changes
+   color — mint for money in, per the finance semantics. */
+.con-charge-amt.in { color: var(--finance-income); }
+.con-charge-row.incoming .con-charge-md { color: var(--mud-palette-text-primary); }
 @media (max-width: 720px) {
   .con-charge-row { grid-template-columns: 1fr auto; row-gap: 4px; }
   .con-charge-go, .con-charge-term { display: none; }
@@ -55,12 +60,22 @@
    Portfolio summary strip (header Overview region)
    ============================================================ */
 .con-summary { display: flex; flex-direction: column; gap: 14px; }
+/* Distribution tiles. Four across on a wide header: the two record
+   distributions, then one money tile per period carrying the net per type. */
 .con-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+/* A money breakdown row carries ONE figure: the net for that type, signed and
+   colored. The ruled total row is the component's own (BreakdownTile `total`). */
+.con-bd-net { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); }
+.con-bd-net.net-pos { color: var(--finance-income); }
+.con-bd-net.net-neg { color: var(--finance-expense); }
 /* Run-rate stat tiles — flat, like the sibling BreakdownTiles, so an elevated
-   surface tile never floats above them. The figures are recurring spend. */
-.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+   surface tile never floats above them. Four tiles: each period's two grosses,
+   colored by the finance semantics of their own side. The net is not a tile;
+   it closes each by-type breakdown instead. */
+.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .con-run-tiles .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
-.con-run-tiles .odc-infotile .odc-infotile-v { color: var(--finance-expense); }
+.con-run-tiles .odc-infotile.dir-out .odc-infotile-v { color: var(--finance-expense); }
+.con-run-tiles .odc-infotile.dir-in .odc-infotile-v { color: var(--finance-income); }
 
 /* ============================================================
    Collapsed-card headline (period anchor + relative-days word)

@@ -54,19 +54,19 @@ const FvStatementPage = ({ file, account, page, total }) => (
         <div className="fvm-doc-summary">
           <div className="fvm-doc-tile">
             <span className="fvm-doc-tlab">Opening balance</span>
-            <span className="fvm-doc-tval">$12,480.10</span>
+            <span className="fvm-doc-tval">12,480.10 USD</span>
           </div>
           <div className="fvm-doc-tile">
             <span className="fvm-doc-tlab">Total in</span>
-            <span className="fvm-doc-tval pos">+$6,210.00</span>
+            <span className="fvm-doc-tval pos">+ 6,210.00 USD</span>
           </div>
           <div className="fvm-doc-tile">
             <span className="fvm-doc-tlab">Total out</span>
-            <span className="fvm-doc-tval neg">−$4,038.74</span>
+            <span className="fvm-doc-tval neg">− 4,038.74 USD</span>
           </div>
           <div className="fvm-doc-tile">
             <span className="fvm-doc-tlab">Closing balance</span>
-            <span className="fvm-doc-tval">$14,651.36</span>
+            <span className="fvm-doc-tval">14,651.36 USD</span>
           </div>
         </div>
         <div className="fvm-doc-h">Activity</div>

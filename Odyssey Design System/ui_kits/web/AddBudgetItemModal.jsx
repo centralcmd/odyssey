@@ -21,12 +21,32 @@ const AddBudgetItemModal = ({ budget, item, onClose, onCreate, canCreateTag = tr
   const D = window.OdysseyData;
   const isEdit = !!item;
 
+  /* The two directions a budget line can take, and the one in force — read
+     from the DS registry so the lead, the copy and the stored enum cannot
+     disagree. */
+  const BUDGET_DIR_OPTIONS = (window.OdysseyDesignSystem_d5aa51 || {}).BUDGET_CATEGORY_DIRECTION_OPTIONS
+    || [{ value: 'Expense', label: 'Expense', short: 'out', tone: 'expense' }, { value: 'Income', label: 'Income', short: 'in', tone: 'income' }];
+  const BUDGET_CATS = (window.OdysseyDesignSystem_d5aa51 || {}).BUDGET_CATEGORY_TYPES || [];
+
   const [draft, setDraft] = useState({
     categoryType: item ? item.categoryType : 'Expense',
     tagId: item ? item.tagId : '',
     planned: item ? String(item.planned) : '',
   });
   const [errors, setErrors] = useState({});
+  /* Per-FIELD defaults, not an all-or-nothing fallback object: a consumer whose
+     compiled bundle predates the registry's `short` / `tone` / `sentence` still
+     finds its entry by key, so an object-level guard would never fire and the
+     copy would silently lose two phrases. */
+  const cat = BUDGET_CATS.find(t => t.key === draft.categoryType) || {};
+  const isIncome = draft.categoryType === 'Income';
+  const catInfo = {
+    key: draft.categoryType,
+    label: cat.label || draft.categoryType,
+    short: cat.short || (isIncome ? 'in' : 'out'),
+    tone: cat.tone || (isIncome ? 'income' : 'expense'),
+    sentence: cat.sentence || (isIncome ? 'money into the budget' : 'money out of the budget'),
+  };
   // Tags staged by the inline create row. The POST runs behind the gesture; the
   // dialog waits for it to settle on submit and sends the RESOLVED id, never the
   // temporary one — and registers the tag so every other surface sees it.
@@ -94,21 +114,31 @@ const AddBudgetItemModal = ({ budget, item, onClose, onCreate, canCreateTag = tr
         onRetry={() => {}}
       />
 
-      <FormRow>
-        <BudgetCategoryTypeSelect label="Category" required value={draft.categoryType} onChange={set('categoryType')} />
-        <MoneyField
-          label="Planned amount"
-          required
-          value={draft.planned}
-          onChange={set('planned')}
-          currency={budget.currency}
-          currencyEditable={false}
-          allowNegative={false}
-          placeholder="0.00"
-          error={errors.planned}
-          helper={errors.planned ? undefined : 'Budget currency'}
-        />
-      </FormRow>
+      {/* ONE control for the planned amount, direction included. A budget item
+          records a DIRECTION (Expense / Income), not a sign, so the direction
+          rides in the slot a sign would occupy — the same lead a contract
+          term's amount carries. The separate Category picker beside it asked
+          the same question twice, in a second place that could drift. */}
+      <MoneyField
+        label="Planned amount"
+        required
+        value={draft.planned}
+        onChange={set('planned')}
+        direction={draft.categoryType}
+        onDirectionChange={set('categoryType')}
+        directionOptions={BUDGET_DIR_OPTIONS}
+        tone={catInfo.tone}
+        currency={budget.currency}
+        currencyEditable={false}
+        allowNegative={false}
+        placeholder="0.00"
+        error={errors.planned}
+        help={errors.planned ? undefined : (
+          <React.Fragment>
+            <b>{catInfo.label}</b> — {catInfo.sentence}. Click <b>{catInfo.short}</b> to switch · {budget.currency}
+          </React.Fragment>
+        )}
+      />
     </Modal>
   );
 };

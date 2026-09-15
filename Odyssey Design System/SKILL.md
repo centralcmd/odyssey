@@ -24,7 +24,7 @@ If the user invokes this skill without any other guidance, ask them what they wa
 - Dark mode is the **primary** surface; light is a first-class alternate.
 - **Tide** (phosphor teal) is brand. Sea (sky-cyan) is secondary. **Never** use brand colors to encode income/expense — use mint and coral for those.
 - No emoji. No gradients in product chrome. No decorative illustration. The product is a financial instrument; stay quiet.
-- Numbers always tabular. Currency code is per-account ISO 4217. Negatives use `−` and the expense color — not parentheses.
+- Numbers always tabular. **Money is written as the amount followed by its ISO 4217 code — `1,234.56 USD`, never `$ 1,234.56`** (several shipped currencies share a glyph); decimals follow the currency's `MinorUnits`. Negatives use `−` and the expense color — not parentheses. A signed figure leads with the sign plus a figure space (`− 84.00 USD`); an unsigned one carries no leading pad — `money()` / `signedMoney()` handle it.
 - **A chart never invents a point.** Every plotted figure is measured as of the instant its label names; a series that cannot be built shows copy naming the cause, not a placeholder curve. Where a figure is known to be incomplete or stepped by a revaluation, the point is **marked by shape and stated in prose** — see `LineChart`'s `kind` and the net-worth history section in `README.md`.
 - Icons: Material Icons font (already loaded via Google Fonts). Filled weight at 24px default, 20px in dense rows.
 - Spacing: 4px base. Use `--space-1..16`. MudBlazor's `pa-N` / `ma-N` utility classes match 1:1.

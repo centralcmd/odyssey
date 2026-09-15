@@ -28,7 +28,10 @@
 const ATM_CURRENCIES = (window.OdysseyData.currencies || [])
   .filter(c => !c.archived)
   .map(c => ({ value: c.code, label: c.name }));
-const ATM_CURRENCY_SYMBOL = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', NOK: 'kr', SEK: 'kr', CAD: '$' };
+/* Money adornments and figures are the ISO CODE, in front of the amount — the
+   house format money() sets and what MoneyField shows. Kept exported under its
+   old name so nothing that reads it breaks; every entry is now the code. */
+const ATM_CURRENCY_SYMBOL = Object.fromEntries((window.OdysseyData.currencies || []).map(c => [c.code, c.code]));
 
 const ATM_STATUSES = [
   { key: 'New',      label: 'New',      icon: 'fiber_new',     color: 'oklch(0.76 0.13 225)', soft: 'oklch(0.76 0.13 225 / 0.16)' },

@@ -15,6 +15,13 @@
  * as a string so partial entries ("3.", "1,2") aren't clobbered; characters are
  * sanitized to digits, separators and (optionally) a leading minus — parse on
  * submit. Set `allowNegative` for rates/deltas that can go below zero.
+ *
+ * A DIRECTION LEAD, the same one MoneyField carries: `direction` +
+ * `onDirectionChange` (with `directionOptions` naming the two states) turn the
+ * left edge into a button that flips between them, showing each option's short
+ * word where a sign would be. For a record that stores a direction rather than
+ * a sign — a percentage-unit fee that is money in or money out — so the value
+ * and its direction stay ONE control, exactly as on the amount path.
  */
 export function AmountField({
   label,
@@ -22,6 +29,10 @@ export function AmountField({
   onChange,
   prefix,
   suffix,
+  direction,
+  onDirectionChange,
+  directionOptions,
+  tone,
   placeholder = '0.00',
   size = 'md',
   align = 'left',
@@ -48,8 +59,34 @@ export function AmountField({
   };
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
   const FieldShell = NS.FieldShell;
+  // The two states the lead flips between — the finance pair by default, so a
+  // caller passing only `direction` still gets a sensible − / +.
+  const DIR_DEFAULT = [
+    { value: 'expense', label: 'Expense', sign: '−', tone: 'expense' },
+    { value: 'income', label: 'Income', sign: '+', tone: 'income' },
+  ];
+  const dirMode = !!(direction && onDirectionChange);
+  const dirOpts = (directionOptions && directionOptions.length === 2) ? directionOptions : DIR_DEFAULT;
+  const dirIdx = Math.max(0, dirOpts.findIndex((o) => o.value === direction));
+  const dirOpt = dirOpts[dirIdx] || dirOpts[0];
+  const dirNext = dirOpts[(dirIdx + 1) % dirOpts.length];
+  const dirTone = tone || (dirMode ? dirOpt.tone : undefined);
   const control = (
-    <div className={`odc-amount${size === 'lg' ? ' lg' : ''}${error ? ' error' : ''}${disabled ? ' disabled' : ''}`}>
+    <div className={`odc-amount${size === 'lg' ? ' lg' : ''}${dirTone ? ` tone-${dirTone}` : ''}${error ? ' error' : ''}${disabled ? ' disabled' : ''}`}>
+      {dirMode ? (
+        <button
+          type="button"
+          className="odc-money-sign btn"
+          disabled={disabled}
+          aria-label={`${dirOpt.label} — switch to ${dirNext.label}`}
+          title={`${dirOpt.label} — click to switch`}
+          onClick={(e) => onDirectionChange(dirNext.value, e)}
+        >
+          {dirOpt.icon
+            ? <span className="material-icons odc-money-dir-ic" aria-hidden="true">{dirOpt.icon}</span>
+            : <span className="odc-money-dir-word" aria-hidden="true">{dirOpt.short || dirOpt.sign}</span>}
+        </button>
+      ) : null}
       {prefix ? <span className="odc-amount-adorn pre" aria-hidden="true">{prefix}</span> : null}
       <input
         id={fieldId}

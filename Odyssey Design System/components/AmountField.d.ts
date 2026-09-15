@@ -16,6 +16,14 @@ export interface AmountFieldProps {
   align?: 'left' | 'right';
   /** Allow a leading minus — for rates/deltas that can go below zero. Default false. */
   allowNegative?: boolean;
+  /** Current direction — one of `directionOptions`' values (default: 'expense' | 'income'). With `onDirectionChange` the left edge becomes a button that flips between the two states, showing each one's short word where a sign would be. */
+  direction?: string;
+  /** Fires with the next direction when the lead is clicked. Omit for no lead. */
+  onDirectionChange?: (direction: string, event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** The two states the lead flips between — same shape as MoneyField's: `{ value, label, short?, icon?, sign?, tone? }`. Use when the record stores a DIRECTION rather than a sign (a percentage-unit fee that is money in or out). Exactly two options. */
+  directionOptions?: Array<{ value: string; label: string; short?: string; icon?: string; sign?: string; tone?: 'income' | 'expense' }>;
+  /** Colors the lead and the value by finance semantics; defaults to the active direction's own tone. */
+  tone?: 'income' | 'expense';
   /** Helper text shown below the input. */
   help?: string;
   /** Error message — flips the control to its error state and replaces the helper. */

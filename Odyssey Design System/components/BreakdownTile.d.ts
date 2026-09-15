@@ -18,13 +18,26 @@ export interface BreakdownTileProps {
   rows?: BreakdownRow[];
   /** Message shown when `rows` is empty. */
   empty?: string;
+  /**
+   * The ruled total row, ON by default.
+   * - `true` (default): sum the rows' counts, when every count is numeric.
+   *   Rows whose counts are nodes (money, a pair) render no total rather than
+   *   a wrong one.
+   * - a number or node: show exactly that (a net, a caller-computed figure).
+   * - `false`: no total — for buckets that overlap or do not sum meaningfully.
+   */
+  total?: boolean | React.ReactNode;
+  /** Label on the total row. Default "Total". */
+  totalLabel?: React.ReactNode;
+  /** Leading glyph on the total row; pass "" for none. Default "functions". */
+  totalIcon?: string;
   className?: string;
   style?: React.CSSProperties;
 }
 
 /**
  * A labelled summary tile listing a distribution as icon · label · count rows
- * (By type, By status, By currency…). The generic form of the Contracts
- * overview breakdown.
+ * (By type, By status, By currency…), closing with a ruled total row. The
+ * generic form of the Contracts overview breakdown.
  */
 export declare function BreakdownTile(props: BreakdownTileProps): JSX.Element;

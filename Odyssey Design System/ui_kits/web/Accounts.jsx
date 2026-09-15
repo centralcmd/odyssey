@@ -533,7 +533,7 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
               ) : null}
               {curTerms.map((t) => {
                 const info = window.trmKindInfo(t.kind);
-                // The cadence is what separates a $695 annual fee from a $695
+                // The cadence is what separates a 695 USD annual fee from a 695 USD
                 // monthly one, so it rides in the foot beside the date.
                 const period = H.cadenceTextFor(t);
                 // A fee is NAMED by its label, with the kind wording leading the

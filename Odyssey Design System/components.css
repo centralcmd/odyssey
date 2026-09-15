@@ -381,6 +381,19 @@
 .odc-money-sign.btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-money-sign.btn:disabled { cursor: not-allowed; }
 .odc-money-dir-sign { font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans); }
+/* An option that names its own direction shows its GLYPH in the lead instead of
+   a sign — the arrow of a contract term's Outgoing / Incoming, for a record that
+   stores a direction rather than a sign. Same metrics as the sign it replaces. */
+.odc-money-dir-ic { font-size: 19px; line-height: 1; }
+/* …or its short WORD, for an in/out vocabulary where an arrow would read as the
+   figure beside it rising or falling. */
+.odc-money-dir-word { font: var(--fw-medium) 12px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+/* A word needs more room than a glyph, and a FIXED slot: "OUT" and "IN" are
+   different widths, so without one the digits shift sideways every time the
+   lead is flipped. Padding matches the amount's own inset so the three segments
+   (lead · amount · code) read as evenly spaced. */
+.odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 58px; padding: 0 14px; }
+.odc-money-sign.btn:has(.odc-money-dir-word) + .odc-money-input { padding-left: 14px; }
 .odc-money-sign + .odc-money-input { padding-left: 6px; }
 .odc-money-sign.btn + .odc-money-input { padding-left: 12px; }
 .odc-money.tone-income .odc-money-sign, .odc-money.tone-income .odc-money-input { color: var(--finance-income); }
@@ -453,6 +466,20 @@
 .odc-money.lg .odc-money-sign + .odc-money-input { padding-left: 8px; }
 .odc-money.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
 .odc-money.lg .odc-money-dir-sign { font-size: 30px; }
+.odc-money.lg .odc-money-dir-ic { font-size: 26px; }
+.odc-money.lg .odc-money-dir-word { font-size: 15px; }
+.odc-money.lg .odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 76px; padding: 0 18px; }
+.odc-money.lg .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-money-input { padding-left: 18px; }
+/* The same lead inside an AmountField (a percentage-unit value whose record
+   stores a direction): one set of metrics, so the money and percentage paths of
+   a form are the same control with a different unit. */
+.odc-amount.tone-income .odc-money-sign, .odc-amount.tone-income .odc-amount-input { color: var(--finance-income); }
+.odc-amount.tone-expense .odc-money-sign, .odc-amount.tone-expense .odc-amount-input { color: var(--finance-expense); }
+.odc-amount .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-amount-input { padding-left: 14px; }
+.odc-amount.lg .odc-money-dir-word { font-size: 15px; }
+.odc-amount.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.odc-amount.lg .odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 76px; padding: 0 18px; }
+.odc-amount.lg .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-amount-input { padding-left: 18px; }
 .odc-money.lg .odc-money-sign.btn + .odc-money-input { padding-left: 16px; }
 
 /* ---------- StepperField (compact integer + trailing unit label) ---------- */
@@ -628,6 +655,11 @@
 .odc-breakdown-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .odc-breakdown-n { margin-left: auto; font: 600 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
 .odc-breakdown-empty { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+/* The total row — the tile's conclusion, ruled off from the categories above
+   it and muted in its label so it never reads as another category. */
+.odc-breakdown-total { margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--mud-palette-divider); }
+.odc-breakdown-total .odc-breakdown-label { color: var(--mud-palette-text-secondary); }
+.odc-breakdown-total .material-icons { color: var(--mud-palette-text-secondary); }
 /* Summary grid — the auto-fitting row of tiles a page's Overview lays out
    (BreakdownTile "By type" / "By status", stat tiles, donut cards). */
 .odc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }

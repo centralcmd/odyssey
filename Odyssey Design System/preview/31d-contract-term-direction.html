@@ -1,0 +1,293 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Contract term direction" subtitle="Which way the money moves. A required Direction (Outgoing · Incoming) on every contract fee term, stated from the household's perspective — the direction sitting where the sign would be in the money field, the word-only tag on every read surface, the refusal states where direction has no meaning, and the contracts header reporting out · in · net instead of one figure that mixed them. Live render of the kit." viewport="1240x2260" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · Contract term direction</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../ui_kits/web/kit.css" />
+  <link rel="stylesheet" href="../ui_kits/web/admin.css" />
+  <link rel="stylesheet" href="../ui_kits/web/account.css" />
+  <link rel="stylesheet" href="../ui_kits/web/account-terms.css" />
+  <link rel="stylesheet" href="../ui_kits/web/insurance.css" />
+  <link rel="stylesheet" href="../ui_kits/web/contracts.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="../_ds_bundle.js"></script>
+  <script src="../ui_kits/web/data.js"></script>
+  <script src="../ui_kits/web/insurance-data.js"></script>
+  <script src="../ui_kits/web/contracts-data.js"></script>
+
+  <style>
+    html, body { min-height: 0; background: var(--mud-palette-background); }
+    body { width: 1240px; padding: 24px; box-sizing: border-box; }
+    .spec-doc { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+    .spec-doc h2 { font: 600 15px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); margin: 0 0 6px; }
+    .spec-lead { font: 400 13px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 96ch; }
+    .spec-lead b { color: var(--tide-400); font-weight: 500; }
+    .spec-src { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+    .spec-src .pill { font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 5px 10px; }
+    .spec-src .pill b { color: var(--tide-400); font-weight: 600; }
+    table.spec-tbl { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    table.spec-tbl th { text-align: left; font: 600 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 0 12px 8px; border-bottom: 1px solid var(--mud-palette-divider); }
+    table.spec-tbl td { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); padding: 9px 12px; border-bottom: 1px solid var(--mud-palette-divider-light); vertical-align: top; }
+    table.spec-tbl td.f { font-family: var(--font-mono); color: var(--tide-400); white-space: nowrap; }
+    table.spec-tbl td.t { font-family: var(--font-mono); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+    table.spec-tbl tr:last-child td { border-bottom: none; }
+    .spec-notes { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+    .spec-notes li { position: relative; padding-left: 20px; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .spec-notes li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .spec-notes li .material-icons { position: absolute; left: 0; top: 1px; font-size: 15px; color: var(--tide-400); }
+
+    .detail-stage { display: flex; flex-direction: column; gap: 18px; }
+    .stage-label { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 2px 0 -4px 2px; display: flex; align-items: center; gap: 8px; }
+    .stage-label .material-icons { font-size: 15px; color: var(--tide-400); }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 16px 18px; }
+    .panel.tight { padding: 14px 16px; }
+    .dir-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .dir-card-lead { font: 400 12px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 10px; }
+    .dir-card-lead b { color: var(--mud-palette-text-primary); font-weight: 500; }
+    .tag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .tag-row:last-child { margin-bottom: 0; }
+    .tag-row .cap { font: 400 11.5px/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); }
+    .dlg-stage { position: relative; }
+    .dlg-stage .odc-scrim { position: relative; inset: auto; background: transparent; padding: 0; display: block; }
+    .dlg-stage .odc-modal { margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <div class="spec-doc">
+    <h2>Contract term direction · <span style="color:var(--mud-palette-text-secondary);font-weight:400;">Outgoing · Incoming</span></h2>
+    <p class="spec-lead">A priced term used to have no way of saying <b>which way the money moves</b>, so every term was implicitly a cost: a landlord's rent summed into the same “what this file costs to run” figure as a streaming subscription, and a salary read as an expense. Every contract fee term now carries a required <b>Direction</b> — <code>Outgoing</code> or <code>Incoming</code>, stated from the <b>household's</b> perspective, never from either named party's — and the contracts header reports <b>what goes out</b>, <b>what comes in</b> and an explicit <b>net</b> instead of one figure that quietly mixed them. Nothing changes for a household that only records costs: every existing term is <code>Outgoing</code>, and every figure keeps its exact value.</p>
+    <div class="spec-src">
+      <span class="pill">Enum <b>TermDirection</b> (0 · 1)</span>
+      <span class="pill">DTO <b>NewTerm</b> · <b>ExistingTerm</b> · <b>CurrentTerm</b> · <b>AccountCurrentTerm</b></span>
+      <span class="pill">API <b>GET /api/contracts/summary</b></span>
+      <span class="pill">Claims <b>contracts.{read,update}</b></span>
+      <span class="pill">Setting <b>ContractMaxSummaryCharges</b> · per list</span>
+    </div>
+
+    <table class="spec-tbl">
+      <thead><tr><th>Surface</th><th>Field</th><th>Type</th><th>Treatment</th></tr></thead>
+      <tbody>
+        <tr><td>New / Edit term dialog</td><td class="f">Direction</td><td class="t">enum</td><td>The lead of the <b>value control itself</b> — money field or percentage field, same slot, same short word where a sign would be, because the record stores a direction and not a sign. Required, defaulting to <b>Outgoing</b> — an omitted direction and a chosen <code>Outgoing</code> are the same fact. Offered on a <b>fee only</b>; a rate kind gets the refusal in its place.</td></tr>
+        <tr><td>Current terms · term history</td><td class="f">Direction</td><td class="t">enum</td><td>The <b>word</b>, as a muted mono sub-line under the tile's title (the slot a party tile gives its from–to dates) and under the name in a history row — with the <b>figure</b> carrying the hue, coral out and mint in. Stated on <b>every</b> fee term, both ways, so a reader never has to interpret its absence. No glyph — an arrow reads against value before it reads against the household, and the unambiguous marks (money bag, winged money) are emoji.</td></tr>
+        <tr><td>Header run rate</td><td class="f">Monthly · Yearly</td><td class="t">decimal?</td><td><b>Outgoing only.</b> Same name, same meaning, same value as before the field existed — because every pre-existing term is outgoing.</td></tr>
+        <tr><td>Header run rate</td><td class="f">IncomingMonthly · IncomingYearly</td><td class="t">decimal?</td><td>The other side, in the same units and base currency. <code>null</code> when nothing on that side is priced.</td></tr>
+        <tr><td>Header run rate</td><td class="f">NetMonthly · NetYearly</td><td class="t">decimal?</td><td>In <b>minus</b> out — the only <b>signed</b> figures in the payload, so the only ones that ever carry a leading <code>+</code>. Computed from the unrounded sums and rounded once. Read as the ruled <b>Net</b> row of each by-type tile rather than as tiles of their own.</td></tr>
+        <tr><td>Header breakdowns</td><td class="f">ByType · IncomingByType</td><td class="t">rows</td><td>One tile per period, one figure per contract type: that type's <b>net</b>, signed and colored, closing with a ruled <b>Net</b> row for the whole file. The grosses are the three tiles above; a reader wants per type only which way it leaves them.</td></tr>
+        <tr><td>Header signal</td><td class="f">UpcomingCharges · UpcomingReceipts</td><td class="t">rows</td><td>Two groups, one row shape. The <b>group heading names the direction</b>, so the row carries no direction field to drift. Collapse is per <b>(contract, direction)</b>; the cap applies <b>per list</b>.</td></tr>
+        <tr><td>Rate kinds · account terms</td><td class="f">Direction</td><td class="t">refused</td><td>A rate is a percentage, not a movement; an account surface reads no direction today. Both refuse anything but <code>Outgoing</code> (<code>400</code>), so the dialog states the refusal in place of the control rather than offering a choice the server rejects.</td></tr>
+      </tbody>
+    </table>
+
+    <ul class="spec-notes">
+      <li><span class="material-icons">sell</span><b>Direction is a property of the term, not the contract.</b> An employment agreement pays a salary <b>in</b> and deducts dues and a pension contribution <b>out</b>; a tenancy where the household is landlord takes rent <b>in</b> and pays a management fee <b>out</b>. One flag on the contract could express neither, so no surface offers a contract-level direction.</li>
+      <li><span class="material-icons">add</span><b>The magnitude stays positive; the direction carries the sign.</b> Income is never entered as a negative amount — that would make the sign mean two different things depending on who typed it, and would break the gross split the moment both conventions appeared in one file. The dialog's helper says so on both settings.</li>
+      <li><span class="material-icons">history</span><b>Correcting a direction supersedes; it never forks.</b> Direction is on the <b>entry</b>, not the series, so it is not part of <code>(owner, kind, label)</code>: a mis-directed term is an ordinary replace, the history stays one series, and the direction that counts is the one on the entry in force.</li>
+      <li><span class="material-icons">badge</span><b>The party role is a hint at most, never the source.</b> <code>Employee</code> / <code>Landlord</code> / <code>Seller</code> look like they imply a direction, but nothing in the model says which party is the household — and a derivation that guessed wrong would put money on the wrong side of the net, silently. The role may pre-select the control; it never overrides it.</li>
+      <li><span class="material-icons">functions</span><b>No gross ever mixes the two sides.</b> One unconverted-currency list covers both: a currency with no rate to base is named and excluded from each gross <i>and</i> from the net — never folded in at 1:1 — so the net is partial exactly when the grosses are.</li>
+      <li><span class="material-icons">visibility_off</span><b>The list row's marker is a frontend ask, not a field that exists.</b> “Money in” on a collapsed record is derived from that record's own in-force terms. The list projection carries no direction (it has no term join), so shipping this marker needs either the detail payload the expanded card already holds or a list-level field the backend deliberately deferred.</li>
+    </ul>
+  </div>
+
+  <div id="root"></div>
+
+  <script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AddTermModal.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AccountTerms.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/AddContractTermModal.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/ContractTerms.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/ContractEvents.jsx"></script>
+  <script type="text/babel" src="../ui_kits/web/Contracts.jsx"></script>
+  <script type="text/babel" data-presets="env,react">
+    const { useState } = React;
+    const D = window.OdysseyData;
+    const H = window.OdysseyHelpers;
+    const today = H.conToday();
+    const byId = Object.fromEntries(D.contracts.map(c => [c.id, c]));
+    const employment = byId['ct-employment'];
+    const empTerms = H.conTermsFor('ct-employment');
+    const inForce = window.trmCurrentFromList(empTerms);
+
+    /* The registry, rendered — the two members with their glyph, word, hue and
+       the sentence each one means. Nothing here is decorative: a reader has to
+       be able to answer "whose perspective is this?" from the card. */
+    const RegistryCard = () => (
+      <div className="dir-grid">
+        {D.termDirections.map(d => (
+          <div className="panel" key={d.key}>
+            <p className="dir-card-lead">
+              <span className="trm-dir" style={{ background: d.soft, color: d.color }}>{d.label}</span>
+              <span style={{ marginLeft: 10, fontFamily: 'var(--font-mono)' }}>= {d.enumValue}</span>
+            </p>
+            <p className="dir-card-lead"><b>{d.side}.</b> {d.sentence[0].toUpperCase() + d.sentence.slice(1)} — from the household's perspective, not from either named party's.</p>
+            <p className="dir-card-lead" style={{ margin: 0 }}>
+              {d.key === 'Outgoing'
+                ? 'The default and the backfill value: every term recorded before the field existed reads Outgoing, so no figure moved when it arrived.'
+                : 'Rent you receive, a salary, a rebate. Counted in the incoming run rate and in the net — never as a negative cost.'}
+            </p>
+          </div>
+        ))}
+      </div>
+    );
+
+    /* The tag, at the three sizes it renders in, plus the two states where the
+       tag is deliberately absent. */
+    const TagMatrix = () => {
+      const salary = inForce.find(t => t.labelKey === 'base salary');
+      const dues = inForce.find(t => t.labelKey === 'union dues');
+      const rate = H.conTermsFor('ct-house')[0];
+      const owner = window.conTermOwner(employment);
+      const acct = { ...D.accounts[0], ownerKind: 'account' };
+      return (
+        <div className="panel">
+          <div className="tag-row">
+            <TermDirectionTag term={salary} owner={owner} both={true} />
+            <span className="cap">contract fee · incoming — the tile foot and the history row</span>
+          </div>
+          <div className="tag-row">
+            <TermDirectionTag term={dues} owner={owner} both={true} />
+            <span className="cap">contract fee · outgoing — stated on every fee term, so its absence never has to be read</span>
+          </div>
+          <div className="tag-row">
+            <span className="cap" style={{ color: 'var(--mud-palette-text-disabled)' }}>— no tag —</span>
+            <span className="cap">interest rate on a contract: a percentage is not a movement {rate ? `(${H.fmtTermValueFor(rate, window.conTermOwner(byId['ct-house']))})` : ''}</span>
+          </div>
+          <div className="tag-row">
+            <span className="cap" style={{ color: 'var(--mud-palette-text-disabled)' }}>— no tag —</span>
+            <span className="cap">any term owned by an account ({acct.name}): always money out, so a tag would repeat the surface</span>
+          </div>
+        </div>
+      );
+    };
+
+    function Spec() {
+      const [theme, setTheme] = useState('dark');
+      React.useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+      const rr = H.conRunRate(D.contracts, today);
+      return (
+        <div className="detail-stage">
+          <div className="stage-label"><span className="material-icons">swap_vert</span>The enum · two members, ordinals frozen, Outgoing = 0 the default and the backfill</div>
+          <RegistryCard />
+
+          <div className="stage-label"><span className="material-icons">label</span>The tag · the word, and the two places it is deliberately absent</div>
+          <TagMatrix />
+
+          <div className="stage-label"><span className="material-icons">calculate</span>The header · the two grosses per period, and the net per contract type beside them</div>
+          <div className="panel">
+            <ContractsSummary contracts={D.contracts} today={today} endingWindow={D.CONTRACTS_ENDING_WINDOW_DAYS} />
+            <p className="dir-card-lead" style={{ margin: '14px 0 0' }}>
+              Seeded file: <b>{H.money(rr.monthly, rr.baseCurrency)}</b> out and <b>{H.money(rr.incomingMonthly, rr.baseCurrency)}</b> in per month,
+              netting <b>{(rr.netMonthly > 0 ? '+' : '') + H.money(rr.netMonthly, rr.baseCurrency)}</b>. The tile once named
+              “Monthly run rate” is renamed rather than reused: the figure it holds is now one side of two, and a name that
+              stayed would read as a total.
+            </p>
+          </div>
+
+          <div className="stage-label"><span className="material-icons">event_upcoming</span>Next charges · next receipts — two groups, one row shape, one cap each</div>
+          <div className="panel tight">
+            <div className="signal-panel">
+              <div className="con-signal-group">Next charges</div>
+              {H.conUpcomingCharges(D.contracts.filter(c => !c.archived), today, { windowDays: 45, limit: 4 }).map(({ contract: c, term, date, days }) => {
+                const ti = H.contractTypeInfo(c.type);
+                return (
+                  <div key={`out-${c.id}`} className="con-charge-row">
+                    <span className="con-charge-when">
+                      <span className="con-charge-md mono">{H.conDateMd(date)}</span>
+                      <span className="con-charge-rel">{H.conRelDays(days)}</span>
+                    </span>
+                    <span className="con-charge-name">
+                      <MIcon name={ti.icon} size={16} style={{ color: ti.color }} />
+                      <span className="con-charge-title">{c.name}</span>
+                      <span className="con-charge-term">{H.termDisplayName(term, null)}</span>
+                    </span>
+                    <span className="con-charge-amt mono">{H.money(term.value, term.currency || 'USD')}</span>
+                    <span className="con-charge-go">View →</span>
+                  </div>
+                );
+              })}
+              <div className="con-signal-group">Next receipts</div>
+              {H.conUpcomingReceipts(D.contracts.filter(c => !c.archived), today, { windowDays: 45, limit: 4 }).map(({ contract: c, term, date, days }) => {
+                const ti = H.contractTypeInfo(c.type);
+                return (
+                  <div key={`in-${c.id}`} className="con-charge-row incoming">
+                    <span className="con-charge-when">
+                      <span className="con-charge-md mono">{H.conDateMd(date)}</span>
+                      <span className="con-charge-rel">{H.conRelDays(days)}</span>
+                    </span>
+                    <span className="con-charge-name">
+                      <MIcon name={ti.icon} size={16} style={{ color: ti.color }} />
+                      <span className="con-charge-title">{c.name}</span>
+                      <span className="con-charge-term">{H.termDisplayName(term, null)}</span>
+                    </span>
+                    <span className="con-charge-amt mono in">{H.money(term.value, term.currency || 'USD')}</span>
+                    <span className="con-charge-go">View →</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="dir-card-lead" style={{ margin: '12px 0 0' }}>
+              The employment contract pays on the <b>25th</b> and deducts on the <b>1st</b>, so it has two next movements and
+              appears in both lists. Collapsing on the contract alone would silently discard whichever fell later.
+            </p>
+          </div>
+
+          <div className="stage-label"><span className="material-icons">edit_note</span>The control · both settings, and the refusals that stand in its place</div>
+          <div className="dir-grid">
+            {['Outgoing', 'Incoming'].map(key => {
+              const d = H.termDirectionInfo(key);
+              return (
+                <div className="panel" key={key}>
+                  <div className="field trm-dir-field">
+                    <div className="label">Direction<span className="odc-field-req" aria-hidden="true">*</span></div>
+                    <div className="atm-seg trm-dir-seg" role="radiogroup" aria-label="Direction">
+                      {D.termDirections.map(o => {
+                        const on = o.key === key;
+                        return (
+                          <button key={o.key} type="button" role="radio" aria-checked={on}
+                            className={`atm-seg-btn ${on ? 'on' : ''}`}
+                            style={on ? { background: o.soft, color: o.color } : {}}>
+                            {o.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="helper">
+                      {key === 'Incoming'
+                        ? <React.Fragment><b>Money in</b> — rent you receive, a salary, a rebate. Counted in the header’s incoming run rate, never as a cost.</React.Fragment>
+                        : <React.Fragment><b>Money out</b> — what the agreement costs you. Keep the amount positive either way: the direction carries the sign.</React.Fragment>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="panel">
+              <div className="field trm-dir-field">
+                <div className="label">Direction</div>
+                <div className="trm-dir-refused">
+                  <MIcon name="block" size={15} />
+                  <span>{H.termDirectionRefusal('InterestRate', 'contract')} It is recorded as <b>outgoing</b>, where it carries no meaning.</span>
+                </div>
+              </div>
+              <p className="dir-card-lead" style={{ margin: '10px 0 0' }}>Contract term, rate kind — the control is replaced by its reason rather than shown disabled.</p>
+            </div>
+            <div className="panel">
+              <div className="trm-dir-refused">
+                <MIcon name="block" size={15} />
+                <span>An account term is always <b>money out</b>. Direction — money in or out — is recorded on a <b>contract</b> term.</span>
+              </div>
+              <p className="dir-card-lead" style={{ margin: '10px 0 0' }}>The account dialog states the asymmetry instead of leaving the field silently missing. Live dialogs: <code>preview/48b</code> (contract) and <code>preview/48</code> (account).</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Spec />);
+  </script>
+</body>
+</html>

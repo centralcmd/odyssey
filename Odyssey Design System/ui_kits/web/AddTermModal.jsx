@@ -36,7 +36,7 @@
    key (the server's 409). On confirm, onSave(dto, id?) receives the term-shaped
    object (id present on edit). */
 
-const TRM_SYM = window.ATM_CURRENCY_SYMBOL || { USD: '$', EUR: '€', GBP: '£', JPY: '¥', NOK: 'kr', SEK: 'kr', CAD: '$' };
+/* Money adornments are the ISO CODE, not a symbol — see MoneyField. */
 const TRM_CURRENCIES = (window.OdysseyData.currencies || [])
   .filter(c => !c.archived)
   .map(c => ({ value: c.code, label: c.name }));
@@ -177,7 +177,7 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
     }, term && term.id);
   };
 
-  const sym = TRM_SYM[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
+  const sym = draft.currency; // eslint-disable-line no-unused-vars
   // The cadence in words, from the single helper every surface reads.
   const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
   const previewFrac = (() => {
@@ -301,6 +301,20 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
 
       {/* Effective date — currency lives inside the money field (amount mode); a
          rate has no currency, so nothing about it is shown here. */}
+      {/* Direction is a CONTRACT-term field and is deliberately absent here.
+          A savings account's interest is incoming and a loan's is outgoing,
+          but no account surface reads a direction today, so offering one would
+          let a user record a fact the product then contradicts — the server
+          refuses anything but Outgoing on an account term. Stated rather than
+          silently missing, so the asymmetry with the contract dialog reads as
+          a decision. */}
+      {!isRate && (
+        <div className="trm-dir-refused">
+          <MIcon name="block" size={15} />
+          <span>An account term is always <b>money out</b>. Direction — money in or out — is recorded on a <b>contract</b> term.</span>
+        </div>
+      )}
+
       <FormRow cols={1}>
         <DateField label="Effective from" required value={draft.effectiveFrom} onChange={set('effectiveFrom')}
           helper={errors.effectiveFrom ? undefined : 'When this value takes effect'} />

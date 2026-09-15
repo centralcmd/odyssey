@@ -94,10 +94,10 @@ const TaxTrendChart = ({ title, statements, accessor, color, cur, cumulative, su
   }
 
   const kLabel = v => {
-    const sym = (TS_D.currencyByCode[cur] || {}).symbol || cur;
-    if (Math.abs(v) >= 1000000) return `${sym} ${(v / 1000000).toFixed(1)}M`;
-    if (Math.abs(v) >= 1000) return `${sym} ${(v / 1000).toFixed(0)}k`;
-    return `${sym} ${v}`;
+    const sym = cur;
+    if (Math.abs(v) >= 1000000) return `${(v / 1000000).toFixed(1)}M ${sym}`;
+    if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(0)}k ${sym}`;
+    return `${v} ${sym}`;
   };
 
   // Prefer the design-system LineChart once the bundle exposes it (the kit's

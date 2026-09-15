@@ -17,10 +17,20 @@
  * A leading `sign` (− / +) and a `tone` of "income" / "expense" let a signed
  * amount read as one control, with the direction owned by the form. Pass
  * `direction` + `onDirectionChange` instead and that leading segment becomes a
- * BUTTON that flips expense ↔ income — direction, amount and currency in one
+ * BUTTON that flips between two states — direction, amount and currency in one
  * control, so a form needs no separate segmented toggle. For a plain signed
  * amount (no income/expense meaning) pass `signEditable` and the segment toggles
  * the value's own minus — picked, never typed.
+ *
+ * THE LEAD IS A VOCABULARY, NOT A SIGN. `directionOptions` names the two states
+ * the lead flips between — default expense (−) / income (+) — and each option
+ * may carry a `short` word, an `icon` and a `tone`, so a field whose record
+ * stores a DIRECTION rather than a sign shows that direction where the sign
+ * would be (a contract term's "out" / "in", a budget item's category type). The
+ * stored amount stays positive in that case: the direction carries the meaning,
+ * and a sign glyph would be a second, contradictory encoding of it. Prefer a
+ * `short` word to an icon for in/out vocabularies — a directional arrow beside
+ * a figure reads as that figure rising or falling.
  *
  * Controlled: `value` is a string so partial entries ("3.", "1,2") survive.
  * Invalid keystrokes are blocked as typed — letters and stray symbols are
@@ -47,6 +57,7 @@ export function MoneyField({
   tone,
   direction,
   onDirectionChange,
+  directionOptions,
   signEditable = false,
   allowNegative = true,
   help,
@@ -211,6 +222,17 @@ export function MoneyField({
   const FieldShell = NS.FieldShell;
 
   const dirMode = !!(direction && onDirectionChange);
+  /* The two states the lead flips between. Defaults to the finance pair, so
+     every existing caller is unchanged; a caller whose record stores its own
+     direction vocabulary passes it instead. */
+  const DIR_DEFAULT = [
+    { value: 'expense', label: 'Expense', sign: '−', tone: 'expense' },
+    { value: 'income', label: 'Income', sign: '+', tone: 'income' },
+  ];
+  const dirOpts = (directionOptions && directionOptions.length === 2) ? directionOptions : DIR_DEFAULT;
+  const dirIdx = Math.max(0, dirOpts.findIndex((o) => o.value === direction));
+  const dirOpt = dirOpts[dirIdx] || dirOpts[0];
+  const dirNext = dirOpts[(dirIdx + 1) % dirOpts.length];
   // Generic signed amount: the leading segment toggles the value's own sign, so
   // the minus is picked, never typed. The input shows the magnitude; `value`
   // stays signed for the form.
@@ -219,14 +241,15 @@ export function MoneyField({
   const magnitude = signMode ? String(value || '').replace(/^\s*-/, '') : value;
   const setSigned = (neg, mag, e) => onChange((neg ? '-' : '') + mag, e);
   const flipSign = (e) => setSigned(!negative, String(value || '').replace(/^\s*-/, ''), e);
-  const dirTone = tone || (dirMode ? direction : undefined);
-  const dirSign = sign || (direction ? (direction === 'expense' ? '−' : '+') : (signMode ? (negative ? '−' : '+') : undefined));
-  const flipDir = (e) => onDirectionChange(direction === 'expense' ? 'income' : 'expense', e);
-  // Typing a sign in the amount sets the direction / sign rather than the value.
+  const dirTone = tone || (dirMode ? (dirOpt.tone || direction) : undefined);
+  const dirSign = sign || (direction ? (dirOpt.sign || (dirIdx === 0 ? '−' : '+')) : (signMode ? (negative ? '−' : '+') : undefined));
+  const flipDir = (e) => onDirectionChange(dirNext.value, e);
+  // Typing a sign in the amount sets the direction / sign rather than the value:
+  // − picks the first state, + the second, whatever the two are called.
   const onAmountKey = (e) => {
     if (dirMode) {
-      if (e.key === '-' || e.key === '−') { e.preventDefault(); onDirectionChange('expense', e); }
-      else if (e.key === '+') { e.preventDefault(); onDirectionChange('income', e); }
+      if (e.key === '-' || e.key === '−') { e.preventDefault(); onDirectionChange(dirOpts[0].value, e); }
+      else if (e.key === '+') { e.preventDefault(); onDirectionChange(dirOpts[1].value, e); }
       return;
     }
     if (!signMode) return;
@@ -242,14 +265,20 @@ export function MoneyField({
           className="odc-money-sign btn"
           disabled={disabled}
           aria-label={dirMode
-            ? `${direction === 'expense' ? 'Expense' : 'Income'} — switch to ${direction === 'expense' ? 'income' : 'expense'}`
+            ? `${dirOpt.label} — switch to ${dirNext.label}`
             : `${negative ? 'Negative' : 'Positive'} — switch to ${negative ? 'positive' : 'negative'}`}
           title={dirMode
-            ? `${direction === 'expense' ? 'Expense' : 'Income'} — click to switch`
+            ? `${dirOpt.label} — click to switch`
             : `${negative ? 'Negative' : 'Positive'} — click to switch`}
           onClick={dirMode ? flipDir : flipSign}
         >
-          <span className="odc-money-dir-sign" aria-hidden="true">{dirSign}</span>
+          {dirMode && dirOpt.icon ? (
+            <span className="material-icons odc-money-dir-ic" aria-hidden="true">{dirOpt.icon}</span>
+          ) : dirMode && dirOpt.short ? (
+            <span className="odc-money-dir-word" aria-hidden="true">{dirOpt.short}</span>
+          ) : (
+            <span className="odc-money-dir-sign" aria-hidden="true">{dirSign}</span>
+          )}
         </button>
       ) : dirSign ? (
         <span className="odc-money-sign" aria-hidden="true">{dirSign}</span>

@@ -8,9 +8,12 @@
      • KIND — Fee and InterestRate only, on every ContractType. ExpectedReturn
        prices invested principal, which a contract does not hold, so it is not
        offered (and would be a 400 if posted).
-     • CURRENCY — required, and never defaulted. An account lends its own
-       currency to an Amount term; a contract has none to lend, so the field is
-       mandatory and the dialog says why.
+     • CURRENCY — required, and prefilled from the user's DEFAULT CURRENCY. An
+       account lends its own currency to an Amount term; a contract has none to
+       lend, so the preference stands in for it: the common case is one keystroke
+       shorter, and a term priced in another currency is one pick away. The field
+       stays required — the preference is a default, not an assumption, and
+       clearing it still refuses the write.
      • ARCHIVED — a contract that is archived refuses every write. The dialog is
        not reachable from a blocked surface; the guard is restated here so a
        stale open dialog cannot post through it.
@@ -22,7 +25,6 @@
 
    On confirm, onSave(dto, id?) receives the term-shaped object (id on edit). */
 
-const CTM_SYM = window.ATM_CURRENCY_SYMBOL || { USD: '$', EUR: '€', GBP: '£', JPY: '¥', NOK: 'kr', SEK: 'kr', CAD: '$' };
 const CTM_CURRENCIES = (window.OdysseyData.currencies || [])
   .filter(c => !c.archived)
   .map(c => ({ value: c.code, label: c.name }));
@@ -45,12 +47,16 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
     kind: initKind,
     unit: term ? term.unit : initInfo.defaultUnit,
     valueStr: term ? (term.unit === 'Percentage' ? ctmFracToPctStr(term.value) : String(term.value)) : '',
-    // No account currency to inherit — an Amount term starts UNSET, and stays
-    // a required answer rather than a silently-assigned default.
-    currency: term ? (term.currency || '') : '',
+    // No account currency to inherit, so the USER'S DEFAULT stands in for one.
+    // Still required: a cleared field refuses the write.
+    currency: term ? (term.currency || '') : H.defaultCurrency(),
     interval: term ? (term.interval || '') : (initInfo.group === 'fee' ? D.defaultFeeInterval : ''),
     intervalCount: term && term.intervalCount != null ? String(term.intervalCount) : '',
     anchorDate: term ? (term.anchorDate || '') : '',
+    // Which way the money moves. Outgoing is the default because it is what
+    // every term meant before the field existed — an omitted direction and a
+    // chosen Outgoing are the same fact.
+    direction: term ? H.termDirection(term) : 'Outgoing',
     effectiveFrom: term ? term.effectiveFrom : new Date().toISOString().slice(0, 10),
     label: term ? (term.label || '') : '',
     note: term ? (term.note || '') : '',
@@ -79,6 +85,9 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       interval: ki.group === 'fee' ? (d.interval || D.defaultFeeInterval) : '',
       intervalCount: ki.group === 'fee' ? d.intervalCount : '',
       anchorDate: ki.group === 'fee' ? d.anchorDate : '',
+      // A rate carries no direction (a percentage is not a movement), so the
+      // answer is dropped rather than carried into a field that refuses it.
+      direction: ki.key === 'Fee' ? d.direction : 'Outgoing',
     }));
     setErrors({});
   };
@@ -97,7 +106,7 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       next.value = 'A fee amount can’t be negative.';
     }
 
-    // The contract rule: an amount needs a currency, and nothing supplies one.
+    // The contract rule: an amount needs a currency of its own on the record.
     if (!isPct && !draft.currency) next.currency = 'Pick the currency this amount is in — a contract has no currency of its own.';
 
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
@@ -128,6 +137,10 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       ? `“${label}” already has an entry on that date.`
       : 'This contract already has an interest rate on that date.';
 
+    if (draft.direction === 'Incoming' && draft.kind !== 'Fee') {
+      next.direction = H.termDirectionRefusal(draft.kind, 'contract');
+    }
+
     if (Object.keys(next).length) { setErrors(next); return; }
 
     const value = isPct ? Number((raw / 100).toFixed(6)) : Number(raw.toFixed(2));
@@ -141,6 +154,7 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       interval: isRate ? null : (draft.interval || null),
       intervalCount: !isRate && periodic ? (count == null ? 1 : count) : null,
       anchorDate: isRate ? null : (draft.anchorDate || null),
+      direction: draft.kind === 'Fee' ? draft.direction : 'Outgoing',
       effectiveFrom: draft.effectiveFrom,
       label,
       labelKey: key,
@@ -149,6 +163,11 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
   };
 
   const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
+  const dirInfo = H.termDirectionInfo(draft.direction);
+  /* The money field's lead flips between these two, showing each one's own
+     SHORT WORD where a sign would be — the registry, mapped to MoneyField's
+     shape. No arrow: see termDirections on why the glyph was dropped. */
+  const DIR_OPTIONS = D.termDirections.map(d => ({ value: d.key, label: d.label, short: d.short, tone: d.tone }));
   const previewFrac = (() => {
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     return isNaN(raw) ? null : raw / 100;
@@ -211,6 +230,22 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
         />
       )}
 
+      {/* Direction — which way the money moves, from the HOUSEHOLD's side, not
+         from either named party's. It rides in the VALUE control itself, in the
+         slot a sign would occupy: the record stores a direction, not a sign, so
+         the word is the sign (see MoneyField / AmountField `directionOptions`).
+         Both units carry the same lead, so there is exactly ONE control for the
+         value whichever way it is priced. A rate kind gets the refusal instead. */}
+      {draft.kind !== 'Fee' ? (
+        <div className="field trm-dir-field">
+          <div className="label">Direction</div>
+          <div className="trm-dir-refused">
+            <MIcon name="block" size={15} />
+            <span>{H.termDirectionRefusal(draft.kind, 'contract')} It is recorded as <b>outgoing</b>, where it carries no meaning.</span>
+          </div>
+        </div>
+      ) : null}
+
       {/* Unit + Value */}
       <div className="trm-value-block">
         <div className="trm-field-head">
@@ -240,27 +275,50 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
             autoFocus
             value={draft.valueStr}
             onChange={set('valueStr')}
+            /* A percentage fee is money too: it carries the same direction lead
+               as an amount, so the two units are one control with one unit
+               swapped rather than two differently-shaped questions. */
+            direction={draft.kind === 'Fee' ? draft.direction : undefined}
+            onDirectionChange={draft.kind === 'Fee' ? set('direction') : undefined}
+            directionOptions={DIR_OPTIONS}
+            tone={draft.kind === 'Fee' ? dirInfo.tone : undefined}
             error={errors.value}
-            help={<React.Fragment>Stored as a fraction: <b>{previewFrac == null ? '—' : previewFrac.toFixed(4)}</b>{isRate ? ' · annual' : ''}</React.Fragment>}
+            help={errors.value ? undefined : (
+              <React.Fragment>
+                {draft.kind === 'Fee'
+                  ? <React.Fragment><b>{dirInfo.label}</b> — {dirInfo.sentence}. Click <b>{dirInfo.short}</b> to switch. </React.Fragment>
+                  : null}
+                Stored as a fraction: <b>{previewFrac == null ? '—' : previewFrac.toFixed(4)}</b>{isRate ? ' · annual' : ''}
+              </React.Fragment>
+            )}
           />
         ) : (
           <MoneyField
             size="lg"
             required
-            allowNegative
-            signEditable
+            allowNegative={false}
             autoFocus
             value={draft.valueStr}
             onChange={set('valueStr')}
+            /* The lead is the DIRECTION, not a sign: the amount stays positive
+               and the arrow carries the meaning — one control for the value, the
+               way it is one field on the record. Only a fee has one. */
+            direction={draft.kind === 'Fee' ? draft.direction : undefined}
+            onDirectionChange={draft.kind === 'Fee' ? set('direction') : undefined}
+            directionOptions={DIR_OPTIONS}
+            tone={draft.kind === 'Fee' ? dirInfo.tone : undefined}
             currency={draft.currency}
             onCurrencyChange={set('currency')}
             currencyOptions={CTM_CURRENCIES}
             currencySearchThreshold={0}
             currencyPlaceholder="Pick"
-            error={[errors.value, errors.currency].filter(Boolean).join(' ') || undefined}
-            help={errors.value || errors.currency ? undefined : (draft.currency
-              ? <React.Fragment>Flat amount in <b>{draft.currency}</b>{cadence ? <React.Fragment> · {cadence}</React.Fragment> : ''}</React.Fragment>
-              : <React.Fragment>A contract has no currency of its own — <b>pick one</b> for this amount.</React.Fragment>)}
+            error={[errors.value, errors.currency, errors.direction].filter(Boolean).join(' ') || undefined}
+            help={errors.value || errors.currency || errors.direction ? undefined : (draft.currency
+              ? <React.Fragment>
+                  <b>{dirInfo.label}</b> — {dirInfo.sentence}. Flat amount in <b>{draft.currency}</b>{cadence ? <React.Fragment> · {cadence}</React.Fragment> : ''}.
+                  {' '}Click <b>{dirInfo.short}</b> to switch{isEdit ? ' — a correction supersedes the entry, it never forks the history' : ''}.
+                </React.Fragment>
+              : <React.Fragment>A contract has no currency of its own — <b>pick one</b> for this amount. The word on the left says which way the money moves.</React.Fragment>)}
           />
         )}
       </div>

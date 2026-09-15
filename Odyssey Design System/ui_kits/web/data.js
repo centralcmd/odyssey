@@ -907,17 +907,57 @@ window.OdysseyData.contactOption = (cp) => {
   return { value: cp.id, label: cp.name, icon: m.icon || 'category', iconColor: m.color };
 };
 window.OdysseyData.currencyByCode = Object.fromEntries(window.OdysseyData.currencies.map(c => [c.code, c]));
+/* User preferences (UserPreferences) — the two currency answers the Preferences
+   page owns. DefaultCurrency is what a NEW money value is denominated in unless
+   its own record supplies one; MainCurrency is what roll-ups convert to. Held
+   here rather than in the page's local state so every dialog reads the same
+   answer the user gave. */
+window.OdysseyData.userPreferences = {
+  defaultCurrency: (window.OdysseyData.currencies.find(c => c.base) || {}).code || 'USD',
+  mainCurrency: (window.OdysseyData.currencies.find(c => c.base) || {}).code || 'USD',
+};
 
 window.OdysseyHelpers = {
+  /* MONEY READS AS ITS ISO 4217 CODE, AFTER THE AMOUNT — "1,234.56 USD", never
+     "$ 1,234.56". Odyssey is multi-currency and several of the currencies it
+     ships share a glyph ($ for USD and CAD, kr for NOK and SEK), so a symbol is
+     ambiguous exactly where the figure matters; the code is unambiguous and
+     matches the MoneyField the amount was typed into, which carries its code on
+     the right of the box too. The sign leads (− 84.00 NOK) so a scan down a
+     column finds it first, and the digits carry the currency's minor units. */
+  /* The currency a new money value starts in: the user's DefaultCurrency,
+     falling back to the workspace base. A record with a currency of its own
+     (an account) still lends that one; this is for the records that have none. */
+  defaultCurrency() {
+    const p = window.OdysseyData.userPreferences || {};
+    return p.defaultCurrency || (window.OdysseyData.currencies.find(c => c.base) || {}).code || 'USD';
+  },
+  moneyDigits(currency) {
+    const c = window.OdysseyData.currencyByCode[currency];
+    return (c && c.minorUnits != null) ? c.minorUnits : 2;
+  },
+  /* The sign, then a figure space (U+2007, digit-width and non-collapsing)
+     before the digits: "− 84.00 USD". An UNSIGNED amount gets nothing — an
+     empty slot was tried and reads as stray indentation on a headline tile,
+     where there is no column to align to. Columns of money align the way they
+     always did: right-aligned, tabular figures, the code trailing. */
+  moneySlot(n, signed) {
+    if (n < 0) return '− ';
+    return signed ? '+ ' : '';
+  },
   money(n, currency = 'USD') {
-    const sign = n < 0 ? '−' : '';
+    if (n == null) return '—';
+    const sign = window.OdysseyHelpers.moneySlot(n, false);
     const abs = Math.abs(n);
-    return `${sign}$ ${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const digits = window.OdysseyHelpers.moneyDigits(currency);
+    return `${sign}${abs.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${currency}`;
   },
   signedMoney(n, currency = 'USD') {
-    const sign = n < 0 ? '−' : '+';
+    if (n == null) return '—';
+    const sign = window.OdysseyHelpers.moneySlot(n, true);
     const abs = Math.abs(n);
-    return `${sign}$ ${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const digits = window.OdysseyHelpers.moneyDigits(currency);
+    return `${sign}${abs.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${currency}`;
   },
   dateShort(iso) {
     const d = new Date(iso);
@@ -1176,6 +1216,36 @@ window.OdysseyData.intervals = [
 ];
 window.OdysseyData.intervalByKey = Object.fromEntries(window.OdysseyData.intervals.map(b => [b.key, b]));
 window.OdysseyData.defaultFeeInterval = 'Monthly';
+
+/* TermDirection — which way the money moves, stated from the HOUSEHOLD's
+   perspective, never from either named party's. Two members, ordinals frozen:
+   Outgoing = 0 is the default AND the backfill value, so every term recorded
+   before the field existed keeps its exact meaning and figure.
+
+   Three properties the UI leans on:
+     • Direction belongs to the ENTRY, not the series. It is not part of
+       (owner, kind, labelKey), so correcting a mis-directed term supersedes it
+       instead of forking its history — the dialog treats it as an ordinary
+       replace and says nothing about conflicts.
+     • Magnitude stays positive. A negative amount is never how income is
+       expressed; the sign lives in the direction, and the only signed figure
+       anywhere is the NET run rate.
+     • The colors are the finance semantics — coral out, mint in. Brand tide /
+       sea never encode a direction. */
+window.OdysseyData.termDirections = [
+  /* NO GLYPH, deliberately. Every arrow we tried reads against VALUE rather
+     than against the household: an up arrow says "gain" before it says "leaves
+     here", and a down arrow says "loss". The unambiguous pairs were a money bag
+     and winged money, which are emoji — barred from product chrome. So
+     direction is carried by its WORD plus the finance hue, which is what a
+     reader parses first anyway; `short` is the two- or three-letter form for
+     slots too narrow for the word (the money field's lead). */
+  { key: 'Outgoing', label: 'Outgoing', enumValue: 0, short: 'out', sentence: 'money leaves the household',
+    color: 'var(--finance-expense)', soft: 'var(--finance-expense-soft)', tone: 'expense', side: 'What goes out' },
+  { key: 'Incoming', label: 'Incoming', enumValue: 1, short: 'in', sentence: 'money arrives',
+    color: 'var(--finance-income)', soft: 'var(--finance-income-soft)', tone: 'income', side: 'What comes in' },
+];
+window.OdysseyData.termDirectionByKey = Object.fromEntries(window.OdysseyData.termDirections.map(d => [d.key, d]));
 /* TermIntervalCount.Min / .Max — the same pair the DTO's [Range] names. */
 window.OdysseyData.termIntervalCount = { min: 1, max: 1000 };
 
@@ -1276,6 +1346,46 @@ Object.assign(window.OdysseyHelpers, {
   },
   cadenceTextFor(t) {
     return t ? window.OdysseyHelpers.cadenceText(t.interval, t.intervalCount) : null;
+  },
+  /* ---- Direction ---------------------------------------------------------
+     Read with a DEFAULT, never a truthiness test: a row written before the
+     field existed, and every account term, is Outgoing. */
+  termDirection(t) {
+    return (t && t.direction === 'Incoming') ? 'Incoming' : 'Outgoing';
+  },
+  termDirectionInfo(t) {
+    const key = (typeof t === 'string') ? t : window.OdysseyHelpers.termDirection(t);
+    return window.OdysseyData.termDirectionByKey[key] || window.OdysseyData.termDirectionByKey.Outgoing;
+  },
+  termIsIncoming(t) { return window.OdysseyHelpers.termDirection(t) === 'Incoming'; },
+  // The owner kind of a term row, from whichever id is populated.
+  termOwnerKind(t, owner) {
+    if (owner && owner.ownerKind) return owner.ownerKind;
+    if (t && t.contractId) return 'contract';
+    if (t && t.accountId) return 'account';
+    return 'account';
+  },
+  /* Where direction MEANS something: a FEE term owned by a CONTRACT. A rate
+     kind is a percentage the roll-up never projects, and an account term has
+     no surface that reads a direction — both refuse Incoming with a 400, so
+     neither is offered one. One predicate, so the dialog's control, the read
+     surfaces and the refusal copy can never disagree. */
+  termDirectionApplies(t, owner) {
+    const kind = (t && typeof t === 'object') ? t.kind : t;
+    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract' && kind === 'Fee';
+  },
+  // Why direction is refused here, in the words the 400 uses. Null = allowed.
+  termDirectionRefusal(kind, ownerKind) {
+    if (ownerKind !== 'contract') return 'Direction applies to a contract term. An account term is always money out.';
+    if (kind !== 'Fee') return 'Direction applies to a fee term only — a rate is a percentage, not a movement.';
+    return null;
+  },
+  /* Mint wherever an INCOMING term's own value is printed. Outgoing returns
+     null so every surface keeps the color it already had — nothing that
+     existed before this field changes appearance. */
+  termDirectionColor(t, owner) {
+    return (window.OdysseyHelpers.termDirectionApplies(t, owner) && window.OdysseyHelpers.termIsIncoming(t))
+      ? 'var(--finance-income)' : null;
   },
   // All terms for an account, EffectiveFrom DESC (history listing, newest first).
   termsForAccount(accountId) {
@@ -1481,15 +1591,18 @@ Object.assign(window.OdysseyHelpers, {
     }
     return cur;
   },
-  // Compact money for chart axes: 540000 → "$ 540k", 1250000 → "$ 1.25M".
+  // Compact money for chart axes: 540000 → "540k USD", 1250000 → "1.25M USD".
   moneyCompact(n, currency = 'USD') {
-    const sign = n < 0 ? '−' : '';
+    const sign = window.OdysseyHelpers.moneySlot(n, false);
     const abs = Math.abs(n);
     let s;
-    if (abs >= 1e9) s = (abs / 1e9).toFixed(abs % 1e9 ? 2 : 0).replace(/\.?0+$/, '') + 'B';
-    else if (abs >= 1e6) s = (abs / 1e6).toFixed(abs % 1e6 ? 2 : 0).replace(/\.?0+$/, '') + 'M';
-    else if (abs >= 1e3) s = (abs / 1e3).toFixed(abs % 1e3 ? 1 : 0).replace(/\.?0+$/, '') + 'k';
+    /* Trim only a FRACTIONAL tail — a bare /0+$/ would eat the zeros of an
+       integer and turn 540k into 54k, an order-of-magnitude error on an axis. */
+    const trim = (x) => x.replace(/\.(\d*?)0+$/, (m, keep) => (keep ? '.' + keep : ''));
+    if (abs >= 1e9) s = trim((abs / 1e9).toFixed(abs % 1e9 ? 2 : 0)) + 'B';
+    else if (abs >= 1e6) s = trim((abs / 1e6).toFixed(abs % 1e6 ? 2 : 0)) + 'M';
+    else if (abs >= 1e3) s = trim((abs / 1e3).toFixed(abs % 1e3 ? 1 : 0)) + 'k';
     else s = String(Math.round(abs));
-    return `${sign}$ ${s}`;
+    return `${sign}${s} ${currency}`;
   },
 });

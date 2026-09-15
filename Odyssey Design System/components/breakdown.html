@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="Components · BreakdownTile (.odc-breakdown)" subtitle="Labelled icon·label·count distribution tile — the generic 'By type' / 'By status' summary tile" viewport="720x400" -->
+<!-- @dsCard group="Components" name="Components · BreakdownTile (.odc-breakdown)" subtitle="Labelled icon·label·count distribution tile — the generic 'By type' / 'By status' summary tile, closing with a ruled total row (on by default, overridable, or off)" viewport="720x460" -->
 <html lang="en" data-theme="dark">
 <head>
   <title>Odyssey · Components · BreakdownTile (.odc-breakdown)</title>
@@ -18,7 +18,7 @@
   </style>
 </head>
 <body>
-  <div class="cap">BreakdownTile <code>&lt;BreakdownTile label rows /&gt;</code> — two instances, one data shape</div>
+  <div class="cap">BreakdownTile <code>&lt;BreakdownTile label rows total /&gt;</code> &mdash; one data shape: summed total, given total, no rows</div>
   <div class="grid">
 
     <!-- By type -->
@@ -28,6 +28,7 @@
         <div class="odc-breakdown-row"><span class="material-icons" style="color:oklch(0.72 0.16 295)">work</span><span class="odc-breakdown-label">Employment</span><span class="odc-breakdown-n">1</span></div>
         <div class="odc-breakdown-row"><span class="material-icons" style="color:oklch(0.79 0.115 188)">home_repair_service</span><span class="odc-breakdown-label">Service</span><span class="odc-breakdown-n">2</span></div>
         <div class="odc-breakdown-row"><span class="material-icons" style="color:oklch(0.75 0.16 330)">cottage</span><span class="odc-breakdown-label">Tenancy</span><span class="odc-breakdown-n">1</span></div>
+        <div class="odc-breakdown-row odc-breakdown-total"><span class="material-icons">functions</span><span class="odc-breakdown-label">Total</span><span class="odc-breakdown-n">4</span></div>
       </div>
     </div>
 
@@ -39,6 +40,7 @@
         <div class="odc-breakdown-row"><span class="material-icons" style="color:var(--sea-400)">schedule</span><span class="odc-breakdown-label">Upcoming</span><span class="odc-breakdown-n">1</span></div>
         <div class="odc-breakdown-row"><span class="material-icons" style="color:var(--finance-expense)">event_busy</span><span class="odc-breakdown-label">Expired</span><span class="odc-breakdown-n">0</span></div>
         <div class="odc-breakdown-row"><span class="material-icons" style="color:var(--mud-palette-text-secondary)">inventory_2</span><span class="odc-breakdown-label">Archived</span><span class="odc-breakdown-n">2</span></div>
+        <div class="odc-breakdown-row odc-breakdown-total"><span class="material-icons">functions</span><span class="odc-breakdown-label">Total</span><span class="odc-breakdown-n">6</span></div>
       </div>
     </div>
 
@@ -46,6 +48,17 @@
     <div class="odc-breakdown">
       <span class="odc-breakdown-ov">By currency</span>
       <div class="odc-breakdown-empty">No contracts on file.</div>
+    </div>
+
+    <!-- A given total: node counts the rows' arithmetic cannot sum (here a net
+         per type), so the caller hands the tile the figure and its label. -->
+    <div class="odc-breakdown">
+      <span class="odc-breakdown-ov">Monthly net by type</span>
+      <div class="odc-breakdown-rows">
+        <div class="odc-breakdown-row"><span class="material-icons" style="color:oklch(0.72 0.16 295)">work</span><span class="odc-breakdown-label">Employment</span><span class="odc-breakdown-n" style="color:var(--finance-income)">+$ 6,178.00</span></div>
+        <div class="odc-breakdown-row"><span class="material-icons" style="color:oklch(0.79 0.115 188)">home_repair_service</span><span class="odc-breakdown-label">Service</span><span class="odc-breakdown-n" style="color:var(--finance-expense)">−$ 84.00</span></div>
+        <div class="odc-breakdown-row odc-breakdown-total"><span class="material-icons">functions</span><span class="odc-breakdown-label">Net</span><span class="odc-breakdown-n" style="color:var(--finance-income)">+$ 6,094.00</span></div>
+      </div>
     </div>
 
   </div>

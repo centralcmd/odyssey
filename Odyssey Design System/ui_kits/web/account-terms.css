@@ -129,6 +129,61 @@
   white-space: nowrap;
 }
 
+/* ---- Direction (TermDirection) ------------------------------------------
+   The WORD, in the hue of its side — no glyph, because a directional arrow
+   reads against value rather than against the household. Sized like the cadence
+   tag it sits beside, so a term's foot line reads as one row of facts. Rendered
+   only on a contract's fee terms. */
+/* Not a chip: the same quiet mono caption the tile's sub-line uses, because
+   the FIGURE is what carries the direction's hue. A pill repeated down a
+   history read as a warning beside every ordinary row. */
+/* EVERY figure keeps its direction's hue at full strength. Dimming the
+   superseded and scheduled ones was tried and reverted: at 55% the coral
+   composited to 2.7:1 on the row ground, below the 4.5:1 text floor, and it
+   drew the SCHEDULED entry — the one that is next — as though it were already
+   history. The hierarchy is carried by things that cost no contrast: the
+   in-force row's tinted ground, its heavier figure, and the status cell that
+   names In force / Superseded / Scheduled in words. */
+.trm-tbl tbody tr.current .trm-cell-value { font-weight: var(--fw-medium); }
+.trm-dir {
+  display: block; margin-top: 2px;
+  font: 400 9.5px/1 var(--font-mono); letter-spacing: 0;
+  color: var(--mud-palette-text-secondary); white-space: nowrap;
+}
+/* In the timeline the same caption sits in a ROW flex beside the name, so it
+   keeps its own inline box there rather than claiming a line of its own. */
+.trm-tl-top .trm-dir { display: inline-block; margin-top: 0; }
+.odc-infotile-foot .trm-dir { margin-right: 6px; vertical-align: -2px; }
+/* A DIRECTION SUB-LINE, the treatment a contract party tile gives its from–to
+   dates: the overline stacks the term's name over its direction, in the space
+   the icon leaves, so the caption below stays one line. The figure itself is
+   already coloured by direction; this is the word that keeps the hue from being
+   the only carrier. */
+.odc-infotile.trm-dir-tile .odc-infotile-k { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; }
+.trm-dir-name { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; }
+.trm-dir-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trm-dir-sub {
+  font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
+  color: var(--mud-palette-text-secondary);
+  white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.trm-row-kind .trm-dir { margin-top: 3px; }
+
+/* The dialog's Direction field — the segmented pair plus its consequence line,
+   and the refusal state that stands in its place where direction has no
+   meaning (a rate kind, or an account-owned term). */
+.trm-dir-field { display: flex; flex-direction: column; gap: 6px; }
+.trm-dir-seg { align-self: flex-start; }
+.trm-dir-replace { color: var(--mud-palette-text-secondary); }
+.trm-dir-refused {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 9px 11px; border-radius: var(--radius-sm);
+  border: 1px dashed var(--mud-palette-divider);
+  font: 400 11.5px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.trm-dir-refused .material-icons { color: var(--mud-palette-text-disabled, var(--mud-palette-text-secondary)); flex: none; margin-top: 1px; }
+.trm-dir-refused b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
 /* ---- Cadence block in the New / Edit term dialog ---- */
 .trm-cadence { display: flex; flex-direction: column; gap: var(--space-2); }
 .trm-cadence-echo { margin-top: -2px; }

@@ -799,7 +799,27 @@
     'ct-cleaning': [
       { id: 'ctm-cleaning-1', contractId: 'ct-cleaning', kind: 'Fee', unit: 'Amount', value: 180.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-11-01', label: 'Cleaning', labelKey: 'cleaning', note: 'Quoted rate — not agreed until the contract is signed.', createdAtUtc: '2026-09-12T11:00:00Z' },
     ],
-    // ct-employment intentionally has no terms — drives the empty state.
+    /* The income-bearing contract. An employment agreement is the clearest
+       case for direction: the salary is money IN and the deductions taken
+       under the same agreement are money OUT, and neither cancels the other —
+       they sit on opposite sides of the header's two grosses.
+
+       Note the two anchor dates. The salary lands on the 25th and the dues on
+       the 1st, so this contract has TWO next movements, and the header's
+       collapse is per (contract, direction): one row in Next charges, one in
+       Next receipts. Collapsing on the contract alone would silently discard
+       whichever fell later.
+
+       The signing bonus is the one-off case: a OneTime fee accepts a direction
+       and keeps it on the record, and is still excluded from the run rate —
+       the exclusion is about having no rate to project, not about direction. */
+    'ct-employment': [
+      { id: 'ctm-emp-1', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 6250.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Incoming', anchorDate: '2024-03-25', effectiveFrom: '2024-03-01', label: 'Base salary', labelKey: 'base salary', note: 'Paid on the 25th.', createdAtUtc: '2024-02-24T09:00:00Z' },
+      { id: 'ctm-emp-2', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 6600.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Incoming', anchorDate: '2024-03-25', effectiveFrom: '2026-04-01', label: 'Base salary', labelKey: 'base salary', note: 'Annual review, effective April.', createdAtUtc: '2026-03-18T09:00:00Z' },
+      { id: 'ctm-emp-3', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 42.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Outgoing', anchorDate: '2024-03-01', effectiveFrom: '2024-03-01', label: 'Union dues', labelKey: 'union dues', note: 'Deducted at source.', createdAtUtc: '2024-02-24T09:00:00Z' },
+      { id: 'ctm-emp-4', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 380.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Outgoing', anchorDate: '2025-01-25', effectiveFrom: '2025-01-01', label: 'Pension contribution', labelKey: 'pension contribution', note: 'Employee share, 5% of base.', createdAtUtc: '2024-12-11T09:00:00Z' },
+      { id: 'ctm-emp-5', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 3000.00, currency: 'USD', interval: 'OneTime', intervalCount: null, direction: 'Incoming', effectiveFrom: '2024-03-01', label: 'Signing bonus', labelKey: 'signing bonus', note: 'Paid with the first salary. One-off — recorded, never projected.', createdAtUtc: '2024-02-24T09:00:00Z' },
+    ],
   };
 
   Object.assign(H, {
@@ -862,7 +882,10 @@
        (amounts only — a percentage fee has no due amount to show), the
        earliest next occurrence that still falls inside the contract's term.
        Returns { date, days, term } or null. */
-    conNextCharge(contract, today) {
+    /* The contract's soonest movement on ONE side. Direction is read off the
+       in-force entry, so a superseded entry's direction never reaches a row. */
+    conNextMovement(contract, today, direction) {
+      const dir = direction || 'Outgoing';
       const t = today || H.conToday();
       if (!contract || contract.archived) return null;
       const status = H.conStatus(contract, t);
@@ -881,31 +904,43 @@
       let best = null;
       for (const term of (inForce || [])) {
         if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+        if (H.termDirection(term) !== dir) continue;
         const iv = D.intervalByKey[term.interval];
         if (!iv || !iv.periodic) continue;
         const date = H.conNextOccurrence(term, start && start > t ? start : t);
         if (!date) continue;
-        // A charge never falls outside the agreement it is priced under.
+        // A movement never falls outside the agreement it is priced under.
         if (end && date > end) continue;
         if (!best || date < best.date) best = { date, term };
       }
-      return best ? { ...best, days: H.conDaysUntil(best.date, t) } : null;
+      return best ? { ...best, direction: dir, days: H.conDaysUntil(best.date, t) } : null;
     },
+    conNextCharge(contract, today) { return H.conNextMovement(contract, today, 'Outgoing'); },
+    conNextReceipt(contract, today) { return H.conNextMovement(contract, today, 'Incoming'); },
 
-    // The soonest next charges within `windowDays` (default 45), one row per
-    // contract, ascending and capped — the Subscriptions renewal list's shape.
-    conUpcomingCharges(contracts, today, opts) {
+    /* The soonest movements within `windowDays` (default 45) on ONE side, one
+       row per contract, ascending and capped — the Subscriptions renewal
+       list's shape. The cap applies PER LIST, so a file with many charges
+       cannot starve the receipts beside it. */
+    conUpcomingMovements(contracts, today, opts) {
       const t = today || H.conToday();
+      const dir = (opts && opts.direction) || 'Outgoing';
       const windowDays = (opts && opts.windowDays != null) ? opts.windowDays : D.CONTRACTS_CHARGE_WINDOW_DAYS;
       const limit = (opts && opts.limit != null) ? opts.limit : 6;
       const out = [];
       for (const c of (contracts || D.contracts)) {
-        const next = H.conNextCharge(c, t);
+        const next = H.conNextMovement(c, t, dir);
         if (!next || next.days == null || next.days > windowDays) continue;
         out.push({ contract: c, ...next });
       }
       out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
       return out.slice(0, limit);
+    },
+    conUpcomingCharges(contracts, today, opts) {
+      return H.conUpcomingMovements(contracts, today, Object.assign({}, opts, { direction: 'Outgoing' }));
+    },
+    conUpcomingReceipts(contracts, today, opts) {
+      return H.conUpcomingMovements(contracts, today, Object.assign({}, opts, { direction: 'Incoming' }));
     },
 
     // 'Oct 1' — the compact charge date, parsed as UTC so it never drifts.
@@ -947,8 +982,13 @@
       };
       const convert = H.insConvert || ((amt, from, to) => (from === to ? amt : null));
       const unconverted = new Set();
-      const byType = {};
-      let monthly = 0, yearly = 0, any = false;
+      /* Two buckets, filled from the SAME read of the same in-force terms.
+         Nothing is queried twice, and no gross ever mixes the two sides: the
+         only figure that crosses them is the net, and it says so in its name. */
+      const side = {
+        Outgoing: { monthly: 0, yearly: 0, any: false, byType: {} },
+        Incoming: { monthly: 0, yearly: 0, any: false, byType: {} },
+      };
       for (const c of (contracts || D.contracts)) {
         if (c.archived) continue;
         if (H.conStatus(c, t) !== 'Active') continue;
@@ -961,24 +1001,41 @@
           const cur = term.currency || base;
           const mo = convert((term.value * F[iv.key].mo) / every, cur, base);
           const yr = convert((term.value * F[iv.key].yr) / every, cur, base);
+          // Named and excluded from BOTH sides and from the net — never 1:1.
           if (mo == null || yr == null) { unconverted.add(cur); continue; }
-          monthly += mo; yearly += yr; any = true;
-          if (!byType[c.type]) byType[c.type] = { monthly: 0, yearly: 0, count: 0 };
-          byType[c.type].monthly += mo;
-          byType[c.type].yearly += yr;
-          byType[c.type].count += 1;
+          // Bucketed AFTER the series collapse, on the winning entry's own
+          // direction, so a superseded direction never reaches a total.
+          const s = side[H.termDirection(term)];
+          s.monthly += mo; s.yearly += yr; s.any = true;
+          if (!s.byType[c.type]) s.byType[c.type] = { monthly: 0, yearly: 0, count: 0 };
+          s.byType[c.type].monthly += mo;
+          s.byType[c.type].yearly += yr;
+          s.byType[c.type].count += 1;
         }
       }
+      // Registry order, only the types that actually carry a rate on that side.
+      const rowsFor = (s) => D.contractTypes
+        .filter(ty => s.byType[ty.key])
+        .map(ty => ({ key: ty.key, label: ty.label, icon: ty.icon, color: ty.color,
+          monthly: s.byType[ty.key].monthly, yearly: s.byType[ty.key].yearly, count: s.byType[ty.key].count }));
+      const out = side.Outgoing, inc = side.Incoming;
+      /* The net is computed from the UNROUNDED sums and rounded once —
+         differencing two already-rounded figures compounds the rounding
+         rather than cancelling it. It is null only when BOTH sides are:
+         a household with income and no recorded costs has a good net. */
+      const anySide = out.any || inc.any;
+      const net = (v) => Math.round(v * 100) / 100;
       return {
         baseCurrency: base,
-        monthly: any ? monthly : null,
-        yearly: any ? yearly : null,
+        monthly: out.any ? out.monthly : null,
+        yearly: out.any ? out.yearly : null,
+        incomingMonthly: inc.any ? inc.monthly : null,
+        incomingYearly: inc.any ? inc.yearly : null,
+        netMonthly: anySide ? net(inc.monthly - out.monthly) : null,
+        netYearly: anySide ? net(inc.yearly - out.yearly) : null,
         unconvertedCurrencies: [...unconverted].sort(),
-        // Registry order, only the types that actually carry a rate.
-        typeRows: D.contractTypes
-          .filter(ty => byType[ty.key])
-          .map(ty => ({ key: ty.key, label: ty.label, icon: ty.icon, color: ty.color,
-            monthly: byType[ty.key].monthly, yearly: byType[ty.key].yearly, count: byType[ty.key].count })),
+        typeRows: rowsFor(out),
+        incomingTypeRows: rowsFor(inc),
       };
     },
 

@@ -31,10 +31,30 @@ export interface MoneyFieldProps {
   size?: 'md' | 'lg';
   /** Leading sign glyph inside the box ("−", "+") — for signed amounts whose direction is set elsewhere in the form. */
   sign?: string;
-  /** Current direction. With `onDirectionChange` the leading segment becomes a button that flips expense ↔ income, and drives the sign and tone itself. */
-  direction?: 'income' | 'expense';
-  /** Fires with the next direction when the leading segment is clicked — or when − / + is typed in the amount. Omit for a read-only sign. */
-  onDirectionChange?: (direction: 'income' | 'expense', event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Current direction — one of `directionOptions`' values (default: 'expense' | 'income'). With `onDirectionChange` the leading segment becomes a button that flips between the two states, and drives the lead glyph and tone itself. */
+  direction?: string;
+  /** Fires with the next direction when the leading segment is clicked — or when − / + is typed in the amount (− picks the first state, + the second). Omit for a read-only sign. */
+  onDirectionChange?: (direction: string, event: React.MouseEvent<HTMLButtonElement>) => void;
+  /**
+   * The two states the lead flips between. Defaults to the finance pair
+   * (`expense` −, `income` +). Pass your own when the record stores a
+   * DIRECTION rather than a sign — a contract term's Outgoing / Incoming, a
+   * budget item's category type — and the lead shows that vocabulary's own
+   * glyph and tone where the sign would be. Exactly two options.
+   */
+  directionOptions?: Array<{
+    value: string;
+    /** Spoken name, used in the button's label and title ("Incoming — click to switch"). */
+    label: string;
+    /** Short word shown in the lead ("out", "in") — preferred over an icon for in/out vocabularies, where a directional arrow reads as the figure rising or falling. */
+    short?: string;
+    /** Material Icons ligature shown in the lead. Takes precedence over `short`; both fall back to `sign`. */
+    icon?: string;
+    /** Glyph shown when there is no `icon` ("−", "+"). */
+    sign?: string;
+    /** Colors the lead and the amount. */
+    tone?: 'income' | 'expense';
+  }>;
   /** Turns the leading segment into a − / + toggle over the value's own sign — for signed amounts with no income/expense meaning (a correction, an adjustment). The minus is picked, not typed; `value` stays signed. */
   signEditable?: boolean;
   /** Colors the sign and amount by direction, using the finance income / expense hues. */

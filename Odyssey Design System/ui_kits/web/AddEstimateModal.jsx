@@ -15,7 +15,9 @@
    Rejects an exact (AccountId, EffectiveFrom) duplicate (the server's 409). On
    confirm, onSave(dto, id?) receives the estimate-shaped object (id present on edit). */
 
-const EST_SYM = window.ATM_CURRENCY_SYMBOL || { USD: '$', EUR: '€', GBP: '£', JPY: '¥', NOK: 'kr', SEK: 'kr', CAD: '$' };
+/* The adornment inside a money input is the ISO CODE, matching MoneyField and
+   the house money() format — several shipped currencies share a glyph, so a
+   symbol is ambiguous exactly where the figure matters. */
 
 const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, leadIcon }) => {
   const { useState } = React;
@@ -60,7 +62,7 @@ const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, l
     }, estimate && estimate.id);
   };
 
-  const sym = EST_SYM[currency] || currency;
+  const sym = currency;
   const preview = (() => {
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     return isNaN(raw) ? null : H.money(raw, currency);

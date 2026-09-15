@@ -63,7 +63,7 @@
     },
     {
       id: 'ip-auto', name: 'Honda Civic — Comprehensive', policyNumber: 'MV-55-220714', type: 'Vehicle',
-      insurerIds: ['c20'], insuredAccountIds: ['5'], insuredContactIds: ['c30', 'c31', 'c32'], beneficiaryIds: [], notes: 'Comprehensive motor cover, €500 excess. Named drivers: 2.',
+      insurerIds: ['c20'], insuredAccountIds: ['5'], insuredContactIds: ['c30', 'c31', 'c32'], beneficiaryIds: [], notes: 'Comprehensive motor cover, 500 EUR excess. Named drivers: 2.',
       archived: null, createdAtUtc: '2024-07-10T09:00:00Z',
       renewals: [
         { id: 'rn-auto-25', fromDate: '2025-07-16', toDate: '2026-07-15', premium: 1260.00, premiumCurrencyCode: 'USD', coverageAmount: 24500.00, coverageCurrencyCode: 'USD', notes: 'No-claims discount applied (40%).', createdAtUtc: '2025-07-12T09:00:00Z', files: [
@@ -161,28 +161,30 @@
         || { key, label: key || 'Other', icon: 'insert_drive_file', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)' };
     },
 
-    // Currency-aware money. Symbol prefix + grouped digits at the currency's
-    // minor units. Mirrors taxMoney's style for cross-feature consistency.
+    // Currency-aware money. Grouped digits at the currency's minor units, then
+    // the ISO CODE — the house style money() sets, so amounts read identically
+    // across every feature.
     insMoney(n, cur = 'USD') {
       if (n == null) return '—';
-      const c = D.currencyByCode[cur] || { symbol: cur, minorUnits: 2 };
-      const sign = n < 0 ? '−' : '';
+      const c = D.currencyByCode[cur] || { minorUnits: 2 };
+      const sign = H.moneySlot(n, false);
       const abs = Math.abs(n);
       const digits = c.minorUnits != null ? c.minorUnits : 2;
-      return `${sign}${c.symbol || cur} ${abs.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+      return `${sign}${abs.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${cur}`;
     },
-    // Compact money for tight figures / axes: 1500000 → "$ 1.5M".
+    // Compact money for tight figures / axes: 1500000 → "1.5M USD".
     insMoneyCompact(n, cur = 'USD') {
       if (n == null) return '—';
-      const c = D.currencyByCode[cur] || { symbol: cur };
-      const sym = c.symbol || cur;
-      const sign = n < 0 ? '−' : '';
+      const sym = cur;
+      const sign = H.moneySlot(n, false);
       const abs = Math.abs(n);
       let s;
-      if (abs >= 1e6) s = (abs / 1e6).toFixed(abs % 1e6 ? 2 : 0).replace(/\.?0+$/, '') + 'M';
-      else if (abs >= 1e3) s = (abs / 1e3).toFixed(abs % 1e3 ? 1 : 0).replace(/\.?0+$/, '') + 'k';
+      // Trim only a fractional tail: /0+$/ would turn 540k into 54k.
+      const trim = (x) => x.replace(/\.(\d*?)0+$/, (m, keep) => (keep ? '.' + keep : ''));
+      if (abs >= 1e6) s = trim((abs / 1e6).toFixed(abs % 1e6 ? 2 : 0)) + 'M';
+      else if (abs >= 1e3) s = trim((abs / 1e3).toFixed(abs % 1e3 ? 1 : 0)) + 'k';
       else s = abs.toLocaleString('en-US', { maximumFractionDigits: 0 });
-      return `${sign}${sym} ${s}`;
+      return `${sign}${s} ${sym}`;
     },
 
     // The request's UTC "today" as 'YYYY-MM-DD' (a single value per call site).

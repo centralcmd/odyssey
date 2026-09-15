@@ -45,8 +45,11 @@ function PreferencesPage({ darkMode, onToggleDark }) {
   // Local copy so the page can preview dark mode and "Save" commits it (mirrors the
   // Razor PreviewDarkMode / SaveUserPreferencesAsync split). darkMode is the app's
   // committed value; we preview through onToggleDark to stay in sync with the shell.
-  const [defaultCurrency, setDefaultCurrency] = useState('USD');
-  const [mainCurrency, setMainCurrency] = useState('USD');
+  /* Seeded from — and saved back to — the shared preference, so a currency
+     picked here is the currency every New-value dialog opens on. */
+  const PREFS = (window.OdysseyData.userPreferences ||= { defaultCurrency: 'USD', mainCurrency: 'USD' });
+  const [defaultCurrency, setDefaultCurrency] = useState(PREFS.defaultCurrency);
+  const [mainCurrency, setMainCurrency] = useState(PREFS.mainCurrency);
   const [saved, setSaved] = useState(false);
 
   const matches = (d) => {
@@ -69,7 +72,13 @@ function PreferencesPage({ darkMode, onToggleDark }) {
     );
   };
 
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 1800); };
+  /* Saving commits to the shared preference, so the next New-value dialog opens
+     on the currency picked here rather than on a stale copy. */
+  const save = () => {
+    PREFS.defaultCurrency = defaultCurrency;
+    PREFS.mainCurrency = mainCurrency;
+    setSaved(true); setTimeout(() => setSaved(false), 1800);
+  };
 
   return (
     <div className="col gap-6">

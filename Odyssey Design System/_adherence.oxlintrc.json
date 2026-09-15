@@ -99,8 +99,8 @@
         "message": "<Alert> severity must be one of 'info' | 'success' | 'warning' | 'error'."
       },
       {
-        "selector": "JSXOpeningElement[name.name='AmountField'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|onChange|prefix|suffix|placeholder|size|align|allowNegative|help|error|required|optional|disabled|autoFocus|className|id|key|ref|className|style|children)$/]",
-        "message": "<AmountField> doesn't accept that prop. Declared props: label, value, onChange, prefix, suffix, placeholder, size, align, allowNegative, help, error, required, optional, disabled, autoFocus, className, id."
+        "selector": "JSXOpeningElement[name.name='AmountField'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|onChange|prefix|suffix|placeholder|size|align|allowNegative|direction|onDirectionChange|directionOptions|tone|help|error|required|optional|disabled|autoFocus|className|id|key|ref|className|style|children)$/]",
+        "message": "<AmountField> doesn't accept that prop. Declared props: label, value, onChange, prefix, suffix, placeholder, size, align, allowNegative, direction, onDirectionChange, directionOptions, tone, help, error, required, optional, disabled, autoFocus, className, id."
       },
       {
         "selector": "JSXOpeningElement[name.name='AmountField'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:md|lg)$/]",
@@ -109,6 +109,10 @@
       {
         "selector": "JSXOpeningElement[name.name='AmountField'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:left|right)$/]",
         "message": "<AmountField> align must be one of 'left' | 'right'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='AmountField'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:income|expense)$/]",
+        "message": "<AmountField> tone must be one of 'income' | 'expense'."
       },
       {
         "selector": "JSXOpeningElement[name.name='Avatar'] > JSXAttribute > JSXIdentifier[name!=/^(?:src|alt|initials|icon|size|square|fit|onError|tone|className|children|key|ref|className|style|children)$/]",
@@ -167,8 +171,12 @@
         "message": "<BreakdownRow> doesn't accept that prop. Declared props: key, icon, iconColor, label, count."
       },
       {
-        "selector": "JSXOpeningElement[name.name='BudgetCategoryTypeEntry'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
-        "message": "<BudgetCategoryTypeEntry> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
+        "selector": "JSXOpeningElement[name.name='BudgetCategoryTypeEntry'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|short|tone|sentence|key|ref|className|style|children)$/]",
+        "message": "<BudgetCategoryTypeEntry> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft, short, tone, sentence."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='BudgetCategoryTypeEntry'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:income|expense)$/]",
+        "message": "<BudgetCategoryTypeEntry> tone must be one of 'income' | 'expense'."
       },
       {
         "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|icon|iconRight|full|loading|disabled|badge|badgeLabel|ariaLabel|type|onClick|children|key|ref|className|style|children)$/]",

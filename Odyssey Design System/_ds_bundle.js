@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"c1c93cf0f490","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"548f677572e7","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"9400d3e9a309","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0a872c64aad8","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"d0fa49f15223","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"357f2b93d9e5","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"e9580b161e9b","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"68b86ac073e1","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"042affcbe38d","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"56d48a1d2f9b","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"821b336e8b33","ui_kits/web/Contacts.jsx":"8427bb81ea81","ui_kits/web/ContractEvents.jsx":"ab3a87eb420a","ui_kits/web/ContractTerms.jsx":"619b0f0b858e","ui_kits/web/Contracts.jsx":"344c25841925","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"8b406393c96e","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"15f82310f7e4","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"b030b9d491bb","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"374781e29ca7","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"df7fa72614df","ui_kits/web/contracts-data.js":"bd1b57711e11","ui_kits/web/data.js":"2070fc32dd1a","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"d5ba618a6d65","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"c1c93cf0f490","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"548f677572e7","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"9400d3e9a309","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"aa97741b0573","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"8e5c6844d774","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"357f2b93d9e5","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"e9580b161e9b","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"dae784c8e0e1","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"92918d09c235","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"56d48a1d2f9b","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"821b336e8b33","ui_kits/web/Contacts.jsx":"8427bb81ea81","ui_kits/web/ContractEvents.jsx":"ab3a87eb420a","ui_kits/web/ContractTerms.jsx":"dec78e8f4c8d","ui_kits/web/Contracts.jsx":"a20cb0eb5662","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"8b406393c96e","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"15f82310f7e4","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"b030b9d491bb","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"ff97851adb5f","ui_kits/web/contracts-data.js":"873ca0836b5e","ui_kits/web/data.js":"e42243da1859","ui_kits/web/insurance-data.js":"829cf0f9cca2","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"b7ea6e530c60","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -496,10 +496,10 @@ function AccountSmartTagsSection({
   // there are matches — a per-account at-a-glance figure for the watched tags.
   const getAmount = typeof amountOf === 'function' ? amountOf : t => t && typeof t.amount === 'number' ? t.amount : 0;
   const total = transactions.reduce((s, t) => s + (getAmount(t) || 0), 0);
-  const fmtAmount = typeof formatAmount === 'function' ? formatAmount : n => `${n < 0 ? '−' : '+'}$ ${Math.abs(n).toLocaleString('en-US', {
+  const fmtAmount = typeof formatAmount === 'function' ? formatAmount : n => `${n < 0 ? '− ' : '+ '}${Math.abs(n).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  })}`;
+  })} USD`;
   const showTotal = hasTags && !loading && !error && matchCount > 0;
 
   // ---- Body, by state (mirrors the spec's NoSmartTags / Loading /
@@ -1293,6 +1293,13 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
  * as a string so partial entries ("3.", "1,2") aren't clobbered; characters are
  * sanitized to digits, separators and (optionally) a leading minus — parse on
  * submit. Set `allowNegative` for rates/deltas that can go below zero.
+ *
+ * A DIRECTION LEAD, the same one MoneyField carries: `direction` +
+ * `onDirectionChange` (with `directionOptions` naming the two states) turn the
+ * left edge into a button that flips between them, showing each option's short
+ * word where a sign would be. For a record that stores a direction rather than
+ * a sign — a percentage-unit fee that is money in or money out — so the value
+ * and its direction stay ONE control, exactly as on the amount path.
  */
 function AmountField({
   label,
@@ -1300,6 +1307,10 @@ function AmountField({
   onChange,
   prefix,
   suffix,
+  direction,
+  onDirectionChange,
+  directionOptions,
+  tone,
   placeholder = '0.00',
   size = 'md',
   align = 'left',
@@ -1326,9 +1337,41 @@ function AmountField({
   };
   const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
   const FieldShell = NS.FieldShell;
+  // The two states the lead flips between — the finance pair by default, so a
+  // caller passing only `direction` still gets a sensible − / +.
+  const DIR_DEFAULT = [{
+    value: 'expense',
+    label: 'Expense',
+    sign: '−',
+    tone: 'expense'
+  }, {
+    value: 'income',
+    label: 'Income',
+    sign: '+',
+    tone: 'income'
+  }];
+  const dirMode = !!(direction && onDirectionChange);
+  const dirOpts = directionOptions && directionOptions.length === 2 ? directionOptions : DIR_DEFAULT;
+  const dirIdx = Math.max(0, dirOpts.findIndex(o => o.value === direction));
+  const dirOpt = dirOpts[dirIdx] || dirOpts[0];
+  const dirNext = dirOpts[(dirIdx + 1) % dirOpts.length];
+  const dirTone = tone || (dirMode ? dirOpt.tone : undefined);
   const control = /*#__PURE__*/React.createElement("div", {
-    className: `odc-amount${size === 'lg' ? ' lg' : ''}${error ? ' error' : ''}${disabled ? ' disabled' : ''}`
-  }, prefix ? /*#__PURE__*/React.createElement("span", {
+    className: `odc-amount${size === 'lg' ? ' lg' : ''}${dirTone ? ` tone-${dirTone}` : ''}${error ? ' error' : ''}${disabled ? ' disabled' : ''}`
+  }, dirMode ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "odc-money-sign btn",
+    disabled: disabled,
+    "aria-label": `${dirOpt.label} — switch to ${dirNext.label}`,
+    title: `${dirOpt.label} — click to switch`,
+    onClick: e => onDirectionChange(dirNext.value, e)
+  }, dirOpt.icon ? /*#__PURE__*/React.createElement("span", {
+    className: "material-icons odc-money-dir-ic",
+    "aria-hidden": "true"
+  }, dirOpt.icon) : /*#__PURE__*/React.createElement("span", {
+    className: "odc-money-dir-word",
+    "aria-hidden": "true"
+  }, dirOpt.short || dirOpt.sign)) : null, prefix ? /*#__PURE__*/React.createElement("span", {
     className: "odc-amount-adorn pre",
     "aria-hidden": "true"
   }, prefix) : null, /*#__PURE__*/React.createElement("input", _extends({
@@ -1870,16 +1913,47 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
  * label, count, key? }`. The count is right-aligned in tabular monospace; the
  * icon tints to `iconColor`. When `rows` is empty the `empty` message shows
  * instead. Sits on the recessed well background like the other summary tiles.
- * Styled by .odc-breakdown-*.
+ *
+ * THE TOTAL IS PART OF THE TILE, and on by default: a distribution whose sum a
+ * reader has to add up in their head is a table, not a summary. `total` takes
+ * three forms:
+ *   true   (default) — sum the rows' own counts, when every count is a number
+ *                      (or a numeric string). A tile whose counts are nodes —
+ *                      money, a pair of figures — cannot be summed safely, so
+ *                      nothing is rendered rather than a wrong figure.
+ *   a value          — any number or node to show as the total, for exactly
+ *                      that case (a net, a figure the caller computed, a sum
+ *                      that is not the rows' arithmetic).
+ *   false            — no total row, for a distribution whose sum means
+ *                      nothing (overlapping buckets, percentages, a slice).
+ * The row is ruled off above and its label is muted, so it reads as the tile's
+ * conclusion rather than another category. Styled by .odc-breakdown-*.
  */
 function BreakdownTile({
   label,
   rows = [],
   empty = 'Nothing to show.',
+  total = true,
+  totalLabel = 'Total',
+  totalIcon = 'functions',
   className = '',
   style,
   ...rest
 }) {
+  const numeric = v => {
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) return Number(v);
+    return null;
+  };
+  let totalValue = null;
+  if (total !== false && total != null && rows.length) {
+    if (total === true) {
+      const nums = rows.map(r => numeric(r.count));
+      totalValue = nums.every(n => n != null) ? nums.reduce((a, b) => a + b, 0) : null;
+    } else {
+      totalValue = total;
+    }
+  }
   return /*#__PURE__*/React.createElement("div", _extends({
     className: `odc-breakdown${className ? ' ' + className : ''}`,
     style: style
@@ -1900,7 +1974,16 @@ function BreakdownTile({
     className: "odc-breakdown-label"
   }, r.label), /*#__PURE__*/React.createElement("span", {
     className: "odc-breakdown-n"
-  }, r.count)))) : /*#__PURE__*/React.createElement("div", {
+  }, r.count))), totalValue != null ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-breakdown-row odc-breakdown-total"
+  }, totalIcon ? /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, totalIcon) : null, /*#__PURE__*/React.createElement("span", {
+    className: "odc-breakdown-label"
+  }, totalLabel), /*#__PURE__*/React.createElement("span", {
+    className: "odc-breakdown-n"
+  }, totalValue)) : null) : /*#__PURE__*/React.createElement("div", {
     className: "odc-breakdown-empty"
   }, empty));
 }
@@ -1936,15 +2019,34 @@ const BUDGET_CATEGORY_TYPES = [{
   enumValue: 0,
   icon: 'trending_down',
   color: 'oklch(0.72 0.16 22)',
-  soft: 'oklch(0.72 0.16 22 / 0.16)'
+  soft: 'oklch(0.72 0.16 22 / 0.16)',
+  short: 'out',
+  tone: 'expense',
+  sentence: 'money out of the budget'
 }, {
   key: 'Income',
   label: 'Income',
   enumValue: 1,
   icon: 'trending_up',
   color: 'oklch(0.80 0.15 150)',
-  soft: 'oklch(0.80 0.15 150 / 0.16)'
+  soft: 'oklch(0.80 0.15 150 / 0.16)',
+  short: 'in',
+  tone: 'income',
+  sentence: 'money into the budget'
 }];
+
+/* The same two values shaped for a MoneyField / AmountField DIRECTION LEAD —
+   the left-edge button that flips the value's direction where a sign would be.
+   A budget item records a direction, not a sign, so its planned amount can own
+   the question outright and the form needs no separate type picker beside it.
+   The lead says "out" / "in" here as it does on a contract term: one word for
+   one fact, wherever in the product it is asked. */
+const BUDGET_CATEGORY_DIRECTION_OPTIONS = BUDGET_CATEGORY_TYPES.map(t => ({
+  value: t.key,
+  label: t.label,
+  short: t.short,
+  tone: t.tone
+}));
 function BudgetCategoryTypeSelect({
   value,
   onChange,
@@ -1966,7 +2068,7 @@ function BudgetCategoryTypeSelect({
     types: types || BUDGET_CATEGORY_TYPES
   }, rest));
 }
-Object.assign(__ds_scope, { BUDGET_CATEGORY_TYPES, BudgetCategoryTypeSelect });
+Object.assign(__ds_scope, { BUDGET_CATEGORY_TYPES, BUDGET_CATEGORY_DIRECTION_OPTIONS, BudgetCategoryTypeSelect });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/BudgetCategoryTypeSelect.jsx", error: String((e && e.message) || e) }); }
 
 // components/Button.jsx
@@ -9796,10 +9898,20 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
  * A leading `sign` (− / +) and a `tone` of "income" / "expense" let a signed
  * amount read as one control, with the direction owned by the form. Pass
  * `direction` + `onDirectionChange` instead and that leading segment becomes a
- * BUTTON that flips expense ↔ income — direction, amount and currency in one
+ * BUTTON that flips between two states — direction, amount and currency in one
  * control, so a form needs no separate segmented toggle. For a plain signed
  * amount (no income/expense meaning) pass `signEditable` and the segment toggles
  * the value's own minus — picked, never typed.
+ *
+ * THE LEAD IS A VOCABULARY, NOT A SIGN. `directionOptions` names the two states
+ * the lead flips between — default expense (−) / income (+) — and each option
+ * may carry a `short` word, an `icon` and a `tone`, so a field whose record
+ * stores a DIRECTION rather than a sign shows that direction where the sign
+ * would be (a contract term's "out" / "in", a budget item's category type). The
+ * stored amount stays positive in that case: the direction carries the meaning,
+ * and a sign glyph would be a second, contradictory encoding of it. Prefer a
+ * `short` word to an icon for in/out vocabularies — a directional arrow beside
+ * a figure reads as that figure rising or falling.
  *
  * Controlled: `value` is a string so partial entries ("3.", "1,2") survive.
  * Invalid keystrokes are blocked as typed — letters and stray symbols are
@@ -9826,6 +9938,7 @@ function MoneyField({
   tone,
   direction,
   onDirectionChange,
+  directionOptions,
   signEditable = false,
   allowNegative = true,
   help,
@@ -10032,6 +10145,24 @@ function MoneyField({
   const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
   const FieldShell = NS.FieldShell;
   const dirMode = !!(direction && onDirectionChange);
+  /* The two states the lead flips between. Defaults to the finance pair, so
+     every existing caller is unchanged; a caller whose record stores its own
+     direction vocabulary passes it instead. */
+  const DIR_DEFAULT = [{
+    value: 'expense',
+    label: 'Expense',
+    sign: '−',
+    tone: 'expense'
+  }, {
+    value: 'income',
+    label: 'Income',
+    sign: '+',
+    tone: 'income'
+  }];
+  const dirOpts = directionOptions && directionOptions.length === 2 ? directionOptions : DIR_DEFAULT;
+  const dirIdx = Math.max(0, dirOpts.findIndex(o => o.value === direction));
+  const dirOpt = dirOpts[dirIdx] || dirOpts[0];
+  const dirNext = dirOpts[(dirIdx + 1) % dirOpts.length];
   // Generic signed amount: the leading segment toggles the value's own sign, so
   // the minus is picked, never typed. The input shows the magnitude; `value`
   // stays signed for the form.
@@ -10040,18 +10171,19 @@ function MoneyField({
   const magnitude = signMode ? String(value || '').replace(/^\s*-/, '') : value;
   const setSigned = (neg, mag, e) => onChange((neg ? '-' : '') + mag, e);
   const flipSign = e => setSigned(!negative, String(value || '').replace(/^\s*-/, ''), e);
-  const dirTone = tone || (dirMode ? direction : undefined);
-  const dirSign = sign || (direction ? direction === 'expense' ? '−' : '+' : signMode ? negative ? '−' : '+' : undefined);
-  const flipDir = e => onDirectionChange(direction === 'expense' ? 'income' : 'expense', e);
-  // Typing a sign in the amount sets the direction / sign rather than the value.
+  const dirTone = tone || (dirMode ? dirOpt.tone || direction : undefined);
+  const dirSign = sign || (direction ? dirOpt.sign || (dirIdx === 0 ? '−' : '+') : signMode ? negative ? '−' : '+' : undefined);
+  const flipDir = e => onDirectionChange(dirNext.value, e);
+  // Typing a sign in the amount sets the direction / sign rather than the value:
+  // − picks the first state, + the second, whatever the two are called.
   const onAmountKey = e => {
     if (dirMode) {
       if (e.key === '-' || e.key === '−') {
         e.preventDefault();
-        onDirectionChange('expense', e);
+        onDirectionChange(dirOpts[0].value, e);
       } else if (e.key === '+') {
         e.preventDefault();
-        onDirectionChange('income', e);
+        onDirectionChange(dirOpts[1].value, e);
       }
       return;
     }
@@ -10070,10 +10202,16 @@ function MoneyField({
     type: "button",
     className: "odc-money-sign btn",
     disabled: disabled,
-    "aria-label": dirMode ? `${direction === 'expense' ? 'Expense' : 'Income'} — switch to ${direction === 'expense' ? 'income' : 'expense'}` : `${negative ? 'Negative' : 'Positive'} — switch to ${negative ? 'positive' : 'negative'}`,
-    title: dirMode ? `${direction === 'expense' ? 'Expense' : 'Income'} — click to switch` : `${negative ? 'Negative' : 'Positive'} — click to switch`,
+    "aria-label": dirMode ? `${dirOpt.label} — switch to ${dirNext.label}` : `${negative ? 'Negative' : 'Positive'} — switch to ${negative ? 'positive' : 'negative'}`,
+    title: dirMode ? `${dirOpt.label} — click to switch` : `${negative ? 'Negative' : 'Positive'} — click to switch`,
     onClick: dirMode ? flipDir : flipSign
-  }, /*#__PURE__*/React.createElement("span", {
+  }, dirMode && dirOpt.icon ? /*#__PURE__*/React.createElement("span", {
+    className: "material-icons odc-money-dir-ic",
+    "aria-hidden": "true"
+  }, dirOpt.icon) : dirMode && dirOpt.short ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-money-dir-word",
+    "aria-hidden": "true"
+  }, dirOpt.short) : /*#__PURE__*/React.createElement("span", {
     className: "odc-money-dir-sign",
     "aria-hidden": "true"
   }, dirSign)) : dirSign ? /*#__PURE__*/React.createElement("span", {
@@ -20547,6 +20685,41 @@ const CadenceTag = ({
     className: "trm-bill"
   }, text);
 };
+
+/* The direction caption — the WORD, beneath the term's name. No glyph: an arrow
+   reads against value (up = gain) rather than against the household, and the
+   unambiguous alternatives are emoji. The word is what a reader parses first,
+   and the figure's hue is redundant support, never the carrier.
+
+   EVERY contract fee term states its direction, incoming or outgoing. An
+   earlier revision stated Outgoing only on records that carried both sides;
+   that made the caption's ABSENCE carry meaning, which a reader cannot see —
+   and left two records with the same fee reading differently. Stated always,
+   the fact is on the row rather than inferred from the set around it.
+
+   Rendered only where direction MEANS something (a fee term on a contract), so
+   every account surface and every rate row is unchanged. */
+const TermDirectionTag = ({
+  term,
+  owner
+}) => {
+  if (!H.termDirectionApplies(term, owner)) return null;
+  const incoming = H.termIsIncoming(term);
+  const d = H.termDirectionInfo(term);
+  return /*#__PURE__*/React.createElement("span", {
+    className: `trm-dir ${incoming ? 'in' : 'out'}`
+  }, d.label);
+};
+
+/* The colour an in-force figure takes: its DIRECTION's finance hue wherever
+   direction is stated — coral out, mint in, on every contract fee term —
+   otherwise whatever the surface already gave it (an account term, a rate).
+   One helper, so the table, the timeline and the tiles cannot disagree about
+   which figure is mint. */
+const trmValueColor = (t, account) => {
+  if (H.termDirectionApplies(t, account)) return H.termDirectionInfo(t).color;
+  return H.costColor(t, account) || trmKindInfo(t.kind).color;
+};
 const CurrentTermsSummary = ({
   current,
   style,
@@ -20746,14 +20919,17 @@ const TermTable = ({
     t: t,
     account: account,
     nameClass: "trm-row-kind-name"
+  }), /*#__PURE__*/React.createElement(TermDirectionTag, {
+    term: t,
+    owner: account
   }), t.note && /*#__PURE__*/React.createElement("div", {
     className: "trm-row-note"
   }, t.note)))), /*#__PURE__*/React.createElement("td", {
     className: "trm-cell-date"
   }, H.dateLong(t.effectiveFrom)), /*#__PURE__*/React.createElement("td", {
     className: "trm-cell-value",
-    style: isCurrent ? {
-      color: H.costColor(t, account) || info.color
+    style: H.termDirectionApplies(t, account) || isCurrent ? {
+      color: trmValueColor(t, account)
     } : undefined
   }, H.fmtTermValueFor(t, account), cadence ? /*#__PURE__*/React.createElement("span", {
     style: {
@@ -20801,6 +20977,9 @@ const TermTimeline = ({
     account: account,
     nameClass: "trm-tl-kind",
     captionClass: "trm-kind-caption inline"
+  }), /*#__PURE__*/React.createElement(TermDirectionTag, {
+    term: t,
+    owner: account
   }), /*#__PURE__*/React.createElement("span", {
     className: "trm-tl-date"
   }, H.dateLong(t.effectiveFrom)), /*#__PURE__*/React.createElement(TermStatus, {
@@ -20812,8 +20991,8 @@ const TermTimeline = ({
     className: "trm-tl-figs"
   }, /*#__PURE__*/React.createElement("span", {
     className: "trm-tl-value",
-    style: currentIds.has(t.id) ? {
-      color: H.costColor(t, account) || info.color
+    style: H.termDirectionApplies(t, account) || currentIds.has(t.id) ? {
+      color: trmValueColor(t, account)
     } : undefined
   }, H.fmtTermValueFor(t, account), cadence ? /*#__PURE__*/React.createElement("span", {
     style: {
@@ -21021,6 +21200,7 @@ Object.assign(window, {
   TermHistory,
   TermName,
   CadenceTag,
+  TermDirectionTag,
   trmCurrentFromList,
   trmSeriesFromList,
   trmKindInfo,
@@ -22414,7 +22594,7 @@ const AccountDetail = ({
       foot: txns.length === 0 ? 'No transactions' : `${txns.length} transaction${txns.length === 1 ? '' : 's'} · secondary`
     })) : null, curTerms.map(t => {
       const info = window.trmKindInfo(t.kind);
-      // The cadence is what separates a $695 annual fee from a $695
+      // The cadence is what separates a 695 USD annual fee from a 695 USD
       // monthly one, so it rides in the foot beside the date.
       const period = H.cadenceTextFor(t);
       // A fee is NAMED by its label, with the kind wording leading the
@@ -23363,12 +23543,41 @@ const AddBudgetItemModal = ({
   } = React;
   const D = window.OdysseyData;
   const isEdit = !!item;
+
+  /* The two directions a budget line can take, and the one in force — read
+     from the DS registry so the lead, the copy and the stored enum cannot
+     disagree. */
+  const BUDGET_DIR_OPTIONS = (window.OdysseyDesignSystem_d5aa51 || {}).BUDGET_CATEGORY_DIRECTION_OPTIONS || [{
+    value: 'Expense',
+    label: 'Expense',
+    short: 'out',
+    tone: 'expense'
+  }, {
+    value: 'Income',
+    label: 'Income',
+    short: 'in',
+    tone: 'income'
+  }];
+  const BUDGET_CATS = (window.OdysseyDesignSystem_d5aa51 || {}).BUDGET_CATEGORY_TYPES || [];
   const [draft, setDraft] = useState({
     categoryType: item ? item.categoryType : 'Expense',
     tagId: item ? item.tagId : '',
     planned: item ? String(item.planned) : ''
   });
   const [errors, setErrors] = useState({});
+  /* Per-FIELD defaults, not an all-or-nothing fallback object: a consumer whose
+     compiled bundle predates the registry's `short` / `tone` / `sentence` still
+     finds its entry by key, so an object-level guard would never fire and the
+     copy would silently lose two phrases. */
+  const cat = BUDGET_CATS.find(t => t.key === draft.categoryType) || {};
+  const isIncome = draft.categoryType === 'Income';
+  const catInfo = {
+    key: draft.categoryType,
+    label: cat.label || draft.categoryType,
+    short: cat.short || (isIncome ? 'in' : 'out'),
+    tone: cat.tone || (isIncome ? 'income' : 'expense'),
+    sentence: cat.sentence || (isIncome ? 'money into the budget' : 'money out of the budget')
+  };
   // Tags staged by the inline create row. The POST runs behind the gesture; the
   // dialog waits for it to settle on submit and sends the RESOLVED id, never the
   // temporary one — and registers the tag so every other surface sees it.
@@ -23446,23 +23655,22 @@ const AddBudgetItemModal = ({
     onCreateTag: createTag,
     loadFailed: tagsFailed,
     onRetry: () => {}
-  }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(BudgetCategoryTypeSelect, {
-    label: "Category",
-    required: true,
-    value: draft.categoryType,
-    onChange: set('categoryType')
   }), /*#__PURE__*/React.createElement(MoneyField, {
     label: "Planned amount",
     required: true,
     value: draft.planned,
     onChange: set('planned'),
+    direction: draft.categoryType,
+    onDirectionChange: set('categoryType'),
+    directionOptions: BUDGET_DIR_OPTIONS,
+    tone: catInfo.tone,
     currency: budget.currency,
     currencyEditable: false,
     allowNegative: false,
     placeholder: "0.00",
     error: errors.planned,
-    helper: errors.planned ? undefined : 'Budget currency'
-  })));
+    help: errors.planned ? undefined : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("b", null, catInfo.label), " \u2014 ", catInfo.sentence, ". Click ", /*#__PURE__*/React.createElement("b", null, catInfo.short), " to switch \xB7 ", budget.currency)
+  }));
 };
 Object.assign(window, {
   AddBudgetItemModal
@@ -24916,9 +25124,12 @@ try { (() => {
      • KIND — Fee and InterestRate only, on every ContractType. ExpectedReturn
        prices invested principal, which a contract does not hold, so it is not
        offered (and would be a 400 if posted).
-     • CURRENCY — required, and never defaulted. An account lends its own
-       currency to an Amount term; a contract has none to lend, so the field is
-       mandatory and the dialog says why.
+     • CURRENCY — required, and prefilled from the user's DEFAULT CURRENCY. An
+       account lends its own currency to an Amount term; a contract has none to
+       lend, so the preference stands in for it: the common case is one keystroke
+       shorter, and a term priced in another currency is one pick away. The field
+       stays required — the preference is a default, not an assumption, and
+       clearing it still refuses the write.
      • ARCHIVED — a contract that is archived refuses every write. The dialog is
        not reachable from a blocked surface; the guard is restated here so a
        stale open dialog cannot post through it.
@@ -24930,15 +25141,6 @@ try { (() => {
 
    On confirm, onSave(dto, id?) receives the term-shaped object (id on edit). */
 
-const CTM_SYM = window.ATM_CURRENCY_SYMBOL || {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
-  NOK: 'kr',
-  SEK: 'kr',
-  CAD: '$'
-};
 const CTM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
   value: c.code,
   label: c.name
@@ -24966,12 +25168,16 @@ const AddContractTermModal = ({
     kind: initKind,
     unit: term ? term.unit : initInfo.defaultUnit,
     valueStr: term ? term.unit === 'Percentage' ? ctmFracToPctStr(term.value) : String(term.value) : '',
-    // No account currency to inherit — an Amount term starts UNSET, and stays
-    // a required answer rather than a silently-assigned default.
-    currency: term ? term.currency || '' : '',
+    // No account currency to inherit, so the USER'S DEFAULT stands in for one.
+    // Still required: a cleared field refuses the write.
+    currency: term ? term.currency || '' : H.defaultCurrency(),
     interval: term ? term.interval || '' : initInfo.group === 'fee' ? D.defaultFeeInterval : '',
     intervalCount: term && term.intervalCount != null ? String(term.intervalCount) : '',
     anchorDate: term ? term.anchorDate || '' : '',
+    // Which way the money moves. Outgoing is the default because it is what
+    // every term meant before the field existed — an omitted direction and a
+    // chosen Outgoing are the same fact.
+    direction: term ? H.termDirection(term) : 'Outgoing',
     effectiveFrom: term ? term.effectiveFrom : new Date().toISOString().slice(0, 10),
     label: term ? term.label || '' : '',
     note: term ? term.note || '' : ''
@@ -25002,7 +25208,10 @@ const AddContractTermModal = ({
       label: H.termLabelRule(k) === 'hidden' ? '' : d.label,
       interval: ki.group === 'fee' ? d.interval || D.defaultFeeInterval : '',
       intervalCount: ki.group === 'fee' ? d.intervalCount : '',
-      anchorDate: ki.group === 'fee' ? d.anchorDate : ''
+      anchorDate: ki.group === 'fee' ? d.anchorDate : '',
+      // A rate carries no direction (a percentage is not a movement), so the
+      // answer is dropped rather than carried into a field that refuses it.
+      direction: ki.key === 'Fee' ? d.direction : 'Outgoing'
     }));
     setErrors({});
   };
@@ -25019,7 +25228,7 @@ const AddContractTermModal = ({
       next.value = 'A fee amount can’t be negative.';
     }
 
-    // The contract rule: an amount needs a currency, and nothing supplies one.
+    // The contract rule: an amount needs a currency of its own on the record.
     if (!isPct && !draft.currency) next.currency = 'Pick the currency this amount is in — a contract has no currency of its own.';
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
     const countRaw = String(draft.intervalCount).trim();
@@ -25041,6 +25250,9 @@ const AddContractTermModal = ({
     const key = H.termLabelKey(label);
     const dup = existing.some(t => t.id !== (term && term.id) && t.kind === draft.kind && (t.labelKey || H.termLabelKey(t.label) || null) === (key || null) && t.effectiveFrom === draft.effectiveFrom);
     if (dup) next.effectiveFrom = label ? `“${label}” already has an entry on that date.` : 'This contract already has an interest rate on that date.';
+    if (draft.direction === 'Incoming' && draft.kind !== 'Fee') {
+      next.direction = H.termDirectionRefusal(draft.kind, 'contract');
+    }
     if (Object.keys(next).length) {
       setErrors(next);
       return;
@@ -25056,6 +25268,7 @@ const AddContractTermModal = ({
       interval: isRate ? null : draft.interval || null,
       intervalCount: !isRate && periodic ? count == null ? 1 : count : null,
       anchorDate: isRate ? null : draft.anchorDate || null,
+      direction: draft.kind === 'Fee' ? draft.direction : 'Outgoing',
       effectiveFrom: draft.effectiveFrom,
       label,
       labelKey: key,
@@ -25063,6 +25276,16 @@ const AddContractTermModal = ({
     }, term && term.id);
   };
   const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
+  const dirInfo = H.termDirectionInfo(draft.direction);
+  /* The money field's lead flips between these two, showing each one's own
+     SHORT WORD where a sign would be — the registry, mapped to MoneyField's
+     shape. No arrow: see termDirections on why the glyph was dropped. */
+  const DIR_OPTIONS = D.termDirections.map(d => ({
+    value: d.key,
+    label: d.label,
+    short: d.short,
+    tone: d.tone
+  }));
   const previewFrac = (() => {
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     return isNaN(raw) ? null : raw / 100;
@@ -25132,7 +25355,16 @@ const AddContractTermModal = ({
     placeholder: "e.g. Monthly rent",
     error: errors.label,
     help: "Names this charge so it keeps its own history, separate from the contract's other charges."
-  }), /*#__PURE__*/React.createElement("div", {
+  }), draft.kind !== 'Fee' ? /*#__PURE__*/React.createElement("div", {
+    className: "field trm-dir-field"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "label"
+  }, "Direction"), /*#__PURE__*/React.createElement("div", {
+    className: "trm-dir-refused"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "block",
+    size: 15
+  }), /*#__PURE__*/React.createElement("span", null, H.termDirectionRefusal(draft.kind, 'contract'), " It is recorded as ", /*#__PURE__*/React.createElement("b", null, "outgoing"), ", where it carries no meaning."))) : null, /*#__PURE__*/React.createElement("div", {
     className: "trm-value-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "trm-field-head"
@@ -25184,24 +25416,37 @@ const AddContractTermModal = ({
     allowNegative: true,
     autoFocus: true,
     value: draft.valueStr,
-    onChange: set('valueStr'),
+    onChange: set('valueStr')
+    /* A percentage fee is money too: it carries the same direction lead
+       as an amount, so the two units are one control with one unit
+       swapped rather than two differently-shaped questions. */,
+    direction: draft.kind === 'Fee' ? draft.direction : undefined,
+    onDirectionChange: draft.kind === 'Fee' ? set('direction') : undefined,
+    directionOptions: DIR_OPTIONS,
+    tone: draft.kind === 'Fee' ? dirInfo.tone : undefined,
     error: errors.value,
-    help: /*#__PURE__*/React.createElement(React.Fragment, null, "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), isRate ? ' · annual' : '')
+    help: errors.value ? undefined : /*#__PURE__*/React.createElement(React.Fragment, null, draft.kind === 'Fee' ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("b", null, dirInfo.label), " \u2014 ", dirInfo.sentence, ". Click ", /*#__PURE__*/React.createElement("b", null, dirInfo.short), " to switch. ") : null, "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), isRate ? ' · annual' : '')
   }) : /*#__PURE__*/React.createElement(MoneyField, {
     size: "lg",
     required: true,
-    allowNegative: true,
-    signEditable: true,
+    allowNegative: false,
     autoFocus: true,
     value: draft.valueStr,
-    onChange: set('valueStr'),
+    onChange: set('valueStr')
+    /* The lead is the DIRECTION, not a sign: the amount stays positive
+       and the arrow carries the meaning — one control for the value, the
+       way it is one field on the record. Only a fee has one. */,
+    direction: draft.kind === 'Fee' ? draft.direction : undefined,
+    onDirectionChange: draft.kind === 'Fee' ? set('direction') : undefined,
+    directionOptions: DIR_OPTIONS,
+    tone: draft.kind === 'Fee' ? dirInfo.tone : undefined,
     currency: draft.currency,
     onCurrencyChange: set('currency'),
     currencyOptions: CTM_CURRENCIES,
     currencySearchThreshold: 0,
     currencyPlaceholder: "Pick",
-    error: [errors.value, errors.currency].filter(Boolean).join(' ') || undefined,
-    help: errors.value || errors.currency ? undefined : draft.currency ? /*#__PURE__*/React.createElement(React.Fragment, null, "Flat amount in ", /*#__PURE__*/React.createElement("b", null, draft.currency), cadence ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", cadence) : '') : /*#__PURE__*/React.createElement(React.Fragment, null, "A contract has no currency of its own \u2014 ", /*#__PURE__*/React.createElement("b", null, "pick one"), " for this amount.")
+    error: [errors.value, errors.currency, errors.direction].filter(Boolean).join(' ') || undefined,
+    help: errors.value || errors.currency || errors.direction ? undefined : draft.currency ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("b", null, dirInfo.label), " \u2014 ", dirInfo.sentence, ". Flat amount in ", /*#__PURE__*/React.createElement("b", null, draft.currency), cadence ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", cadence) : '', ".", ' ', "Click ", /*#__PURE__*/React.createElement("b", null, dirInfo.short), " to switch", isEdit ? ' — a correction supersedes the entry, it never forks the history' : '', ".") : /*#__PURE__*/React.createElement(React.Fragment, null, "A contract has no currency of its own \u2014 ", /*#__PURE__*/React.createElement("b", null, "pick one"), " for this amount. The word on the left says which way the money moves.")
   })), /*#__PURE__*/React.createElement(FormRow, {
     cols: 1
   }, /*#__PURE__*/React.createElement(DateField, {
@@ -25285,15 +25530,10 @@ try { (() => {
    Rejects an exact (AccountId, EffectiveFrom) duplicate (the server's 409). On
    confirm, onSave(dto, id?) receives the estimate-shaped object (id present on edit). */
 
-const EST_SYM = window.ATM_CURRENCY_SYMBOL || {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
-  NOK: 'kr',
-  SEK: 'kr',
-  CAD: '$'
-};
+/* The adornment inside a money input is the ISO CODE, matching MoneyField and
+   the house money() format — several shipped currencies share a glyph, so a
+   symbol is ambiguous exactly where the figure matters. */
+
 const AddEstimateModal = ({
   account,
   estimate,
@@ -25345,7 +25585,7 @@ const AddEstimateModal = ({
       note: draft.note.trim() || null
     }, estimate && estimate.id);
   };
-  const sym = EST_SYM[currency] || currency;
+  const sym = currency;
   const preview = (() => {
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     return isNaN(raw) ? null : H.money(raw, currency);
@@ -26782,15 +27022,7 @@ try { (() => {
    key (the server's 409). On confirm, onSave(dto, id?) receives the term-shaped
    object (id present on edit). */
 
-const TRM_SYM = window.ATM_CURRENCY_SYMBOL || {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
-  NOK: 'kr',
-  SEK: 'kr',
-  CAD: '$'
-};
+/* Money adornments are the ISO CODE, not a symbol — see MoneyField. */
 const TRM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
   value: c.code,
   label: c.name
@@ -26930,7 +27162,7 @@ const AddTermModal = ({
       note: draft.note.trim() || null
     }, term && term.id);
   };
-  const sym = TRM_SYM[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
+  const sym = draft.currency; // eslint-disable-line no-unused-vars
   // The cadence in words, from the single helper every surface reads.
   const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
   const previewFrac = (() => {
@@ -27071,7 +27303,12 @@ const AddTermModal = ({
     currencySearchThreshold: 0,
     error: errors.value,
     help: /*#__PURE__*/React.createElement(React.Fragment, null, "Flat amount in ", /*#__PURE__*/React.createElement("b", null, draft.currency), cadence ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", cadence) : '')
-  })), /*#__PURE__*/React.createElement(FormRow, {
+  })), !isRate && /*#__PURE__*/React.createElement("div", {
+    className: "trm-dir-refused"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "block",
+    size: 15
+  }), /*#__PURE__*/React.createElement("span", null, "An account term is always ", /*#__PURE__*/React.createElement("b", null, "money out"), ". Direction \u2014 money in or out \u2014 is recorded on a ", /*#__PURE__*/React.createElement("b", null, "contract"), " term.")), /*#__PURE__*/React.createElement(FormRow, {
     cols: 1
   }, /*#__PURE__*/React.createElement(DateField, {
     label: "Effective from",
@@ -27168,15 +27405,10 @@ const ATM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.arch
   value: c.code,
   label: c.name
 }));
-const ATM_CURRENCY_SYMBOL = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
-  NOK: 'kr',
-  SEK: 'kr',
-  CAD: '$'
-};
+/* Money adornments and figures are the ISO CODE, in front of the amount — the
+   house format money() sets and what MoneyField shows. Kept exported under its
+   old name so nothing that reads it breaks; every entry is now the code. */
+const ATM_CURRENCY_SYMBOL = Object.fromEntries((window.OdysseyData.currencies || []).map(c => [c.code, c.code]));
 const ATM_STATUSES = [{
   key: 'New',
   label: 'New',
@@ -38492,6 +38724,10 @@ const ContractTerms = ({
   const currentIds = useMemo(() => new Set(current.map(t => t.id)), [current]);
   const block = CTRM_H.conTermWriteBlock(contract, terms.length, cap);
   const limit = cap != null ? cap : CTRM_D.CONTRACT_MAX_TERMS_PER_CONTRACT;
+  /* The two sides of the in-force set. A contract is not one-directional — an
+     employment agreement pays a salary IN and deducts dues OUT — so the
+     section says how many of each rather than one count of "values". */
+  const incoming = current.filter(t => CTRM_H.termDirectionApplies(t, owner) && CTRM_H.termIsIncoming(t));
   if (terms.length === 0) {
     return /*#__PURE__*/React.createElement("div", {
       className: "con-section"
@@ -38512,24 +38748,38 @@ const ContractTerms = ({
     className: "con-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Current terms",
-    meta: current.length ? `${current.length} ${current.length === 1 ? 'value' : 'values'} in force · ${CTRM_H.dateLong(trmToday())}` : 'none in force'
+    meta: current.length ? `${current.length} ${current.length === 1 ? 'value' : 'values'} in force${incoming.length ? ` · ${incoming.length} incoming, ${current.length - incoming.length} outgoing` : ''} · ${CTRM_H.dateLong(trmToday())}` : 'none in force'
   }), block ? /*#__PURE__*/React.createElement(ContractTermsNotice, {
     block: block
   }) : null, current.length ? /*#__PURE__*/React.createElement(InfoTileGrid, null, current.map(t => {
     const info = trmKindInfo(t.kind);
-    // The cadence is what separates a $2,150 monthly rent from a
-    // $2,150 one-off, so it rides in the foot beside the date.
+    // The cadence is what separates a 2,150 USD monthly rent from a
+    // 2,150 USD one-off, so it rides in the foot beside the date.
     const period = CTRM_H.cadenceTextFor(t);
     const labelled = !!CTRM_H.termLabelNormalize(t.label);
+    // Every contract fee states its direction, both ways: the fact
+    // belongs to the term, not to the set of terms around it.
+    const tagged = CTRM_H.termDirectionApplies(t, owner);
+    const dir = CTRM_H.termDirectionInfo(t);
+    /* No chip: the FIGURE carries the direction in its own finance
+       hue, and the word sits on its own line under the tile's title —
+       the slot a party tile gives its from–to dates. There is room
+       there for the whole word, so it reads "Incoming", not "in". */
+    const value = tagged ? dir.color : info.color;
     return /*#__PURE__*/React.createElement(InfoTile, {
       key: trmKey(t),
       icon: info.icon,
       iconColor: info.color,
       iconSoft: info.soft,
-      label: CTRM_H.termDisplayName(t, owner),
+      className: tagged ? 'trm-dir-tile' : undefined,
+      label: tagged ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+        className: "trm-dir-name"
+      }, /*#__PURE__*/React.createElement("span", null, CTRM_H.termDisplayName(t, owner))), /*#__PURE__*/React.createElement("span", {
+        className: "trm-dir-sub"
+      }, dir.label)) : CTRM_H.termDisplayName(t, owner),
       value: /*#__PURE__*/React.createElement("span", {
         style: {
-          color: info.color
+          color: value
         }
       }, CTRM_H.fmtTermValueFor(t, owner)),
       foot: `${labelled ? `${CTRM_H.termKindLabelFor(t, owner)} · ` : ''}since ${CTRM_H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`
@@ -38983,6 +39233,14 @@ const ContractListItem = ({
   const files = c.files || [];
   const terms = c.terms || [];
   const termBlock = CON_H.conTermWriteBlock(c, terms.length, termCap);
+  /* An income-bearing contract is marked on the collapsed row, because "this
+     file is money in" changes how the whole row reads and is otherwise only
+     visible once expanded. It is derived from the in-force entries of this
+     record's own terms — the backend's list projection carries no direction
+     (it has no term join), so a production list needs either the detail
+     payload it already has open or a list-level field the backend deferred. */
+  const inForceTerms = window.trmCurrentFromList ? window.trmCurrentFromList(terms) : [];
+  const hasIncoming = inForceTerms.some(t => CON_H.termIsIncoming(t));
   const contact = parties.map(CON_H.conResolveParty).find(r => r.kind === 'contact');
   const dimmed = !!c.archived;
   /* An unsigned contract stays at FULL brightness — it is the row most likely
@@ -39153,7 +39411,9 @@ const ContractListItem = ({
     }, /*#__PURE__*/React.createElement(MIcon, {
       name: "groups",
       size: 14
-    }), /*#__PURE__*/React.createElement("span", null, contact ? contact.name : 'No contact'))],
+    }), /*#__PURE__*/React.createElement("span", null, contact ? contact.name : 'No contact')), ...(hasIncoming ? [/*#__PURE__*/React.createElement("span", {
+      className: "trm-dir in"
+    }, "Money in")] : [])],
     counts: [{
       icon: 'diversity_3',
       value: parties.length,
@@ -39390,11 +39650,23 @@ const ContractsSummary = ({
     count: endingSoon
   });
 
-  /* What the file costs to run. Only the Active contracts' in-force periodic
-     fees carry a rate, so the totals and the per-type rows are the same read
-     twice — once summed, once split. */
+  /* What the file costs to run — and what it brings in. Only the Active
+     contracts' in-force periodic fees carry a rate, so the totals and the
+     per-type rows are the same read twice: once summed, once split.
+      THE HEADER NOW REPORTS TWO SIDES AND A NET. The old tile named "Monthly
+     run rate" was one figure that silently mixed a landlord's rent income
+     into the same number as a streaming subscription; it is renamed rather
+     than reused, because "the run rate" now has to say which way the money
+     moves. Each gross counts ONE direction — the only figure that crosses the
+     two is the net. */
   const rr = CON_H.conRunRate(contracts, today);
   const rrMoney = v => v == null ? '—' : CON_H.money(v, rr.baseCurrency);
+  // The net is the only signed figure on the page, so it is the only one that
+  // ever carries a leading +. money() already writes '−' for a negative.
+  // signedMoney fills the same sign slot with a real '+', so a net lines up
+  // with the grosses above it rather than being a string with one glued on.
+  const netMoney = v => v == null ? '—' : CON_H.signedMoney(v, rr.baseCurrency);
+  const netClass = v => v == null || v === 0 ? 'net-flat' : v > 0 ? 'net-pos' : 'net-neg';
   /* A paused contract keeps its price on file and contributes nothing here;
      so does an unsigned one, which may be fully priced and is still only a
      quote. The tiles name both, because a run rate that quietly dropped would
@@ -39402,35 +39674,70 @@ const ContractsSummary = ({
   const pausedCount = s.countsByStatus.Paused || 0;
   const unsignedCount = (s.countsByStatus.Draft || 0) + (s.countsByStatus.Ready || 0);
   const excluded = [pausedCount ? `${pausedCount} paused` : null, unsignedCount ? `${unsignedCount} unsigned` : null].filter(Boolean);
-  const rrFoot = (rr.unconvertedCurrencies.length ? `in ${rr.baseCurrency} · ${rr.unconvertedCurrencies.join(', ')} excluded` : `in ${rr.baseCurrency}`) + (excluded.length ? ` · ${excluded.join(', ')} excluded` : '');
-  const rrMonthlyRows = rr.typeRows.map(r => ({
-    key: r.key,
-    icon: r.icon,
-    iconColor: r.color,
-    label: r.label,
-    count: rrMoney(r.monthly)
-  }));
-  const rrYearlyRows = rr.typeRows.map(r => ({
-    key: r.key,
-    icon: r.icon,
-    iconColor: r.color,
-    label: r.label,
-    count: rrMoney(r.yearly)
-  }));
+  /* Every figure now carries its own ISO code, so the foot no longer repeats
+     the base currency — it is left to say only what is NOT in the figure: the
+     currencies with no rate to base, and the contracts the status gate keeps
+     out. A total that quietly dropped would otherwise read as a pricing error. */
+  const rrFoot = [rr.unconvertedCurrencies.length ? `${rr.unconvertedCurrencies.join(', ')} excluded — no rate to ${rr.baseCurrency}` : null, excluded.length ? `${excluded.join(', ')} excluded` : null].filter(Boolean).join(' · ') || 'every contract in force counted';
+  const netFoot = null;
+  /* ONE by-type tile per period, carrying the NET per type — signed and
+     colored. Two figures per row said the same thing twice at half the
+     density; what a reader wants per type is which way that type leaves them,
+     and the grosses are already the three tiles above. */
+  const netOf = (key, getter) => {
+    const o = rr.typeRows.find(r => r.key === key);
+    const i = rr.incomingTypeRows.find(r => r.key === key);
+    if (!o && !i) return null;
+    return Math.round(((i ? getter(i) : 0) - (o ? getter(o) : 0)) * 100) / 100;
+  };
+  const netCell = v => /*#__PURE__*/React.createElement("span", {
+    className: `con-bd-net ${netClass(v)}`
+  }, netMoney(v));
+  const byTypeMoneyRows = getter => {
+    const keys = CON_D.contractTypes.map(t => t.key).filter(k => rr.typeRows.some(r => r.key === k) || rr.incomingTypeRows.some(r => r.key === k));
+    if (!keys.length) return [];
+    const rows = keys.map(k => {
+      const ty = CON_H.contractTypeInfo(k);
+      return {
+        key: k,
+        icon: ty.icon,
+        iconColor: ty.color,
+        label: ty.label,
+        count: netCell(netOf(k, getter))
+      };
+    });
+    return rows;
+  };
+  const rrMonthlyRows = byTypeMoneyRows(r => r.monthly);
+  const rrYearlyRows = byTypeMoneyRows(r => r.yearly);
   return /*#__PURE__*/React.createElement("div", {
     className: "con-summary"
   }, /*#__PURE__*/React.createElement("div", {
     className: "con-run-tiles"
   }, /*#__PURE__*/React.createElement(InfoTile, {
+    className: "dir-out",
     icon: "calendar_month",
-    label: "Monthly run rate",
+    label: "Monthly out",
     value: rrMoney(rr.monthly),
     foot: rrFoot
   }), /*#__PURE__*/React.createElement(InfoTile, {
+    className: "dir-in",
+    icon: "calendar_month",
+    label: "Monthly in",
+    value: rrMoney(rr.incomingMonthly),
+    foot: rr.incomingMonthly == null ? 'no incoming terms in force' : rrFoot
+  }), /*#__PURE__*/React.createElement(InfoTile, {
+    className: "dir-out",
     icon: "event_repeat",
-    label: "Yearly run rate",
+    label: "Yearly out",
     value: rrMoney(rr.yearly),
     foot: rrFoot
+  }), /*#__PURE__*/React.createElement(InfoTile, {
+    className: "dir-in",
+    icon: "event_repeat",
+    label: "Yearly in",
+    value: rrMoney(rr.incomingYearly),
+    foot: rr.incomingYearly == null ? 'no incoming terms in force' : rrFoot
   })), /*#__PURE__*/React.createElement("div", {
     className: "con-stats"
   }, /*#__PURE__*/React.createElement(BreakdownTile, {
@@ -39440,15 +39747,22 @@ const ContractsSummary = ({
   }), /*#__PURE__*/React.createElement(BreakdownTile, {
     label: "By status",
     rows: statusRows,
+    total: s.total,
     empty: "No contracts."
   }), /*#__PURE__*/React.createElement(BreakdownTile, {
-    label: "Monthly run rate by type",
+    className: "con-bd-money",
+    label: "Monthly net by type",
     rows: rrMonthlyRows,
-    empty: "No recurring fees in force."
+    total: netCell(rr.netMonthly),
+    totalLabel: "Net",
+    empty: "No recurring terms in force."
   }), /*#__PURE__*/React.createElement(BreakdownTile, {
-    label: "Yearly run rate by type",
+    className: "con-bd-money",
+    label: "Yearly net by type",
     rows: rrYearlyRows,
-    empty: "No recurring fees in force."
+    total: netCell(rr.netYearly),
+    totalLabel: "Net",
+    empty: "No recurring terms in force."
   })));
 };
 
@@ -39560,6 +39874,14 @@ const Contracts = ({
     windowDays: chargeWindow,
     limit: 6
   });
+  /* The receipts beside them. Same row shape, same window, its OWN cap — a
+     file with many charges must not be able to starve the receipts list. The
+     list names the direction, so the row carries no direction field of its
+     own: one fact, one place. */
+  const upcomingReceipts = CON_H.conUpcomingReceipts(active, today, {
+    windowDays: chargeWindow,
+    limit: 6
+  });
   /* And the other side of the cliff: terms that ran out in the window just
      past and were never archived — the ones still waiting on a decision. */
   const recentlyExpired = active.filter(c => c.endDate && CON_H.conStatus(c, today) === 'Expired' && -CON_H.conDaysUntil(c.endDate, today) <= endingWindow).sort((a, b) => a.endDate < b.endDate ? 1 : -1).slice(0, 6);
@@ -39576,11 +39898,11 @@ const Contracts = ({
      looking at a date — a contract that stopped costing money because someone
      froze it, and which nothing will un-freeze on its own. */
   const pausedRows = active.filter(c => CON_H.conStatus(c, today) === 'Paused').sort((a, b) => a.paused < b.paused ? 1 : -1).slice(0, 6);
-  const signal = flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length || pausedRows.length || awaitingSignature.length ? {
+  const signal = flagged.length || upcomingCharges.length || upcomingReceipts.length || recentlyExpired.length || startingSoon.length || pausedRows.length || awaitingSignature.length ? {
     // The panel's worst severity wins the button: an expired term reads error,
     // a term running out reads warning, and next charges alone read info.
     severity: recentlyExpired.length ? 'error' : flagged.length || awaitingSignature.length ? 'warning' : 'info',
-    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length + pausedRows.length + awaitingSignature.length,
+    count: flagged.length + upcomingCharges.length + upcomingReceipts.length + recentlyExpired.length + startingSoon.length + pausedRows.length + awaitingSignature.length,
     label: 'Upcoming',
     region: /*#__PURE__*/React.createElement("div", {
       className: "signal-panel"
@@ -39775,6 +40097,50 @@ const Contracts = ({
       }, CON_H.money(term.value, term.currency || 'USD')), /*#__PURE__*/React.createElement("span", {
         className: "con-charge-go"
       }, "View \u2192"));
+    }), upcomingReceipts.length ? /*#__PURE__*/React.createElement("div", {
+      className: "con-signal-group"
+    }, "Next receipts") : null, upcomingReceipts.map(({
+      contract: c,
+      term,
+      date,
+      days
+    }) => {
+      const ti = CON_H.contractTypeInfo(c.type);
+      return /*#__PURE__*/React.createElement("div", {
+        key: `in-${c.id}`,
+        className: "con-charge-row incoming",
+        role: "button",
+        tabIndex: 0,
+        onClick: () => jumpTo(c.id),
+        onKeyDown: e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            jumpTo(c.id);
+          }
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-when"
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-md mono"
+      }, CON_H.conDateMd(date)), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-rel"
+      }, CON_H.conRelDays(days))), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-name"
+      }, /*#__PURE__*/React.createElement(MIcon, {
+        name: ti.icon,
+        size: 16,
+        style: {
+          color: ti.color
+        }
+      }), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-title"
+      }, c.name), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-term"
+      }, CON_H.termDisplayName(term, null))), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-amt mono in"
+      }, CON_H.money(term.value, term.currency || 'USD')), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-go"
+      }, "View \u2192"));
     }))
   } : undefined;
   return /*#__PURE__*/React.createElement("div", {
@@ -39889,7 +40255,8 @@ const Contracts = ({
   }));
 };
 Object.assign(window, {
-  Contracts
+  Contracts,
+  ContractsSummary
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/Contracts.jsx", error: String((e && e.message) || e) }); }
 
@@ -41673,25 +42040,25 @@ const FvStatementPage = ({
   className: "fvm-doc-tlab"
 }, "Opening balance"), /*#__PURE__*/React.createElement("span", {
   className: "fvm-doc-tval"
-}, "$12,480.10")), /*#__PURE__*/React.createElement("div", {
+}, "12,480.10 USD")), /*#__PURE__*/React.createElement("div", {
   className: "fvm-doc-tile"
 }, /*#__PURE__*/React.createElement("span", {
   className: "fvm-doc-tlab"
 }, "Total in"), /*#__PURE__*/React.createElement("span", {
   className: "fvm-doc-tval pos"
-}, "+$6,210.00")), /*#__PURE__*/React.createElement("div", {
+}, "+ 6,210.00 USD")), /*#__PURE__*/React.createElement("div", {
   className: "fvm-doc-tile"
 }, /*#__PURE__*/React.createElement("span", {
   className: "fvm-doc-tlab"
 }, "Total out"), /*#__PURE__*/React.createElement("span", {
   className: "fvm-doc-tval neg"
-}, "\u2212$4,038.74")), /*#__PURE__*/React.createElement("div", {
+}, "\u2212 4,038.74 USD")), /*#__PURE__*/React.createElement("div", {
   className: "fvm-doc-tile"
 }, /*#__PURE__*/React.createElement("span", {
   className: "fvm-doc-tlab"
 }, "Closing balance"), /*#__PURE__*/React.createElement("span", {
   className: "fvm-doc-tval"
-}, "$14,651.36"))), /*#__PURE__*/React.createElement("div", {
+}, "14,651.36 USD"))), /*#__PURE__*/React.createElement("div", {
   className: "fvm-doc-h"
 }, "Activity")) : /*#__PURE__*/React.createElement("div", {
   className: "fvm-doc-h"
@@ -49568,8 +49935,14 @@ function PreferencesPage({
   // Local copy so the page can preview dark mode and "Save" commits it (mirrors the
   // Razor PreviewDarkMode / SaveUserPreferencesAsync split). darkMode is the app's
   // committed value; we preview through onToggleDark to stay in sync with the shell.
-  const [defaultCurrency, setDefaultCurrency] = useState('USD');
-  const [mainCurrency, setMainCurrency] = useState('USD');
+  /* Seeded from — and saved back to — the shared preference, so a currency
+     picked here is the currency every New-value dialog opens on. */
+  const PREFS = window.OdysseyData.userPreferences ||= {
+    defaultCurrency: 'USD',
+    mainCurrency: 'USD'
+  };
+  const [defaultCurrency, setDefaultCurrency] = useState(PREFS.defaultCurrency);
+  const [mainCurrency, setMainCurrency] = useState(PREFS.mainCurrency);
   const [saved, setSaved] = useState(false);
   const matches = d => {
     const t = q.trim().toLowerCase();
@@ -49596,7 +49969,12 @@ function PreferencesPage({
       searchThreshold: 0
     }));
   };
+
+  /* Saving commits to the shared preference, so the next New-value dialog opens
+     on the currency picked here rather than on a stale copy. */
   const save = () => {
+    PREFS.defaultCurrency = defaultCurrency;
+    PREFS.mainCurrency = mainCurrency;
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
   };
@@ -53390,10 +53768,10 @@ const TaxTrendChart = ({
     }, "No declared figures yet."));
   }
   const kLabel = v => {
-    const sym = (TS_D.currencyByCode[cur] || {}).symbol || cur;
-    if (Math.abs(v) >= 1000000) return `${sym} ${(v / 1000000).toFixed(1)}M`;
-    if (Math.abs(v) >= 1000) return `${sym} ${(v / 1000).toFixed(0)}k`;
-    return `${sym} ${v}`;
+    const sym = cur;
+    if (Math.abs(v) >= 1000000) return `${(v / 1000000).toFixed(1)}M ${sym}`;
+    if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(0)}k ${sym}`;
+    return `${v} ${sym}`;
   };
 
   // Prefer the design-system LineChart once the bundle exposes it (the kit's
@@ -57284,7 +57662,7 @@ try { (() => {
       id: 'cev-l3',
       contractId: 'ct-lease',
       type: 'PriceChanged',
-      title: 'Rent renegotiated to $2,250',
+      title: 'Rent renegotiated to 2,250 USD',
       description: 'Agreed by phone with the letting agent, then confirmed in writing. A CPI basis was requested and refused; settled at 4.7%.',
       notes: 'Check last year’s letter before the next review.',
       occurredAt: '2026-02-19T11:00:00Z',
@@ -57295,7 +57673,7 @@ try { (() => {
       contractId: 'ct-lease',
       type: 'Amended',
       title: 'Pets permitted by amendment',
-      description: 'One cat. $250 added to the deposit.',
+      description: 'One cat. 250 USD added to the deposit.',
       notes: null,
       occurredAt: '2026-04-03T09:15:00Z',
       createdByUserId: null,
@@ -59310,8 +59688,99 @@ try { (() => {
       labelKey: 'cleaning',
       note: 'Quoted rate — not agreed until the contract is signed.',
       createdAtUtc: '2026-09-12T11:00:00Z'
+    }],
+    /* The income-bearing contract. An employment agreement is the clearest
+       case for direction: the salary is money IN and the deductions taken
+       under the same agreement are money OUT, and neither cancels the other —
+       they sit on opposite sides of the header's two grosses.
+        Note the two anchor dates. The salary lands on the 25th and the dues on
+       the 1st, so this contract has TWO next movements, and the header's
+       collapse is per (contract, direction): one row in Next charges, one in
+       Next receipts. Collapsing on the contract alone would silently discard
+       whichever fell later.
+        The signing bonus is the one-off case: a OneTime fee accepts a direction
+       and keeps it on the record, and is still excluded from the run rate —
+       the exclusion is about having no rate to project, not about direction. */
+    'ct-employment': [{
+      id: 'ctm-emp-1',
+      contractId: 'ct-employment',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 6250.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      direction: 'Incoming',
+      anchorDate: '2024-03-25',
+      effectiveFrom: '2024-03-01',
+      label: 'Base salary',
+      labelKey: 'base salary',
+      note: 'Paid on the 25th.',
+      createdAtUtc: '2024-02-24T09:00:00Z'
+    }, {
+      id: 'ctm-emp-2',
+      contractId: 'ct-employment',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 6600.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      direction: 'Incoming',
+      anchorDate: '2024-03-25',
+      effectiveFrom: '2026-04-01',
+      label: 'Base salary',
+      labelKey: 'base salary',
+      note: 'Annual review, effective April.',
+      createdAtUtc: '2026-03-18T09:00:00Z'
+    }, {
+      id: 'ctm-emp-3',
+      contractId: 'ct-employment',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 42.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      direction: 'Outgoing',
+      anchorDate: '2024-03-01',
+      effectiveFrom: '2024-03-01',
+      label: 'Union dues',
+      labelKey: 'union dues',
+      note: 'Deducted at source.',
+      createdAtUtc: '2024-02-24T09:00:00Z'
+    }, {
+      id: 'ctm-emp-4',
+      contractId: 'ct-employment',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 380.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      direction: 'Outgoing',
+      anchorDate: '2025-01-25',
+      effectiveFrom: '2025-01-01',
+      label: 'Pension contribution',
+      labelKey: 'pension contribution',
+      note: 'Employee share, 5% of base.',
+      createdAtUtc: '2024-12-11T09:00:00Z'
+    }, {
+      id: 'ctm-emp-5',
+      contractId: 'ct-employment',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 3000.00,
+      currency: 'USD',
+      interval: 'OneTime',
+      intervalCount: null,
+      direction: 'Incoming',
+      effectiveFrom: '2024-03-01',
+      label: 'Signing bonus',
+      labelKey: 'signing bonus',
+      note: 'Paid with the first salary. One-off — recorded, never projected.',
+      createdAtUtc: '2024-02-24T09:00:00Z'
     }]
-    // ct-employment intentionally has no terms — drives the empty state.
   };
   Object.assign(H, {
     // All terms on a contract, EffectiveFrom DESC (the history listing order).
@@ -59369,7 +59838,10 @@ try { (() => {
        (amounts only — a percentage fee has no due amount to show), the
        earliest next occurrence that still falls inside the contract's term.
        Returns { date, days, term } or null. */
-    conNextCharge(contract, today) {
+    /* The contract's soonest movement on ONE side. Direction is read off the
+       in-force entry, so a superseded entry's direction never reaches a row. */
+    conNextMovement(contract, today, direction) {
+      const dir = direction || 'Outgoing';
       const t = today || H.conToday();
       if (!contract || contract.archived) return null;
       const status = H.conStatus(contract, t);
@@ -59386,11 +59858,12 @@ try { (() => {
       let best = null;
       for (const term of inForce || []) {
         if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+        if (H.termDirection(term) !== dir) continue;
         const iv = D.intervalByKey[term.interval];
         if (!iv || !iv.periodic) continue;
         const date = H.conNextOccurrence(term, start && start > t ? start : t);
         if (!date) continue;
-        // A charge never falls outside the agreement it is priced under.
+        // A movement never falls outside the agreement it is priced under.
         if (end && date > end) continue;
         if (!best || date < best.date) best = {
           date,
@@ -59399,18 +59872,28 @@ try { (() => {
       }
       return best ? {
         ...best,
+        direction: dir,
         days: H.conDaysUntil(best.date, t)
       } : null;
     },
-    // The soonest next charges within `windowDays` (default 45), one row per
-    // contract, ascending and capped — the Subscriptions renewal list's shape.
-    conUpcomingCharges(contracts, today, opts) {
+    conNextCharge(contract, today) {
+      return H.conNextMovement(contract, today, 'Outgoing');
+    },
+    conNextReceipt(contract, today) {
+      return H.conNextMovement(contract, today, 'Incoming');
+    },
+    /* The soonest movements within `windowDays` (default 45) on ONE side, one
+       row per contract, ascending and capped — the Subscriptions renewal
+       list's shape. The cap applies PER LIST, so a file with many charges
+       cannot starve the receipts beside it. */
+    conUpcomingMovements(contracts, today, opts) {
       const t = today || H.conToday();
+      const dir = opts && opts.direction || 'Outgoing';
       const windowDays = opts && opts.windowDays != null ? opts.windowDays : D.CONTRACTS_CHARGE_WINDOW_DAYS;
       const limit = opts && opts.limit != null ? opts.limit : 6;
       const out = [];
       for (const c of contracts || D.contracts) {
-        const next = H.conNextCharge(c, t);
+        const next = H.conNextMovement(c, t, dir);
         if (!next || next.days == null || next.days > windowDays) continue;
         out.push({
           contract: c,
@@ -59419,6 +59902,16 @@ try { (() => {
       }
       out.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
       return out.slice(0, limit);
+    },
+    conUpcomingCharges(contracts, today, opts) {
+      return H.conUpcomingMovements(contracts, today, Object.assign({}, opts, {
+        direction: 'Outgoing'
+      }));
+    },
+    conUpcomingReceipts(contracts, today, opts) {
+      return H.conUpcomingMovements(contracts, today, Object.assign({}, opts, {
+        direction: 'Incoming'
+      }));
     },
     // 'Oct 1' — the compact charge date, parsed as UTC so it never drifts.
     conDateMd(iso) {
@@ -59470,10 +59963,23 @@ try { (() => {
       };
       const convert = H.insConvert || ((amt, from, to) => from === to ? amt : null);
       const unconverted = new Set();
-      const byType = {};
-      let monthly = 0,
-        yearly = 0,
-        any = false;
+      /* Two buckets, filled from the SAME read of the same in-force terms.
+         Nothing is queried twice, and no gross ever mixes the two sides: the
+         only figure that crosses them is the net, and it says so in its name. */
+      const side = {
+        Outgoing: {
+          monthly: 0,
+          yearly: 0,
+          any: false,
+          byType: {}
+        },
+        Incoming: {
+          monthly: 0,
+          yearly: 0,
+          any: false,
+          byType: {}
+        }
+      };
       for (const c of contracts || D.contracts) {
         if (c.archived) continue;
         if (H.conStatus(c, t) !== 'Active') continue;
@@ -59486,38 +59992,56 @@ try { (() => {
           const cur = term.currency || base;
           const mo = convert(term.value * F[iv.key].mo / every, cur, base);
           const yr = convert(term.value * F[iv.key].yr / every, cur, base);
+          // Named and excluded from BOTH sides and from the net — never 1:1.
           if (mo == null || yr == null) {
             unconverted.add(cur);
             continue;
           }
-          monthly += mo;
-          yearly += yr;
-          any = true;
-          if (!byType[c.type]) byType[c.type] = {
+          // Bucketed AFTER the series collapse, on the winning entry's own
+          // direction, so a superseded direction never reaches a total.
+          const s = side[H.termDirection(term)];
+          s.monthly += mo;
+          s.yearly += yr;
+          s.any = true;
+          if (!s.byType[c.type]) s.byType[c.type] = {
             monthly: 0,
             yearly: 0,
             count: 0
           };
-          byType[c.type].monthly += mo;
-          byType[c.type].yearly += yr;
-          byType[c.type].count += 1;
+          s.byType[c.type].monthly += mo;
+          s.byType[c.type].yearly += yr;
+          s.byType[c.type].count += 1;
         }
       }
+      // Registry order, only the types that actually carry a rate on that side.
+      const rowsFor = s => D.contractTypes.filter(ty => s.byType[ty.key]).map(ty => ({
+        key: ty.key,
+        label: ty.label,
+        icon: ty.icon,
+        color: ty.color,
+        monthly: s.byType[ty.key].monthly,
+        yearly: s.byType[ty.key].yearly,
+        count: s.byType[ty.key].count
+      }));
+      const out = side.Outgoing,
+        inc = side.Incoming;
+      /* The net is computed from the UNROUNDED sums and rounded once —
+         differencing two already-rounded figures compounds the rounding
+         rather than cancelling it. It is null only when BOTH sides are:
+         a household with income and no recorded costs has a good net. */
+      const anySide = out.any || inc.any;
+      const net = v => Math.round(v * 100) / 100;
       return {
         baseCurrency: base,
-        monthly: any ? monthly : null,
-        yearly: any ? yearly : null,
+        monthly: out.any ? out.monthly : null,
+        yearly: out.any ? out.yearly : null,
+        incomingMonthly: inc.any ? inc.monthly : null,
+        incomingYearly: inc.any ? inc.yearly : null,
+        netMonthly: anySide ? net(inc.monthly - out.monthly) : null,
+        netYearly: anySide ? net(inc.yearly - out.yearly) : null,
         unconvertedCurrencies: [...unconverted].sort(),
-        // Registry order, only the types that actually carry a rate.
-        typeRows: D.contractTypes.filter(ty => byType[ty.key]).map(ty => ({
-          key: ty.key,
-          label: ty.label,
-          icon: ty.icon,
-          color: ty.color,
-          monthly: byType[ty.key].monthly,
-          yearly: byType[ty.key].yearly,
-          count: byType[ty.key].count
-        }))
+        typeRows: rowsFor(out),
+        incomingTypeRows: rowsFor(inc)
       };
     },
     /* Archivability, widened. A contract may be archived once it has ENDED,
@@ -62284,22 +62808,62 @@ window.OdysseyData.contactOption = cp => {
   };
 };
 window.OdysseyData.currencyByCode = Object.fromEntries(window.OdysseyData.currencies.map(c => [c.code, c]));
+/* User preferences (UserPreferences) — the two currency answers the Preferences
+   page owns. DefaultCurrency is what a NEW money value is denominated in unless
+   its own record supplies one; MainCurrency is what roll-ups convert to. Held
+   here rather than in the page's local state so every dialog reads the same
+   answer the user gave. */
+window.OdysseyData.userPreferences = {
+  defaultCurrency: (window.OdysseyData.currencies.find(c => c.base) || {}).code || 'USD',
+  mainCurrency: (window.OdysseyData.currencies.find(c => c.base) || {}).code || 'USD'
+};
 window.OdysseyHelpers = {
+  /* MONEY READS AS ITS ISO 4217 CODE, AFTER THE AMOUNT — "1,234.56 USD", never
+     "$ 1,234.56". Odyssey is multi-currency and several of the currencies it
+     ships share a glyph ($ for USD and CAD, kr for NOK and SEK), so a symbol is
+     ambiguous exactly where the figure matters; the code is unambiguous and
+     matches the MoneyField the amount was typed into, which carries its code on
+     the right of the box too. The sign leads (− 84.00 NOK) so a scan down a
+     column finds it first, and the digits carry the currency's minor units. */
+  /* The currency a new money value starts in: the user's DefaultCurrency,
+     falling back to the workspace base. A record with a currency of its own
+     (an account) still lends that one; this is for the records that have none. */
+  defaultCurrency() {
+    const p = window.OdysseyData.userPreferences || {};
+    return p.defaultCurrency || (window.OdysseyData.currencies.find(c => c.base) || {}).code || 'USD';
+  },
+  moneyDigits(currency) {
+    const c = window.OdysseyData.currencyByCode[currency];
+    return c && c.minorUnits != null ? c.minorUnits : 2;
+  },
+  /* The sign, then a figure space (U+2007, digit-width and non-collapsing)
+     before the digits: "− 84.00 USD". An UNSIGNED amount gets nothing — an
+     empty slot was tried and reads as stray indentation on a headline tile,
+     where there is no column to align to. Columns of money align the way they
+     always did: right-aligned, tabular figures, the code trailing. */
+  moneySlot(n, signed) {
+    if (n < 0) return '− ';
+    return signed ? '+ ' : '';
+  },
   money(n, currency = 'USD') {
-    const sign = n < 0 ? '−' : '';
+    if (n == null) return '—';
+    const sign = window.OdysseyHelpers.moneySlot(n, false);
     const abs = Math.abs(n);
-    return `${sign}$ ${abs.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`;
+    const digits = window.OdysseyHelpers.moneyDigits(currency);
+    return `${sign}${abs.toLocaleString('en-US', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    })} ${currency}`;
   },
   signedMoney(n, currency = 'USD') {
-    const sign = n < 0 ? '−' : '+';
+    if (n == null) return '—';
+    const sign = window.OdysseyHelpers.moneySlot(n, true);
     const abs = Math.abs(n);
-    return `${sign}$ ${abs.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })}`;
+    const digits = window.OdysseyHelpers.moneyDigits(currency);
+    return `${sign}${abs.toLocaleString('en-US', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    })} ${currency}`;
   },
   dateShort(iso) {
     const d = new Date(iso);
@@ -62713,6 +63277,52 @@ window.OdysseyData.intervals = [{
 }];
 window.OdysseyData.intervalByKey = Object.fromEntries(window.OdysseyData.intervals.map(b => [b.key, b]));
 window.OdysseyData.defaultFeeInterval = 'Monthly';
+
+/* TermDirection — which way the money moves, stated from the HOUSEHOLD's
+   perspective, never from either named party's. Two members, ordinals frozen:
+   Outgoing = 0 is the default AND the backfill value, so every term recorded
+   before the field existed keeps its exact meaning and figure.
+
+   Three properties the UI leans on:
+     • Direction belongs to the ENTRY, not the series. It is not part of
+       (owner, kind, labelKey), so correcting a mis-directed term supersedes it
+       instead of forking its history — the dialog treats it as an ordinary
+       replace and says nothing about conflicts.
+     • Magnitude stays positive. A negative amount is never how income is
+       expressed; the sign lives in the direction, and the only signed figure
+       anywhere is the NET run rate.
+     • The colors are the finance semantics — coral out, mint in. Brand tide /
+       sea never encode a direction. */
+window.OdysseyData.termDirections = [
+/* NO GLYPH, deliberately. Every arrow we tried reads against VALUE rather
+   than against the household: an up arrow says "gain" before it says "leaves
+   here", and a down arrow says "loss". The unambiguous pairs were a money bag
+   and winged money, which are emoji — barred from product chrome. So
+   direction is carried by its WORD plus the finance hue, which is what a
+   reader parses first anyway; `short` is the two- or three-letter form for
+   slots too narrow for the word (the money field's lead). */
+{
+  key: 'Outgoing',
+  label: 'Outgoing',
+  enumValue: 0,
+  short: 'out',
+  sentence: 'money leaves the household',
+  color: 'var(--finance-expense)',
+  soft: 'var(--finance-expense-soft)',
+  tone: 'expense',
+  side: 'What goes out'
+}, {
+  key: 'Incoming',
+  label: 'Incoming',
+  enumValue: 1,
+  short: 'in',
+  sentence: 'money arrives',
+  color: 'var(--finance-income)',
+  soft: 'var(--finance-income-soft)',
+  tone: 'income',
+  side: 'What comes in'
+}];
+window.OdysseyData.termDirectionByKey = Object.fromEntries(window.OdysseyData.termDirections.map(d => [d.key, d]));
 /* TermIntervalCount.Min / .Max — the same pair the DTO's [Range] names. */
 window.OdysseyData.termIntervalCount = {
   min: 1,
@@ -63134,6 +63744,47 @@ Object.assign(window.OdysseyHelpers, {
   cadenceTextFor(t) {
     return t ? window.OdysseyHelpers.cadenceText(t.interval, t.intervalCount) : null;
   },
+  /* ---- Direction ---------------------------------------------------------
+     Read with a DEFAULT, never a truthiness test: a row written before the
+     field existed, and every account term, is Outgoing. */
+  termDirection(t) {
+    return t && t.direction === 'Incoming' ? 'Incoming' : 'Outgoing';
+  },
+  termDirectionInfo(t) {
+    const key = typeof t === 'string' ? t : window.OdysseyHelpers.termDirection(t);
+    return window.OdysseyData.termDirectionByKey[key] || window.OdysseyData.termDirectionByKey.Outgoing;
+  },
+  termIsIncoming(t) {
+    return window.OdysseyHelpers.termDirection(t) === 'Incoming';
+  },
+  // The owner kind of a term row, from whichever id is populated.
+  termOwnerKind(t, owner) {
+    if (owner && owner.ownerKind) return owner.ownerKind;
+    if (t && t.contractId) return 'contract';
+    if (t && t.accountId) return 'account';
+    return 'account';
+  },
+  /* Where direction MEANS something: a FEE term owned by a CONTRACT. A rate
+     kind is a percentage the roll-up never projects, and an account term has
+     no surface that reads a direction — both refuse Incoming with a 400, so
+     neither is offered one. One predicate, so the dialog's control, the read
+     surfaces and the refusal copy can never disagree. */
+  termDirectionApplies(t, owner) {
+    const kind = t && typeof t === 'object' ? t.kind : t;
+    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract' && kind === 'Fee';
+  },
+  // Why direction is refused here, in the words the 400 uses. Null = allowed.
+  termDirectionRefusal(kind, ownerKind) {
+    if (ownerKind !== 'contract') return 'Direction applies to a contract term. An account term is always money out.';
+    if (kind !== 'Fee') return 'Direction applies to a fee term only — a rate is a percentage, not a movement.';
+    return null;
+  },
+  /* Mint wherever an INCOMING term's own value is printed. Outgoing returns
+     null so every surface keeps the color it already had — nothing that
+     existed before this field changes appearance. */
+  termDirectionColor(t, owner) {
+    return window.OdysseyHelpers.termDirectionApplies(t, owner) && window.OdysseyHelpers.termIsIncoming(t) ? 'var(--finance-income)' : null;
+  },
   // All terms for an account, EffectiveFrom DESC (history listing, newest first).
   termsForAccount(accountId) {
     return (window.OdysseyData.accountTerms[accountId] || []).slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0);
@@ -63370,13 +64021,16 @@ Object.assign(window.OdysseyHelpers, {
     }
     return cur;
   },
-  // Compact money for chart axes: 540000 → "$ 540k", 1250000 → "$ 1.25M".
+  // Compact money for chart axes: 540000 → "540k USD", 1250000 → "1.25M USD".
   moneyCompact(n, currency = 'USD') {
-    const sign = n < 0 ? '−' : '';
+    const sign = window.OdysseyHelpers.moneySlot(n, false);
     const abs = Math.abs(n);
     let s;
-    if (abs >= 1e9) s = (abs / 1e9).toFixed(abs % 1e9 ? 2 : 0).replace(/\.?0+$/, '') + 'B';else if (abs >= 1e6) s = (abs / 1e6).toFixed(abs % 1e6 ? 2 : 0).replace(/\.?0+$/, '') + 'M';else if (abs >= 1e3) s = (abs / 1e3).toFixed(abs % 1e3 ? 1 : 0).replace(/\.?0+$/, '') + 'k';else s = String(Math.round(abs));
-    return `${sign}$ ${s}`;
+    /* Trim only a FRACTIONAL tail — a bare /0+$/ would eat the zeros of an
+       integer and turn 540k into 54k, an order-of-magnitude error on an axis. */
+    const trim = x => x.replace(/\.(\d*?)0+$/, (m, keep) => keep ? '.' + keep : '');
+    if (abs >= 1e9) s = trim((abs / 1e9).toFixed(abs % 1e9 ? 2 : 0)) + 'B';else if (abs >= 1e6) s = trim((abs / 1e6).toFixed(abs % 1e6 ? 2 : 0)) + 'M';else if (abs >= 1e3) s = trim((abs / 1e3).toFixed(abs % 1e3 ? 1 : 0)) + 'k';else s = String(Math.round(abs));
+    return `${sign}${s} ${currency}`;
   }
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/data.js", error: String((e && e.message) || e) }); }
@@ -63496,7 +64150,7 @@ try { (() => {
     insuredAccountIds: ['5'],
     insuredContactIds: ['c30', 'c31', 'c32'],
     beneficiaryIds: [],
-    notes: 'Comprehensive motor cover, €500 excess. Named drivers: 2.',
+    notes: 'Comprehensive motor cover, 500 EUR excess. Named drivers: 2.',
     archived: null,
     createdAtUtc: '2024-07-10T09:00:00Z',
     renewals: [{
@@ -63775,36 +64429,35 @@ try { (() => {
         soft: 'rgba(199,208,224,0.12)'
       };
     },
-    // Currency-aware money. Symbol prefix + grouped digits at the currency's
-    // minor units. Mirrors taxMoney's style for cross-feature consistency.
+    // Currency-aware money. Grouped digits at the currency's minor units, then
+    // the ISO CODE — the house style money() sets, so amounts read identically
+    // across every feature.
     insMoney(n, cur = 'USD') {
       if (n == null) return '—';
       const c = D.currencyByCode[cur] || {
-        symbol: cur,
         minorUnits: 2
       };
-      const sign = n < 0 ? '−' : '';
+      const sign = H.moneySlot(n, false);
       const abs = Math.abs(n);
       const digits = c.minorUnits != null ? c.minorUnits : 2;
-      return `${sign}${c.symbol || cur} ${abs.toLocaleString('en-US', {
+      return `${sign}${abs.toLocaleString('en-US', {
         minimumFractionDigits: digits,
         maximumFractionDigits: digits
-      })}`;
+      })} ${cur}`;
     },
-    // Compact money for tight figures / axes: 1500000 → "$ 1.5M".
+    // Compact money for tight figures / axes: 1500000 → "1.5M USD".
     insMoneyCompact(n, cur = 'USD') {
       if (n == null) return '—';
-      const c = D.currencyByCode[cur] || {
-        symbol: cur
-      };
-      const sym = c.symbol || cur;
-      const sign = n < 0 ? '−' : '';
+      const sym = cur;
+      const sign = H.moneySlot(n, false);
       const abs = Math.abs(n);
       let s;
-      if (abs >= 1e6) s = (abs / 1e6).toFixed(abs % 1e6 ? 2 : 0).replace(/\.?0+$/, '') + 'M';else if (abs >= 1e3) s = (abs / 1e3).toFixed(abs % 1e3 ? 1 : 0).replace(/\.?0+$/, '') + 'k';else s = abs.toLocaleString('en-US', {
+      // Trim only a fractional tail: /0+$/ would turn 540k into 54k.
+      const trim = x => x.replace(/\.(\d*?)0+$/, (m, keep) => keep ? '.' + keep : '');
+      if (abs >= 1e6) s = trim((abs / 1e6).toFixed(abs % 1e6 ? 2 : 0)) + 'M';else if (abs >= 1e3) s = trim((abs / 1e3).toFixed(abs % 1e3 ? 1 : 0)) + 'k';else s = abs.toLocaleString('en-US', {
         maximumFractionDigits: 0
       });
-      return `${sign}${sym} ${s}`;
+      return `${sign}${s} ${sym}`;
     },
     // The request's UTC "today" as 'YYYY-MM-DD' (a single value per call site).
     insToday() {
@@ -65943,21 +66596,20 @@ try { (() => {
         soft: 'rgba(199,208,224,0.12)'
       };
     },
-    // Currency-aware money — symbol prefix + grouped digits at the currency's
-    // minor units. Mirrors insMoney so amounts read identically across features.
+    // Currency-aware money — grouped digits at the currency's minor units, then
+    // the ISO CODE. Mirrors insMoney so amounts read identically across features.
     subMoney(n, cur = 'USD') {
       if (n == null) return '—';
       const c = D.currencyByCode[cur] || {
-        symbol: cur,
         minorUnits: 2
       };
-      const sign = n < 0 ? '−' : '';
+      const sign = H.moneySlot(n, false);
       const abs = Math.abs(n);
       const digits = c.minorUnits != null ? c.minorUnits : 2;
-      return `${sign}${c.symbol || cur} ${abs.toLocaleString('en-US', {
+      return `${sign}${abs.toLocaleString('en-US', {
         minimumFractionDigits: digits,
         maximumFractionDigits: digits
-      })}`;
+      })} ${cur}`;
     },
     // Derived per-cycle billing position (display only) — never stored.
     // Monthly → "day 15"; Yearly → "15 Jan"; Weekly → "Wed"; Daily → null.
@@ -67563,28 +68215,26 @@ try { (() => {
   // ---- Helpers --------------------------------------------------------------
   const H = window.OdysseyHelpers;
   Object.assign(H, {
-    // Money in the statement's base currency: "kr 1,600,000" (whole kroner —
-    // tax figures carry no minor units in the worked example). Symbol prefix
-    // matches the app's money() house style; sign uses the en-dash minus.
+    // Money in the statement's base currency: "1,600,000 NOK" (whole kroner —
+    // tax figures carry no minor units in the worked example). The trailing ISO
+    // code matches the app's money() house style; sign uses the en-dash minus.
     taxMoney(n, code = 'NOK') {
       if (n == null) return '—';
-      const cur = D.currencyByCode[code];
-      const sym = cur && cur.symbol || code;
-      const sign = n < 0 ? '−' : '';
-      return `${sign}${sym} ${Math.abs(n).toLocaleString('en-US', {
+      const sym = code;
+      const sign = H.moneySlot(n, false);
+      return `${sign}${Math.abs(n).toLocaleString('en-US', {
         maximumFractionDigits: 0
-      })}`;
+      })} ${sym}`;
     },
     // Variant for variances / settlement: negatives show "−", positives are
-    // shown plain (no leading "+"): "kr 1,000" / "−kr 3,200".
+    // shown plain (no leading "+"): "1,000 NOK" / "− 3,200 NOK".
     taxSignedMoney(n, code = 'NOK') {
       if (n == null) return '—';
-      const cur = D.currencyByCode[code];
-      const sym = cur && cur.symbol || code;
-      const sign = n < 0 ? '−' : '';
-      return `${sign}${sym} ${Math.abs(n).toLocaleString('en-US', {
+      const sym = code;
+      const sign = H.moneySlot(n, false);
+      return `${sign}${Math.abs(n).toLocaleString('en-US', {
         maximumFractionDigits: 0
-      })}`;
+      })} ${sym}`;
     },
     // Review-status chip — mirrors the transaction status vocabulary. Archived
     // overrides to the neutral outline chip (as Budgets/Accounts do).
@@ -68352,6 +69002,8 @@ __ds_ns.BrandMark = __ds_scope.BrandMark;
 __ds_ns.BreakdownTile = __ds_scope.BreakdownTile;
 
 __ds_ns.BUDGET_CATEGORY_TYPES = __ds_scope.BUDGET_CATEGORY_TYPES;
+
+__ds_ns.BUDGET_CATEGORY_DIRECTION_OPTIONS = __ds_scope.BUDGET_CATEGORY_DIRECTION_OPTIONS;
 
 __ds_ns.BudgetCategoryTypeSelect = __ds_scope.BudgetCategoryTypeSelect;
 

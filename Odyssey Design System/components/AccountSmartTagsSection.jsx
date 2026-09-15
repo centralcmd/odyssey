@@ -233,7 +233,7 @@ export function AccountSmartTagsSection({
   const total = transactions.reduce((s, t) => s + (getAmount(t) || 0), 0);
   const fmtAmount = typeof formatAmount === 'function'
     ? formatAmount
-    : (n) => `${n < 0 ? '−' : '+'}$ ${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    : (n) => `${n < 0 ? '− ' : '+ '}${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
   const showTotal = hasTags && !loading && !error && matchCount > 0;
 
   // ---- Body, by state (mirrors the spec's NoSmartTags / Loading /

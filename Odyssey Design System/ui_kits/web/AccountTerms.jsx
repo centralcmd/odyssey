@@ -250,6 +250,36 @@ const CadenceTag = ({ term }) => {
   return <span className="trm-bill">{text}</span>;
 };
 
+/* The direction caption — the WORD, beneath the term's name. No glyph: an arrow
+   reads against value (up = gain) rather than against the household, and the
+   unambiguous alternatives are emoji. The word is what a reader parses first,
+   and the figure's hue is redundant support, never the carrier.
+
+   EVERY contract fee term states its direction, incoming or outgoing. An
+   earlier revision stated Outgoing only on records that carried both sides;
+   that made the caption's ABSENCE carry meaning, which a reader cannot see —
+   and left two records with the same fee reading differently. Stated always,
+   the fact is on the row rather than inferred from the set around it.
+
+   Rendered only where direction MEANS something (a fee term on a contract), so
+   every account surface and every rate row is unchanged. */
+const TermDirectionTag = ({ term, owner }) => {
+  if (!H.termDirectionApplies(term, owner)) return null;
+  const incoming = H.termIsIncoming(term);
+  const d = H.termDirectionInfo(term);
+  return <span className={`trm-dir ${incoming ? 'in' : 'out'}`}>{d.label}</span>;
+};
+
+/* The colour an in-force figure takes: its DIRECTION's finance hue wherever
+   direction is stated — coral out, mint in, on every contract fee term —
+   otherwise whatever the surface already gave it (an account term, a rate).
+   One helper, so the table, the timeline and the tiles cannot disagree about
+   which figure is mint. */
+const trmValueColor = (t, account) => {
+  if (H.termDirectionApplies(t, account)) return H.termDirectionInfo(t).color;
+  return H.costColor(t, account) || trmKindInfo(t.kind).color;
+};
+
 const CurrentTermsSummary = ({ current, style, account }) => {
   if (!current.length) return null;
 
@@ -362,12 +392,23 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
                 </span>
                 <div>
                   <TermName t={t} account={account} nameClass="trm-row-kind-name" />
+                  <TermDirectionTag term={t} owner={account} />
                   {t.note && <div className="trm-row-note">{t.note}</div>}
                 </div>
               </div>
             </td>
             <td className="trm-cell-date">{H.dateLong(t.effectiveFrom)}</td>
-            <td className="trm-cell-value" style={isCurrent ? { color: H.costColor(t, account) || info.color } : undefined}>
+            {/* Every entry is coloured by its own direction, in force or not —
+                the direction is a fact of the ENTRY, and a superseded row was
+                money out (or in) when it applied. Nothing is dimmed to make the
+                point: the in-force row's own ground and weight, and the status
+                cell beside it, carry the hierarchy without spending contrast.
+
+                Where direction does NOT apply — an account's rates and fees, a
+                contract's interest rate — colour stays the in-force marker it
+                has always been on that surface. */}
+            <td className="trm-cell-value"
+              style={(H.termDirectionApplies(t, account) || isCurrent) ? { color: trmValueColor(t, account) } : undefined}>
               {H.fmtTermValueFor(t, account)}{cadence ? <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400 }}> {cadence}</span> : null}
             </td>
             <td><TermStatus t={t} currentIds={currentIds} /></td>
@@ -392,13 +433,15 @@ const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account }) => (
           <div className="trm-tl-body">
             <div className="trm-tl-top">
               <TermName t={t} account={account} nameClass="trm-tl-kind" captionClass="trm-kind-caption inline" />
+              <TermDirectionTag term={t} owner={account} />
               <span className="trm-tl-date">{H.dateLong(t.effectiveFrom)}</span>
               <TermStatus t={t} currentIds={currentIds} />
             </div>
             {t.note && <div className="trm-tl-note">{t.note}</div>}
           </div>
           <div className="trm-tl-figs">
-            <span className="trm-tl-value" style={currentIds.has(t.id) ? { color: H.costColor(t, account) || info.color } : undefined}>
+            <span className="trm-tl-value"
+              style={(H.termDirectionApplies(t, account) || currentIds.has(t.id)) ? { color: trmValueColor(t, account) } : undefined}>
               {H.fmtTermValueFor(t, account)}{cadence ? <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400, fontSize: 12 }}> {cadence}</span> : null}
             </span>
             <span className="trm-rowbtns trm-tl-actions">
@@ -544,6 +587,6 @@ const AccountTerms = ({ account, summaryStyle = 'tiles', historyStyle = 'table',
 };
 
 Object.assign(window, {
-  AccountTerms, TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName, CadenceTag,
+  AccountTerms, TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName, CadenceTag, TermDirectionTag,
   trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmToday, trmKey,
 });

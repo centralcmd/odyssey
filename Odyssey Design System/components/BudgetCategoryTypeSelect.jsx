@@ -19,9 +19,20 @@
  */
 
 export const BUDGET_CATEGORY_TYPES = [
-  { key: 'Expense', label: 'Expense', enumValue: 0, icon: 'trending_down', color: 'oklch(0.72 0.16 22)',  soft: 'oklch(0.72 0.16 22 / 0.16)' },
-  { key: 'Income',  label: 'Income',  enumValue: 1, icon: 'trending_up',   color: 'oklch(0.80 0.15 150)', soft: 'oklch(0.80 0.15 150 / 0.16)' },
+  { key: 'Expense', label: 'Expense', enumValue: 0, icon: 'trending_down', color: 'oklch(0.72 0.16 22)',  soft: 'oklch(0.72 0.16 22 / 0.16)',
+    short: 'out', tone: 'expense', sentence: 'money out of the budget' },
+  { key: 'Income',  label: 'Income',  enumValue: 1, icon: 'trending_up',   color: 'oklch(0.80 0.15 150)', soft: 'oklch(0.80 0.15 150 / 0.16)',
+    short: 'in',  tone: 'income',  sentence: 'money into the budget' },
 ];
+
+/* The same two values shaped for a MoneyField / AmountField DIRECTION LEAD —
+   the left-edge button that flips the value's direction where a sign would be.
+   A budget item records a direction, not a sign, so its planned amount can own
+   the question outright and the form needs no separate type picker beside it.
+   The lead says "out" / "in" here as it does on a contract term: one word for
+   one fact, wherever in the product it is asked. */
+export const BUDGET_CATEGORY_DIRECTION_OPTIONS = BUDGET_CATEGORY_TYPES
+  .map((t) => ({ value: t.key, label: t.label, short: t.short, tone: t.tone }));
 
 export function BudgetCategoryTypeSelect({ value, onChange, label = 'Category', placeholder = 'Select category…', types, ...rest }) {
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};

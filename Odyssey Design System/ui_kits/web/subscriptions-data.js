@@ -137,15 +137,15 @@
         || { key, label: key || 'Monthly', enumValue: 2, icon: 'autorenew', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)' };
     },
 
-    // Currency-aware money — symbol prefix + grouped digits at the currency's
-    // minor units. Mirrors insMoney so amounts read identically across features.
+    // Currency-aware money — grouped digits at the currency's minor units, then
+    // the ISO CODE. Mirrors insMoney so amounts read identically across features.
     subMoney(n, cur = 'USD') {
       if (n == null) return '—';
-      const c = D.currencyByCode[cur] || { symbol: cur, minorUnits: 2 };
-      const sign = n < 0 ? '−' : '';
+      const c = D.currencyByCode[cur] || { minorUnits: 2 };
+      const sign = H.moneySlot(n, false);
       const abs = Math.abs(n);
       const digits = c.minorUnits != null ? c.minorUnits : 2;
-      return `${sign}${c.symbol || cur} ${abs.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+      return `${sign}${abs.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })} ${cur}`;
     },
 
     // Derived per-cycle billing position (display only) — never stored.

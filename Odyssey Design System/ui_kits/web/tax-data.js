@@ -126,24 +126,22 @@
   const H = window.OdysseyHelpers;
 
   Object.assign(H, {
-    // Money in the statement's base currency: "kr 1,600,000" (whole kroner —
-    // tax figures carry no minor units in the worked example). Symbol prefix
-    // matches the app's money() house style; sign uses the en-dash minus.
+    // Money in the statement's base currency: "1,600,000 NOK" (whole kroner —
+    // tax figures carry no minor units in the worked example). The trailing ISO
+    // code matches the app's money() house style; sign uses the en-dash minus.
     taxMoney(n, code = 'NOK') {
       if (n == null) return '—';
-      const cur = D.currencyByCode[code];
-      const sym = (cur && cur.symbol) || code;
-      const sign = n < 0 ? '−' : '';
-      return `${sign}${sym} ${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+      const sym = code;
+      const sign = H.moneySlot(n, false);
+      return `${sign}${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })} ${sym}`;
     },
     // Variant for variances / settlement: negatives show "−", positives are
-    // shown plain (no leading "+"): "kr 1,000" / "−kr 3,200".
+    // shown plain (no leading "+"): "1,000 NOK" / "− 3,200 NOK".
     taxSignedMoney(n, code = 'NOK') {
       if (n == null) return '—';
-      const cur = D.currencyByCode[code];
-      const sym = (cur && cur.symbol) || code;
-      const sign = n < 0 ? '−' : '';
-      return `${sign}${sym} ${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+      const sym = code;
+      const sign = H.moneySlot(n, false);
+      return `${sign}${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })} ${sym}`;
     },
 
     // Review-status chip — mirrors the transaction status vocabulary. Archived

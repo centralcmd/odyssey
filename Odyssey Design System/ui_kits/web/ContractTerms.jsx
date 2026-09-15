@@ -45,6 +45,10 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
   const currentIds = useMemo(() => new Set(current.map(t => t.id)), [current]);
   const block = CTRM_H.conTermWriteBlock(contract, terms.length, cap);
   const limit = cap != null ? cap : CTRM_D.CONTRACT_MAX_TERMS_PER_CONTRACT;
+  /* The two sides of the in-force set. A contract is not one-directional — an
+     employment agreement pays a salary IN and deducts dues OUT — so the
+     section says how many of each rather than one count of "values". */
+  const incoming = current.filter(t => CTRM_H.termDirectionApplies(t, owner) && CTRM_H.termIsIncoming(t));
 
   if (terms.length === 0) {
     return (
@@ -66,20 +70,35 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
   return (
     <React.Fragment>
       <div className="con-section">
-        <SectionDivider label="Current terms" meta={current.length ? `${current.length} ${current.length === 1 ? 'value' : 'values'} in force · ${CTRM_H.dateLong(trmToday())}` : 'none in force'} />
+        <SectionDivider label="Current terms" meta={current.length ? `${current.length} ${current.length === 1 ? 'value' : 'values'} in force${incoming.length ? ` · ${incoming.length} incoming, ${current.length - incoming.length} outgoing` : ''} · ${CTRM_H.dateLong(trmToday())}` : 'none in force'} />
         {block ? <ContractTermsNotice block={block} /> : null}
         {current.length ? (
           <InfoTileGrid>
             {current.map(t => {
               const info = trmKindInfo(t.kind);
-              // The cadence is what separates a $2,150 monthly rent from a
-              // $2,150 one-off, so it rides in the foot beside the date.
+              // The cadence is what separates a 2,150 USD monthly rent from a
+              // 2,150 USD one-off, so it rides in the foot beside the date.
               const period = CTRM_H.cadenceTextFor(t);
               const labelled = !!CTRM_H.termLabelNormalize(t.label);
+              // Every contract fee states its direction, both ways: the fact
+              // belongs to the term, not to the set of terms around it.
+              const tagged = CTRM_H.termDirectionApplies(t, owner);
+              const dir = CTRM_H.termDirectionInfo(t);
+              /* No chip: the FIGURE carries the direction in its own finance
+                 hue, and the word sits on its own line under the tile's title —
+                 the slot a party tile gives its from–to dates. There is room
+                 there for the whole word, so it reads "Incoming", not "in". */
+              const value = tagged ? dir.color : info.color;
               return (
                 <InfoTile key={trmKey(t)} icon={info.icon} iconColor={info.color} iconSoft={info.soft}
-                  label={CTRM_H.termDisplayName(t, owner)}
-                  value={<span style={{ color: info.color }}>{CTRM_H.fmtTermValueFor(t, owner)}</span>}
+                  className={tagged ? 'trm-dir-tile' : undefined}
+                  label={tagged
+                    ? <React.Fragment>
+                        <span className="trm-dir-name"><span>{CTRM_H.termDisplayName(t, owner)}</span></span>
+                        <span className="trm-dir-sub">{dir.label}</span>
+                      </React.Fragment>
+                    : CTRM_H.termDisplayName(t, owner)}
+                  value={<span style={{ color: value }}>{CTRM_H.fmtTermValueFor(t, owner)}</span>}
                   foot={`${labelled ? `${CTRM_H.termKindLabelFor(t, owner)} · ` : ''}since ${CTRM_H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`} />
               );
             })}

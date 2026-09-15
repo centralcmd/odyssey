@@ -327,6 +327,14 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
   const files = c.files || [];
   const terms = c.terms || [];
   const termBlock = CON_H.conTermWriteBlock(c, terms.length, termCap);
+  /* An income-bearing contract is marked on the collapsed row, because "this
+     file is money in" changes how the whole row reads and is otherwise only
+     visible once expanded. It is derived from the in-force entries of this
+     record's own terms — the backend's list projection carries no direction
+     (it has no term join), so a production list needs either the detail
+     payload it already has open or a list-level field the backend deferred. */
+  const inForceTerms = window.trmCurrentFromList ? window.trmCurrentFromList(terms) : [];
+  const hasIncoming = inForceTerms.some(t => CON_H.termIsIncoming(t));
   const contact = parties.map(CON_H.conResolveParty).find(r => r.kind === 'contact');
   const dimmed = !!c.archived;
   /* An unsigned contract stays at FULL brightness — it is the row most likely
@@ -440,6 +448,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
         meta={[
           typeInfo.label,
           <span className="con-sub-inst"><MIcon name="groups" size={14} /><span>{contact ? contact.name : 'No contact'}</span></span>,
+          ...(hasIncoming ? [<span className="trm-dir in">Money in</span>] : []),
         ]}
         counts={[
           { icon: 'diversity_3', value: parties.length, label: 'Parties' },
@@ -543,11 +552,24 @@ const ContractsSummary = ({ contracts, today, endingWindow }) => {
   statusRows.splice(order.indexOf('Active') + 1, 0, { key: 'EndingSoon', icon: 'hourglass_bottom', iconColor: TONE_COLOR.pending,
     label: `Ending soon · ${endingWindow}d`, count: endingSoon });
 
-  /* What the file costs to run. Only the Active contracts' in-force periodic
-     fees carry a rate, so the totals and the per-type rows are the same read
-     twice — once summed, once split. */
+  /* What the file costs to run — and what it brings in. Only the Active
+     contracts' in-force periodic fees carry a rate, so the totals and the
+     per-type rows are the same read twice: once summed, once split.
+
+     THE HEADER NOW REPORTS TWO SIDES AND A NET. The old tile named "Monthly
+     run rate" was one figure that silently mixed a landlord's rent income
+     into the same number as a streaming subscription; it is renamed rather
+     than reused, because "the run rate" now has to say which way the money
+     moves. Each gross counts ONE direction — the only figure that crosses the
+     two is the net. */
   const rr = CON_H.conRunRate(contracts, today);
   const rrMoney = (v) => (v == null ? '—' : CON_H.money(v, rr.baseCurrency));
+  // The net is the only signed figure on the page, so it is the only one that
+  // ever carries a leading +. money() already writes '−' for a negative.
+  // signedMoney fills the same sign slot with a real '+', so a net lines up
+  // with the grosses above it rather than being a string with one glued on.
+  const netMoney = (v) => (v == null ? '—' : CON_H.signedMoney(v, rr.baseCurrency));
+  const netClass = (v) => (v == null || v === 0 ? 'net-flat' : v > 0 ? 'net-pos' : 'net-neg');
   /* A paused contract keeps its price on file and contributes nothing here;
      so does an unsigned one, which may be fully priced and is still only a
      quote. The tiles name both, because a run rate that quietly dropped would
@@ -558,23 +580,64 @@ const ContractsSummary = ({ contracts, today, endingWindow }) => {
     pausedCount ? `${pausedCount} paused` : null,
     unsignedCount ? `${unsignedCount} unsigned` : null,
   ].filter(Boolean);
-  const rrFoot = (rr.unconvertedCurrencies.length
-    ? `in ${rr.baseCurrency} · ${rr.unconvertedCurrencies.join(', ')} excluded`
-    : `in ${rr.baseCurrency}`)
-    + (excluded.length ? ` · ${excluded.join(', ')} excluded` : '');
-  const rrMonthlyRows = rr.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: r.color, label: r.label, count: rrMoney(r.monthly) }));
-  const rrYearlyRows = rr.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: r.color, label: r.label, count: rrMoney(r.yearly) }));
+  /* Every figure now carries its own ISO code, so the foot no longer repeats
+     the base currency — it is left to say only what is NOT in the figure: the
+     currencies with no rate to base, and the contracts the status gate keeps
+     out. A total that quietly dropped would otherwise read as a pricing error. */
+  const rrFoot = [
+    rr.unconvertedCurrencies.length ? `${rr.unconvertedCurrencies.join(', ')} excluded — no rate to ${rr.baseCurrency}` : null,
+    excluded.length ? `${excluded.join(', ')} excluded` : null,
+  ].filter(Boolean).join(' · ') || 'every contract in force counted';
+  const netFoot = null;
+  /* ONE by-type tile per period, carrying the NET per type — signed and
+     colored. Two figures per row said the same thing twice at half the
+     density; what a reader wants per type is which way that type leaves them,
+     and the grosses are already the three tiles above. */
+  const netOf = (key, getter) => {
+    const o = rr.typeRows.find(r => r.key === key);
+    const i = rr.incomingTypeRows.find(r => r.key === key);
+    if (!o && !i) return null;
+    return Math.round(((i ? getter(i) : 0) - (o ? getter(o) : 0)) * 100) / 100;
+  };
+  const netCell = (v) => <span className={`con-bd-net ${netClass(v)}`}>{netMoney(v)}</span>;
+  const byTypeMoneyRows = (getter) => {
+    const keys = CON_D.contractTypes.map(t => t.key)
+      .filter(k => rr.typeRows.some(r => r.key === k) || rr.incomingTypeRows.some(r => r.key === k));
+    if (!keys.length) return [];
+    const rows = keys.map(k => {
+      const ty = CON_H.contractTypeInfo(k);
+      return { key: k, icon: ty.icon, iconColor: ty.color, label: ty.label, count: netCell(netOf(k, getter)) };
+    });
+    return rows;
+  };
+  const rrMonthlyRows = byTypeMoneyRows(r => r.monthly);
+  const rrYearlyRows = byTypeMoneyRows(r => r.yearly);
   return (
     <div className="con-summary">
+      {/* Four tiles: each period's two grosses. The NET is not a tile — it is
+          the ruled last row of each by-type breakdown below, where it reads
+          against the types it came from instead of restating a subtraction. */}
       <div className="con-run-tiles">
-        <InfoTile icon="calendar_month" label="Monthly run rate" value={rrMoney(rr.monthly)} foot={rrFoot} />
-        <InfoTile icon="event_repeat" label="Yearly run rate" value={rrMoney(rr.yearly)} foot={rrFoot} />
+        {/* The icon names the PERIOD, not the direction — the label and the
+            finance hue say which side, and a directional arrow would read as a
+            rise or a fall in the figure beside it. */}
+        <InfoTile className="dir-out" icon="calendar_month" label="Monthly out" value={rrMoney(rr.monthly)} foot={rrFoot} />
+        <InfoTile className="dir-in" icon="calendar_month" label="Monthly in" value={rrMoney(rr.incomingMonthly)} foot={rr.incomingMonthly == null ? 'no incoming terms in force' : rrFoot} />
+        <InfoTile className="dir-out" icon="event_repeat" label="Yearly out" value={rrMoney(rr.yearly)} foot={rrFoot} />
+        <InfoTile className="dir-in" icon="event_repeat" label="Yearly in" value={rrMoney(rr.incomingYearly)} foot={rr.incomingYearly == null ? 'no incoming terms in force' : rrFoot} />
       </div>
       <div className="con-stats">
+        {/* The tile owns its total: By type sums the records on file (archived
+            excluded, as its rows are), and By status is given the total
+            explicitly — its rows carry an "Ending soon" slice of Active, which
+            an arithmetic sum would double-count. */}
         <BreakdownTile label="By type" rows={typeRows} empty="No active contracts." />
-        <BreakdownTile label="By status" rows={statusRows} empty="No contracts." />
-        <BreakdownTile label="Monthly run rate by type" rows={rrMonthlyRows} empty="No recurring fees in force." />
-        <BreakdownTile label="Yearly run rate by type" rows={rrYearlyRows} empty="No recurring fees in force." />
+        <BreakdownTile label="By status" rows={statusRows} total={s.total} empty="No contracts." />
+        {/* Money rows carry nodes, so each tile is handed its own net. */}
+        <BreakdownTile className="con-bd-money" label="Monthly net by type" rows={rrMonthlyRows}
+          total={netCell(rr.netMonthly)} totalLabel="Net" empty="No recurring terms in force." />
+        <BreakdownTile className="con-bd-money" label="Yearly net by type" rows={rrYearlyRows}
+          total={netCell(rr.netYearly)} totalLabel="Net" empty="No recurring terms in force." />
       </div>
     </div>
   );
@@ -651,6 +714,11 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
      it is the term history read forward, the way Subscriptions reads its
      billing interval forward into upcoming renewals. */
   const upcomingCharges = CON_H.conUpcomingCharges(active, today, { windowDays: chargeWindow, limit: 6 });
+  /* The receipts beside them. Same row shape, same window, its OWN cap — a
+     file with many charges must not be able to starve the receipts list. The
+     list names the direction, so the row carries no direction field of its
+     own: one fact, one place. */
+  const upcomingReceipts = CON_H.conUpcomingReceipts(active, today, { windowDays: chargeWindow, limit: 6 });
   /* And the other side of the cliff: terms that ran out in the window just
      past and were never archived — the ones still waiting on a decision. */
   const recentlyExpired = active
@@ -681,11 +749,11 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
     .filter(c => CON_H.conStatus(c, today) === 'Paused')
     .sort((a, b) => (a.paused < b.paused ? 1 : -1))
     .slice(0, 6);
-  const signal = (flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length || pausedRows.length || awaitingSignature.length) ? {
+  const signal = (flagged.length || upcomingCharges.length || upcomingReceipts.length || recentlyExpired.length || startingSoon.length || pausedRows.length || awaitingSignature.length) ? {
     // The panel's worst severity wins the button: an expired term reads error,
     // a term running out reads warning, and next charges alone read info.
     severity: recentlyExpired.length ? 'error' : (flagged.length || awaitingSignature.length) ? 'warning' : 'info',
-    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length + pausedRows.length + awaitingSignature.length,
+    count: flagged.length + upcomingCharges.length + upcomingReceipts.length + recentlyExpired.length + startingSoon.length + pausedRows.length + awaitingSignature.length,
     label: 'Upcoming',
     region: (
       <div className="signal-panel">
@@ -775,6 +843,27 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
             </div>
           );
         })}
+        {upcomingReceipts.length ? <div className="con-signal-group">Next receipts</div> : null}
+        {upcomingReceipts.map(({ contract: c, term, date, days }) => {
+          const ti = CON_H.contractTypeInfo(c.type);
+          return (
+            <div key={`in-${c.id}`} className="con-charge-row incoming" role="button" tabIndex={0}
+              onClick={() => jumpTo(c.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
+              <span className="con-charge-when">
+                <span className="con-charge-md mono">{CON_H.conDateMd(date)}</span>
+                <span className="con-charge-rel">{CON_H.conRelDays(days)}</span>
+              </span>
+              <span className="con-charge-name">
+                <MIcon name={ti.icon} size={16} style={{ color: ti.color }} />
+                <span className="con-charge-title">{c.name}</span>
+                <span className="con-charge-term">{CON_H.termDisplayName(term, null)}</span>
+              </span>
+              <span className="con-charge-amt mono in">{CON_H.money(term.value, term.currency || 'USD')}</span>
+              <span className="con-charge-go">View →</span>
+            </div>
+          );
+        })}
       </div>
     ),
   } : undefined;
@@ -850,4 +939,4 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
   );
 };
 
-Object.assign(window, { Contracts });
+Object.assign(window, { Contracts, ContractsSummary });
