@@ -160,38 +160,13 @@ public sealed class ContactAvatarRenderTests(StackFixture fixture) : IAsyncLifet
         contactKey == Contacts.Landlord ? "Jane Smith" : contactKey;
 
     /// <summary>
-    /// Signs in and waits for the SPA to leave <c>/login</c>.
+    /// Signs in as <b>Owner</b>, not the Admin every other class uses. It makes no difference to the
+    /// per-network limiter the shared helper handles, but the surface is ALSO limited per email over a
+    /// much longer window — which a second class signing in as Admin would eventually trip.
     /// </summary>
-    /// <remarks>
-    /// The wait POLLS <see cref="IPage.Url"/> rather than waiting on a navigation event. This is a
-    /// Blazor WASM app, so a successful sign-in is a client-side route change; waiting for a navigation
-    /// is waiting for something that may never be raised, which reads as the app being slow when it is
-    /// really the wrong signal. Polling the URL is the same assertion without that dependency.
-    /// </remarks>
-    private static async Task SignInAsync(IPage page)
+    private static Task SignInAsync(IPage page)
     {
-        // Owner, not Admin. Every other browser test signs in as Admin, and the sign-in limiter
-        // (RateLimiting:IdentityEmail) is partitioned BY EMAIL with a small permit count over a long
-        // window — so a suite where every class signs in as the same user shares one budget, and the
-        // class that happens to run last is the one that times out. Owner holds contacts.read, which is
-        // all this needs, and spends from its own partition.
         var actor = DemoUsers.All.First(user => user.Role == "Owner");
-
-        await page.GetByLabel("Username or Email").FillAsync(actor.Email);
-        await page.GetByLabel("Password").FillAsync(actor.Password);
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in" }).ClickAsync();
-
-        var deadline = DateTime.UtcNow.AddSeconds(120);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (!page.Url.Contains("/login", StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            await Task.Delay(250);
-        }
-
-        throw new TimeoutException("Signing in never left the login page.");
+        return E2ESignIn.SignInAsync(page, actor.Email, actor.Password);
     }
 }
