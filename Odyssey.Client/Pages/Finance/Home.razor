@@ -9,6 +9,8 @@
 @inject ITransactionsApiClient Transactions
 @inject ISnackbar Snackbar
 @inject IAccountsApiClient Accounts
+@inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
+@inject IReferenceDataCache ReferenceData
 
 <PageTitle>Home</PageTitle>
 
@@ -18,12 +20,15 @@
     chart, and an excerpt of the shared transactions table showing recent activity.
 
     Adapted from the specimen to the real contracts:
-      • Net worth is the live cross-currency sum of every non-archived account's
-        Balance (the same naive aggregate the Accounts page shows — the app has no
-        FX conversion, so a generic "$" is used). The history line is synthetic:
-        there is no stored net-worth-over-time series, so the design's eased growth
-        curve is resampled across the real span (earliest account year → this year)
-        and anchored to land exactly on today's figure.
+      • Net worth comes from GET /api/accounts/totals, which converts every
+        non-archived account into the user's main currency at the latest rate and
+        applies the in-force estimate replace policy. The specimen summed the mock
+        accounts client-side; that mock was single-currency, the real data is not.
+        Accounts the server could not convert are surfaced in the header's problem
+        rollup, because each one counts as 0 and understates the figure. The history
+        line is still synthetic: there is no stored net-worth-over-time series, so the
+        design's eased growth curve is resampled across the real span (earliest
+        account year → this year) and anchored to land exactly on today's figure.
       • Recent transactions are the eight newest rows from api/transactions, drawn
         with the design's Description · Tag · Status · Amount · Date columns.
       • Each region is permission-gated: the chart needs accounts.read, the table
@@ -33,7 +38,8 @@
 <MudStack Spacing="6">
 
     @* 1 · Greeting header (canonical carded PageHeader) *@
-    <PageHeader Title="@Greeting" Icon="@Icons.Material.Filled.SpaceDashboard">
+    <PageHeader Title="@Greeting" Icon="@Icons.Material.Filled.SpaceDashboard"
+                Problems="HeaderProblems" ProblemsLabel="Net worth">
         <SubLine>@HeaderSubLine</SubLine>
     </PageHeader>
 
@@ -59,7 +65,7 @@
                           DeltaSuffix="all-time"
                           XTickEvery="2"
                           AriaLabel="Net worth over time"
-                          EmptyLabel="No account balances to chart yet." />
+                          EmptyLabel="@ChartEmptyLabel" />
         }
     }
 
