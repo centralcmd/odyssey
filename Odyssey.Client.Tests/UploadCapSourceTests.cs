@@ -31,7 +31,10 @@ public class UploadCapSourceTests
     /// prose about the reverse-proxy ceiling, neither of which is an upload cap.
     /// </summary>
     private static IEnumerable<(string File, string Text)> UploadSurfaces() =>
-        ClientSource.RazorFilesIn("Pages")
+        // Components/ as well as Pages/ (issue #86 §13). It scanned only Pages/ until a shared component
+        // rendered an upload field, at which point all three lints below went BLIND to it — a dialog
+        // under Components/ could hardcode a cap and every one of them would pass vacuously.
+        ClientSource.RazorFilesIn("Pages", "Components")
             .Select(file => (File: file, Text: File.ReadAllText(file)))
             .Where(pair => pair.Text.Contains("OdsFileUpload", StringComparison.Ordinal)
                         || pair.Text.Contains("MudFileUpload", StringComparison.Ordinal));
@@ -96,17 +99,25 @@ public class UploadCapSourceTests
     /// </para>
     ///
     /// <para>
-    /// Keyed on <c>ToApiUpload</c> — the one call that turns a picked browser file into a request — so
-    /// a pure markup fragment like <c>JournalEntryFields.razor</c> is exempt. It renders the picker but
-    /// hands the files to its parent, which resolves the cap in <c>JournalWrite</c>; asserting against
-    /// the fragment would be asserting in the wrong file.
+    /// Keyed on the two calls that turn picked content into a request — <c>ToApiUpload</c> for a browser
+    /// file, and a direct <c>new ApiUpload(</c> for bytes a surface produced itself (the contact-image
+    /// crop encodes its own). A pure markup fragment like <c>JournalEntryFields.razor</c> is exempt: it
+    /// renders the picker but hands the files to its parent, which resolves the cap in
+    /// <c>JournalWrite</c>, so asserting against the fragment would be asserting in the wrong file.
+    /// </para>
+    ///
+    /// <para>
+    /// The second key matters because the first alone reads as "browser file in, request out" — a
+    /// surface that generates its own bytes and constructs the upload directly would slip past it while
+    /// pre-validating against nothing at all.
     /// </para>
     /// </summary>
     [Fact]
     public void Every_surface_that_uploads_reads_a_live_cap()
     {
         var offenders = UploadSurfaces()
-            .Where(pair => pair.Text.Contains("ToApiUpload", StringComparison.Ordinal))
+            .Where(pair => pair.Text.Contains("ToApiUpload", StringComparison.Ordinal)
+                        || pair.Text.Contains("new ApiUpload(", StringComparison.Ordinal))
             .Where(pair => !pair.Text.Contains("uploadLimits", StringComparison.OrdinalIgnoreCase)
                         && !pair.Text.Contains("importLimits", StringComparison.OrdinalIgnoreCase))
             .Select(pair => ClientSource.Relative(pair.File))

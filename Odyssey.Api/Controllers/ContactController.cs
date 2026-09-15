@@ -348,8 +348,12 @@ before storage. The previous image's file is released in the SAME transaction.")
             await stream.ReadExactlyAsync(bytes, cancellationToken);
         }
 
+        // The RAW claim, not ActorUserId: that falls back to the literal "unknown" for audit lines, and
+        // FileMetadata.UploadedByUserId is a real foreign key to AspNetUsers — so storing the fallback
+        // would fail the constraint and surface as a 500. An absent claim stores NULL, which is the
+        // healthy state the column and its ON DELETE SET NULL are already built around.
         var attached = await avatarService.AttachAsync(
-            id, bytes, file.ContentType, ActorUserId, cancellationToken);
+            id, bytes, file.ContentType, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
 
         if (!attached)
         {
