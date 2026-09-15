@@ -5,6 +5,19 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.1](https://github.com/centralcmd/odyssey/compare/v0.28.0...v0.28.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* **client:** compute dashboard net worth from the totals endpoint ([#89](https://github.com/centralcmd/odyssey/issues/89)) ([55ea77d](https://github.com/centralcmd/odyssey/commit/55ea77dcfb002652937c79f86ec121b768092c22))
+* **client:** show liability donut amounts unsigned ([#85](https://github.com/centralcmd/odyssey/issues/85)) ([686e6de](https://github.com/centralcmd/odyssey/commit/686e6dea83dc9403fed435ce640207421f447e1c))
+
+
+### Documentation
+
+* update design system ([5234c6e](https://github.com/centralcmd/odyssey/commit/5234c6e9345ee3ba8a2b425ff91eee4654fafc75))
+
 ## [0.28.0](https://github.com/centralcmd/odyssey/compare/v0.27.0...v0.28.0) (2026-09-14)
 
 
