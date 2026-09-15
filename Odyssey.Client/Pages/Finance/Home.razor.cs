@@ -80,13 +80,16 @@ public partial class Home
 
     private async Task LoadAccountsAsync()
     {
+        // The accounts list supplies the count and the chart's start year; the totals endpoint
+        // supplies the money. Neither depends on the other, so they go out together — serialising
+        // them would add a round trip to the critical load path for nothing.
         // Failures degrade silently — the dashboard just shows no data, no toast.
-        var result = await Accounts.ListAllAsync();
-        _accounts = result.ValueOr([]);
+        var listTask = Accounts.ListAllAsync();
+        var totalsTask = LoadTotalsAsync();
+        await Task.WhenAll(listTask, totalsTask);
 
-        // The accounts list supplies the count and the chart's start year; the totals
-        // endpoint supplies the money. Both are needed before the chart can be built.
-        await LoadTotalsAsync();
+        var result = await listTask;
+        _accounts = result.ValueOr([]);
 
         if (result.IsSuccess)
             BuildChart();
@@ -118,33 +121,18 @@ public partial class Home
 
     // The main currency's symbol and minor units, resolved through the shared reference-data
     // cache so the dashboard shows "kr 48 260,00" rather than the generic "$" the design
-    // specimen used for its single-currency mock data.
+    // specimen used for its single-currency mock data. The mapping itself is in DashboardFigures,
+    // where it is testable without a renderer.
     private async Task<NumberFormatInfo> BuildMainCurrencyFormatAsync(string? currencyCode)
     {
-        var nf = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
-        nf.CurrencyNegativePattern = 1; // "-$n" — leading minus, no parentheses
-        nf.CurrencySymbol = "$";
-        nf.CurrencyDecimalDigits = 2;
-
         if (string.IsNullOrWhiteSpace(currencyCode))
-            return nf;
+            return DashboardFigures.MoneyFormat(currencyCode, null);
 
         var currencies = await ReferenceData.CurrenciesAsync();
         var currency = currencies.FirstOrDefault(c =>
             string.Equals(c.CurrencyCode, currencyCode, StringComparison.OrdinalIgnoreCase));
 
-        if (currency is not null && !string.IsNullOrWhiteSpace(currency.Symbol))
-        {
-            nf.CurrencySymbol = currency.Symbol;
-            nf.CurrencyDecimalDigits = currency.MinorUnits;
-        }
-        else
-        {
-            // Known code, unknown symbol — the code itself beats a misleading "$".
-            nf.CurrencySymbol = currencyCode;
-        }
-
-        return nf;
+        return DashboardFigures.MoneyFormat(currencyCode, currency);
     }
 
     private async Task LoadTransactionsAsync()
@@ -194,9 +182,7 @@ public partial class Home
 
     // The chart's empty state has two causes and they are not interchangeable: nothing to
     // chart, or a figure the server could not give us.
-    private string ChartEmptyLabel => _totals is null
-        ? "Net worth is unavailable right now."
-        : "No account balances to chart yet.";
+    private string ChartEmptyLabel => DashboardFigures.ChartEmptyLabel(_totals is not null);
 
     private string ChartSubLine
     {
@@ -244,8 +230,7 @@ public partial class Home
                 {
                     Severity = PageHeaderSeverity.Warning,
                     Lead = account.Name,
-                    Message = $"No exchange rate from {account.CurrencyCode} to {main}, "
-                              + "so this account counts as 0 towards net worth.",
+                    Message = DashboardFigures.UnconvertedMessage(account.CurrencyCode, main),
                     Where = "Accounts",
                     ViewLabel = "Accounts",
                     OnView = EventCallback.Factory.Create(this, () => NavigationManager.NavigateTo("accounts")),
@@ -325,12 +310,9 @@ public partial class Home
         return GrowthCurve[lo] * (1 - frac) + GrowthCurve[hi] * frac;
     }
 
-    // Compact y-axis label, e.g. "kr 52k" / "kr 640", in the main currency.
-    private string KLabel(decimal v)
-    {
-        var symbol = MainCurrencyFormat.CurrencySymbol;
-        return v >= 1000 ? $"{symbol}{v / 1000:0}k" : $"{symbol}{v:0}";
-    }
+    // Compact y-axis label, e.g. "$52k" / "kr 52k", in the main currency.
+    private string KLabel(decimal v) =>
+        DashboardFigures.AxisLabel(v, MainCurrencyFormat.CurrencySymbol);
 
     // Net worth is converted server-side into the user's main currency, so it is formatted
     // in that currency's symbol and minor units rather than the specimen's generic "$".
@@ -346,16 +328,7 @@ public partial class Home
         return $"{sign}{Math.Abs(value).ToString("C", GenericMoneyFormat)}";
     }
 
-    private static readonly NumberFormatInfo GenericMoneyFormat = BuildGenericMoneyFormat();
-
-    private static NumberFormatInfo BuildGenericMoneyFormat()
-    {
-        var nf = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
-        nf.CurrencySymbol = "$";
-        nf.CurrencyDecimalDigits = 2;
-        nf.CurrencyNegativePattern = 1; // "-$n"
-        return nf;
-    }
+    private static readonly NumberFormatInfo GenericMoneyFormat = DashboardFigures.GenericMoneyFormat();
 
     // Matches the API's own fallback when no main-currency preference is set.
     private const string DefaultMainCurrency = "NOK";
