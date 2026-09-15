@@ -230,6 +230,16 @@ public class ContactAvatarService
         {
             await context.SaveChangesAsync(cancellationToken);
         }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The OTHER shape the same race takes, and the one a unique-index check alone misses: two
+            // requests replacing the same contact's image both stage the removal of the outgoing file,
+            // and the loser finds that row already gone. Same situation for the caller, so the same 409
+            // rather than a 500 — DbUpdateConcurrencyException derives from DbUpdateException, so the
+            // filtered catch below would not have covered it.
+            throw new DomainConflictException(
+                "This contact's image was changed by another request. Reload the contact and try again.");
+        }
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
             throw new DomainConflictException(
