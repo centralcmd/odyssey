@@ -121,14 +121,15 @@
         }).ToList();
 
     // Slice rows use each account's own currency; the total row (slice == null) uses the panel's
-    // aggregate. Assets are already positive. Liabilities are magnitudes: the panel says "Total
-    // owed", so a minus sign in front of the number would negate that sentence and read as a credit.
-    // The sign lives on the account itself everywhere else on the page — only this ring drops it.
+    // aggregate. Which of the two carries a sign is AllocationLegend's decision, kept there so it is
+    // testable without rendering the page.
     private string AssetLegendFormat(decimal value, OdsDonutSlice? slice) =>
-        slice?.Tag is AccountAllocation a ? FormatMoney(a.Value, a.CurrencyCode) : FormatMoney(TotalAssets, null);
+        slice?.Tag is AccountAllocation a
+            ? AllocationLegend.AssetRow(a, FormatMoney)
+            : AllocationLegend.AssetTotal(TotalAssets, FormatMoney);
 
     private string LiabilityLegendFormat(decimal value, OdsDonutSlice? slice) =>
         slice?.Tag is AccountAllocation a
-            ? FormatMoney(Math.Abs(a.Value), a.CurrencyCode)
-            : FormatMoney(Math.Abs(TotalLiabilities), null);
+            ? AllocationLegend.LiabilityRow(a, FormatMoney)
+            : AllocationLegend.LiabilityTotal(TotalLiabilities, FormatMoney);
 }
