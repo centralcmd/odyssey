@@ -85,8 +85,14 @@
                 }
                 @* One accent per record, taken from the contact's TYPE — the header mark and every
                    tile icon chip in the body resolve from it. *@
+                @* Icon AND Image are both passed: the image is the mark's content, and the glyph is
+                   what the card falls back to when the image cannot load — which under no-cache is a
+                   404 on every revalidation, not a one-off. Accent/AccentSoft are unchanged and still
+                   drive --rec/--rec-soft for every icon chip and chart in the body; only the mark's
+                   content, and for a logo its own ground, change. *@
                 <OdsRecordCard Id="@($"cp-{c.ContactId}")"
                                Icon="@typeMeta.Icon"
+                               Image="@AvatarImage(c)"
                                Accent="@typeMeta.Color"
                                AccentSoft="@typeMeta.Soft"
                                Name="@c.ResolvedDisplayName"
@@ -199,6 +205,34 @@
                         @bind-Open="_editOpen"
                         Contact="_editTarget"
                         OnSaved="OnEditSaved" />
+}
+
+@if (_avatarContact is { } avatarTarget)
+{
+    @* Keyed on the contact so a second contact's dialog never opens on the previous one's crop. *@
+    <ContactAvatarDialog @key="@($"cav-{avatarTarget.ContactId}")"
+                         @bind-Open="_avatarOpen"
+                         Contact="avatarTarget"
+                         OnSaved="AvatarSavedAsync"
+                         OnAnnounce="Announce" />
+
+    @* Removal DELETES the file, not just the reference, so it is confirmed — the one contact-image
+       action that is not undone by re-picking the same crop. *@
+    <OdsFormDialog @bind-Open="_avatarRemoveOpen"
+                   Icon="hide_image"
+                   IconTone="OdsModalTone.Warning"
+                   RequiredLegend="false"
+                   Title="@($"Remove {AvatarNoun(avatarTarget)}?")"
+                   SubmitLabel="@($"Remove {AvatarNoun(avatarTarget)}")"
+                   SubmitIcon="delete_outline"
+                   SubmitVariant="OdsButtonVariant.Danger"
+                   OnSubmit="RemoveAvatarConfirmedAsync">
+        <p class="cav-note" style="font:var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans);color:var(--mud-palette-text-secondary);">
+            The image file is deleted, not just detached —
+            <b style="color:var(--mud-palette-text-primary);font-weight:var(--fw-medium);">@avatarTarget.ResolvedDisplayName</b>
+            falls back to the type glyph everywhere. The contact itself is unchanged.
+        </p>
+    </OdsFormDialog>
 }
 
 @if (_blockedKey != Guid.Empty && _blockedContact is { } blocked)

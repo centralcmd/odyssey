@@ -59,7 +59,17 @@
                     aria-expanded="@(IsOpen ? "true" : "false")"
                     aria-controls="@(IsOpen ? _bodyId : null)"
                     @onclick="ToggleAsync">
-                @if (!string.IsNullOrEmpty(Icon))
+                @* The record's own picture in place of its type glyph, falling back to the glyph on a
+                   load failure with nothing surfaced to the user. Decorative (alt="") — the name is in
+                   the very next cell — and lazy, because a 50-row list under no-cache would otherwise
+                   issue fifty conditional GETs at once. *@
+                @if (Image is { } image && !string.IsNullOrEmpty(image.Src) && !_imageFailed)
+                {
+                    <span class="@MarkClass(image)">
+                        <img src="@image.Src" alt="" loading="lazy" decoding="async" @onerror="OnImageError" />
+                    </span>
+                }
+                else if (!string.IsNullOrEmpty(Icon))
                 {
                     <span class="odc-record-mark">
                         <span class="material-icons" aria-hidden="true">@Icon</span>

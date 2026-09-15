@@ -1,3 +1,4 @@
+using Odyssey.Core.Journal.Avatar;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
@@ -12,6 +13,16 @@ namespace Odyssey.Api.Tests;
 
 public class CreatedAtRouteControllerTests
 {
+    /// <summary>
+    /// The avatar service a vCard import needs to attach a <c>PHOTO</c>/<c>LOGO</c> (issue #86 §9). A
+    /// fixed 64 MB global cap, so the effective avatar cap is the surface constant — <c>min</c> of the
+    /// two — exactly as it resolves in production against an untouched setting.
+    /// </summary>
+    private static ContactAvatarService AvatarServiceFor(Odyssey.Context.OdysseyContext context) =>
+        new(context,
+            new FileService(context, new FileValidationService()),
+            new FixedUploadLimits(64L * 1024 * 1024));
+
     [Fact]
     public async Task PutAccount_WhenMissing_ReturnsCreatedAtGetAccountRoute()
     {
@@ -70,7 +81,9 @@ public class CreatedAtRouteControllerTests
         var controller = new ContactController(
             NullLogger<ContactController>.Instance, contactService,
             new ContactVCardService(
-                journalContext, contactService, new FakeImportExportLimitsLookup(), NullLogger<ContactVCardService>.Instance),
+                journalContext, contactService, AvatarServiceFor(journalContext),
+                new FakeImportExportLimitsLookup(), NullLogger<ContactVCardService>.Instance),
+            AvatarServiceFor(journalContext),
             referenceGuard);
 
         var missingId = Guid.NewGuid();

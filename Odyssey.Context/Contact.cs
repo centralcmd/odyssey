@@ -8,6 +8,7 @@ namespace Odyssey.Context;
 [Index(nameof(NormalizedName))]
 [Index(nameof(Type), nameof(Archived))]
 [Index(nameof(ExternalUid), IsUnique = true)]
+[Index(nameof(AvatarFileId), IsUnique = true)]
 public class Contact
 {
     [Key]
@@ -49,6 +50,31 @@ public class Contact
     /// <summary>Free-text notes (renamed from <c>Description</c> in issue #325 — no semantic change).</summary>
     [StringLength(1024)]
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// The contact's one image — a profile picture for a <c>Person</c>, a company logo for an
+    /// <c>Organization</c> (issue #86). A reference into the existing Files store, never a blob column:
+    /// one file store, one lifecycle, one set of limits.
+    ///
+    /// <para>
+    /// The FK is declared with an explicit <c>DeleteBehavior.SetNull</c> in <c>OdysseyContext</c> —
+    /// EF's default for an optional relationship is <c>ClientSetNull</c>, which emits <c>RESTRICT</c>,
+    /// and under that a <c>DELETE /api/files/{id}</c> naming an avatar would surface as a 500 instead
+    /// of the graceful detach the contact wants (it falls back to its type glyph).
+    /// </para>
+    ///
+    /// <para>
+    /// The index is <b>unique</b> (nullable, so MariaDB permits many <c>NULL</c>s): a file is the
+    /// avatar of at most one contact, which is what makes "deleting the contact deletes its avatar
+    /// file" safe. A concurrent double-POST that violates it is a 409, never a 500.
+    /// </para>
+    ///
+    /// <para>
+    /// The reverse direction — contact deleted, avatar file deleted — is <b>not</b> expressible as a
+    /// foreign key and lives in the contact-delete transaction, applying the shared release rule.
+    /// </para>
+    /// </summary>
+    public Guid? AvatarFileId { get; set; }
 
     public DateTime? Archived { get; set; }
 

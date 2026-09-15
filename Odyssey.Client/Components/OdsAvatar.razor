@@ -4,6 +4,24 @@
     Image (Src), text monogram (Initials or child content), or a Material glyph
     (Icon), in that precedence. A MudAvatar with the Odyssey size steps
     (sm = 28 · md = 40 · lg = 56) and tone (neutral default / tide brand-tinted).
+
+    THE IMAGE IS A PLAIN <img>, not MudImage. MudImage exposes none of `loading`,
+    `decoding` or `onerror` naturally, and this was the client's ONLY MudImage
+    call site — OdsPhotoTile and JournalPhotoGallery already use a bare <img> for
+    exactly these attributes. `loading="lazy"` + `decoding="async"` are not an
+    optimisation here but a requirement: a contact list under no-cache issues one
+    conditional GET per avatar, so the off-screen ones must defer.
+
+    `Fit` decides how an image meets the frame. Cover (default) square-crops — a
+    person's photograph. Contain LETTERBOXES it on a neutral ground with a 3:1
+    boundary — a company logo, which carries transparency, is rarely square and
+    must never be cut. Choose it from what the image IS, not from the shape: a
+    wordmark cropped to a circle is unrecognisable.
+
+    `OnError` fires when the image cannot load (deleted file, revoked access,
+    offline). The CONSUMER uses it to swap back to its identity glyph, silently —
+    the failure is never surfaced to the user. Without it a broken image renders
+    the browser's broken-image icon inside the frame.
 *@
 
 @* A non-image avatar is a meaningful `img` only when it carries an accessible
@@ -17,11 +35,14 @@
            role="@AvatarRole"
            aria-label="@(string.IsNullOrEmpty(Alt) ? null : Alt)"
            aria-hidden="@(IsDecorative ? "true" : null)"
-           Class="@Class"
+           Class="@RootClass"
            @attributes="UserAttributes">
     @if (!string.IsNullOrEmpty(Src))
     {
-        <MudImage Src="@Src" Alt="@Alt" />
+        @* alt="" plus the parent's aria-hidden when the adjacent cell already
+           names the subject; a descriptive Alt where the image is the subject of
+           its own controls. Both are the caller's call, never guessed here. *@
+        <img src="@Src" alt="@Alt" loading="lazy" decoding="async" @onerror="OnErrorAsync" />
     }
     else if (!string.IsNullOrEmpty(Icon))
     {
@@ -56,6 +77,22 @@
     /// <summary>neutral (default) or tide (brand-tinted).</summary>
     [Parameter] public OdsAvatarTone Tone { get; set; } = OdsAvatarTone.Neutral;
 
+    /// <summary>Rounded-rect (8px) instead of a circle — for account / file / record tiles.</summary>
+    [Parameter] public bool Square { get; set; }
+
+    /// <summary>
+    /// How an image meets the frame. Cover (default) square-crops — a photograph. Contain letterboxes
+    /// it on a neutral ground with a 3:1 boundary — a logo, which carries transparency and must never
+    /// be cut. Ignored when there is no <see cref="Src"/>.
+    /// </summary>
+    [Parameter] public OdsAvatarFit Fit { get; set; } = OdsAvatarFit.Cover;
+
+    /// <summary>
+    /// Fires when the image fails to load. Swap to the identity glyph here; the failure is never
+    /// surfaced to the user.
+    /// </summary>
+    [Parameter] public EventCallback OnError { get; set; }
+
     /// <summary>Custom background tint (any CSS color) — the DS Avatar's <c>{ bg, fg }</c> tone, used for
     /// per-category record avatars (e.g. contact type). Overrides <see cref="Tone"/> when set.</summary>
     [Parameter] public string? Bg { get; set; }
@@ -76,6 +113,18 @@
     /// <summary>Meaningful `img` only for a labelled, non-image avatar.</summary>
     private string? AvatarRole => string.IsNullOrEmpty(Src) && !string.IsNullOrEmpty(Alt) ? "img" : null;
 
+    /// <summary>The contain ground is only a ground when there is actually an image to letterbox.</summary>
+    private bool IsContained => !string.IsNullOrEmpty(Src) && Fit == OdsAvatarFit.Contain;
+
+    private string RootClass =>
+        string.Join(' ', new[]
+        {
+            "odc-avatar",
+            Square ? "sq" : null,
+            IsContained ? "contain" : null,
+            Class,
+        }.Where(part => !string.IsNullOrEmpty(part)));
+
     private string SizeStyle => Size switch
     {
         OdsSize.Sm => "width:28px;height:28px;font-size:0.75rem;",
@@ -83,8 +132,11 @@
         _ => "width:40px;height:40px;font-size:0.9375rem;",
     };
 
-    // A custom { bg, fg } tone (DS Avatar) overrides the named MudAvatar color via inline style.
+    // A custom { bg, fg } tone (DS Avatar) overrides the named MudAvatar color via inline style. The
+    // contain ground is its own background, so a caller-supplied Bg is not applied over it.
     private string AvatarStyle => string.IsNullOrEmpty(Bg) && string.IsNullOrEmpty(Fg)
         ? SizeStyle
-        : $"{SizeStyle}{(string.IsNullOrEmpty(Bg) ? "" : $"background:{Bg};")}{(string.IsNullOrEmpty(Fg) ? "" : $"color:{Fg};")}";
+        : $"{SizeStyle}{(string.IsNullOrEmpty(Bg) || IsContained ? "" : $"background:{Bg};")}{(string.IsNullOrEmpty(Fg) ? "" : $"color:{Fg};")}";
+
+    private Task OnErrorAsync() => OnError.InvokeAsync();
 }

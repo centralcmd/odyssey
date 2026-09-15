@@ -14,6 +14,22 @@ public static class DemoImages
     /// <summary>Square edge (px) of generated demo thumbnails; also recorded as the seeded photo dimensions.</summary>
     public const int PhotoSize = 224;
 
+    /// <summary>
+    /// The seeded contact image's square edge (issue #86). Well inside the 1024 px stored cap, and the
+    /// generator emits PNG — so the demo pair exercises the PNG half of the strip/validate pipeline.
+    /// </summary>
+    public const int ContactAvatarSize = 256;
+
+    /// <summary>
+    /// The seeded organization LOGO's size. Deliberately NOT square: a logo is letterboxed rather than
+    /// cropped, and a square demo logo would make the contained framing indistinguishable from the
+    /// cover one — which is exactly the difference the seeded pair exists to show.
+    /// </summary>
+    public const int ContactLogoWidth = 320;
+
+    /// <inheritdoc cref="ContactLogoWidth" />
+    public const int ContactLogoHeight = 136;
+
     // The design system's scene palette (Photos kit · PL_SCENES): eight {shadow, mid, highlight} triples.
     private static readonly (byte R, byte G, byte B)[][] Scenes =
     [
@@ -32,9 +48,16 @@ public static class DemoImages
     /// <c>plPhotoBg(seed)</c>: the scene, gradient angle, and highlight positions are all derived from the
     /// seed, so consecutive seeds produce a varied but reproducible set of "photos".
     /// </summary>
-    public static byte[] GradientPng(int size, int seed)
+    public static byte[] GradientPng(int size, int seed) => GradientPng(size, size, seed);
+
+    /// <summary>
+    /// The same scene gradient at an arbitrary aspect ratio. The gradient geometry is driven by the
+    /// LONGER edge so a wide image reads as one blend rather than as a stretched square.
+    /// </summary>
+    public static byte[] GradientPng(int width, int height, int seed)
     {
         var s = Math.Abs(seed);
+        var size = Math.Max(width, height);
         var scene = Scenes[s % Scenes.Length];
         var (a, b, c) = (scene[0], scene[1], scene[2]);
 
@@ -46,15 +69,15 @@ public static class DemoImages
         var px = (20 + s % 5 * 15) / 100.0 * size;
         var py = (15 + (s >> 2) % 5 * 14) / 100.0 * size;
 
-        var raw = new byte[size * (1 + size * 3)];
+        var raw = new byte[height * (1 + width * 3)];
         var cursor = 0;
-        for (var y = 0; y < size; y++)
+        for (var y = 0; y < height; y++)
         {
             raw[cursor++] = 0; // no per-scanline filter
-            for (var x = 0; x < size; x++)
+            for (var x = 0; x < width; x++)
             {
                 // Base linear gradient: shadow → mid (0–52%) → highlight (52–100%) along the seed's angle.
-                var t = Math.Clamp(((x - size / 2.0) * dirX + (y - size / 2.0) * dirY) / lineLength + 0.5, 0, 1);
+                var t = Math.Clamp(((x - width / 2.0) * dirX + (y - height / 2.0) * dirY) / lineLength + 0.5, 0, 1);
                 var colour = t < 0.52 ? Lerp(a, b, t / 0.52) : Lerp(b, c, (t - 0.52) / 0.48);
 
                 // Two soft radial highlights layered over the base (as the CSS radial-gradients do).
@@ -70,7 +93,7 @@ public static class DemoImages
             }
         }
 
-        return Encode(size, size, raw);
+        return Encode(width, height, raw);
     }
 
     private static (double R, double G, double B) Lerp((byte R, byte G, byte B) from, (byte R, byte G, byte B) to, double t) =>

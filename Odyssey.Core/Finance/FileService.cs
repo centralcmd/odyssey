@@ -32,27 +32,14 @@ public class FileService
         var content = new byte[file.Length];
         await stream.ReadExactlyAsync(content, cancellationToken);
 
-        var fileBlob = new FileBlob
-        {
-            Id = Guid.NewGuid(),
-            Content = content
-        };
+        var fileMetadata = StageUpload(
+            content,
+            validationService.SanitizeFileName(file.FileName),
+            file.ContentType,
+            userId,
+            description,
+            precomputedHash: hash);
 
-        var fileMetadata = new FileMetadata
-        {
-            Id = Guid.NewGuid(),
-            UploadedByUserId = userId,
-            FileName = validationService.SanitizeFileName(file.FileName),
-            ContentType = file.ContentType,
-            SizeBytes = file.Length,
-            Sha256Hash = hash,
-            FileBlobId = fileBlob.Id,
-            Description = description?.Length > 256 ? description[..256] : description,
-            UploadedAtUtc = timeProvider.GetUtcNow().UtcDateTime
-        };
-
-        await context.FileBlob.AddAsync(fileBlob, cancellationToken);
-        await context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
 
         return new FileUploadResponse(
@@ -63,6 +50,62 @@ public class FileService
             fileMetadata.Sha256Hash,
             fileMetadata.UploadedAtUtc,
             fileMetadata.Description);
+    }
+
+    /// <summary>
+    /// Queues a new <see cref="FileBlob"/> + <see cref="FileMetadata"/> pair onto the caller's context
+    /// and returns the metadata, <b>without saving</b> (issue #86 §5.6) — the same shape
+    /// <c>SecretSettingsService.StageClearAsync</c> was carved out for in issue #8.
+    ///
+    /// <para>
+    /// This exists because <see cref="UploadFileAsync"/> is not composable: it commits, it takes an
+    /// <see cref="IFormFile"/> (which the vCard import path does not have at all), and it hashes the
+    /// <i>original</i> stream — so it can store neither a stripped body nor a generated filename. A
+    /// contact avatar must stage its file, release the previous one and repoint the contact in ONE
+    /// transaction, which a method that saves cannot take part in.
+    /// </para>
+    ///
+    /// <para>
+    /// It performs <b>no validation</b>. The caller owns that, because the two callers validate
+    /// differently: an ordinary upload against the global allow-list and cap, an avatar against the
+    /// narrower image policy that also strips and re-verifies the bytes it hands in here.
+    /// </para>
+    /// </summary>
+    /// <param name="content">The exact bytes to store — already stripped, where the caller strips.</param>
+    /// <param name="fileName">A <b>generated</b> name for an avatar; never the user's original filename.</param>
+    /// <param name="contentType">The <b>validated</b> content type, not the client-declared one.</param>
+    /// <param name="precomputedHash">The SHA-256 when the caller already has it; otherwise it is computed here.</param>
+    public FileMetadata StageUpload(
+        byte[] content,
+        string fileName,
+        string contentType,
+        string? userId,
+        string? description,
+        string? precomputedHash = null)
+    {
+        var fileBlob = new FileBlob
+        {
+            Id = Guid.NewGuid(),
+            Content = content
+        };
+
+        var fileMetadata = new FileMetadata
+        {
+            Id = Guid.NewGuid(),
+            UploadedByUserId = userId,
+            FileName = fileName,
+            ContentType = contentType,
+            SizeBytes = content.LongLength,
+            Sha256Hash = precomputedHash ?? Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(content)).ToLowerInvariant(),
+            FileBlobId = fileBlob.Id,
+            Description = description?.Length > 256 ? description[..256] : description,
+            UploadedAtUtc = timeProvider.GetUtcNow().UtcDateTime
+        };
+
+        context.FileBlob.Add(fileBlob);
+        context.FileMetadata.Add(fileMetadata);
+
+        return fileMetadata;
     }
 
     public async Task<FileMetadataResponse?> GetFileMetadataAsync(Guid fileId, CancellationToken cancellationToken = default)
@@ -203,11 +246,24 @@ public class FileService
             return false;
         }
 
+        // The application-level counterpart to Contact.AvatarFileId's ON DELETE SET NULL (issue #86 §6).
+        // The real constraint does this in MariaDB, but the EF InMemory provider enforces no foreign
+        // keys at all, so without this the fast test tiers would exercise none of the graceful detach —
+        // and a contact whose image file was deleted from the Files page must simply fall back to its
+        // type glyph, never fail. Tracked update, not ExecuteUpdateAsync, for the same provider reason.
+        var referencing = await context.Contacts
+            .Where(c => c.AvatarFileId == fileId)
+            .ToListAsync(cancellationToken);
+        foreach (var contact in referencing)
+        {
+            contact.AvatarFileId = null;
+        }
+
         if (metadata.FileBlob is not null)
         {
             context.FileBlob.Remove(metadata.FileBlob);
         }
-        
+
         context.FileMetadata.Remove(metadata);
         await context.SaveChangesAsync(cancellationToken);
 

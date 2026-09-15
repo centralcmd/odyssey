@@ -74,10 +74,9 @@ public sealed class PasswordSurfaceRenderTests(StackFixture fixture) : IAsyncLif
         page.PageError += (_, error) => errors.Add(error);
 
         await page.GotoAsync("/login");
-        await page.GetByLabel("Username or Email").FillAsync(user.Email);
-        await page.GetByLabel("Password").FillAsync(user.Password);
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in" }).ClickAsync();
-        await page.WaitForURLAsync(url => !url.Contains("/login"), new PageWaitForURLOptions { Timeout = 30_000 });
+        // Shared helper: the sign-in surface is rate-limited BY NETWORK, so every class in this
+        // collection spends from one budget and the last to run is refused — silently, on the page.
+        await E2ESignIn.SignInAsync(page, user.Email, user.Password);
 
         // Only failures from the page under test, not any the login flow happened to log.
         errors.Clear();

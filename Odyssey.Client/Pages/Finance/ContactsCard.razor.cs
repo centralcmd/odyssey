@@ -237,6 +237,35 @@ public partial class ContactsCard
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit contact", OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)) });
         }
 
+        // The contact's image lives entirely in this menu (issue #86 §3, Odyssey Design System ·
+        // Contacts): there is no image tile in the card body and no image field in the create/edit
+        // dialog, so no upload ever rides on the create POST and there is no partial-success state to
+        // recover from — a contact is created first and given its picture from here afterwards.
+        //
+        // Hidden without contacts.update, matching the server's gate exactly, and hidden on an ARCHIVED
+        // contact — archival is a display state, so the image keeps rendering, but it stops being
+        // editable like everything else on the record.
+        if (_canUpdate && c.Archived is null)
+        {
+            var noun = AvatarNoun(c);
+            items.Add(new OdsMenuItem
+            {
+                Icon = c.AvatarFileId is null ? "add_photo_alternate" : "photo_camera",
+                Label = $"{(c.AvatarFileId is null ? "Add" : "Change")} {noun}",
+                OnClick = EventCallback.Factory.Create(this, () => OpenAvatarDialog(c)),
+            });
+
+            if (c.AvatarFileId is not null)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "hide_image",
+                    Label = $"Remove {noun}",
+                    OnClick = EventCallback.Factory.Create(this, () => RequestAvatarRemoval(c)),
+                });
+            }
+        }
+
         // Per-row vCard export (issue #338 §7.1) — requires only contacts.read, so it's always
         // available to anyone who can see the page.
         items.Add(new OdsMenuItem { Icon = "download", Label = "Export vCard", OnClick = EventCallback.Factory.Create(this, () => ExportRowAsync(c)) });
@@ -459,6 +488,87 @@ public partial class ContactsCard
         await RefreshAsync();
         StateHasChanged();
         return result.Value;
+    }
+
+    // ── Contact image (issue #86) ─────────────────────────────────────────────
+
+    private bool _avatarOpen;
+    private bool _avatarRemoveOpen;
+    private ExistingContact? _avatarContact;
+
+    /// <summary>
+    /// The two contact types share one storage slot and differ only in PRESENTATION: a person's photo
+    /// is square-cropped into a circle, an organization's logo is letterboxed on a neutral ground —
+    /// logos carry transparency and are rarely square, so cropping one to a circle destroys it.
+    /// </summary>
+    private static string AvatarNoun(ExistingContact c) =>
+        c.Type == ContactType.Organization ? "logo" : "picture";
+
+    private static string AvatarNounTitle(ExistingContact c) =>
+        c.Type == ContactType.Organization ? "Logo" : "Profile picture";
+
+    /// <summary>
+    /// The record card's image mark, or <c>null</c> when the contact has none — in which case the card
+    /// falls back to its type glyph. The URL is built by the typed client, never by hand, and is keyed
+    /// on the avatar's file id so a replace re-keys it and revalidation is a guaranteed 304.
+    /// </summary>
+    private OdsRecordImage? AvatarImage(ExistingContact c) =>
+        c.AvatarFileId is { } fileId
+            ? new OdsRecordImage(
+                Contacts.AvatarUrl(c.ContactId, fileId),
+                c.Type == ContactType.Organization ? OdsAvatarFit.Contain : OdsAvatarFit.Cover,
+                Round: c.Type != ContactType.Organization)
+            : null;
+
+    private void OpenAvatarDialog(ExistingContact c)
+    {
+        // Expanded first, as in the design system: the row the dialog belongs to stays visible behind
+        // it, and the refreshed card is the thing the user looks at when it closes.
+        _openId = c.ContactId;
+        _avatarContact = c;
+        _avatarOpen = true;
+    }
+
+    private void RequestAvatarRemoval(ExistingContact c)
+    {
+        _avatarContact = c;
+        _avatarRemoveOpen = true;
+    }
+
+    /// <summary>
+    /// Re-reads the contact so its new <c>AvatarFileId</c> re-keys the image URL, and drops the session
+    /// cache so a second open surface showing the same contact picks the change up without a manual
+    /// reload.
+    /// </summary>
+    private async Task AvatarSavedAsync()
+    {
+        if (_avatarContact is { } contact)
+        {
+            await RefreshContactAsync(contact.ContactId);
+        }
+    }
+
+    /// <summary>
+    /// The confirmation's submit. Returns true to let the dialog close; false keeps it open, since a
+    /// refusal the user has not seen resolved is not a reason to dismiss the thing that explains it.
+    /// </summary>
+    private async Task<bool> RemoveAvatarConfirmedAsync()
+    {
+        if (_avatarContact is not { } contact)
+        {
+            return false;
+        }
+
+        var noun = AvatarNoun(contact);
+        var result = await Contacts.DeleteAvatarAsync(contact.ContactId);
+        if (!result.Toast(Snackbar, $"Unable to remove the {noun}", $"{AvatarNounTitle(contact)} removed."))
+        {
+            return false;
+        }
+
+        Announce($"{AvatarNounTitle(contact)} removed.");
+        await RefreshContactAsync(contact.ContactId);
+        return true;
     }
 
     private Task CopyId(Guid contactId) =>

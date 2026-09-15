@@ -1,3 +1,5 @@
+using Odyssey.Core.Journal.Avatar;
+using Odyssey.Core.Finance;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
@@ -20,11 +22,21 @@ namespace Odyssey.Core.Tests;
 /// </summary>
 public class ContactAliasVCardTests
 {
+    /// <summary>
+    /// The avatar service a vCard import needs to attach a <c>PHOTO</c>/<c>LOGO</c> (issue #86 §9). A
+    /// fixed 64 MB global cap, so the effective avatar cap is the surface constant — <c>min</c> of the
+    /// two — exactly as it resolves in production against an untouched setting.
+    /// </summary>
+    private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
+        new(context,
+            new FileService(context, new FileValidationService()),
+            new FixedUploadLimits(64L * 1024 * 1024));
+
     private static (ContactService Service, ContactVCardService VCard) CreateServices(OdysseyContext context)
     {
         var service = new ContactService(context, new NoopContactReferenceGuard());
         return (service, new ContactVCardService(
-            context, service, new FakeImportExportLimitsLookup(),
+            context, service, AvatarServiceFor(context), new FakeImportExportLimitsLookup(),
             NullLogger<ContactVCardService>.Instance));
     }
 
