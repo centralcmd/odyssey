@@ -247,6 +247,47 @@ that conditional lives in `ContactController` — `DomainConflictException` carr
 else, and the domain service has no `ClaimsPrincipal`, so neither it nor `GlobalExceptionHandler` could
 shape one.
 
+**A contact carries ONE image, and what bounds it is what licenses the claim gate** (issue #86).
+`Contact.AvatarFileId` points into the existing Files store — no new blob table, no new backend. Three
+endpoints (`GET`/`POST`/`DELETE /api/contacts/{id}/avatar`) are gated on `contacts.read` and
+`contacts.update` **alone**, deliberately not also `files.read`/`.create`/`.delete`. The read side is
+contact data and takes no file id, so the claim buys that contact's image and nothing else. The write
+side rests on **boundedness**: what `contacts.update` confers here is ≤ 2 MB, one of three allow-listed
+still image types, magic-byte-checked, ≤ 1024², non-animated, metadata-stripped and re-validated, with a
+server-generated filename and description, at one row per contact. **That is an invariant, not a
+one-time judgement** — a change that widens any of it re-opens the claim-gating question rather than
+inheriting this answer.
+
+Five rules around it are easy to get backwards:
+
+- **The endpoint takes file BYTES, never a `fileId`.** A caller-supplied id would let a
+  `contacts.update` holder point a contact at any row in the Files store and read its bytes back
+  through the `contacts.read`-gated download — an arbitrary-file-read primitive assembled from two
+  innocuous claims. "Pick an existing file" is a non-goal for that reason, not for want of convenience.
+- **THREE paths release an avatar file, and all three call one rule** (`ContactAvatarRelease`): the
+  explicit `DELETE`, the contact-delete cascade, and **the replace half of `POST`**. An earlier draft
+  guarded the first two and missed the third, so a contact mis-pointed at a PDF would have had that PDF
+  destroyed by the next upload — the likeliest of the three to be reached, since replacing an image is
+  ordinary and deleting one is not. A file outside the avatar allow-list is **detached and logged,
+  never deleted**.
+- **Metadata removal is an allow-list walk, and the guarantee is a property of the OUTPUT.** The walk
+  (`ImageContainerWalk`) produces the stripped bytes, the dimensions and the animation determination in
+  one pass, so no raster library and no full EXIF parser sit on the untrusted-input path —
+  `MetadataExtractor` appears only in **tests**, where it is the independent oracle that makes
+  strip-then-verify meaningful. The runtime re-validation is a second pass of the same walk and on its
+  own is only a self-check; **keep both**. Every `APPn` is dropped, `APP0` included: JFIF carries a
+  thumbnail and `JFXX` embeds its own, so the one marker a keep-list is tempted to retain is the one
+  that can still smuggle a second image.
+- **Animated containers are rejected, never flattened**, and an unreadable one is rejected rather than
+  stored — for this slot an unparseable container is a defect, not a degraded read.
+- **The read path is `no-cache` with a strong `ETag`, resolved from `FileMetadata` alone.** That makes
+  revalidation the hot path, which is what buys immediate revocation and erasure — so touching the
+  `LONGBLOB` to answer a conditional request would make every return visit pay full materialisation for
+  a body it never sends. The response carries `Cross-Origin-Resource-Policy: **same-site**`, not
+  `same-origin`: CORP is enforced on no-cors subresource loads (exactly how an `<img src>` loads) and
+  compares scheme, host **and port**, so `same-origin` would block every avatar outside Docker — and
+  silently, since a load failure degrades to the type glyph.
+
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed only because the
 insurer foreign key had been removed; three real `RESTRICT` keys are back, so the database arbitrates
 the race it was written for and its violation maps to a `409` rather than a `500`. Removing the

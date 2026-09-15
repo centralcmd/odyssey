@@ -30,10 +30,29 @@ nothing stopping a write path that forgot to call either. One context makes them
 | `InsurancePolicyInsurer.ContactId`, `InsurancePolicyInsuredContact.ContactId`, `InsurancePolicyBeneficiary.ContactId` → `Contact` | `RESTRICT` |
 | `InsurancePolicyInsuredAccount.AccountId` → `Account` | `CASCADE` |
 | `Photo.FileId`, `JournalEntryAttachment.FileId`, `JournalTaskAttachment.FileId` → `FileMetadata` | `CASCADE` |
+| `Contact.AvatarFileId` → `FileMetadata` | `SET NULL` |
 
 They are declared as relationships with **no navigation properties** (`HasOne<Contact>().WithMany()`),
 so the modules stay one-directional in the source — a finance entity still has no `Contact` to
 `Include`, and the Mapster projections are unchanged — while the database gets the real constraint.
+
+### A contact's image detaches; it does not restrict, and the reverse is not a key
+
+`Contact.AvatarFileId` (issue #86) is the one image a contact carries, held in the ordinary Files
+store. Its `SET NULL` is declared **explicitly**, because EF's default for an optional relationship is
+`ClientSetNull` — which emits `RESTRICT`, under which deleting an avatar's file from the Files page
+would be a raw constraint violation rather than the graceful detach that leaves the contact rendering
+its type glyph.
+
+The index is **unique** (nullable, so MariaDB permits many `NULL`s): a file is the avatar of at most
+one contact, which is what makes "deleting the contact deletes its avatar file" safe rather than a way
+to destroy a file another row still points at. A concurrent double-write that trips it is a `409`.
+
+The opposite direction — contact deleted → image deleted — is **not expressible as a foreign key at
+all**, since the key runs the other way. It is application code inside the contact-delete transaction,
+and it shares one release rule with the two other paths that let go of an avatar file (the explicit
+`DELETE`, and the replace half of an upload). That rule refuses to delete a file whose content type is
+not a permitted contact image: a mis-pointed reference is detached and logged, never destroyed.
 
 ### The three insurance contact links are the complete blocker set
 
