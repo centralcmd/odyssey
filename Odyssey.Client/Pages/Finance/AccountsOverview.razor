@@ -42,13 +42,13 @@
         }
     </First>
     <Second>
-        @* Liabilities donut *@
+        @* Liability allocation donut *@
         @if (liabilitySlices.Count == 0)
         {
             <div class="donut-panel">
                 <div class="chart-head">
                     <div>
-                        <div class="chart-ttl">Liabilities</div>
+                        <div class="chart-ttl">Liability allocation</div>
                         <div class="chart-sub">What you owe</div>
                     </div>
                 </div>
@@ -63,7 +63,7 @@
                       TotalLabel="Total owed"
                       Format="LiabilityLegendFormat"
                       AriaLabel="Liabilities by account">
-                <Title>Liabilities</Title>
+                <Title>Liability allocation</Title>
                 <Sub>What you owe · @liabilitySlices.Count account@(liabilitySlices.Count == 1 ? "" : "s")</Sub>
             </OdsDonut>
         }
@@ -111,7 +111,7 @@
     private List<AccountAllocation> LiabilityAccounts => [.. Allocations.Where(a => a.Value < 0).OrderBy(a => a.Value)];
 
     // One slice per account, sized by |effective value| — OdsDonut owns the ring geometry and
-    // coloring. The allocation rides along in Tag so the legend can show a signed amount.
+    // coloring. The allocation rides along in Tag so the legend can format in its own currency.
     private static List<OdsDonutSlice> BuildSlices(IReadOnlyList<AccountAllocation> accounts) =>
         accounts.Select(a => new OdsDonutSlice
         {
@@ -120,11 +120,15 @@
             Tag = a,
         }).ToList();
 
-    // Slice rows use each account's own currency + sign; the total row (slice == null)
-    // uses the panel's signed aggregate.
+    // Slice rows use each account's own currency; the total row (slice == null) uses the panel's
+    // aggregate. Assets are already positive. Liabilities are magnitudes: the panel says "Total
+    // owed", so a minus sign in front of the number would negate that sentence and read as a credit.
+    // The sign lives on the account itself everywhere else on the page — only this ring drops it.
     private string AssetLegendFormat(decimal value, OdsDonutSlice? slice) =>
         slice?.Tag is AccountAllocation a ? FormatMoney(a.Value, a.CurrencyCode) : FormatMoney(TotalAssets, null);
 
     private string LiabilityLegendFormat(decimal value, OdsDonutSlice? slice) =>
-        slice?.Tag is AccountAllocation a ? FormatMoney(a.Value, a.CurrencyCode) : FormatMoney(TotalLiabilities, null);
+        slice?.Tag is AccountAllocation a
+            ? FormatMoney(Math.Abs(a.Value), a.CurrencyCode)
+            : FormatMoney(Math.Abs(TotalLiabilities), null);
 }
