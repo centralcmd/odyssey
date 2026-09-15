@@ -8,7 +8,9 @@
  * (in production, `src`). v1 has no EXIF / caption / lightbox / thumbnail pipeline —
  * a tile renders the image at native fidelity with `loading="lazy"` and a
  * capped display size, or, when no renderable `src` is supplied (mock / not yet
- * loaded), a striped placeholder carrying a monospace `photo` label + filename.
+ * loaded), a striped placeholder carrying a monospace `photo` label. The
+ * filename is never shown as a visible caption — it lives in the tile's
+ * accessible name and `title` tooltip only.
  *
  * The count is announced as text in the section heading (never colour/icon
  * alone). Tiles are a real `<button>` so tab-order, Enter/Space activation, and
@@ -54,6 +56,7 @@ export function JournalPhotoGallery({
                 type="button"
                 className="odc-photogrid-tile"
                 aria-label={`Open photo ${p.name || p.id}`}
+                title={p.name || undefined}
                 onClick={() => onOpen && onOpen(p)}>
                 {p.src ? (
                   <img className="odc-photogrid-img" src={p.src} alt={p.name || ''} loading="lazy" />
@@ -62,7 +65,6 @@ export function JournalPhotoGallery({
                     <span className="odc-photogrid-ph-label mono">photo</span>
                   </span>
                 )}
-                <span className="odc-photogrid-name mono" title={p.name || p.id}>{p.name || p.id}</span>
               </button>
             </li>
           ))}

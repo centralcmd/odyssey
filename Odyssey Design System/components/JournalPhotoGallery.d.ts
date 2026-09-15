@@ -10,7 +10,7 @@ export interface JournalPhoto {
    *  non-null on a returned link (links whose PhotoId no longer resolves are
    *  dropped server-side, never returned with an empty FileId). */
   fileId?: string;
-  /** Photo title (or filename) — used as the tile's accessible name and caption. */
+  /** Photo title (or filename) — used as the tile's accessible name and tooltip (never a visible caption). */
   name?: string;
   /** Full-res image URL (built from `fileId`). Omit for a striped placeholder tile (mock / pre-load). */
   src?: string;
