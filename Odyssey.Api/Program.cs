@@ -299,6 +299,7 @@ builder.Services.AddScoped<TransactionService>();
 builder.Services.AddScoped<TransactionTagService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.ContactService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.ContactVCardService>();
+builder.Services.AddScoped<Odyssey.Core.Journal.Avatar.ContactAvatarService>();
 builder.Services.AddScoped<CurrencyService>();
 builder.Services.AddScoped<ExchangeRateService>();
 builder.Services.AddScoped<CurrencyConversionService>();

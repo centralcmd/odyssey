@@ -8,6 +8,7 @@ using Odyssey.Context;
 using Odyssey.Dtos.Journal;
 // Aliased rather than a plain using: Odyssey.Dtos.Finance also declares ArchivalStatus.
 using DetachedInsuranceLinks = Odyssey.Dtos.Finance.DetachedInsuranceLinks;
+using Odyssey.Core.Journal.Avatar;
 using Odyssey.Core.Journal.Interop;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
@@ -381,6 +382,12 @@ public class ContactService
             // to three widened the window this used to leave open, and the six ExecuteUpdate/
             // ExecuteDelete statements in the cleanup were the genuinely non-atomic part all along.
             await referenceGuard.ClearAndCascadeReferencesAsync(id, cancellationToken);
+
+            // The contact's image dies with it (issue #86 §6). This direction is NOT expressible as a
+            // foreign key — the FK runs the other way, Contact → FileMetadata with SET NULL — so it is
+            // application code here, inside the same transaction, applying the shared release rule: a
+            // file whose content type is not avatar-legal is detached rather than destroyed.
+            await ContactAvatarRelease.StageAsync(context, contact, logger, "contact-delete", cancellationToken);
 
             context.Contacts.Remove(contact);
             await context.SaveChangesAsync(cancellationToken);

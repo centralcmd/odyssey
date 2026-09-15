@@ -43,6 +43,24 @@ public sealed record ExistingContact
     [StringLength(1024)]
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// The contact's one image (issue #86), or <c>null</c> when it has none — the healthy default, on
+    /// which every surface falls back to the type glyph.
+    ///
+    /// <para>
+    /// <b>A <c>Guid?</c> and nothing else</b>, by data minimisation (GDPR Art. 5(1)(c)): no dimensions,
+    /// no filename, no uploader, no timestamp. It keys the image URL
+    /// (<c>GET /api/contacts/{id}/avatar?v={avatarFileId}</c>), which makes revalidation after a
+    /// replace a guaranteed 304 rather than a full re-download.
+    /// </para>
+    ///
+    /// <para>
+    /// Deliberately <b>not</b> mirrored onto <see cref="ContactEmbed"/>: that is the boundary keeping a
+    /// caller holding only <c>transactions.read</c> from receiving a photograph of a natural person.
+    /// </para>
+    /// </summary>
+    public Guid? AvatarFileId { get; set; }
+
     public DateTime? Archived { get; set; }
 
     public DateTime CreatedAt { get; set; }

@@ -117,8 +117,16 @@ public class FileValidationService
     /// Types with no reliable magic number (plain text, CSV) are trusted to the allow-list and the
     /// forced-attachment + nosniff download path, so they always pass. Active-content formats such as
     /// SVG are deliberately off the allow-list entirely (see GetDefaultAllowedMimeTypes).
+    ///
+    /// <para>
+    /// <b>Public rather than private</b> (issue #86 §4.3): the contact-avatar path applies a narrower
+    /// image allow-list on top of this one and needs the same check over a byte span it already holds
+    /// (the vCard import path decodes base64 and has no <c>IFormFile</c> at all). Promoted to a seam so
+    /// the two paths cannot drift on what a JPEG is; duplicating the signature table was the
+    /// alternative, and a signature fixed in one copy would have stayed wrong in the other.
+    /// </para>
     /// </summary>
-    private static bool HeaderMatchesContentType(string contentType, ReadOnlySpan<byte> header)
+    public static bool HeaderMatchesContentType(string contentType, ReadOnlySpan<byte> header)
     {
         static bool StartsWith(ReadOnlySpan<byte> bytes, ReadOnlySpan<byte> signature) =>
             bytes.Length >= signature.Length && bytes[..signature.Length].SequenceEqual(signature);
@@ -194,7 +202,13 @@ public class FileValidationService
 /// A constant <see cref="IUploadLimitsLookup"/>, so the fixed-cap constructor above has exactly one
 /// validation path to feed rather than a parallel one that could drift from it.
 /// </summary>
-internal sealed class FixedUploadLimits(long maxUploadBytes) : IUploadLimitsLookup
+/// <remarks>
+/// Public rather than internal since issue #86: <c>ContactAvatarService</c> takes the lookup directly
+/// (it resolves <c>min(global cap, avatar cap)</c> rather than delegating to the validation service), so
+/// every direct caller that already knows its limit — tests included — needs the same one-line
+/// constant instead of hand-rolling a parallel stub per test project.
+/// </remarks>
+public sealed class FixedUploadLimits(long maxUploadBytes) : IUploadLimitsLookup
 {
     private readonly UploadLimits limits =
         new(maxUploadBytes, (int)Math.Max(1, maxUploadBytes / (1024 * 1024)), IsDegraded: false);

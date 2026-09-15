@@ -662,6 +662,22 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(candidate => candidate.MatchedContactId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Contact → FileMetadata: the contact's one image (issue #86). SET NULL is explicit and
+        // load-bearing — EF's default for an optional relationship is ClientSetNull, which emits
+        // RESTRICT, and under RESTRICT deleting an avatar's file from the Files page would fail with a
+        // raw FK violation instead of detaching the contact so it falls back to its type glyph.
+        //
+        // The opposite direction — contact deleted, avatar file deleted — is not expressible as a
+        // foreign key at all and lives in ContactService.Delete's transaction, applying the shared
+        // release rule. Because the EF InMemory provider enforces no foreign keys, the detach here also
+        // needs its application-level counterpart on the file-delete path (ContactAvatarService), or
+        // the fast test tiers exercise none of it.
+        modelBuilder.Entity<Contact>()
+            .HasOne<FileMetadata>()
+            .WithMany()
+            .HasForeignKey(contact => contact.AvatarFileId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // A contract party IS its link to the counterparty, so it dies with the contact — the Cascade
         // the FK carried before the split, and what the guard deletes by hand today.
         modelBuilder.Entity<ContractParty>()
