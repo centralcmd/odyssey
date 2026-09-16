@@ -224,7 +224,7 @@ public partial class Home
     private string? LastPointLabel => _chartSeries.Count > 0 ? _chartSeries[^1].Label : null;
 
     // The cause is carried on the response, so the copy names it. Inferring it from the payload is
-    // impossible for two of the four causes, which is why the field exists at all.
+    // impossible for several of the causes, which is why the field exists at all.
     private string ChartEmptyLabel =>
         DashboardFigures.ChartEmptyLabel(_history?.EmptyReason, _mainCurrencyCode);
 

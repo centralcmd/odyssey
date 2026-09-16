@@ -271,7 +271,7 @@ public class NetWorthHistoryApiTests
 
     /// <summary>
     /// The causes have to be separable from the payload without the client inferring anything. An
-    /// earlier draft made three of the four responses byte-identical apart from
+    /// earlier draft made three of the four responses it then had byte-identical apart from
     /// <c>unconvertedAccounts</c>, which cannot tell "no accounts" from "the window ends before the
     /// first one" at all.
     /// </summary>

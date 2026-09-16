@@ -75,7 +75,7 @@ internal static class DashboardFigures
     /// </summary>
     /// <param name="reason">
     /// The server's own discrimination. It is carried on the response precisely because it cannot be
-    /// inferred: two of the four causes produce otherwise byte-identical payloads.
+    /// inferred: several of the causes produce otherwise byte-identical payloads.
     /// </param>
     /// <param name="mainCurrencyCode">Interpolated into the conversion case, which names the currency it failed to reach.</param>
     internal static string ChartEmptyLabel(NetWorthEmptyReason? reason, string? mainCurrencyCode) => reason switch
