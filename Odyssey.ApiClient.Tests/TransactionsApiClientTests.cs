@@ -53,12 +53,14 @@ public class TransactionsApiClientTests
         var (client, handler) = Create();
         var account = Guid.NewGuid();
         var tag = Guid.NewGuid();
+        var contact = Guid.NewGuid();
 
         await client.ListAsync(1, 25,
             search: "rent & utilities",
             accountIds: [account.ToString()],
             statuses: ["Approved"],
             tagIds: [tag.ToString()],
+            contactIds: [contact.ToString()],
             direction: ["Expense"],
             sortBy: "date",
             sortDir: "desc");
@@ -68,6 +70,7 @@ public class TransactionsApiClientTests
         Assert.Contains($"accountIds={account}", query);
         Assert.Contains("statuses=Approved", query);
         Assert.Contains($"tagIds={tag}", query);
+        Assert.Contains($"contactIds={contact}", query);
         Assert.Contains("direction=Expense", query);
         Assert.Contains("sortBy=date", query);
         Assert.Contains("sortDir=desc", query);

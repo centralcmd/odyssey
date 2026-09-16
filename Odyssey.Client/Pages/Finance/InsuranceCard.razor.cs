@@ -560,6 +560,23 @@ public partial class InsuranceCard
         _partyOpen = true;
     }
 
+    // Detaching the link leaves the contact or account itself untouched, which is why this is not
+    // worded as a delete and does not go through a delete confirmation. It lives on the tile's own ⋯
+    // menu rather than in the edit dialog's footer: a destructive action beside Save reads as the
+    // opposite of Save, which is exactly where a mis-click hurts.
+    private async Task RemovePartyAsync(Guid policyId, InsurancePartyRole role, Guid targetId)
+    {
+        if (!_canUpdate || !_details.TryGetValue(policyId, out var d)) return;
+
+        if (!(await Insurance.RemovePartyAsync(policyId, role, targetId))
+                .Toast(Snackbar, "Unable to remove party", "Party removed."))
+            return;
+
+        await ReloadPolicy(policyId);
+        _announce = $"Party removed from {d.Name}. The linked record itself is unchanged.";
+        StateHasChanged();
+    }
+
     // ── Renewal dialog ─────────────────────────────────────────────────────────
     private ExistingInsurancePolicy? _renewalPolicy;
     private ExistingPolicyRenewal? _editingRenewal;

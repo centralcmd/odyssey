@@ -109,7 +109,7 @@ public sealed class TaxStatementsQueryParams : QueryParams<TaxStatementSortBy>
     public TaxStatementStatusFilter[]? Statuses { get; set; }
 }
 
-/// <summary>Transactions list query: filter by account(s), status(es), tag(s), direction and date bounds.</summary>
+/// <summary>Transactions list query: filter by account(s), status(es), tag(s), merchant(s), direction and date bounds.</summary>
 public sealed class TransactionsQueryParams : QueryParams<TransactionSortBy>
 {
     [MaxLength(ListDefaults.MaxFilterArrayLength)]
@@ -120,6 +120,14 @@ public sealed class TransactionsQueryParams : QueryParams<TransactionSortBy>
 
     [MaxLength(ListDefaults.MaxFilterArrayLength)]
     public Guid[]? TagIds { get; set; }
+
+    /// <summary>
+    /// The MERCHANT filter (design system · Transactions). Named for the contact rows it selects, not
+    /// for the label: the ledger column and this filter say "Merchant", the record they point at is a
+    /// contact. A transaction with no contact matches no value, so it drops out of a filtered list.
+    /// </summary>
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public Guid[]? ContactIds { get; set; }
 
     public TransactionDirection? Direction { get; set; }
 

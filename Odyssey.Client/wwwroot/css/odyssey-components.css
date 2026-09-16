@@ -2131,26 +2131,11 @@
   font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
   color: var(--mud-palette-text-secondary); white-space: nowrap;
 }
-/* Per-tile edit action: the renewal row's own icon-button treatment (borderless, tinted hover),
-   hidden until the tile is hovered or something inside it takes focus, so the parties grid stays
-   quiet while it is only being read. */
+/* Every party tile carries the same ⋯ menu the contact-method tiles do — same corner, same 24px
+   target, always visible rather than hover-revealed: a menu that appears only on hover is invisible
+   to a touch user and to anyone reading the grid without a pointer. */
 .ins-section .odc-tilegrid > .odc-infotile { position: relative; }
-.ins-tile-edit {
-  position: absolute; top: 6px; right: 6px; z-index: 1;
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; padding: 0; border-radius: 6px;
-  border: none; background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer;
-  opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
-}
-.ins-tile-edit .material-icons { font-size: 18px; }
-.odc-infotile:hover .ins-tile-edit, .ins-tile-edit:focus-visible { opacity: 1; }
-.ins-tile-edit:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
-.ins-tile-edit:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-
-/* The destructive action in the Edit party dialog sits apart from the Cancel / Save pair.
-   The `.mud-dialog` prefix is what beats MudBlazor's own actions-row specificity — the same
-   escalation every ods-modal-foot rule above needs. */
-.mud-dialog .mud-dialog-actions.ods-modal-foot > .ins-remove-party { margin-right: auto; }
+.ins-tile-menu { position: absolute; top: 6px; right: 6px; z-index: 1; }
 
 /* Tile grids — the tiles are OdsInfoTile (.odc-infotile). The grid sets the
    InfoTile icon-chip accent to the feature's indigo unless a tile sets its own. */

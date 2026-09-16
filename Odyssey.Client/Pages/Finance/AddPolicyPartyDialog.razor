@@ -88,13 +88,9 @@
         </div>
     </ChildContent>
     <Footer>
-        @* Removing the party detaches the record from the policy — the record itself is untouched,
-           so this is not a delete. It sits apart from the Cancel / Save pair. *@
-        @if (IsEdit)
-        {
-            <OdsButton Variant="OdsButtonVariant.Danger" Icon="link_off" Class="ins-remove-party"
-                       Loading="_isRemoving" OnClick="RemoveAsync">Remove party</OdsButton>
-        }
+        @* Removing a party lives on the party TILE's ⋯ menu, not here: this dialog edits ONE link and
+           its footer carries that edit's own actions. A destructive action in a footer beside Save
+           also reads as the opposite of Save, which is exactly where a mis-click hurts. *@
         <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
         <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")"
                    Loading="_isSaving" OnClick="SubmitAsync">

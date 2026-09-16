@@ -1,5 +1,8 @@
 @using Odyssey.Client.Components
+@using Odyssey.Client.Services
 @using Odyssey.Dtos.Finance
+@inject IClipboardService Clipboard
+@inject NavigationManager Navigation
 
 @*
     InsurancePolicyLinkTiles — the read display of ONE of a policy's four link collections
@@ -19,7 +22,12 @@
     be — the read model carries the id and the type, never the name — with no type caption at all
     when the link is unresolvable, since there is no contact row to read a type from. Meaning never
     rides on the glyph alone. It also carries NO edit action: its record is not in the picker, so the
-    dialog could not round-trip it.
+    dialog could not round-trip it — but it keeps Copy ID and Remove, because detaching an unnamed
+    link is exactly the cleanup a reader most needs and its name being unreadable does not block it.
+
+    Every member carries the same ⋯ menu the contact-method tiles do, in the same corner at the same
+    24px target, ALWAYS VISIBLE rather than hover-revealed: a menu that appears only on hover is
+    invisible to a touch user and to anyone reading the grid without a pointer.
 
     Past five members the collection collapses into a "+N more" tile that expands in place, so a
     collection at the cap of 50 has a defined rendering.
@@ -63,98 +71,23 @@
 }
 
 @code {
-    /// <summary>Members a collection names before it collapses into "+N more".</summary>
-    public const int TileLimit = 5;
-
-    /// <summary>The collection's members, already in the server's display order.</summary>
-    [Parameter, EditorRequired] public IReadOnlyList<LinkTileMember> Members { get; set; } = [];
-
-    /// <summary>The collection's SINGULAR name — "Insurer", "Insured", "Beneficiary".</summary>
-    [Parameter, EditorRequired] public string? Label { get; set; }
-
-    /// <summary>Glyph for a member whose own type resolves to none.</summary>
-    [Parameter] public string FallbackIcon { get; set; } = "link";
-
-    /// <summary>Which of the policy's four collections this is — passed back with an edit.</summary>
-    [Parameter] public InsurancePartyRole Role { get; set; }
-
-    /// <summary>
-    /// Raised with (role, targetId) when a member's edit action is used. Unset means the tiles are
-    /// read-only, which is also what a caller without insurance.update passes.
-    /// </summary>
-    [Parameter] public EventCallback<(InsurancePartyRole Role, Guid TargetId)> OnEditParty { get; set; }
-
-    private bool _expanded;
-
-    private static string UnnamedIcon(LinkTileMember member) =>
-        member.State == LinkAvailability.Archived ? "inventory_2" : "link_off";
-
     /// <summary>
     /// The overline: the collection's singular name, plus the member's term when it has one, plus the
-    /// tile's own edit action. The term goes on its OWN line rather than into the caption so the type
+    /// tile's own ⋯ menu. The term goes on its OWN line rather than into the caption so the type
     /// stays one line and a long range never wraps it.
     /// </summary>
-    private RenderFragment LabelFor(LinkTileMember member) => builder =>
-    {
-        var seq = 0;
-        builder.AddContent(seq++, Label);
-
-        if (!string.IsNullOrEmpty(member.Term))
-        {
-            builder.OpenElement(seq++, "span");
-            builder.AddAttribute(seq++, "class", "ins-term");
-            builder.AddContent(seq++, member.Term);
-            builder.CloseElement();
-        }
-
-        // Never offered for an unnamed member: its record is not in the picker, so the dialog could
-        // not round-trip it. The affordance would promise a write that cannot be made.
-        if (OnEditParty.HasDelegate && !member.Unnamed && Guid.TryParse(member.Key, out var targetId))
-        {
-            var role = Role;
-            builder.OpenElement(seq++, "button");
-            builder.AddAttribute(seq++, "type", "button");
-            builder.AddAttribute(seq++, "class", "ins-tile-edit");
-            builder.AddAttribute(seq++, "aria-label", $"Edit {Label?.ToLowerInvariant()} {member.Display}");
-            builder.AddAttribute(seq++, "onclick",
-                EventCallback.Factory.Create<MouseEventArgs>(this, () => OnEditParty.InvokeAsync((role, targetId))));
-            builder.OpenElement(seq++, "span");
-            builder.AddAttribute(seq++, "class", "material-icons");
-            builder.AddAttribute(seq++, "aria-hidden", "true");
-            builder.AddContent(seq++, "edit");
-            builder.CloseElement();
-            builder.CloseElement();
-        }
-    };
-
-    /// <summary>
-    /// One member of a link collection, flattened for display. Built by the host, which holds both
-    /// the reference DTO and the type registry the glyph and colour come from.
-    /// </summary>
-    public sealed record LinkTileMember
-    {
-        public required string Key { get; init; }
-
-        /// <summary>The name, or the state word for an unnamed member — always in TEXT.</summary>
-        public required string Display { get; init; }
-
-        /// <summary>The type, in text. Null for an unresolvable link, which has no type to state.</summary>
-        public string? TypeLabel { get; init; }
-
-        /// <summary>
-        /// The member's term in the role, already formatted — null when it is the default (the
-        /// policy's own extent), which needs no caption.
-        /// </summary>
-        public string? Term { get; init; }
-
-        public string? Icon { get; init; }
-
-        public string? IconColor { get; init; }
-
-        public string? IconSoft { get; init; }
-
-        public LinkAvailability State { get; init; } = LinkAvailability.Available;
-
-        public bool Unnamed => State != LinkAvailability.Available;
-    }
+    private RenderFragment LabelFor(LinkTileMember member) =>
+        @<text>
+            @Label
+            @if (!string.IsNullOrEmpty(member.Term))
+            {
+                <span class="ins-term">@member.Term</span>
+            }
+            @if (MenuFor(member) is { Count: > 0 } items)
+            {
+                <span class="ins-tile-menu">
+                    <OdsMenu Items="items" AriaLabel="@($"Actions for {Label?.ToLowerInvariant()} {member.Display}")" />
+                </span>
+            }
+        </text>;
 }

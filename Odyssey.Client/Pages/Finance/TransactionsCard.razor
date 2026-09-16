@@ -34,9 +34,13 @@
             <div class="ph-filter-bar">
                 <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
                                 DebounceInterval="300" OnSearch="ReloadAsync"
-                                Placeholder="Search description, contact…" Class="ph-search" />
+                                Placeholder="Search description, merchant…" Class="ph-search" />
                 <OdsMultiSelect Label="Account" Values="_accountFilter" ValuesChanged="OnAccountFilterChanged" Options="_accountOptions" Class="ph-select" />
                 <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
+                @if (_canReadContacts)
+                {
+                    <OdsMultiSelect Label="Merchant" Values="_merchantFilter" ValuesChanged="OnMerchantFilterChanged" Options="_merchantOptions" Class="ph-select" />
+                }
                 <OdsMultiSelect Label="Tag" Values="_tagFilter" ValuesChanged="OnTagFilterChanged" Options="_tagOptions" Class="ph-select" />
                 <OdsMultiSelect Label="Direction" Values="_directionFilter" ValuesChanged="OnDirectionFilterChanged" Options="_directionOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingTransaction" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
