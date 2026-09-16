@@ -537,20 +537,36 @@ public class AccountTotalsServiceTests
     /// <summary>
     /// The two services agree because they call the same predicates, so this asserts the agreement
     /// end-to-end rather than trusting that: the same portfolio through both paths must split
-    /// identically.
+    /// identically, and drop the same accounts.
     /// </summary>
+    /// <remarks>
+    /// <b>The portfolio contains closed accounts on purpose (issue #99).</b> Membership is the other
+    /// thing the two services have to agree about, and it is the half this issue changed — but AC2 was
+    /// pinned here over a portfolio where nothing ever closed, so a term rule applied in one service
+    /// and not the other would have left this green. The only cover for that was the MariaDB test,
+    /// which self-skips without Docker, so an ordinary `dotnet test Odyssey.Core.Tests` had none at all.
+    /// The exact-instant boundary stays in the integration tier, where `datetime(6)` makes it mean
+    /// something; the close date here is deliberately far from any period bound, which is a case EF
+    /// InMemory is a sound oracle for.
+    /// </remarks>
     [Fact]
     public async Task TheTotalsAndTheHistory_ClassifyTheSamePortfolioIdentically()
     {
         await using var context = TestContextFactory.Create();
 
+        // One asset and one liability close mid-window; the close date sits a month before FixedNow,
+        // clear of every monthly period bound and of the final bound itself.
+        var closedOn = FixedNow.AddMonths(-1);
+        AccountType[] closing = [AccountType.SavingsAccount, AccountType.CreditCard];
+
         // NewAccount's optional arguments are `archived`/`closed`/`opened`, all defaulted — every
         // account here opens at 2025-01-01, comfortably inside the default 24-month window ending at
-        // FixedNow, and none of them closes.
+        // FixedNow.
         foreach (var type in Enum.GetValues<AccountType>())
         {
             var id = Guid.NewGuid();
-            context.Accounts.Add(NewAccount(id, type.ToString(), type, "USD"));
+            context.Accounts.Add(NewAccount(id, type.ToString(), type, "USD",
+                closed: closing.Contains(type) ? closedOn : null));
             context.Transactions.Add(NewTransaction(id, 100m));
         }
 
@@ -565,5 +581,15 @@ public class AccountTotalsServiceTests
         Assert.Equal(totals.TotalAssets, last.TotalAssets);
         Assert.Equal(totals.TotalLiabilities, last.TotalLiabilities);
         Assert.Equal(totals.NetWorth, last.NetWorth);
+
+        // …and the agreement is not the vacuous kind where both kept the closed pair, or both dropped
+        // everything. Each side is exactly one account short of its full roster.
+        var types = Enum.GetValues<AccountType>();
+        Assert.Equal((types.Count(AccountClassification.IsAsset) - 1) * 100m, totals.TotalAssets);
+        Assert.Equal((types.Count(AccountClassification.IsLiability) - 1) * -100m, totals.TotalLiabilities);
+
+        // The closed pair is in the line's past, so the series is not flat at the final figure —
+        // which is what distinguishes a per-slot term from one applied once for the whole series.
+        Assert.Contains(history.Points, point => point.NetWorth != last.NetWorth);
     }
 }
