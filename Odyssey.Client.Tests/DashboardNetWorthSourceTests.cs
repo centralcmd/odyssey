@@ -1,4 +1,8 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
+using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Finance;
+using Odyssey.Dtos.Finance;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -125,5 +129,195 @@ public class DashboardNetWorthSourceTests
     {
         Assert.DoesNotContain("Since {", CodeBehind(), StringComparison.Ordinal);
         Assert.DoesNotContain("$\"Since ", CodeBehind(), StringComparison.Ordinal);
+    }
+
+    // ── The series comes from the server, and only from the server ────────────────────────────
+
+    [Fact]
+    public void TheChartSeries_ComesFromTheNetWorthHistoryEndpoint()
+    {
+        Assert.Contains("GetNetWorthHistoryAsync", CodeBehind(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// AC19 / AC11. A failed call yields no series at all — there is no fallback, and a
+    /// plausible-looking line assembled client-side is exactly the defect issue #88 removed. An empty
+    /// RESULT is a different thing: it comes back with a cause, and the copy names it.
+    /// </summary>
+    [Fact]
+    public void AFailedHistoryCall_YieldsNoSeriesAndItsOwnCopy()
+    {
+        Assert.Empty(DashboardFigures.BuildSeries(null));
+
+        var loadFailed = DashboardFigures.ChartEmptyLabel(null, "NOK");
+        var emptyResult = DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NoAccounts, "NOK");
+        Assert.NotEqual(loadFailed, emptyResult);
+    }
+
+    /// <summary>
+    /// The points are carried across as they came, in order, with their state — never re-derived,
+    /// re-scaled or smoothed.
+    /// </summary>
+    [Fact]
+    public void TheSeries_IsTheResponsesPointsUnaltered()
+    {
+        var history = new NetWorthHistory
+        {
+            MainCurrencyCode = "NOK",
+            Interval = NetWorthInterval.Monthly,
+            From = new DateOnly(2024, 10, 1),
+            To = new DateOnly(2025, 1, 15),
+            Points =
+            [
+                Point(new DateOnly(2024, 11, 1), -827_700m),
+                Point(new DateOnly(2024, 12, 1), -402_300m, unconverted: 1),
+                Point(new DateOnly(2025, 1, 1), 2_801_755.50m, revalued: 1),
+            ],
+        };
+
+        var series = DashboardFigures.BuildSeries(history);
+
+        Assert.Equal([-827_700m, -402_300m, 2_801_755.50m], series.Select(point => point.Value));
+        Assert.Equal(
+            [OdsLinePointKind.Normal, OdsLinePointKind.Partial, OdsLinePointKind.Revalued],
+            series.Select(point => point.Kind));
+    }
+
+    /// <summary>
+    /// An understated point is PLOTTED and marked, never dropped. Dropping one would move the first or
+    /// last point, so the delta would silently span a shorter window than its own suffix claims.
+    /// </summary>
+    [Fact]
+    public void AnUnderstatedPoint_IsKeptInTheSeries()
+    {
+        var history = new NetWorthHistory
+        {
+            MainCurrencyCode = "NOK",
+            Interval = NetWorthInterval.Monthly,
+            From = new DateOnly(2024, 10, 1),
+            To = new DateOnly(2024, 12, 15),
+            Points =
+            [
+                Point(new DateOnly(2024, 11, 1), 100m, unconverted: 1),
+                Point(new DateOnly(2024, 12, 1), 200m),
+            ],
+        };
+
+        var series = DashboardFigures.BuildSeries(history);
+
+        Assert.Equal(2, series.Count);
+        Assert.Equal(OdsLinePointKind.Partial, series[0].Kind);
+        Assert.All(series, point => Assert.NotNull(point.Value));
+    }
+
+    /// <summary>
+    /// A point that is somehow both understated and revalued reports the STRONGER caveat. Reporting
+    /// the weaker one would let an understated endpoint keep a delta it cannot support.
+    /// </summary>
+    [Fact]
+    public void APointThatIsBoth_ReportsTheStrongerCaveat()
+    {
+        Assert.Equal(
+            OdsLinePointKind.Partial,
+            DashboardFigures.KindOf(Point(new DateOnly(2025, 1, 1), 1m, unconverted: 1, revalued: 1)));
+    }
+
+    // ── AC30 — a totals failure must not change how the chart's figures are denominated ────────
+
+    /// <summary>
+    /// The money format is resolved from the user's PREFERENCE before the fan-out, not from the totals
+    /// response. It used to be assigned inside the totals load, so a totals failure left it null and
+    /// the fallback was the generic "$" — which, with the history call succeeding, would have rendered
+    /// a real NOK series under a dollar sign.
+    ///
+    /// <para>
+    /// Asserted on the resolved <see cref="NumberFormatInfo"/> rather than on the currency code: the
+    /// code being right is what the old version already had, and it is not what prevented the "$".
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheMoneyFormat_IsNotOwnedByTheTotalsResponse()
+    {
+        var source = CodeBehind();
+        var totalsLoad = Between(source, "private async Task LoadTotalsAsync()", "private async Task<NumberFormatInfo?>");
+
+        Assert.DoesNotContain("_mainCurrencyFormat", totalsLoad, StringComparison.Ordinal);
+
+        // …and it is resolved before the three calls fan out, not after any of them returns.
+        var accountsLoad = Between(source, "private async Task LoadAccountsAsync()", "private async Task LoadHistoryAsync()");
+        var resolvedAt = accountsLoad.IndexOf("ResolveMainCurrencyFormatAsync", StringComparison.Ordinal);
+        var fannedOutAt = accountsLoad.IndexOf("Task.WhenAll", StringComparison.Ordinal);
+
+        Assert.True(resolvedAt >= 0 && fannedOutAt > resolvedAt,
+            "The NumberFormatInfo has to be resolved above the Task.WhenAll: a totals failure must not "
+            + "be able to leave the chart formatting its figures with the generic \"$\".");
+    }
+
+    /// <summary>
+    /// The other half of the same property, behaviourally: a resolved main currency formats in its own
+    /// symbol, and a code with no reference-data row falls back to the CODE rather than to "$". A wrong
+    /// sigil misreports the denomination; a bare code merely looks unpolished.
+    /// </summary>
+    [Fact]
+    public void TheResolvedFormat_NeverFallsBackToAGenericDollar()
+    {
+        var known = DashboardFigures.MoneyFormat("NOK",
+            new ExistingCurrency { CurrencyCode = "NOK", Name = "Norwegian Krone", Symbol = "kr", MinorUnits = 2 });
+        Assert.Equal("kr", known.CurrencySymbol);
+
+        var unknownRow = DashboardFigures.MoneyFormat("NOK", null);
+        Assert.Equal("NOK", unknownRow.CurrencySymbol);
+        Assert.NotEqual("$", unknownRow.CurrencySymbol);
+    }
+
+    // ── AC37 — no client-side copy of a server cap ────────────────────────────────────────────
+
+    /// <summary>
+    /// AC37. The point caps are server-side, and <c>NetWorthHistoryQuery</c> lives in
+    /// <c>Odyssey.Dtos</c> — which the WASM client can reference — so the client SHARES the constants
+    /// rather than copying them. A copy is the defect CLAUDE.md already forbids for admin-editable
+    /// caps: lowering the server's would let the page ask for a window the server refuses, and raising
+    /// it would make the extra range unusable.
+    ///
+    /// <para>
+    /// The dashboard currently names no cap at all — it sends no window and takes the server's
+    /// defaults, which is the strongest form of the same property. This fires if that changes and the
+    /// number is written in rather than referenced.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(NetWorthHistoryQuery.MaxPoints)]
+    [InlineData(NetWorthHistoryQuery.MaxDailyPoints)]
+    [InlineData(NetWorthHistoryQuery.MaxWeeklyPoints)]
+    [InlineData(NetWorthHistoryQuery.DefaultPoints)]
+    public void ThePointCaps_AreNeverWrittenIntoThePage(int cap)
+    {
+        var text = CodeBehind() + Markup();
+        var literal = cap.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        var match = Regex.Match(text, $@"(?<![\w.]){literal}(?![\w])");
+        Assert.False(match.Success,
+            $"Home.razor.cs:{ClientSource.LineAt(text, match.Index)} writes {literal} in. The point caps "
+            + "and the default window live on NetWorthHistoryQuery in Odyssey.Dtos, which the client can "
+            + "reference — name the constant rather than copying the number.");
+    }
+
+    private static NetWorthHistoryPoint Point(DateOnly date, decimal netWorth, int unconverted = 0, int revalued = 0) => new()
+    {
+        Date = date,
+        TotalAssets = netWorth > 0 ? netWorth : 0m,
+        TotalLiabilities = netWorth < 0 ? -netWorth : 0m,
+        NetWorth = netWorth,
+        UnconvertedAccountCount = unconverted,
+        RevaluedAccountCount = revalued,
+        ContributingAccountCount = 1,
+    };
+
+    private static string Between(string source, string start, string end)
+    {
+        var from = source.IndexOf(start, StringComparison.Ordinal);
+        Assert.True(from >= 0, $"Home.razor.cs no longer contains '{start}'.");
+        var to = source.IndexOf(end, from, StringComparison.Ordinal);
+        return to < 0 ? source[from..] : source[from..to];
     }
 }

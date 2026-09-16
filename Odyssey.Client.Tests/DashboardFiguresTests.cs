@@ -146,17 +146,187 @@ public class DashboardFiguresTests
     // ── Chart empty state ──
 
     /// <summary>
-    /// Two causes, two sentences. Reporting "no balances" when the totals call failed tells the reader
-    /// their accounts are empty when they are not.
+    /// Five states, five sentences. The four server-side causes are carried on the response precisely
+    /// because they cannot be inferred — two of them produce otherwise byte-identical payloads — and
+    /// "no data yet" tells a reader with a full portfolio that their accounts are empty.
     /// </summary>
     [Fact]
-    public void ChartEmptyLabel_DistinguishesNoDataFromNoTotals()
+    public void ChartEmptyLabel_GivesEachCauseItsOwnSentence()
     {
-        var noData = DashboardFigures.ChartEmptyLabel(hasTotals: true);
-        var noTotals = DashboardFigures.ChartEmptyLabel(hasTotals: false);
+        var copy = new[]
+        {
+            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NotBuilt, "NOK"),
+            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NoAccounts, "NOK"),
+            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NothingConvertible, "NOK"),
+            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.WindowBeforeFirstAccount, "NOK"),
+            DashboardFigures.ChartEmptyLabel(null, "NOK"),
+        };
 
-        Assert.NotEqual(noData, noTotals);
-        Assert.Contains("balances", noData, StringComparison.Ordinal);
-        Assert.Contains("unavailable", noTotals, StringComparison.Ordinal);
+        Assert.Equal(copy.Length, copy.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(copy, sentence => Assert.False(string.IsNullOrWhiteSpace(sentence)));
+    }
+
+    /// <summary>
+    /// A reader cannot act on "could not be converted" without knowing what it could not be converted
+    /// TO, and the currency is admin- and user-settable, so it is interpolated rather than written in.
+    /// </summary>
+    [Fact]
+    public void ChartEmptyLabel_NamesTheCurrencyItCouldNotConvertTo()
+    {
+        Assert.Contains("NOK",
+            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NothingConvertible, "NOK"),
+            StringComparison.Ordinal);
+
+        // …and stays a sentence rather than a gap when the currency is unknown.
+        var unknown = DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NothingConvertible, null);
+        Assert.DoesNotContain("  ", unknown, StringComparison.Ordinal);
+        Assert.EndsWith("for any period.", unknown, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A failed CALL is not one of the server's causes. "Not available yet" is a statement about the
+    /// data; this is a statement about the request, and conflating them tells the reader their history
+    /// does not exist when it may be fine.
+    /// </summary>
+    [Fact]
+    public void ChartEmptyLabel_SeparatesAFailedCallFromAnEmptyResult()
+    {
+        Assert.NotEqual(
+            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NotBuilt, "NOK"),
+            DashboardFigures.ChartEmptyLabel(null, "NOK"));
+
+        Assert.Contains("could not be loaded",
+            DashboardFigures.ChartEmptyLabel(null, "NOK"), StringComparison.Ordinal);
+    }
+
+    // ── Chart labels, caption and notes ──
+
+    /// <summary>
+    /// A point is dated at its period END, and the tick label is derived from that date. Deriving it
+    /// from anything else is how a financial figure gets mislabelled by one period.
+    /// </summary>
+    [Fact]
+    public void PointLabel_ShowsTheYearOnTheFirstPointAndWhereverItChanges()
+    {
+        var first = DashboardFigures.PointLabel(new DateOnly(2024, 11, 1), NetWorthInterval.Monthly, null);
+        var sameYear = DashboardFigures.PointLabel(new DateOnly(2024, 12, 1), NetWorthInterval.Monthly, new DateOnly(2024, 11, 1));
+        var newYear = DashboardFigures.PointLabel(new DateOnly(2025, 1, 1), NetWorthInterval.Monthly, new DateOnly(2024, 12, 1));
+
+        Assert.Contains("Nov", first, StringComparison.Ordinal);
+        Assert.Contains("24", first, StringComparison.Ordinal);
+
+        // No year repeated under every tick inside one year…
+        Assert.Equal("Dec", sameYear);
+        // …but the year comes back the moment it changes, or a reader cannot place the point at all.
+        Assert.Contains("25", newYear, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(NetWorthInterval.Daily, "16 Sep")]
+    [InlineData(NetWorthInterval.Weekly, "16 Sep")]
+    [InlineData(NetWorthInterval.Yearly, "2026")]
+    public void PointLabel_MatchesTheIntervalsResolution(NetWorthInterval interval, string expected)
+    {
+        Assert.Equal(expected, DashboardFigures.PointLabel(new DateOnly(2026, 9, 16), interval, null));
+    }
+
+    [Fact]
+    public void ChartCaption_SaysWhatTheChartIs()
+    {
+        var caption = DashboardFigures.ChartCaption(24, "Jul ’24", "Jun ’26", NetWorthInterval.Monthly, "NOK");
+
+        Assert.Contains("24 monthly points", caption, StringComparison.Ordinal);
+        Assert.Contains("NOK", caption, StringComparison.Ordinal);
+        // The caption it replaced said "Since 2016", which described the span of a curve that had no
+        // real span — so a year on its own is exactly what must not come back.
+        Assert.DoesNotContain("Since", caption, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ChartCaption_DropsTheSpanRatherThanPrintingAnEmptyOne()
+    {
+        var caption = DashboardFigures.ChartCaption(0, null, null, NetWorthInterval.Monthly, "NOK");
+
+        Assert.DoesNotContain("–", caption, StringComparison.Ordinal);
+        Assert.DoesNotContain(" ·  ·", caption, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ChartAriaLabel_NamesTheResolutionAndTheSpan()
+    {
+        var label = DashboardFigures.ChartAriaLabel(24, "Jul ’24", "Jun ’26", NetWorthInterval.Monthly);
+
+        Assert.StartsWith("Net worth over time,", label, StringComparison.Ordinal);
+        Assert.Contains("24 monthly points", label, StringComparison.Ordinal);
+        Assert.Contains("from Jul ’24 to Jun ’26", label, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ChartAriaLabel_FallsBackToThePlainNameWithNoPoints()
+    {
+        Assert.Equal("Net worth over time",
+            DashboardFigures.ChartAriaLabel(0, null, null, NetWorthInterval.Monthly));
+    }
+
+    /// <summary>
+    /// The markers rest on shape and stroke, so a reader who cannot see the plot gets neither. Every
+    /// condition the chart marks is therefore also stated in a sentence.
+    /// </summary>
+    [Fact]
+    public void UnderstatedNote_NamesThePeriodAndTheAccountWhenThereIsOnlyOneOfEach()
+    {
+        var note = DashboardFigures.UnderstatedNote(
+            ["Jul ’25"],
+            [new UnconvertedAccount { AccountId = Guid.NewGuid(), Name = "Zurich brokerage", CurrencyCode = "CHF" }],
+            deltaWithheld: false);
+
+        Assert.NotNull(note);
+        Assert.Contains("Jul ’25 is understated", note, StringComparison.Ordinal);
+        Assert.Contains("Zurich brokerage (CHF)", note, StringComparison.Ordinal);
+        Assert.DoesNotContain("withheld", note, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnderstatedNote_ExplainsTheWithheldDeltaOnlyWhenItIsWithheld()
+    {
+        var accounts = new List<UnconvertedAccount>
+        {
+            new() { AccountId = Guid.NewGuid(), Name = "A", CurrencyCode = "CHF" },
+            new() { AccountId = Guid.NewGuid(), Name = "B", CurrencyCode = "SEK" },
+        };
+
+        var withheld = DashboardFigures.UnderstatedNote(["Jul", "Aug"], accounts, deltaWithheld: true);
+        Assert.NotNull(withheld);
+        Assert.Contains("2 periods are understated", withheld, StringComparison.Ordinal);
+        Assert.Contains("withheld", withheld, StringComparison.Ordinal);
+        // More than one unconvertible account: naming them all would turn a caption into a roster.
+        Assert.Contains("an account had no exchange rate", withheld, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheTwoNotes_AreSeparateSentencesWithDifferentWording()
+    {
+        var understated = DashboardFigures.UnderstatedNote(
+            ["Jul"],
+            [new UnconvertedAccount { AccountId = Guid.NewGuid(), Name = "A", CurrencyCode = "CHF" }],
+            deltaWithheld: false);
+        var revalued = DashboardFigures.RevaluedNote(["Jun"]);
+
+        Assert.NotNull(understated);
+        Assert.NotNull(revalued);
+        Assert.NotEqual(understated, revalued);
+
+        // An understatement is a MISSING movement and a revaluation is a real one. One sentence
+        // serving both would make opposites read alike.
+        Assert.Contains("understated", understated, StringComparison.Ordinal);
+        Assert.Contains("a real movement, not a correction", revalued, StringComparison.Ordinal);
+        Assert.DoesNotContain("understated", revalued, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheNotes_AreAbsentWhenThereIsNothingToDisclose()
+    {
+        Assert.Null(DashboardFigures.UnderstatedNote([], [], deltaWithheld: false));
+        Assert.Null(DashboardFigures.RevaluedNote([]));
     }
 }

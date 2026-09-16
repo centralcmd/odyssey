@@ -25,13 +25,17 @@
         and applies the in-force estimate replace policy. The specimen summed the mock
         accounts client-side; that mock was single-currency, the real data is not.
         Accounts the server could not convert are surfaced in the header's problem
-        rollup, because each one counts as 0 and understates the figure. The history
-        line is GONE rather than invented (issue #88, issue #90 phase 1): it used to
-        resample the design's eased growth curve across the real account span and
-        anchor it on today's figure, so every point but the last was fabricated and
-        the curve rose for everyone. A real series arrives with the net-worth-history
-        endpoint; until then the chart shows its empty state, which is the correct
-        intermediate — a chart that invents its own history is worse than none.
+        rollup, because each one counts as 0 and understates the figure.
+      • The history line comes from GET /api/accounts/net-worth-history, reconstructed
+        server-side from stored data with every point measured as of its own instant
+        (issue #90). It used to resample the design's eased growth curve across the
+        account span and anchor it on today's figure, so every point but the last was
+        fabricated and the curve rose for everyone (issue #88). Nothing is interpolated
+        now, so the line can fall and can go negative, and its last point is the same
+        figure the header shows. When the data is not there the chart is not there:
+        there is no fallback series, and the empty copy NAMES its cause, which the
+        response carries because two of the four causes cannot be told apart from the
+        rest of the payload.
       • Recent transactions are the eight newest rows from api/transactions, drawn
         with the design's Description · Tag · Status · Amount · Date columns.
       • Each region is permission-gated: the chart needs accounts.read, the table
@@ -49,13 +53,15 @@
     @* 2 · Net worth chart (the design-system LineChart) *@
     @if (_canReadAccounts)
     {
-        @if (_isLoadingAccounts)
+        @* Gated on BOTH loads: the series and the figure arrive separately, and showing the chart
+           the moment one of them lands would flash an empty state that is about to be wrong. *@
+        @if (_chartIsLoading)
         {
             <OdsCard Class="ods-outline" Style="padding:20px;">
                 <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="300px" />
             </OdsCard>
         }
-        else
+        else if (_chartCanRender)
         {
             <OdsLineChart Class="ods-outline"
                           Title="Net worth"
@@ -63,9 +69,27 @@
                           Color="var(--chart-1)"
                           Format="FormatMoney"
                           AxisFormat="KLabel"
-                          AriaLabel="Net worth over time"
+                          ShowDelta="ChartShowsDelta"
+                          DeltaSuffix="@ChartDeltaSuffix"
+                          XTickEveryAuto="true"
+                          TextEquivalent="true"
+                          TextEquivalentLabel="Period"
+                          AriaLabel="@ChartAriaLabel"
                           EmptyLabel="@ChartEmptyLabel">
-                <Sub>@ChartSubLine</Sub>
+                <Sub>
+                    <span>@ChartCaption</span>
+                    @* One note sentence per disclosure, each in its own block. An understated period
+                       and a revalued one are opposites — one is a missing movement, the other a real
+                       one — so they never share a sentence. *@
+                    @if (UnderstatedNote is { } understated)
+                    {
+                        <span class="odc-lc-note">@understated</span>
+                    }
+                    @if (RevaluedNote is { } revalued)
+                    {
+                        <span class="odc-lc-note">@revalued</span>
+                    }
+                </Sub>
             </OdsLineChart>
         }
     }
