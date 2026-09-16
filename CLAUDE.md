@@ -853,10 +853,12 @@ binding models, not form DTOs.
 
 ## Code Style
 
-Follow the [Microsoft C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions) with two field-naming exceptions. Use comments sparingly — prefer self-documenting code.
+Follow the [Microsoft C# Coding Conventions](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions) with one field-naming exception. Use comments sparingly — prefer self-documenting code.
 
-- **Private/protected instance fields:** plain camelCase, **no `_` prefix** (`private readonly AppDbContext db;`, not `_db`) — **except in Blazor components**, see below.
-- **Static fields:** **no `s_` prefix**; visibility determines case — `public`/`internal` static is PascalCase (`public static readonly string DefaultRole = "Guest";`), `private`/`protected` static is camelCase (`private static int instanceCount;`).
+- **Private/protected instance fields:** plain camelCase, **no `_` prefix** (`private readonly AppDbContext db;`, not `_db`) — **except in Blazor components**, see below. This is the exception to Microsoft's conventions, and it holds without a single counter-example.
+- **Static fields and constants:** **no `s_` prefix**, and **PascalCase whatever the visibility** — `public static readonly string DefaultRole = "Guest";`, `private static readonly HashSet<string> AllowedContentTypes = …`, `private const double NonTextContrastMinimum = 3.0;`. This is Microsoft's convention, not a deviation from it.
+
+That second rule used to say the opposite for private statics — that visibility decided the case, and `private`/`protected` static was camelCase. Nothing in the tree has ever done that: every `private const` and every `private static readonly` is PascalCase, so the rule described no code and made a correctly-named new field read as a defect. On PR #103 three reviewers each flagged the same two fields and each then cleared them against local precedent, which is the cost of a rule that disagrees with the code. Corrected here the same way the Blazor `_camelCase` split was (issue #370): write down what the code does. Mutable private static state is rare enough that it gets no separate rule — it is PascalCase like the rest.
 
 **The Blazor-component carve-out.** `Odyssey.Client`'s Razor components — `.razor` files and their
 `.razor.cs` code-behind — use **`_camelCase`** for private fields (`private bool _isLoading;`), because
