@@ -88,12 +88,16 @@ public class AccountController : ControllerBase
     [HttpGet("totals", Name = "GetAccountTotals")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AccountTotals))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Get total assets, liabilities and net worth in the main currency.",
-        Description = @"Converts each active account's balance into the main currency using the latest
-                        exchange rates and returns total assets, total liabilities, net worth, and the
-                        accounts that could not be converted (no rate to the main currency).")]
+        Description = @"Converts each active account's balance into the main currency using the rate in
+                        force now and returns total assets, total liabilities, net worth, and the
+                        accounts that could not be converted (no rate to the main currency).
+                        Everything is measured as of now, exclusively: a transaction, rate, estimate or
+                        account dated in the future does not count. An unsupported or archived
+                        mainCurrency is rejected with 400.")]
     public async Task<IActionResult> GetTotals(
         [FromQuery(Name = "mainCurrency")] [SwaggerParameter("MainCurrency", Required = false,
             Description = @"The currency to convert into. Defaults to NOK.")] string? mainCurrency = null, CancellationToken cancellationToken = default)

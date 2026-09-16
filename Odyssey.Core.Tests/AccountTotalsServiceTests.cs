@@ -1,3 +1,4 @@
+using Odyssey.Core;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -185,5 +186,140 @@ public class AccountTotalsServiceTests
         var totals = await service.ComputeAsync("USD");
 
         Assert.Equal(5000m, totals.TotalAssets);
+    }
+
+    // ── As-of-now semantics and currency validation (issue #90 G7 / §5.7) ──────────────────────
+    //
+    // Before G7 the service had no upper time bound at all: a transaction, rate, estimate or account
+    // dated in the future already counted towards "today's" figure. Every bound is EXCLUSIVE, which
+    // matters because NetWorthHistoryService measures its final point at the same instant — an
+    // inclusive rule here would count a row at exactly `now` that the history excludes, and AC2
+    // requires the two to agree exactly.
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
+    }
+
+    private static readonly DateTime FixedNow = new(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
+
+    private static AccountTotalsService AsOfFixedNow(OdysseyContext context) =>
+        new(context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow));
+
+    [Fact]
+    public async Task Compute_IgnoresTransactionsStampedAtOrAfterNow()
+    {
+        await using var context = TestContextFactory.Create();
+
+        var checking = Guid.NewGuid();
+        context.Accounts.Add(NewAccount(checking, "Checking", AccountType.CheckingAccount, "USD"));
+        context.Transactions.AddRange(
+            new Transaction { TransactionId = Guid.NewGuid(), Description = "past", Amount = 1000m, TimeStamp = FixedNow.AddDays(-1), AccountId = checking },
+            new Transaction { TransactionId = Guid.NewGuid(), Description = "exactly now", Amount = 40m, TimeStamp = FixedNow, AccountId = checking },
+            new Transaction { TransactionId = Guid.NewGuid(), Description = "future", Amount = 500m, TimeStamp = FixedNow.AddDays(1), AccountId = checking });
+        await context.SaveChangesAsync();
+
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        // Only the past row counts: the bound is exclusive, so the row stamped exactly at now is out.
+        Assert.Equal(1000m, totals.TotalAssets);
+    }
+
+    [Fact]
+    public async Task Compute_IgnoresAccountsNotYetOpened_WithoutFlaggingThemUnconvertible()
+    {
+        await using var context = TestContextFactory.Create();
+
+        var open = Guid.NewGuid();
+        var future = Guid.NewGuid();
+        context.Accounts.AddRange(
+            NewAccount(open, "Open", AccountType.CheckingAccount, "USD"),
+            new Account
+            {
+                AccountId = future,
+                Name = "Opens tomorrow",
+                Description = "Opens tomorrow",
+                Opened = FixedNow.AddDays(1),
+                AccountType = AccountType.CheckingAccount,
+                // A currency with no rate to USD, so a wrongly-included account would also show up
+                // as unconvertible — the reading that misdescribes a future account as a defect.
+                CurrencyCode = "GBP",
+            });
+        context.Transactions.AddRange(
+            NewTransaction(open, 200m),
+            NewTransaction(future, 9999m));
+        await context.SaveChangesAsync();
+
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        Assert.Equal(200m, totals.TotalAssets);
+        Assert.Empty(totals.UnconvertedAccounts);
+    }
+
+    [Fact]
+    public async Task Compute_UsesTheRateInForceNow_NotAFutureDatedOne()
+    {
+        await using var context = TestContextFactory.Create();
+
+        var savings = Guid.NewGuid();
+        context.Accounts.Add(NewAccount(savings, "EUR Savings", AccountType.SavingsAccount, "EUR"));
+        context.Transactions.Add(NewTransaction(savings, 100m));
+        context.ExchangeRates.AddRange(
+            new ExchangeRate { FromCurrencyCode = "EUR", ToCurrencyCode = "USD", Rate = 1.1m, AsOf = FixedNow.AddDays(-1), CreatedAt = FixedNow.AddDays(-1) },
+            new ExchangeRate { FromCurrencyCode = "EUR", ToCurrencyCode = "USD", Rate = 9m, AsOf = FixedNow, CreatedAt = FixedNow },
+            new ExchangeRate { FromCurrencyCode = "EUR", ToCurrencyCode = "USD", Rate = 5m, AsOf = FixedNow.AddDays(1), CreatedAt = FixedNow });
+        await context.SaveChangesAsync();
+
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        // 100 * 1.1 — neither the rate stamped exactly at now nor the future one is in force.
+        Assert.Equal(110m, totals.TotalAssets);
+    }
+
+    [Fact]
+    public async Task Compute_IgnoresAnEstimateEffectiveExactlyAtNow()
+    {
+        await using var context = TestContextFactory.Create();
+
+        var property = Guid.NewGuid();
+        context.Accounts.Add(NewAccount(property, "House", AccountType.Property, "USD"));
+        context.Transactions.Add(NewTransaction(property, 5000m));
+        context.AccountEstimates.Add(NewEstimate(property, 350000m, "USD", FixedNow));
+        await context.SaveChangesAsync();
+
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        Assert.Equal(5000m, totals.TotalAssets);
+    }
+
+    [Fact]
+    public async Task Compute_RejectsAMainCurrencyThatIsNotSupported()
+    {
+        await using var context = TestContextFactory.Create();
+        context.Accounts.Add(NewAccount(Guid.NewGuid(), "Checking", AccountType.CheckingAccount, "USD"));
+        await context.SaveChangesAsync();
+
+        // Unvalidated, this answered 200 with every account listed as unconvertible — a roster of the
+        // whole portfolio's names and currencies for any caller who guessed a code (issue #90 §10.4).
+        await Assert.ThrowsAsync<DomainValidationException>(
+            () => AsOfFixedNow(context).ComputeAsync("ZZZ"));
+    }
+
+    [Fact]
+    public async Task Compute_RejectsAnArchivedMainCurrency()
+    {
+        await using var context = TestContextFactory.Create();
+        context.Currencies.Add(new Currency
+        {
+            CurrencyCode = "ZWL",
+            Name = "Zimbabwe Dollar",
+            MinorUnits = 2,
+            Symbol = "Z$",
+            Archived = FixedNow.AddYears(-1),
+        });
+        await context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<DomainValidationException>(
+            () => AsOfFixedNow(context).ComputeAsync("ZWL"));
     }
 }

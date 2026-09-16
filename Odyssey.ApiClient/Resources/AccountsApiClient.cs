@@ -49,9 +49,19 @@ public interface IAccountsApiClient
     Task<AccountSummary?> GetSummaryAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// The portfolio totals converted into <paramref name="mainCurrency"/>. Answers <c>503</c> when a
-    /// required exchange rate is missing, which the Accounts page renders as a "totals unavailable"
-    /// state rather than an error — so callers branch on <see cref="ApiResult{T}.Status"/>.
+    /// The portfolio totals converted into <paramref name="mainCurrency"/>, measured as of now.
+    ///
+    /// <para>
+    /// A missing exchange rate is <b>not</b> an error: the account contributes 0 and is named in
+    /// <see cref="AccountTotals.UnconvertedAccounts"/>, so the figure comes back <c>200</c> and
+    /// understated, and the caller is expected to disclose that. (This comment used to claim a
+    /// <c>503</c>; the endpoint has never answered one — corrected with issue #90 G7.)
+    /// </para>
+    ///
+    /// <para>
+    /// An unsupported or archived <paramref name="mainCurrency"/> answers <c>400</c> — callers branch
+    /// on <see cref="ApiResult{T}.Status"/>.
+    /// </para>
     /// </summary>
     Task<ApiResult<AccountTotals>> GetTotalsAsync(string mainCurrency, CancellationToken ct = default);
 

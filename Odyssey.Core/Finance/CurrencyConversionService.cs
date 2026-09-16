@@ -41,8 +41,18 @@ public class CurrencyConversionService(OdysseyContext context)
     /// have a rate; the same-currency case is intentionally omitted (callers treat it as 1:1).
     /// Used by the totals computation to avoid one query per account.
     /// </summary>
+    /// <param name="asOfExclusive">
+    /// When given, only rates with <c>AsOf &lt;</c> this instant are considered — "latest as of then"
+    /// rather than "latest outright" (issue #90 G7). Exclusive on purpose: the net-worth history
+    /// measures each point at its period's exclusive upper bound, and a rate stamped exactly on a
+    /// bound that counted here but not there would make the two disagree at the one point AC2
+    /// requires to be equal.
+    /// </param>
     public async Task<IReadOnlyDictionary<string, decimal>> GetLatestRatesToAsync(
-        string toCurrencyCode, IEnumerable<string> fromCurrencyCodes, CancellationToken cancellationToken = default)
+        string toCurrencyCode,
+        IEnumerable<string> fromCurrencyCodes,
+        DateTime? asOfExclusive = null,
+        CancellationToken cancellationToken = default)
     {
         var to = CurrencyValidationService.Normalize(toCurrencyCode);
         var fromCodes = fromCurrencyCodes
@@ -60,6 +70,7 @@ public class CurrencyConversionService(OdysseyContext context)
         // pick is done in memory after materializing only the relevant pairs' rows.
         var rates = await context.ExchangeRates
             .Where(value => value.ToCurrencyCode == to && fromCodes.Contains(value.FromCurrencyCode))
+            .Where(value => asOfExclusive == null || value.AsOf < asOfExclusive)
             .ToListAsync(cancellationToken);
 
         return rates

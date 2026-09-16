@@ -10,6 +10,28 @@ namespace Odyssey.Core.Finance;
 /// Each active account's current balance is converted at the latest rate; accounts with no rate to
 /// the main currency contribute 0 and are reported in <see cref="AccountTotals.UnconvertedAccounts"/>.
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>As of now, exclusively (issue #90 G7).</b> Every one of the four inputs is bounded at the same
+/// instant: transactions with <c>TimeStamp &lt; now</c>, the in-force estimate with
+/// <c>EffectiveFrom &lt; now</c>, the rate with the greatest <c>AsOf &lt; now</c>, and only accounts
+/// with <c>Opened &lt; now</c>. Before this the service had no upper time bound at all, so a
+/// future-dated transaction, rate or account already counted towards "today's" figure.
+/// </para>
+/// <para>
+/// The bound is <b>exclusive</b> on both sides, and that is load-bearing rather than arbitrary:
+/// <c>NetWorthHistoryService</c> measures each point at its period's exclusive upper bound, and its
+/// final bound is this same <c>now</c>. An inclusive rule here would count a row stamped exactly at
+/// <c>now</c> that the history excludes, and issue #90 AC2 requires the two to agree exactly.
+/// </para>
+/// <para>
+/// The main currency is validated against the <c>Currencies</c> table, so an unsupported or archived
+/// code is a <c>400</c> rather than a <c>200</c> whose figures are silently unconverted. That also
+/// closes the full-roster oracle: <c>?mainCurrency=ZZZ</c> used to answer <c>200</c> listing every
+/// account with a currency other than <c>ZZZ</c> — which is all of them — in
+/// <c>UnconvertedAccounts</c>.
+/// </para>
+/// </remarks>
 public class AccountTotalsService(OdysseyContext context, CurrencyConversionService conversionService, TimeProvider? injectedTimeProvider = null)
 {
     private readonly TimeProvider timeProvider = injectedTimeProvider ?? TimeProvider.System;
@@ -17,10 +39,15 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
     public async Task<AccountTotals> ComputeAsync(string mainCurrencyCode, CancellationToken cancellationToken = default)
     {
         var main = CurrencyValidationService.Normalize(mainCurrencyCode);
+        await CurrencyValidationService.EnsureSupportedAndActive(context, main, "mainCurrency", cancellationToken);
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
 
         // Active = not archived (closed accounts still count), matching the Accounts page aggregation.
+        // An account that has not opened yet contributes nothing, so it is not here — and therefore is
+        // not reported as unconvertible either, which would misdescribe it as a defect.
         var accounts = await context.Accounts
-            .Where(account => account.Archived == null)
+            .Where(account => account.Archived == null && account.Opened < now)
             .Select(account => new
             {
                 account.AccountId,
@@ -33,18 +60,18 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
         // Per-account balance = sum of signed transaction amounts, in one grouped query.
         var accountIds = accounts.Select(account => account.AccountId).ToList();
         var balances = await context.Transactions
-            .Where(transaction => accountIds.Contains(transaction.AccountId))
+            .Where(transaction => accountIds.Contains(transaction.AccountId) && transaction.TimeStamp < now)
             .GroupBy(transaction => transaction.AccountId)
             .Select(group => new { AccountId = group.Key, Balance = group.Sum(transaction => transaction.Amount) })
             .ToDictionaryAsync(value => value.AccountId, value => value.Balance, cancellationToken);
 
         // Current estimated value per account (latest entry on or before now), in one grouped query.
         // An estimate is always in the account currency, so it converts exactly like the balance.
-        var currentEstimates = await GetCurrentEstimateValuesAsync(accountIds, cancellationToken);
+        var currentEstimates = await GetCurrentEstimateValuesAsync(accountIds, now, cancellationToken);
 
         // Latest rate for each distinct source currency → main currency, in one query.
         var latestRates = await conversionService.GetLatestRatesToAsync(
-            main, accounts.Select(account => account.CurrencyCode));
+            main, accounts.Select(account => account.CurrencyCode), now, cancellationToken);
 
         var totalAssets = 0m;
         var totalLiabilities = 0m;
@@ -110,18 +137,18 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
     }
 
     /// <summary>
-    /// Resolves the currently-effective estimated value (latest <c>EffectiveFrom</c> on or before
-    /// now, tie-broken by greatest <c>CreatedAtUtc</c>) for each of the given accounts that has one.
+    /// Resolves the currently-effective estimated value (greatest <c>EffectiveFrom</c> strictly before
+    /// <paramref name="now"/>, tie-broken by greatest <c>CreatedAtUtc</c>) for each of the given
+    /// accounts that has one.
     /// </summary>
-    private async Task<Dictionary<Guid, decimal>> GetCurrentEstimateValuesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
+    private async Task<Dictionary<Guid, decimal>> GetCurrentEstimateValuesAsync(IReadOnlyCollection<Guid> accountIds, DateTime now, CancellationToken cancellationToken = default)
     {
         if (accountIds.Count == 0)
             return [];
 
-        var now = timeProvider.GetUtcNow().UtcDateTime;
         var estimates = await context.AccountEstimates
             .AsNoTracking()
-            .Where(e => accountIds.Contains(e.AccountId) && e.EffectiveFrom <= now)
+            .Where(e => accountIds.Contains(e.AccountId) && e.EffectiveFrom < now)
             .ToListAsync(cancellationToken);
 
         return estimates
