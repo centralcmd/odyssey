@@ -28,6 +28,13 @@ namespace Odyssey.Client.Tests;
 /// </remarks>
 public class InsurancePolicyPartyTileTests
 {
+    // bUnit's default one-second wait ceiling is not about how long these assertions take — they
+    // settle in a render pass or two — but about how long the waiter tolerates being starved of a
+    // scheduling slot on a contended runner. The property is process-wide, so it is set once here.
+    // (FilesTableEditLifecycleTests sets the same value for the same reason; a static constructor
+    // runs only when its own class is first touched, so neither can rely on the other.)
+    static InsurancePolicyPartyTileTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
+
     private static readonly Guid AcmeId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid GhostId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
@@ -172,8 +179,24 @@ public class InsurancePolicyPartyTileTests
         Assert.Empty(cut.Instance.Edited);
     }
 
-    private static void OpenMenu(IRenderedComponent<TilesHost> cut) =>
+    /// <summary>
+    /// Opens a tile's ⋯ menu and waits for the popover to settle.
+    /// </summary>
+    /// <remarks>
+    /// The wait is load-bearing, not defensive. MudMenu's toggle is async and lands over more than one
+    /// render pass, and a node captured from the first pass has had its event-handler ids disposed by
+    /// the next — so clicking it is a SILENT no-op: the element is found, the click dispatches, and
+    /// nothing runs. Measured without the wait, the Remove item was found every time and fired on
+    /// roughly a third of runs; with it, sixty for sixty. This cannot mask a regression, because
+    /// waiting only ever hands back a LIVE handler — an item that genuinely does not raise its
+    /// callback still fails.
+    /// </remarks>
+    private static void OpenMenu(IRenderedComponent<TilesHost> cut)
+    {
         cut.Find(".ins-tile-menu button").Click();
+        // Every menu here carries at least Copy ID, so this always resolves.
+        cut.WaitForElement("div.mud-menu-item");
+    }
 
     /// <summary>
     /// Opens the tile's ⋯ menu and returns its item labels. The menu has to be OPENED first: MudBlazor
