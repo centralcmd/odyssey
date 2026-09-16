@@ -15,11 +15,40 @@ namespace Odyssey.Client.Components;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// <summary>
-/// One point of an <see cref="OdsLineChart"/> series — a category-axis label and its
-/// y value. Order the series oldest → newest; points with a null <see cref="Value"/>
-/// are skipped (mirrors the DS <c>LineChartPoint</c>).
+/// Why an <see cref="OdsLinePoint"/>'s value is what it is (mirrors the DS
+/// <c>LineChartPointKind</c>). Shape and stroke carry the distinction — never fill colour, so the
+/// marking survives a chart palette that does not meet 3:1 against the card.
+///
+/// <para>
+/// A kind, not a <c>bool</c>: sharing one marker between the last two would make "this figure is
+/// understated" indistinguishable from "this figure stepped because of a revaluation", which are
+/// opposites — one withholds the delta and the other does not.
+/// </para>
 /// </summary>
-public sealed record OdsLinePoint(string Label, decimal? Value);
+public enum OdsLinePointKind
+{
+    /// <summary>Fully measured from stored data. Filled dot, solid segments.</summary>
+    Normal = 0,
+
+    /// <summary>
+    /// <b>Understated</b> — a contributing account had no exchange rate as of this point, so it
+    /// contributed 0. Hollow dot, dashed adjoining segments. As an endpoint it suppresses the delta.
+    /// </summary>
+    Partial = 1,
+
+    /// <summary>
+    /// <b>A real movement</b> — an estimate took effect in this period, so the step is disclosed
+    /// rather than smoothed. Filled dot with a vertical tick. Does not suppress the delta.
+    /// </summary>
+    Revalued = 2,
+}
+
+/// <summary>
+/// One point of an <see cref="OdsLineChart"/> series — a category-axis label, its y value (which may
+/// be negative) and why that value is what it is. Order the series oldest → newest; points with a
+/// null <see cref="Value"/> are skipped (mirrors the DS <c>LineChartPoint</c>).
+/// </summary>
+public sealed record OdsLinePoint(string Label, decimal? Value, OdsLinePointKind Kind = OdsLinePointKind.Normal);
 
 /// <summary>A single slice of a <see cref="OdsDonut"/> / <see cref="OdsDonutLegend"/>.</summary>
 public sealed record OdsDonutSlice

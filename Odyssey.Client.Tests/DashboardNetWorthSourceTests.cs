@@ -39,8 +39,8 @@ public class DashboardNetWorthSourceTests
 
     /// <summary>
     /// The specimen's aggregate, in any of the shapes it could come back as. The accounts list is
-    /// still loaded — for the account count and the chart's start year — so the guard has to name
-    /// the summation rather than the list.
+    /// still loaded — for the account count — so the guard has to name the summation rather than
+    /// the list.
     /// </summary>
     [Theory]
     [InlineData(@"Sum\s*\(\s*\w+\s*=>\s*\w+\.Balance\s*\)")]
@@ -87,5 +87,43 @@ public class DashboardNetWorthSourceTests
         var source = CodeBehind();
         Assert.Contains("MainCurrencyCode", source, StringComparison.Ordinal);
         Assert.DoesNotContain("private static string FormatMoney", source, StringComparison.Ordinal);
+    }
+
+    // ── AC1 — the fabricated series is gone, and cannot come back ──────────────────────────────
+    //
+    // The chart used to resample an 11-element constant across the user's account span and scale it
+    // so the last point landed on today's real figure. Every point but the last was invented and the
+    // curve was monotonic, so it rose for everyone (issue #88). These name the residue by the exact
+    // identifiers it went by, because a half-removal — the constant deleted but the caption kept, or
+    // the reverse — reads as intentional.
+
+    [Theory]
+    [InlineData("GrowthCurve")]
+    [InlineData("SampleCurve")]
+    [InlineData("_chartStartYear")]
+    public void TheSyntheticGrowthCurve_IsGoneFromTheClient(string identifier)
+    {
+        var offenders = ClientSource.SourceFiles()
+            .Where(file => File.ReadAllText(file).Contains(identifier, StringComparison.Ordinal))
+            .Select(ClientSource.Relative)
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            $"'{identifier}' is part of the fabricated net-worth curve issue #88 removed. "
+            + "The series comes from GET /api/accounts/net-worth-history now, and there is no "
+            + "fallback series: when the data is not there, the chart is not there. Found in: "
+            + string.Join(", ", offenders));
+    }
+
+    /// <summary>
+    /// The caption said "Since {year}", which described the fabricated curve's span (earliest account
+    /// year → this year) rather than any stored series. Keeping it over the real endpoint's points
+    /// would misdate the window the reader is being shown.
+    /// </summary>
+    [Fact]
+    public void TheSinceYearCaption_IsGone()
+    {
+        Assert.DoesNotContain("Since {", CodeBehind(), StringComparison.Ordinal);
+        Assert.DoesNotContain("$\"Since ", CodeBehind(), StringComparison.Ordinal);
     }
 }

@@ -17,7 +17,6 @@ public partial class Home
     private List<ExistingAccount> _accounts = [];
     private List<ExistingTransaction> _transactions = [];
     private List<OdsLinePoint> _chartSeries = [];
-    private int? _chartStartYear;
 
     // Server-computed totals (GET /api/accounts/totals). Null means the call did not
     // succeed — the header and chart then withhold the figure rather than substituting
@@ -34,12 +33,6 @@ public partial class Home
     private bool _canReadTransactions;
 
     private string _firstName = string.Empty;
-
-    // The design's eased growth curve (2016 → 2026 in the specimen). Resampled
-    // across the user's real account span so the last point always lands on the
-    // current net worth regardless of how many years it spans.
-    private static readonly double[] GrowthCurve =
-        [0.017, 0.069, 0.137, 0.230, 0.338, 0.446, 0.546, 0.589, 0.748, 0.884, 1.0];
 
     protected override async Task OnInitializedAsync()
     {
@@ -91,8 +84,6 @@ public partial class Home
         var result = await listTask;
         _accounts = result.ValueOr([]);
 
-        if (result.IsSuccess)
-            BuildChart();
         _isLoadingAccounts = false;
     }
 
@@ -180,20 +171,14 @@ public partial class Home
     private List<ExistingAccount> ActiveAccounts => _accounts.Where(a => a.Archived is null).ToList();
     private decimal? NetWorth => _totals?.NetWorth;
 
-    // The chart's empty state has two causes and they are not interchangeable: nothing to
-    // chart, or a figure the server could not give us.
+    // The empty state names its cause. There is no fallback series: when the data is not there,
+    // the chart is not there (issue #90 §11).
     private string ChartEmptyLabel => DashboardFigures.ChartEmptyLabel(_totals is not null);
 
-    private string ChartSubLine
-    {
-        get
-        {
-            var currency = _totals?.MainCurrencyCode;
-            if (string.IsNullOrWhiteSpace(currency))
-                return _chartStartYear is int only ? $"Since {only}" : string.Empty;
-            return _chartStartYear is int year ? $"Since {year} · {currency}" : currency;
-        }
-    }
+    // The caption is what the chart IS, not when it started. The year-prefixed branch it replaces
+    // described the fabricated curve's span (earliest account year → this year), which was never a
+    // property of any stored series.
+    private string ChartSubLine => _totals?.MainCurrencyCode ?? string.Empty;
 
     // ── Problem rollup ──
     // The server reports accounts it could not convert into the main currency; each one
@@ -261,54 +246,6 @@ public partial class Home
         TransactionStatus.Flagged => OdsChipTone.Expense,
         _ => OdsChipTone.Info,
     };
-
-    // ── Net worth chart series ──
-    // The synthetic history: there is no stored net-worth-over-time series, so the
-    // design's eased growth curve is resampled across the real span (earliest
-    // account year → this year) and anchored to land exactly on today's figure.
-    // OdsLineChart owns the geometry, axis labels, figure and delta.
-    private void BuildChart()
-    {
-        var accounts = ActiveAccounts;
-        if (accounts.Count == 0 || NetWorth is not { } netWorth)
-        {
-            // No accounts, or no server total to anchor the curve to. A curve anchored on
-            // a client-side guess would be doubly invented, so the chart shows its empty state.
-            _chartSeries = [];
-            _chartStartYear = null;
-            return;
-        }
-
-        var current = (double)netWorth;
-        var startYear = accounts.Min(a => a.Opened.Year);
-        var endYear = Math.Max(startYear, DateTime.Now.Year);
-        if (startYear >= endYear)
-            startYear = endYear - 1; // guarantee at least two points
-
-        var n = endYear - startYear + 1;
-        var series = new List<OdsLinePoint>(n);
-        for (var i = 0; i < n; i++)
-        {
-            var value = (decimal)(current * SampleCurve(i, n));
-            series.Add(new OdsLinePoint($"'{(startYear + i) % 100:00}", value));
-        }
-
-        _chartSeries = series;
-        _chartStartYear = startYear;
-    }
-
-    // Resample the canonical curve to n points; i=n-1 always maps to 1.0 so the
-    // line lands exactly on the current net worth.
-    private static double SampleCurve(int i, int n)
-    {
-        if (n <= 1)
-            return 1.0;
-        var pos = (double)i / (n - 1) * (GrowthCurve.Length - 1);
-        var lo = (int)Math.Floor(pos);
-        var hi = Math.Min(lo + 1, GrowthCurve.Length - 1);
-        var frac = pos - lo;
-        return GrowthCurve[lo] * (1 - frac) + GrowthCurve[hi] * frac;
-    }
 
     // Compact y-axis label, e.g. "$52k" / "kr 52k", in the main currency.
     private string KLabel(decimal v) =>

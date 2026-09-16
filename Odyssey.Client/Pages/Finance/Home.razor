@@ -21,14 +21,17 @@
 
     Adapted from the specimen to the real contracts:
       • Net worth comes from GET /api/accounts/totals, which converts every
-        non-archived account into the user's main currency at the latest rate and
-        applies the in-force estimate replace policy. The specimen summed the mock
+        non-archived account into the user's main currency at the rate in force now
+        and applies the in-force estimate replace policy. The specimen summed the mock
         accounts client-side; that mock was single-currency, the real data is not.
         Accounts the server could not convert are surfaced in the header's problem
         rollup, because each one counts as 0 and understates the figure. The history
-        line is still synthetic: there is no stored net-worth-over-time series, so the
-        design's eased growth curve is resampled across the real span (earliest
-        account year → this year) and anchored to land exactly on today's figure.
+        line is GONE rather than invented (issue #88, issue #90 phase 1): it used to
+        resample the design's eased growth curve across the real account span and
+        anchor it on today's figure, so every point but the last was fabricated and
+        the curve rose for everyone. A real series arrives with the net-worth-history
+        endpoint; until then the chart shows its empty state, which is the correct
+        intermediate — a chart that invents its own history is worse than none.
       • Recent transactions are the eight newest rows from api/transactions, drawn
         with the design's Description · Tag · Status · Amount · Date columns.
       • Each region is permission-gated: the chart needs accounts.read, the table
@@ -56,16 +59,14 @@
         {
             <OdsLineChart Class="ods-outline"
                           Title="Net worth"
-                          Sub="@ChartSubLine"
                           Series="_chartSeries"
                           Color="var(--chart-1)"
                           Format="FormatMoney"
                           AxisFormat="KLabel"
-                          ShowDelta="true"
-                          DeltaSuffix="all-time"
-                          XTickEvery="2"
                           AriaLabel="Net worth over time"
-                          EmptyLabel="@ChartEmptyLabel" />
+                          EmptyLabel="@ChartEmptyLabel">
+                <Sub>@ChartSubLine</Sub>
+            </OdsLineChart>
         }
     }
 

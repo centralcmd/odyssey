@@ -29,11 +29,13 @@ else
     <div class="ins-terms">
         @if (_premiumSeries.Count >= 2)
         {
-            <OdsLineChart Title="Premium" Sub="@($"By renewal period · {_premiumCurrency}")"
+            <OdsLineChart Title="Premium"
                           Series="_premiumSeries" Color="var(--rec, var(--chart-4))"
                           Format="@(n => Money(n, _premiumCurrency))" AxisFormat="@(n => Money(n, _premiumCurrency))"
                           ShowDelta DeltaSuffix="@($"vs {_premiumSeries[0].Label}")"
-                          AriaLabel="Premium by renewal period" />
+                          AriaLabel="Premium by renewal period">
+                <Sub>@($"By renewal period · {_premiumCurrency}")</Sub>
+            </OdsLineChart>
         }
 
         <div class="ins-tbl-frame">

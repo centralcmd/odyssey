@@ -42,26 +42,32 @@
         @* Year-over-year declared figures, reusing the design-system line chart. *@
         <OverviewContent>
             <div class="tx-overview">
-                <OdsLineChart Title="Net worth" Sub="@($"By fiscal year · {cur}")"
+                <OdsLineChart Title="Net worth"
                               Series="DeclaredSeries(y => y.DeclaredNetWorth)"
                               Color="var(--chart-1)"
                               Format="@(n => TaxMoney(n, cur))" AxisFormat="@(n => TaxAxis(n, cur))"
                               ShowDelta DeltaSuffix="@($"vs {firstYear}")"
                               EmptyLabel="No declared figures yet."
-                              AriaLabel="Net worth by fiscal year" />
-                <OdsLineChart Title="Assessed tax" Sub="@($"By fiscal year · {cur}")"
+                              AriaLabel="Net worth by fiscal year">
+                    <Sub>@($"By fiscal year · {cur}")</Sub>
+                </OdsLineChart>
+                <OdsLineChart Title="Assessed tax"
                               Series="DeclaredSeries(y => y.AssessedTax)"
                               Color="var(--chart-2)"
                               Format="@(n => TaxMoney(n, cur))" AxisFormat="@(n => TaxAxis(n, cur))"
                               ShowDelta DeltaSuffix="@($"vs {firstYear}")"
                               EmptyLabel="No declared figures yet."
-                              AriaLabel="Assessed tax by fiscal year" />
-                <OdsLineChart Title="Accumulated" Sub="@($"Assessed tax · all years · {cur}")"
+                              AriaLabel="Assessed tax by fiscal year">
+                    <Sub>@($"By fiscal year · {cur}")</Sub>
+                </OdsLineChart>
+                <OdsLineChart Title="Accumulated"
                               Series="DeclaredSeries(y => y.AssessedTax)"
                               Color="var(--chart-4)" Cumulative
                               Format="@(n => TaxMoney(n, cur))" AxisFormat="@(n => TaxAxis(n, cur))"
                               EmptyLabel="No declared figures yet."
-                              AriaLabel="Accumulated assessed tax by fiscal year" />
+                              AriaLabel="Accumulated assessed tax by fiscal year">
+                    <Sub>@($"Assessed tax · all years · {cur}")</Sub>
+                </OdsLineChart>
             </div>
         </OverviewContent>
 
