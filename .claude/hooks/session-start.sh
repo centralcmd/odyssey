@@ -225,21 +225,35 @@ if docker info >/dev/null 2>&1; then
 fi
 
 # ── 4b. TLS interception vs. `docker compose --build` ─────────────────────────────────────────────
-# Where the session's egress is TLS-intercepted, a build container inherits the proxy but NOT its
-# CA, so `dotnet restore` inside a Dockerfile dies on NU1301 UntrustedRoot after several minutes.
-# Image PULLS are unaffected (the daemon holds the CA), so the symptom reads as a NuGet outage
-# rather than a trust problem — and Testcontainers keeps working, which makes it look stranger
-# still. Not fixable from here: the Dockerfile bases are digest-pinned, so a locally retagged
-# CA-injected base is not picked up, and injecting the CA properly means editing the Dockerfiles,
-# which would bake a session-local CA into a production image. Warn and point at Aspire, which
-# builds on the HOST and containerises only MariaDB.
+# Where the session's egress is TLS-intercepted, a build container is intercepted too but holds no
+# CA for it, so `dotnet restore` inside a Dockerfile dies on NU1301 UntrustedRoot after several
+# minutes — and the alpine runtime stage's `apk add` dies the same way, reporting a trust failure as
+# `unable to select packages`. Image PULLS are unaffected (the daemon holds the CA), so the symptom
+# reads as a NuGet outage rather than a trust problem, and Testcontainers keeps working, which makes
+# it look stranger still.
+#
+# This IS fixable now, and docker-compose.ca.yml is the fix: the Dockerfiles take the CA on an
+# optional BuildKit secret, so nothing is baked into an image and a build without the secret is the
+# plain build CI runs. What this step contributes is the PATH to the CA, exported for that override
+# to pick up, because the right file is not the obvious one — see docker-compose.ca.yml's header.
+# A session is intercepted twice, and a build container meets the egress-gateway issuer rather than
+# the agent-proxy one, so only the FULL bundle works. SSL_CERT_FILE names that bundle, which is why
+# it is what gets exported rather than any single-CA file beside it.
 if [ -n "${HTTPS_PROXY:-}" ] && [ -n "${SSL_CERT_FILE:-}" ] \
    && [ "${SSL_CERT_FILE}" != "/etc/ssl/certs/ca-certificates.crt" ]; then
   log "NOTE: outbound TLS is intercepted (CA: ${SSL_CERT_FILE})."
-  log "      'docker compose up --build' WILL FAIL at 'dotnet restore' (NU1301 UntrustedRoot)."
-  log "      Run the stack with Aspire instead:"
-  log "        dotnet run --project Odyssey.AppHost --launch-profile http"
+  log "      A plain 'docker compose up --build' fails at 'dotnet restore' (NU1301 UntrustedRoot)."
+  log "      Layer the CA override, which passes that bundle as a build secret:"
+  log "        docker compose -f docker-compose.yml -f docker-compose.ca.yml up --build -d"
   log "      Image pulls and Testcontainers are unaffected."
+  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+    # Exported rather than left to the override's default, so the same file works in an intercepted
+    # environment that keeps its bundle somewhere else.
+    echo "export ODYSSEY_PROXY_CA=\"${SSL_CERT_FILE}\"" >> "${CLAUDE_ENV_FILE}"
+    log "      Exported ODYSSEY_PROXY_CA=${SSL_CERT_FILE} for that override."
+  fi
+  log "      Aspire remains the lighter option — it builds on the HOST and containerises only MariaDB:"
+  log "        dotnet run --project Odyssey.AppHost --launch-profile http"
   # Not a footnote: this is the command the session was just told to run, and adding `-c Release` to
   # it — which a session that has been building Release all along will do by reflex — yields a stack
   # whose API and database are healthy and whose client cannot reach either. See Odyssey.Client's

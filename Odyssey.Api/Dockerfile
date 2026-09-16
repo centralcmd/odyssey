@@ -1,8 +1,31 @@
+# syntax=docker/dockerfile:1
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:4ac537e13e2f55d1d588ed3e618cb0cb6b82dd8deb17830de43d5086fbde958b AS build
 
 COPY . /src
 WORKDIR /src
-RUN dotnet restore
+# An OPTIONAL extra CA for the restore, for environments whose egress is TLS-intercepted.
+#
+# A build container inherits an intercepting proxy but not its CA, so `dotnet restore` dies on
+# NU1301 UntrustedRoot several minutes in — a trust failure wearing the costume of a NuGet outage,
+# made stranger by image pulls and Testcontainers continuing to work (the daemon holds the CA).
+#
+# The secret is optional: with no `--secret id=proxy_ca` the mount is absent, the guard is false,
+# and this is exactly the plain `dotnet restore` it replaces. CI and an ordinary developer machine
+# take that path and are unaffected — which is the point, since the alternative considered was
+# COPYing a CA in, and a session-local CA baked into a published image is worse than the problem.
+#
+# Nothing persists either way. The CA arrives on a secret mount and the merged bundle is assembled
+# in a tmpfs; BuildKit discards both with the RUN, so no layer here carries the CA. SSL_CERT_FILE
+# is exported inside this RUN's shell rather than as an ENV, so it cannot reach a later stage —
+# and .NET reads it through OpenSSL, which is why no `update-ca-certificates` (absent from the
+# alpine SDK image anyway) and no write to /etc/ssl are needed.
+RUN --mount=type=secret,id=proxy_ca \
+    --mount=type=tmpfs,target=/tmp/ca \
+    if [ -s /run/secrets/proxy_ca ]; then \
+        cat /etc/ssl/certs/ca-certificates.crt /run/secrets/proxy_ca > /tmp/ca/bundle.crt && \
+        export SSL_CERT_FILE=/tmp/ca/bundle.crt; \
+    fi; \
+    dotnet restore
 RUN dotnet publish Odyssey.Api/Odyssey.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine@sha256:6bb0fab0ef31f44f710a668c39c2263ae810f5adf868afa34cbd86815912c7fe AS final
@@ -16,7 +39,22 @@ COPY --from=build /app/publish .
 # reject it: a 500-shaped failure on an ordinary write, reproducible nowhere else — a dev box and both
 # fast test tiers have ICU. Installed here, asserted at startup by GlobalizationGuard, and the
 # environment variable is pinned false so a base-image change cannot silently re-enable invariant mode.
-RUN apk add --no-cache icu-libs icu-data-full
+# The same optional CA as the restore above, for the same reason — apk speaks TLS too, and an
+# intercepted egress fails this with `TLS: server certificate not trusted`, which apk then reports
+# as `unable to select packages` (a missing-package error for a trust problem).
+#
+# This is the RUNTIME stage, so unlike the build stage nothing here may persist: these layers ship.
+# It stays clean because apk honours SSL_CERT_FILE, so the CA is read from a tmpfs that BuildKit
+# discards with the RUN and the variable is shell-scoped rather than an ENV. The published image
+# carries the stock trust store and no trace of the secret. Do NOT "simplify" this by appending to
+# /etc/ssl/certs/ca-certificates.crt — that would bake a session-local CA into a released image.
+RUN --mount=type=secret,id=proxy_ca \
+    --mount=type=tmpfs,target=/tmp/ca \
+    if [ -s /run/secrets/proxy_ca ]; then \
+        cat /etc/ssl/certs/ca-certificates.crt /run/secrets/proxy_ca > /tmp/ca/bundle.crt && \
+        export SSL_CERT_FILE=/tmp/ca/bundle.crt; \
+    fi; \
+    apk add --no-cache icu-libs icu-data-full
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 # The Data Protection key ring lives here (issue #444). Created at BUILD TIME with the right owner

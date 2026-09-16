@@ -68,14 +68,29 @@ docker compose ps --format '{{.Service}}\t{{.Status}}'
 docker logs odyssey-migrations 2>&1 | tail -3   # ends with "Demo data seeding complete."
 ```
 
-### Alternative: Aspire, when Compose can't build
+### When Compose can't build: the CA override, or Aspire
 
 In a Claude Code session, outbound TLS is intercepted. The daemon holds the CA but a **build**
-container does not, so `docker compose up --build` dies at `dotnet restore` with `NU1301
+container does not, so a plain `docker compose up --build` dies at `dotnet restore` with `NU1301
 UntrustedRoot` after several minutes — image *pulls* and Testcontainers are unaffected, which makes
-it read as a NuGet outage. The session-start hook detects this and says so. Use Aspire there: it
-builds on the **host** and containerises only MariaDB, while serving the same ports (client 5199,
-API 5188, MariaDB 3307), so everything below this section works unchanged.
+it read as a NuGet outage. The session-start hook detects this and says so.
+
+**To build Compose anyway, layer `docker-compose.ca.yml`.** It hands each Dockerfile the trust
+bundle as an optional BuildKit secret, used for the restore and the runtime stage's `apk add` and
+discarded with the step, so no CA reaches an image and a build without it is the one CI runs:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.ca.yml up --build -d
+```
+
+Use this when the thing under test is Compose-specific — NGINX, the `/api/` proxy path, a Release
+client, the migrations job's ordering. `ODYSSEY_PROXY_CA` overrides which bundle is passed; the hook
+exports it. If it still fails with `UntrustedRoot`, the bundle is the wrong one rather than the
+mechanism being broken — that file's header says how to identify the right issuer.
+
+**Otherwise prefer Aspire**, which is faster and needs none of this: it builds on the **host** and
+containerises only MariaDB, while serving the same ports (client 5199, API 5188, MariaDB 3307), so
+everything below this section works unchanged.
 
 ```bash
 dotnet run --project Odyssey.AppHost --launch-profile http

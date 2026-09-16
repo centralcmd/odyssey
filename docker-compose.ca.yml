@@ -1,0 +1,54 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  BUILD-TIME CA TRUST — for environments whose outbound TLS is intercepted.
+#
+#  Layer this on top of the dev stack when `docker compose up --build` fails at
+#  `dotnet restore` with NU1301 / UntrustedRoot:
+#
+#    docker compose -f docker-compose.yml -f docker-compose.ca.yml up --build -d
+#
+#  It supplies one BuildKit secret, `proxy_ca`, which each Dockerfile's restore step
+#  merges into the trust bundle for that step alone. Nothing is written to a layer and
+#  nothing reaches the runtime images, so an image built with this override is
+#  byte-for-byte the same as one built without it apart from the restore's network trust.
+#
+#  This file is deliberately NOT part of the default `docker compose up`. The secret it
+#  names does not exist on an ordinary machine, so wiring it in unconditionally would turn
+#  a working build into a missing-file error for everyone who does not need it. The
+#  Dockerfiles take the plain path when no secret is passed — that is what keeps CI
+#  (.github/workflows/e2e.yml) and a normal laptop on exactly the build they had before.
+#
+#  ODYSSEY_PROXY_CA points at the trust material in PEM form, and the default is the FULL
+#  bundle rather than the single-CA file next to it. That is not interchangeable: a session
+#  like this one is intercepted TWICE, by two different issuers. The session's own tools go
+#  through HTTPS_PROXY and meet the "CCR agent-proxy" CA, which is what agent-proxy-ca.crt
+#  (and system-trust.ca.pem, and the Java truststore) contains. A BUILD CONTAINER has no
+#  proxy variables at all and is intercepted at the network layer instead, by the
+#  "sandbox-egress-gateway ... Egress Gateway CA" — which appears ONLY in the full bundle.
+#  So the obvious-looking agent-proxy-ca.crt trusts the wrong issuer here and fails with the
+#  identical NU1301 UntrustedRoot, which reads as the fix not working rather than as the
+#  wrong CA. Confirm with:
+#
+#    curl -sv --insecure -o /dev/null https://api.nuget.org/v3/index.json 2>&1 | grep issuer:
+#
+#  run INSIDE a build of the SDK image, and pass whatever bundle contains that issuer.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  migrations:
+    build:
+      secrets:
+        - proxy_ca
+
+  api:
+    build:
+      secrets:
+        - proxy_ca
+
+  client:
+    build:
+      secrets:
+        - proxy_ca
+
+secrets:
+  proxy_ca:
+    file: ${ODYSSEY_PROXY_CA:-/root/.ccr/ca-bundle.crt}
