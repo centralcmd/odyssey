@@ -9,6 +9,15 @@ namespace Odyssey.Api.Tests;
 
 public class AuthorizationPolicyTests
 {
+    /// <summary>
+    /// Every role and the claims it holds, read from <see cref="RolePermissions.RoleClaimMap"/> — the
+    /// single enumeration (issue #90 G9). Never a literal list of the four shipped roles: a guard that
+    /// names its own roles cannot see a fifth one, so it keeps passing while the conclusion it exists
+    /// to protect quietly stops holding.
+    /// </summary>
+    private static (string Role, string[] Claims)[] MappedRoles() =>
+        RolePermissions.RoleClaimMap.Select(role => (role.RoleName, role.Claims)).ToArray();
+
     /// <summary>Every claim constant, discovered the same way the Blazor client discovers them.</summary>
     private static IEnumerable<string> DeclaredClaims() =>
         typeof(PermissionClaims)
@@ -38,14 +47,9 @@ public class AuthorizationPolicyTests
     public void Every_role_claim_is_a_declared_permission_claim()
     {
         var declared = DeclaredClaims().ToHashSet(StringComparer.Ordinal);
-        var roles = new (string Role, string[] Claims)[]
-        {
-            (nameof(RolePermissions.AllClaims), RolePermissions.AllClaims),
-            (nameof(RolePermissions.AdminClaims), RolePermissions.AdminClaims),
-            (nameof(RolePermissions.OwnerClaims), RolePermissions.OwnerClaims),
-            (nameof(RolePermissions.UserClaims), RolePermissions.UserClaims),
-            (nameof(RolePermissions.GuestClaims), RolePermissions.GuestClaims),
-        };
+        var roles = new (string Role, string[] Claims)[] { (nameof(RolePermissions.AllClaims), RolePermissions.AllClaims) }
+            .Concat(MappedRoles())
+            .ToArray();
 
         foreach (var (role, claims) in roles)
         {
@@ -91,12 +95,9 @@ public class AuthorizationPolicyTests
             PermissionClaims.SystemSettingsSecurityUpdate,
         ];
 
-        (string Role, string[] Claims)[] nonAdminRoles =
-        [
-            ("Owner", RolePermissions.OwnerClaims),
-            ("User", RolePermissions.UserClaims),
-            ("Guest", RolePermissions.GuestClaims),
-        ];
+        var nonAdminRoles = MappedRoles()
+            .Where(role => !string.Equals(role.Role, RoleDefinitions.Admin, StringComparison.Ordinal))
+            .ToArray();
 
         var leaks = (from role in nonAdminRoles
                      from claim in systemSettingsClaims
@@ -133,13 +134,7 @@ public class AuthorizationPolicyTests
     [Fact]
     public void No_role_holds_ContactsDelete_without_the_insurance_claims_it_is_paired_with()
     {
-        (string Role, string[] Claims)[] roles =
-        [
-            ("Admin", RolePermissions.AdminClaims),
-            ("Owner", RolePermissions.OwnerClaims),
-            ("User", RolePermissions.UserClaims),
-            ("Guest", RolePermissions.GuestClaims),
-        ];
+        var roles = MappedRoles();
 
         var gaps = (from role in roles
                     where role.Claims.Contains(PermissionClaims.ContactsDelete, StringComparer.Ordinal)
@@ -170,13 +165,7 @@ public class AuthorizationPolicyTests
     [Fact]
     public void No_role_holds_BudgetsRead_without_TransactionTagsRead()
     {
-        (string Role, string[] Claims)[] roles =
-        [
-            ("Admin", RolePermissions.AdminClaims),
-            ("Owner", RolePermissions.OwnerClaims),
-            ("User", RolePermissions.UserClaims),
-            ("Guest", RolePermissions.GuestClaims),
-        ];
+        var roles = MappedRoles();
 
         var gaps = roles
             .Where(role => role.Claims.Contains(PermissionClaims.BudgetsRead, StringComparer.Ordinal))
@@ -212,5 +201,88 @@ public class AuthorizationPolicyTests
                 && claimsRequirement.AllowedValues != null
                 && claimsRequirement.AllowedValues.Contains(claimValue));
         }
+    }
+
+    /// <summary>
+    /// AC13. <c>GET /api/accounts/net-worth-history</c> folds three claim-gated sources — transactions,
+    /// account estimates and exchange rates — behind the single <c>accounts.read</c> gate, and issue
+    /// #90 §10.3 accepts that on the strength of one observation: every role that can reach the
+    /// endpoint already holds all three and can read the rows directly, so the endpoint discloses
+    /// nothing new to anyone who can call it.
+    ///
+    /// <para>
+    /// The roles come from <see cref="RolePermissions.RoleClaimMap"/>, not a literal — that is the
+    /// whole point of the guard. Field values, not source text: <c>AdminClaims</c> is a
+    /// <c>[..AllClaims, …]</c> spread materialised at field initialisation, which a source-lint would
+    /// miss entirely.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Every_role_with_AccountsRead_also_holds_the_three_claims_the_net_worth_history_folds()
+    {
+        string[] folded =
+        [
+            PermissionClaims.TransactionsRead,
+            PermissionClaims.AccountsEstimatesRead,
+            PermissionClaims.ExchangeRatesRead,
+        ];
+
+        var gaps = (from role in MappedRoles()
+                    where role.Claims.Contains(PermissionClaims.AccountsRead, StringComparer.Ordinal)
+                    from claim in folded
+                    where !role.Claims.Contains(claim, StringComparer.Ordinal)
+                    select $"{role.Role} holds '{PermissionClaims.AccountsRead}' without '{claim}'").ToList();
+
+        Assert.True(gaps.Count == 0,
+            "Issue #90 §10.3 accepts the net-worth-history disclosure ONLY because every accounts.read "
+            + "holder can already read the transactions, estimates and rates the series is folded from. "
+            + "If this fires, that acceptance is VOID: re-make the argument (or gate the finer intervals) "
+            + "before granting these apart. Roles that do: " + string.Join(", ", gaps));
+    }
+
+    /// <summary>
+    /// AC14. The other half of AC13's premise: a role must not be able to receive claims through a
+    /// path the map does not describe. <c>RoleClaimSeeder</c> is the only writer of
+    /// <c>AspNetRoleClaims</c>, so it has to reconcile against exactly
+    /// <see cref="RolePermissions.RoleClaimMap"/> — a second hand-written pairing there would grant a
+    /// role claims that AC13 never enumerates.
+    /// </summary>
+    [Fact]
+    public void RoleClaimSeeder_reconciles_against_RoleClaimMap_and_nothing_else()
+    {
+        var source = File.ReadAllText(SeederSourcePath());
+
+        Assert.Contains("RolePermissions.RoleClaimMap", source, StringComparison.Ordinal);
+
+        string[] perRoleArrays =
+        [
+            nameof(RolePermissions.AdminClaims),
+            nameof(RolePermissions.OwnerClaims),
+            nameof(RolePermissions.UserClaims),
+            nameof(RolePermissions.GuestClaims),
+        ];
+
+        var rebuilt = perRoleArrays
+            .Where(name => source.Contains("RolePermissions." + name, StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(rebuilt.Count == 0,
+            "RoleClaimSeeder names a per-role claim array directly instead of walking "
+            + "RolePermissions.RoleClaimMap, which re-opens the second-copy problem issue #90 G9 closed: "
+            + string.Join(", ", rebuilt));
+    }
+
+    private static string SeederSourcePath()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir, "Odyssey.MigrationService", "RoleClaimSeeder.cs");
+            if (File.Exists(candidate) && File.Exists(Path.Combine(dir, "Odyssey.sln")))
+                return candidate;
+            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
+        }
+
+        throw new InvalidOperationException("Could not locate RoleClaimSeeder.cs from " + AppContext.BaseDirectory);
     }
 }

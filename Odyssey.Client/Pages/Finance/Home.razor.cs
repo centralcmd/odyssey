@@ -17,7 +17,11 @@ public partial class Home
     private List<ExistingAccount> _accounts = [];
     private List<ExistingTransaction> _transactions = [];
     private List<OdsLinePoint> _chartSeries = [];
-    private int? _chartStartYear;
+
+    // The reconstructed series (GET /api/accounts/net-worth-history). Null means the call did not
+    // land, which is a different state from a 200 carrying an EmptyReason — one says the request
+    // failed, the other says the data is known and known to be empty.
+    private NetWorthHistory? _history;
 
     // Server-computed totals (GET /api/accounts/totals). Null means the call did not
     // succeed — the header and chart then withhold the figure rather than substituting
@@ -27,6 +31,7 @@ public partial class Home
 
     // ── State ──
     private bool _isLoadingAccounts = true;
+    private bool _isLoadingHistory = true;
     private bool _isLoadingTransactions = true;
 
     // ── Permissions ──
@@ -34,12 +39,6 @@ public partial class Home
     private bool _canReadTransactions;
 
     private string _firstName = string.Empty;
-
-    // The design's eased growth curve (2016 → 2026 in the specimen). Resampled
-    // across the user's real account span so the last point always lands on the
-    // current net worth regardless of how many years it spans.
-    private static readonly double[] GrowthCurve =
-        [0.017, 0.069, 0.137, 0.230, 0.338, 0.446, 0.546, 0.589, 0.748, 0.884, 1.0];
 
     protected override async Task OnInitializedAsync()
     {
@@ -80,20 +79,41 @@ public partial class Home
 
     private async Task LoadAccountsAsync()
     {
-        // The accounts list supplies the count and the chart's start year; the totals endpoint
-        // supplies the money. Neither depends on the other, so they go out together — serialising
-        // them would add a round trip to the critical load path for nothing.
-        // Failures degrade silently — the dashboard just shows no data, no toast.
+        // The money FORMAT is resolved before the fan-out, and the whole NumberFormatInfo rather than
+        // just the currency code. It used to be built inside LoadTotalsAsync, so a totals failure left
+        // it null and MainCurrencyFormat fell back to the generic "$" — which, with the history call
+        // succeeding, would render a NOK series under a dollar sign. The preference and the reference
+        // data are both client-side caches, so paying for them first costs a round trip only on the
+        // very first load.
+        _mainCurrencyFormat = await ResolveMainCurrencyFormatAsync();
+
+        // The accounts list supplies the count, the totals endpoint the headline figure, and the
+        // history endpoint the series. None depends on the others, so they go out together —
+        // serialising them would add round trips to the critical load path for nothing.
+        // Failures degrade silently into the header's problem rollup: no toast.
         var listTask = Accounts.ListAllAsync();
         var totalsTask = LoadTotalsAsync();
-        await Task.WhenAll(listTask, totalsTask);
+        var historyTask = LoadHistoryAsync();
+        await Task.WhenAll(listTask, totalsTask, historyTask);
 
         var result = await listTask;
         _accounts = result.ValueOr([]);
 
-        if (result.IsSuccess)
-            BuildChart();
         _isLoadingAccounts = false;
+    }
+
+    // The reconstructed series. The client sends NO from/to: the server's defaults already are the
+    // v1 window, and a `to` built from DateTime.Now (local) is tomorrow-in-UTC anywhere east of UTC,
+    // which the server rejects outright with a 400.
+    private async Task LoadHistoryAsync()
+    {
+        var result = await Accounts.GetNetWorthHistoryAsync(_mainCurrencyCode);
+
+        // A failed call leaves _history null. There is no fallback series: when the data is not
+        // there, the chart is not there.
+        _history = result.IsSuccess ? result.Value : null;
+        _chartSeries = DashboardFigures.BuildSeries(_history);
+        _isLoadingHistory = false;
     }
 
     // Net worth is server-computed (issue #372's AccountTotalsService): it converts every
@@ -103,36 +123,39 @@ public partial class Home
     // unlike currencies as bare numbers and ignored estimates entirely.
     private async Task LoadTotalsAsync()
     {
-        await UserPreferences.LoadUserPreferencesAsync();
-        var mainCurrency = UserPreferences.MainCurrency ?? DefaultMainCurrency;
+        var result = await Accounts.GetTotalsAsync(_mainCurrencyCode);
 
-        var result = await Accounts.GetTotalsAsync(mainCurrency);
-        if (!result.IsSuccess)
-        {
-            // Degrade silently, like the accounts load above: no toast, no figure.
-            _totals = null;
-            _mainCurrencyFormat = null;
-            return;
-        }
-
-        _totals = result.Value;
-        _mainCurrencyFormat = await BuildMainCurrencyFormatAsync(_totals?.MainCurrencyCode);
+        // Degrade silently, like the accounts load above: no toast, no figure. The FORMAT is not
+        // touched here — it belongs to the user's preference, not to this response, and a totals
+        // failure must not change how the chart's own figures are denominated.
+        _totals = result.IsSuccess ? result.Value : null;
     }
 
-    // The main currency's symbol and minor units, resolved through the shared reference-data
-    // cache so the dashboard shows "kr 48 260,00" rather than the generic "$" the design
-    // specimen used for its single-currency mock data. The mapping itself is in DashboardFigures,
-    // where it is testable without a renderer.
-    private async Task<NumberFormatInfo> BuildMainCurrencyFormatAsync(string? currencyCode)
+    // The main currency's symbol and minor units, resolved through the shared reference-data cache so
+    // the dashboard shows "kr 48 260,00" rather than the generic "$" the design specimen used for its
+    // single-currency mock data. The mapping itself is in DashboardFigures, where it is testable
+    // without a renderer.
+    //
+    // Returns null when the reference-data lookup fails. That degrades the SYMBOL only: MainCurrencyFormat
+    // then falls back to the currency code, so the denomination is still reported correctly and the
+    // header rollup says what was lost.
+    private async Task<NumberFormatInfo?> ResolveMainCurrencyFormatAsync()
     {
-        if (string.IsNullOrWhiteSpace(currencyCode))
-            return DashboardFigures.MoneyFormat(currencyCode, null);
+        try
+        {
+            await UserPreferences.LoadUserPreferencesAsync();
+            _mainCurrencyCode = UserPreferences.MainCurrency ?? DefaultMainCurrency;
 
-        var currencies = await ReferenceData.CurrenciesAsync();
-        var currency = currencies.FirstOrDefault(c =>
-            string.Equals(c.CurrencyCode, currencyCode, StringComparison.OrdinalIgnoreCase));
+            var currencies = await ReferenceData.CurrenciesAsync();
+            var currency = currencies.FirstOrDefault(c =>
+                string.Equals(c.CurrencyCode, _mainCurrencyCode, StringComparison.OrdinalIgnoreCase));
 
-        return DashboardFigures.MoneyFormat(currencyCode, currency);
+            return DashboardFigures.MoneyFormat(_mainCurrencyCode, currency);
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
     }
 
     private async Task LoadTransactionsAsync()
@@ -180,20 +203,67 @@ public partial class Home
     private List<ExistingAccount> ActiveAccounts => _accounts.Where(a => a.Archived is null).ToList();
     private decimal? NetWorth => _totals?.NetWorth;
 
-    // The chart's empty state has two causes and they are not interchangeable: nothing to
-    // chart, or a figure the server could not give us.
-    private string ChartEmptyLabel => DashboardFigures.ChartEmptyLabel(_totals is not null);
+    // ── The net-worth chart ──
+    // Everything below reads the response and nothing else. There is no fallback series: when the
+    // data is not there, the chart is not there (issue #90 §11).
 
-    private string ChartSubLine
-    {
-        get
-        {
-            var currency = _totals?.MainCurrencyCode;
-            if (string.IsNullOrWhiteSpace(currency))
-                return _chartStartYear is int only ? $"Since {only}" : string.Empty;
-            return _chartStartYear is int year ? $"Since {year} · {currency}" : currency;
-        }
-    }
+    private bool _chartIsLoading => _isLoadingAccounts || _isLoadingHistory;
+
+    // There is no "withhold the chart" state any more. It existed because an unresolved format meant a
+    // wrong sigil, and the region then rendered NOTHING — no skeleton, no chart, no explanation — which
+    // is its own defect. With the code-based fallback above, a failed reference-data lookup costs the
+    // symbol and the minor-unit count, and the degradation is disclosed in the header rollup instead.
+    private bool _currencyFormatIsDegraded => _mainCurrencyFormat is null;
+
+    private IReadOnlyList<NetWorthHistoryPoint> HistoryPoints => _history?.Points ?? [];
+
+    private NetWorthInterval ChartInterval => _history?.Interval ?? NetWorthHistoryQuery.DefaultInterval;
+
+    private string? FirstPointLabel => _chartSeries.Count > 0 ? _chartSeries[0].Label : null;
+
+    private string? LastPointLabel => _chartSeries.Count > 0 ? _chartSeries[^1].Label : null;
+
+    // The cause is carried on the response, so the copy names it. Inferring it from the payload is
+    // impossible for two of the four causes, which is why the field exists at all.
+    private string ChartEmptyLabel =>
+        DashboardFigures.ChartEmptyLabel(_history?.EmptyReason, _mainCurrencyCode);
+
+    private string ChartCaption => DashboardFigures.ChartCaption(
+        _chartSeries.Count, FirstPointLabel, LastPointLabel, ChartInterval, _mainCurrencyCode);
+
+    private string ChartAriaLabel =>
+        DashboardFigures.ChartAriaLabel(_chartSeries.Count, FirstPointLabel, LastPointLabel, ChartInterval);
+
+    // V15: the delta is an absolute money difference, and it renders only when both endpoints are
+    // fully measured AND actually contributed. A revalued endpoint is a real movement and does not
+    // withhold it — the component applies the partial half itself, so this is the contributing half.
+    private bool ChartShowsDelta =>
+        _chartSeries.Count > 1
+        && HistoryPoints[0].ContributingAccountCount > 0
+        && HistoryPoints[^1].ContributingAccountCount > 0;
+
+    private string? ChartDeltaSuffix => FirstPointLabel is { } first ? $"since {first}" : null;
+
+    private bool DeltaWithheldByAnUnderstatedEndpoint =>
+        _chartSeries.Count > 1
+        && (_chartSeries[0].Kind == OdsLinePointKind.Partial
+            || _chartSeries[^1].Kind == OdsLinePointKind.Partial);
+
+    private IReadOnlyList<string> LabelsWhere(Func<NetWorthHistoryPoint, bool> predicate) =>
+        [.. _chartSeries
+            .Zip(HistoryPoints)
+            .Where(pair => predicate(pair.Second))
+            .Select(pair => pair.First.Label)];
+
+    // Every condition the markers show is also stated in text: the markers rest on shape and stroke,
+    // and a reader who cannot see the plot gets neither.
+    private string? UnderstatedNote => DashboardFigures.UnderstatedNote(
+        LabelsWhere(point => point.UnconvertedAccountCount > 0),
+        _history?.UnconvertedAccounts ?? [],
+        DeltaWithheldByAnUnderstatedEndpoint);
+
+    private string? RevaluedNote =>
+        DashboardFigures.RevaluedNote(LabelsWhere(point => point.RevaluedAccountCount > 0));
 
     // ── Problem rollup ──
     // The server reports accounts it could not convert into the main currency; each one
@@ -219,14 +289,26 @@ public partial class Home
                 ];
             }
 
+            var problems = new List<PageHeaderProblem>();
+
+            if (_currencyFormatIsDegraded)
+            {
+                problems.Add(new PageHeaderProblem
+                {
+                    Severity = PageHeaderSeverity.Warning,
+                    Message = $"Currency details for {_mainCurrencyCode} could not be loaded, so amounts "
+                        + "are shown with the currency code instead of its symbol.",
+                    Where = "Dashboard header and chart",
+                });
+            }
+
             var unconverted = _totals.UnconvertedAccounts;
             if (unconverted.Count == 0)
-                return [];
+                return problems;
 
             var main = _totals.MainCurrencyCode;
-            return
-            [
-                .. unconverted.Select(account => new PageHeaderProblem
+            problems.AddRange(
+                unconverted.Select(account => new PageHeaderProblem
                 {
                     Severity = PageHeaderSeverity.Warning,
                     Lead = account.Name,
@@ -234,8 +316,9 @@ public partial class Home
                     Where = "Accounts",
                     ViewLabel = "Accounts",
                     OnView = EventCallback.Factory.Create(this, () => NavigationManager.NavigateTo("accounts")),
-                }),
-            ];
+                }));
+
+            return problems;
         }
     }
 
@@ -262,54 +345,6 @@ public partial class Home
         _ => OdsChipTone.Info,
     };
 
-    // ── Net worth chart series ──
-    // The synthetic history: there is no stored net-worth-over-time series, so the
-    // design's eased growth curve is resampled across the real span (earliest
-    // account year → this year) and anchored to land exactly on today's figure.
-    // OdsLineChart owns the geometry, axis labels, figure and delta.
-    private void BuildChart()
-    {
-        var accounts = ActiveAccounts;
-        if (accounts.Count == 0 || NetWorth is not { } netWorth)
-        {
-            // No accounts, or no server total to anchor the curve to. A curve anchored on
-            // a client-side guess would be doubly invented, so the chart shows its empty state.
-            _chartSeries = [];
-            _chartStartYear = null;
-            return;
-        }
-
-        var current = (double)netWorth;
-        var startYear = accounts.Min(a => a.Opened.Year);
-        var endYear = Math.Max(startYear, DateTime.Now.Year);
-        if (startYear >= endYear)
-            startYear = endYear - 1; // guarantee at least two points
-
-        var n = endYear - startYear + 1;
-        var series = new List<OdsLinePoint>(n);
-        for (var i = 0; i < n; i++)
-        {
-            var value = (decimal)(current * SampleCurve(i, n));
-            series.Add(new OdsLinePoint($"'{(startYear + i) % 100:00}", value));
-        }
-
-        _chartSeries = series;
-        _chartStartYear = startYear;
-    }
-
-    // Resample the canonical curve to n points; i=n-1 always maps to 1.0 so the
-    // line lands exactly on the current net worth.
-    private static double SampleCurve(int i, int n)
-    {
-        if (n <= 1)
-            return 1.0;
-        var pos = (double)i / (n - 1) * (GrowthCurve.Length - 1);
-        var lo = (int)Math.Floor(pos);
-        var hi = Math.Min(lo + 1, GrowthCurve.Length - 1);
-        var frac = pos - lo;
-        return GrowthCurve[lo] * (1 - frac) + GrowthCurve[hi] * frac;
-    }
-
     // Compact y-axis label, e.g. "$52k" / "kr 52k", in the main currency.
     private string KLabel(decimal v) =>
         DashboardFigures.AxisLabel(v, MainCurrencyFormat.CurrencySymbol);
@@ -318,7 +353,14 @@ public partial class Home
     // in that currency's symbol and minor units rather than the specimen's generic "$".
     private string FormatMoney(decimal value) => value.ToString("C", MainCurrencyFormat);
 
-    private NumberFormatInfo MainCurrencyFormat => _mainCurrencyFormat ??= GenericMoneyFormat;
+    // The fallback is the currency CODE, never the generic "$". _mainCurrencyCode is always a real
+    // code — it defaults to NOK and is only ever overwritten with the user's preference — so when the
+    // reference-data lookup fails, all that is lost is the pretty symbol and the minor-unit count, not
+    // the denomination. GenericMoneyFormat is for a per-transaction amount in its own account's
+    // currency; reaching for it here rendered a NOK figure as "$48,260.00", which is the same
+    // misreported-denomination defect this page removes from the chart, relocated to the header.
+    private NumberFormatInfo MainCurrencyFormat =>
+        _mainCurrencyFormat ??= DashboardFigures.MoneyFormat(_mainCurrencyCode, null);
 
     // Per-transaction amounts stay on the generic symbol: a transaction is in its account's
     // own currency, which is not necessarily the main one, and nothing converts it here.
@@ -332,6 +374,11 @@ public partial class Home
 
     // Matches the API's own fallback when no main-currency preference is set.
     private const string DefaultMainCurrency = "NOK";
+
+    // The currency the whole page is denominated in, resolved from the user's preference before any
+    // call goes out — so the totals request, the history request and the formatting all name the same
+    // one, and a failure in any of them cannot change the others' denomination.
+    private string _mainCurrencyCode = DefaultMainCurrency;
 
     private static string FirstNameFrom(string raw)
     {

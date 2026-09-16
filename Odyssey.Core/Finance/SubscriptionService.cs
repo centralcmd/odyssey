@@ -371,7 +371,7 @@ public class SubscriptionService
         };
 
         // Batch the latest rate for each present currency → base; same currency is 1:1.
-        var rates = await conversion.GetLatestRatesToAsync(baseCode, rows.Keys, cancellationToken);
+        var rates = await conversion.GetLatestRatesToAsync(baseCode, rows.Keys, cancellationToken: cancellationToken);
         decimal? convertedMonthly = null;
         decimal? convertedYearly = null;
         foreach (var row in rows.Values)

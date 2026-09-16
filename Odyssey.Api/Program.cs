@@ -278,6 +278,7 @@ builder.Services.AddAntiforgery(options =>
 
 builder.Services.AddIdentityRateLimiter(builder.Configuration);
 builder.Services.AddImportExportRateLimiter();
+builder.Services.AddNetWorthHistoryRateLimiter();
 builder.Services.AddAdminActionRateLimiter(builder.Configuration);
 
 // The instance-wide half of the export concurrency control (issue #343 §5) — a singleton so every
@@ -304,6 +305,7 @@ builder.Services.AddScoped<CurrencyService>();
 builder.Services.AddScoped<ExchangeRateService>();
 builder.Services.AddScoped<CurrencyConversionService>();
 builder.Services.AddScoped<AccountTotalsService>();
+builder.Services.AddScoped<NetWorthHistoryService>();
 builder.Services.AddScoped<FileService>();
 
 // File upload size cap lives in one place (the "FileStorage" config section) and is applied at

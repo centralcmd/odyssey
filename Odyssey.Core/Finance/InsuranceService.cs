@@ -1217,7 +1217,7 @@ public class InsuranceService
         // One rate lookup for every currency in the set, not one per period: ConvertAsync would issue
         // a query per renewal, which is the shape of problem the rest of this service avoids.
         var rates = await conversion.GetLatestRatesToAsync(
-            currency, accrued.Select(r => r.PremiumCurrencyCode), cancellationToken);
+            currency, accrued.Select(r => r.PremiumCurrencyCode), cancellationToken: cancellationToken);
 
         var total = 0m;
         var counted = 0;

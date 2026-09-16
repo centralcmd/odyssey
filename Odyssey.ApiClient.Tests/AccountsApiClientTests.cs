@@ -228,4 +228,48 @@ public class AccountsApiClientTests
         CurrencyCode = "NOK",
         EffectiveFrom = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),
     };
+
+    // ── Net-worth history (issue #90) ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Sending nothing has to mean "use the server's defaults", not "send empty parameters". The
+    /// browser case is the pointed one: a <c>to</c> built from local time is tomorrow-in-UTC anywhere
+    /// east of UTC, which the server rejects outright — so the dashboard sends no window at all.
+    /// </summary>
+    [Fact]
+    public async Task GetNetWorthHistoryAsync_with_no_arguments_sends_a_bare_path()
+    {
+        var (client, handler) = Create();
+
+        await client.GetNetWorthHistoryAsync();
+
+        Assert.Equal("/api/accounts/net-worth-history", handler.LastRequest!.RequestUri!.AbsolutePath);
+        Assert.Equal(string.Empty, handler.LastRequest.RequestUri.Query);
+    }
+
+    /// <summary>
+    /// The dates go out ISO-8601. <c>DateOnly</c>'s <c>TypeConverter</c> parses under the CURRENT
+    /// culture server-side, so a locale-formatted date would bind to a different day on a differently
+    /// configured host, or not at all — and this endpoint's whole point is that a figure is dated
+    /// correctly.
+    /// </summary>
+    [Fact]
+    public async Task GetNetWorthHistoryAsync_sends_iso_dates_and_a_named_interval()
+    {
+        var (client, handler) = Create();
+
+        await client.GetNetWorthHistoryAsync(
+            "NOK", NetWorthInterval.Quarterly, new DateOnly(2024, 9, 5), new DateOnly(2026, 3, 1));
+
+        var query = handler.LastRequest!.RequestUri!.Query;
+        Assert.Contains("mainCurrency=NOK", query, StringComparison.Ordinal);
+        Assert.Contains("interval=Quarterly", query, StringComparison.Ordinal);
+        Assert.Contains("from=2024-09-05", query, StringComparison.Ordinal);
+        Assert.Contains("to=2026-03-01", query, StringComparison.Ordinal);
+
+        // Not a list endpoint: PagedQuery would have appended offset/limit, which the server does not
+        // bind and which would read as a paging contract this resource does not have.
+        Assert.DoesNotContain("offset=", query, StringComparison.Ordinal);
+        Assert.DoesNotContain("limit=", query, StringComparison.Ordinal);
+    }
 }

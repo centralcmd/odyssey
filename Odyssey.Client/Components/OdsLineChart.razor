@@ -1,4 +1,3 @@
-@using System.Globalization
 @*
     OdsLineChart — the axis'd trend card (Odyssey Design System · components/LineChart).
     Unlike OdsSparkline (compact, axis-less), this is the full card: a head (title · sub
@@ -9,8 +8,27 @@
     Series is OdsLinePoint[] (oldest → newest); points with a null Value are skipped.
     Format formats the headline + axis numbers (a money formatter); AxisFormat overrides
     the y-axis ticks with a compact variant. Cumulative plots the running total. ShowDelta
-    adds a latest-vs-first delta (mint up / coral down) with DeltaSuffix text. A single
-    point renders as a dot; an empty series renders the EmptyLabel.
+    adds a latest-vs-first delta (mint up / coral down) with DeltaSuffix text. One point
+    renders as a dot; an empty series renders the EmptyLabel.
+
+    A reconstructed series (the dashboard's net-worth history) needs three things a plain
+    trend card does not, and all three are additive — a series of plain Normal points with
+    a non-negative domain renders exactly as it did before:
+      • NEGATIVES. The value domain drops below zero when it has to. The area then anchors
+        at Sy(0) rather than the plot floor and a labelled zero gridline is drawn. A domain
+        that never goes negative keeps the floor-anchored fill and the four even gridlines.
+      • POINT KINDS, not a flag: Normal (measured) · Partial (understated — a contributing
+        account had no exchange rate) · Revalued (a real step, an estimate took effect).
+        Shape and stroke carry the meaning, never fill colour: filled dot · hollow dot with
+        dashed adjoining segments · filled dot with a vertical tick. A Partial ENDPOINT
+        suppresses the delta; a Revalued one does not.
+      • A TEXT EQUIVALENT — TextEquivalent renders a visually-hidden table of every point
+        and its state. Opt-in, so existing consumers' assistive-tech output is unchanged.
+
+    Sub is a RenderFragment, so a consumer can hand it note sentences rather than one
+    caption string (the DS contract already types sub as a node).
+
+    The parameters and the plot geometry live in OdsLineChart.razor.cs.
 
     Pure SVG + tokens (default stroke --chart-1) so it re-themes light/dark. Styled by
     .odc-lc / .odc-line-svg in the global sheet.
@@ -23,18 +41,18 @@
             {
                 <div class="odc-lc-ttl">@Title</div>
             }
-            @if (!string.IsNullOrEmpty(Sub))
+            @if (Sub is not null)
             {
                 <div class="odc-lc-sub">@Sub</div>
             }
         </div>
-        @if (Figure is not null || pts.Count > 0)
+        @if (Figure is not null || _pts.Count > 0)
         {
             <div class="odc-lc-figure">
-                <div class="odc-lc-num">@(Figure ?? Format((decimal)pts[^1].Value))</div>
-                @if (ShowDelta && pts.Count > 1)
+                <div class="odc-lc-num">@(Figure ?? Format((decimal)_pts[^1].Value))</div>
+                @if (_deltaOk)
                 {
-                    var delta = pts[^1].Value - pts[0].Value;
+                    var delta = _pts[^1].Value - _pts[0].Value;
                     <div class="odc-lc-delta @(delta >= 0 ? "income" : "expense")">
                         @(delta >= 0 ? "+" : "−")@Format((decimal)Math.Abs(delta))@(string.IsNullOrEmpty(DeltaSuffix) ? "" : " " + DeltaSuffix)
                     </div>
@@ -43,7 +61,7 @@
         }
     </div>
 
-    @if (pts.Count == 0)
+    @if (_pts.Count == 0)
     {
         <div class="odc-lc-empty">@EmptyLabel</div>
     }
@@ -52,142 +70,139 @@
         <svg class="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
              role="img" aria-label="@EffectiveAriaLabel">
             <g stroke="var(--chart-grid)" stroke-width="1">
-                @foreach (var v in gridVals)
+                @foreach (var v in _gridVals)
                 {
-                    <line x1="@x0" y1="@Fmt(Sy(v))" x2="@x1" y2="@Fmt(Sy(v))" />
+                    @* Zero gets its own heavier baseline below, so it is not also an ordinary gridline. *@
+                    @if (v != 0)
+                    {
+                        <line x1="@Fmt(X0)" y1="@Fmt(Sy(v))" x2="@Fmt(X1)" y2="@Fmt(Sy(v))" />
+                    }
                 }
             </g>
             @* Razor reserves <text> as a control keyword, so the axis labels are
                emitted as raw SVG markup. *@
             <g class="odc-lc-axis">@((MarkupString)YAxisMarkup)</g>
             <g class="odc-lc-axis">@((MarkupString)XAxisMarkup)</g>
-            @if (Area && !single)
+            @if (Area && !_single)
             {
-                <defs>
-                    <linearGradient id="@fillId" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="@Color" stop-opacity="0.26" />
-                        <stop offset="100%" stop-color="@Color" stop-opacity="0" />
-                    </linearGradient>
-                </defs>
-                <path d="@AreaPath" fill="url(#@fillId)" />
+                @if (_straddles)
+                {
+                    @* A straddling domain fills flat — a vertical gradient across a band that
+                       crosses zero would read as a second signal. *@
+                    <path d="@AreaPath" fill="@Color" fill-opacity="0.14" />
+                }
+                else
+                {
+                    <defs>
+                        <linearGradient id="@_fillId" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="@Color" stop-opacity="0.26" />
+                            <stop offset="100%" stop-color="@Color" stop-opacity="0" />
+                        </linearGradient>
+                    </defs>
+                    <path d="@AreaPath" fill="url(#@_fillId)" />
+                }
             }
-            @if (!single)
+            @if (_straddles)
+            {
+                <line class="odc-lc-zero" x1="@Fmt(X0)" y1="@Fmt(Sy(0))" x2="@Fmt(X1)" y2="@Fmt(Sy(0))" />
+            }
+            @if (!_single && !_anyMarked)
             {
                 <polyline points="@LinePts" fill="none" stroke="@Color" stroke-width="2.4"
                           stroke-linejoin="round" stroke-linecap="round" />
             }
-            @for (var i = 0; i < pts.Count; i++)
+            @if (!_single && _anyMarked)
             {
-                <circle cx="@Fmt(Sx(i))" cy="@Fmt(Sy(pts[i].Value))"
-                        r="@(i == pts.Count - 1 ? "4" : "2.5")" fill="@Color" />
+                @* An all-Normal series keeps the polyline above, so its markup is byte-identical to
+                   what it was; only a marked series pays for per-segment strokes, which is what lets
+                   a dashed run show where the data is understated. *@
+                for (var i = 1; i < _pts.Count; i++)
+                {
+                    var understated = _pts[i - 1].Kind == OdsLinePointKind.Partial
+                                      || _pts[i].Kind == OdsLinePointKind.Partial;
+                    <line x1="@Fmt(Sx(i - 1))" y1="@Fmt(Sy(_pts[i - 1].Value))"
+                          x2="@Fmt(Sx(i))" y2="@Fmt(Sy(_pts[i].Value))"
+                          stroke="@Color" stroke-width="2.4" stroke-linecap="round"
+                          stroke-dasharray="@(understated ? "2 5" : null)" />
+                }
+            }
+            @for (var i = 0; i < _pts.Count; i++)
+            {
+                var cx = Fmt(Sx(i));
+                var y = Sy(_pts[i].Value);
+                var r = i == _pts.Count - 1 ? 4.0 : 2.5;
+                @switch (_pts[i].Kind)
+                {
+                    case OdsLinePointKind.Partial:
+                        <circle cx="@cx" cy="@Fmt(y)" r="@Fmt(r + 1.4)" fill="var(--mud-palette-surface)"
+                                stroke="@Color" stroke-width="1.8" />
+                        break;
+                    case OdsLinePointKind.Revalued:
+                        <g>
+                            <line x1="@cx" y1="@Fmt(y - 8)" x2="@cx" y2="@Fmt(y + 8)"
+                                  stroke="@Color" stroke-width="1.6" />
+                            <circle cx="@cx" cy="@Fmt(y)" r="@Fmt(r)" fill="@Color" />
+                        </g>
+                        break;
+                    default:
+                        <circle cx="@cx" cy="@Fmt(y)" r="@Fmt(r)" fill="@Color" />
+                        break;
+                }
             }
         </svg>
-    }
-</div>
 
-@code {
-    /// <summary>The series, oldest → newest. Points with a null Value are skipped.</summary>
-    [Parameter, EditorRequired] public IReadOnlyList<OdsLinePoint> Series { get; set; } = [];
-
-    /// <summary>Line + area + dot color. Default <c>var(--chart-1)</c>. Use a categorical chart token.</summary>
-    [Parameter] public string Color { get; set; } = "var(--chart-1)";
-
-    /// <summary>Plot the running total of Value instead of each point's own value.</summary>
-    [Parameter] public bool Cumulative { get; set; }
-
-    [Parameter] public string? Title { get; set; }
-
-    [Parameter] public string? Sub { get; set; }
-
-    /// <summary>Formats the headline figure + (by default) the y-axis ticks.</summary>
-    [Parameter] public Func<decimal, string> Format { get; set; } = static n => n.ToString("#,##0.##", CultureInfo.InvariantCulture);
-
-    /// <summary>Compact y-axis tick formatter; falls back to <see cref="Format"/>.</summary>
-    [Parameter] public Func<decimal, string>? AxisFormat { get; set; }
-
-    /// <summary>Show a latest-vs-first delta beside the figure (mint up / coral down).</summary>
-    [Parameter] public bool ShowDelta { get; set; }
-
-    /// <summary>Trailing text on the delta, e.g. "all-time" or "vs 2024".</summary>
-    [Parameter] public string? DeltaSuffix { get; set; }
-
-    /// <summary>Override the headline figure (else the latest point, via <see cref="Format"/>).</summary>
-    [Parameter] public string? Figure { get; set; }
-
-    /// <summary>Render every Nth category label (the last is always shown). Default 1.</summary>
-    [Parameter] public int XTickEvery { get; set; } = 1;
-
-    /// <summary>Fill the area under the line. Default true.</summary>
-    [Parameter] public bool Area { get; set; } = true;
-
-    [Parameter] public string? AriaLabel { get; set; }
-
-    // Fall back to the visible title so an unlabeled chart still names itself to AT.
-    private string EffectiveAriaLabel =>
-        !string.IsNullOrEmpty(AriaLabel) ? AriaLabel
-        : !string.IsNullOrEmpty(Title) ? $"{Title} — line chart"
-        : "Line chart";
-
-    [Parameter] public string? Class { get; set; }
-
-    /// <summary>Shown when the series has no plottable points.</summary>
-    [Parameter] public string EmptyLabel { get; set; } = "No data yet.";
-
-    private const double x0 = 64, x1 = 968, yTop = 28, yBot = 212;
-
-    private readonly List<(string Label, double Value)> pts = [];
-    private bool single;
-    private double yMin, yMax;
-    private double[] gridVals = [];
-    private string fillId = "";
-
-    private string FmtAxis(decimal n) => (AxisFormat ?? Format)(n);
-
-    protected override void OnParametersSet()
-    {
-        // Build the plotted points (oldest → newest), applying the running total in
-        // cumulative mode.
-        pts.Clear();
-        double acc = 0;
-        foreach (var p in Series)
+        @if (MarkLegend && _anyMarked)
         {
-            if (p?.Value is null) continue;
-            acc += (double)p.Value.Value;
-            pts.Add((p.Label, Cumulative ? acc : (double)p.Value.Value));
+            <div class="odc-lc-marks">
+                @if (_pts.Any(p => p.Kind == OdsLinePointKind.Partial))
+                {
+                    <span class="odc-lc-mark">
+                        <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
+                            <line x1="0" y1="5" x2="26" y2="5" stroke="@Color" stroke-width="2" stroke-dasharray="2 5" />
+                            <circle cx="13" cy="5" r="3.6" fill="var(--mud-palette-surface)" stroke="@Color" stroke-width="1.6" />
+                        </svg>
+                        @PartialLabel
+                    </span>
+                }
+                @if (_pts.Any(p => p.Kind == OdsLinePointKind.Revalued))
+                {
+                    <span class="odc-lc-mark">
+                        <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
+                            <line x1="0" y1="5" x2="26" y2="5" stroke="@Color" stroke-width="2" />
+                            <line x1="13" y1="0" x2="13" y2="10" stroke="@Color" stroke-width="1.6" />
+                            <circle cx="13" cy="5" r="2.6" fill="@Color" />
+                        </svg>
+                        @RevaluedLabel
+                    </span>
+                }
+            </div>
         }
 
-        if (pts.Count == 0) return;
-
-        single = pts.Count == 1;
-        var lo = pts.Min(p => p.Value);
-        var hi = pts.Max(p => p.Value);
-        var span = (hi - lo) != 0 ? hi - lo : (Math.Abs(hi) != 0 ? Math.Abs(hi) : 1);
-        yMin = Math.Max(0, lo - span * 0.18);
-        yMax = hi + span * 0.18;
-
-        gridVals = [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
-        fillId = $"odc-lc-fill-{Guid.NewGuid():N}";
+        @if (TextEquivalent)
+        {
+            <table class="odc-sr-only">
+                @if (!string.IsNullOrEmpty(Title))
+                {
+                    <caption>@Title</caption>
+                }
+                <thead>
+                    <tr>
+                        <th scope="col">@TextEquivalentLabel</th>
+                        <th scope="col">Value</th>
+                        <th scope="col">State</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _pts)
+                    {
+                        <tr>
+                            <th scope="row">@p.Label</th>
+                            <td>@Format((decimal)p.Value)</td>
+                            <td>@KindDescription(p.Kind)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
     }
-
-    private double Sx(int i) => single ? (x0 + x1) / 2 : x0 + i * (x1 - x0) / (pts.Count - 1);
-
-    private double Sy(double v) => yBot - (v - yMin) / (yMax - yMin != 0 ? yMax - yMin : 1) * (yBot - yTop);
-
-    private static string Fmt(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
-
-    private string LinePts => string.Join(' ', pts.Select((p, i) => $"{Fmt(Sx(i))},{Fmt(Sy(p.Value))}"));
-
-    private string AreaPath =>
-        $"M {Fmt(Sx(0))} {Fmt(yBot)} " +
-        string.Join(' ', pts.Select((p, i) => $"L {Fmt(Sx(i))} {Fmt(Sy(p.Value))}")) +
-        $" L {Fmt(Sx(pts.Count - 1))} {Fmt(yBot)} Z";
-
-    private static string Enc(string s) => System.Net.WebUtility.HtmlEncode(s);
-
-    private string YAxisMarkup => string.Concat(gridVals.Select(v =>
-        $"<text x=\"{Fmt(x0 - 12)}\" y=\"{Fmt(Sy(v) + 4)}\" text-anchor=\"end\">{Enc(FmtAxis((decimal)Math.Round(v)))}</text>"));
-
-    private string XAxisMarkup => string.Concat(Enumerable.Range(0, pts.Count)
-        .Where(i => i % XTickEvery == 0 || i == pts.Count - 1)
-        .Select(i => $"<text x=\"{Fmt(Sx(i))}\" y=\"{Fmt(yBot + 26)}\" text-anchor=\"middle\">{Enc(pts[i].Label)}</text>"));
-}
+</div>

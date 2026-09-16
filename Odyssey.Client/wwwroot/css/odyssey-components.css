@@ -14,6 +14,13 @@
    and do not appear here.
    ────────────────────────────────────────────────────────────────────────── */
 
+/* ---------- Shared utility ---------- */
+/* The design system's own visually-hidden utility (components.css), kept under
+   the .odc-* prefix so a ported component's markup transcribes unchanged. Same
+   rule as app.css's .sr-only; both exist because the two layers are separate
+   vocabularies, not because they differ. */
+.odc-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 /* ---------- Chip ---------- */
 .odc-chip {
     display: inline-flex; align-items: center; gap: 6px;
@@ -395,7 +402,10 @@
 .odc-lc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
 .odc-lc-head > div:first-child { min-width: 0; }
 .odc-lc-ttl { font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
-.odc-lc-sub { font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 5px; }
+.odc-lc-sub { font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 5px; max-width: 62ch; text-wrap: pretty; }
+/* A note sentence in the sub-line — the disclosure slot for an understated or
+   revalued period. Blocked so each sentence reads as its own line. */
+.odc-lc-sub .odc-lc-note { display: block; margin-top: 4px; }
 .odc-lc-figure { text-align: right; white-space: nowrap; }
 .odc-lc-num { font: var(--fw-medium) var(--fs-h6)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); white-space: nowrap; }
 .odc-lc-delta { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); margin-top: 5px; white-space: nowrap; }
@@ -404,6 +414,14 @@
 .odc-lc-empty { padding: 28px 4px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-line-svg { width: 100%; height: auto; display: block; }
 .odc-lc-axis { font: var(--fw-regular) 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
+/* Zero baseline — drawn only when the value domain straddles zero, in the
+   axis colour so it reads as the origin rather than as one more gridline. */
+.odc-lc-zero { stroke: var(--chart-axis); stroke-width: 1.5; }
+.odc-lc-axis .odc-lc-axis-zero { fill: var(--mud-palette-text-primary); }
+/* Marker key — appears only for a series carrying understated / revalued
+   points. Shape + stroke, never colour, is what distinguishes them. */
+.odc-lc-marks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
+.odc-lc-mark { display: inline-flex; align-items: center; gap: 7px; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* ---------- Charts: Donut allocation panel ---------- */
 .odc-donut-panel { min-width: 0; }

@@ -21,6 +21,11 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
     [
         ("/api/users", PermissionClaims.UsersRead),       // Admin-only — the clear discriminator.
         ("/api/accounts", PermissionClaims.AccountsRead), // every role has this.
+        // The net-worth history (issue #90) folds three claim-gated sources — transactions, account
+        // estimates and exchange rates — behind accounts.read alone, and §10.3 accepts that because
+        // every role reaching it already holds all three. AuthorizationPolicyTests pins the premise
+        // against RoleClaimMap; this pins the gate itself over a real login.
+        ("/api/accounts/net-worth-history", PermissionClaims.AccountsRead),
         ("/api/budgets", PermissionClaims.BudgetsRead),   // every role has this.
         // Photos module (issue #321) — Admin/Owner/User hold these, Guest holds none (whole module 403).
         ("/api/photos", PermissionClaims.PhotosRead),

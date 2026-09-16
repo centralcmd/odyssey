@@ -49,18 +49,11 @@ public sealed class RoleClaimSeeder(
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
-        // The same four pairings the model used to hold, kept together so the mapping stays readable
-        // at one call site.
-        (string RoleId, string[] Claims)[] mapping =
-        [
-            (RoleDefinitions.AdminId, RolePermissions.AdminClaims),
-            (RoleDefinitions.OwnerId, RolePermissions.OwnerClaims),
-            (RoleDefinitions.UserId, RolePermissions.UserClaims),
-            (RoleDefinitions.GuestId, RolePermissions.GuestClaims),
-        ];
-
+        // The pairings come from RolePermissions.RoleClaimMap rather than being written out again
+        // here (issue #90 G9). A second copy is how a fifth role gets granted claims through a path
+        // the authorization guards never enumerate.
         var desired = new HashSet<(string RoleId, string Claim)>();
-        foreach (var (roleId, claims) in mapping)
+        foreach (var (roleId, _, claims) in RolePermissions.RoleClaimMap)
         {
             foreach (var claim in claims)
             {

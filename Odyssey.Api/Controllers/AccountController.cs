@@ -4,6 +4,7 @@ using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -22,19 +23,25 @@ public class AccountController : ControllerBase
     private readonly FileService fileService;
     private readonly FileAnalysisService fileAnalysisService;
     private readonly AccountTotalsService accountTotalsService;
+    private readonly NetWorthHistoryService netWorthHistoryService;
+    private readonly TimeProvider timeProvider;
 
     public AccountController(
         ILogger<AccountController> logger,
         AccountService accountService,
         FileService fileService,
         FileAnalysisService fileAnalysisService,
-        AccountTotalsService accountTotalsService)
+        AccountTotalsService accountTotalsService,
+        NetWorthHistoryService netWorthHistoryService,
+        TimeProvider timeProvider)
     {
         this.logger = logger;
         this.accountService = accountService;
         this.fileService = fileService;
         this.fileAnalysisService = fileAnalysisService;
         this.accountTotalsService = accountTotalsService;
+        this.netWorthHistoryService = netWorthHistoryService;
+        this.timeProvider = timeProvider;
     }
     
     [HttpGet(Name = "GetAccounts")]
@@ -88,12 +95,16 @@ public class AccountController : ControllerBase
     [HttpGet("totals", Name = "GetAccountTotals")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AccountTotals))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Get total assets, liabilities and net worth in the main currency.",
-        Description = @"Converts each active account's balance into the main currency using the latest
-                        exchange rates and returns total assets, total liabilities, net worth, and the
-                        accounts that could not be converted (no rate to the main currency).")]
+        Description = @"Converts each active account's balance into the main currency using the rate in
+                        force now and returns total assets, total liabilities, net worth, and the
+                        accounts that could not be converted (no rate to the main currency).
+                        Everything is measured as of now, exclusively: a transaction, rate, estimate or
+                        account dated in the future does not count. An unsupported or archived
+                        mainCurrency is rejected with 400.")]
     public async Task<IActionResult> GetTotals(
         [FromQuery(Name = "mainCurrency")] [SwaggerParameter("MainCurrency", Required = false,
             Description = @"The currency to convert into. Defaults to NOK.")] string? mainCurrency = null, CancellationToken cancellationToken = default)
@@ -101,6 +112,61 @@ public class AccountController : ControllerBase
         var main = string.IsNullOrWhiteSpace(mainCurrency) ? DefaultMainCurrency : mainCurrency;
         var totals = await accountTotalsService.ComputeAsync(main, cancellationToken);
         return Ok(totals);
+    }
+
+    [HttpGet("net-worth-history", Name = "GetNetWorthHistory")]
+    [Authorize(Policy = PermissionClaims.AccountsRead)]
+    [EnableRateLimiting(NetWorthHistoryRateLimiting.NetWorthHistoryConcurrencyPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(NetWorthHistory))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Net worth over time, reconstructed from stored data.",
+        Description = @"Rebuilds the series on read from transactions, account estimates and exchange
+                        rates, with every point measured as of that point's own instant. Nothing is
+                        interpolated and no past point is scaled by the present figure, so the line can
+                        fall and can go negative.
+
+                        A point covers [periodStart, nextPeriodStart) and is DATED AT ITS PERIOD END —
+                        the instant it describes. Net worth is a stock, not a flow. A point covering
+                        October 2024 is dated 2024-11-01.
+
+                        A point whose figure is understated (an account had no rate then) says so with
+                        unconvertedAccountCount; one that stepped because an estimate took effect says
+                        so with revaluedAccountCount. Neither is smoothed and neither is a failure.
+
+                        An empty series always carries an emptyReason naming the cause — including a
+                        window that ends before the first account was opened, which is a 200, not a
+                        400. from/to are ISO-8601 dates (yyyy-MM-dd).
+
+                        MEMBERSHIP IS AS OF NOW: the series covers the accounts that are not archived
+                        TODAY, at every point. Archiving an account therefore removes it from the whole
+                        history, not just from today onward, so a series can change shape after a
+                        routine close. That is what makes the final point equal GET /accounts/totals
+                        exactly, which is the stronger guarantee; unlike an understated or revalued
+                        point, it carries no per-point flag.")]
+    public async Task<IActionResult> GetNetWorthHistory(
+        [FromQuery] NetWorthHistoryQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        // The range and cap rules need `from`, `to` and `interval` together, so no data annotation can
+        // express them. They are added to ModelState rather than thrown so they answer with the same
+        // `errors` dictionary a malformed date or an unbindable interval already produces; the
+        // currency check is a database lookup, so it throws and answers with a flat `detail` instead.
+        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+        foreach (var (field, message) in query.Validate(today))
+        {
+            ModelState.AddModelError(field, message);
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        var history = await netWorthHistoryService.ComputeAsync(query, cancellationToken);
+        return Ok(history);
     }
 
     [HttpPost(Name = "PostAccount")]

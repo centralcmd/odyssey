@@ -91,9 +91,15 @@ public class ContactExternalUidCollationTests(MariaDbFixture fixture)
             // denormalised mirror of it, not the record itself.
             Assert.True(await ColumnExistsAsync(context, "OrganizationDetails", "OrganizationNumber"));
 
+            // This migration replaced IX_Transactions_AccountId with (AccountId, TimeStamp); issue #90
+            // then replaced THAT with the covering (AccountId, TimeStamp, Amount), for the same
+            // reason both times — each is a strict prefix of its successor, so keeping it would be
+            // pure write amplification on the highest-volume table. What is asserted here is the
+            // schema at head, so it names the current index; the prefix assertions below are the
+            // part that does not move.
             Assert.Equal(
-                ["AccountId", "TimeStamp"],
-                await IndexColumnsAsync(context, "Transactions", "IX_Transactions_AccountId_TimeStamp"));
+                ["AccountId", "TimeStamp", "Amount"],
+                await IndexColumnsAsync(context, "Transactions", "IX_Transactions_AccountId_TimeStamp_Amount"));
             Assert.Equal(
                 ["Status"],
                 await IndexColumnsAsync(context, "Transactions", "IX_Transactions_Status"));
@@ -101,9 +107,10 @@ public class ContactExternalUidCollationTests(MariaDbFixture fixture)
                 ["Archived", "TakenAt"],
                 await IndexColumnsAsync(context, "Photos", "IX_Photos_Archived_TakenAt"));
 
-            // Both superseded indexes are strict prefixes of their replacements, so keeping them would
-            // be pure write amplification.
+            // Every superseded index is a strict prefix of its replacement, so keeping any of them
+            // would be pure write amplification.
             Assert.Empty(await IndexColumnsAsync(context, "Transactions", "IX_Transactions_AccountId"));
+            Assert.Empty(await IndexColumnsAsync(context, "Transactions", "IX_Transactions_AccountId_TimeStamp"));
             Assert.Empty(await IndexColumnsAsync(context, "Photos", "IX_Photos_Archived"));
         }
 

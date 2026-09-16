@@ -260,4 +260,31 @@ public static class RolePermissions
         TaxesRead,
         AccountsEstimatesRead,
     ];
+
+    /// <summary>
+    /// The single enumeration of every role and the claims it holds (issue #90 G9).
+    ///
+    /// <para>
+    /// Before this existed, the four pairings were written out by hand in <c>RoleClaimSeeder</c> and
+    /// again at four separate sites in <c>AuthorizationPolicyTests</c>. A guard written in that house
+    /// style cannot see a fifth role: someone adding a narrow "Viewer" would touch this class and the
+    /// seeder, have no reason to touch a test, and the guards would keep passing vacuously over the
+    /// four they name while the new role made their conclusion void. Issue #90 §10.3 accepts a
+    /// disclosure property <b>on the strength of one of those guards</b>, so a guard that can fail
+    /// open is not a tidiness problem.
+    /// </para>
+    ///
+    /// <para>
+    /// <see cref="AllClaims"/> is deliberately <b>not</b> a member: it is the vocabulary-completeness
+    /// list, not a role. It is held by no principal, and including it would make every "does any role
+    /// do X" guard trivially true.
+    /// </para>
+    /// </summary>
+    public static readonly IReadOnlyList<(string RoleId, string RoleName, string[] Claims)> RoleClaimMap =
+    [
+        (RoleDefinitions.AdminId, RoleDefinitions.Admin, AdminClaims),
+        (RoleDefinitions.OwnerId, RoleDefinitions.Owner, OwnerClaims),
+        (RoleDefinitions.UserId, RoleDefinitions.User, UserClaims),
+        (RoleDefinitions.GuestId, RoleDefinitions.Guest, GuestClaims),
+    ];
 }
