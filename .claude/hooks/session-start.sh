@@ -134,10 +134,17 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
     # would make Playwright look in an empty directory instead of downloading Chromium.
     if [ -d /opt/pw-browsers ]; then
       echo 'export PLAYWRIGHT_BROWSERS_PATH="/opt/pw-browsers"'
+      # Gates npm's postinstall ALONE. Step 6's explicit `cli.js install` is deliberately not
+      # blocked by it, which is what lets the browser be pinned below without a second variable.
       echo 'export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1'
     fi
+    # Aspire refuses to start behind a plain-http applicationUrl without this, and the AppHost's
+    # `http` launch profile — the one CLAUDE.md recommends to dodge the Linux dev-cert banner — is
+    # exactly that. Without it `dotnet run --project Odyssey.AppHost` dies at startup on an
+    # OptionsValidationException, which reads as a broken AppHost rather than a missing variable.
+    echo 'export ASPIRE_ALLOW_UNSECURED_TRANSPORT=true'
   } >> "${CLAUDE_ENV_FILE}"
-  log "Persisted DOTNET_ROOT=${DOTNET_HOME} and PATH for the session."
+  log "Persisted DOTNET_ROOT=${DOTNET_HOME}, PATH and the Aspire transport flag for the session."
 fi
 
 # ── 3. dotnet-ef ──────────────────────────────────────────────────────────────────────────────────
@@ -183,6 +190,24 @@ else
   fi
 fi
 
+# ── 4b. TLS interception vs. `docker compose --build` ─────────────────────────────────────────────
+# Where the session's egress is TLS-intercepted, a build container inherits the proxy but NOT its
+# CA, so `dotnet restore` inside a Dockerfile dies on NU1301 UntrustedRoot after several minutes.
+# Image PULLS are unaffected (the daemon holds the CA), so the symptom reads as a NuGet outage
+# rather than a trust problem — and Testcontainers keeps working, which makes it look stranger
+# still. Not fixable from here: the Dockerfile bases are digest-pinned, so a locally retagged
+# CA-injected base is not picked up, and injecting the CA properly means editing the Dockerfiles,
+# which would bake a session-local CA into a production image. Warn and point at Aspire, which
+# builds on the HOST and containerises only MariaDB.
+if [ -n "${HTTPS_PROXY:-}" ] && [ -n "${SSL_CERT_FILE:-}" ] \
+   && [ "${SSL_CERT_FILE}" != "/etc/ssl/certs/ca-certificates.crt" ]; then
+  log "NOTE: outbound TLS is intercepted (CA: ${SSL_CERT_FILE})."
+  log "      'docker compose up --build' WILL FAIL at 'dotnet restore' (NU1301 UntrustedRoot)."
+  log "      Run the stack with Aspire instead:"
+  log "        dotnet run --project Odyssey.AppHost --launch-profile http"
+  log "      Image pulls and Testcontainers are unaffected."
+fi
+
 # ── 5. NuGet restore ──────────────────────────────────────────────────────────────────────────────
 # Restore rather than build: it is what populates ~/.nuget/packages, and it leaves the choice of
 # Debug or Release to the session.
@@ -195,6 +220,31 @@ if [ -f "${PROJECT_DIR}/Odyssey.sln" ]; then
   fi
 else
   log "NOTE: no Odyssey.sln at ${PROJECT_DIR}; skipping restore."
+fi
+
+# ── 6. The Playwright browser build ───────────────────────────────────────────────────────────────
+# Microsoft.Playwright pins one exact Chromium revision and will use no other, so a browser baked
+# into the image goes stale the moment the package is bumped (1.62.0 wants r1234; the image that
+# prompted this ships r1194). Odyssey.E2ETests would still pass without this — StackFixture installs
+# the browser itself and only SKIPS if that fails — but it would spend ~650 MB of download inside
+# the first test run. Doing it here instead puts the browser in the cached container layer.
+# Must follow the restore: the driver ships inside the resolved Microsoft.Playwright package.
+#
+# The export mirrors step 2's decision and is NOT redundant with it: what that step wrote is sourced
+# for the SESSION, not for this process, so without setting it here the browser would land in
+# Playwright's own default while the session went on looking in /opt/pw-browsers.
+if [ -d /opt/pw-browsers ]; then
+  export PLAYWRIGHT_BROWSERS_PATH="/opt/pw-browsers"
+fi
+pw_dir="$(ls -d "${HOME}"/.nuget/packages/microsoft.playwright/*/.playwright 2>/dev/null | sort -V | tail -1)"
+if [ -z "${pw_dir}" ] || [ ! -x "${pw_dir}/node/linux-x64/node" ]; then
+  log "NOTE: the Playwright driver is not in the NuGet cache; Odyssey.E2ETests will fetch its browser on first run."
+elif "${pw_dir}/node/linux-x64/node" "${pw_dir}/package/cli.js" install chromium >/dev/null 2>&1; then
+  log "Playwright Chromium ready (${PLAYWRIGHT_BROWSERS_PATH:-Playwright default})."
+else
+  # Non-fatal, like every step above: the fixture runs the same install and self-skips if it fails
+  # again, so this costs the browser tier at worst, never the session.
+  log "WARNING: the Playwright browser install failed; Odyssey.E2ETests will retry it on first run."
 fi
 
 log "Ready."
