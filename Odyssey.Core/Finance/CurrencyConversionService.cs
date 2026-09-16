@@ -89,17 +89,30 @@ public class CurrencyConversionService(OdysseyContext context)
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The predicate returns the rows <b>inside</b> the window plus, per currency, the single latest
-    /// row before it — the carry-in that serves the first point. Bounding it in the predicate rather
-    /// than trimming after materialisation is the whole point: an in-memory trim still ships every
-    /// rate row since inception across the wire and holds them all at peak, which is the cost the
-    /// bound exists to avoid. Query count was never the concern; payload and peak allocation were.
+    /// It returns the rows <b>inside</b> the window plus, per currency, the single latest row before
+    /// it — the carry-in that serves the first point. Bounding it in the query rather than trimming
+    /// after materialisation is the whole point: an in-memory trim still ships every rate row since
+    /// inception across the wire and holds them all at peak, which is the cost the bound exists to
+    /// avoid. Query count was never the concern; payload and peak allocation were.
     /// </para>
     /// <para>
-    /// No <c>EF.Functions.*</c> and no grouping, so it runs on the EF InMemory provider the fast test
-    /// tiers use as well as on MariaDB. The correlated <c>Any</c> is what picks exactly one carry-in
-    /// row per currency: a row before the window qualifies only when no <i>later</i> row also sits
-    /// before the window.
+    /// <b>The carry-in is a join to a grouped MAX, not a correlated subquery, and the difference is
+    /// not stylistic.</b> The obvious form — "keep a row before the window when no <i>later</i> row
+    /// also sits before it" — reads well and is a dependent subquery: MariaDB re-executes it once per
+    /// candidate row, so a currency with 10 000 pre-window rows costs 10 000 executions. Measured on
+    /// the issue #90 AC36 dataset (20 000 rows) that form took <b>23.6 s</b>, and the correlated-MAX
+    /// variant of it 52.8 s — past MySqlConnector's 30 s command timeout, which surfaces as the
+    /// distinctly unhelpful "Query execution was interrupted". The shape below is <b>0.8 ms</b> on
+    /// the same data, because the grouped MAX resolves to a loose index scan over
+    /// <c>(From, To, AsOf)</c> and the join back is one index lookup per currency.
+    /// </para>
+    /// <para>
+    /// The two halves are disjoint by construction — one takes <c>AsOf &gt;= fromBound</c>, the other
+    /// <c>AsOf &lt; fromBound</c> — so the concatenation cannot double-count a row.
+    /// </para>
+    /// <para>
+    /// No <c>EF.Functions.*</c> and no raw SQL, so it still runs on the EF InMemory provider the fast
+    /// test tiers use as well as on MariaDB.
     /// </para>
     /// <para>
     /// Same v1 rules as everything else here: direct <c>(from, to)</c> pairs only, no inversion and no
@@ -125,15 +138,33 @@ public class CurrencyConversionService(OdysseyContext context)
             return new Dictionary<string, IReadOnlyList<RatePoint>>();
         }
 
-        var rows = await context.ExchangeRates
+        // Everything that falls inside the window.
+        var inWindow = context.ExchangeRates
             .Where(rate => rate.ToCurrencyCode == to
                 && fromCodes.Contains(rate.FromCurrencyCode)
-                && rate.AsOf < toBound
-                && (rate.AsOf >= fromBound
-                    || !context.ExchangeRates.Any(carry => carry.ToCurrencyCode == to
-                        && carry.FromCurrencyCode == rate.FromCurrencyCode
-                        && carry.AsOf < fromBound
-                        && carry.AsOf > rate.AsOf)))
+                && rate.AsOf >= fromBound
+                && rate.AsOf < toBound);
+
+        // The instant of each currency's latest rate before the window: one grouped MAX, which the
+        // (From, To, AsOf) index answers with a loose index scan rather than a row-by-row search.
+        var carryInInstants = context.ExchangeRates
+            .Where(rate => rate.ToCurrencyCode == to
+                && fromCodes.Contains(rate.FromCurrencyCode)
+                && rate.AsOf < fromBound)
+            .GroupBy(rate => rate.FromCurrencyCode)
+            .Select(group => new { FromCurrencyCode = group.Key, AsOf = group.Max(rate => rate.AsOf) });
+
+        // …joined back to the rows sitting at those instants. A tie on AsOf yields both rows, which
+        // the (AsOf, Tiebreak) ordering below resolves exactly as it does anywhere else.
+        var carryIn =
+            from rate in context.ExchangeRates
+            join instant in carryInInstants
+                on new { rate.FromCurrencyCode, rate.AsOf } equals new { instant.FromCurrencyCode, instant.AsOf }
+            where rate.ToCurrencyCode == to && rate.AsOf < fromBound
+            select rate;
+
+        var rows = await inWindow
+            .Concat(carryIn)
             .Select(rate => new
             {
                 rate.FromCurrencyCode,

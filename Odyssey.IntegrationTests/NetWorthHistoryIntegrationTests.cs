@@ -239,8 +239,21 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         context.ExchangeRates.AddRange(rows);
         await context.SaveChangesAsync();
 
+        var stopwatch = Stopwatch.StartNew();
         var timeline = await new CurrencyConversionService(context).GetRateTimelineToAsync(
             "USD", ["EUR", "CHF"], windowStart, windowStart.AddDays(100));
+        stopwatch.Stop();
+
+        // The bound is a REGRESSION GUARD, not a benchmark, and the gap it watches is enormous. The
+        // shipped shape — a join to a grouped MAX, which the (From, To, AsOf) index answers with a
+        // loose index scan — runs this in under a millisecond. The correlated-subquery form it
+        // replaced took 23.6 s on this exact dataset (and a correlated MAX 52.8 s), because MariaDB
+        // re-executes a dependent subquery once per candidate row. That is past MySqlConnector's 30 s
+        // command timeout, so the symptom was not "slow" but a failed query reading "Query execution
+        // was interrupted" — which is why this is asserted rather than left to a reviewer's eye.
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(10),
+            $"The rate timeline took {stopwatch.Elapsed.TotalSeconds:0.00}s over {rows.Count} rows. "
+            + "A correlated subquery per candidate row is the regression this watches for.");
 
         foreach (var code in new[] { "EUR", "CHF" })
         {
