@@ -61,11 +61,18 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
     echo "export PATH=\"${DOTNET_INSTALL_DIR}:${DOTNET_TOOLS_DIR}:\${PATH}\""
     echo 'export DOTNET_CLI_TELEMETRY_OPTOUT=1'
     echo 'export DOTNET_NOLOGO=1'
-    # Chromium is baked into the image; without these Playwright re-downloads it on restore.
+    # Keep Playwright's browsers in the image-baked location rather than under $HOME, and stop
+    # npm's postinstall re-fetching them on restore. Note SKIP_BROWSER_DOWNLOAD gates that
+    # postinstall ALONE — step 6's explicit `cli.js install` is deliberately not blocked by it.
     echo 'export PLAYWRIGHT_BROWSERS_PATH="/opt/pw-browsers"'
     echo 'export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1'
+    # Aspire refuses to start behind a plain-http applicationUrl without this, and the AppHost's
+    # `http` launch profile — the one CLAUDE.md recommends to dodge the Linux dev-cert banner — is
+    # exactly that. Without it `dotnet run --project Odyssey.AppHost` dies at startup on an
+    # OptionsValidationException, which reads as a broken AppHost rather than a missing variable.
+    echo 'export ASPIRE_ALLOW_UNSECURED_TRANSPORT=true'
   } >> "${CLAUDE_ENV_FILE}"
-  log "Wrote DOTNET_ROOT/PATH and the Playwright variables to CLAUDE_ENV_FILE."
+  log "Wrote DOTNET_ROOT/PATH and the Playwright/Aspire variables to CLAUDE_ENV_FILE."
 fi
 
 # ── 3. dotnet-ef ──────────────────────────────────────────────────────────────────────────────────
@@ -103,10 +110,49 @@ else
   log "WARNING: dockerd is not installed; Odyssey.IntegrationTests will self-skip."
 fi
 
+# ── 4b. TLS interception vs. `docker compose --build` ─────────────────────────────────────────────
+# Where the session's egress is TLS-intercepted, a build container inherits the proxy but NOT its
+# CA, so `dotnet restore` inside a Dockerfile dies on NU1301 UntrustedRoot after several minutes.
+# Image PULLS are unaffected (the daemon holds the CA), so the symptom reads as a NuGet outage
+# rather than a trust problem — and Testcontainers keeps working, which makes it look stranger
+# still. Not fixable from here: the Dockerfile bases are digest-pinned, so a locally retagged
+# CA-injected base is not picked up, and injecting the CA properly means editing the Dockerfiles,
+# which would bake a session-local CA into a production image. Warn and point at Aspire, which
+# builds on the HOST and containerises only MariaDB.
+if [ -n "${HTTPS_PROXY:-}" ] && [ -n "${SSL_CERT_FILE:-}" ] \
+   && [ "${SSL_CERT_FILE}" != "/etc/ssl/certs/ca-certificates.crt" ]; then
+  log "NOTE: outbound TLS is intercepted (CA: ${SSL_CERT_FILE})."
+  log "      'docker compose up --build' WILL FAIL at 'dotnet restore' (NU1301 UntrustedRoot)."
+  log "      Run the stack with Aspire instead:"
+  log "        dotnet run --project Odyssey.AppHost --launch-profile http"
+  log "      Image pulls and Testcontainers are unaffected."
+fi
+
 # ── 5. NuGet restore ──────────────────────────────────────────────────────────────────────────────
 # Restore rather than build: it is what populates ~/.nuget/packages for the container cache, and it
 # leaves the choice of Debug or Release to the session.
 log "Restoring ${PROJECT_DIR}/Odyssey.sln ..."
 dotnet restore "${PROJECT_DIR}/Odyssey.sln"
+
+# ── 6. The Playwright browser build ───────────────────────────────────────────────────────────────
+# Microsoft.Playwright pins one exact Chromium revision and will use no other, so the build baked
+# into the image goes stale the moment the package is bumped (1.62.0 wants r1234; the image ships
+# r1194). Odyssey.E2ETests would still pass without this — StackFixture installs the browser itself
+# and only SKIPS if that fails — but it would spend ~650 MB of download inside the first test run.
+# Doing it here instead puts the browser in the cached container layer.
+# Must follow the restore: the driver ships inside the resolved Microsoft.Playwright package.
+pw_dir="$(ls -d "${HOME}"/.nuget/packages/microsoft.playwright/*/.playwright 2>/dev/null | sort -V | tail -1)"
+if [ -n "${pw_dir}" ] && [ -x "${pw_dir}/node/linux-x64/node" ]; then
+  log "Aligning the Playwright Chromium build with the pinned revision ..."
+  if "${pw_dir}/node/linux-x64/node" "${pw_dir}/package/cli.js" install chromium >/dev/null 2>&1; then
+    log "Playwright Chromium ready."
+  else
+    # Non-fatal by design: the fixture retries the same install and self-skips if it fails again,
+    # so a session that only touches the other tiers should still start.
+    log "WARNING: the Playwright browser install failed; Odyssey.E2ETests will retry it on first run."
+  fi
+else
+  log "WARNING: the Playwright driver was not found under ~/.nuget/packages; skipping the browser install."
+fi
 
 log "Ready."
