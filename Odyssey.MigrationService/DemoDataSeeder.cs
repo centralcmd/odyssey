@@ -441,6 +441,15 @@ public sealed class DemoDataSeeder(
             return;
         }
 
+        // The seeded contact images go in FIRST: Contact.AvatarFileId is a real foreign key, and the
+        // rest of the Files store is not written until the finance step below (issue #86 §13).
+        if (data.ContactAvatarFiles.Count > 0)
+        {
+            await context.FileBlob.AddRangeAsync(data.ContactAvatarBlobs, cancellationToken);
+            await context.FileMetadata.AddRangeAsync(data.ContactAvatarFiles, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
         await context.Contacts.AddRangeAsync(data.Contacts, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }

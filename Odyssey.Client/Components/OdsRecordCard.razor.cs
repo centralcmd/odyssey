@@ -19,6 +19,26 @@ public partial class OdsRecordCard
     /// Subscriptions: billing interval). Never derived state.</summary>
     [Parameter] public string? Icon { get; set; }
 
+    /// <summary>
+    /// The record's own picture, rendered as the mark instead of <see cref="Icon"/> — a contact's
+    /// profile photo or company logo. Lazy, async-decoding, and <c>alt=""</c> because the name sits in
+    /// the very next cell.
+    ///
+    /// <para>
+    /// On a load failure the card falls back to <see cref="Icon"/> silently, so <b>pass both</b>. Under
+    /// <c>no-cache</c> that failure is hotter than it looks: a deleted image 404s on every
+    /// revalidation instead of hiding behind a cached 200.
+    /// </para>
+    ///
+    /// <para>
+    /// <b><see cref="Accent"/> / <see cref="AccentSoft"/> are still the record's type colour</b> and are
+    /// still passed. They set <c>--rec</c>/<c>--rec-soft</c> for every icon chip and chart in the card,
+    /// so they are not the image's to take; what the image changes is the mark's <i>content</i> and,
+    /// for a contained logo, the mark's own <i>ground</i>.
+    /// </para>
+    /// </summary>
+    [Parameter] public OdsRecordImage? Image { get; set; }
+
     /// <summary>The type's (or type-equivalent's) colour, any CSS color. Sets <c>--rec</c> on the
     /// card, inherited by every icon and single-series chart inside it. Omit for the brand accent.</summary>
     [Parameter] public string? Accent { get; set; }
@@ -105,6 +125,21 @@ public partial class OdsRecordCard
 
     protected override void OnInitialized() => _internal = DefaultOpen;
 
+    protected override void OnParametersSet()
+    {
+        // Keyed on the URL rather than cleared unconditionally: a re-render with the SAME failing image
+        // must not retry it on every parameter change (that is an infinite request loop under
+        // no-cache), while a replaced image — whose ?v= key changed — gets its own attempt.
+        var src = Image?.Src;
+        if (src == _lastImageSrc)
+        {
+            return;
+        }
+
+        _lastImageSrc = src;
+        _imageFailed = false;
+    }
+
     private bool IsOpen => Open ?? _internal;
 
     private IReadOnlyList<RenderFragment> MetaItems =>
@@ -146,6 +181,22 @@ public partial class OdsRecordCard
         _ => null,
     };
 
+    /// <summary>
+    /// Set when the mark's image failed to load, so the card falls back to <see cref="Icon"/>. Reset
+    /// whenever the image URL changes — a replace re-keys the URL, and a new picture deserves its own
+    /// attempt rather than inheriting the previous one's failure.
+    /// </summary>
+    private bool _imageFailed;
+
+    private string? _lastImageSrc;
+
+    private static string MarkClass(OdsRecordImage image) =>
+        "odc-record-mark img"
+        + (image.Fit == OdsAvatarFit.Contain ? " ground" : "")
+        + (image.Round ? " round" : "");
+
+    private void OnImageError() => _imageFailed = true;
+
     /// <summary>A Material Icons ligature is all-lowercase ASCII letters, digits and underscores
     /// (e.g. "attach_file"); anything else (e.g. "§") renders as a literal glyph.</summary>
     private static bool IsLigature(string value) =>
@@ -160,3 +211,18 @@ public partial class OdsRecordCard
         await OnToggle.InvokeAsync(next);
     }
 }
+
+/// <summary>
+/// The record's own picture, for <see cref="OdsRecordCard.Image"/>.
+/// </summary>
+/// <param name="Src">
+/// Image URL. <b>Keyed</b> so a replaced image re-keys — the contacts surface passes
+/// <c>?v={avatarFileId}</c>, which makes revalidation after a replace a guaranteed 304 rather than a
+/// full re-download.
+/// </param>
+/// <param name="Fit">
+/// <c>Cover</c> square-crops (a photograph); <c>Contain</c> letterboxes on a neutral ground (a logo,
+/// which is rarely square and must never be cut).
+/// </param>
+/// <param name="Round">A circular mark instead of the 8px rounded rect — a person's photograph.</param>
+public sealed record OdsRecordImage(string Src, OdsAvatarFit Fit = OdsAvatarFit.Cover, bool Round = false);

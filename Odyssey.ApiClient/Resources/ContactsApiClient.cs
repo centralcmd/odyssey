@@ -57,6 +57,38 @@ public interface IContactsApiClient
     /// </summary>
     Task<ApiResult<DetachedInsuranceLinks>> DeleteWithInsuranceDetachAsync(Guid id, CancellationToken ct = default);
 
+    // ── Contact image (issue #86 §5.8) ───────────────────────────────────────────
+
+    /// <summary>
+    /// Attaches or replaces the contact's image, returning the updated contact (whose
+    /// <c>AvatarFileId</c> re-keys the image URL). Takes the image <b>bytes</b> — there is deliberately
+    /// no "point this contact at an existing file" overload, because a caller-supplied file id would
+    /// turn a <c>contacts.update</c> holder into an arbitrary-file reader through the
+    /// <c>contacts.read</c>-gated download.
+    ///
+    /// <para>
+    /// Returns the raw <see cref="ApiResult{T}"/> and never toasts: a 400 naming the size or type limit
+    /// belongs inline in the crop dialog, where the user can act on it, not in a snackbar.
+    /// </para>
+    /// </summary>
+    Task<ApiResult<ExistingContact>> UploadAvatarAsync(Guid contactId, ApiUpload image, CancellationToken ct = default);
+
+    /// <summary>Removes the contact's image, deleting the underlying file as well as the reference.</summary>
+    Task<ApiResult> DeleteAvatarAsync(Guid contactId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The absolute URL of a contact's image, resolved against the configured API base the same way the
+    /// typed clients form request URLs — so it works both behind the nginx <c>/api/</c> proxy and against
+    /// an absolute API host. Suitable as an <c>&lt;img src&gt;</c>; the auth cookie rides along.
+    ///
+    /// <para>
+    /// <paramref name="avatarFileId"/> is appended as <c>?v=</c>. That key is what makes revalidation
+    /// after a replace a guaranteed <c>304</c> rather than a full re-download — and it is why the URL is
+    /// never hand-built at a call site.
+    /// </para>
+    /// </summary>
+    string AvatarUrl(Guid contactId, Guid avatarFileId);
+
     // ── Aliases (issue #48 §7) ───────────────────────────────────────────────────
     // Gated by the same contacts.* claims as the contact-method sub-resources. These return the raw
     // ApiResult and never toast: a 400/409/422 here belongs INLINE on the dialog's value field, not
@@ -98,6 +130,15 @@ public interface IContactsApiClient
 public sealed class ContactsApiClient(IOdysseyApi api) : IContactsApiClient
 {
     private const string Base = "api/contacts";
+
+    public Task<ApiResult<ExistingContact>> UploadAvatarAsync(Guid contactId, ApiUpload image, CancellationToken ct = default) =>
+        api.UploadAsync<ExistingContact>($"{Base}/{contactId}/avatar", image, ct: ct);
+
+    public Task<ApiResult> DeleteAvatarAsync(Guid contactId, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Delete, $"{Base}/{contactId}/avatar", body: null, ct);
+
+    public string AvatarUrl(Guid contactId, Guid avatarFileId) =>
+        new Uri(api.BaseAddress!, $"{Base}/{contactId}/avatar?v={avatarFileId}").ToString();
 
     public Task<ApiResult<PagedResult<ExistingContact>>> ListAsync(
         int page,

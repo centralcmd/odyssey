@@ -173,6 +173,16 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
 
             var file = await ReadFileAsync(response, defaultFileName, ct);
 
+            // A server-declared truncation (issue #86 §9): the export stopped at the output byte cap
+            // before every matched row was written. It arrives as a TRAILER because the response headers
+            // were flushed with the promised row count long before truncation was knowable. It is
+            // reported rather than swallowed, and it names how many records the file actually carries —
+            // a short document that looks complete is the defect this exists to close.
+            if (TruncationReport(response) is { } truncation)
+            {
+                return ApiResult<ApiFile>.Failure(response.StatusCode, new ApiProblem { Detail = truncation });
+            }
+
             if (completenessMarker is not null && !IsComplete(response, file, completenessMarker))
             {
                 return ApiResult<ApiFile>.Failure(response.StatusCode, new ApiProblem
@@ -242,6 +252,35 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         {
             return ApiResult<T>.Failure(ex);
         }
+    }
+
+    /// <summary>
+    /// The server's own statement that it cut the export short, or <c>null</c> when it did not say so.
+    ///
+    /// <para>
+    /// This is not a substitute for the completeness check below but a refinement of it: where trailers
+    /// survive the transport, the caller learns how many records the file carries instead of only that
+    /// something went wrong. Where they do not, the count comparison still turns a short body into a
+    /// failure, so a truncated export is never silent either way.
+    /// </para>
+    /// </summary>
+    private static string? TruncationReport(HttpResponseMessage response)
+    {
+        if (!response.TrailingHeaders.TryGetValues("X-Odyssey-Export-Truncated", out var flag)
+            || !string.Equals(flag.FirstOrDefault(), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var delivered = response.TrailingHeaders.TryGetValues("X-Odyssey-Export-Delivered-Rows", out var rows)
+            ? rows.FirstOrDefault()
+            : null;
+
+        return delivered is null
+            ? "The export was cut short at the server's output size limit, so this file is incomplete. "
+              + "Narrow the filters, or export without images."
+            : $"The export was cut short at the server's output size limit: this file carries only "
+              + $"{delivered} record(s). Narrow the filters, or export without images.";
     }
 
     /// <summary>

@@ -336,6 +336,22 @@ source/destination for one or more tags, which keeps generated transactions cohe
 This covers all six `ContactType` values (Merchant, Person, Organization,
 Company, Institution, Other).
 
+**Two of them carry an image** (issue #86): **Jane Smith (Landlord)** a profile picture and
+**First National Bank** a logo. They are picked to sit high in the default name-ordered list, so a test
+never has to page for them, and they exist to show the two framings side by side — a person's photo is
+square-cropped into a circle, an organization's logo is letterboxed on a neutral ground, because logos
+carry transparency and are rarely square.
+
+The bytes come from the existing `DemoImages` generator, which emits **PNG** — so the demo pair
+exercises the PNG half of the validate/strip pipeline, and a JPEG assertion uses a purpose-built fixture
+rather than seeded data. The logo is deliberately **not square** (320 × 136); a square demo logo would
+make the contained framing indistinguishable from the cover one, which is the whole thing the pair is
+there to show.
+
+The two `FileMetadata`/`FileBlob` rows are carried separately on `DemoDataSet` and written by
+`SeedContactsAsync` rather than with the rest of the Files store: `Contact.AvatarFileId` is a real
+foreign key, and contacts are seeded before finance.
+
 ### 3.11 Demo transactions
 
 Transactions are too numerous to enumerate, so they are **generated from a fixed set

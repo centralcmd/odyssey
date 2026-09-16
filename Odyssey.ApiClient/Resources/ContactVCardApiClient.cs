@@ -10,8 +10,12 @@ namespace Odyssey.ApiClient.Resources;
 /// </summary>
 public interface IContactVCardApiClient
 {
-    /// <summary>Exports a single contact as a single-entry <c>.vcf</c>.</summary>
-    Task<ApiResult<ApiFile>> ExportOneAsync(Guid contactId, CancellationToken ct = default);
+    /// <summary>
+    /// Exports a single contact as a single-entry <c>.vcf</c>. <paramref name="includeImages"/> embeds
+    /// the contact's picture or logo as a <c>PHOTO</c>/<c>LOGO</c> data URI; it defaults to
+    /// <see langword="false"/> on both export methods, so an existing caller's output is unchanged.
+    /// </summary>
+    Task<ApiResult<ApiFile>> ExportOneAsync(Guid contactId, bool includeImages = false, CancellationToken ct = default);
 
     /// <summary>
     /// Exports every contact matching the given filters, or all of them when none are supplied. Takes
@@ -22,6 +26,7 @@ public interface IContactVCardApiClient
         string? search = null,
         IReadOnlyCollection<string>? types = null,
         IReadOnlyCollection<string>? status = null,
+        bool includeImages = false,
         CancellationToken ct = default);
 
     /// <summary>Imports a <c>.vcf</c> file (multipart).</summary>
@@ -40,19 +45,24 @@ public sealed class ContactVCardApiClient(IOdysseyApi api) : IContactVCardApiCli
 
     private const string Base = "api/contacts";
 
-    public Task<ApiResult<ApiFile>> ExportOneAsync(Guid contactId, CancellationToken ct = default) =>
-        api.GetFileAsync($"{Base}/{contactId}/vcard", "contact.vcf", ct: ct);
+    public Task<ApiResult<ApiFile>> ExportOneAsync(Guid contactId, bool includeImages = false, CancellationToken ct = default) =>
+        api.GetFileAsync(
+            includeImages ? $"{Base}/{contactId}/vcard?includeImages=true" : $"{Base}/{contactId}/vcard",
+            "contact.vcf",
+            ct: ct);
 
     public Task<ApiResult<ApiFile>> ExportManyAsync(
         string? search = null,
         IReadOnlyCollection<string>? types = null,
         IReadOnlyCollection<string>? status = null,
+        bool includeImages = false,
         CancellationToken ct = default) =>
         api.GetFileAsync(
             PagedQuery.For($"{Base}/vcard")
                 .Add("search", search)
                 .AddMany("types", types)
                 .AddSingle("status", status)
+                .Add("includeImages", includeImages ? "true" : null)
                 .Build(),
             "contacts.vcf",
             completenessMarker: "BEGIN:VCARD",

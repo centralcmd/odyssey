@@ -12,6 +12,8 @@
     <!-- Test-only: DataExportStreamingTests checks the real streamed bytes against the client's
          completeness-sentinel reader, so the two halves of that contract cannot drift apart. -->
     <ProjectReference Include="..\Odyssey.ApiClient\Odyssey.ApiClient.csproj" />
+    <!-- The shared image fixtures (issue #86): real, decodable containers the avatar tests upload. -->
+    <ProjectReference Include="..\Odyssey.TestData\Odyssey.TestData.csproj" />
     <!-- Several tests exercise the migrations job's seeders directly (RoleSeedTests, and the two
          factories that must run RoleClaimSeeder after EnsureCreated or their principals carry a role
          with no permissions). Odyssey.IntegrationTests already references both projects, so the

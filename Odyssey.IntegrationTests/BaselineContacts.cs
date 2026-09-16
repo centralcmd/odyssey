@@ -26,9 +26,11 @@ namespace Odyssey.IntegrationTests;
 /// should update it.
 /// </para>
 /// <para>
-/// The parent <c>Contacts</c> row goes through EF, which is safe because issue #48 added no column
-/// there — only a navigation. If one is ever added, <c>AddContactRowAsync</c> is where the same
-/// treatment goes.
+/// The parent <c>Contacts</c> row gets the same treatment as the detail tables. It went through EF
+/// until issue #86 added <c>AvatarFileId</c> to the entity, at which point every baseline seed broke
+/// with <c>Unknown column 'AvatarFileId' in 'INSERT INTO'</c> — in migration tests that have nothing
+/// to do with contact images, exactly as this file predicted. That is the whole hazard: a column added
+/// to a CURRENT entity reaches back into every test seeding an OLDER schema through EF.
 /// </para>
 /// </remarks>
 internal static class BaselineContacts
@@ -75,24 +77,23 @@ internal static class BaselineContacts
     }
 
     /// <summary>
-    /// The parent row, which goes through EF because <c>Contacts</c> itself has gained no column since
-    /// <c>InitialCreate</c>. If one is ever added, this is the method that needs the same treatment as
-    /// the detail sub-records.
+    /// The parent row. Raw SQL for the same reason as the detail sub-records above: it names only the
+    /// columns <c>InitialCreate</c> shipped, so a later migration adding one to the <c>Contact</c>
+    /// entity cannot reach back and break every test that seeds an older schema.
     /// </summary>
     private static async Task AddContactRowAsync(
         OdysseyContext context, Guid contactId, string normalizedName, ContactType type)
     {
-        var now = DateTime.UtcNow;
-        context.Contacts.Add(new Contact
-        {
-            ContactId = contactId,
-            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
-            NormalizedName = normalizedName,
-            Type = type,
-            CreatedAt = now,
-            UpdatedAt = now,
-        });
-        await context.SaveChangesAsync();
+        var now = SqlTimestamp(DateTime.UtcNow);
+
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO `Contacts` "
+            + "(`ContactId`, `ExternalUid`, `DisplayName`, `NormalizedName`, `Type`, `Notes`, "
+            + "`Archived`, `CreatedAt`, `UpdatedAt`) "
+            + "VALUES ({0}, {1}, NULL, {2}, {3}, NULL, NULL, {4}, {4})",
+            contactId, $"urn:uuid:{Guid.NewGuid()}", normalizedName, (int)type, now);
+
+        context.ChangeTracker.Clear();
     }
 
     /// <summary>The timestamp format the raw-SQL seeds in this project use for a DATETIME(6) column.</summary>

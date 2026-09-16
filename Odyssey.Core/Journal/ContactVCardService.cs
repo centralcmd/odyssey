@@ -7,6 +7,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
+using Odyssey.Core.Journal.Avatar;
 using Odyssey.Dtos.Journal;
 using Odyssey.Core.Journal.Interop;
 
@@ -39,16 +40,19 @@ public class ContactVCardService
 
     private readonly OdysseyContext context;
     private readonly ContactService contactService;
+    private readonly ContactAvatarService avatarService;
     private readonly IImportExportLimitsLookup limits;
     private readonly TimeProvider timeProvider;
     private readonly ILogger<ContactVCardService> logger;
 
     public ContactVCardService(
-        OdysseyContext context, ContactService contactService, IImportExportLimitsLookup limits,
+        OdysseyContext context, ContactService contactService, ContactAvatarService avatarService,
+        IImportExportLimitsLookup limits,
         ILogger<ContactVCardService> logger, TimeProvider? timeProvider = null)
     {
         this.context = context;
         this.contactService = contactService;
+        this.avatarService = avatarService;
         this.limits = limits;
         this.logger = logger;
         this.timeProvider = timeProvider ?? TimeProvider.System;
@@ -58,7 +62,8 @@ public class ContactVCardService
 
     /// <summary>Exports a single contact as a single-entry .vcf. Null if it doesn't exist (the
     /// controller maps that to 404).</summary>
-    public async Task<VCardExport?> ExportOneAsync(Guid contactId, CancellationToken cancellationToken = default)
+    public async Task<VCardExport?> ExportOneAsync(
+        Guid contactId, bool includeImages = false, CancellationToken cancellationToken = default)
     {
         var contact = await contactService.Get(contactId, cancellationToken);
         if (contact is null)
@@ -66,8 +71,47 @@ public class ContactVCardService
             return null;
         }
 
-        var content = BuildDocument([contact]);
-        return new VCardExport(BuildSingleFileName(contact.ResolvedDisplayName), content);
+        // includeImages defaults to FALSE here as well as on the bulk endpoint. Flipping the
+        // single-contact default would silently change what an existing caller receives from a shipped
+        // endpoint — the same objection §17 raises against re-authorizing one.
+        var image = includeImages ? await LoadImageDataUriAsync(contact.AvatarFileId, cancellationToken) : null;
+
+        var sb = new StringBuilder();
+        AppendVCard(sb, contact, image);
+        return new VCardExport(BuildSingleFileName(contact.ResolvedDisplayName), sb.ToString());
+    }
+
+    /// <summary>
+    /// Reads one contact's image and encodes it as an RFC 6350 §6.2.4 <c>data:</c> URI, or returns
+    /// <c>null</c> when there is none — or when the referenced file's stored content type is not
+    /// avatar-legal, the same read-path check <c>GET .../avatar</c> applies, so a mis-pointed reference
+    /// cannot export a tax statement into an address book.
+    /// </summary>
+    /// <remarks>
+    /// Called <b>per contact</b>, never joined into a chunk projection. Adding a blob column to
+    /// <c>StreamMatchingChunksAsync</c>'s projection would raise peak managed heap by
+    /// <c>ChunkSize × image size</c> — reintroducing exactly the term the chunking exists to bound, and
+    /// at the 2 MB cap that is hundreds of megabytes for a default chunk.
+    /// </remarks>
+    private async Task<string?> LoadImageDataUriAsync(Guid? avatarFileId, CancellationToken cancellationToken)
+    {
+        if (avatarFileId is not { } fileId)
+        {
+            return null;
+        }
+
+        var row = await context.FileMetadata
+            .AsNoTracking()
+            .Where(fm => fm.Id == fileId)
+            .Select(fm => new { fm.ContentType, Content = fm.FileBlob!.Content })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (row is null || !ContactAvatarLimits.IsAllowedContentType(row.ContentType))
+        {
+            return null;
+        }
+
+        return $"data:{row.ContentType};base64,{Convert.ToBase64String(row.Content)}";
     }
 
     /// <summary>
@@ -93,7 +137,9 @@ public class ContactVCardService
     /// </para>
     /// </summary>
     public async Task ExportManyStreamingAsync(
-        ContactsQueryParams query, Stream output, Action<string, int> onReady, CancellationToken cancellationToken = default)
+        ContactsQueryParams query, Stream output, Action<string, int> onReady,
+        bool includeImages = false, Action<int, int>? onTruncated = null,
+        CancellationToken cancellationToken = default)
     {
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         var cap = effectiveLimits.ContactVCardMaxExportRows;
@@ -112,21 +158,57 @@ public class ContactVCardService
 
         var writtenBytes = 0L;
         var writtenRows = 0;
+        var truncated = false;
+
         await foreach (var chunk in contactService.StreamMatchingChunksAsync(query, ExportChunking.ChunkSize, cancellationToken))
         {
+            if (includeImages)
+            {
+                // ONE IMAGE AT A TIME. Each contact's image is read, encoded and written as its card is
+                // emitted, then released — so peak managed heap is bounded by a single image rather than
+                // by ChunkSize images. Batching the chunk into one StringBuilder first, as the no-image
+                // path below does, would hold every image in the chunk at once and reintroduce the
+                // `ChunkSize × image size` term the chunking exists to bound (issue #86 §9).
+                //
+                // Truncation is row-granular here rather than chunk-granular for the same reason: a
+                // partly-written chunk cannot be un-written once an image has already gone out.
+                foreach (var row in chunk)
+                {
+                    var image = await LoadImageDataUriAsync(row.AvatarFileId, cancellationToken);
+
+                    var rowBuilder = new StringBuilder();
+                    AppendVCard(rowBuilder, row, image);
+                    var rowBytes = Encoding.UTF8.GetBytes(rowBuilder.ToString());
+
+                    if (writtenBytes + rowBytes.Length > maxBytes)
+                    {
+                        truncated = true;
+                        break;
+                    }
+
+                    await output.WriteAsync(rowBytes, cancellationToken);
+                    writtenBytes += rowBytes.Length;
+                    writtenRows++;
+                }
+
+                if (truncated)
+                {
+                    break;
+                }
+
+                continue;
+            }
+
             var sb = new StringBuilder();
             foreach (var row in chunk)
             {
-                AppendVCard(sb, row);
+                AppendVCard(sb, row, imageDataUri: null);
             }
 
             var bytes = Encoding.UTF8.GetBytes(sb.ToString());
             if (writtenBytes + bytes.Length > maxBytes)
             {
-                logger.LogWarning(
-                    "Contacts vCard export truncated at {WrittenBytes} bytes (cap {MaxBytes}); " +
-                    "{WrittenRows}/{TotalRows} contacts delivered.",
-                    writtenBytes, maxBytes, writtenRows, count);
+                truncated = true;
                 break;
             }
 
@@ -134,23 +216,35 @@ public class ContactVCardService
             writtenBytes += bytes.Length;
             writtenRows += chunk.Count;
         }
+
+        if (!truncated)
+        {
+            return;
+        }
+
+        logger.LogWarning(
+            "Contacts vCard export truncated at {WrittenBytes} bytes (cap {MaxBytes}); " +
+            "{WrittenRows}/{TotalRows} contacts delivered.",
+            writtenBytes, maxBytes, writtenRows, count);
+
+        // The truncation is REPORTED, not hidden (issue #86 §9). With images on, the shipped 5 MB cap
+        // makes truncation the common case rather than a corner, so a short document that looks
+        // complete is the defect — the caller turns this into something the user sees before they treat
+        // the file as a backup. Converting the truncation itself into an exception is out of scope
+        // (§17): it is existing behaviour on an endpoint used today without images, and failing would
+        // change what every current caller receives.
+        onTruncated?.Invoke(writtenRows, count);
     }
 
     private static bool HasFilters(ContactsQueryParams query) =>
         !string.IsNullOrWhiteSpace(query.Search) || query.Types is { Length: > 0 } || query.Status is not null;
 
-    private static string BuildDocument(IEnumerable<ExistingContact> rows)
-    {
-        var sb = new StringBuilder();
-        foreach (var row in rows)
-        {
-            AppendVCard(sb, row);
-        }
-
-        return sb.ToString();
-    }
-
-    private static void AppendVCard(StringBuilder sb, ExistingContact row)
+    /// <param name="imageDataUri">
+    /// The contact's image as a <c>data:</c> URI, or <c>null</c> for no image — which is also what every
+    /// caller passes when <c>includeImages</c> is off, so the emitted card is then byte-identical to
+    /// what this produced before contact images existed.
+    /// </param>
+    private static void AppendVCard(StringBuilder sb, ExistingContact row, string? imageDataUri)
     {
         AppendFolded(sb, "BEGIN:VCARD");
         AppendFolded(sb, "VERSION:4.0");
@@ -226,6 +320,14 @@ public class ContactVCardService
         }
 
         AppendFolded(sb, $"REV:{row.UpdatedAt:yyyyMMddTHHmmssZ}");
+
+        // The contact's one image (issue #86 §9), folded at 75 octets like every other property.
+        // Person → PHOTO, Organization → LOGO: one storage slot, and the property name is purely
+        // presentational — an import accepts either on either type.
+        if (imageDataUri is not null)
+        {
+            AppendFolded(sb, $"{(row.Type == ContactType.Person ? "PHOTO" : "LOGO")}:{imageDataUri}");
+        }
 
         // Aliases (issue #48 §9): one GROUPED pair per alias, in API order — the label is a grouped
         // PROPERTY, never a parameter.
@@ -350,6 +452,10 @@ public class ContactVCardService
         var maxImportBytes = cap.ContactVCardMaxImportBytes;
         var maxVCardEntries = cap.ContactVCardMaxImportEntries ?? int.MaxValue;
 
+        // Resolved ONCE for the whole file, like the repeatable-property bound above, so a concurrent
+        // admin write cannot change the avatar cap between two entries of the same import.
+        var effectiveMaxAvatarBytes = await avatarService.GetEffectiveMaxBytesAsync(cancellationToken);
+
         if (contentLength > maxImportBytes)
         {
             throw new DomainValidationException($"The .vcf file exceeds the {maxImportBytes / (1024 * 1024)} MB limit.");
@@ -376,7 +482,8 @@ public class ContactVCardService
 
             var props = ParseProperties(block);
             var (sampleName, outcome, reason) = await ImportOneAsync(
-                props, skipped, cap.ContactVCardMaxRepeatablePropertiesPerEntry, cancellationToken);
+                props, skipped, cap.ContactVCardMaxRepeatablePropertiesPerEntry, effectiveMaxAvatarBytes,
+                cancellationToken);
             switch (outcome)
             {
                 case ImportOutcome.Created:
@@ -413,7 +520,7 @@ public class ContactVCardService
 
     private async Task<(string SampleName, ImportOutcome Outcome, string? Reason)> ImportOneAsync(
         Dictionary<string, List<VCardProperty>> props, ImportSkipCollector skipped,
-        int maxRepeatableProperties, CancellationToken cancellationToken)
+        int maxRepeatableProperties, long effectiveMaxAvatarBytes, CancellationToken cancellationToken)
     {
         var uid = TextValue(props, "UID");
         var nRaw = RawValue(props, "N");
@@ -543,6 +650,16 @@ public class ContactVCardService
                 await ReplaceContactCollections(
                     id, type, props, updated, sampleName, skipped, maxRepeatableProperties, cancellationToken);
 
+                // The image rides the SAME transaction as the contact and its collections, so an entry
+                // never commits half-imported. A failure here is recorded and the entry still imports:
+                // one bad photo must not cost a user the contact.
+                var (imageOutcome, imageReason) = await ApplyImportedImageAsync(
+                    id, props, effectiveMaxAvatarBytes, maxRepeatableProperties, cancellationToken);
+                if (imageOutcome == ImageOutcome.Skipped && imageReason is not null)
+                {
+                    skipped.Add(imageReason, sampleName);
+                }
+
                 await transaction.CommitAsync(cancellationToken);
                 return (id, updated);
             });
@@ -564,6 +681,204 @@ public class ContactVCardService
             return (sampleName, ImportOutcome.Skipped, ex.Message);
         }
     }
+
+    // ── Imported contact image (issue #86 §9) ─────────────────────────────────────────────────────
+
+    /// <summary>Property names carrying a contact image. Both are accepted on both contact types.</summary>
+    private static readonly string[] ImageProperties = ["PHOTO", "LOGO"];
+
+    /// <summary>What an entry's image amounted to.</summary>
+    private enum ImageOutcome
+    {
+        /// <summary>No PHOTO/LOGO on the entry. An existing avatar is left UNCHANGED — never cleared.</summary>
+        Absent,
+
+        /// <summary>A valid image was decoded and attached.</summary>
+        Attached,
+
+        /// <summary>The entry had an image the importer would not take. The entry itself still imports.</summary>
+        Skipped,
+    }
+
+    /// <summary>
+    /// Resolves, validates and attaches an entry's image inside the entry's own transaction.
+    ///
+    /// <para>
+    /// <b>An entry carrying no image leaves an existing avatar unchanged.</b> Import is an upsert on
+    /// <c>ExternalUid</c>, and most address books do not round-trip images — so treating "no PHOTO" as
+    /// "clear the picture" would silently strip every avatar on the first re-import.
+    /// </para>
+    ///
+    /// <para>
+    /// A failed image never fails the entry: one bad photo must not cost a user the contact. The
+    /// failure becomes a skip-reason sample in the existing import summary instead.
+    /// </para>
+    /// </summary>
+    private async Task<(ImageOutcome Outcome, string? Reason)> ApplyImportedImageAsync(
+        Guid contactId, Dictionary<string, List<VCardProperty>> props, long effectiveMaxBytes,
+        int maxRepeatableProperties, CancellationToken cancellationToken)
+    {
+        var candidates = ImageProperties.SelectMany(name => Properties(props, name)).ToList();
+        if (candidates.Count == 0)
+        {
+            return (ImageOutcome.Absent, null);
+        }
+
+        // At most ONE image per entry; the first valid one wins and any further occurrence counts
+        // against the repeatable-property bound like any other repeated property.
+        var considered = candidates.Take(Math.Max(1, maxRepeatableProperties)).ToList();
+
+        string? lastReason = null;
+        foreach (var candidate in considered)
+        {
+            var (bytes, contentType, reason) = DecodeImageProperty(candidate, effectiveMaxBytes);
+            if (bytes is null)
+            {
+                lastReason ??= reason;
+                continue;
+            }
+
+            ValidatedAvatar validated;
+            try
+            {
+                // The IDENTICAL pipeline an upload runs: allow-list, magic bytes, byte cap, dimension
+                // cap, animation check, metadata strip, output re-validation.
+                validated = avatarService.ValidateForImport(bytes, contentType, effectiveMaxBytes);
+            }
+            catch (DomainValidationException ex)
+            {
+                lastReason ??= ex.Message;
+                continue;
+            }
+
+            var contact = await context.Contacts.FirstOrDefaultAsync(c => c.ContactId == contactId, cancellationToken);
+            if (contact is null)
+            {
+                return (ImageOutcome.Skipped, "The contact could not be loaded to attach its image.");
+            }
+
+            // A valid image REPLACES an existing one — and that replace applies the shared release rule
+            // like any other, so the outgoing file is deleted unless it is not avatar-legal.
+            await ContactAvatarRelease.StageAsync(context, contact, logger, "vcard-import", cancellationToken);
+            await avatarService.StageAttachAsync(contact, validated, userId: null, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return (ImageOutcome.Attached, null);
+        }
+
+        return (ImageOutcome.Skipped, lastReason ?? "The entry's image could not be read.");
+    }
+
+    /// <summary>
+    /// Decodes one <c>PHOTO</c>/<c>LOGO</c> property value. Handles both shapes in the wild: a vCard 4.0
+    /// <c>data:</c> URI, and a vCard 3.0 <c>ENCODING=b</c> base64 property value — the latter being what
+    /// most address books actually export.
+    ///
+    /// <para>
+    /// <b>A URI reference is ignored and never dereferenced.</b> Fetching one would be a server-side
+    /// request forgery primitive driven by an uploaded file: the attacker picks the URL, the server
+    /// makes the request from inside the deployment, and the response lands in a contact record.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bounds are checked before allocation.</b> The encoded length determines the decoded length
+    /// arithmetically (3 bytes per 4 characters), so an over-cap image is rejected <i>without</i> being
+    /// base64-decoded into memory. That matters because <c>ContactVCardMaxImportEntries</c> ships
+    /// unlimited against an import byte cap sized for text.
+    /// </para>
+    /// </summary>
+    private static (byte[]? Bytes, string? ContentType, string? Reason) DecodeImageProperty(
+        VCardProperty property, long effectiveMaxBytes)
+    {
+        var raw = property.RawValue.Trim();
+        if (raw.Length == 0)
+        {
+            return (null, null, "The entry's image was empty.");
+        }
+
+        string base64;
+        string? contentType;
+
+        if (raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            var comma = raw.IndexOf(',');
+            var meta = comma < 0 ? "" : raw[5..comma];
+            if (comma < 0 || !meta.Contains("base64", StringComparison.OrdinalIgnoreCase))
+            {
+                return (null, null, "The entry's image is not a base64 data URI.");
+            }
+
+            contentType = meta.Split(';')[0].Trim();
+            base64 = raw[(comma + 1)..];
+        }
+        else if (IsBase64Encoded(property))
+        {
+            contentType = ContentTypeFromTypeParameter(property);
+            base64 = raw;
+        }
+        else
+        {
+            // Anything else is a URI reference — http(s) or otherwise. Skipped, never fetched.
+            return (null, null, "The entry's image is a link rather than embedded data, so it was not imported.");
+        }
+
+        base64 = StripWhitespace(base64);
+        if (base64.Length == 0)
+        {
+            return (null, null, "The entry's image was empty.");
+        }
+
+        // Arithmetic bound, BEFORE the decode allocates anything.
+        var maximumDecoded = base64.Length / 4L * 3L;
+        if (maximumDecoded > effectiveMaxBytes)
+        {
+            return (null, null,
+                $"The entry's image exceeds the {Math.Round(effectiveMaxBytes / (1024d * 1024d), 1)} MB limit, so it was not imported.");
+        }
+
+        byte[] bytes;
+        try
+        {
+            bytes = Convert.FromBase64String(base64);
+        }
+        catch (FormatException)
+        {
+            return (null, null, "The entry's image could not be decoded.");
+        }
+
+        return (bytes, contentType, null);
+    }
+
+    /// <summary>vCard 3.0's <c>ENCODING=b</c> (and the older <c>ENCODING=BASE64</c>).</summary>
+    private static bool IsBase64Encoded(VCardProperty property) =>
+        property.Params.TryGetValue("ENCODING", out var encoding)
+        && (encoding.Equals("b", StringComparison.OrdinalIgnoreCase)
+            || encoding.Equals("base64", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// vCard 3.0 names the format in a <c>TYPE</c> parameter (<c>TYPE=JPEG</c>) rather than as a media
+    /// type. It is only a hint — the magic-byte check in the shared pipeline is what actually decides,
+    /// and a wrong hint is rejected there rather than trusted here.
+    /// </summary>
+    private static string? ContentTypeFromTypeParameter(VCardProperty property)
+    {
+        if (!property.Params.TryGetValue("TYPE", out var type))
+        {
+            return null;
+        }
+
+        return type.Trim().ToLowerInvariant() switch
+        {
+            "jpeg" or "jpg" or "image/jpeg" or "image/jpg" => "image/jpeg",
+            "png" or "image/png" => "image/png",
+            "webp" or "image/webp" => "image/webp",
+            _ => null,
+        };
+    }
+
+    /// <summary>Unfolded base64 can still carry the whitespace some producers pad it with.</summary>
+    private static string StripWhitespace(string value) =>
+        value.Any(char.IsWhiteSpace) ? new string([.. value.Where(c => !char.IsWhiteSpace(c))]) : value;
 
     // A UID-matched update replaces Addresses/EmailAddresses/PhoneNumbers wholesale with the vCard's
     // contents (§9) rather than merging; a fresh create simply has nothing to replace yet. An individual

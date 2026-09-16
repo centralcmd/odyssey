@@ -688,6 +688,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<Guid?>("AvatarFileId")
+                        .HasColumnType("char(36)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -717,6 +720,9 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.HasKey("ContactId");
+
+                    b.HasIndex("AvatarFileId")
+                        .IsUnique();
 
                     b.HasIndex("ExternalUid")
                         .IsUnique();
@@ -4485,6 +4491,14 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Calendar");
 
                     b.Navigation("RecurrencePattern");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.Contact", b =>
+                {
+                    b.HasOne("Odyssey.Context.FileMetadata", null)
+                        .WithMany()
+                        .HasForeignKey("AvatarFileId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Odyssey.Context.ContactAlias", b =>

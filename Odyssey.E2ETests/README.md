@@ -40,3 +40,11 @@ fail for a missing environment), so they're safe to include in a normal `dotnet 
 - Building the client container performs Blazor WASM trimming; on some host architectures that
   publish step can fail in Docker. If so, run the client via Aspire (`dotnet run --project
   Odyssey.AppHost`) and use Option C with the Aspire client URL.
+- **Against a `dotnet run` client (Option C), rebuild and re-*start* the dev server, in that order.**
+  The Blazor dev server serves an `index.html` naming **fingerprinted** framework assets
+  (`_framework/dotnet.<hash>.js`). A `dotnet build`/`dotnet test` of the solution regenerates those
+  hashes, so a dev server left running from before the build serves an `index.html` whose
+  `dotnet.<hash>.js` **404s** — the WASM runtime never starts and the page stays blank. The symptom
+  is every test in the suite timing out identically on `waiting for GetByLabel("Username or Email")`,
+  which reads like a rate-limited or slow sign-in and is neither. A whole-suite failure of that shape
+  means the dev server, not the app; restart it and re-run.

@@ -53,12 +53,9 @@ public sealed class LoginSmokeTests(StackFixture fixture) : IAsyncLifetime
         var page = await context.NewPageAsync();
 
         await page.GotoAsync("/login");
-        await page.GetByLabel("Username or Email").FillAsync(admin.Email);
-        await page.GetByLabel("Password").FillAsync(admin.Password);
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in" }).ClickAsync();
-
-        // Login navigates away from /login on success.
-        await page.WaitForURLAsync(url => !url.Contains("/login"), new PageWaitForURLOptions { Timeout = 20_000 });
+        // Shared helper: the sign-in surface is rate-limited BY NETWORK, so every class in this
+        // collection spends from one budget and the last to run is refused — silently, on the page.
+        await E2ESignIn.SignInAsync(page, admin.Email, admin.Password);
 
         // The accounts page is auth-gated; reaching it and seeing a seeded account proves the
         // whole chain (auth cookie + SPA + API + demo seed) end to end.

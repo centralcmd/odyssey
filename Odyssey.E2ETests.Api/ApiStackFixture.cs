@@ -198,6 +198,15 @@ public sealed class ApiStackFixture : IAsyncLifetime
     public Task<HttpResponseMessage> DeleteWithAntiforgeryAsync(HttpClient client, string path) =>
         client.DeleteAsync(path);
 
+    /// <summary>
+    /// POSTs a prepared <paramref name="content"/> — a multipart upload, where
+    /// <see cref="PostWithAntiforgeryAsync"/>'s JSON body does not fit. The token comes from the same
+    /// client pipeline, so this is the JSON helper's shape with the serialization left to the caller.
+    /// </summary>
+    public Task<HttpResponseMessage> PostContentWithAntiforgeryAsync(
+        HttpClient client, string path, HttpContent content) =>
+        client.PostAsync(path, content);
+
     private async Task<bool> WaitForReadyAsync()
     {
         using var client = new HttpClient { BaseAddress = new Uri(BaseUrl), Timeout = HttpProbeTimeout };
