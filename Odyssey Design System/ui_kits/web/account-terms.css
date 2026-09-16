@@ -80,7 +80,9 @@
 .trm-chart .step { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
 .trm-chart .future { stroke-dasharray: 2 5; }
 .trm-chart .dot-halo { fill: var(--mud-palette-surface); }
-.trm-chart .nowline { stroke: var(--chart-axis-strong); stroke-width: 1; stroke-dasharray: 2 4; }
+/* Informational marker: 2px in device space (non-scaling-stroke) so the 3:1 of
+   --chart-axis-strong survives the scaled viewBox. See .odc-lc-zero. */
+.trm-chart .nowline { stroke: var(--chart-axis-strong); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 2 4; }
 .trm-chart .nowlabel { font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; fill: var(--mud-palette-text-secondary); }
 
 /* =============================================================

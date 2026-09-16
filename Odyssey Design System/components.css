@@ -1769,8 +1769,13 @@
 .odc-lc-axis { font: var(--fw-regular) 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
 /* Zero baseline — drawn only when the value domain straddles zero, so it is
    the line that separates positive from negative and is read, not decoration.
-   Uses --chart-axis-strong (3:1, WCAG 1.4.11), not the decorative --chart-axis. */
-.odc-lc-zero { stroke: var(--chart-axis-strong); stroke-width: 1.5; }
+   Uses --chart-axis-strong (3:1, WCAG 1.4.11), not the decorative --chart-axis.
+   The svg is a scaled viewBox at width:100%, so a user-unit stroke-width lands
+   sub-pixel at ordinary card widths and anti-aliasing splits the token's alpha
+   across two device rows — the colour clears 3:1 but no rendered pixel does.
+   non-scaling-stroke pins the width to device space, and 2px guarantees one
+   fully covered device row at DPR 1 whatever the container width. */
+.odc-lc-zero { stroke: var(--chart-axis-strong); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .odc-lc-axis .odc-lc-axis-zero { fill: var(--mud-palette-text-primary); }
 /* Marker key — appears only for a series carrying understated / revalued
    points. Shape + stroke, never colour, is what distinguishes them. */

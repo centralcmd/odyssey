@@ -243,7 +243,7 @@ Tokens live in `colors_and_type.css` (268 total). MudBlazor `--mud-palette-*` na
 | Brand fill / brand text | `--tide-400` (dark) / `--tide-600` (light) · `--brand-text` (`--tide-ink` on light) | tide-as-text steps to `--brand-text` for AA |
 | Secondary accent | `--sea-400` | informational only |
 | Money | `--finance-income` (mint) · `--finance-expense` (coral) · `--finance-pending` (amber) | never tide/sea |
-| Categorical (tags/charts) | `--violet-500` · `--chart-1…6` · `--chart-grid` · `--chart-axis` · `--chart-axis-strong` | charts step darker in light; informational axis (zero baseline, "now" line) uses `-strong` for 3:1 |
+| Categorical (tags/charts) | `--violet-500` · `--chart-1…6` · `--chart-grid` · `--chart-axis` · `--chart-axis-strong` | charts step darker in light; informational axis (zero baseline, "now" line) uses `-strong` for 3:1, drawn at `stroke-width: 2` + `vector-effect: non-scaling-stroke` so the ratio survives the scaled `viewBox` |
 | Spacing / radius | `--space-1..16` (4px base) · `--radius-md` (8px) · `--radius-pill` | `pa-N`/`ma-N` map 1:1 |
 | Density | `--row-h` 48 / `--row-h-dense` 36 · `--control-h` 40 / `--control-h-dense` 32 | `dense` prop wires these |
 | Type | `--font-sans` (Roboto) · `--font-mono` (Roboto Mono) · `--font-icons` | numbers tabular |
