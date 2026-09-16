@@ -307,7 +307,7 @@ export function TxnTable({
         <tr>
           <th scope="col" style={{ width: 36 }}></th>
           <TTSort label="Description"  sortKey="desc"         sort={sort} onSort={toggleSort} />
-          <TTSort label="Contact" sortKey="contact" sort={sort} onSort={toggleSort} />
+          <TTSort label="Merchant" sortKey="contact" sort={sort} onSort={toggleSort} />
           {!hideAccount && <TTSort label="Account" sortKey="account" sort={sort} onSort={toggleSort} />}
           <TTSort label="Tag"          sortKey="tag"          sort={sort} onSort={toggleSort} />
           <TTSort label="Status"       sortKey="status"       sort={sort} onSort={toggleSort} />

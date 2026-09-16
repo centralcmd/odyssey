@@ -153,6 +153,7 @@ const Transactions = ({ onNavigate }) => {
   const [acctFilter, setAcctFilter] = useState([]);
   const [statusFilter, setStatusFilter] = useState([]);
   const [tagFilter, setTagFilter] = useState([]);
+  const [contactFilter, setContactFilter] = useState([]);
   const [dirFilter, setDirFilter] = useState([]);
   const [adding, setAdding] = useState(false);
   const [txns, setTxns] = useState(d.transactions);
@@ -192,6 +193,7 @@ const Transactions = ({ onNavigate }) => {
     if (acctFilter.length && !acctFilter.includes(t.account)) return false;
     if (statusFilter.length && !statusFilter.includes(t.status)) return false;
     if (tagFilter.length && !d.txnTagIds(t).some(id => tagFilter.includes(id))) return false;
+    if (contactFilter.length && !contactFilter.includes(txnContact(t))) return false;
     if (dirFilter.length && !dirFilter.includes(t.dir)) return false;
     if (debouncedQ) {
       const n = debouncedQ.toLowerCase();
@@ -201,17 +203,22 @@ const Transactions = ({ onNavigate }) => {
       if (!hay.includes(n)) return false;
     }
     return true;
-  }), [txns, acctFilter, statusFilter, tagFilter, dirFilter, debouncedQ]);
+  }), [txns, acctFilter, statusFilter, tagFilter, contactFilter, dirFilter, debouncedQ]);
+
+  // Contact options are the distinct contacts present on the transactions.
+  const contactOptions = useMemo(() => Array.from(new Set(txns.map(txnContact).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b))
+    .map(name => ({ value: name, label: name })), [txns]);
 
   const total = filtered.length;
   const totalIn  = filtered.filter(t => t.dir === 'income').reduce((s, t) => s + t.amount, 0);
   const totalOut = filtered.filter(t => t.dir === 'expense').reduce((s, t) => s + t.amount, 0);
 
-  const hasFilters = !!(debouncedQ || acctFilter.length || statusFilter.length || tagFilter.length || dirFilter.length);
-  const clearFilters = () => { setQ(''); setAcctFilter([]); setStatusFilter([]); setTagFilter([]); setDirFilter([]); };
+  const hasFilters = !!(debouncedQ || acctFilter.length || statusFilter.length || tagFilter.length || contactFilter.length || dirFilter.length);
+  const clearFilters = () => { setQ(''); setAcctFilter([]); setStatusFilter([]); setTagFilter([]); setContactFilter([]); setDirFilter([]); };
 
   // Any search / filter / sort / size change returns to page 1 (server contract).
-  useEffect(() => { setPage(1); }, [debouncedQ, acctFilter, statusFilter, tagFilter, dirFilter, sort, pageSize]);
+  useEffect(() => { setPage(1); }, [debouncedQ, acctFilter, statusFilter, tagFilter, contactFilter, dirFilter, sort, pageSize]);
   const paged = useMemo(() => {
     if (pageSize === 'all') return filtered;
     const start = (page - 1) * pageSize;
@@ -244,7 +251,7 @@ const Transactions = ({ onNavigate }) => {
         search={(
           <div className="row gap-3 acct-filter-bar" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ minWidth: 280, flex: 1 }}>
-              <SearchField placeholder="Search description, contact, amount…" value={q} onChange={setQ} />
+              <SearchField placeholder="Search description, merchant, amount…" value={q} onChange={setQ} />
             </div>
             <div style={{ minWidth: 190 }}>
               <MultiSelect allLabel="All accounts" value={acctFilter} onChange={setAcctFilter}
@@ -253,6 +260,10 @@ const Transactions = ({ onNavigate }) => {
             <div style={{ minWidth: 160 }}>
               <MultiSelect allLabel="Any status" value={statusFilter} onChange={setStatusFilter}
                 options={TXN_STATUS_OPTIONS} />
+            </div>
+            <div style={{ minWidth: 180 }}>
+              <MultiSelect allLabel="All merchants" value={contactFilter} onChange={setContactFilter}
+                options={contactOptions} />
             </div>
             <div style={{ minWidth: 160 }}>
               <MultiSelect allLabel="All tags" value={tagFilter} onChange={setTagFilter}
@@ -270,7 +281,7 @@ const Transactions = ({ onNavigate }) => {
                 { key: 'date',         label: 'Date',         type: 'date' },
                 { key: 'amount',       label: 'Amount',       type: 'number' },
                 { key: 'desc',         label: 'Description',  type: 'text' },
-                { key: 'contact', label: 'Contact', type: 'text' },
+                { key: 'contact', label: 'Merchant', type: 'text' },
                 { key: 'account',      label: 'Account',      type: 'text' },
                 { key: 'status',       label: 'Status',       type: 'status' },
               ]} />

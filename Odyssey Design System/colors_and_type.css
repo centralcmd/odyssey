@@ -311,6 +311,12 @@
   --chart-6: var(--amber-500);
   --chart-axis: rgba(199, 208, 224, 0.18);
   --chart-grid: rgba(199, 208, 224, 0.08);
+  /* Informational axis line — the zero baseline and the "now" marker carry
+     meaning (which side of zero a point sits on), so they are graphical
+     objects under WCAG 1.4.11 and must clear 3:1. 0.42 on --mud-palette-surface
+     (#141A2C) = ~3.0:1; --chart-axis at 0.18 is only ~1.5:1 and stays
+     decorative chrome. */
+  --chart-axis-strong: rgba(199, 208, 224, 0.42);
   --mud-elevation-0:  none;
   --mud-elevation-1:  0 1px 2px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04) inset;
   --mud-elevation-2:  0 2px 6px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset;
@@ -464,6 +470,9 @@
   --chart-6: var(--amber-600); /* amber-500 fails 3:1 as a stroke on white */
   --chart-axis: rgba(14, 21, 37, 0.24);
   --chart-grid: rgba(14, 21, 37, 0.08);
+  /* 0.46 on white = ~3.1:1 (0.45 lands at ~2.97:1). See dark theme for why
+     the informational axis is a separate token from --chart-axis. */
+  --chart-axis-strong: rgba(14, 21, 37, 0.46);
 
   /* Elevation — shallow, soft shadows. No inset white highlight (that read
      as a stray bright line on white surfaces; MudTheme.Shadows is global so

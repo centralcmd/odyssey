@@ -1,0 +1,50 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Charts · Zero baseline" subtitle="Informational axis at 3:1 · --chart-axis-strong" viewport="700x330" -->
+<html lang="en" data-theme="dark"><head>
+<title>Odyssey · Charts · Zero baseline</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
+<body>
+<style>
+.panes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pane{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:8px;padding:14px}
+.ttl{font:500 12px/1 var(--font-sans);color:var(--mud-palette-text-primary)}
+.sub{font:400 10px/1.4 var(--font-mono);color:var(--mud-palette-text-secondary);margin-top:5px}
+.ax{font:400 9px/1 var(--font-mono);fill:var(--mud-palette-text-secondary)}
+.grid-l{stroke:var(--chart-grid);stroke-width:1}
+.zero{stroke:var(--chart-axis-strong);stroke-width:1.5}
+.zlab{font:500 8.5px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;fill:var(--mud-palette-text-secondary)}
+.series{fill:none;stroke:var(--chart-1);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+.note{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.note div{font:400 11px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.note b{color:var(--mud-palette-text-primary);font-weight:500}
+</style>
+<div class="panes">
+  <div class="pane">
+    <div class="ttl">Net worth · straddles zero</div>
+    <div class="sub">dark · rgba(199,208,224,.42) → 3.0:1</div>
+    <svg viewBox="0 0 300 150" width="100%" height="150" style="display:block;margin-top:10px;overflow:visible">
+      <g class="grid-l"><line x1="34" y1="18" x2="296" y2="18"/><line x1="34" y1="122" x2="296" y2="122"/></g>
+      <g class="ax"><text x="28" y="21" text-anchor="end">+20k</text><text x="28" y="73" text-anchor="end">0</text><text x="28" y="125" text-anchor="end">−20k</text></g>
+      <line class="zero" x1="34" y1="70" x2="296" y2="70"/>
+      <text class="zlab" x="38" y="64" text-anchor="start">Zero</text>
+      <polyline class="series" points="44,34 86,48 128,62 170,84 212,96 254,78 290,54"/>
+      <g fill="var(--chart-1)"><circle cx="44" cy="34" r="2.5"/><circle cx="86" cy="48" r="2.5"/><circle cx="128" cy="62" r="2.5"/><circle cx="170" cy="84" r="2.5"/><circle cx="212" cy="96" r="2.5"/><circle cx="254" cy="78" r="2.5"/><circle cx="290" cy="54" r="3.5"/></g>
+    </svg>
+  </div>
+  <div class="pane" data-theme="light">
+    <div class="ttl">Net worth · straddles zero</div>
+    <div class="sub">light · rgba(14,21,37,.46) → 3.1:1</div>
+    <svg viewBox="0 0 300 150" width="100%" height="150" style="display:block;margin-top:10px;overflow:visible">
+      <g class="grid-l"><line x1="34" y1="18" x2="296" y2="18"/><line x1="34" y1="122" x2="296" y2="122"/></g>
+      <g class="ax"><text x="28" y="21" text-anchor="end">+20k</text><text x="28" y="73" text-anchor="end">0</text><text x="28" y="125" text-anchor="end">−20k</text></g>
+      <line class="zero" x1="34" y1="70" x2="296" y2="70"/>
+      <text class="zlab" x="38" y="64" text-anchor="start">Zero</text>
+      <polyline class="series" points="44,34 86,48 128,62 170,84 212,96 254,78 290,54"/>
+      <g fill="var(--chart-1)"><circle cx="44" cy="34" r="2.5"/><circle cx="86" cy="48" r="2.5"/><circle cx="128" cy="62" r="2.5"/><circle cx="170" cy="84" r="2.5"/><circle cx="212" cy="96" r="2.5"/><circle cx="254" cy="78" r="2.5"/><circle cx="290" cy="54" r="3.5"/></g>
+    </svg>
+  </div>
+</div>
+<div class="note">
+  <div><b>--chart-axis-strong</b> — informational axis furniture: the zero baseline and the &ldquo;now&rdquo; marker. Clears 3:1 (WCAG 1.4.11) in both themes.</div>
+  <div><b>--chart-axis</b> / <b>--chart-grid</b> — decorative chrome only: hover rules, gridlines. Never the sole carrier of meaning.</div>
+</div>
+</body></html>

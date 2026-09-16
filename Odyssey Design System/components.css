@@ -1767,9 +1767,10 @@
 .odc-lc-empty { padding: 28px 4px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-line-svg { width: 100%; height: auto; display: block; }
 .odc-lc-axis { font: var(--fw-regular) 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
-/* Zero baseline — drawn only when the value domain straddles zero, in the
-   axis colour so it reads as the origin rather than as one more gridline. */
-.odc-lc-zero { stroke: var(--chart-axis); stroke-width: 1.5; }
+/* Zero baseline — drawn only when the value domain straddles zero, so it is
+   the line that separates positive from negative and is read, not decoration.
+   Uses --chart-axis-strong (3:1, WCAG 1.4.11), not the decorative --chart-axis. */
+.odc-lc-zero { stroke: var(--chart-axis-strong); stroke-width: 1.5; }
 .odc-lc-axis .odc-lc-axis-zero { fill: var(--mud-palette-text-primary); }
 /* Marker key — appears only for a series carrying understated / revalued
    points. Shape + stroke, never colour, is what distinguishes them. */

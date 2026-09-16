@@ -84,7 +84,7 @@
 .est-chart .line { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
 .est-chart .future { stroke-dasharray: 2 5; }
 .est-chart .dot-halo { fill: var(--mud-palette-surface); }
-.est-chart .nowline { stroke: var(--chart-axis); stroke-width: 1; stroke-dasharray: 2 4; }
+.est-chart .nowline { stroke: var(--chart-axis-strong); stroke-width: 1; stroke-dasharray: 2 4; }
 .est-chart .nowlabel { font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; fill: var(--mud-palette-text-secondary); }
 
 /* =============================================================
