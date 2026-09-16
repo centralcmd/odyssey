@@ -38,7 +38,7 @@
                Icon="crop"
                Wide="true"
                RequiredLegend="false"
-               Title="@(_isPerson ? "Crop profile picture" : "Crop logo")"
+               Title="@(IsPerson ? "Crop profile picture" : "Crop logo")"
                Subtitle="@Subtitle"
                SubmitLabel="Save"
                SubmitIcon="check"
@@ -56,7 +56,7 @@
 
         @* The shared upload field, single-file and kind-less: one image per contact, and the file's
            KIND is not the user's to set here — the stored filename and description are generated. *@
-        <OdsFieldShell Label="@(_hasImage ? "Source image" : (_isPerson ? "Choose a picture" : "Choose a logo"))">
+        <OdsFieldShell Label="@(_hasImage ? "Source image" : (IsPerson ? "Choose a picture" : "Choose a logo"))">
             <div @ref="_dropzoneHost">
                 <OdsFileUpload Id="cav-file"
                                Compact="true"
@@ -73,14 +73,14 @@
         <div class="cav-stage">
             @* Pointer drag is an addition to the ranges. The frame carries no tab stop and no role:
                everything it offers is reachable from the three controls beside it. *@
-            <div class="cav-frame @(_isPerson ? "round" : "ground")"
+            <div class="cav-frame @(IsPerson ? "round" : "ground")"
                  @onpointerdown="OnPointerDown" @onpointermove="OnPointerMove"
                  @onpointerup="OnPointerUp" @onpointerleave="OnPointerUp">
                 <canvas @ref="_canvas" aria-hidden="true"></canvas>
                 @if (!_hasImage)
                 {
                     <span class="cav-frame-empty" aria-hidden="true">
-                        <span class="material-icons" style="font-size:30px;">@(_isPerson ? "person" : "corporate_fare")</span>
+                        <span class="material-icons" style="font-size:30px;">@(IsPerson ? "person" : "corporate_fare")</span>
                     </span>
                 }
             </div>
@@ -122,7 +122,7 @@
 
         @* Says what actually happens to the file, because the server strip is not otherwise visible. *@
         <p class="cav-note">
-            @(_isPerson
+            @(IsPerson
                 ? "Saved as a square JPEG and shown as a circle. Location, capture time and device details are removed from the stored file."
                 : "Saved as a PNG with its transparency and shown contained on a neutral ground — a wordmark is never cut. Metadata is removed from the stored file.")
         </p>

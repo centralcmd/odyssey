@@ -64,9 +64,9 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     /// <summary>Pointer-drag origin, or null when no drag is in progress.</summary>
     private (double X, double Y, int OffsetX, int OffsetY)? _drag;
 
-    private bool _isPerson => Contact?.Type != ContactType.Organization;
+    private bool IsPerson => Contact?.Type != ContactType.Organization;
 
-    private string Noun => _isPerson ? "picture" : "logo";
+    private string Noun => IsPerson ? "picture" : "logo";
 
     private static string AcceptAttribute => string.Join(',', ContactAvatarLimits.AllowedContentTypes);
 
@@ -74,7 +74,7 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     /// The crop is encoded as JPEG for a photograph and PNG for a logo — PNG keeps the transparency the
     /// contained frame relies on, and a wordmark re-encoded as JPEG picks up ringing around its edges.
     /// </summary>
-    private string OutputContentType => _isPerson ? "image/jpeg" : "image/png";
+    private string OutputContentType => IsPerson ? "image/jpeg" : "image/png";
 
     /// <summary>
     /// Interpolated from the shared constants, never typed as a literal — the source caps are the
@@ -101,7 +101,7 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     private string StateText => _hasImage
         ? $"Showing {(_offsetX == 0 && _offsetY == 0 ? "the centre" : "an off-centre area")} of your {Noun} at {_zoom} %."
         : $"No image chosen yet. The {Noun} is "
-          + (_isPerson
+          + (IsPerson
               ? "cropped to a square and shown as a circle."
               : "contained, never cropped, on a neutral ground.");
 
@@ -234,7 +234,7 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     {
         var module = await ModuleAsync();
         await module.InvokeVoidAsync(
-            "draw", _handle, _canvas, ContactAvatarLimits.OutputDimension, _isPerson, _zoom, _offsetX, _offsetY);
+            "draw", _handle, _canvas, ContactAvatarLimits.OutputDimension, IsPerson, _zoom, _offsetX, _offsetY);
     }
 
     // Pointer drag — an addition to the three ranges, never a replacement, so the same area is
@@ -326,7 +326,7 @@ public partial class ContactAvatarDialog : IAsyncDisposable
                 return false;
             }
 
-            _live = _isPerson ? "Picture saved" : "Logo saved";
+            _live = IsPerson ? "Picture saved" : "Logo saved";
             await OnAnnounce.InvokeAsync(_live);
             return true;
         }

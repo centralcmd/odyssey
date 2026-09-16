@@ -227,9 +227,12 @@
                    SubmitIcon="delete_outline"
                    SubmitVariant="OdsButtonVariant.Danger"
                    OnSubmit="RemoveAvatarConfirmedAsync">
-        <p class="cav-note" style="font:var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans);color:var(--mud-palette-text-secondary);">
+        @* .cpl-note is the design system's own contacts-dialog note (ui_kits/web/contacts.css), already
+           carrying these exact tokens for its <strong>. Re-declaring them inline on .cav-note — the
+           caption-sized hint the CROP dialog uses — left two copies of the same three declarations. *@
+        <p class="cpl-note">
             The image file is deleted, not just detached —
-            <b style="color:var(--mud-palette-text-primary);font-weight:var(--fw-medium);">@avatarTarget.ResolvedDisplayName</b>
+            <strong>@avatarTarget.ResolvedDisplayName</strong>
             falls back to the type glyph everywhere. The contact itself is unchanged.
         </p>
     </OdsFormDialog>

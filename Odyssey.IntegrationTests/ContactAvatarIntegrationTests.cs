@@ -334,6 +334,74 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
         await DropAsync();
     }
 
+    /// <summary>
+    /// The <b>other</b> shape of the same race, driven through the real <c>AttachAsync</c>: two requests
+    /// replacing the same contact's image both stage the outgoing file's removal, and the loser finds the
+    /// row already gone. It must be the same <c>409</c>, not a <c>500</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>DbUpdateConcurrencyException</c> derives from <c>DbUpdateException</c>, so the duplicate-entry
+    /// filter above does <b>not</b> cover it — which is exactly why it has its own catch, and why that
+    /// catch needs its own test. The test above proves only that the database rejects the duplicate; it
+    /// never calls the service at all, so it cannot show the mapping firing.
+    /// </para>
+    /// <para>
+    /// The race is made DETERMINISTIC rather than run in parallel and hoped for: the loser's context is
+    /// given the first half of its own request — the staged release, which is literally
+    /// <see cref="ContactAvatarRelease.StageAsync"/>, the same call <c>AttachAsync</c> makes — before the
+    /// winner commits. Racing two threads would reproduce this only sometimes, and a concurrency test
+    /// that passes when the bug is present is worse than none.
+    /// </para>
+    /// </remarks>
+    [SkippableFact]
+    public async Task AReplaceWhoseOutgoingFileWasAlreadyDeleted_IsAConflictRatherThanACrash()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var options = await MigratedSchemaAsync();
+
+        Guid contactId;
+        await using (var seed = new OdysseyContext(options))
+        {
+            contactId = await SeedPersonAsync(seed);
+            await AvatarServiceFor(seed).AttachAsync(
+                contactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg", UploaderId);
+        }
+
+        // Two contexts, so neither sees the other's change tracker — the shape of two requests.
+        await using var loser = new OdysseyContext(options);
+        await using var winner = new OdysseyContext(options);
+
+        // The loser gets as far as staging the outgoing file's removal, then stalls — the state a second
+        // request is in when the first one commits underneath it.
+        var stalled = await loser.Contacts.FirstAsync(c => c.ContactId == contactId);
+        var released = await ContactAvatarRelease.StageAsync(
+            loser, stalled, logger: null, site: "replace-race");
+        Assert.Equal(AvatarReleaseOutcome.Deleted, released);
+
+        Assert.True(await AvatarServiceFor(winner).AttachAsync(
+            contactId, ContactImageFixtures.BaselinePng(), "image/png", UploaderId));
+
+        // The loser now resumes. Its pending DELETE hits zero rows, which EF reports as a concurrency
+        // failure — and the caller must see a retryable conflict, not an unhandled 500.
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(() =>
+            AvatarServiceFor(loser).AttachAsync(
+                contactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg", UploaderId));
+
+        Assert.Contains("changed by another request", conflict.Message, StringComparison.OrdinalIgnoreCase);
+
+        // The winner's write is intact: the losing request must not have taken anything down with it.
+        await using (var check = new OdysseyContext(options))
+        {
+            var fileId = await AvatarFileIdAsync(check, contactId);
+            Assert.NotNull(fileId);
+            Assert.Equal("image/png", await check.FileMetadata.Where(fm => fm.Id == fileId)
+                .Select(fm => fm.ContentType).SingleAsync());
+        }
+
+        await DropAsync();
+    }
+
     // ── AC 18: a revalidation does not read the blob ──────────────────────────────────────────────
 
     [SkippableFact]

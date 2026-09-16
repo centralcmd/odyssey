@@ -102,8 +102,22 @@ public sealed class ContactAvatarRenderTests(StackFixture fixture) : IAsyncLifet
             // naturalWidth is 0 for an image that FAILED to load — a broken avatar is otherwise
             // indistinguishable from a working one, because the card falls back to the type glyph and
             // says nothing.
-            var naturalWidth = await mark.EvaluateAsync<int>("img => img.naturalWidth");
-            Assert.True(naturalWidth > 0, $"{name}'s image did not load (naturalWidth 0).");
+            //
+            // WAITED FOR, not sampled once. The mark is `loading="lazy" decoding="async"`, so the
+            // element is visible well before the bytes are decoded and a single read races the decode
+            // — which reports a perfectly good avatar as broken. `complete` alone is not the signal
+            // either: it is true for a load that FAILED, which is the case this assertion exists for.
+            try
+            {
+                await page.WaitForFunctionAsync(
+                    "img => img.complete && img.naturalWidth > 0",
+                    await mark.ElementHandleAsync(),
+                    new PageWaitForFunctionOptions { Timeout = 20_000 });
+            }
+            catch (TimeoutException)
+            {
+                Assert.Fail($"{name}'s image did not load (naturalWidth 0).");
+            }
 
             // The framing follows what the image IS, not the shape: a wordmark cropped to a circle is
             // unrecognisable, so a logo is contained on a neutral ground.

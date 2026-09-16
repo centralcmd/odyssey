@@ -131,14 +131,18 @@ public class ContactAvatarService
         string? userId,
         CancellationToken cancellationToken = default)
     {
-        var effectiveMaxBytes = await GetEffectiveMaxBytesAsync(cancellationToken);
-        var validated = ContactAvatarValidator.Validate(bytes, declaredContentType, effectiveMaxBytes);
-
+        // Existence FIRST, then validation. Validation is the CPU-bound half — a full container walk
+        // over attacker-supplied bytes, twice — and running it before knowing the target exists lets a
+        // caller spend that work on an id that resolves to nothing. Cheap to order correctly, and the
+        // 404 it produces is unchanged either way.
         var contact = await context.Contacts.FirstOrDefaultAsync(c => c.ContactId == contactId, cancellationToken);
         if (contact is null)
         {
             return false;
         }
+
+        var effectiveMaxBytes = await GetEffectiveMaxBytesAsync(cancellationToken);
+        var validated = ContactAvatarValidator.Validate(bytes, declaredContentType, effectiveMaxBytes);
 
         await ExecuteAtomicallyAsync(async () =>
         {

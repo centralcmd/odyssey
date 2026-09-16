@@ -571,11 +571,27 @@ public class ContactAvatarApiTests
         return metadata.Id;
     }
 
+    /// <summary>
+    /// Both halves of the file are keyed on <paramref name="fileId"/>, deliberately.
+    /// </summary>
+    /// <remarks>
+    /// An earlier version asked the blob half only whether SOME blob existed anywhere in the store
+    /// (<c>Any(b =&gt; b.Id != Guid.Empty)</c>), which the replace test satisfies with the NEW avatar's
+    /// blob — so a mis-pointed file whose blob row was wrongly destroyed while its metadata row
+    /// survived would still have read as intact. That orphan-metadata state is exactly what the
+    /// release rule exists to prevent, so the check has to name the row it means.
+    /// </remarks>
     private static bool FileExists(ApiFactory factory, Guid fileId)
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        return context.FileMetadata.Any(fm => fm.Id == fileId) && context.FileBlob.Any(b => b.Id != Guid.Empty);
+
+        var blobId = context.FileMetadata
+            .Where(fm => fm.Id == fileId)
+            .Select(fm => (Guid?)fm.FileBlobId)
+            .SingleOrDefault();
+
+        return blobId is not null && context.FileBlob.Any(b => b.Id == blobId);
     }
 
     private static Guid? AvatarFileIdOf(ApiFactory factory, Guid contactId)
