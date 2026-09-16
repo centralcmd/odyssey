@@ -61,7 +61,7 @@
                 <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="300px" />
             </OdsCard>
         }
-        else if (_chartCanRender)
+        else
         {
             <OdsLineChart Class="ods-outline"
                           Title="Net worth"
@@ -73,7 +73,6 @@
                           DeltaSuffix="@ChartDeltaSuffix"
                           XTickEveryAuto="true"
                           TextEquivalent="true"
-                          TextEquivalentLabel="Period"
                           AriaLabel="@ChartAriaLabel"
                           EmptyLabel="@ChartEmptyLabel">
                 <Sub>

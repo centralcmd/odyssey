@@ -254,9 +254,55 @@ public class DashboardNetWorthSourceTests
     }
 
     /// <summary>
-    /// The other half of the same property, behaviourally: a resolved main currency formats in its own
-    /// symbol, and a code with no reference-data row falls back to the CODE rather than to "$". A wrong
-    /// sigil misreports the denomination; a bare code merely looks unpolished.
+    /// The page must never reach the GENERIC money format for a main-currency figure.
+    ///
+    /// <para>
+    /// This is a regression guard for a real defect found in review. Decoupling the format from the
+    /// totals response (above) made a previously-unreachable state reachable: totals succeeding while
+    /// the reference-data lookup failed. The chart was guarded against it, but <c>HeaderSubLine</c>
+    /// was not, and <c>MainCurrencyFormat</c> fell back to <c>GenericMoneyFormat</c> — so the header
+    /// rendered a NOK net worth as "$48,260.00". That is the same misreported-denomination defect this
+    /// page removes from the chart, relocated to the header.
+    /// </para>
+    ///
+    /// <para>
+    /// The fix is at the root rather than at the call site: the fallback is now the currency CODE, so
+    /// no caller — present or future, guarded or not — can produce a wrong sigil.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheMainCurrencyFormat_NeverFallsBackToTheGenericDollarFormat()
+    {
+        var source = CodeBehind();
+        var accessor = Between(source, "private NumberFormatInfo MainCurrencyFormat", ";");
+
+        Assert.DoesNotContain("GenericMoneyFormat", accessor, StringComparison.Ordinal);
+        Assert.Contains("_mainCurrencyCode", accessor, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A failure the page degrades through still has to be SAID. The chart region used to render
+    /// nothing at all — no skeleton, no chart, no copy — when the format was unresolved, which is the
+    /// one outcome this page's whole design forbids elsewhere.
+    /// </summary>
+    [Fact]
+    public void ADegradedCurrencyFormat_IsDisclosedInTheHeaderRollup()
+    {
+        var source = CodeBehind();
+
+        Assert.Contains("_currencyFormatIsDegraded", source, StringComparison.Ordinal);
+
+        var rollup = Between(source, "private IReadOnlyCollection<PageHeaderProblem> HeaderProblems", "// ── Recent transactions");
+        Assert.Contains("_currencyFormatIsDegraded", rollup, StringComparison.Ordinal);
+
+        // …and the chart region no longer has a branch that can render nothing.
+        Assert.DoesNotContain("_chartCanRender", Markup(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A resolved main currency formats in its own symbol, and a code with no reference-data row falls
+    /// back to the CODE rather than to "$". A wrong sigil misreports the denomination; a bare code
+    /// merely looks unpolished.
     /// </summary>
     [Fact]
     public void TheResolvedFormat_NeverFallsBackToAGenericDollar()

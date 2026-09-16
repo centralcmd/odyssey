@@ -136,8 +136,9 @@ public partial class Home
     // single-currency mock data. The mapping itself is in DashboardFigures, where it is testable
     // without a renderer.
     //
-    // Returns null when it cannot be resolved at all, and the chart then withholds rather than
-    // rendering real NOK figures under a dollar sign — a wrong sigil misreports the denomination.
+    // Returns null when the reference-data lookup fails. That degrades the SYMBOL only: MainCurrencyFormat
+    // then falls back to the currency code, so the denomination is still reported correctly and the
+    // header rollup says what was lost.
     private async Task<NumberFormatInfo?> ResolveMainCurrencyFormatAsync()
     {
         try
@@ -208,10 +209,11 @@ public partial class Home
 
     private bool _chartIsLoading => _isLoadingAccounts || _isLoadingHistory;
 
-    // The chart withholds when the money format could not be resolved: it would otherwise render real
-    // NOK figures under the generic "$", which misreports the denomination rather than merely looking
-    // unpolished.
-    private bool _chartCanRender => _mainCurrencyFormat is not null;
+    // There is no "withhold the chart" state any more. It existed because an unresolved format meant a
+    // wrong sigil, and the region then rendered NOTHING — no skeleton, no chart, no explanation — which
+    // is its own defect. With the code-based fallback above, a failed reference-data lookup costs the
+    // symbol and the minor-unit count, and the degradation is disclosed in the header rollup instead.
+    private bool _currencyFormatIsDegraded => _mainCurrencyFormat is null;
 
     private IReadOnlyList<NetWorthHistoryPoint> HistoryPoints => _history?.Points ?? [];
 
@@ -287,14 +289,26 @@ public partial class Home
                 ];
             }
 
+            var problems = new List<PageHeaderProblem>();
+
+            if (_currencyFormatIsDegraded)
+            {
+                problems.Add(new PageHeaderProblem
+                {
+                    Severity = PageHeaderSeverity.Warning,
+                    Message = $"Currency details for {_mainCurrencyCode} could not be loaded, so amounts "
+                        + "are shown with the currency code instead of its symbol.",
+                    Where = "Dashboard header and chart",
+                });
+            }
+
             var unconverted = _totals.UnconvertedAccounts;
             if (unconverted.Count == 0)
-                return [];
+                return problems;
 
             var main = _totals.MainCurrencyCode;
-            return
-            [
-                .. unconverted.Select(account => new PageHeaderProblem
+            problems.AddRange(
+                unconverted.Select(account => new PageHeaderProblem
                 {
                     Severity = PageHeaderSeverity.Warning,
                     Lead = account.Name,
@@ -302,8 +316,9 @@ public partial class Home
                     Where = "Accounts",
                     ViewLabel = "Accounts",
                     OnView = EventCallback.Factory.Create(this, () => NavigationManager.NavigateTo("accounts")),
-                }),
-            ];
+                }));
+
+            return problems;
         }
     }
 
@@ -338,7 +353,14 @@ public partial class Home
     // in that currency's symbol and minor units rather than the specimen's generic "$".
     private string FormatMoney(decimal value) => value.ToString("C", MainCurrencyFormat);
 
-    private NumberFormatInfo MainCurrencyFormat => _mainCurrencyFormat ??= GenericMoneyFormat;
+    // The fallback is the currency CODE, never the generic "$". _mainCurrencyCode is always a real
+    // code — it defaults to NOK and is only ever overwritten with the user's preference — so when the
+    // reference-data lookup fails, all that is lost is the pretty symbol and the minor-unit count, not
+    // the denomination. GenericMoneyFormat is for a per-transaction amount in its own account's
+    // currency; reaching for it here rendered a NOK figure as "$48,260.00", which is the same
+    // misreported-denomination defect this page removes from the chart, relocated to the header.
+    private NumberFormatInfo MainCurrencyFormat =>
+        _mainCurrencyFormat ??= DashboardFigures.MoneyFormat(_mainCurrencyCode, null);
 
     // Per-transaction amounts stay on the generic symbol: a transaction is in its account's
     // own currency, which is not necessarily the main one, and nothing converts it here.

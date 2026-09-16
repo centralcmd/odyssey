@@ -209,21 +209,54 @@ public class OdsLineChartTests
 
     // ── AC17 / V15 — the delta ─────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// BOTH endpoints are varied, not just the last. The delta gate reads
+    /// <c>_pts[0].Kind != Partial &amp;&amp; _pts[^1].Kind != Partial</c>, and a theory that only moved the
+    /// tail would pass unchanged if the first-point half were dropped — which is the regression this
+    /// exists to catch. A partial FIRST point matters just as much: the delta is measured from it.
+    /// </summary>
     [Theory]
-    [InlineData(OdsLinePointKind.Partial, false)]
-    [InlineData(OdsLinePointKind.Revalued, true)]
-    [InlineData(OdsLinePointKind.Normal, true)]
-    public void The_delta_is_withheld_for_a_partial_endpoint_only(OdsLinePointKind endpointKind, bool expected)
+    [InlineData(OdsLinePointKind.Normal, OdsLinePointKind.Normal, true)]
+    [InlineData(OdsLinePointKind.Normal, OdsLinePointKind.Partial, false)]
+    [InlineData(OdsLinePointKind.Partial, OdsLinePointKind.Normal, false)]
+    [InlineData(OdsLinePointKind.Partial, OdsLinePointKind.Partial, false)]
+    [InlineData(OdsLinePointKind.Revalued, OdsLinePointKind.Normal, true)]
+    [InlineData(OdsLinePointKind.Normal, OdsLinePointKind.Revalued, true)]
+    [InlineData(OdsLinePointKind.Revalued, OdsLinePointKind.Revalued, true)]
+    [InlineData(OdsLinePointKind.Partial, OdsLinePointKind.Revalued, false)]
+    public void The_delta_is_withheld_when_either_endpoint_is_partial(
+        OdsLinePointKind firstKind, OdsLinePointKind lastKind, bool expected)
+    {
+        using var ctx = NewContext();
+
+        var cut = Render(ctx,
+        [
+            new OdsLinePoint("a", 100m, firstKind),
+            new OdsLinePoint("mid", 200m),
+            new OdsLinePoint("b", 300m, lastKind),
+        ], p => p.Add(c => c.ShowDelta, true));
+
+        Assert.Equal(expected, cut.FindAll(".odc-lc-delta").Count == 1);
+    }
+
+    /// <summary>
+    /// A partial point in the MIDDLE marks its own segment but does not withhold the delta: both
+    /// endpoints are measured, so the difference between them is still a real figure.
+    /// </summary>
+    [Fact]
+    public void A_partial_point_between_the_endpoints_does_not_withhold_the_delta()
     {
         using var ctx = NewContext();
 
         var cut = Render(ctx,
         [
             new OdsLinePoint("a", 100m),
-            new OdsLinePoint("b", 300m, endpointKind),
+            new OdsLinePoint("mid", 200m, OdsLinePointKind.Partial),
+            new OdsLinePoint("b", 300m),
         ], p => p.Add(c => c.ShowDelta, true));
 
-        Assert.Equal(expected, cut.FindAll(".odc-lc-delta").Count == 1);
+        Assert.Single(cut.FindAll(".odc-lc-delta"));
+        Assert.Equal(2, cut.FindAll(".odc-line-svg > line[stroke-dasharray]").Count);
     }
 
     [Fact]
