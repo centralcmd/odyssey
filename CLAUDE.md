@@ -32,9 +32,20 @@ E2E_BASE_URL=http://localhost:5199 dotnet test Odyssey.E2ETests
 docker compose up --build
 docker compose down -v   # also remove DB data
 
-# Run via Aspire (dynamic ports, dev dashboard)
+# Run via Aspire (dynamic ports, dev dashboard). Debug — never add `-c Release`, see below.
 dotnet run --project Odyssey.AppHost
 ```
+
+**Run the Aspire stack in Debug; only Compose may be Release.** `Odyssey.Client` resolves the API
+address at **compile time** (`Program.cs`): `#if DEBUG` hardcodes `http://localhost:5188`, while
+Release falls back to the same-origin `/api/` path that **only NGINX, in the Compose stack, serves**.
+So `dotnet run --project Odyssey.AppHost -c Release` — a reflex after building the solution `-c
+Release` as above — brings up a stack whose API and database are healthy and whose client can reach
+neither: every call hits the SPA fallback, gets `index.html` back, and the WASM app dies parsing HTML
+as JSON behind a red *"An unhandled error has occurred"* bar. It costs the entire `Odyssey.E2ETests`
+tier, and because the fixture probes only whether a stack *answers*, the suite goes red on sign-in
+timeouts rather than skipping. Debug is the default, so this only ever bites when `-c Release` is
+passed explicitly — don't.
 
 **A remote session provisions itself.** `.claude/hooks/session-start.sh` runs before a Claude Code
 on the web session starts: it resolves a .NET 10 SDK, derives `DOTNET_ROOT`/`PATH` from it, installs

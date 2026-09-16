@@ -38,6 +38,28 @@ Every step is idempotent and non-interactive, the hook is gated on `CLAUDE_CODE_
 touches a developer's own machine, and the steps after the SDK are **non-fatal**: a transient NuGet
 failure must not abort the hook before the Docker daemon has been started.
 
+## What the image bakes in can go stale, and the hook re-derives it
+
+`Microsoft.Playwright` pins one exact Chromium revision and will use no other, so a browser baked
+into the image goes stale the moment the package is bumped — the image that prompted this ships
+`r1194` while the pinned 1.62.0 wants `r1234`. Installing the right build is only half of it: the
+image also leaves `/opt/pw-browsers/chromium`, the convenience symlink the `executablePath` escape
+hatch points at, aimed at **its** build, and that pin does not move on its own.
+
+Nothing in the .NET test tiers reads the symlink — each resolves its own revision — so a stale one is
+invisible until something follows that documented escape hatch and silently launches a browser whose
+protocol the driver does not speak. The hook therefore repoints it, resolving the target from
+`install --dry-run` rather than by globbing for the newest directory: the revision Playwright *wants*
+is the only correct answer, and a package **downgrade** would make "newest" the wrong one. The
+executable is searched for rather than assumed, because the two layouts are both real — `r1194`
+unpacks to `chrome-linux/`, `r1234` to `chrome-linux64/`.
+
+The same staleness reaches Node consumers, differently. The hook exports
+`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`, which redirects the `playwright` npm package away from
+`~/.cache/ms-playwright` — so the `run-odyssey` driver's pin has to equal the `Microsoft.Playwright`
+version in `Directory.Packages.props`, or it looks for a build that directory will never hold. Both
+are `1.62.0`; keep them in lockstep.
+
 ## The environment-configuration script
 
 This is not run from the repository — paste it into the environment's setup script. It is recorded
