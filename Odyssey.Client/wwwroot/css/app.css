@@ -66,8 +66,13 @@ input:-webkit-autofill:active {
   --chart-4: #8B5CF6;   /* violet-500 */
   --chart-5: #B23B3B;   /* coral-700 */
   --chart-6: #D97706;   /* amber-600 — fails 3:1 as amber-500 stroke on white */
-  --chart-axis: rgba(14,21,37,0.14);
-  --chart-grid:  rgba(14,21,37,0.06);
+  --chart-axis: rgba(14,21,37,0.24);
+  --chart-grid:  rgba(14,21,37,0.08);
+  /* Informational axis line — the zero baseline and the "now" marker say which
+     side of zero a point sits on, so they are graphical objects under WCAG
+     1.4.11 and must clear 3:1. 0.46 on --mud-palette-surface (#FFFFFF) renders
+     at 3.05:1 (0.45 lands at 2.96:1); --chart-axis stays decorative chrome. */
+  --chart-axis-strong: rgba(14,21,37,0.46);
 }
 
 [data-theme='dark'] {
@@ -79,6 +84,9 @@ input:-webkit-autofill:active {
   --chart-6: #F59E0B;   /* amber-500 */
   --chart-axis: rgba(199,208,224,0.18);
   --chart-grid:  rgba(199,208,224,0.08);
+  /* 0.42 on --mud-palette-surface (#141A2C) renders at 3.01:1. See the light
+     theme for why the informational axis is a separate token from --chart-axis. */
+  --chart-axis-strong: rgba(199,208,224,0.42);
 }
 
 /* ── Design-system foundation tokens ───────────────────────────────────────
