@@ -315,6 +315,82 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
             + "buckets, not rows.");
     }
 
+    // ── Issue #99 — the open/closed term, on the engine that actually stores the columns ──────
+
+    /// <summary>
+    /// The membership rule through both endpoints, against real SQL: an archived account still counts,
+    /// a closed one does not, and an account closed at <b>exactly</b> the measuring instant is already
+    /// gone by it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The fast tiers cannot decide this one. <c>Closed</c> is nullable, so the predicate is a
+    /// three-valued <c>OR</c> that EF must translate rather than evaluate in LINQ-to-objects — and the
+    /// equality case is stored through <c>datetime(6)</c>, which truncates where EF InMemory compares
+    /// full ticks. A boundary written at tick resolution passes on the Core tier and means something
+    /// else here.
+    /// </para>
+    /// <para>
+    /// It also pins issue #90 AC2 with a closed account in the portfolio: the final point and
+    /// <c>/totals</c> share one instant, and both now resolve the term at it, so they agree
+    /// structurally rather than by two predicates being kept in step.
+    /// </para>
+    /// </remarks>
+    [SkippableFact]
+    public async Task TheOpenClosedTerm_DecidesMembershipOnBothEndpoints()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var options = await MigratedSchemaAsync();
+
+        var opened = FixedNow.AddYears(-2);
+        var live = Guid.NewGuid();
+        var filed = Guid.NewGuid();
+        var closedLongAgo = Guid.NewGuid();
+        var closedAtNow = Guid.NewGuid();
+
+        await using (var seed = new OdysseyContext(options))
+        {
+            seed.Accounts.AddRange(
+                NewAccount(live, "Live", AccountType.CheckingAccount, "USD", opened),
+                NewAccount(filed, "Filed away", AccountType.SavingsAccount, "USD", opened,
+                    archived: FixedNow.AddDays(-1)),
+                NewAccount(closedLongAgo, "Closed", AccountType.CheckingAccount, "USD", opened,
+                    closed: FixedNow.AddMonths(-6)),
+                NewAccount(closedAtNow, "Closed at the measuring instant", AccountType.CheckingAccount,
+                    "USD", opened, closed: FixedNow));
+
+            seed.Transactions.AddRange(
+                NewTransaction(live, 100m, opened.AddDays(1)),
+                NewTransaction(filed, 200m, opened.AddDays(1)),
+                NewTransaction(closedLongAgo, 4_000m, opened.AddDays(1)),
+                NewTransaction(closedAtNow, 8_000m, opened.AddDays(1)));
+
+            await seed.SaveChangesAsync();
+        }
+
+        await using var context = new OdysseyContext(options);
+
+        var totals = await new AccountTotalsService(
+            context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow))
+            .ComputeAsync("USD");
+
+        // Live + archived only. Archiving is a list filter; closing ends the term, and `Closed == now`
+        // is outside it because the bound is exclusive at both ends.
+        Assert.Equal(300m, totals.NetWorth);
+        Assert.Empty(totals.UnconvertedAccounts);
+
+        var history = await ServiceFor(context).ComputeAsync(
+            new NetWorthHistoryQuery { MainCurrency = "USD", Interval = NetWorthInterval.Monthly });
+
+        // The per-point half: each account leaves the line at its own close date and keeps its past, so
+        // the series steps down 12 300 → 8 300 → 300 rather than being flat at the final figure. The
+        // last step happens only at the final bound, where `Closed == now` falls outside the term.
+        Assert.Equal(12_300m, history.Points[0].NetWorth);
+        Assert.Contains(history.Points, point => point.NetWorth == 8_300m);
+        Assert.Equal(300m, history.Points[^1].NetWorth);
+        Assert.Equal(totals.NetWorth, history.Points[^1].NetWorth);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────
 
     private static NetWorthHistoryService ServiceFor(OdysseyContext context) =>
@@ -380,7 +456,14 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         }
     }
 
-    private static Account NewAccount(Guid id, string name, AccountType type, string currency, DateTime opened) => new()
+    private static Account NewAccount(
+        Guid id,
+        string name,
+        AccountType type,
+        string currency,
+        DateTime opened,
+        DateTime? closed = null,
+        DateTime? archived = null) => new()
     {
         AccountId = id,
         Name = name,
@@ -388,6 +471,8 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         Opened = opened,
         AccountType = type,
         CurrencyCode = currency,
+        Closed = closed,
+        Archived = archived,
     };
 
     private static Transaction NewTransaction(Guid accountId, decimal amount, DateTime at) => new()

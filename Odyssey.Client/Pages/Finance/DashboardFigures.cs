@@ -85,6 +85,7 @@ internal static class DashboardFigures
             ? "Net worth could not be converted for any period."
             : $"Net worth could not be converted to {mainCurrencyCode} for any period.",
         NetWorthEmptyReason.WindowBeforeFirstAccount => "No accounts existed in this period.",
+        NetWorthEmptyReason.WindowAfterAllAccountsClosed => "Every account had closed before this period.",
         NetWorthEmptyReason.NotBuilt => "Net-worth history is not available yet.",
         // No reason at all means the call did not land. Distinct copy, because "not available yet" is
         // a statement about the data and this is a statement about the request.

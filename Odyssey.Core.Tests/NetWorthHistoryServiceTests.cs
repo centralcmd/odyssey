@@ -40,7 +40,8 @@ public class NetWorthHistoryServiceTests
         AccountType type,
         string currency,
         DateTime opened,
-        DateTime? archived = null) => new()
+        DateTime? archived = null,
+        DateTime? closed = null) => new()
         {
             AccountId = id,
             Name = name,
@@ -49,6 +50,7 @@ public class NetWorthHistoryServiceTests
             AccountType = type,
             CurrencyCode = currency,
             Archived = archived,
+            Closed = closed,
         };
 
     private static Transaction NewTransaction(Guid accountId, decimal amount, DateTime at) => new()
@@ -442,27 +444,149 @@ public class NetWorthHistoryServiceTests
         Assert.Equal(750m, point.NetWorth);
     }
 
+    // ── Issue #99 — membership is the open/closed term, per point, and never Archived ─────────
+
     [Fact]
-    public async Task An_archived_account_is_excluded_as_of_now_across_the_whole_series()
+    public async Task An_archived_account_still_contributes_at_every_point()
     {
         await using var context = TestContextFactory.Create();
         var live = Guid.NewGuid();
-        var gone = Guid.NewGuid();
+        var filed = Guid.NewGuid();
         var opened = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         context.Accounts.AddRange(
             NewAccount(live, "Live", AccountType.CheckingAccount, "USD", opened),
-            NewAccount(gone, "Archived", AccountType.CheckingAccount, "USD", opened,
+            NewAccount(filed, "Filed away", AccountType.CheckingAccount, "USD", opened,
                 archived: new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc)));
         context.Transactions.AddRange(
             NewTransaction(live, 100m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)),
-            NewTransaction(gone, 900m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
+            NewTransaction(filed, 900m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
         var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)));
 
-        // As-of-now membership is a choice, made so the last point can equal /totals. The accepted
-        // consequence is exactly this: archiving one account retroactively moves the whole line.
-        Assert.All(history.Points, point => Assert.Equal(100m, point.NetWorth));
+        // Archiving is a filing action, not a valuation event. Before issue #99 the whole line —
+        // including months the account was demonstrably open and funded — dropped to 100 the moment
+        // someone archived it.
+        Assert.All(history.Points, point => Assert.Equal(1000m, point.NetWorth));
+        Assert.All(history.Points, point => Assert.Equal(2, point.ContributingAccountCount));
+    }
+
+    /// <summary>
+    /// The per-point half of the rule: a closed account keeps every point before its close date and
+    /// leaves every point at or after it. A series-wide filter — the shape the archive predicate had —
+    /// would rewrite the account's past instead.
+    /// </summary>
+    [Fact]
+    public async Task A_closed_account_leaves_the_series_from_its_close_date_and_keeps_its_past()
+    {
+        await using var context = TestContextFactory.Create();
+        var live = Guid.NewGuid();
+        var closing = Guid.NewGuid();
+        var opened = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        context.Accounts.AddRange(
+            NewAccount(live, "Live", AccountType.CheckingAccount, "USD", opened),
+            NewAccount(closing, "Closing", AccountType.CheckingAccount, "USD", opened,
+                closed: new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc)));
+        context.Transactions.AddRange(
+            NewTransaction(live, 100m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)),
+            NewTransaction(closing, 900m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
+        await context.SaveChangesAsync();
+
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+
+        // Points are dated at their period END: 2026-02-01, 03-01, 04-01, 05-01. The close falls on
+        // the 03-01 bound, which is exclusive, so that point is the first without the account.
+        Assert.Equal(
+            [D(2026, 2, 1), D(2026, 3, 1), D(2026, 4, 1), D(2026, 5, 1)],
+            history.Points.Select(point => point.Date));
+        Assert.Equal([1000m, 100m, 100m, 100m], history.Points.Select(point => point.NetWorth));
+        Assert.Equal([2, 1, 1, 1], history.Points.Select(point => point.ContributingAccountCount));
+    }
+
+    /// <summary>
+    /// The mirror of the <c>Opened</c> boundary. Both ends are exclusive at the bound: an account
+    /// opened at exactly a bound has not arrived by it, and one closed at exactly a bound is already
+    /// gone by it.
+    /// </summary>
+    [Fact]
+    public async Task The_close_boundary_is_exclusive_at_the_bound()
+    {
+        await using var context = TestContextFactory.Create();
+        var onTheBound = Guid.NewGuid();
+        var justAfter = Guid.NewGuid();
+        var opened = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var bound = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        // A whole second, not a tick: the columns are datetime(6), and a 7-digit tick offset means
+        // equality once MySqlConnector has truncated it — green here, different on MariaDB.
+        context.Accounts.AddRange(
+            NewAccount(onTheBound, "Closed on the bound", AccountType.CheckingAccount, "USD", opened, closed: bound),
+            NewAccount(justAfter, "Closed a second later", AccountType.CheckingAccount, "USD", opened,
+                closed: bound.AddSeconds(1)));
+        context.Transactions.AddRange(
+            NewTransaction(onTheBound, 7m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)),
+            NewTransaction(justAfter, 30m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
+        await context.SaveChangesAsync();
+
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 1, 31)));
+
+        var point = Assert.Single(history.Points);
+        Assert.Equal(D(2026, 2, 1), point.Date);
+        Assert.Equal(30m, point.NetWorth);
+        Assert.Equal(1, point.ContributingAccountCount);
+    }
+
+    /// <summary>
+    /// An estimate effective after the close date must not keep a closed account alive. The per-slot
+    /// term check is what stops it — <c>LoadEstimatesAsync</c> bounds by the window, not by the term —
+    /// so this pins the behaviour rather than the mechanism.
+    /// </summary>
+    [Fact]
+    public async Task An_estimate_effective_after_the_close_date_does_not_revive_the_account()
+    {
+        await using var context = TestContextFactory.Create();
+        var closing = Guid.NewGuid();
+        var live = Guid.NewGuid();
+        var opened = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        context.Accounts.AddRange(
+            NewAccount(live, "Live", AccountType.CheckingAccount, "USD", opened),
+            NewAccount(closing, "Closing", AccountType.InvestmentAccount, "USD", opened,
+                closed: new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc)));
+        context.Transactions.AddRange(
+            NewTransaction(live, 100m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)),
+            NewTransaction(closing, 900m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
+        context.AccountEstimates.Add(NewEstimate(closing, 50_000m,
+            new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc)));
+        await context.SaveChangesAsync();
+
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+
+        Assert.Equal([1000m, 100m, 100m, 100m], history.Points.Select(point => point.NetWorth));
+        Assert.All(history.Points, point => Assert.Equal(0, point.RevaluedAccountCount));
+    }
+
+    /// <summary>
+    /// A window entirely after every account closed is the mirror of
+    /// <c>WindowBeforeFirstAccount</c> — and it must not be reported as
+    /// <c>NothingConvertible</c>, which would tell a reader their exchange rates are missing when
+    /// their accounts are simply all closed.
+    /// </summary>
+    [Fact]
+    public async Task A_window_after_every_account_closed_yields_WindowAfterAllAccountsClosed()
+    {
+        await using var context = TestContextFactory.Create();
+        var id = Guid.NewGuid();
+        context.Accounts.Add(NewAccount(id, "Long closed", AccountType.CheckingAccount, "USD",
+            new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            closed: new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc)));
+        context.Transactions.Add(NewTransaction(id, 500m, new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc)));
+        await context.SaveChangesAsync();
+
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 3, 31)));
+
+        Assert.Empty(history.Points);
+        Assert.Equal(NetWorthEmptyReason.WindowAfterAllAccountsClosed, history.EmptyReason);
+        Assert.Empty(history.UnconvertedAccounts);
     }
 
     // ── AC11 / V14 — the four empty causes ────────────────────────────────────────────────────

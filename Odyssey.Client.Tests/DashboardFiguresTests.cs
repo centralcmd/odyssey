@@ -146,23 +146,26 @@ public class DashboardFiguresTests
     // ── Chart empty state ──
 
     /// <summary>
-    /// Five states, five sentences. The four server-side causes are carried on the response precisely
-    /// because they cannot be inferred — two of them produce otherwise byte-identical payloads — and
-    /// "no data yet" tells a reader with a full portfolio that their accounts are empty.
+    /// One sentence per state, and no two alike. The server-side causes are carried on the response
+    /// precisely because they cannot be inferred — several produce otherwise byte-identical payloads —
+    /// and "no data yet" tells a reader with a full portfolio that their accounts are empty.
     /// </summary>
+    /// <remarks>
+    /// Driven off <c>Enum.GetValues</c> rather than a written-out list, so a cause added server-side
+    /// fails here instead of silently landing on the <c>_</c> arm — which is the "could not be loaded"
+    /// copy, a statement about the REQUEST, and therefore the one wrong thing to say about a cause the
+    /// server did name. Issue #99 added <c>WindowAfterAllAccountsClosed</c> and this is how it is kept
+    /// from being the last one.
+    /// </remarks>
     [Fact]
     public void ChartEmptyLabel_GivesEachCauseItsOwnSentence()
     {
-        var copy = new[]
-        {
-            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NotBuilt, "NOK"),
-            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NoAccounts, "NOK"),
-            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NothingConvertible, "NOK"),
-            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.WindowBeforeFirstAccount, "NOK"),
-            DashboardFigures.ChartEmptyLabel(null, "NOK"),
-        };
+        var copy = Enum.GetValues<NetWorthEmptyReason>()
+            .Select(reason => DashboardFigures.ChartEmptyLabel(reason, "NOK"))
+            .Append(DashboardFigures.ChartEmptyLabel(null, "NOK"))
+            .ToList();
 
-        Assert.Equal(copy.Length, copy.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(copy.Count, copy.Distinct(StringComparer.Ordinal).Count());
         Assert.All(copy, sentence => Assert.False(string.IsNullOrWhiteSpace(sentence)));
     }
 

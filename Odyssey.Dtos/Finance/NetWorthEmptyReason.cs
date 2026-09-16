@@ -4,8 +4,8 @@ namespace Odyssey.Dtos.Finance;
 /// Why a net-worth history came back with no points (issue #90 §3.2).
 ///
 /// <para>
-/// The four causes are carried explicitly because they are <b>not</b> inferable from the rest of the
-/// payload: an earlier draft made the four responses byte-identical apart from
+/// The causes are carried explicitly because they are <b>not</b> inferable from the rest of the
+/// payload: an earlier draft made the responses byte-identical apart from
 /// <c>UnconvertedAccounts</c>, which cannot separate "no accounts" from "the window ends before the
 /// first account was opened" at all. A client cannot be asked to infer a cause the payload does not
 /// carry, and "no data yet" is the wrong thing to say when the cause is known.
@@ -22,7 +22,7 @@ public enum NetWorthEmptyReason
     /// <summary>No series could be built. The catch-all, and the only one that is not a statement about the data.</summary>
     NotBuilt = 0,
 
-    /// <summary>There are no active accounts to chart.</summary>
+    /// <summary>There are no accounts to chart — none had been opened by now.</summary>
     NoAccounts = 1,
 
     /// <summary>Accounts exist, but none could be converted into the main currency for any period.</summary>
@@ -33,4 +33,17 @@ public enum NetWorthEmptyReason
     /// valid, so this is a <c>200</c> with no points — never a <c>400</c>.
     /// </summary>
     WindowBeforeFirstAccount = 3,
+
+    /// <summary>
+    /// Accounts exist and the window is not before the first of them, but every account had closed
+    /// before the window's first measuring instant — so no account was inside its term at any point
+    /// (issue #99).
+    /// </summary>
+    /// <remarks>
+    /// The mirror of <see cref="WindowBeforeFirstAccount"/>, and unreachable before issue #99, when a
+    /// closed account contributed forever. It is separate from <see cref="NothingConvertible"/>
+    /// because the two say opposite things about the deployment: one is a missing exchange rate to fix,
+    /// the other is a correct and complete answer about a window with nothing in it.
+    /// </remarks>
+    WindowAfterAllAccountsClosed = 4,
 }

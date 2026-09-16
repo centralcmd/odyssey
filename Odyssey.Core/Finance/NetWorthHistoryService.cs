@@ -63,22 +63,25 @@ public class NetWorthHistoryService(
         // 2 — the accounts, BEFORE the grid. The grid needs Account.Opened to clamp its leading
         // empty periods away, so it can be neither pure nor first.
         //
-        // MEMBERSHIP IS AS OF NOW, AND IT IS NOT PER POINT. Opened is checked per slot below, but
-        // Archived is applied once for the whole series, so archiving an account today removes it from
-        // EVERY historical point — including months when it was open and held a real balance. That is
-        // deliberate: G3/AC2 require the final point to equal /totals exactly, and /totals is a
-        // point-in-time snapshot over non-archived accounts. The accepted cost is that a routine action
-        // (closing an account) retroactively moves the whole line, and unlike the understated and
-        // revalued cases this one carries no per-point flag to disclose it — the endpoint's Swagger
-        // description says so instead.
+        // MEMBERSHIP IS THE OPEN/CLOSED TERM, AND IT IS EVALUATED PER POINT (issue #99). Both ends of
+        // the term are carried into the fold rather than applied here, because a series-wide filter is
+        // retroactive: it would drop an account from months it was demonstrably open and funded. Only
+        // `Opened < now` is applied here, and purely as a prefilter — it can never exclude an account
+        // any slot would have kept, since every bound is at or before `now`.
+        //
+        // Archived is NOT read at all. It is the app's generic declutter verb, shared with photos,
+        // journal entries, tags and budgets, and it is a reversible toggle with no transition history
+        // (AccountService.ApplyArchiveTransition clears it on unarchive), so it could not be evaluated
+        // per point even if it belonged in a valuation — which it does not.
         var accounts = await context.Accounts
-            .Where(account => account.Archived == null && account.Opened < now)
+            .Where(account => account.Opened < now)
             .Select(account => new AccountRow(
                 account.AccountId,
                 account.Name,
                 account.CurrencyCode,
                 account.AccountType,
-                account.Opened))
+                account.Opened,
+                account.Closed))
             .ToListAsync(cancellationToken);
 
         if (accounts.Count == 0)
@@ -124,6 +127,12 @@ public class NetWorthHistoryService(
         var unconverted = new Dictionary<Guid, UnconvertedAccount>();
         var cursors = accountIds.ToDictionary(id => id, _ => new AccountCursor());
 
+        // Whether ANY account was inside its term at ANY bound. It separates the two ways a series can
+        // come out wholly empty: nothing could be converted, or nothing was live to convert. Closing
+        // accounts made the second reachable, and reporting it as the first would tell a reader their
+        // rates are missing when their accounts are simply all closed.
+        var liveAtSomePoint = false;
+
         // One rate cursor per CURRENCY, not per account: many accounts share a currency, and the rate
         // in force depends only on the currency and the bound. Advancing them once per slot makes the
         // whole conversion O(currencies) per point instead of re-walking a timeline for every
@@ -148,12 +157,22 @@ public class NetWorthHistoryService(
             {
                 var cursor = cursors[account.AccountId];
 
-                // V6 — an account that had not opened by this bound contributes 0, and is neither
-                // partial nor contributing. It is not a defect that it has no figure yet.
+                // V6 — an account outside its term at this bound contributes 0, and is neither partial
+                // nor contributing. It is not a defect that it has no figure yet, or no longer has one.
                 if (account.Opened >= slot.Bound)
                 {
                     continue;
                 }
+
+                // The mirror of the Opened rule, with the bounds exclusive throughout (issue #90 on
+                // datetime(6) truncation): an account closed at exactly the measuring instant is
+                // already gone by it, exactly as one opened at it has not yet arrived.
+                if (account.Closed is { } closed && closed <= slot.Bound)
+                {
+                    continue;
+                }
+
+                liveAtSomePoint = true;
 
                 var balance = cursor.AdvanceBalance(buckets.GetValueOrDefault(account.AccountId), slot.Bound);
                 var estimate = cursor.AdvanceEstimate(estimates.GetValueOrDefault(account.AccountId), slot.Bound);
@@ -209,9 +228,14 @@ public class NetWorthHistoryService(
 
         if (points.TrueForAll(point => point.ContributingAccountCount == 0))
         {
-            // Every period was wholly unconvertible. A line of zeroes would read as "you were worth
-            // nothing", which is the opposite of "we could not tell".
-            return Empty(main, interval, (effectiveFrom, requested.To), NetWorthEmptyReason.NothingConvertible)
+            // Every period was wholly unconvertible, or wholly outside every account's term. Either
+            // way a line of zeroes would read as "you were worth nothing", which is the opposite of
+            // "we could not tell" — and of "there was nothing here to tell you about".
+            var reason = liveAtSomePoint
+                ? NetWorthEmptyReason.NothingConvertible
+                : NetWorthEmptyReason.WindowAfterAllAccountsClosed;
+
+            return Empty(main, interval, (effectiveFrom, requested.To), reason)
                 with { UnconvertedAccounts = [.. unconverted.Values] };
         }
 
@@ -391,9 +415,17 @@ public class NetWorthHistoryService(
     /// once per account.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// An estimate entered today does not rewrite the past: it applies from its own
     /// <c>EffectiveFrom</c> forward, which is what makes the step at that instant a real revaluation
     /// rather than a correction to be smoothed away.
+    /// </para>
+    /// <para>
+    /// The bound here is the window's, not the account's term: an estimate effective after an account
+    /// closed is loaded and then never reached, because the fold skips the account at every bound at
+    /// or after <c>Closed</c>. Filtering it out per account would be a second place for the term rule
+    /// to live, and the one that is silent when the two disagree.
+    /// </para>
     /// </remarks>
     private async Task<Dictionary<Guid, List<EstimatePoint>>> LoadEstimatesAsync(
         IReadOnlyCollection<Guid> accountIds,
@@ -572,7 +604,7 @@ public class NetWorthHistoryService(
 
     private readonly record struct EstimatePoint(DateTime EffectiveFrom, decimal Value, Guid Id);
 
-    private sealed record AccountRow(Guid AccountId, string Name, string CurrencyCode, AccountType AccountType, DateTime Opened);
+    private sealed record AccountRow(Guid AccountId, string Name, string CurrencyCode, AccountType AccountType, DateTime Opened, DateTime? Closed);
 
     private sealed record RawBucket(Guid AccountId, int Year, int Month, int Day, decimal Sum);
 

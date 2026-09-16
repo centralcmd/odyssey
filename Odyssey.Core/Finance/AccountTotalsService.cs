@@ -7,7 +7,7 @@ namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// Computes total assets, total liabilities and net worth converted into a single (main) currency.
-/// Each active account's current balance is converted at the latest rate; accounts with no rate to
+/// Each in-term account's current balance is converted at the latest rate; accounts with no rate to
 /// the main currency contribute 0 and are reported in <see cref="AccountTotals.UnconvertedAccounts"/>.
 /// </summary>
 /// <remarks>
@@ -17,6 +17,13 @@ namespace Odyssey.Core.Finance;
 /// <c>EffectiveFrom &lt; now</c>, the rate with the greatest <c>AsOf &lt; now</c>, and only accounts
 /// with <c>Opened &lt; now</c>. Before this the service had no upper time bound at all, so a
 /// future-dated transaction, rate or account already counted towards "today's" figure.
+/// </para>
+/// <para>
+/// <b>Membership is the open/closed term, not <c>Archived</c> (issue #99).</b> An account contributes
+/// when <c>Opened &lt; now</c> and (<c>Closed</c> is null or <c>now &lt; Closed</c>).
+/// <c>NetWorthHistoryService</c> evaluates that same rule per point, so the two endpoints now agree at
+/// the shared final instant structurally rather than by two predicates being kept in step by hand —
+/// the same argument that produced <see cref="AccountClassification"/>.
 /// </para>
 /// <para>
 /// The bound is <b>exclusive</b> on both sides, and that is load-bearing rather than arbitrary:
@@ -43,11 +50,14 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
-        // Active = not archived (closed accounts still count), matching the Accounts page aggregation.
-        // An account that has not opened yet contributes nothing, so it is not here — and therefore is
-        // not reported as unconvertible either, which would misdescribe it as a defect.
+        // Membership is the account's OPEN/CLOSED TERM, never its Archived flag (issue #99). An
+        // account counts when it had opened by `now` and had not yet closed at it. Archiving is a
+        // list-filter verb shared with photos, journal entries, tags and budgets; it is not a
+        // valuation event, and keying off it meant filing an account away moved the headline figure.
+        // An account outside its term contributes nothing, so it is not here — and therefore is not
+        // reported as unconvertible either, which would misdescribe it as a defect.
         var accounts = await context.Accounts
-            .Where(account => account.Archived == null && account.Opened < now)
+            .Where(account => account.Opened < now && (account.Closed == null || now < account.Closed))
             .Select(account => new
             {
                 account.AccountId,
