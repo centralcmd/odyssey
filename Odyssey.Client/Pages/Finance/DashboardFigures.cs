@@ -96,21 +96,28 @@ internal static class DashboardFigures
     /// instant the point describes.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Deriving it from anything else is how a financial figure gets mislabelled by one period, which
-    /// is the defect this whole feature exists to fix in a smaller shape. The year is shown on the
-    /// first point and wherever it changes, so a multi-year series is readable without repeating "'25"
-    /// under every tick.
+    /// is the defect this whole feature exists to fix in a smaller shape.
+    /// </para>
+    /// <para>
+    /// A monthly or quarterly label <b>always</b> carries its year, even though that repeats "’25"
+    /// across a run. Showing the year only where it changes reads better on paper and is wrong here:
+    /// the chart draws every Nth label, the component picks N from the point count, and the page
+    /// cannot know which labels survive — so the year-bearing ones are exactly the ones a stride can
+    /// drop. A 24-point series then renders "Feb" and "May" twice with nothing to tell the two years
+    /// apart, which on a net-worth chart is worse than a little repetition.
+    /// </para>
     /// </remarks>
-    internal static string PointLabel(DateOnly date, NetWorthInterval interval, DateOnly? previous) =>
-        interval switch
-        {
-            NetWorthInterval.Daily or NetWorthInterval.Weekly =>
-                date.ToString("d MMM", CultureInfo.InvariantCulture),
-            NetWorthInterval.Yearly => date.ToString("yyyy", CultureInfo.InvariantCulture),
-            _ => previous is { } earlier && earlier.Year == date.Year
-                ? date.ToString("MMM", CultureInfo.InvariantCulture)
-                : date.ToString("MMM ", CultureInfo.InvariantCulture) + "\u2019" + date.ToString("yy", CultureInfo.InvariantCulture),
-        };
+    internal static string PointLabel(DateOnly date, NetWorthInterval interval) => interval switch
+    {
+        // At most 31 days or 53 weeks, so the day and month place a point without a year.
+        NetWorthInterval.Daily or NetWorthInterval.Weekly =>
+            date.ToString("d MMM", CultureInfo.InvariantCulture),
+        NetWorthInterval.Yearly => date.ToString("yyyy", CultureInfo.InvariantCulture),
+        _ => date.ToString("MMM ", CultureInfo.InvariantCulture)
+            + "’" + date.ToString("yy", CultureInfo.InvariantCulture),
+    };
 
     /// <summary>The interval, in the lower-case adjective form the caption and the ARIA label read in.</summary>
     internal static string IntervalWord(NetWorthInterval interval) => interval switch
@@ -208,14 +215,12 @@ internal static class DashboardFigures
             return [];
 
         var series = new List<OdsLinePoint>(history.Points.Count);
-        DateOnly? previous = null;
         foreach (var point in history.Points)
         {
             series.Add(new OdsLinePoint(
-                PointLabel(point.Date, history.Interval, previous),
+                PointLabel(point.Date, history.Interval),
                 point.NetWorth,
                 KindOf(point)));
-            previous = point.Date;
         }
 
         return series;

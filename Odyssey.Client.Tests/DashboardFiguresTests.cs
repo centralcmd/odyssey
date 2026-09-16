@@ -204,21 +204,25 @@ public class DashboardFiguresTests
     /// <summary>
     /// A point is dated at its period END, and the tick label is derived from that date. Deriving it
     /// from anything else is how a financial figure gets mislabelled by one period.
+    ///
+    /// <para>
+    /// Every monthly label carries its year, repetition and all. The chart draws every Nth label and
+    /// picks N from the point count, so the page cannot know which labels survive — and showing the
+    /// year only where it changes puts it on exactly the labels a stride can drop. A real 24-point
+    /// series rendered "Feb" and "May" twice with nothing to separate the two years.
+    /// </para>
     /// </summary>
     [Fact]
-    public void PointLabel_ShowsTheYearOnTheFirstPointAndWhereverItChanges()
+    public void PointLabel_CarriesTheYearOnEveryMonthlyTick()
     {
-        var first = DashboardFigures.PointLabel(new DateOnly(2024, 11, 1), NetWorthInterval.Monthly, null);
-        var sameYear = DashboardFigures.PointLabel(new DateOnly(2024, 12, 1), NetWorthInterval.Monthly, new DateOnly(2024, 11, 1));
-        var newYear = DashboardFigures.PointLabel(new DateOnly(2025, 1, 1), NetWorthInterval.Monthly, new DateOnly(2024, 12, 1));
+        var labels = new[]
+        {
+            new DateOnly(2024, 11, 1), new DateOnly(2025, 2, 1),
+            new DateOnly(2025, 5, 1), new DateOnly(2026, 2, 1), new DateOnly(2026, 5, 1),
+        }.Select(date => DashboardFigures.PointLabel(date, NetWorthInterval.Monthly)).ToList();
 
-        Assert.Contains("Nov", first, StringComparison.Ordinal);
-        Assert.Contains("24", first, StringComparison.Ordinal);
-
-        // No year repeated under every tick inside one year…
-        Assert.Equal("Dec", sameYear);
-        // …but the year comes back the moment it changes, or a reader cannot place the point at all.
-        Assert.Contains("25", newYear, StringComparison.Ordinal);
+        Assert.Equal(labels.Count, labels.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(labels, label => Assert.Matches(@"^[A-Za-z]{3} .\d\d$", label));
     }
 
     [Theory]
@@ -227,7 +231,7 @@ public class DashboardFiguresTests
     [InlineData(NetWorthInterval.Yearly, "2026")]
     public void PointLabel_MatchesTheIntervalsResolution(NetWorthInterval interval, string expected)
     {
-        Assert.Equal(expected, DashboardFigures.PointLabel(new DateOnly(2026, 9, 16), interval, null));
+        Assert.Equal(expected, DashboardFigures.PointLabel(new DateOnly(2026, 9, 16), interval));
     }
 
     [Fact]
