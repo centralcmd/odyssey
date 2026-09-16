@@ -36,6 +36,14 @@ docker compose down -v   # also remove DB data
 dotnet run --project Odyssey.AppHost
 ```
 
+**A remote session provisions itself.** `.claude/hooks/session-start.sh` runs before a Claude Code
+on the web session starts and installs the .NET 10 SDK (the container ships without one), exports
+`DOTNET_ROOT`/`PATH` so `dotnet-ef` can find a runtime, installs that tool, starts the Docker daemon
+and restores the solution. It gates on `CLAUDE_CODE_REMOTE`, so it is inert on a developer machine.
+The daemon step is the non-obvious one: `Odyssey.IntegrationTests` **self-skips** when Docker is
+unreachable, so without it `dotnet test` reports success having never run that tier. It provisions
+the toolchain only — bringing a stack up stays with the `run-odyssey` skill.
+
 **Local endpoints (Docker):** Frontend `http://localhost:5199`, API `http://localhost:5188`, Swagger `http://localhost:5188/swagger`
 
 **Running alongside a stack a teammate already has up:** Compose and Aspire both publish
