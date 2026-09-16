@@ -37,12 +37,24 @@ dotnet run --project Odyssey.AppHost
 ```
 
 **A remote session provisions itself.** `.claude/hooks/session-start.sh` runs before a Claude Code
-on the web session starts and installs the .NET 10 SDK (the container ships without one), exports
-`DOTNET_ROOT`/`PATH` so `dotnet-ef` can find a runtime, installs that tool, starts the Docker daemon
-and restores the solution. It gates on `CLAUDE_CODE_REMOTE`, so it is inert on a developer machine.
-The daemon step is the non-obvious one: `Odyssey.IntegrationTests` **self-skips** when Docker is
-unreachable, so without it `dotnet test` reports success having never run that tier. It provisions
-the toolchain only — bringing a stack up stays with the `run-odyssey` skill.
+on the web session starts: it resolves a .NET 10 SDK, derives `DOTNET_ROOT`/`PATH` from it, installs
+`dotnet-ef`, starts the Docker daemon and restores the solution. It gates on `CLAUDE_CODE_REMOTE`, so
+it is inert on a developer machine, and it provisions the toolchain only — bringing a stack up stays
+with the `run-odyssey` skill.
+
+Two things about it are easy to get backwards, and both are why it **detects rather than assumes**
+(full rationale in [`docs/claude-code-environment.md`](docs/claude-code-environment.md)). The same
+repo is opened from environments that differ — a stock image, one whose environment configuration
+already baked the SDK in, a different base OS, CI — so a hook hardcoding one install path would
+re-download an SDK that is already present and then shadow it on `PATH`. And `DOTNET_ROOT` is
+*derived* from whichever SDK wins, never a constant: a distro-packaged layout self-resolves a runtime
+while a tarball one does not, and without it an apphost-launched tool like `dotnet-ef` fails in a way
+that reads as a broken tool rather than a missing variable.
+
+The daemon step is the one an environment configuration cannot take over, because a process started
+at image-build time does not survive into the session container — and its absence is **silent**:
+`Odyssey.IntegrationTests` self-skips when Docker is unreachable, so `dotnet test` reports success
+having never run that tier.
 
 **Local endpoints (Docker):** Frontend `http://localhost:5199`, API `http://localhost:5188`, Swagger `http://localhost:5188/swagger`
 
