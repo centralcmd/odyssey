@@ -190,6 +190,40 @@ else
   fi
 fi
 
+# ── 4a. Pre-pull the images Testcontainers needs ─────────────────────────────────────────────────
+# Odyssey.IntegrationTests pays this pull inside its fixture on a cold container (~1 minute of the
+# tier's runtime, charged to whichever test happens to run first), and an image-build script cannot
+# take it over: a pull needs the daemon, and the daemon is what does not survive into the session.
+#
+# Backgrounded and fully detached, because it is a pure optimisation — the tier works without it,
+# just slower, and nothing here may delay a session that only touches the fast tiers. Output goes
+# to a file rather than the hook's stdout: a child holding that pipe open would make the session
+# wait for the very thing being backgrounded.
+#
+# The MariaDB tag is READ from the fixture rather than repeated here. A tag that silently drifts
+# from the one the fixture asks for would pre-pull an image nothing uses and leave the real pull
+# exactly where it was — a pessimisation that looks like a win in the log.
+if docker info >/dev/null 2>&1; then
+  pull_log="$( { [ -w /var/log ] && echo /var/log/odyssey-image-pull.log; } || echo "${TMPDIR:-/tmp}/odyssey-image-pull.log" )"
+  fixture="${PROJECT_DIR}/Odyssey.IntegrationTests/MariaDbFixture.cs"
+  mariadb_image="$(sed -n 's/.*Image = "\([^"]*\)".*/\1/p' "$fixture" 2>/dev/null | head -1)"
+
+  # Ryuk is the resource reaper Testcontainers starts alongside the database; its tag lives inside
+  # the Testcontainers package, so unlike the fixture's there is nothing in this repo to read it
+  # from. A stale value costs nothing beyond the pre-pull missing — the real pull still happens at
+  # test time — so it is pinned here and NOT guessed from a floating tag.
+  ryuk_image="testcontainers/ryuk:0.14.0"
+
+  if [ -n "$mariadb_image" ]; then
+    (
+      setsid sh -c "docker pull '$mariadb_image'; docker pull '$ryuk_image'" >"$pull_log" 2>&1 &
+    ) || true
+    log "Pre-pulling ${mariadb_image} and ${ryuk_image} in the background (${pull_log})."
+  else
+    log "NOTE: could not read the MariaDB tag from MariaDbFixture.cs; skipping the image pre-pull."
+  fi
+fi
+
 # ── 4b. TLS interception vs. `docker compose --build` ─────────────────────────────────────────────
 # Where the session's egress is TLS-intercepted, a build container inherits the proxy but NOT its
 # CA, so `dotnet restore` inside a Dockerfile dies on NU1301 UntrustedRoot after several minutes.
