@@ -62,6 +62,15 @@ public class NetWorthHistoryService(
 
         // 2 — the accounts, BEFORE the grid. The grid needs Account.Opened to clamp its leading
         // empty periods away, so it can be neither pure nor first.
+        //
+        // MEMBERSHIP IS AS OF NOW, AND IT IS NOT PER POINT. Opened is checked per slot below, but
+        // Archived is applied once for the whole series, so archiving an account today removes it from
+        // EVERY historical point — including months when it was open and held a real balance. That is
+        // deliberate: G3/AC2 require the final point to equal /totals exactly, and /totals is a
+        // point-in-time snapshot over non-archived accounts. The accepted cost is that a routine action
+        // (closing an account) retroactively moves the whole line, and unlike the understated and
+        // revalued cases this one carries no per-point flag to disclose it — the endpoint's Swagger
+        // description says so instead.
         var accounts = await context.Accounts
             .Where(account => account.Archived == null && account.Opened < now)
             .Select(account => new AccountRow(
@@ -115,8 +124,20 @@ public class NetWorthHistoryService(
         var unconverted = new Dictionary<Guid, UnconvertedAccount>();
         var cursors = accountIds.ToDictionary(id => id, _ => new AccountCursor());
 
+        // One rate cursor per CURRENCY, not per account: many accounts share a currency, and the rate
+        // in force depends only on the currency and the bound. Advancing them once per slot makes the
+        // whole conversion O(currencies) per point instead of re-walking a timeline for every
+        // (slot, account) pair — the same monotonic-cursor trick AccountCursor uses, and safe for the
+        // same reason: the grid's bounds only ever increase.
+        var rateCursors = rates.ToDictionary(pair => pair.Key, pair => new RateCursor(pair.Value), StringComparer.Ordinal);
+
         foreach (var slot in grid)
         {
+            foreach (var cursor in rateCursors.Values)
+            {
+                cursor.AdvanceTo(slot.Bound);
+            }
+
             var totalAssets = 0m;
             var totalLiabilities = 0m;
             var unconvertedCount = 0;
@@ -146,7 +167,7 @@ public class NetWorthHistoryService(
                 // balance. Both are in the account currency, so they convert identically.
                 var value = estimate ?? balance;
 
-                var converted = Convert(value, account.CurrencyCode, main, rates, slot.Bound);
+                var converted = Convert(value, account.CurrencyCode, main, rateCursors);
                 if (converted is null)
                 {
                     unconvertedCount++;
@@ -161,17 +182,17 @@ public class NetWorthHistoryService(
 
                 contributingCount++;
 
-                if (IsAsset(account.AccountType))
+                if (AccountClassification.IsAsset(account.AccountType))
                 {
                     totalAssets += converted.Value;
                 }
-                else if (IsLiability(account.AccountType))
+                else if (AccountClassification.IsLiability(account.AccountType))
                 {
                     // Signed, like AccountTotalsService: negating keeps a normal debt a positive
                     // liability while letting a credit balance reduce total liabilities.
                     totalLiabilities += -converted.Value;
                 }
-                // AccountType.Unknown (0) is excluded, as it is from the totals.
+                // AccountType.Unknown (0) is Unclassified, so it is excluded — as it is from the totals.
             }
 
             points.Add(new NetWorthHistoryPoint
@@ -411,20 +432,20 @@ public class NetWorthHistoryService(
     // ── Conversion ────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// <paramref name="value"/> in the main currency at the rate in force at <paramref name="bound"/>,
-    /// or <c>null</c> when no direct rate was in force then.
+    /// <paramref name="value"/> in the main currency at the rate each cursor has been advanced to, or
+    /// <c>null</c> when no direct rate was in force then.
     /// </summary>
     /// <remarks>
     /// Never a substituted or a later rate: converting a 2019 balance at today's rate is exactly the
     /// class of fabrication this feature exists to remove, and understating the point while saying so
-    /// is the only honest alternative.
+    /// is the only honest alternative. The caller advances every cursor to the slot's bound before the
+    /// account loop, so this is a dictionary lookup rather than a walk.
     /// </remarks>
     private static decimal? Convert(
         decimal value,
         string accountCurrencyCode,
         string main,
-        IReadOnlyDictionary<string, IReadOnlyList<CurrencyConversionService.RatePoint>> rates,
-        DateTime bound)
+        IReadOnlyDictionary<string, RateCursor> rateCursors)
     {
         var code = CurrencyValidationService.Normalize(accountCurrencyCode);
         if (string.Equals(code, main, StringComparison.Ordinal))
@@ -432,19 +453,12 @@ public class NetWorthHistoryService(
             return value; // same currency → 1:1, no rate row required.
         }
 
-        if (!rates.TryGetValue(code, out var timeline))
+        if (!rateCursors.TryGetValue(code, out var cursor) || cursor.Rate is not { } rate)
         {
             return null;
         }
 
-        decimal? rate = null;
-        foreach (var point in timeline)
-        {
-            if (point.AsOf >= bound) break;
-            rate = point.Rate;
-        }
-
-        return rate is null ? null : value * rate.Value;
+        return value * rate;
     }
 
     private static NetWorthHistory Empty(
@@ -463,10 +477,6 @@ public class NetWorthHistoryService(
             UnconvertedAccounts = [],
         };
 
-    // Asset accounts: AccountType 1–8. Liability accounts: 9–15. Same split as the totals.
-    private static bool IsAsset(AccountType type) => type is >= AccountType.Cash and <= AccountType.OtherAsset;
-
-    private static bool IsLiability(AccountType type) => type is >= AccountType.CreditCard and <= AccountType.OtherLiability;
 
     private const string DefaultMainCurrency = "NOK";
 
@@ -531,6 +541,28 @@ public class NetWorthHistoryService(
             var revalued = revaluedSinceLastPoint;
             revaluedSinceLastPoint = false;
             return revalued;
+        }
+    }
+
+    /// <summary>
+    /// One currency's position in its rate timeline. Advanced once per grid slot, in the same
+    /// ascending-bound order <see cref="AccountCursor"/> relies on, so the whole series costs one walk
+    /// of the timeline rather than one per (slot, account) pair.
+    /// </summary>
+    private sealed class RateCursor(IReadOnlyList<CurrencyConversionService.RatePoint> timeline)
+    {
+        private int index;
+
+        /// <summary>The rate in force at the last bound advanced to, or null if none was yet.</summary>
+        public decimal? Rate { get; private set; }
+
+        public void AdvanceTo(DateTime bound)
+        {
+            while (index < timeline.Count && timeline[index].AsOf < bound)
+            {
+                Rate = timeline[index].Rate;
+                index++;
+            }
         }
     }
 

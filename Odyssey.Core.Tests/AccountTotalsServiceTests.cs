@@ -322,4 +322,79 @@ public class AccountTotalsServiceTests
         await Assert.ThrowsAsync<DomainValidationException>(
             () => AsOfFixedNow(context).ComputeAsync("ZWL"));
     }
+
+    // ── The asset/liability split has ONE definition (issue #90 review, architect nit #2) ──────
+
+    /// <summary>
+    /// Every <see cref="AccountType"/> is classified exactly once — asset, liability, or neither — and
+    /// never both.
+    ///
+    /// <para>
+    /// <c>AccountTotalsService</c> and <c>NetWorthHistoryService</c> used to declare the same two range
+    /// checks independently, and AC2 requires the two endpoints to agree to the cent. Two copies is the
+    /// one place a new <c>AccountType</c> could break that silently: extend one range, miss the other,
+    /// and both compile and both answer, disagreeing only for the new type. They now share
+    /// <see cref="AccountClassification"/>; this pins that a new member lands somewhere sane rather
+    /// than in both buckets or, worse, quietly in neither when it belongs in one.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void EveryAccountType_IsAssetOrLiabilityOrNeither_NeverBoth()
+    {
+        foreach (var type in Enum.GetValues<AccountType>())
+        {
+            var asset = AccountClassification.IsAsset(type);
+            var liability = AccountClassification.IsLiability(type);
+
+            Assert.False(asset && liability, $"{type} is classified as BOTH an asset and a liability.");
+            Assert.Equal(!asset && !liability, AccountClassification.Unclassified(type));
+        }
+    }
+
+    /// <summary>
+    /// Unknown is the only unclassified type today. A new member landing outside both spans is excluded
+    /// from every total silently, so this fires when one appears and makes that a decision rather than
+    /// an accident.
+    /// </summary>
+    [Fact]
+    public void OnlyUnknown_IsExcludedFromBothTotals()
+    {
+        var unclassified = Enum.GetValues<AccountType>()
+            .Where(AccountClassification.Unclassified)
+            .ToList();
+
+        Assert.Equal([AccountType.Unknown], unclassified);
+    }
+
+    /// <summary>
+    /// The two services agree because they call the same predicates, so this asserts the agreement
+    /// end-to-end rather than trusting that: the same portfolio through both paths must split
+    /// identically.
+    /// </summary>
+    [Fact]
+    public async Task TheTotalsAndTheHistory_ClassifyTheSamePortfolioIdentically()
+    {
+        await using var context = TestContextFactory.Create();
+
+        // NewAccount's optional fifth argument is `archived`, not `opened` — it opens every account at
+        // 2025-01-01, comfortably inside the default 24-month window ending at FixedNow.
+        foreach (var type in Enum.GetValues<AccountType>())
+        {
+            var id = Guid.NewGuid();
+            context.Accounts.Add(NewAccount(id, type.ToString(), type, "USD"));
+            context.Transactions.Add(NewTransaction(id, 100m));
+        }
+
+        await context.SaveChangesAsync();
+
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var history = await new NetWorthHistoryService(
+            context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow))
+            .ComputeAsync(new NetWorthHistoryQuery { MainCurrency = "USD" });
+
+        var last = history.Points[^1];
+        Assert.Equal(totals.TotalAssets, last.TotalAssets);
+        Assert.Equal(totals.TotalLiabilities, last.TotalLiabilities);
+        Assert.Equal(totals.NetWorth, last.NetWorth);
+    }
 }

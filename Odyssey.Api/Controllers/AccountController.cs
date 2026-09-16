@@ -138,7 +138,14 @@ public class AccountController : ControllerBase
 
                         An empty series always carries an emptyReason naming the cause — including a
                         window that ends before the first account was opened, which is a 200, not a
-                        400. from/to are ISO-8601 dates (yyyy-MM-dd).")]
+                        400. from/to are ISO-8601 dates (yyyy-MM-dd).
+
+                        MEMBERSHIP IS AS OF NOW: the series covers the accounts that are not archived
+                        TODAY, at every point. Archiving an account therefore removes it from the whole
+                        history, not just from today onward, so a series can change shape after a
+                        routine close. That is what makes the final point equal GET /accounts/totals
+                        exactly, which is the stronger guarantee; unlike an understated or revalued
+                        point, it carries no per-point flag.")]
     public async Task<IActionResult> GetNetWorthHistory(
         [FromQuery] NetWorthHistoryQuery query,
         CancellationToken cancellationToken = default)

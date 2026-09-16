@@ -111,11 +111,11 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
                 continue;
             }
 
-            if (IsAsset(account.AccountType))
+            if (AccountClassification.IsAsset(account.AccountType))
             {
                 totalAssets += converted.Value;
             }
-            else if (IsLiability(account.AccountType))
+            else if (AccountClassification.IsLiability(account.AccountType))
             {
                 // Liability balances are signed (a debt is negative), so negating the converted value
                 // yields a positive liability magnitude for the normal case while letting a credit
@@ -123,7 +123,7 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
                 // them — so it correctly raises net worth rather than lowering it.
                 totalLiabilities += -converted.Value;
             }
-            // AccountType.Unknown (0) is excluded from totals.
+            // AccountType.Unknown (0) is Unclassified, so it is excluded from both totals.
         }
 
         return new AccountTotals
@@ -157,8 +157,4 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
             .ToDictionary(e => e.AccountId, e => e.Value);
     }
 
-    // Asset accounts: AccountType 1–8. Liability accounts: 9–15.
-    private static bool IsAsset(AccountType type) => type is >= AccountType.Cash and <= AccountType.OtherAsset;
-
-    private static bool IsLiability(AccountType type) => type is >= AccountType.CreditCard and <= AccountType.OtherLiability;
 }
