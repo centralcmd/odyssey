@@ -10,7 +10,13 @@ namespace Odyssey.Context;
 // The list's dominant shape: filter by account, order by date (TransactionService.ListAsync).
 // Leading with AccountId also satisfies EF's foreign-key index convention, so this replaces the
 // standalone IX_Transactions_AccountId rather than adding alongside it.
-[Index(nameof(AccountId), nameof(TimeStamp))]
+//
+// Amount is included so the net-worth history's bucketed aggregate (issue #90 §5.3) is served from
+// the index rather than from the heap: it groups by (AccountId, date parts) and sums Amount over the
+// whole table on every request. For the same reason this REPLACES (AccountId, TimeStamp) rather than
+// joining it — the two-column index is a strict prefix of this one, so keeping both would cost an
+// extra secondary-index write on every insert to the app's highest-volume table for no read benefit.
+[Index(nameof(AccountId), nameof(TimeStamp), nameof(Amount))]
 // Status is a list filter and sort key, and GetSummary groups the whole table by it for the page
 // header on every load.
 [Index(nameof(Status))]

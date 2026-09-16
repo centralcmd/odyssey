@@ -1,3 +1,4 @@
+using System.Globalization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 
@@ -64,6 +65,33 @@ public interface IAccountsApiClient
     /// </para>
     /// </summary>
     Task<ApiResult<AccountTotals>> GetTotalsAsync(string mainCurrency, CancellationToken ct = default);
+
+    /// <summary>
+    /// Net worth over time, reconstructed on read from stored transactions, estimates and rates
+    /// (issue #90). Every point is a figure as of that point's own instant, so the series can fall and
+    /// can go negative, and a series ending today ends on the same figure
+    /// <see cref="GetTotalsAsync"/> returns.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every argument is optional and the server's defaults are the ones the dashboard wants — 24
+    /// monthly points ending today, in NOK unless the caller names a currency. Sending no
+    /// <paramref name="from"/>/<paramref name="to"/> is also the safer call from a browser: a
+    /// <c>to</c> built from local time is tomorrow-in-UTC anywhere east of UTC, which the server
+    /// rejects outright.
+    /// </para>
+    /// <para>
+    /// An empty <see cref="NetWorthHistory.Points"/> always carries a
+    /// <see cref="NetWorthHistory.EmptyReason"/>; it is the only thing that discriminates the causes,
+    /// and the caller is expected to say which one rather than "no data".
+    /// </para>
+    /// </remarks>
+    Task<ApiResult<NetWorthHistory>> GetNetWorthHistoryAsync(
+        string? mainCurrency = null,
+        NetWorthInterval? interval = null,
+        DateOnly? from = null,
+        DateOnly? to = null,
+        CancellationToken ct = default);
 
     Task<ApiResult> CreateAsync(NewAccount account, CancellationToken ct = default);
 
@@ -176,6 +204,34 @@ public sealed class AccountsApiClient(IOdysseyApi api) : IAccountsApiClient
 
     public Task<ApiResult<AccountTotals>> GetTotalsAsync(string mainCurrency, CancellationToken ct = default) =>
         api.GetAsync<AccountTotals>($"{Base}/totals?mainCurrency={Uri.EscapeDataString(mainCurrency)}", ct);
+
+    public Task<ApiResult<NetWorthHistory>> GetNetWorthHistoryAsync(
+        string? mainCurrency = null,
+        NetWorthInterval? interval = null,
+        DateOnly? from = null,
+        DateOnly? to = null,
+        CancellationToken ct = default)
+    {
+        // Built by hand rather than through PagedQuery: this is not a list endpoint and PagedQuery
+        // always emits offset/limit, which would be two parameters the server does not bind.
+        //
+        // ISO-8601 round-trip on the dates. DateOnly's TypeConverter parses under the CURRENT culture
+        // server-side, so a locale-formatted date would bind to a different day or not at all — "o"
+        // is what makes the wire form independent of either end's culture.
+        var parts = new List<string>(4);
+        if (!string.IsNullOrWhiteSpace(mainCurrency))
+            parts.Add($"mainCurrency={Uri.EscapeDataString(mainCurrency)}");
+        if (interval is { } resolution)
+            parts.Add($"interval={Uri.EscapeDataString(resolution.ToString())}");
+        if (from is { } lower)
+            parts.Add($"from={lower.ToString("o", CultureInfo.InvariantCulture)}");
+        if (to is { } upper)
+            parts.Add($"to={upper.ToString("o", CultureInfo.InvariantCulture)}");
+
+        var path = $"{Base}/net-worth-history";
+        return api.GetAsync<NetWorthHistory>(
+            parts.Count == 0 ? path : $"{path}?{string.Join("&", parts)}", ct);
+    }
 
     public Task<ApiResult> CreateAsync(NewAccount account, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, Base, account, ct);
