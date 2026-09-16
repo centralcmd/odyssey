@@ -288,6 +288,17 @@ Five rules around it are easy to get backwards:
   compares scheme, host **and port**, so `same-origin` would block every avatar outside Docker — and
   silently, since a load failure degrades to the type glyph.
 
+**Every image action lives in the record row's `⋯` menu — there is no identity tile and no image
+field in the create/edit dialog.** The design system (commit 5234c6e) is newer than issue #86's §3 and
+was chosen over it deliberately, so a later reader finding the spec's tile unimplemented is looking at
+a decision, not an omission. What that buys is not layout: the spec's create-dialog field forces a
+two-step write that can half-fail — contact created, image rejected — and AC 23's
+`CreatedWithoutImage` partial-success state with its Retry affordance exists only to paper over that.
+Attaching from the row menu means the contact always exists first, so **that state has nothing to
+represent and is not implemented**. AC 36's "identity tile alt text" has no surface for the same
+reason; the list-card image is decorative (`alt=""`), which §3 requires anyway. Reinstating the tile
+re-opens the partial-success state along with it.
+
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed only because the
 insurer foreign key had been removed; three real `RESTRICT` keys are back, so the database arbitrates
 the race it was written for and its violation maps to a `409` rather than a `500`. Removing the
@@ -688,6 +699,16 @@ Full plan and rationale: `docs/test-environment-and-e2e-spec.md`.
 | `Odyssey.IntegrationTests` | Real-engine checks InMemory can't do — actual migrations, FK cascade, decimal/datetime fidelity | **Docker** (Testcontainers-MariaDB); self-skips otherwise |
 | `Odyssey.E2ETests` | Playwright browser smoke (login → seeded data) | a **running, seeded stack**; self-skips otherwise (see its README) |
 | `Odyssey.E2ETests.Api` | API security/permissions/contracts over real HTTP + real login (permission matrix across the seeded role users) | a **running, seeded stack**; self-skips otherwise |
+
+**The browser suite signs in through one shared helper, `E2ESignIn`, and a new test class must use
+it.** The sign-in surface is rate-limited **by network, not by account** (`RateLimiting:Identity`), so
+every class in the collection spends from one budget inside one window and the class that happens to
+run last is refused — with the refusal **rendered on the page** rather than raised, so the symptom is a
+sign-in that never completes and reads as the app being slow. A class that hand-rolls the sequence also
+tends to wait on a navigation, which a Blazor client-side route change may never raise; the helper
+polls `IPage.Url` instead, waits the window out and retries as the notice instructs. Adding a browser
+context is what tips an already-tight suite over, so this is a precondition of adding a class, not a
+cleanup to do afterwards.
 
 **Synthetic demo data** (`Odyssey.TestData`): deterministic Bogus generators (fixed seed) are the
 single source of truth for demo data — reused by the seeder *and* the tests. They build four
