@@ -25,16 +25,25 @@ user and screenshots/asserts authed pages. That is the agent path; a human just 
 ## Prerequisites
 
 - **Docker** + the Compose plugin (`docker compose`).
-- **Node 22** (for the driver). Playwright's chromium is already cached under
-  `~/.cache/ms-playwright`; the pinned `playwright@1.60.0` matches the cached `chromium-1223`
-  build, so no browser download is needed.
+- **Node 22** (for the driver). The pin is `playwright@1.62.0`, deliberately equal to the
+  `Microsoft.Playwright` version in `Directory.Packages.props`, so the driver and `Odyssey.E2ETests`
+  want the **same** chromium build (currently `chromium-1234`). Keep the two in lockstep when either
+  is bumped: a driver pinned to a build nothing else installs means a second ~650 MB download, or an
+  outright launch failure where the browsers are baked in read-only.
 - **.NET 10 SDK** — only needed to *reset* the DB (see below), not to run the stack.
 
-One-time: install the driver's single dependency (browser download skipped — it's cached):
+One-time, from the repo root:
 
 ```bash
-cd .claude/skills/run-odyssey && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --no-audit --no-fund
+cd .claude/skills/run-odyssey && npm install --no-audit --no-fund
+npx playwright install chromium    # no-op if the matching build is already present
 ```
+
+**Don't assume the browser is cached.** Where it already is (a Claude Code session bakes it into
+`/opt/pw-browsers` and exports `PLAYWRIGHT_BROWSERS_PATH`), `install chromium` costs a version check
+and exits; on a normal workstation it downloads once into `~/.cache/ms-playwright`. Skipping it with
+`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` only pays off when the cached build is *exactly* the one the
+pinned playwright wants, and that is precisely what a package bump on either side silently breaks.
 
 ## Build & launch the stack
 
@@ -58,6 +67,32 @@ Sanity-check the services and confirm the seed ran:
 docker compose ps --format '{{.Service}}\t{{.Status}}'
 docker logs odyssey-migrations 2>&1 | tail -3   # ends with "Demo data seeding complete."
 ```
+
+### Alternative: Aspire, when Compose can't build
+
+In a Claude Code session, outbound TLS is intercepted. The daemon holds the CA but a **build**
+container does not, so `docker compose up --build` dies at `dotnet restore` with `NU1301
+UntrustedRoot` after several minutes — image *pulls* and Testcontainers are unaffected, which makes
+it read as a NuGet outage. The session-start hook detects this and says so. Use Aspire there: it
+builds on the **host** and containerises only MariaDB, while serving the same ports (client 5199,
+API 5188, MariaDB 3307), so everything below this section works unchanged.
+
+```bash
+dotnet run --project Odyssey.AppHost --launch-profile http
+until curl -fs http://localhost:5188/healthz >/dev/null; do sleep 2; done && echo "API ready"
+```
+
+**Never add `-c Release` to that command.** `Odyssey.Client` picks the API address at compile time
+(`Program.cs`): `#if DEBUG` hardcodes `http://localhost:5188`, while Release falls back to
+same-origin `/api/` — correct *only* under Compose, where NGINX proxies it. Under Aspire that path
+hits the SPA fallback, so every API call returns `index.html` and the WASM app dies parsing HTML as
+JSON. `node driver.mjs health` still passes (it probes the API directly), and the stack looks
+healthy, but every browser action fails and the screenshot is a blank page with a red *"An unhandled
+error has occurred"* bar. Debug is the default; the trap is reflexively matching the `-c Release`
+that CLAUDE.md uses for `dotnet build`.
+
+The `--launch-profile http` part is unrelated to this and merely avoids the Linux dev-certificate
+banner on the Aspire *dashboard*; the API and client are HTTP either way.
 
 ## Run (agent path) — drive & screenshot the UI
 
@@ -111,12 +146,23 @@ docker compose down       # stop containers, keep DB data
 docker compose down -v    # also delete the MariaDB volume (forces a reseed next up)
 ```
 
+Aspire instead: stop the AppHost (Ctrl-C, or kill the `dotnet run` process) — it owns the MariaDB
+container's lifetime, so the container goes with it. The **data** does not: `AppHost.cs` gives
+MariaDB a named volume, so like Compose the volume outlives the container and the idempotent seed
+skips on the next launch. `/reset-environment` is the way to get a clean dataset from either stack.
+
 ## Gotchas
 
 - **No `chromium-cli` here** — the driver uses the Node `playwright` package against the cached
-  chromium. The cache dir name is Playwright's build number (`chromium-1223`), *not* a chromium
-  version; `playwright@1.60.0` is the version that maps to it. Bumping playwright without a matching
+  chromium. The cache dir name is Playwright's build number (`chromium-1234`), *not* a chromium
+  version; `playwright@1.62.0` is the version that maps to it. Bumping playwright without a matching
   cached build means a download (which may fail offline).
+- **`PLAYWRIGHT_BROWSERS_PATH` may redirect the lookup.** A Claude Code session exports it as
+  `/opt/pw-browsers`, so the driver looks there and **not** in `~/.cache/ms-playwright` — which is
+  why the pin has to match what that directory actually holds, and why `~/.cache` being empty is not
+  evidence of a missing browser. `/opt/pw-browsers/chromium` is a convenience symlink for
+  `executablePath`; the session-start hook repoints it at the installed build, because an image that
+  bakes browsers in pins it to *its* build and that pin does not move when the package is bumped.
 - **`client` is up before the API is ready.** Its `depends_on` waits only for the API *container*,
   not `/healthz`. Always poll `/healthz` before driving, or login will flake.
 - **A re-`up` does NOT reseed** (idempotent seed + persistent volume). If you expect fresh data and
@@ -126,8 +172,9 @@ docker compose down -v    # also delete the MariaDB volume (forces a reseed next
   `/login`. Newly *registered* users can't sign in (`RequireConfirmedAccount` + admin-approval) —
   only the seeded demo users work out of the box.
 - **MariaDB is on host port `3307`**, not 3306 (the in-container port is 3306).
-- **Don't `dotnet run` the client** against this stack — the SPA is served by NGINX from the Docker
-  build; rebuilding it separately desyncs the `blazor.boot.json` asset hashes.
+- **Don't `dotnet run` the client** against the **Compose** stack — the SPA is served by NGINX from
+  the Docker build; rebuilding it separately desyncs the `blazor.boot.json` asset hashes. This does
+  not apply to the Aspire stack, where a dev-server client is exactly what the AppHost starts.
 
 ## Troubleshooting
 
@@ -138,7 +185,11 @@ docker compose down -v    # also delete the MariaDB volume (forces a reseed next
   the DB isn't seeded (`docker logs odyssey-migrations`), or you overrode creds with a non-seeded
   user.
 - `Executable doesn't exist at .../chromium-XXXX`: the installed playwright version wants a browser
-  build that isn't cached. Pin back to `playwright@1.60.0` (matches cached `chromium-1223`) or run
-  `npx playwright install chromium`.
+  build that isn't present **in the directory it is looking in** — check `PLAYWRIGHT_BROWSERS_PATH`
+  before concluding the browser is missing, since it may be resolving `/opt/pw-browsers` rather than
+  `~/.cache/ms-playwright`. Fix by running `npx playwright install chromium`, or by realigning the
+  pin with `Microsoft.Playwright` in `Directory.Packages.props` (both are `1.62.0`).
+- Driver reports a blank page or `An unhandled error has occurred`, while `node driver.mjs health`
+  passes: an Aspire stack built `-c Release`. See the Aspire section above — rebuild it Debug.
 - Build fails on `docker compose up --build`: confirm the .NET 10 base images pull and there's disk
   for the multi-stage build; re-run — layer caching makes the retry fast.

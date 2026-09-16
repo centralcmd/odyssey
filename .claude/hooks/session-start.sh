@@ -206,6 +206,15 @@ if [ -n "${HTTPS_PROXY:-}" ] && [ -n "${SSL_CERT_FILE:-}" ] \
   log "      Run the stack with Aspire instead:"
   log "        dotnet run --project Odyssey.AppHost --launch-profile http"
   log "      Image pulls and Testcontainers are unaffected."
+  # Not a footnote: this is the command the session was just told to run, and adding `-c Release` to
+  # it — which a session that has been building Release all along will do by reflex — yields a stack
+  # whose API and database are healthy and whose client cannot reach either. See Odyssey.Client's
+  # Program.cs: DEBUG is the compile-time signal for "dev server, talk to :5188", and a Release
+  # client instead resolves same-origin /api/, which only NGINX (Compose) serves. Under Aspire that
+  # path hits the SPA fallback, so every API call returns index.html and the WASM app dies parsing
+  # HTML as JSON. Costs the whole browser tier, and reads as a hung sign-in rather than a mis-build.
+  log "      Do NOT add '-c Release' to that command — the client resolves the API at compile time,"
+  log "      so a Release client under Aspire 404s every API call to the SPA fallback."
 fi
 
 # ── 5. NuGet restore ──────────────────────────────────────────────────────────────────────────────
@@ -241,6 +250,41 @@ if [ -z "${pw_dir}" ] || [ ! -x "${pw_dir}/node/linux-x64/node" ]; then
   log "NOTE: the Playwright driver is not in the NuGet cache; Odyssey.E2ETests will fetch its browser on first run."
 elif "${pw_dir}/node/linux-x64/node" "${pw_dir}/package/cli.js" install chromium >/dev/null 2>&1; then
   log "Playwright Chromium ready (${PLAYWRIGHT_BROWSERS_PATH:-Playwright default})."
+
+  # Repoint the image's convenience symlink at the build that was just installed. An image that
+  # bakes browsers in also bakes `/opt/pw-browsers/chromium` pointing at ITS build (r1194), and that
+  # pin does not move when the package bump above installs a newer one (r1234) alongside it. The
+  # .NET tests never read the symlink — they resolve the revision themselves — so the staleness is
+  # invisible until something follows the documented `executablePath` escape hatch and silently
+  # launches a browser whose protocol the driver does not speak.
+  #
+  # Resolved from `install --dry-run` rather than by globbing for the newest directory: the revision
+  # Playwright WANTS is the only correct target, and a package downgrade would make "newest" wrong.
+  # The two layouts are both real — r1194 unpacks to chrome-linux/, r1234 to chrome-linux64/ — so
+  # the binary is searched for rather than assumed.
+  if [ -d /opt/pw-browsers ] && [ -w /opt/pw-browsers ]; then
+    # The trailing `|| true` is load-bearing under `set -euo pipefail`: awk exits 0 on no match, but
+    # pipefail propagates a failing cli.js, and a bare assignment would then abort the hook before
+    # "Ready." — turning a cosmetic symlink into a dead session. Non-fatal, like every step above.
+    chromium_dir="$("${pw_dir}/node/linux-x64/node" "${pw_dir}/package/cli.js" install --dry-run 2>/dev/null \
+      | awk '/\(playwright chromium v[0-9]+\)/ { found = 1; next }
+             found && /Install location:/     { print $3; exit }' || true)"
+    chromium_exe=""
+    for layout in chrome-linux64/chrome chrome-linux/chrome; do
+      if [ -n "${chromium_dir}" ] && [ -x "${chromium_dir}/${layout}" ]; then
+        chromium_exe="${chromium_dir}/${layout}"
+        break
+      fi
+    done
+    if [ -n "${chromium_exe}" ]; then
+      # -n so an existing symlink is replaced rather than dereferenced into.
+      ln -sfn "${chromium_exe}" /opt/pw-browsers/chromium
+      log "Repointed /opt/pw-browsers/chromium -> ${chromium_exe}."
+    else
+      # Non-fatal: only the escape hatch is stale, and every tier resolves its own browser.
+      log "NOTE: could not resolve the installed Chromium binary; /opt/pw-browsers/chromium left as-is."
+    fi
+  fi
 else
   # Non-fatal, like every step above: the fixture runs the same install and self-skips if it fails
   # again, so this costs the browser tier at worst, never the session.
