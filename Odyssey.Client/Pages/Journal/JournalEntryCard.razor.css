@@ -1,0 +1,140 @@
+/* Journal entry card — /journal.
+   Purpose-built (.jec-*), not the shared .acct-item / OdsRecordCard: a journal entry has no headline
+   figure and nothing worth collapsing, so the card is always open and IS the detail — no chevron, no
+   expand step. Deliberately NOT reusing .je-cardfoot / .je-author: /tasks styles its own card from
+   those, so the journal side keeps its own vocabulary. */
+.jec-card {
+    display: grid; grid-template-columns: 96px minmax(0, 1fr);
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: var(--radius-md); box-shadow: var(--mud-elevation-1);
+    overflow: hidden;
+}
+.jec-card.archived { opacity: 0.72; }
+/* The design system also defines a `.highlight` deep-link ring here. It is not carried: /journal has
+   no deep link to an entry, so the state has nothing to raise it — it lands with the link, not before. */
+
+/* The date rail — the entry's anchor, in place of the record card's icon well. padding-top puts the
+   weekday on the title's first line (body padding 22px + half the title's line box, less half the
+   weekday's). */
+.jec-leaf {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 28px 8px 20px;
+    background: var(--mud-palette-background-gray);
+    border-right: 1px solid var(--mud-palette-divider);
+}
+.jec-dow {
+    font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.jec-day { font: var(--fw-light) var(--fs-h1)/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.jec-mon {
+    font: var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans);
+    letter-spacing: var(--tracking-wide); text-transform: uppercase;
+    color: var(--brand-text);
+}
+
+.jec-body { display: flex; flex-direction: column; gap: 14px; padding: 22px 20px 18px; min-width: 0; }
+.jec-head { display: flex; align-items: flex-start; gap: 12px; }
+/* -4px centres the 32px action button on the title's first line; -6px pulls its box out so the 20px
+   glyph sits optically on the padding edge. */
+.jec-head .je-cardmenu { margin: -4px -6px 0 0; }
+.jec-title {
+    margin: 0; flex: 1; min-width: 0;
+    font: var(--fw-medium) var(--fs-h5)/var(--lh-snug) var(--font-sans);
+    text-wrap: pretty;
+}
+/* The title and its author/location line are one unit — the 14px body gap is for the gaps BETWEEN
+   groups. */
+.jec-head + .jec-meta { margin-top: -9px; }
+.jec-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+    color: var(--mud-palette-text-secondary); font-size: var(--fs-caption);
+}
+.jec-meta > span { display: inline-flex; align-items: center; gap: 4px; }
+.jec-meta .material-icons { font-size: 14px; }
+/* Uncapped by decision: the card is the detail, so the entry is never clamped. */
+.jec-text {
+    margin: 0; white-space: pre-wrap; text-wrap: pretty;
+    font: var(--fw-regular) var(--fs-body2)/1.65 var(--font-sans);
+}
+
+/* The ⋯ wrapper — OdsMenu renders its own trigger, this is just the slot. */
+.je-cardmenu { display: inline-flex; flex: none; }
+
+/* Photos come from the shared JournalPhotoGallery (.odc-photogrid*) — no journal-side photo CSS, so
+   the card can't drift from the component. */
+
+/* Footer: two tracks, so the attachment count keeps a fixed slot instead of drifting to wherever the
+   chips happen to wrap. Chips are uncapped. */
+.jec-foot {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start;
+    gap: 8px 14px; padding-top: 12px; border-top: 1px solid var(--mud-palette-divider-light);
+}
+.jec-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+
+/* The attachment disclosure: a count that unfolds the full list in place. */
+.jec-filecount {
+    display: inline-flex; align-items: center; gap: 5px; margin: 0 -6px 0 0;
+    appearance: none; background: none; border: none; padding: 4px 6px;
+    border-radius: var(--radius-sm); cursor: pointer;
+    color: var(--mud-palette-text-secondary);
+    font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
+    transition: background-color var(--duration-fast) var(--ease-standard),
+                color var(--duration-fast) var(--ease-standard);
+}
+.jec-filecount:hover,
+.jec-filecount[aria-expanded='true'] { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.jec-filecount:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.jec-filecount .material-icons { font-size: 15px; }
+.jec-filecount .chev { transition: transform var(--duration-base) var(--ease-standard); }
+.jec-filecount[aria-expanded='true'] .chev { transform: rotate(180deg); }
+.jec-fcount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
+
+.jec-files-empty {
+    font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Attachment rows — FilesTable's field set on one line, since a table's headers and column rhythm
+   don't survive at card width. Never paginated. ::deep because the rows are rendered by
+   JournalFileRows, not by this component. */
+::deep .jec-files {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 6px; margin-top: 2px;
+}
+::deep .jec-file {
+    display: flex; align-items: center; gap: 9px; min-width: 0;
+    padding: 7px 10px; border: 1px solid var(--mud-palette-divider);
+    border-radius: var(--radius-sm); background: var(--mud-palette-background-gray);
+}
+/* The kind well. The design system reuses its .odc-avatar here; in the client that class is a
+   MudAvatar modifier, so the same 26px square is drawn directly rather than by nesting an avatar
+   component inside a row that needs none of it. */
+::deep .jec-file-ic {
+    display: grid; place-items: center; flex: none;
+    width: 26px; height: 26px; border-radius: var(--radius-sm);
+}
+::deep .jec-file-ic .material-icons { font-size: 16px; }
+::deep .jec-file-name {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: var(--fs-body2);
+}
+::deep .jec-file .odc-chip { order: 1; flex: none; }
+::deep .jec-file-size {
+    order: 2; flex: none; color: var(--mud-palette-text-secondary);
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-caption);
+}
+::deep .jec-file-up { order: 3; flex: none; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
+::deep .jec-file .je-cardmenu { order: 4; flex: none; }
+
+/* The archived label is the only text stating the state, and an ancestor's opacity rasterizes the
+   subtree — a descendant opacity:1 can't escape it — so raise the ink instead of fighting the dim. */
+.jec-card.archived ::deep .odc-chip.archived,
+.jec-card.archived .jec-archived-at { color: var(--mud-palette-text-primary); }
+.jec-archived-at { margin-left: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .jec-filecount, .jec-filecount .chev { transition: none; }
+}

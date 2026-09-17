@@ -330,30 +330,24 @@ public class JournalTasksApiTests
         Assert.DoesNotContain(results!, t => t.JournalTaskId == unrelated);
     }
 
-    // The summary Snippet is a plain-text preview of Content, truncated to 200 chars (board card body).
-    // Covers the three reachable branches: null content, short (≤200, incl. the boundary), and long (>200).
+    // The list card is always open and renders the note in full, so the summary carries Content whole
+    // rather than a truncated preview; the board card clamps it in CSS instead. Covers null content and
+    // a body past the old 200-char cap, which is where a reinstated truncation would show.
     [Fact]
-    public async Task List_Summary_Snippet_TruncatesContentToMax()
+    public async Task List_Summary_Content_IsReturnedWhole()
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
 
         var longContent = new string('x', 250);
-        var boundaryContent = new string('y', 200);
 
         var noContent = await CreateAsync(client, NewTask(title: "No content", content: null));
-        var boundary = await CreateAsync(client, NewTask(title: "Boundary", content: boundaryContent));
         var longTask = await CreateAsync(client, NewTask(title: "Long", content: longContent));
 
         var results = await client.GetPagedItemsAsync<JournalTaskSummary>(Path);
 
-        Assert.Null(results!.Single(t => t.JournalTaskId == noContent).Snippet);
-        Assert.Equal(boundaryContent, results!.Single(t => t.JournalTaskId == boundary).Snippet);
-
-        var longSnippet = results!.Single(t => t.JournalTaskId == longTask).Snippet;
-        Assert.NotNull(longSnippet);
-        Assert.Equal(200, longSnippet!.Length);
-        Assert.Equal(longContent[..200], longSnippet);
+        Assert.Null(results!.Single(t => t.JournalTaskId == noContent).Content);
+        Assert.Equal(longContent, results!.Single(t => t.JournalTaskId == longTask).Content);
     }
 
     // Author-name enrichment (#314): the tasks controller resolves the author id → username/email the

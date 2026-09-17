@@ -78,7 +78,7 @@ public partial class TasksPage
     private bool MatchQ(JournalTaskSummary t) =>
         string.IsNullOrWhiteSpace(_search)
         || t.Title.Contains(_search, StringComparison.OrdinalIgnoreCase)
-        || (t.Snippet?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+        || (t.Content?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
     private bool MatchTag(JournalTaskSummary t) =>
         _tagFilter.Count == 0 || t.TagIds.Any(id => _tagFilter.Contains(id.ToString()));
 

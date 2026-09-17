@@ -9,7 +9,7 @@
     use the income/expense tones.
 *@
 
-<span class="odc-chip @ToneClass">
+<span class="@ChipClass" style="@ColorStyle">
     @if (Dot)
     {
         <span class="odc-chip-dot" aria-hidden="true"></span>
@@ -31,7 +31,28 @@
     /// <summary>Show a leading status dot (uses the tone color).</summary>
     [Parameter] public bool Dot { get; set; }
 
+    /// <summary>Extra modifier classes (e.g. "sm", "archived"). Appended after the tone.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>
+    /// Per-instance colours for a chip whose hue comes from a registry rather than a tone — a file
+    /// kind, a contact type. Supplied as a pair, the same shape <see cref="OdsInfoTile"/> takes its
+    /// <c>IconColor</c>/<c>IconSoft</c> in, and layered over the tone class rather than replacing it.
+    /// Leave both null for a toned or neutral chip.
+    /// </summary>
+    [Parameter] public string? Fg { get; set; }
+
+    /// <inheritdoc cref="Fg" />
+    [Parameter] public string? Bg { get; set; }
+
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string ChipClass => string.Join(' ', new[] { "odc-chip", ToneClass, Class }
+        .Where(c => !string.IsNullOrEmpty(c)));
+
+    private string? ColorStyle => string.Concat(
+        string.IsNullOrEmpty(Bg) ? null : $"background:{Bg};",
+        string.IsNullOrEmpty(Fg) ? null : $"color:{Fg};") is { Length: > 0 } style ? style : null;
 
     private string ToneClass => Tone switch
     {

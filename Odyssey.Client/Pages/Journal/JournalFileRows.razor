@@ -1,0 +1,141 @@
+@using Odyssey.Client.Components
+@using Odyssey.Client.Services
+@using Odyssey.Dtos.Finance
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+@inject IJSRuntime JsRuntime
+
+@*
+    JournalFileRows — a journal entry's attachments as one row per file, unfolded in place by the
+    card's footer count. Replaces the framed OdsFilesTable: the entry card is always open and has
+    nowhere to put a table, and a sortable header row with column rhythm does not survive at card
+    width. Each row still carries FilesTable's own field set (kind glyph, name, kind chip, size,
+    upload date, ⋯ menu), so a kind reads identically across surfaces. Never paginated, by decision.
+
+    The kind glyph is decorative: the kind is also stated as a chip beside it.
+
+    Removing a file destroys the very menu that had focus. The HOST returns focus, not this component:
+    removing the last row unmounts this component altogether, so the thing that lands focus afterwards
+    has to be the one still mounted. MenuId is what lets it name a row.
+*@
+
+<div class="jec-files" id="@Id">
+    @foreach (var f in Attachments)
+    {
+        var kind = KindLabel(f.ContentType);
+        var meta = KindMeta(kind);
+        <div class="jec-file" @key="f.Id">
+            <span class="jec-file-ic" style="@($"background:{meta.Soft};color:{meta.Color};")">
+                <span class="material-icons" aria-hidden="true">@meta.Icon</span>
+            </span>
+            <span class="jec-file-name" title="@f.FileName">@f.FileName</span>
+            @* The kind's own colour on the chip as well as the well, the way the design system's file
+               row carries it — the kind then reads twice, in the glyph and in the label. *@
+            <OdsChip Bg="@meta.Soft" Fg="@meta.Color">@kind</OdsChip>
+            <span class="jec-file-size mono">@FormatSize(f.SizeBytes)</span>
+            @* The size carries its unit, and the kind its own word; the date is the one bare value, so
+               it says what it is for a reader who cannot see the column it sits in. *@
+            <span class="jec-file-up"><span class="sr-only">Uploaded </span>@f.UploadedAtUtc.ToLocalTime().ToString("MMM d, yyyy")</span>
+            <span class="je-cardmenu" id="@MenuId(Id, f.Id)">
+                <OdsMenu Items="BuildMenu(f)" AriaLabel="@($"Actions for file {f.FileName}")" />
+            </span>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Hydrated metadata for the entry's attachment files (dangling / no-access ids omitted by the host).</summary>
+    [Parameter] public IReadOnlyList<FileMetadataResponse> Attachments { get; set; } = [];
+
+    [Parameter] public bool CanDownload { get; set; }
+
+    /// <summary>Raised with the file id when the caller detaches a file from the entry. Unset = no Remove item.</summary>
+    [Parameter] public EventCallback<Guid>? OnRemove { get; set; }
+
+    /// <summary>The list's DOM id — the card's disclosure button points at it with aria-controls.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>
+    /// The DOM id of one row's ⋯ wrapper. Static so the host can name a row's menu as a focus target
+    /// without this component having to hand its ids out — a removal destroys the menu that had focus,
+    /// and the host is what is still mounted afterwards to put focus back (WCAG 2.4.3).
+    /// </summary>
+    public static string MenuId(string? listId, Guid fileId) => $"{listId ?? "jec-files"}-menu-{fileId}";
+
+    private static string KindLabel(string contentType) => contentType switch
+    {
+        var t when t.StartsWith("image/", StringComparison.OrdinalIgnoreCase) => "Image",
+        "application/pdf" => "PDF",
+        var t when t.StartsWith("text/", StringComparison.OrdinalIgnoreCase) => "Text",
+        _ => "File",
+    };
+
+    private static OdsFileKindMeta KindMeta(string kind) => kind switch
+    {
+        "Image" => new OdsFileKindMeta("image", "var(--sea-400)", "var(--info-soft)"),
+        "PDF" => new OdsFileKindMeta("picture_as_pdf", "var(--finance-expense)", "var(--finance-expense-soft)"),
+        "Text" => new OdsFileKindMeta("description", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-default-hover)"),
+        _ => new OdsFileKindMeta("insert_drive_file", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-default-hover)"),
+    };
+
+    private const long Kilobyte = 1024;
+    private const long Megabyte = 1024 * 1024;
+
+    // Matches OdsFilesTable's default so a size reads the same on both surfaces.
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < Kilobyte)
+        {
+            return $"{bytes} B";
+        }
+
+        return bytes < Megabyte
+            ? $"{bytes / (double)Kilobyte:0.#} KB"
+            : $"{bytes / (double)Megabyte:0.#} MB";
+    }
+
+    private IReadOnlyList<OdsMenuItem> BuildMenu(FileMetadataResponse f)
+    {
+        var menu = new List<OdsMenuItem>();
+        if (CanDownload)
+        {
+            menu.Add(new OdsMenuItem
+            {
+                Icon = "download", Label = "Download",
+                OnClick = EventCallback.Factory.Create(this, () => DownloadAsync(f)),
+            });
+        }
+
+        menu.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID",
+            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(f.Id.ToString(), "File ID copied.")),
+        });
+
+        if (OnRemove is { } remove)
+        {
+            menu.Add(new OdsMenuItem { Divider = true });
+            menu.Add(new OdsMenuItem
+            {
+                Icon = "link_off", Label = "Remove from entry", Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => remove.InvokeAsync(f.Id)),
+            });
+        }
+
+        return menu;
+    }
+
+    private async Task DownloadAsync(FileMetadataResponse f)
+    {
+        var content = await Files.GetContentAsync(f.Id);
+        if (content is null)
+        {
+            Snackbar.Add("Download failed.", Severity.Error);
+            return;
+        }
+
+        var contentType = content.ContentType ?? f.ContentType;
+        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, f.FileName, contentType);
+    }
+}

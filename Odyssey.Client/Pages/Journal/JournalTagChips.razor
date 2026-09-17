@@ -2,7 +2,9 @@
 @*
     JournalTagChips — a compact row of tag-tone chips from plain tag names (the shared OdsTagChips is
     typed to the Finance ExistingTransactionTag, so the journal/task tag families render through this).
-    Meaning is the visible label; the chip has no icon (a11y). Max caps the visible chips + shows a +N.
+    Meaning is the visible label, never a glyph: Icon adds a purely decorative (aria-hidden) leading
+    mark for the card footers that carry one, and the chips read identically without it. Max caps the
+    visible chips + shows a +N; null shows them all.
 *@
 
 @if (_names.Count > 0)
@@ -10,7 +12,7 @@
     <span class="je-tagchips">
         @foreach (var name in _names.Take(Max ?? _names.Count))
         {
-            <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
+            <OdsChip Tone="OdsChipTone.Tag" Icon="@Icon">@name</OdsChip>
         }
         @if (Max is { } m && _names.Count > m)
         {
@@ -24,6 +26,9 @@
 
     /// <summary>Cap the visible chips; the overflow collapses into a "+N" chip. Null = show all.</summary>
     [Parameter] public int? Max { get; set; }
+
+    /// <summary>Decorative leading Material Icons ligature (the card footers use "label"). Null = none.</summary>
+    [Parameter] public string? Icon { get; set; }
 
     private List<string> _names = [];
 

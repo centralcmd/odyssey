@@ -1,73 +1,113 @@
 @using Odyssey.Client.Components
 @*
-    TaskListRow — a task rendered as an expandable-record row (the flat List view + the Archived
-    section). A cycling status control (Backlog → Doing → Done → Archived, text-labelled + keyboard
-    operable), the title, a deadline chip, an author/completed sub-line, tag chips, and a row menu
-    (Edit / Archive / Delete). Status meaning is in text (the control's aria-label + the chip).
+    TaskListRow — a task as the purpose-built list card (the flat List view + the Archived section).
+    Not the shared record row: a task has no headline figure and nothing worth collapsing, so the card
+    is always open and IS the detail.
+
+    The rail carries the DEADLINE as a signed day count above the cycling status control; the calendar
+    date moved into the body's meta line where it can be labelled "Due". State colour is a 3px stripe
+    on the card's outer edge — the furthest point from the count, so state and urgency never read as
+    one signal. Meaning is in text throughout: the rail's visual tokens are decorative and an sr-only
+    phrase states the deadline in words, the status control names its state and its next state.
 *@
 
-<div class="acct-item tk-row @(_status == JournalTaskStatus.Archived ? "dimmed" : "")">
-    <div class="acct-head" style="cursor:default;" data-status="@_status">
-        <div @onclick:stopPropagation="true">
+<article class="tkc-card @(_status == JournalTaskStatus.Archived ? "archived" : "")" data-status="@_status">
+    <div class="tkc-rail" data-tone="@_rail.Tone">
+        <span class="sr-only">@_rail.AccessibleText</span>
+        @if (_rail.Dash)
+        {
+            <span class="tkc-dash" aria-hidden="true">—</span>
+        }
+        @if (_rail.Tick)
+        {
+            <span class="tkc-tick material-icons" aria-hidden="true">check</span>
+        }
+        @if (_rail.Word is { } word)
+        {
+            <span class="tkc-word" aria-hidden="true">@word</span>
+        }
+        @if (_rail.Count is { } count)
+        {
+            <span class="tkc-count" aria-hidden="true"><span class="tkc-sign">@_rail.Sign</span>@count</span>
+        }
+        @if (_rail.Unit is { } unit)
+        {
+            <span class="tkc-unit" aria-hidden="true">@unit</span>
+        }
+        <span class="tkc-st">
             <button type="button" class="tk-status-btn" data-s="@_status" disabled="@(_status == JournalTaskStatus.Archived)"
                     aria-label="@StatusButtonLabel"
                     @onclick="@(() => { if (_status != JournalTaskStatus.Archived) OnStatus.InvokeAsync(NextStatus); })">
                 <span class="material-icons" aria-hidden="true">@StatusIcon</span>
             </button>
-        </div>
-
-        <div class="acct-id">
-            <div class="acct-name-row">
-                <span class="acct-name">@Task.Title</span>
-                <TaskDeadlineChip Deadline="Task.Deadline" />
-            </div>
-            <div class="tk-subline">
-                <span class="je-author"><span class="material-icons" aria-hidden="true">person</span>@Task.CreatedByName</span>
-                @if (Task.CompletedAt is { } done)
-                {
-                    <span class="acct-dot">·</span>
-                    <span class="mono">Done @done.ToLocalTime().ToString("MMM d, yyyy")</span>
-                }
-            </div>
-            @if (TagNames.Any())
-            {
-                <div class="je-cardfoot"><JournalTagChips Names="TagNames" Max="4" /></div>
-            }
-        </div>
-
-        <div class="acct-controls" @onclick:stopPropagation="true">
-            @if (Task.AttachmentCount > 0)
-            {
-                <span class="tk-att-count"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">@Task.AttachmentCount</span></span>
-            }
-            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"
-                     AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
-                @if (CanUpdate)
-                {
-                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OnEdit.InvokeAsync(Task))">Edit task</MudMenuItem>
-                }
-                <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="@(() => OnExport.InvokeAsync(Task))">Export as iCalendar</MudMenuItem>
-                @if (CanUpdate)
-                {
-                    <MudMenuItem Icon="@(_status == JournalTaskStatus.Archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Inventory2)"
-                                 OnClick="@(() => OnArchive.InvokeAsync(Task))">@(_status == JournalTaskStatus.Archived ? "Unarchive" : "Archive")</MudMenuItem>
-                }
-                <MudMenuItem OnClick="@(() => OnCopyId.InvokeAsync(Task.JournalTaskId))">
-                    <span class="odc-menu-item">
-                        <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
-                        <span>Copy ID</span>
-                        <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
-                    </span>
-                </MudMenuItem>
-                @if (CanDelete)
-                {
-                    <MudDivider />
-                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" Style="color:var(--mud-palette-error);" OnClick="@(() => OnDelete.InvokeAsync(Task.JournalTaskId))">Delete</MudMenuItem>
-                }
-            </MudMenu>
-        </div>
+        </span>
     </div>
-</div>
+
+    <div class="tkc-body">
+        <div class="tkc-top">
+            <h3 class="tkc-title">@Task.Title</h3>
+            <div class="je-cardmenu">
+                <OdsMenu Items="BuildActions()" AriaLabel="@($"Actions for {Task.Title}")" />
+            </div>
+        </div>
+
+        @* The deadline is the meta line's one primary-ink fact. Once completed its slot carries the
+           completion instead — a finished task's own date is what happened, not what was planned. *@
+        <div class="tkc-meta">
+            @if (_status == JournalTaskStatus.Archived)
+            {
+                <OdsChip Tone="OdsChipTone.Outline" Class="archived sm">Archived</OdsChip>
+            }
+            @if (_status == JournalTaskStatus.Done && Task.CompletedAt is { } completed)
+            {
+                <span class="tkc-due">
+                    <span class="material-icons" aria-hidden="true">check</span>Completed
+                    <span class="mono">@completed.ToLocalTime().ToString("MMM d, yyyy, HH:mm")</span>
+                </span>
+            }
+            else if (Task.Deadline is { } deadline)
+            {
+                <span class="tkc-due">
+                    <span class="material-icons" aria-hidden="true">event</span>Due
+                    <span class="mono">@deadline.ToString("MMM d, yyyy")</span>
+                </span>
+            }
+            else
+            {
+                <span>No deadline</span>
+            }
+            @if (_status == JournalTaskStatus.Archived && Task.Archived is { } archivedAt)
+            {
+                <span>archived <span class="mono">@archivedAt.ToLocalTime().ToString("MMM d, yyyy, HH:mm")</span></span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Task.CreatedByName))
+            {
+                <span><span class="material-icons" aria-hidden="true">person</span>@Task.CreatedByName</span>
+            }
+        </div>
+
+        @* Uncapped by decision: the card is the detail, so the note is never clamped. *@
+        @if (!string.IsNullOrWhiteSpace(Task.Content))
+        {
+            <p class="tkc-note">@Task.Content</p>
+        }
+
+        @if (_tagNames.Count > 0 || Task.AttachmentCount > 0)
+        {
+            <div class="tkc-foot">
+                <div class="tkc-chips"><JournalTagChips Names="_tagNames" Icon="label" /></div>
+                @if (Task.AttachmentCount > 0)
+                {
+                    <span class="tkc-att">
+                        <span class="material-icons" aria-hidden="true">attach_file</span>
+                        <span class="mono">@Task.AttachmentCount</span>
+                        <span class="sr-only">@(Task.AttachmentCount == 1 ? "attachment" : "attachments")</span>
+                    </span>
+                }
+            </div>
+        }
+    </div>
+</article>
 
 @code {
     [Parameter, EditorRequired] public JournalTaskSummary Task { get; set; } = default!;
@@ -81,6 +121,15 @@
     [Parameter] public EventCallback<JournalTaskSummary> OnArchive { get; set; }
     [Parameter] public EventCallback<Guid> OnDelete { get; set; }
     [Parameter] public EventCallback<Guid> OnCopyId { get; set; }
+
+    private List<string> _tagNames = [];
+    private TaskRail _rail = TaskRail.Undated;
+
+    protected override void OnParametersSet()
+    {
+        _tagNames = [.. TagNames];
+        _rail = TaskRail.For(Task);
+    }
 
     private JournalTaskStatus _status => Task.Status;
 
@@ -103,4 +152,55 @@
     private string StatusButtonLabel => _status == JournalTaskStatus.Archived
         ? "Archived"
         : $"Status: {_status}. Activate to set {NextStatus}.";
+
+    // The card's ⋯ menu, built from the caller's claims. An OdsMenu item list rather than inline
+    // MudMenuItems: the shared menu is what gives the Copy ID row its trailing affordance and a danger
+    // item its tint, and it labels its own trigger.
+    private List<OdsMenuItem> BuildActions()
+    {
+        var archived = _status == JournalTaskStatus.Archived;
+        var items = new List<OdsMenuItem>();
+
+        if (CanUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit", Label = "Edit task",
+                OnClick = EventCallback.Factory.Create(this, () => OnEdit.InvokeAsync(Task)),
+            });
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "event_note", Label = "Export as iCalendar",
+            OnClick = EventCallback.Factory.Create(this, () => OnExport.InvokeAsync(Task)),
+        });
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => OnCopyId.InvokeAsync(Task.JournalTaskId)),
+        });
+
+        if (CanUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = archived ? "unarchive" : "inventory_2",
+                Label = archived ? "Unarchive" : "Archive",
+                OnClick = EventCallback.Factory.Create(this, () => OnArchive.InvokeAsync(Task)),
+            });
+        }
+
+        if (CanDelete)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete", Label = "Delete", Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => OnDelete.InvokeAsync(Task.JournalTaskId)),
+            });
+        }
+
+        return items;
+    }
 }

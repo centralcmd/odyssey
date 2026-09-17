@@ -47,10 +47,15 @@ public class JournalEntriesController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await service.ListAsync(query, cancellationToken);
-        var names = await displayNames.ResolveAsync(User, result.Items.Select(i => i.CreatedByUserId), cancellationToken);
+        // The card states who last edited an entry, so the row needs the editor resolved too — both
+        // ids go into the one batched lookup rather than a second round trip for the second column.
+        var authorIds = result.Items.Select(i => i.CreatedByUserId)
+            .Concat(result.Items.Select(i => i.UpdatedByUserId));
+        var names = await displayNames.ResolveAsync(User, authorIds, cancellationToken);
         foreach (var item in result.Items)
         {
             item.CreatedByName = names.NameForAuthor(item.CreatedByUserId);
+            item.UpdatedByName = names.NameForOptional(item.UpdatedByUserId);
         }
 
         return Ok(result);

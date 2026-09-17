@@ -1,0 +1,124 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@using Odyssey.Dtos.Journal
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@*
+    JournalEntryCard — one journal entry as the purpose-built entry card.
+
+    Not the shared OdsRecordCard: an entry has no headline figure and nothing worth collapsing, so the
+    card is always open and IS the detail — no chevron, no expand step, no counts row. The date is the
+    card's anchor, carried as a calendar leaf down the left edge, so the meta line never repeats it.
+
+    The entry text and the tag/contact chips are never clamped. Attachments are the one thing that
+    stays folded: the footer count is the disclosure, and the host hydrates the file metadata when it
+    opens rather than for every card on the page.
+*@
+
+<article id="@Id" class="jec-card @(Archived ? "archived" : "")">
+    @* The date leaf, in the reader's local zone. EntryDate is stored date-only in UTC, so two entries
+       on one date simply repeat it — the leaf anchors, it does not group. *@
+    <div class="jec-leaf">
+        <span class="jec-dow" aria-hidden="true">@_leafDow</span>
+        <span class="jec-day" aria-hidden="true">@_leafDay</span>
+        <span class="jec-mon" aria-hidden="true">@_leafMon</span>
+        <span class="sr-only">@_leafAccessible</span>
+    </div>
+
+    <div class="jec-body">
+        <div class="jec-head">
+            <h3 class="jec-title">@Entry.Title</h3>
+            <span class="je-cardmenu">
+                <OdsMenu Items="Actions" AriaLabel="@($"Actions for {Entry.Title}")" />
+            </span>
+        </div>
+
+        @* Who wrote it, where, and whether it has been edited since — the entry date is the leaf and
+           is not repeated here. *@
+        <div class="jec-meta">
+            @if (!string.IsNullOrWhiteSpace(Entry.CreatedByName))
+            {
+                <span><span class="material-icons" aria-hidden="true">person</span>@Entry.CreatedByName</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Entry.Location))
+            {
+                <span><span class="material-icons" aria-hidden="true">place</span>@Entry.Location</span>
+            }
+            @if (Edited)
+            {
+                <span>
+                    <span class="material-icons" aria-hidden="true">history</span>edited
+                    @Entry.UpdatedAt.ToLocalTime().ToString("MMM d, yyyy, HH:mm")@EditedBy
+                </span>
+            }
+            @if (Entry.Archived is { } archivedAt)
+            {
+                <span>
+                    <OdsChip Tone="OdsChipTone.Outline" Class="archived sm">Archived</OdsChip>
+                    <span class="jec-archived-at">@archivedAt.ToLocalTime().ToString("MMM d, yyyy, HH:mm")</span>
+                </span>
+            }
+        </div>
+
+        @* Never clamped: this card IS the detail. *@
+        @if (!string.IsNullOrWhiteSpace(Entry.Content))
+        {
+            <p class="jec-text">@Entry.Content</p>
+        }
+
+        @* Title explicitly cleared — the card has no section dividers, so the gallery's own head would
+           be a heading with nothing to head. *@
+        @if (Photos.Count > 0)
+        {
+            <JournalPhotoGallery Photos="Photos" Title="@null" MinTile="120" OnOpen="OnOpenPhoto" />
+        }
+
+        @if (Contacts.Count > 0 || Tags.Count > 0 || Entry.AttachmentCount > 0)
+        {
+            @* Two tracks: contacts and tags uncapped in the first, the attachment disclosure fixed in
+               the second so a chip wrap can never displace it. *@
+            <div class="jec-foot">
+                <div class="jec-chips">
+                    @foreach (var cp in Contacts)
+                    {
+                        <OdsContactChip @key="cp.Id" Name="@cp.Name" Type="@cp.Type"
+                                        Archived="cp.Archived" Unavailable="@(cp.Name is null)" Compact="true" />
+                    }
+                    <JournalTagChips Names="_tagNames" Icon="label" />
+                </div>
+                @if (Entry.AttachmentCount > 0)
+                {
+                    <button type="button" class="jec-filecount" aria-expanded="@(_filesOpen ? "true" : "false")" aria-controls="@FilesListId"
+                            @onclick="ToggleFiles">
+                        <span class="material-icons" aria-hidden="true">attach_file</span>
+                        <span class="jec-fcount">@Entry.AttachmentCount</span>
+                        @(Entry.AttachmentCount == 1 ? "file" : "files")
+                        <span class="material-icons chev" aria-hidden="true">expand_more</span>
+                    </button>
+                }
+            </div>
+        }
+
+        @if (_filesOpen && Entry.AttachmentCount > 0)
+        {
+            @if (Attachments is null)
+            {
+                <div role="status" aria-live="polite" aria-busy="true">
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                    <span class="sr-only">Loading attachments…</span>
+                </div>
+            }
+            else if (Attachments.Count == 0)
+            {
+                <div class="jec-files-empty">No readable attachments.</div>
+            }
+            else
+            {
+                <JournalFileRows Id="@FilesListId" Attachments="Attachments"
+                                 CanDownload="CanReadFiles"
+                                 OnRemove="@(OnRemoveFile is null ? null : EventCallback.Factory.Create<Guid>(this, RemoveFileAsync))" />
+            }
+        }
+    </div>
+</article>
