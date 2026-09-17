@@ -5,6 +5,18 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0](https://github.com/centralcmd/odyssey/compare/v0.29.0...v0.30.0) (2026-09-17)
+
+
+### Features
+
+* sync the frontend to the task list card and journal entry card ([#111](https://github.com/centralcmd/odyssey/issues/111)) ([3b90421](https://github.com/centralcmd/odyssey/commit/3b90421ec2ba98843f1bcbb182ec6ebfdafd4fd6))
+
+
+### Documentation
+
+* update design system ([871b2d9](https://github.com/centralcmd/odyssey/commit/871b2d930904f714611bf48654a904c66e130d24))
+
 ## [0.29.0](https://github.com/centralcmd/odyssey/compare/v0.28.0...v0.29.0) (2026-09-17)
 
 
