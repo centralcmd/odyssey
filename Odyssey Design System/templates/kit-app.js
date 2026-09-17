@@ -118,7 +118,7 @@
     'AddSubscriptionModal.jsx', 'Subscriptions.jsx',
     'ImportJournalEntriesModal.jsx', 'Journal.jsx', 'ImportTasksModal.jsx', 'Tasks.jsx',
     'AddCalendarEventModal.jsx', 'ExportCalendarEventsModal.jsx', 'ManageCalendarsModal.jsx', 'ImportCalendarModal.jsx', 'Calendar.jsx',
-    'Users.jsx', 'Roles.jsx', 'FileAnalysisLog.jsx', 'SystemSettings.jsx', 'Preferences.jsx', 'AccountTwoFactor.jsx',
+    'ProfilePicture.jsx', 'Users.jsx', 'Roles.jsx', 'FileAnalysisLog.jsx', 'SystemSettings.jsx', 'Preferences.jsx', 'AccountTwoFactor.jsx',
     'Account.jsx', 'ConfirmEmail.jsx', 'Photos.jsx',
     'AcceptTerms.jsx', 'LegalDocuments.jsx',
   ].map(function (f) { return 'ui_kits/web/' + f; });

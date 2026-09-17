@@ -105,6 +105,9 @@
 .ua-sort-ic.active { opacity: 1; color: var(--tide-400); }
 .ua-sort-ic.desc { transform: rotate(180deg); }
 .ua-user-cell { display: flex; align-items: center; gap: 12px; }
+/* Detail-panel identity strip: the profile picture (new here) beside the mono
+   user id, so the mark's accessible name has to be the person, not "". */
+.ua-detail-identity { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .ua-user-name { font: 500 14px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); white-space: nowrap; }
 .ua-user-id { font: 400 11px/1.2 var(--font-mono); color: var(--mud-palette-text-secondary); margin-top: 2px; }
 .ua-email { color: var(--mud-palette-text-secondary); }

@@ -1,0 +1,212 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · User profile picture" subtitle="The signed-in user's own picture: ProfilePictureField on /account (Add / Change / Remove, lg preview, the pre-claim disabled window), the page-header mark, and the admin /users list row + detail panel. Every state is driven by the ImageVersion token on the read DTO — a null token renders the monogram and issues no request; a load failure falls back silently. Live." viewport="1280x1080" -->
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <title>Odyssey · User profile picture</title>
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 26px 28px; }
+    a { color: var(--brand-text); } a:hover { color: var(--mud-palette-primary); }
+    .cap { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 0 0 16px; }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    .panel { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 20px 22px; min-width: 0; }
+    .panel.wide { grid-column: 1 / -1; }
+    .panel h3 { margin: 0 0 4px; font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); }
+    .panel p.sub { margin: 0 0 16px; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+    .stack { display: grid; gap: 18px; }
+    .tok { font: var(--fw-regular) var(--fs-caption)/1.2 var(--font-mono); color: var(--mud-palette-placeholder); }
+    .ph { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); }
+    .ph-t { font: var(--fw-regular) var(--fs-h5)/1.2 var(--font-sans); }
+    .ph-s { margin-top: 3px; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); }
+    table.rows { width: 100%; border-collapse: collapse; }
+    table.rows th { text-align: left; padding: 0 10px 8px 0; font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+    table.rows td { padding: 9px 10px 9px 0; border-top: 1px solid var(--mud-palette-divider); font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); vertical-align: middle; }
+    .ucell { display: flex; align-items: center; gap: 12px; }
+    .uname { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); }
+    .uid { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); }
+    .note { margin: 20px 2px 0; font: var(--fw-regular) var(--fs-caption)/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 104ch; }
+    .note b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+    .note + .note { margin-top: 8px; }
+    .note code { font-family: var(--font-mono); color: var(--brand-text); }
+  </style>
+</head>
+<body>
+  <div class="cap">ProfilePictureField <code>&lt;ProfilePictureField version src onAdd onRemove disabled /&gt;</code> · presence = the <code>ImageVersion</code> token</div>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const NS = window.OdysseyDesignSystem_d5aa51 || {};
+    const { ProfilePictureField, Avatar, MetaTile, Chip, Button, Modal } = NS;
+
+    /* Stand-in imagery, drawn here — a striped placeholder with a monospace
+       caption, so nothing pretends to be a photograph the kit does not have. */
+    const portrait = (hue) => {
+      const S = 512, c = document.createElement('canvas');
+      c.width = S; c.height = S;
+      const g = c.getContext('2d');
+      g.fillStyle = `oklch(0.32 0.05 ${hue})`; g.fillRect(0, 0, S, S);
+      g.strokeStyle = `oklch(0.80 0.14 ${hue} / 0.42)`; g.lineWidth = 6;
+      for (let i = -S; i < S * 2; i += 26) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + S, S); g.stroke(); }
+      g.fillStyle = 'oklch(0.94 0.02 200)';
+      g.font = `500 ${Math.round(S * 0.085)}px ui-monospace, monospace`;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('PORTRAIT', S / 2, S / 2);
+      return c.toDataURL('image/png');
+    };
+    const BROKEN = 'data:image/png;base64,Zm9v';
+
+    function Field({ version, src, initials, busy, removing, disabled, disabledReason, variant }) {
+      const [removeOpen, setRemoveOpen] = React.useState(false);
+      return (
+        <>
+          <ProfilePictureField
+            variant={variant}
+            version={version} src={src} initials={initials}
+            busy={busy} removing={removing}
+            disabled={disabled} disabledReason={disabledReason}
+            onAdd={() => {}} onRemove={() => setRemoveOpen(true)} />
+          {removeOpen && Modal ? (
+            <Modal title="Remove profile picture?" icon="delete_outline" iconTone="error" onClose={() => setRemoveOpen(false)}
+              footer={<><Button variant="text" onClick={() => setRemoveOpen(false)}>Cancel</Button><Button variant="danger" onClick={() => setRemoveOpen(false)}>Remove picture</Button></>}>
+              <p className="odc-secret-dialog-p">The stored image is deleted, not hidden — your initials are shown everywhere you appear. You can add a new picture at any time.</p>
+            </Modal>
+          ) : null}
+        </>
+      );
+    }
+
+    function Demo() {
+      const photo = React.useMemo(() => portrait(150), []);
+      if (!ProfilePictureField || !Avatar) return <div className="panel">The compiled bundle does not carry <code>ProfilePictureField</code> yet.</div>;
+      return (
+        <div className="grid">
+          <div className="panel">
+            <h3><code>version === null</code> — no picture</h3>
+            <p className="sub">The monogram, and <b>Add picture</b>. No request is issued: the token is the presence signal, so there is no probe and no 404 to swallow.</p>
+            <Field version={null} initials="JS" />
+            <p className="tok" style={{ marginTop: 14 }}>ProfileImageVersion: null</p>
+          </div>
+
+          <div className="panel">
+            <h3><code>version</code> set — a picture</h3>
+            <p className="sub"><b>Change picture</b>, and <b>Remove picture</b> beside it. The token is also the cache key, so a replace re-keys <code>src</code> and the browser re-requests.</p>
+            <Field version="7c1f…a20e" src={photo} initials="JS" />
+            <p className="tok" style={{ marginTop: 14 }}>ProfileImageVersion: 7c1f9b30-…-a20e · src ?v=7c1f…a20e</p>
+          </div>
+
+          <div className="panel">
+            <h3>Removing</h3>
+            <p className="sub">Behind a confirmation the page owns — the field raises <code>onRemove</code> only. A completed removal is announced through the live announcer; <code>/account</code> has no status region to borrow.</p>
+            <Field version="7c1f…a20e" src={photo} initials="JS" removing />
+          </div>
+
+          <div className="panel">
+            <h3>Disabled — the pre-claim window</h3>
+            <p className="sub">A session that predates the read claim's deploy cannot render the picture it just uploaded, so the write is refused honestly instead. The same disable covers <b>Remove</b>, and the reason says how to clear it.</p>
+            <Field version={null} initials="JS" disabled
+              disabledReason="Sign out and back in to manage your profile picture." />
+          </div>
+
+          <div className="panel">
+            <h3><code>variant="overlay"</code> — the mark is the control</h3>
+            <p className="sub">For a card that already shows the avatar and cannot spare a second block: Change / Remove sit on the picture and appear on hover. Hover is never the only affordance — the buttons are always-rendered and focusable (so <code>:focus-within</code> reveals them for keyboard and touch), and a camera badge stays visible so the control is discoverable without hovering.</p>
+            <div style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
+              <div>
+                <Field version="7c1f…a20e" src={photo} initials="JS" variant="overlay" />
+                <p className="tok" style={{ marginTop: 10 }}>has picture · change + remove</p>
+              </div>
+              <div>
+                <Field version={null} initials="JS" variant="overlay" />
+                <p className="tok" style={{ marginTop: 10 }}>no picture · add only</p>
+              </div>
+              <div>
+                <Field version="7c1f…a20e" src={photo} initials="JS" variant="overlay" disabled />
+                <p className="tok" style={{ marginTop: 10 }}>disabled · no overlay, no badge</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Page header — the same <code>lg</code> step</h3>
+            <p className="sub">The header's leading mark renders the picture where one exists and the monogram where it does not. The tone travels with it: the header tint is a soft <code>color-mix</code>, not the avatar's solid primary fill, so it is passed as a <code>{'{ bg, fg }'}</code> pair rather than left to default.</p>
+            <div className="stack">
+              <div className="ph">
+                <Avatar size="lg" src={photo} alt="" />
+                <div><div className="ph-t">Jane Sato</div><div className="ph-s">jane@odyssey.app · @jane.sato</div></div>
+              </div>
+              <div className="ph">
+                <Avatar size="lg" initials="JS" tone={{ bg: 'color-mix(in oklab, var(--mud-palette-primary) 16%, transparent)', fg: 'var(--brand-text)' }} alt="" />
+                <div><div className="ph-t">Jane Sato</div><div className="ph-s">jane@odyssey.app · @jane.sato</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Detail panel — a <i>new</i> surface</h3>
+            <p className="sub">The admin detail panel has no mark today, so this one is added rather than replaced. Its neighbouring cell is a mono user id, not a name — so the image is <b>not</b> decorative here and carries the subject's resolved display name.</p>
+            <div className="stack">
+              <div className="ph" style={{ alignItems: 'flex-start' }}>
+                <Avatar size="lg" src={photo} alt="Michael Chen" />
+                <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
+                  {MetaTile ? <MetaTile label="User ID" value="9f2c7b41-64ad-4e0e-b8d6-2a7f51c39b02" mono /> : null}
+                  <Chip tone="info" icon="mark_email_read">Email confirmed</Chip>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel wide">
+            <h3>Admin list rows — decorative, and zero speculative requests</h3>
+            <p className="sub">Each row carries its own token on <code>ExistingUser</code>, so a 50-row page renders with no probing. Row 2 has no picture. Row 3's token is non-null but the image 404s — it falls back to the monogram silently, per row. Row 4 is an administratively disabled account: the projection nulls the token, so no <code>&lt;img&gt;</code> is emitted and there is no flicker.</p>
+            <table className="rows">
+              <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Account</th></tr></thead>
+              <tbody>
+                <Row src={photo} version="a1" name="Michael Chen" id="m.chen" email="michael@odyssey.app" role="User" status={<Chip tone="income" dot>Enabled</Chip>} />
+                <Row version={null} initials="PR" name="Priya Raman" id="p.raman" email="priya@odyssey.app" role="Owner" status={<Chip tone="income" dot>Enabled</Chip>} />
+                <Row src={BROKEN} version="c3" initials="DR" name="Diego Ramos" id="d.ramos" email="diego@odyssey.app" role="User" status={<Chip tone="income" dot>Enabled</Chip>} />
+                <Row version={null} initials="AL" name="Amara Lang" id="a.lang" email="amara@odyssey.app" role="Guest" status={<Chip tone="error" dot>Disabled</Chip>} />
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    function Row({ src, version, initials, name, id, email, role, status }) {
+      const [failed, setFailed] = React.useState(false);
+      const showImage = !!(version && src) && !failed;
+      const inits = initials || name.split(' ').map((w) => w[0]).join('');
+      return (
+        <tr>
+          <td>
+            <div className="ucell">
+              {showImage
+                ? <Avatar src={src} alt="" onError={() => setFailed(true)} />
+                : <Avatar initials={inits} tone="sea" alt="" />}
+              <div><div className="uname">{name}</div><div className="uid">@{id}</div></div>
+            </div>
+          </td>
+          <td className="uid">{email}</td>
+          <td>{role}</td>
+          <td>{status}</td>
+        </tr>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+  </script>
+
+  <p class="note"><b>The token, not a probe, drives every state.</b> <code>ProfileDto.ProfileImageVersion</code> (the caller's own) and <code>ExistingUser.ProfileImageVersion</code> (per admin row) are response-only <code>Guid?</code>s. Non-null means <i>renderable by this caller</i> — not merely "a row exists": the projection returns <code>null</code> wherever the read path would refuse, so an administratively disabled subject renders the monogram with no request at all. An <code>&lt;img&gt;</code> plus an error handler cannot drive a button label, and probing would mean a mostly-404 request per row.</p>
+  <p class="note"><b>Alt text follows what the image is.</b> On <code>/account</code> it is the subject of its own controls — a descriptive alt. In a list row it is decorative (<code>alt=""</code>), because the adjacent cell names the person. In the detail panel the neighbour is a mono user id, so the mark carries the subject's <i>resolved</i> display name.</p>
+  <p class="note"><b>A load failure is silent, and per row.</b> The fallback state belongs to the consumer — <code>Avatar.onError</code> only invokes the callback. On a 50-row table that means one flag per row, reset when the row's token changes; one page-level flag would blank every avatar after a single failure. No broken-image glyph, no toast.</p>
+  <p class="note"><b>There is no administrator write path.</b> An admin can neither upload nor remove someone else's picture — the write endpoints take no user id at all, so there is nothing to tamper with. The remedies for an abusive upload are disable (which also stops the read) or delete (which cascades the bytes away), never editing another person's identity.</p>
+</body>
+</html>

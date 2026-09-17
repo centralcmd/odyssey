@@ -265,11 +265,35 @@ const ClaimChips = ({ role }) => {
   );
 };
 
-/* ---------- 7. Expanded DETAIL (read view) ---------- */
+/* ---------- 7. The row identity mark ----------
+   The picture where the subject has one, the role-tinted monogram where they
+   do not. Presence is `ExistingUser.ProfileImageVersion` (kitUserProfileImage)
+   — never a probe of the byte endpoint, so a 50-row page issues ZERO
+   speculative requests and a disabled subject renders no <img> at all.
+   The failed state is PER ROW and reset when the row's token changes; one
+   page-level flag would blank every avatar after a single failure. A failure
+   is silent — no glyph, no toast. */
+const UaUserMark = ({ u, size = 'md', alt = '' }) => {
+  const { useState, useEffect } = React;
+  const img = kitUserProfileImage(u);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [img.version]);
+  return (img.version && !failed)
+    ? <Avatar size={size} src={img.src} alt={alt} onError={() => setFailed(true)} />
+    : <Avatar size={size} initials={u.initials} tone={uaRoleTone(u.role)} alt={alt} />;
+};
+
+/* ---------- 7b. Expanded DETAIL (read view) ---------- */
 const UserDetail = ({ u, canEdit, onEdit }) => (
   <div className="acct-detail">
-    <div className="meta-grid">
+    {/* A NEW surface, not a replacement — the panel had no mark before. Its
+        neighbour is a mono user id rather than the person's name, so the image
+        is not decorative here and carries the resolved display name. */}
+    <div className="ua-detail-identity">
+      <UaUserMark u={u} size="lg" alt={u.displayName} />
       <MetaTile label="User ID" value={u.id} mono />
+    </div>
+    <div className="meta-grid">
       <MetaTile label="Username" value={u.userName || '—'} mono />
       <MetaTile label="Email" value={u.email || '—'} />
       <MetaTile label="Full name" value={uaFullName(u) || '—'} />
@@ -587,7 +611,7 @@ function Users({ resetOutcome = 'delivered' }) {
                 key: 'displayName', header: 'User', sortable: true, sortType: 'text', sortValue: (u) => uaSortVal(u, 'displayName'),
                 cell: (u, ctx) => (
                   <div className="ua-user-cell">
-                    <Avatar initials={u.initials} tone={uaRoleTone(u.role)} />
+                    <UaUserMark u={u} />
                     <div>
                       <div className="ua-user-name" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{u.displayName}{ctx.justSaved && <Chip tone="income" dot>Saved</Chip>}</div>
                       <div className="ua-user-id">@{u.userName || '—'}</div>

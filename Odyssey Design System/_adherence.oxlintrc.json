@@ -375,6 +375,10 @@
         "message": "<IconButton> type must be one of 'button' | 'submit' | 'reset'."
       },
       {
+        "selector": "JSXOpeningElement[name.name='ImageCropLimits'] > JSXAttribute > JSXIdentifier[name!=/^(?:maxSourceBytes|maxSourceDimension|outputDimension|jpegQuality|types|typeLabel|key|ref|className|style|children)$/]",
+        "message": "<ImageCropLimits> doesn't accept that prop. Declared props: maxSourceBytes, maxSourceDimension, outputDimension, jpegQuality, types, typeLabel."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='InfoTile'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|iconColor|iconSoft|label|value|foot|valueVariant|wide|elevated|className|style|key|ref|className|style|children)$/]",
         "message": "<InfoTile> doesn't accept that prop. Declared props: icon, iconColor, iconSoft, label, value, foot, valueVariant, wide, elevated, className, style."
       },
@@ -489,6 +493,14 @@
       {
         "selector": "JSXOpeningElement[name.name='ProblemAlert'] > JSXAttribute[name.name='severity'] > Literal[value!=/^(?:warning|error|info)$/]",
         "message": "<ProblemAlert> severity must be one of 'warning' | 'error' | 'info'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ProfilePictureField'] > JSXAttribute > JSXIdentifier[name!=/^(?:src|version|initials|alt|tone|label|hint|busy|removing|disabled|disabledReason|variant|onAdd|onRemove|className|key|ref|className|style|children)$/]",
+        "message": "<ProfilePictureField> doesn't accept that prop. Declared props: src, version, initials, alt, tone, label, hint, busy, removing, disabled, disabledReason, variant, onAdd, onRemove, className."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ProfilePictureField'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:row|overlay)$/]",
+        "message": "<ProfilePictureField> variant must be one of 'row' | 'overlay'."
       },
       {
         "selector": "JSXOpeningElement[name.name='RadioOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|disabled|key|ref|className|style|children)$/]",
@@ -932,6 +944,9 @@
       "IconButton": {
         "replaces": []
       },
+      "ImageCropLimits": {
+        "replaces": []
+      },
       "InfoTile": {
         "replaces": []
       },
@@ -996,6 +1011,9 @@
         "replaces": []
       },
       "ProblemAlert": {
+        "replaces": []
+      },
+      "ProfilePictureField": {
         "replaces": []
       },
       "RadioOption": {

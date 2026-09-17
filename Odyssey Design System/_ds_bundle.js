@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"e23b5bd0b538","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"0d19cafaeb2a","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"b6392757f0f9","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"d1734e9c9e28","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"7ead633fe94a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"2e56ec542437","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"13fe90661c91","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"e3f4d3a1aec3","ui_kits/web/Users.jsx":"bae9bb95c172","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a520a2c04a06","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"5f0b9fee4e3f","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"51fca8a11171","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"0d19cafaeb2a","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"b6392757f0f9","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"d1734e9c9e28","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"3efde922146d","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"7ead633fe94a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"2e56ec542437","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"13fe90661c91","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"e3f4d3a1aec3","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a520a2c04a06","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/page-header.jsx":"512f67a67a46","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -7476,6 +7476,360 @@ function IconButton({
 Object.assign(__ds_scope, { IconButton });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/IconButton.jsx", error: String((e && e.message) || e) }); }
 
+// components/ImageCropDialog.jsx
+try { (() => {
+/**
+ * Odyssey DS — ImageCropDialog
+ * ---------------------------------------------------------------------------
+ * The one client-side crop + downscale dialog behind every "Add / Change
+ * picture" control in the product. It was extracted from the contact-avatar
+ * dialog when the **user profile picture** feature arrived, because two copies
+ * of a cropper on an untrusted-input path drift — and the copy with fewer eyes
+ * on it is the one that drifts first. Both surfaces now mount this component:
+ *
+ *   • a contact's image  — `subject="picture" | "logo"`, `fit="cover" | "contain"`
+ *   • the signed-in user's own profile picture — `subject="picture"`, `fit="cover"`
+ *
+ * What the dialog owns, and what the caller owns:
+ *   • It owns the source caps, the crop stage, the re-encode and the upload
+ *     *call*; `onUpload(dataUrl)` is the caller's delegate and must resolve
+ *     `{ ok: true }` or `{ ok: false, message }` — the message is the server's
+ *     own ProblemDetails text, rendered verbatim.
+ *   • It resolves the effective byte cap itself, as `min(globalCapBytes,
+ *     surfaceMegabytes)` — never `max`. A surface may tighten an instance-wide
+ *     cap; it must never override one an administrator has lowered. Pass the
+ *     live instance cap in `globalCapBytes`; pass the surface's own constant in
+ *     `surfaceMegabytes` (from the feature's limits class — never a literal).
+ *   • The caller owns the confirmation in front of *removal*; this dialog only
+ *     attaches and replaces.
+ *
+ * Accessibility, all inherited or explicit:
+ *   • The shell is `Modal`, so role, focus trap, focus return and Escape come
+ *     for free. No new interactive widget is introduced.
+ *   • Every control id is generated **per instance** (`React.useId`). Hardcoded
+ *     ids were safe in a single-mount dialog and are not safe here: two mounts
+ *     would break `<label for>` and `aria-describedby` on both.
+ *   • Zoom / Horizontal / Vertical are three labelled `<input type="range">`
+ *     controls, each arrow/Home/End operable by construction. Pointer drag on
+ *     the canvas is an **additional** affordance, never the only one.
+ *   • The `<canvas>` is `aria-hidden`; a canvas exposes no accessible structure,
+ *     so the preview state is written out as text beside it.
+ *   • One validation rule: a failure attributable to a control renders on that
+ *     control (`aria-invalid` + `aria-describedby` + focus, no `role="alert"`,
+ *     so it is announced once). A server / network failure goes to the
+ *     `role="alert"` region, carries the message verbatim, and does not move
+ *     focus — the crop is never lost.
+ */
+
+/** Source + stored caps shared by every crop surface. A feature's own limits
+ *  class (e.g. `UserProfileImageLimits`) supplies the stored megabyte cap; the
+ *  rest of the shape is identical everywhere and lives here once. */
+const IMAGE_CROP_LIMITS = {
+  maxSourceBytes: 20 * 1024 * 1024,
+  maxSourceDimension: 8192,
+  outputDimension: 512,
+  jpegQuality: 0.85,
+  types: ['image/png', 'image/jpeg', 'image/webp'],
+  typeLabel: 'PNG, JPEG or WebP'
+};
+const odcCropMb = bytes => `${Math.round(bytes / (1024 * 1024) * 10) / 10} MB`;
+function ImageCropDialog({
+  open = true,
+  title,
+  subject = 'picture',
+  fit = 'cover',
+  emptyIcon = 'person',
+  limits = IMAGE_CROP_LIMITS,
+  surfaceMegabytes = 2,
+  globalCapBytes,
+  currentSrc = null,
+  note,
+  onUpload,
+  onCancel,
+  onSaved
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    Modal,
+    Button,
+    MIcon,
+    FieldShell,
+    FileUpload
+  } = NS;
+  const {
+    useState,
+    useRef,
+    useEffect,
+    useCallback
+  } = React;
+  const L = limits;
+  const contain = fit === 'contain';
+  // min(), never max(): a surface tightens, it never widens.
+  const effectiveCap = Math.min(globalCapBytes || Infinity, surfaceMegabytes * 1024 * 1024);
+  const uid = React.useId().replace(/[^a-zA-Z0-9]/g, '');
+  const ids = {
+    file: `crop-file-${uid}`,
+    zoom: `crop-zoom-${uid}`,
+    x: `crop-x-${uid}`,
+    y: `crop-y-${uid}`
+  };
+  const [src, setSrc] = useState(currentSrc);
+  const [img, setImg] = useState(null);
+  const [zoom, setZoom] = useState(100);
+  const [px, setPx] = useState(0);
+  const [py, setPy] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [fileError, setFileError] = useState(null);
+  const [rows, setRows] = useState([]);
+  const [serverError, setServerError] = useState(null);
+  const [live, setLive] = useState('');
+  const canvasRef = useRef(null);
+  const dropRef = useRef(null);
+  const dragRef = useRef(null);
+  useEffect(() => {
+    if (!src) {
+      setImg(null);
+      return;
+    }
+    const i = new Image();
+    i.onload = () => setImg(i);
+    i.onerror = () => {
+      setImg(null);
+      setFileError(`Unable to read that image. Choose a ${L.typeLabel} file.`);
+    };
+    i.src = src;
+  }, [src, L.typeLabel]);
+  const draw = useCallback(() => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    const S = L.outputDimension;
+    cv.width = S;
+    cv.height = S;
+    const g = cv.getContext('2d');
+    g.clearRect(0, 0, S, S);
+    if (!img) return;
+    const base = contain ? Math.min(S / img.naturalWidth, S / img.naturalHeight) : Math.max(S / img.naturalWidth, S / img.naturalHeight);
+    const scale = base * (zoom / 100);
+    const dw = img.naturalWidth * scale,
+      dh = img.naturalHeight * scale;
+    const slackX = Math.max(0, (dw - S) / 2),
+      slackY = Math.max(0, (dh - S) / 2);
+    g.drawImage(img, (S - dw) / 2 + px / 100 * slackX, (S - dh) / 2 + py / 100 * slackY, dw, dh);
+  }, [img, zoom, px, py, contain, L.outputDimension]);
+  useEffect(() => {
+    draw();
+  }, [draw]);
+
+  // An attributable failure moves focus to the control it belongs to.
+  useEffect(() => {
+    if (!fileError) return;
+    const zone = dropRef.current && dropRef.current.querySelector('.odc-upload-drop');
+    if (zone) zone.focus();
+  }, [fileError]);
+  if (!Modal || !Button || !FileUpload) return null;
+  const reject = msg => {
+    setFileError(msg);
+    setRows([]);
+  };
+  const pick = file => {
+    setServerError(null);
+    if (!file) return;
+    if (L.types.indexOf(file.type) < 0) {
+      reject(`That file is a ${file.type || 'unknown type'}. Choose a ${L.typeLabel} image.`);
+      return;
+    }
+    if (file.size > L.maxSourceBytes) {
+      reject(`That file is ${odcCropMb(file.size)}. Choose an image of ${odcCropMb(L.maxSourceBytes)} or less.`);
+      return;
+    }
+    setFileError(null);
+    setRows(FileUpload.filesFromList ? FileUpload.filesFromList([file]) : []);
+    setZoom(100);
+    setPx(0);
+    setPy(0);
+    setSrc(URL.createObjectURL(file));
+  };
+  const reset = () => {
+    setZoom(100);
+    setPx(0);
+    setPy(0);
+  };
+  const save = async () => {
+    if (!img) {
+      setFileError(`Choose an image to use as this ${subject}.`);
+      return;
+    }
+    setServerError(null);
+    setBusy(true);
+    setLive(`Uploading ${subject}…`);
+    const encoded = canvasRef.current.toDataURL(contain ? 'image/png' : 'image/jpeg', L.jpegQuality);
+    const result = onUpload ? await onUpload(encoded) : {
+      ok: true
+    };
+    setBusy(false);
+    if (result && result.ok === false) {
+      setLive('');
+      setServerError(result.message || `Unable to save the ${subject}. Try again.`);
+      return;
+    }
+    setLive(`${subject.charAt(0).toUpperCase()}${subject.slice(1)} saved`);
+    if (onSaved) onSaved(encoded, result && result.version || undefined);
+  };
+  const onDown = e => {
+    if (!img) return;
+    dragRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      px,
+      py
+    };
+  };
+  const onMove = e => {
+    const d = dragRef.current;
+    if (!d) return;
+    const k = 0.55;
+    setPx(Math.max(-100, Math.min(100, d.px - (e.clientX - d.x) * k)));
+    setPy(Math.max(-100, Math.min(100, d.py - (e.clientY - d.y) * k)));
+  };
+  const endDrag = () => {
+    dragRef.current = null;
+  };
+  const pct = v => `${v} %`;
+  const offX = v => v === 0 ? 'centred' : `${Math.abs(v)} % ${v < 0 ? 'left of centre' : 'right of centre'}`;
+  const offY = v => v === 0 ? 'centred' : `${Math.abs(v)} % ${v < 0 ? 'above centre' : 'below centre'}`;
+  const stateText = img ? `Showing ${px === 0 && py === 0 ? 'the centre' : 'an off-centre area'} of your ${subject} at ${zoom} %.` : `No image chosen yet. The ${subject} is ${contain ? 'contained, never cropped, on a neutral ground' : 'cropped to a square and shown as a circle'}.`;
+  return /*#__PURE__*/React.createElement(Modal, {
+    open: open,
+    title: title || `Crop ${subject}`,
+    subtitle: `${L.typeLabel} · up to ${odcCropMb(L.maxSourceBytes)} · stored at ${L.outputDimension} × ${L.outputDimension} · max ${odcCropMb(effectiveCap)}`,
+    icon: "crop",
+    className: "odc-crop-dialog",
+    onClose: onCancel,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onCancel
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      icon: "check",
+      loading: busy,
+      onClick: save
+    }, "Save"))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "odc-crop-body",
+    "aria-busy": busy || undefined
+  }, serverError ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-crop-alert",
+    role: "alert"
+  }, MIcon ? /*#__PURE__*/React.createElement(MIcon, {
+    name: "error_outline",
+    size: 18
+  }) : null, /*#__PURE__*/React.createElement("span", null, serverError)) : null, FieldShell ? /*#__PURE__*/React.createElement(FieldShell, {
+    label: img ? 'Source image' : `Choose a ${subject}`
+  }, /*#__PURE__*/React.createElement("div", {
+    ref: dropRef
+  }, /*#__PURE__*/React.createElement(FileUpload, {
+    id: ids.file,
+    compact: true,
+    multiple: false,
+    showKinds: false,
+    accept: L.types.join(','),
+    files: rows,
+    onChange: next => {
+      setRows(next);
+      if (!next.length) {
+        setSrc(null);
+        setFileError(null);
+      }
+    },
+    onFiles: files => pick(files[0]),
+    error: fileError || undefined,
+    hint: `${L.typeLabel} · up to ${odcCropMb(L.maxSourceBytes)} · ${L.maxSourceDimension} × ${L.maxSourceDimension} px · one image`
+  }))) : null, /*#__PURE__*/React.createElement("div", {
+    className: "odc-crop-stage"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: `odc-crop-frame${contain ? ' ground' : ' round'}`,
+    onPointerDown: onDown,
+    onPointerMove: onMove,
+    onPointerUp: endDrag,
+    onPointerLeave: endDrag
+  }, /*#__PURE__*/React.createElement("canvas", {
+    ref: canvasRef,
+    "aria-hidden": "true"
+  }), !img && MIcon ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-crop-frame-empty",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: emptyIcon,
+    size: 30
+  })) : null), /*#__PURE__*/React.createElement("div", {
+    className: "odc-crop-controls"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "odc-crop-state"
+  }, stateText), /*#__PURE__*/React.createElement("label", {
+    className: "odc-crop-ctl",
+    htmlFor: ids.zoom
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-crop-ctl-l"
+  }, "Zoom", /*#__PURE__*/React.createElement("b", null, pct(zoom))), /*#__PURE__*/React.createElement("input", {
+    id: ids.zoom,
+    type: "range",
+    className: "odc-range",
+    min: 100,
+    max: 300,
+    step: 5,
+    value: zoom,
+    disabled: !img,
+    "aria-valuetext": pct(zoom),
+    onChange: e => setZoom(Number(e.target.value))
+  })), /*#__PURE__*/React.createElement("label", {
+    className: "odc-crop-ctl",
+    htmlFor: ids.x
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-crop-ctl-l"
+  }, "Horizontal", /*#__PURE__*/React.createElement("b", null, offX(px))), /*#__PURE__*/React.createElement("input", {
+    id: ids.x,
+    type: "range",
+    className: "odc-range",
+    min: -100,
+    max: 100,
+    step: 2,
+    value: px,
+    disabled: !img,
+    "aria-valuetext": offX(px),
+    onChange: e => setPx(Number(e.target.value))
+  })), /*#__PURE__*/React.createElement("label", {
+    className: "odc-crop-ctl",
+    htmlFor: ids.y
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-crop-ctl-l"
+  }, "Vertical", /*#__PURE__*/React.createElement("b", null, offY(py))), /*#__PURE__*/React.createElement("input", {
+    id: ids.y,
+    type: "range",
+    className: "odc-range",
+    min: -100,
+    max: 100,
+    step: 2,
+    value: py,
+    disabled: !img,
+    "aria-valuetext": offY(py),
+    onChange: e => setPy(Number(e.target.value))
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "odc-crop-reset"
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "text",
+    icon: "restart_alt",
+    onClick: reset
+  }, "Reset")))), /*#__PURE__*/React.createElement("p", {
+    className: "odc-crop-note"
+  }, note || (contain ? 'Saved as a PNG with its transparency and shown contained on a neutral ground — a wordmark is never cut. Metadata is removed from the stored file.' : 'Saved as a square JPEG and shown as a circle. Location, capture time and device details are removed from the stored file.')), /*#__PURE__*/React.createElement("span", {
+    className: "odc-crop-live",
+    role: "status",
+    "aria-live": "polite"
+  }, live)));
+}
+Object.assign(__ds_scope, { IMAGE_CROP_LIMITS, ImageCropDialog });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/ImageCropDialog.jsx", error: String((e && e.message) || e) }); }
+
 // components/InfoTile.jsx
 try { (() => {
 /**
@@ -10731,6 +11085,163 @@ function ProblemAlert({
 }
 Object.assign(__ds_scope, { ProblemAlert });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/ProblemAlert.jsx", error: String((e && e.message) || e) }); }
+
+// components/ProfilePictureField.jsx
+try { (() => {
+/**
+ * Odyssey DS — ProfilePictureField
+ * ---------------------------------------------------------------------------
+ * The identity control on a person's **own** account page: their picture, the
+ * button that attaches or replaces it, and the button that removes it. It is
+ * the only write surface for a user profile picture — there is no
+ * administrator path, by design, so this field never takes a target user.
+ *
+ * Presence is driven by `version` (the read DTO's image-version token), never
+ * by probing the byte endpoint: a non-null token means "renderable by this
+ * caller", and it is also the cache key that re-keys `src` on a replace. With
+ * no token the field renders the monogram and issues no request, and the button
+ * reads **Add picture**; with one it reads **Change picture** and a **Remove
+ * picture** button appears beside it.
+ *
+ * A load failure is silent. `Avatar.onError` swaps back to the monogram and
+ * nothing is surfaced — an identity token that cannot load is not the user's
+ * problem to act on. The failed state is per-`version`, so a replace clears it.
+ *
+ * `disabled` + `disabledReason` cover the one honest dead end: a session that
+ * predates the read claim's deploy can upload successfully and see nothing, so
+ * the control is disabled rather than accepting a write it cannot show. The
+ * same disable covers **Remove**, which is a self-service erasure control — so
+ * the reason must say how to clear it ("Sign out and back in…"), and it must
+ * never be phrased as a failure the user caused.
+ *
+ * Size is `lg` (56 px), the same step the page header uses, and it is not
+ * configurable: `Avatar` writes its size inline, so a page cannot enlarge it
+ * without a new size step on the atom itself.
+ *
+ * Two variants. `row` (default) is the labelled control with text buttons —
+ * the discoverable default for a settings page. `overlay` makes the mark
+ * itself the control: the Change / Remove actions sit on the picture and
+ * appear on hover — an edit pencil, plus a remove action where there is
+ * something to remove — for a card that already shows the avatar and cannot
+ * spare a second block. Hover is never the only affordance — the buttons are
+ * always-rendered, focusable buttons (so `:focus-within` reveals them for
+ * keyboard and touch) and a small pencil badge stays visible.
+ *
+ * The confirmation in front of removal belongs to the caller — the field raises
+ * `onRemove` and nothing else, so the copy stays with the page that knows whose
+ * picture it is. Announce the completed removal through a live region
+ * (`LiveAnnouncer`); this field does not own one.
+ */
+function ProfilePictureField({
+  src = null,
+  version = null,
+  initials,
+  alt = 'Your profile picture',
+  tone = 'tide',
+  label = 'Profile picture',
+  hint,
+  busy = false,
+  removing = false,
+  disabled = false,
+  disabledReason,
+  variant = 'row',
+  onAdd,
+  onRemove,
+  className = ''
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    Avatar,
+    Button,
+    MIcon
+  } = NS;
+  const [failed, setFailed] = React.useState(false);
+  React.useEffect(() => {
+    setFailed(false);
+  }, [version, src]);
+  if (!Avatar || !Button) return null;
+  const has = !!(version && src && !failed);
+  const showImage = !!(version && src) && !failed;
+  const mark = showImage ? /*#__PURE__*/React.createElement(Avatar, {
+    size: "lg",
+    src: src,
+    alt: alt,
+    onError: () => setFailed(true)
+  }) : /*#__PURE__*/React.createElement(Avatar, {
+    size: "lg",
+    initials: initials,
+    tone: tone,
+    alt: alt
+  });
+
+  /* variant="overlay" — the mark IS the control: the actions sit on top of the
+     picture and appear on hover. Hover alone is never an affordance here, so
+     two things are always true: the buttons are real, always-rendered buttons
+     (so Tab reaches them and `:focus-within` reveals the overlay, which is
+     also what makes them work on touch), and a small camera badge stays
+     visible so the control is discoverable without hovering at all. */
+  if (variant === 'overlay') {
+    return /*#__PURE__*/React.createElement("div", {
+      className: `odc-picedit${disabled ? ' disabled' : ''}${className ? ' ' + className : ''}`
+    }, mark, !disabled ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      className: "odc-picedit-badge",
+      "aria-hidden": "true"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-icons"
+    }, "edit")), /*#__PURE__*/React.createElement("span", {
+      className: "odc-picedit-actions"
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "odc-picedit-btn",
+      onClick: onAdd,
+      disabled: busy || removing,
+      "aria-label": has ? 'Change profile picture' : 'Add profile picture',
+      title: has ? 'Change profile picture' : 'Add profile picture'
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, "edit")), has ? /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "odc-picedit-btn danger",
+      onClick: onRemove,
+      disabled: busy || removing,
+      "aria-label": "Remove profile picture",
+      title: "Remove profile picture"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, "delete_outline")) : null)) : null);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-picfield${disabled ? ' disabled' : ''}${className ? ' ' + className : ''}`
+  }, mark, /*#__PURE__*/React.createElement("div", {
+    className: "odc-picfield-body"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "odc-picfield-label"
+  }, label), /*#__PURE__*/React.createElement("p", {
+    className: "odc-picfield-hint"
+  }, hint || (has ? 'Shown wherever you appear in this workspace. Remove it at any time and your initials come back.' : 'Your initials are shown until you add one.')), /*#__PURE__*/React.createElement("div", {
+    className: "odc-picfield-actions"
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "outlined",
+    icon: "photo_camera",
+    disabled: disabled || busy || removing,
+    onClick: onAdd
+  }, has ? 'Change picture' : 'Add picture'), has ? /*#__PURE__*/React.createElement(Button, {
+    variant: "text",
+    icon: "delete_outline",
+    loading: removing,
+    disabled: disabled || busy || removing,
+    onClick: onRemove
+  }, "Remove picture") : null), disabled && disabledReason ? /*#__PURE__*/React.createElement("p", {
+    className: "odc-picfield-note"
+  }, MIcon ? /*#__PURE__*/React.createElement(MIcon, {
+    name: "info",
+    size: 15
+  }) : null, /*#__PURE__*/React.createElement("span", null, disabledReason)) : null));
+}
+Object.assign(__ds_scope, { ProfilePictureField });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/ProfilePictureField.jsx", error: String((e && e.message) || e) }); }
 
 // components/RadioGroup.jsx
 try { (() => {
@@ -17568,7 +18079,10 @@ const AccOverview = ({
    ============================================================= */
 const AccIdentity = ({
   profile,
-  onSave
+  onSave,
+  pic,
+  onPic,
+  picClaimStale
 }) => {
   const {
     useState
@@ -17608,9 +18122,18 @@ const AccIdentity = ({
     sub: "Your name and personal details. This is how you appear to other people in this workspace."
   }), /*#__PURE__*/React.createElement("div", {
     className: "acc-profile-preview"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "acc-avatar-xl"
-  }, profileInitials(draft)), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(ProfilePictureControl, {
+    variant: "overlay",
+    userId: ACC_USER.userId,
+    initials: profileInitials(draft),
+    version: pic.version,
+    src: pic.src,
+    claimStale: picClaimStale,
+    onChange: (version, src) => onPic({
+      version,
+      src
+    })
+  }), /*#__PURE__*/React.createElement("div", {
     className: "acc-profile-preview-id"
   }, /*#__PURE__*/React.createElement("div", {
     className: "acc-profile-preview-name"
@@ -17909,6 +18432,14 @@ function AccountPage({
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const resolvedName = resolveProfileName(profile) || `@${ACC_USER.username}`;
   const resolvedInitials = profileInitials(profile);
+  // The profile picture's ImageVersion token + the bytes behind it. The PAGE
+  // owns it — the control in the Profile card and the header's leading mark
+  // both read it, so a replace re-keys the URL for both with no reload. null =
+  // no picture: render the monogram and issue no request.
+  const [pic, setPic] = useState({
+    version: null,
+    src: null
+  });
 
   // In-page search across the stacked section cards. Empty query = show all.
   const [query, setQuery] = useState('');
@@ -17993,7 +18524,14 @@ function AccountPage({
     icon: /*#__PURE__*/React.createElement("span", {
       className: "ph-avatar",
       "aria-hidden": "true"
-    }, resolvedInitials),
+    }, pic.version && pic.src ? /*#__PURE__*/React.createElement("img", {
+      src: pic.src,
+      alt: "",
+      onError: () => setPic({
+        version: null,
+        src: null
+      })
+    }) : resolvedInitials),
     sub: `${ACC_USER.email} · @${ACC_USER.username}`,
     chips: [window.RolePill ? /*#__PURE__*/React.createElement(RolePill, {
       key: "role",
@@ -18063,7 +18601,10 @@ function AccountPage({
     className: "acc-list-group"
   }, /*#__PURE__*/React.createElement(AccIdentity, {
     profile: profile,
-    onSave: setProfile
+    onSave: setProfile,
+    pic: pic,
+    onPic: setPic,
+    picClaimStale: false
   })), matches('email') && /*#__PURE__*/React.createElement("div", {
     id: "acc-sec-email",
     className: "acc-list-group"
@@ -46207,6 +46748,269 @@ Object.assign(window, {
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/Preferences.jsx", error: String((e && e.message) || e) }); }
 
+// ui_kits/web/ProfilePicture.jsx
+try { (() => {
+/* =============================================================
+   ProfilePicture.jsx — the User Profile Picture feature, kit side.
+
+   One picture per user, owned by the user. Three surfaces:
+     • /account  — the control in the profile card (ProfilePictureControl)
+                   + the page-header mark (Account.jsx renders it)
+     • /users    — the admin list row mark and the detail-panel mark
+                   (Users.jsx, via kitUserProfileImage)
+
+   What this file is faithful to:
+   - **The ImageVersion token drives every state**, never a probe of the byte
+     endpoint. `version == null` means "render the monogram and issue no
+     request"; a non-null token means "renderable by this caller" and is the
+     cache key that re-keys the image URL on a replace.
+   - The token belongs to the PAGE, not to this control: Account.jsx holds it
+     and feeds both the control and the header, so an upload updates both
+     without a reload. A section-local token would satisfy the upload and leave
+     the header stale.
+   - **Storage is separate from the domain file store.** Nothing here goes near
+     the Files surfaces; the read URL is its own resource,
+     `/api/profile-images/{userId}?v={version}`, and the writes are self-scoped
+     with no id at all (`POST` / `DELETE /api/profile/image`).
+   - Every number comes from PROFILE_IMAGE_LIMITS (the kit's stand-in for
+     `UserProfileImageLimits`) tightened against the live instance cap. No
+     literal cap at a call site.
+   - The crop dialog is the shared DS `ImageCropDialog`, the same component the
+     contact image mounts — not a second cropper.
+   - An administratively **disabled** account reads as absent: the projection
+     nulls the token, so no <img> is emitted and nothing flickers. A transient
+     lockout does NOT hide a picture (that would leak a failed-login signal).
+   ============================================================= */
+
+/* ---- UserProfileImageLimits (Odyssey.Dtos.Application) ---- */
+const PROFILE_IMAGE_LIMITS = {
+  // Stored — the server is authoritative. Effective cap is
+  // min(instance upload cap, maxImageBytes): a surface tightens, never widens.
+  maxImageBytes: 2 * 1024 * 1024,
+  maxImageMegabytes: 2,
+  // the whole-megabyte form TightenTo() takes
+  maxImageDimension: 1024,
+  // Source — browser-side only, what the crop dialog will open.
+  maxSourceBytes: 20 * 1024 * 1024,
+  maxSourceDimension: 8192,
+  // What the crop writes.
+  outputDimension: 512,
+  jpegQuality: 0.85,
+  types: ['image/png', 'image/jpeg', 'image/webp'],
+  typeLabel: 'PNG, JPEG or WebP'
+};
+
+/* The read URL — composed in one place, exactly as the typed API client does
+   (`ProfileImagesApiClient.ImageUrl(userId, version)`). `v` is a cache key
+   only: the action does not bind it, so it can never affect the response. */
+const profileImageUrl = (userId, version) => `/api/profile-images/${userId}?v=${version}`;
+
+/* Deterministic stand-in imagery — a striped placeholder with a monospace
+   caption, so nothing pretends to be a photograph the kit does not have. */
+const PROFILE_IMAGE_CACHE = {};
+const profileImagePlaceholder = (hue = 150, label = 'PORTRAIT') => {
+  const key = `${hue}:${label}`;
+  if (PROFILE_IMAGE_CACHE[key]) return PROFILE_IMAGE_CACHE[key];
+  const S = 512,
+    c = document.createElement('canvas');
+  c.width = S;
+  c.height = S;
+  const g = c.getContext('2d');
+  g.fillStyle = `oklch(0.32 0.05 ${hue})`;
+  g.fillRect(0, 0, S, S);
+  g.strokeStyle = `oklch(0.80 0.14 ${hue} / 0.42)`;
+  g.lineWidth = 6;
+  for (let i = -S; i < S * 2; i += 26) {
+    g.beginPath();
+    g.moveTo(i, 0);
+    g.lineTo(i + S, S);
+    g.stroke();
+  }
+  g.fillStyle = 'oklch(0.94 0.02 200)';
+  g.font = `500 ${Math.round(S * 0.085)}px ui-monospace, monospace`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(label, S / 2, S / 2);
+  PROFILE_IMAGE_CACHE[key] = c.toDataURL('image/png');
+  return PROFILE_IMAGE_CACHE[key];
+};
+
+/* `ExistingUser.ProfileImageVersion`, per admin row — the projection every
+   /users surface reads. Two rules live here, both load-bearing:
+     • the token is nulled for an administratively DISABLED subject, because
+       the read path 404s one; nulling it in the projection is what stops a
+       row rendering an <img>, taking the 404 and flickering to a monogram.
+     • it is NOT derived from `enabled` in general: a transient lockout leaves
+       the picture alone. Deriving one from the other would turn the read into
+       a password-spray confirmation channel.
+   Whether a seeded user has a picture at all is deterministic from the id. */
+const kitUserProfileImage = u => {
+  if (!u || !u.id) return {
+    version: null,
+    src: null
+  };
+  const n = parseInt(u.id.slice(0, 4), 16);
+  const has = n % 3 !== 0;
+  if (!has || u.enabled === false) return {
+    version: null,
+    src: null
+  };
+  const version = u.id.slice(0, 8);
+  return {
+    version,
+    src: profileImagePlaceholder(90 + n % 5 * 55),
+    url: profileImageUrl(u.id, version)
+  };
+};
+
+/* =============================================================
+   ProfilePictureControl — the /account write surface.
+
+   It owns the crop dialog, the removal confirmation and its own polite
+   announcement; it does NOT own the token (the page does, so the header
+   re-renders with it). Removal is behind a confirmation because it destroys
+   the bytes — there is no image history and no "previous pictures".
+   ============================================================= */
+const ProfilePictureControl = ({
+  userId,
+  initials,
+  version,
+  src,
+  onChange,
+  // (version, src) — null, null clears
+  claimStale = false,
+  // the caller's session predates profile-images.read
+  globalCapBytes = 64 * 1024 * 1024,
+  uploadOutcome = 'ok',
+  variant = 'row'
+}) => {
+  const {
+    useState
+  } = React;
+  const DS = window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    ProfilePictureField,
+    ImageCropDialog,
+    IMAGE_CROP_LIMITS
+  } = DS;
+  const [cropping, setCropping] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [live, setLive] = useState('');
+  const L = PROFILE_IMAGE_LIMITS;
+  const cap = Math.min(globalCapBytes, L.maxImageBytes);
+  const mb = b => `${Math.round(b / (1024 * 1024) * 10) / 10} MB`;
+
+  // The upload delegate. A rejection carries the server's own ProblemDetails
+  // message, which names the actual limit — never a compiled-in literal.
+  const upload = () => new Promise(res => setTimeout(() => {
+    if (uploadOutcome === 'too-large') {
+      res({
+        ok: false,
+        message: `Unable to save the picture. The image must be ${mb(cap)} or smaller. Crop a smaller area, or choose a different file.`
+      });
+    } else if (uploadOutcome === 'rate-limited') {
+      res({
+        ok: false,
+        message: 'Unable to save the picture. You have changed it too many times in the last few minutes. Try again in 4 minutes.'
+      });
+    } else if (uploadOutcome === 'conflict') {
+      res({
+        ok: false,
+        message: 'Unable to save the picture. It was changed in another tab a moment ago. Reload the page and try again.'
+      });
+    } else {
+      // 200 with the NEW ImageVersion — not 204: the client needs the token to
+      // re-key the image URL, or the browser never re-requests.
+      res({
+        ok: true,
+        version: Math.random().toString(16).slice(2, 10)
+      });
+    }
+  }, 700));
+  const remove = () => {
+    setRemoving(true);
+    setTimeout(() => {
+      setRemoving(false);
+      setConfirming(false);
+      onChange(null, null);
+      setLive('Profile picture removed');
+    }, 600);
+  };
+  if (!ProfilePictureField) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    className: `acc-picture${variant === 'overlay' ? ' overlay' : ''}`
+  }, /*#__PURE__*/React.createElement(ProfilePictureField, {
+    variant: variant,
+    version: version,
+    src: src,
+    initials: initials,
+    alt: "Your profile picture",
+    disabled: claimStale,
+    disabledReason: claimStale ? 'Sign out and back in to manage your profile picture.' : undefined,
+    removing: removing,
+    onAdd: () => setCropping(true),
+    onRemove: () => setConfirming(true)
+  }), variant === 'overlay' ? claimStale ? /*#__PURE__*/React.createElement("p", {
+    className: "acc-picture-meta"
+  }, "Sign out and back in to manage your profile picture.") : null : /*#__PURE__*/React.createElement("p", {
+    className: "acc-picture-meta"
+  }, claimStale ? 'Sign out and back in to manage your profile picture.' : version ? /*#__PURE__*/React.createElement(React.Fragment, null, "Stored at ", L.outputDimension, " \xD7 ", L.outputDimension, " \xB7 served from ", /*#__PURE__*/React.createElement("code", null, profileImageUrl(userId, version))) : /*#__PURE__*/React.createElement(React.Fragment, null, L.typeLabel, " \xB7 up to ", mb(cap), " \xB7 stored at ", L.outputDimension, " \xD7 ", L.outputDimension, ", square")), cropping && ImageCropDialog ? /*#__PURE__*/React.createElement(ImageCropDialog, {
+    title: "Crop your profile picture",
+    subject: "picture",
+    fit: "cover",
+    emptyIcon: "person",
+    limits: IMAGE_CROP_LIMITS || L,
+    surfaceMegabytes: L.maxImageMegabytes,
+    globalCapBytes: globalCapBytes,
+    onUpload: upload,
+    onSaved: (dataUrl, newVersion) => {
+      setCropping(false);
+      onChange(newVersion || Math.random().toString(16).slice(2, 10), dataUrl);
+      setLive('Profile picture saved');
+    },
+    onCancel: () => setCropping(false)
+  }) : null, confirming ? /*#__PURE__*/React.createElement(Modal, {
+    title: "Remove profile picture?",
+    icon: "delete_outline",
+    iconTone: "error",
+    onClose: () => {
+      if (!removing) setConfirming(false);
+    },
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      disabled: removing,
+      onClick: () => setConfirming(false)
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      className: "danger",
+      color: "",
+      icon: "delete_outline",
+      loading: removing,
+      onClick: remove
+    }, "Remove picture"))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "col gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: '400 14px/1.65 var(--font-sans)',
+      color: 'var(--mud-palette-text-primary)'
+    }
+  }, "The stored image is deleted, not hidden \u2014 your initials come back everywhere you appear, on this page and in the administrator's user list. There is no picture history, so this cannot be undone. You can add a new picture at any time."))) : null, /*#__PURE__*/React.createElement("span", {
+    className: "acc-picture-live",
+    role: "status",
+    "aria-live": "polite"
+  }, live));
+};
+Object.assign(window, {
+  PROFILE_IMAGE_LIMITS,
+  profileImageUrl,
+  profileImagePlaceholder,
+  kitUserProfileImage,
+  ProfilePictureControl
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/ProfilePicture.jsx", error: String((e && e.message) || e) }); }
+
 // ui_kits/web/ResetPassword.jsx
 try { (() => {
 /* ResetPassword — the /reset-password?code=<token> page (mirrors
@@ -52129,7 +52933,42 @@ const ClaimChips = ({
   }, p)));
 };
 
-/* ---------- 7. Expanded DETAIL (read view) ---------- */
+/* ---------- 7. The row identity mark ----------
+   The picture where the subject has one, the role-tinted monogram where they
+   do not. Presence is `ExistingUser.ProfileImageVersion` (kitUserProfileImage)
+   — never a probe of the byte endpoint, so a 50-row page issues ZERO
+   speculative requests and a disabled subject renders no <img> at all.
+   The failed state is PER ROW and reset when the row's token changes; one
+   page-level flag would blank every avatar after a single failure. A failure
+   is silent — no glyph, no toast. */
+const UaUserMark = ({
+  u,
+  size = 'md',
+  alt = ''
+}) => {
+  const {
+    useState,
+    useEffect
+  } = React;
+  const img = kitUserProfileImage(u);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [img.version]);
+  return img.version && !failed ? /*#__PURE__*/React.createElement(Avatar, {
+    size: size,
+    src: img.src,
+    alt: alt,
+    onError: () => setFailed(true)
+  }) : /*#__PURE__*/React.createElement(Avatar, {
+    size: size,
+    initials: u.initials,
+    tone: uaRoleTone(u.role),
+    alt: alt
+  });
+};
+
+/* ---------- 7b. Expanded DETAIL (read view) ---------- */
 const UserDetail = ({
   u,
   canEdit,
@@ -52137,12 +52976,18 @@ const UserDetail = ({
 }) => /*#__PURE__*/React.createElement("div", {
   className: "acct-detail"
 }, /*#__PURE__*/React.createElement("div", {
-  className: "meta-grid"
-}, /*#__PURE__*/React.createElement(MetaTile, {
+  className: "ua-detail-identity"
+}, /*#__PURE__*/React.createElement(UaUserMark, {
+  u: u,
+  size: "lg",
+  alt: u.displayName
+}), /*#__PURE__*/React.createElement(MetaTile, {
   label: "User ID",
   value: u.id,
   mono: true
-}), /*#__PURE__*/React.createElement(MetaTile, {
+})), /*#__PURE__*/React.createElement("div", {
+  className: "meta-grid"
+}, /*#__PURE__*/React.createElement(MetaTile, {
   label: "Username",
   value: u.userName || '—',
   mono: true
@@ -52617,9 +53462,8 @@ function Users({
       sortValue: u => uaSortVal(u, 'displayName'),
       cell: (u, ctx) => /*#__PURE__*/React.createElement("div", {
         className: "ua-user-cell"
-      }, /*#__PURE__*/React.createElement(Avatar, {
-        initials: u.initials,
-        tone: uaRoleTone(u.role)
+      }, /*#__PURE__*/React.createElement(UaUserMark, {
+        u: u
       }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
         className: "ua-user-name",
         style: {
@@ -62779,6 +63623,10 @@ __ds_ns.FormRow = __ds_scope.FormRow;
 
 __ds_ns.IconButton = __ds_scope.IconButton;
 
+__ds_ns.IMAGE_CROP_LIMITS = __ds_scope.IMAGE_CROP_LIMITS;
+
+__ds_ns.ImageCropDialog = __ds_scope.ImageCropDialog;
+
 __ds_ns.InfoTile = __ds_scope.InfoTile;
 
 __ds_ns.InfoTileGrid = __ds_scope.InfoTileGrid;
@@ -62828,6 +63676,8 @@ __ds_ns.POLICY_FILE_TYPES = __ds_scope.POLICY_FILE_TYPES;
 __ds_ns.PolicyFileTypeSelect = __ds_scope.PolicyFileTypeSelect;
 
 __ds_ns.ProblemAlert = __ds_scope.ProblemAlert;
+
+__ds_ns.ProfilePictureField = __ds_scope.ProfilePictureField;
 
 __ds_ns.RadioGroup = __ds_scope.RadioGroup;
 

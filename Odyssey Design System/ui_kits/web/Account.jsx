@@ -104,7 +104,7 @@ const AccOverview = ({ user, profile, tfa, onGo }) => {
    First/Last (required), Date of birth + Sex (required), Middle name,
    Title, Display name (optional). Owner-only — no admin read/write.
    ============================================================= */
-const AccIdentity = ({ profile, onSave }) => {
+const AccIdentity = ({ profile, onSave, pic, onPic, picClaimStale }) => {
   const { useState } = React;
   const [draft, setDraft] = useState(profile);
   const [saved, setSaved] = useState(false);
@@ -134,9 +134,20 @@ const AccIdentity = ({ profile, onSave }) => {
         <AccCardHead icon="badge" title="Your profile"
           sub="Your name and personal details. This is how you appear to other people in this workspace." />
 
-        {/* Live preview of the resolved label + avatar the rest of the app shows */}
+        {/* The preview mark IS the picture control: Change / Remove appear over
+            the image on hover, and on focus for keyboard and touch. The token
+            it writes belongs to the PAGE (see AccountPage), so the header mark
+            re-renders with it; a section-local token would leave the header
+            showing the monogram after a successful upload. */}
         <div className="acc-profile-preview">
-          <span className="acc-avatar-xl">{profileInitials(draft)}</span>
+          <ProfilePictureControl
+            variant="overlay"
+            userId={ACC_USER.userId}
+            initials={profileInitials(draft)}
+            version={pic.version}
+            src={pic.src}
+            claimStale={picClaimStale}
+            onChange={(version, src) => onPic({ version, src })} />
           <div className="acc-profile-preview-id">
             <div className="acc-profile-preview-name">{resolved || 'Your name'}</div>
             <div className="acc-profile-preview-meta">
@@ -331,6 +342,11 @@ function AccountPage({ onLogout }) {
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const resolvedName = resolveProfileName(profile) || `@${ACC_USER.username}`;
   const resolvedInitials = profileInitials(profile);
+  // The profile picture's ImageVersion token + the bytes behind it. The PAGE
+  // owns it — the control in the Profile card and the header's leading mark
+  // both read it, so a replace re-keys the URL for both with no reload. null =
+  // no picture: render the monogram and issue no request.
+  const [pic, setPic] = useState({ version: null, src: null });
 
   // In-page search across the stacked section cards. Empty query = show all.
   const [query, setQuery] = useState('');
@@ -393,7 +409,11 @@ function AccountPage({ onLogout }) {
     <div className="col gap-6">
       <PageHeader
         title={resolvedName}
-        icon={<span className="ph-avatar" aria-hidden="true">{resolvedInitials}</span>}
+        icon={<span className="ph-avatar" aria-hidden="true">
+          {pic.version && pic.src
+            ? <img src={pic.src} alt="" onError={() => setPic({ version: null, src: null })} />
+            : resolvedInitials}
+        </span>}
         sub={`${ACC_USER.email} · @${ACC_USER.username}`}
         chips={[
           window.RolePill ? <RolePill key="role" role={ACC_USER.role} /> : { label: ACC_USER.role, tone: 'outline' },
@@ -434,7 +454,7 @@ function AccountPage({ onLogout }) {
           single scrolling list of cards (mirrors the Preferences page).
           Filtered live by the header Search region. */}
       <div className="acc-list">
-        {matches('profile')     && <div id="acc-sec-profile"     className="acc-list-group"><AccIdentity profile={profile} onSave={setProfile} /></div>}
+        {matches('profile')     && <div id="acc-sec-profile"     className="acc-list-group"><AccIdentity profile={profile} onSave={setProfile} pic={pic} onPic={setPic} picClaimStale={false} /></div>}
         {matches('email')       && <div id="acc-sec-email"       className="acc-list-group"><AccProfile user={ACC_USER} /></div>}
         {matches('password')    && <div id="acc-sec-password"    className="acc-list-group"><AccPassword /></div>}
         {matches('twofa')       && <div id="acc-sec-twofa"       className="acc-list-group"><AccountTwoFactor tfa={tfa} setTfa={setTfa} /></div>}
