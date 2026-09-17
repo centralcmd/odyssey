@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Swashbuckle.AspNetCore.Annotations;
 
+using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 
 namespace Odyssey.Api.Controllers;
@@ -18,12 +19,18 @@ public class TransactionController : ControllerBase
     private readonly ILogger<TransactionController> logger;
     private readonly TransactionService transactionService;
     private readonly FileService fileService;
+    private readonly IUserDisplayNameResolver displayNames;
 
-    public TransactionController(ILogger<TransactionController> logger, TransactionService transactionService, FileService fileService)
+    public TransactionController(
+        ILogger<TransactionController> logger,
+        TransactionService transactionService,
+        FileService fileService,
+        IUserDisplayNameResolver displayNames)
     {
         this.logger = logger;
         this.transactionService = transactionService;
         this.fileService = fileService;
+        this.displayNames = displayNames;
     }
     
     [HttpGet(Name = "GetTransactions")]
@@ -39,6 +46,7 @@ public class TransactionController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await transactionService.ListAsync(query, cancellationToken);
+        await displayNames.EnrichFileAttributionAsync(User, result.Items, cancellationToken);
         return Ok(result);
     }
 
@@ -71,6 +79,7 @@ public class TransactionController : ControllerBase
             return this.NotFoundProblem($"Transaction ID {id} not found.");
         }
 
+        await displayNames.EnrichFileAttributionAsync(User, [transaction], cancellationToken);
         return Ok(transaction);
     }
     
@@ -147,7 +156,8 @@ public class TransactionController : ControllerBase
         {
             return this.NotFoundProblem($"Transaction ID {transactionId} not found.");
         }
-        
+
+        await displayNames.EnrichFileAttributionAsync(User, transaction.TransactionFiles, cancellationToken);
         return Ok(transaction.TransactionFiles);
     }
 

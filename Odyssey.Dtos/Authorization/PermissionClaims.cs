@@ -159,13 +159,23 @@ public static class PermissionClaims
     ///
     /// <para>
     /// The tempting argument for claim-free access — a caller can only fetch a picture for someone they
-    /// already see <i>named</i> — is <b>false</b> here:
+    /// already see <i>named</i> — is <b>false</b> here, and that is why the claim exists.
     /// <c>ExistingTransactionFile.AttachedByUserId</c>, <c>ExistingAccountFile.AttachedByUserId</c> and
-    /// the nested <c>ExistingFileMetadata.UploadedByUserId</c> return raw user ids with no name
-    /// attached, and Guest holds <c>transactions.read</c>, <c>accounts.read</c> and <c>files.read</c>.
-    /// So a Guest can harvest ids and build a face↔id mapping for people the application never named to
-    /// them. Revoking this claim from Guest is the supported way to narrow who sees colleagues'
-    /// pictures.
+    /// the nested <c>ExistingFileMetadata.UploadedByUserId</c> returned raw user ids with no name
+    /// attached, and Guest holds <c>transactions.read</c>, <c>accounts.read</c> and <c>files.read</c>,
+    /// so a Guest could harvest ids and build a face↔id mapping for people the application never named
+    /// to them. Issue #106 routed those three fields through <c>IUserDisplayNameResolver</c> on the
+    /// transaction and account surfaces, so each now carries a claim-conditional label beside its id.
+    /// </para>
+    ///
+    /// <para>
+    /// That does <b>not</b> retire the claim, for two reasons. It is a revocation lever that had to
+    /// exist before release regardless — revoking it from Guest is still the supported way to narrow who
+    /// sees colleagues' pictures. And the premise is not fully closed: <c>ExistingTaxStatementFile</c>
+    /// (reachable with <c>taxes.read</c>, which Guest also holds) still returns a bare
+    /// <c>AttachedByUserId</c> and a bare nested <c>UploadedByUserId</c>, as do the contract, policy
+    /// renewal and insurance file surfaces behind claims Guest does not hold. Those were outside issue
+    /// #106's scope and need the same treatment before the harvesting primitive is gone.
     /// </para>
     ///
     /// <para>

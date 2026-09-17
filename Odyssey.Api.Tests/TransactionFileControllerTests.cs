@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Odyssey.Api.Controllers;
+using Odyssey.Api.Identity;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.Journal;
@@ -33,7 +34,7 @@ public class TransactionFileControllerTests
             .Options);
         var fileService = new FileService(financeContext, new FileValidationService());
         var transactionService = new TransactionService(financeContext, new ContactLookup(journalContext));
-        var controller = new TransactionController(NullLogger<TransactionController>.Instance, transactionService, fileService);
+        var controller = new TransactionController(NullLogger<TransactionController>.Instance, transactionService, fileService, new UserDisplayNameResolver(financeContext));
 
         // Provide a stable user identity so controller can resolve userId
         controller.ControllerContext = new ControllerContext
