@@ -5,6 +5,43 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0](https://github.com/centralcmd/odyssey/compare/v0.28.0...v0.29.0) (2026-09-17)
+
+
+### Features
+
+* **client:** merchant column and filter, party tile action menu ([#104](https://github.com/centralcmd/odyssey/issues/104)) ([3588d48](https://github.com/centralcmd/odyssey/commit/3588d48ad3e6f9658caea4167c32d5e0db9c2ae2))
+* contact profile pictures and organization logos ([#91](https://github.com/centralcmd/odyssey/issues/91)) ([70a6d08](https://github.com/centralcmd/odyssey/commit/70a6d080a67624689d3fb115e60d9785cc850201))
+* **infra:** pre-pull the testcontainers images at session start ([5d8bf6f](https://github.com/centralcmd/odyssey/commit/5d8bf6f50d1f27542dd9aac7bff5a11f5ab4116a))
+* real net-worth history series for the dashboard chart ([08e74d7](https://github.com/centralcmd/odyssey/commit/08e74d7e09c1e6802420269c64a053c5fbef8bba))
+* sync the frontend to the RowActions, Timeline and journal RecordCard design update ([#109](https://github.com/centralcmd/odyssey/issues/109)) ([8fec6db](https://github.com/centralcmd/odyssey/commit/8fec6db525cbd0ba219e99798bfd271b137e43a7))
+* user profile pictures ([#107](https://github.com/centralcmd/odyssey/issues/107)) ([2c00f31](https://github.com/centralcmd/odyssey/commit/2c00f315216b7d0edec47ab977000241661cca08))
+
+
+### Bug Fixes
+
+* **api:** resolve file attribution ids to display names ([#108](https://github.com/centralcmd/odyssey/issues/108)) ([41ed051](https://github.com/centralcmd/odyssey/commit/41ed0514611baa5ed4f9eeb7cba90facaff3d7e5))
+* **client:** compute dashboard net worth from the totals endpoint ([#89](https://github.com/centralcmd/odyssey/issues/89)) ([55ea77d](https://github.com/centralcmd/odyssey/commit/55ea77dcfb002652937c79f86ec121b768092c22))
+* **client:** pin the informational chart strokes to device space ([74dbb8b](https://github.com/centralcmd/odyssey/commit/74dbb8b20ab307e1c80b4a22039e3df135ec0ed2)), closes [#102](https://github.com/centralcmd/odyssey/issues/102)
+* **client:** show liability donut amounts unsigned ([#85](https://github.com/centralcmd/odyssey/issues/85)) ([686e6de](https://github.com/centralcmd/odyssey/commit/686e6dea83dc9403fed435ce640207421f447e1c))
+* **client:** stroke the informational chart axis at 3:1 ([73b7c09](https://github.com/centralcmd/odyssey/commit/73b7c09a1b40e65eaed72a5da86a9e08e8415f78)), closes [#97](https://github.com/centralcmd/odyssey/issues/97)
+* **core:** key net worth off the open/closed term, not Archived ([#105](https://github.com/centralcmd/odyssey/issues/105)) ([faaaa39](https://github.com/centralcmd/odyssey/commit/faaaa392d0057fbcdfcb83dea580b9d9b87ec007))
+* **infra:** build the compose stack behind TLS interception ([#100](https://github.com/centralcmd/odyssey/issues/100)) ([d295469](https://github.com/centralcmd/odyssey/commit/d295469284e21d8896964f7ed1670c3efab26bf1))
+* **infra:** make the session hook detect the SDK instead of assuming a path ([ccfa814](https://github.com/centralcmd/odyssey/commit/ccfa81422c4b85b5b98663b9e7a38528050cc76e))
+
+
+### Documentation
+
+* correct the private static field naming rule ([17622b7](https://github.com/centralcmd/odyssey/commit/17622b7c1309db0904e9b81ecc2a739f4dd72155))
+* record the expanded environment-configuration script ([cec8ef8](https://github.com/centralcmd/odyssey/commit/cec8ef850b3e15b1f0ab4204e9b0fa961544523e))
+* update design system ([1182d01](https://github.com/centralcmd/odyssey/commit/1182d0132938bfe7169b0a384b5d1f0497cdcffe))
+* update design system ([753c218](https://github.com/centralcmd/odyssey/commit/753c21858ef991c0683954b8aee55a24e3d794fd))
+* update design system ([3e50428](https://github.com/centralcmd/odyssey/commit/3e50428abad1a2731d13ebff7135d403abdb2391))
+* update design system ([56d6f3f](https://github.com/centralcmd/odyssey/commit/56d6f3f6437a911a395caf7ae759138a600cfdb3))
+* update design system ([7653b7e](https://github.com/centralcmd/odyssey/commit/7653b7e66489971f1ff77d0628173392da92ef34))
+* update design system ([3371703](https://github.com/centralcmd/odyssey/commit/3371703812b90d54a1281dae3caaacb71f81f8c2))
+* update design system ([5234c6e](https://github.com/centralcmd/odyssey/commit/5234c6e9345ee3ba8a2b425ff91eee4654fafc75))
+
 ## [0.28.0](https://github.com/centralcmd/odyssey/compare/v0.27.0...v0.28.0) (2026-09-14)
 
 
