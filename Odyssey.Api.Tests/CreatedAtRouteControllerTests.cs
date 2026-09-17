@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Odyssey.Api.Controllers;
+using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 
@@ -35,7 +36,8 @@ public class CreatedAtRouteControllerTests
             null!,
             new AccountTotalsService(context, new CurrencyConversionService(context)),
             new NetWorthHistoryService(context, new CurrencyConversionService(context)),
-            TimeProvider.System);
+            TimeProvider.System,
+            new UserDisplayNameResolver(context));
 
         var missingId = Guid.NewGuid();
         var result = await controller.Put(missingId, new NewAccount
@@ -56,7 +58,7 @@ public class CreatedAtRouteControllerTests
     {
         await using var context = TestContextFactory.Create();
         await using var journalContext = TestContextFactory.CreateJournal();
-        var controller = new BudgetController(NullLogger<BudgetController>.Instance, new BudgetService(context, new ContactLookup(journalContext)));
+        var controller = new BudgetController(NullLogger<BudgetController>.Instance, new BudgetService(context, new ContactLookup(journalContext)), new UserDisplayNameResolver(context));
 
         var missingId = Guid.NewGuid();
         var result = await controller.Put(missingId, new NewBudget
@@ -149,7 +151,7 @@ public class CreatedAtRouteControllerTests
             Archived = false,
         });
 
-        var controller = new TransactionController(NullLogger<TransactionController>.Instance, new TransactionService(context, new ContactLookup(journalContext)), null!);
+        var controller = new TransactionController(NullLogger<TransactionController>.Instance, new TransactionService(context, new ContactLookup(journalContext)), null!, new UserDisplayNameResolver(context));
         var missingId = Guid.NewGuid();
         var result = await controller.Put(missingId, new NewTransaction
         {

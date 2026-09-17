@@ -8,6 +8,7 @@ using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 using Swashbuckle.AspNetCore.Annotations;
 
+using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 
 namespace Odyssey.Api.Controllers;
@@ -27,15 +28,18 @@ public class InsuranceController : ControllerBase
     private readonly ILogger<InsuranceController> logger;
     private readonly InsuranceService service;
     private readonly FileService fileService;
+    private readonly IUserDisplayNameResolver displayNames;
 
     public InsuranceController(
         ILogger<InsuranceController> logger,
         InsuranceService service,
-        FileService fileService)
+        FileService fileService,
+        IUserDisplayNameResolver displayNames)
     {
         this.logger = logger;
         this.service = service;
         this.fileService = fileService;
+        this.displayNames = displayNames;
     }
 
     // ── Policies ──────────────────────────────────────────────────────────────
@@ -72,7 +76,13 @@ public class InsuranceController : ControllerBase
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         var policy = await service.Get(id, cancellationToken);
-        return policy is null ? this.NotFoundProblem($"Insurance policy ID {id} not found.") : Ok(policy);
+        if (policy is null)
+        {
+            return this.NotFoundProblem($"Insurance policy ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [policy], cancellationToken);
+        return Ok(policy);
     }
 
     [HttpPost(Name = "PostInsurancePolicy")]
@@ -98,6 +108,7 @@ InsuranceMaxLinksPerPolicy cap.")]
         }
 
         var created = await service.Create(request, userId, cancellationToken);
+        await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
         return CreatedAtRoute("GetInsurancePolicy", new { id = created.InsurancePolicyId }, created);
     }
 
@@ -122,7 +133,13 @@ whose target is archived or no longer resolves — such a link cannot be removed
         }
 
         var updated = await service.Update(id, request, userId, cancellationToken);
-        return updated is null ? this.NotFoundProblem($"Insurance policy ID {id} not found.") : Ok(updated);
+        if (updated is null)
+        {
+            return this.NotFoundProblem($"Insurance policy ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [updated], cancellationToken);
+        return Ok(updated);
     }
 
     [HttpDelete("{id}", Name = "DeleteInsurancePolicy")]
@@ -164,9 +181,13 @@ collection would exceed the effective cap.")]
         }
 
         var updated = await service.AddParty(id, request, userId, cancellationToken);
-        return updated is null
-            ? this.NotFoundProblem($"Insurance policy ID {id} not found.")
-            : CreatedAtRoute("GetInsurancePolicy", new { id }, updated);
+        if (updated is null)
+        {
+            return this.NotFoundProblem($"Insurance policy ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [updated], cancellationToken);
+        return CreatedAtRoute("GetInsurancePolicy", new { id }, updated);
     }
 
     [HttpPut("{id}/parties/{role}/{targetId}", Name = "PutInsurancePolicyParty")]
@@ -193,7 +214,13 @@ transaction, never left as two.")]
         }
 
         var updated = await service.UpdateParty(id, role, targetId, request, userId, cancellationToken);
-        return updated is null ? this.NotFoundProblem($"Insurance policy ID {id} not found.") : Ok(updated);
+        if (updated is null)
+        {
+            return this.NotFoundProblem($"Insurance policy ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [updated], cancellationToken);
+        return Ok(updated);
     }
 
     [HttpDelete("{id}/parties/{role}/{targetId}", Name = "DeleteInsurancePolicyParty")]
@@ -225,9 +252,13 @@ transaction, never left as two.")]
         [FromBody] NewPolicyRenewal request, CancellationToken cancellationToken = default)
     {
         var created = await service.AddRenewal(id, request, cancellationToken);
-        return created is null
-            ? this.NotFoundProblem($"Insurance policy ID {id} not found.")
-            : CreatedAtRoute("GetInsurancePolicy", new { id }, created);
+        if (created is null)
+        {
+            return this.NotFoundProblem($"Insurance policy ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
+        return CreatedAtRoute("GetInsurancePolicy", new { id }, created);
     }
 
     [HttpPut("{id}/renewals/{renewalId}", Name = "PutPolicyRenewal")]
@@ -242,9 +273,13 @@ transaction, never left as two.")]
         [FromBody] UpdatePolicyRenewal request, CancellationToken cancellationToken = default)
     {
         var updated = await service.UpdateRenewal(id, renewalId, request, cancellationToken);
-        return updated is null
-            ? this.NotFoundProblem($"Renewal ID {renewalId} is not part of insurance policy ID {id}.")
-            : Ok(updated);
+        if (updated is null)
+        {
+            return this.NotFoundProblem($"Renewal ID {renewalId} is not part of insurance policy ID {id}.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [updated], cancellationToken);
+        return Ok(updated);
     }
 
     [HttpDelete("{id}/renewals/{renewalId}", Name = "DeletePolicyRenewal")]

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Swashbuckle.AspNetCore.Annotations;
 
+using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 
 namespace Odyssey.Api.Controllers;
@@ -25,6 +26,7 @@ public class AccountController : ControllerBase
     private readonly AccountTotalsService accountTotalsService;
     private readonly NetWorthHistoryService netWorthHistoryService;
     private readonly TimeProvider timeProvider;
+    private readonly IUserDisplayNameResolver displayNames;
 
     public AccountController(
         ILogger<AccountController> logger,
@@ -33,7 +35,8 @@ public class AccountController : ControllerBase
         FileAnalysisService fileAnalysisService,
         AccountTotalsService accountTotalsService,
         NetWorthHistoryService netWorthHistoryService,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IUserDisplayNameResolver displayNames)
     {
         this.logger = logger;
         this.accountService = accountService;
@@ -42,6 +45,7 @@ public class AccountController : ControllerBase
         this.accountTotalsService = accountTotalsService;
         this.netWorthHistoryService = netWorthHistoryService;
         this.timeProvider = timeProvider;
+        this.displayNames = displayNames;
     }
     
     [HttpGet(Name = "GetAccounts")]
@@ -243,6 +247,7 @@ public class AccountController : ControllerBase
         if (files is null)
             return this.NotFoundProblem($"Account ID {accountId} not found.");
 
+        await displayNames.EnrichFileAttributionAsync(User, files, cancellationToken);
         return Ok(files);
     }
 
@@ -259,6 +264,7 @@ public class AccountController : ControllerBase
         if (transactions is null)
             return this.NotFoundProblem($"Account ID {accountId} not found.");
 
+        await displayNames.EnrichFileAttributionAsync(User, transactions, cancellationToken);
         return Ok(transactions);
     }
 

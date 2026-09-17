@@ -8,6 +8,7 @@ using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 using Swashbuckle.AspNetCore.Annotations;
 
+using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 
 namespace Odyssey.Api.Controllers;
@@ -27,15 +28,18 @@ public class TaxStatementController : ControllerBase
     private readonly ILogger<TaxStatementController> logger;
     private readonly TaxStatementService service;
     private readonly FileService fileService;
+    private readonly IUserDisplayNameResolver displayNames;
 
     public TaxStatementController(
         ILogger<TaxStatementController> logger,
         TaxStatementService service,
-        FileService fileService)
+        FileService fileService,
+        IUserDisplayNameResolver displayNames)
     {
         this.logger = logger;
         this.service = service;
         this.fileService = fileService;
+        this.displayNames = displayNames;
     }
 
     [HttpGet(Name = "GetTaxStatements")]
@@ -47,7 +51,9 @@ public class TaxStatementController : ControllerBase
         [FromQuery] TaxStatementsQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await service.ListAsync(query, cancellationToken));
+        var result = await service.ListAsync(query, cancellationToken);
+        await displayNames.EnrichFileAttributionAsync(User, result.Items, cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("summary", Name = "GetTaxStatementSummary")]
@@ -68,7 +74,13 @@ public class TaxStatementController : ControllerBase
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         var statement = await service.Get(id, cancellationToken);
-        return statement is null ? this.NotFoundProblem($"Tax statement ID {id} not found.") : Ok(statement);
+        if (statement is null)
+        {
+            return this.NotFoundProblem($"Tax statement ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [statement], cancellationToken);
+        return Ok(statement);
     }
 
     [HttpGet("{id}/report", Name = "GetTaxStatementReport")]
@@ -92,6 +104,7 @@ public class TaxStatementController : ControllerBase
         [FromBody] NewTaxStatement request, CancellationToken cancellationToken = default)
     {
         var created = await service.Create(request, cancellationToken);
+        await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
         return CreatedAtRoute("GetTaxStatement", new { id = created.TaxStatementId }, created);
     }
 
@@ -106,7 +119,13 @@ public class TaxStatementController : ControllerBase
         [FromBody] UpdateTaxStatement request, CancellationToken cancellationToken = default)
     {
         var updated = await service.Update(id, request, cancellationToken);
-        return updated is null ? this.NotFoundProblem($"Tax statement ID {id} not found.") : Ok(updated);
+        if (updated is null)
+        {
+            return this.NotFoundProblem($"Tax statement ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [updated], cancellationToken);
+        return Ok(updated);
     }
 
     [HttpPatch("{id}/status", Name = "PatchTaxStatementStatus")]
@@ -119,7 +138,13 @@ public class TaxStatementController : ControllerBase
         [FromBody] UpdateTaxStatementStatus request, CancellationToken cancellationToken = default)
     {
         var updated = await service.UpdateStatus(id, request, cancellationToken);
-        return updated is null ? this.NotFoundProblem($"Tax statement ID {id} not found.") : Ok(updated);
+        if (updated is null)
+        {
+            return this.NotFoundProblem($"Tax statement ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [updated], cancellationToken);
+        return Ok(updated);
     }
 
     [HttpPut("{id}/tags", Name = "PutTaxStatementTags")]
@@ -138,7 +163,13 @@ public class TaxStatementController : ControllerBase
         }
 
         var updated = await service.UpdateTags(id, request, cancellationToken);
-        return updated is null ? this.NotFoundProblem($"Tax statement ID {id} not found.") : Ok(updated);
+        if (updated is null)
+        {
+            return this.NotFoundProblem($"Tax statement ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [updated], cancellationToken);
+        return Ok(updated);
     }
 
     [HttpDelete("{id}", Name = "DeleteTaxStatement")]

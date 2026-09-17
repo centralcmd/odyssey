@@ -8,6 +8,7 @@ using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 using Swashbuckle.AspNetCore.Annotations;
 
+using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 
 namespace Odyssey.Api.Controllers;
@@ -27,15 +28,18 @@ public class ContractController : ControllerBase
     private readonly ILogger<ContractController> logger;
     private readonly ContractService service;
     private readonly FileService fileService;
+    private readonly IUserDisplayNameResolver displayNames;
 
     public ContractController(
         ILogger<ContractController> logger,
         ContractService service,
-        FileService fileService)
+        FileService fileService,
+        IUserDisplayNameResolver displayNames)
     {
         this.logger = logger;
         this.service = service;
         this.fileService = fileService;
+        this.displayNames = displayNames;
     }
 
     // ── Contracts ────────────────────────────────────────────────────────────────
@@ -70,7 +74,13 @@ public class ContractController : ControllerBase
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         var contract = await service.Get(id, cancellationToken);
-        return contract is null ? this.NotFoundProblem($"Contract ID {id} not found.") : Ok(contract);
+        if (contract is null)
+        {
+            return this.NotFoundProblem($"Contract ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [contract], cancellationToken);
+        return Ok(contract);
     }
 
     [HttpPost(Name = "PostContract")]
@@ -82,6 +92,7 @@ public class ContractController : ControllerBase
         [FromBody] NewContract request, CancellationToken cancellationToken = default)
     {
         var created = await service.Create(request, cancellationToken);
+        await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
         return CreatedAtRoute("GetContract", new { id = created.ContractId }, created);
     }
 
@@ -96,7 +107,13 @@ public class ContractController : ControllerBase
         [FromBody] UpdateContract request, CancellationToken cancellationToken = default)
     {
         var updated = await service.Update(id, request, cancellationToken);
-        return updated is null ? this.NotFoundProblem($"Contract ID {id} not found.") : Ok(updated);
+        if (updated is null)
+        {
+            return this.NotFoundProblem($"Contract ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, [updated], cancellationToken);
+        return Ok(updated);
     }
 
     [HttpDelete("{id}", Name = "DeleteContract")]

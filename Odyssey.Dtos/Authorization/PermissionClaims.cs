@@ -159,13 +159,29 @@ public static class PermissionClaims
     ///
     /// <para>
     /// The tempting argument for claim-free access — a caller can only fetch a picture for someone they
-    /// already see <i>named</i> — is <b>false</b> here:
+    /// already see <i>named</i> — is <b>false</b> here, and that is why the claim exists.
     /// <c>ExistingTransactionFile.AttachedByUserId</c>, <c>ExistingAccountFile.AttachedByUserId</c> and
-    /// the nested <c>ExistingFileMetadata.UploadedByUserId</c> return raw user ids with no name
-    /// attached, and Guest holds <c>transactions.read</c>, <c>accounts.read</c> and <c>files.read</c>.
-    /// So a Guest can harvest ids and build a face↔id mapping for people the application never named to
-    /// them. Revoking this claim from Guest is the supported way to narrow who sees colleagues'
-    /// pictures.
+    /// the nested <c>ExistingFileMetadata.UploadedByUserId</c> returned raw user ids with no name
+    /// attached, and Guest holds <c>transactions.read</c>, <c>accounts.read</c> and <c>files.read</c>,
+    /// so a Guest could harvest ids and build a face↔id mapping for people the application never named
+    /// to them. Issue #106 routed those fields through <c>IUserDisplayNameResolver</c>, so each now
+    /// carries a claim-conditional label beside its id.
+    /// </para>
+    ///
+    /// <para>
+    /// It covers all five file surfaces, not the two the issue named: the contract, tax-statement and
+    /// policy-renewal ones carried the identical pair, and <c>taxes.read</c> and <c>budgets.read</c>
+    /// matter as much as <c>transactions.read</c> here because Guest holds those too. The family is
+    /// pinned by <c>IAttributedFile</c> and its guard tests rather than by memory, so a sixth file DTO
+    /// cannot reintroduce a bare id.
+    /// </para>
+    ///
+    /// <para>
+    /// That does <b>not</b> retire the claim. It is a revocation lever that had to exist before release
+    /// regardless — claim values are baked into the auth cookie at sign-in, so a claim added later
+    /// de-authorizes live sessions — and revoking it from Guest stays the supported way to narrow who
+    /// sees colleagues' pictures. What changed is that it is no longer the <i>only</i> control: the ids
+    /// it was compensating for are gone from the file surfaces.
     /// </para>
     ///
     /// <para>
