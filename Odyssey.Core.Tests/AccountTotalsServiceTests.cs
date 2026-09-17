@@ -9,15 +9,23 @@ namespace Odyssey.Core.Tests;
 
 public class AccountTotalsServiceTests
 {
-    private static Account NewAccount(Guid id, string name, AccountType type, string currency, DateTime? archived = null) => new()
+    private static Account NewAccount(
+        Guid id,
+        string name,
+        AccountType type,
+        string currency,
+        DateTime? archived = null,
+        DateTime? closed = null,
+        DateTime? opened = null) => new()
     {
         AccountId = id,
         Name = name,
         Description = name,
-        Opened = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        Opened = opened ?? new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         AccountType = type,
         CurrencyCode = currency,
         Archived = archived,
+        Closed = closed,
     };
 
     private static Transaction NewTransaction(Guid accountId, decimal amount) => new()
@@ -40,7 +48,7 @@ public class AccountTotalsServiceTests
     };
 
     [Fact]
-    public async Task Compute_ConvertsAssetsAndLiabilities_FlagsUnconverted_ExcludesArchived()
+    public async Task Compute_ConvertsAssetsAndLiabilities_FlagsUnconverted_KeepsArchived_ExcludesClosed()
     {
         await using var context = TestContextFactory.Create();
 
@@ -48,22 +56,26 @@ public class AccountTotalsServiceTests
         var eurSavings = Guid.NewGuid();     // asset, converted via EUR->USD
         var sekCard = Guid.NewGuid();        // liability, converted via SEK->USD
         var gbpAccount = Guid.NewGuid();     // asset, no rate to USD -> unconverted
-        var archivedUsd = Guid.NewGuid();    // archived -> excluded
+        var archivedUsd = Guid.NewGuid();    // archived -> STILL COUNTS (issue #99)
+        var closedUsd = Guid.NewGuid();      // closed in the past -> excluded (issue #99)
 
         context.Accounts.AddRange(
             NewAccount(usdChecking, "USD Checking", AccountType.CheckingAccount, "USD"),
             NewAccount(eurSavings, "EUR Savings", AccountType.SavingsAccount, "EUR"),
             NewAccount(sekCard, "SEK Card", AccountType.CreditCard, "SEK"),
             NewAccount(gbpAccount, "GBP Brokerage", AccountType.InvestmentAccount, "GBP"),
-            NewAccount(archivedUsd, "Old USD", AccountType.CheckingAccount, "USD",
-                archived: new DateTime(2025, 2, 1, 0, 0, 0, DateTimeKind.Utc)));
+            NewAccount(archivedUsd, "Filed away", AccountType.CheckingAccount, "USD",
+                archived: new DateTime(2025, 2, 1, 0, 0, 0, DateTimeKind.Utc)),
+            NewAccount(closedUsd, "Closed", AccountType.CheckingAccount, "USD",
+                closed: new DateTime(2025, 2, 1, 0, 0, 0, DateTimeKind.Utc)));
 
         context.Transactions.AddRange(
             NewTransaction(usdChecking, 1000m),
             NewTransaction(eurSavings, 200m),
             NewTransaction(sekCard, -1000m),
             NewTransaction(gbpAccount, 50m),
-            NewTransaction(archivedUsd, 9999m));
+            NewTransaction(archivedUsd, 500m),
+            NewTransaction(closedUsd, 9999m));
 
         await context.SaveChangesAsync();
 
@@ -75,15 +87,171 @@ public class AccountTotalsServiceTests
         var totals = await service.ComputeAsync("USD");
 
         Assert.Equal("USD", totals.MainCurrencyCode);
-        // 1000 (USD 1:1) + 200*1.1 (EUR) = 1220
-        Assert.Equal(1220m, totals.TotalAssets);
+        // 1000 (USD 1:1) + 200*1.1 (EUR) + 500 (archived, USD 1:1) = 1720. The closed account's 9999
+        // is gone: archiving files an account away, closing ends its term.
+        Assert.Equal(1720m, totals.TotalAssets);
         // abs(-1000 * 0.1) = 100
         Assert.Equal(100m, totals.TotalLiabilities);
-        Assert.Equal(1120m, totals.NetWorth);
+        Assert.Equal(1620m, totals.NetWorth);
 
         var unconverted = Assert.Single(totals.UnconvertedAccounts);
         Assert.Equal(gbpAccount, unconverted.AccountId);
         Assert.Equal("GBP", unconverted.CurrencyCode);
+    }
+
+    // ── Issue #99 — membership is the open/closed term, never Archived ─────────────────────────
+
+    /// <summary>
+    /// Archiving is the app's generic declutter verb — the same column photos, journal entries, tags
+    /// and budgets carry. Filing an account away must leave every figure exactly where it was.
+    /// </summary>
+    [Fact]
+    public async Task Archiving_An_Account_Does_Not_Move_The_Total()
+    {
+        await using var context = TestContextFactory.Create();
+        var kept = Guid.NewGuid();
+        var filed = Guid.NewGuid();
+        context.Accounts.AddRange(
+            NewAccount(kept, "Kept", AccountType.CheckingAccount, "USD"),
+            NewAccount(filed, "Filed", AccountType.SavingsAccount, "USD"));
+        context.Transactions.AddRange(
+            NewTransaction(kept, 100m),
+            NewTransaction(filed, 200_000m));
+        await context.SaveChangesAsync();
+
+        var before = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        context.Accounts.Single(account => account.AccountId == filed).Archived = FixedNow.AddDays(-1);
+        await context.SaveChangesAsync();
+
+        var after = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        Assert.Equal(200_100m, before.NetWorth);
+        Assert.Equal(before.NetWorth, after.NetWorth);
+        Assert.Equal(before.TotalAssets, after.TotalAssets);
+    }
+
+    /// <summary>
+    /// The other half: a closed account leaves the valuation. In clean data this is a no-op, because
+    /// closing normally means transferring the balance out and the receiving account picks it up. It
+    /// bites only where a balance was left stranded — and there the new figure is the correct one.
+    /// </summary>
+    [Fact]
+    public async Task A_Closed_Account_Leaves_The_Total()
+    {
+        await using var context = TestContextFactory.Create();
+        var open = Guid.NewGuid();
+        var closing = Guid.NewGuid();
+        context.Accounts.AddRange(
+            NewAccount(open, "Open", AccountType.CheckingAccount, "USD"),
+            NewAccount(closing, "Closing", AccountType.SavingsAccount, "USD"));
+        context.Transactions.AddRange(
+            NewTransaction(open, 100m),
+            NewTransaction(closing, 900m));
+        await context.SaveChangesAsync();
+
+        var before = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        context.Accounts.Single(account => account.AccountId == closing).Closed = FixedNow.AddDays(-1);
+        await context.SaveChangesAsync();
+
+        var after = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        Assert.Equal(1000m, before.NetWorth);
+        Assert.Equal(100m, after.NetWorth);
+    }
+
+    /// <summary>
+    /// A close date in the future has not happened yet, so the account is still inside its term.
+    /// </summary>
+    [Fact]
+    public async Task An_Account_Closing_In_The_Future_Still_Counts()
+    {
+        await using var context = TestContextFactory.Create();
+        var id = Guid.NewGuid();
+        context.Accounts.Add(NewAccount(id, "Closing soon", AccountType.CheckingAccount, "USD",
+            closed: FixedNow.AddDays(1)));
+        context.Transactions.Add(NewTransaction(id, 750m));
+        await context.SaveChangesAsync();
+
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        Assert.Equal(750m, totals.NetWorth);
+    }
+
+    /// <summary>
+    /// The boundary, in both directions. <c>Opened</c> is exclusive (<c>Opened &lt; now</c>) and
+    /// <c>Closed</c> is its mirror (<c>now &lt; Closed</c>), so an account closed at exactly the
+    /// measuring instant is already gone by it — the same convention the history's grid bounds use, and
+    /// the reason the two endpoints can agree at their shared final instant.
+    /// </summary>
+    [Fact]
+    public async Task The_Term_Boundary_Is_Exclusive_At_Both_Ends()
+    {
+        await using var context = TestContextFactory.Create();
+        var closedAtNow = Guid.NewGuid();
+        var closedAfterNow = Guid.NewGuid();
+        var openedAtNow = Guid.NewGuid();
+
+        // The offsets are whole seconds, not ticks: the columns are datetime(6), so MySqlConnector
+        // truncates a 7-digit tick parameter to microseconds while EF InMemory compares full ticks —
+        // a sub-microsecond offset would pass here and quietly mean equality on MariaDB.
+        context.Accounts.AddRange(
+            NewAccount(closedAtNow, "Closed at now", AccountType.CheckingAccount, "USD", closed: FixedNow),
+            NewAccount(closedAfterNow, "Closed a second later", AccountType.CheckingAccount, "USD",
+                closed: FixedNow.AddSeconds(1)),
+            NewAccount(openedAtNow, "Opened at now", AccountType.CheckingAccount, "USD", opened: FixedNow));
+        context.Transactions.AddRange(
+            NewTransaction(closedAtNow, 1m),
+            NewTransaction(closedAfterNow, 10m),
+            NewTransaction(openedAtNow, 100m));
+        await context.SaveChangesAsync();
+
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        // Only the account still closing after now is inside its term.
+        Assert.Equal(10m, totals.NetWorth);
+    }
+
+    /// <summary>
+    /// An estimate effective after the close date must not keep a closed account alive — the account
+    /// is out of the roster before its estimates are ever resolved.
+    /// </summary>
+    [Fact]
+    public async Task An_Estimate_Effective_After_The_Close_Date_Does_Not_Revive_The_Account()
+    {
+        await using var context = TestContextFactory.Create();
+        var closed = Guid.NewGuid();
+        context.Accounts.Add(NewAccount(closed, "Closed", AccountType.InvestmentAccount, "USD",
+            closed: new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc)));
+        context.Transactions.Add(NewTransaction(closed, 400m));
+        context.AccountEstimates.Add(NewEstimate(closed, 50_000m, "USD",
+            new DateTime(2025, 4, 1, 0, 0, 0, DateTimeKind.Utc)));
+        await context.SaveChangesAsync();
+
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        Assert.Equal(0m, totals.NetWorth);
+        Assert.Empty(totals.UnconvertedAccounts);
+    }
+
+    /// <summary>
+    /// A closed account is out of the roster entirely, so it is not reported as unconvertible either —
+    /// which would misdescribe a correctly-excluded account as a missing exchange rate.
+    /// </summary>
+    [Fact]
+    public async Task A_Closed_Account_Is_Not_Reported_As_Unconvertible()
+    {
+        await using var context = TestContextFactory.Create();
+        var closedGbp = Guid.NewGuid();
+        context.Accounts.Add(NewAccount(closedGbp, "Closed GBP", AccountType.CheckingAccount, "GBP",
+            closed: new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc)));
+        context.Transactions.Add(NewTransaction(closedGbp, 50m));
+        await context.SaveChangesAsync();
+
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+
+        Assert.Empty(totals.UnconvertedAccounts);
     }
 
     [Fact]
@@ -369,19 +537,36 @@ public class AccountTotalsServiceTests
     /// <summary>
     /// The two services agree because they call the same predicates, so this asserts the agreement
     /// end-to-end rather than trusting that: the same portfolio through both paths must split
-    /// identically.
+    /// identically, and drop the same accounts.
     /// </summary>
+    /// <remarks>
+    /// <b>The portfolio contains closed accounts on purpose (issue #99).</b> Membership is the other
+    /// thing the two services have to agree about, and it is the half this issue changed — but AC2 was
+    /// pinned here over a portfolio where nothing ever closed, so a term rule applied in one service
+    /// and not the other would have left this green. The only cover for that was the MariaDB test,
+    /// which self-skips without Docker, so an ordinary `dotnet test Odyssey.Core.Tests` had none at all.
+    /// The exact-instant boundary stays in the integration tier, where `datetime(6)` makes it mean
+    /// something; the close date here is deliberately far from any period bound, which is a case EF
+    /// InMemory is a sound oracle for.
+    /// </remarks>
     [Fact]
     public async Task TheTotalsAndTheHistory_ClassifyTheSamePortfolioIdentically()
     {
         await using var context = TestContextFactory.Create();
 
-        // NewAccount's optional fifth argument is `archived`, not `opened` — it opens every account at
-        // 2025-01-01, comfortably inside the default 24-month window ending at FixedNow.
+        // One asset and one liability close mid-window; the close date sits a month before FixedNow,
+        // clear of every monthly period bound and of the final bound itself.
+        var closedOn = FixedNow.AddMonths(-1);
+        AccountType[] closing = [AccountType.SavingsAccount, AccountType.CreditCard];
+
+        // NewAccount's optional arguments are `archived`/`closed`/`opened`, all defaulted — every
+        // account here opens at 2025-01-01, comfortably inside the default 24-month window ending at
+        // FixedNow.
         foreach (var type in Enum.GetValues<AccountType>())
         {
             var id = Guid.NewGuid();
-            context.Accounts.Add(NewAccount(id, type.ToString(), type, "USD"));
+            context.Accounts.Add(NewAccount(id, type.ToString(), type, "USD",
+                closed: closing.Contains(type) ? closedOn : null));
             context.Transactions.Add(NewTransaction(id, 100m));
         }
 
@@ -396,5 +581,15 @@ public class AccountTotalsServiceTests
         Assert.Equal(totals.TotalAssets, last.TotalAssets);
         Assert.Equal(totals.TotalLiabilities, last.TotalLiabilities);
         Assert.Equal(totals.NetWorth, last.NetWorth);
+
+        // …and the agreement is not the vacuous kind where both kept the closed pair, or both dropped
+        // everything. Each side is exactly one account short of its full roster.
+        var types = Enum.GetValues<AccountType>();
+        Assert.Equal((types.Count(AccountClassification.IsAsset) - 1) * 100m, totals.TotalAssets);
+        Assert.Equal((types.Count(AccountClassification.IsLiability) - 1) * -100m, totals.TotalLiabilities);
+
+        // The closed pair is in the line's past, so the series is not flat at the final figure —
+        // which is what distinguishes a per-slot term from one applied once for the whole series.
+        Assert.Contains(history.Points, point => point.NetWorth != last.NetWorth);
     }
 }

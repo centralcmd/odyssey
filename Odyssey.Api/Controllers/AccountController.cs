@@ -99,12 +99,17 @@ public class AccountController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Get total assets, liabilities and net worth in the main currency.",
-        Description = @"Converts each active account's balance into the main currency using the rate in
+        Description = @"Converts each in-term account's balance into the main currency using the rate in
                         force now and returns total assets, total liabilities, net worth, and the
                         accounts that could not be converted (no rate to the main currency).
                         Everything is measured as of now, exclusively: a transaction, rate, estimate or
                         account dated in the future does not count. An unsupported or archived
-                        mainCurrency is rejected with 400.")]
+                        mainCurrency is rejected with 400.
+
+                        MEMBERSHIP IS THE OPEN/CLOSED TERM: an account counts when it opened before now
+                        and has not closed by it. Archiving an account does NOT change this figure —
+                        it controls only what appears in lists. Closing one does, from its close date
+                        onward.")]
     public async Task<IActionResult> GetTotals(
         [FromQuery(Name = "mainCurrency")] [SwaggerParameter("MainCurrency", Required = false,
             Description = @"The currency to convert into. Defaults to NOK.")] string? mainCurrency = null, CancellationToken cancellationToken = default)
@@ -140,12 +145,12 @@ public class AccountController : ControllerBase
                         window that ends before the first account was opened, which is a 200, not a
                         400. from/to are ISO-8601 dates (yyyy-MM-dd).
 
-                        MEMBERSHIP IS AS OF NOW: the series covers the accounts that are not archived
-                        TODAY, at every point. Archiving an account therefore removes it from the whole
-                        history, not just from today onward, so a series can change shape after a
-                        routine close. That is what makes the final point equal GET /accounts/totals
-                        exactly, which is the stronger guarantee; unlike an understated or revalued
-                        point, it carries no per-point flag.")]
+                        MEMBERSHIP IS THE OPEN/CLOSED TERM, PER POINT: an account counts at a point
+                        when it had opened before that point's instant and had not closed by it.
+                        Archiving is a list filter and has no bearing on any figure here, so filing an
+                        account away never moves the line. Because both endpoints evaluate that one
+                        rule, the final point still equals GET /accounts/totals exactly — now
+                        structurally rather than by two predicates being kept in step.")]
     public async Task<IActionResult> GetNetWorthHistory(
         [FromQuery] NetWorthHistoryQuery query,
         CancellationToken cancellationToken = default)

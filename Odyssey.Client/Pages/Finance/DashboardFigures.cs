@@ -75,7 +75,7 @@ internal static class DashboardFigures
     /// </summary>
     /// <param name="reason">
     /// The server's own discrimination. It is carried on the response precisely because it cannot be
-    /// inferred: two of the four causes produce otherwise byte-identical payloads.
+    /// inferred: several of the causes produce otherwise byte-identical payloads.
     /// </param>
     /// <param name="mainCurrencyCode">Interpolated into the conversion case, which names the currency it failed to reach.</param>
     internal static string ChartEmptyLabel(NetWorthEmptyReason? reason, string? mainCurrencyCode) => reason switch
@@ -85,6 +85,7 @@ internal static class DashboardFigures
             ? "Net worth could not be converted for any period."
             : $"Net worth could not be converted to {mainCurrencyCode} for any period.",
         NetWorthEmptyReason.WindowBeforeFirstAccount => "No accounts existed in this period.",
+        NetWorthEmptyReason.WindowAfterAllAccountsClosed => "Every account had closed before this period.",
         NetWorthEmptyReason.NotBuilt => "Net-worth history is not available yet.",
         // No reason at all means the call did not land. Distinct copy, because "not available yet" is
         // a statement about the data and this is a statement about the request.
