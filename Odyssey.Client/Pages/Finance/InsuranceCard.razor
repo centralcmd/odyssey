@@ -211,20 +211,24 @@
                                     <OdsInfoTileGrid>
                                         <InsurancePolicyLinkTiles Members="ContactMembers(detail.Insurers)" Label="Insurer" FallbackIcon="groups"
                                                                   Role="InsurancePartyRole.Insurer"
-                                                                  OnEditParty="@(l => EditParty(p.InsurancePolicyId, l.Role, l.TargetId))"
-                                                                  OnRemoveParty="@(l => RemovePartyAsync(p.InsurancePolicyId, l.Role, l.TargetId))" />
+                                                                  FallbackFocusSelectors="@PartyFallbackFocus(p.InsurancePolicyId)"
+                                                                  OnEditParty="@(_canUpdate ? PartyEdit(p.InsurancePolicyId) : default)"
+                                                                  OnRemoveParty="@(_canUpdate ? PartyRemove(p.InsurancePolicyId) : default)" />
                                         <InsurancePolicyLinkTiles Members="AccountMembers(detail.InsuredAccounts)" Label="Insured" FallbackIcon="account_balance_wallet"
                                                                   Role="InsurancePartyRole.InsuredAccount" IsAccount="true"
-                                                                  OnEditParty="@(l => EditParty(p.InsurancePolicyId, l.Role, l.TargetId))"
-                                                                  OnRemoveParty="@(l => RemovePartyAsync(p.InsurancePolicyId, l.Role, l.TargetId))" />
+                                                                  FallbackFocusSelectors="@PartyFallbackFocus(p.InsurancePolicyId)"
+                                                                  OnEditParty="@(_canUpdate ? PartyEdit(p.InsurancePolicyId) : default)"
+                                                                  OnRemoveParty="@(_canUpdate ? PartyRemove(p.InsurancePolicyId) : default)" />
                                         <InsurancePolicyLinkTiles Members="ContactMembers(detail.InsuredContacts)" Label="Insured" FallbackIcon="person"
                                                                   Role="InsurancePartyRole.InsuredContact"
-                                                                  OnEditParty="@(l => EditParty(p.InsurancePolicyId, l.Role, l.TargetId))"
-                                                                  OnRemoveParty="@(l => RemovePartyAsync(p.InsurancePolicyId, l.Role, l.TargetId))" />
+                                                                  FallbackFocusSelectors="@PartyFallbackFocus(p.InsurancePolicyId)"
+                                                                  OnEditParty="@(_canUpdate ? PartyEdit(p.InsurancePolicyId) : default)"
+                                                                  OnRemoveParty="@(_canUpdate ? PartyRemove(p.InsurancePolicyId) : default)" />
                                         <InsurancePolicyLinkTiles Members="ContactMembers(detail.Beneficiaries)" Label="Beneficiary" FallbackIcon="volunteer_activism"
                                                                   Role="InsurancePartyRole.Beneficiary"
-                                                                  OnEditParty="@(l => EditParty(p.InsurancePolicyId, l.Role, l.TargetId))"
-                                                                  OnRemoveParty="@(l => RemovePartyAsync(p.InsurancePolicyId, l.Role, l.TargetId))" />
+                                                                  FallbackFocusSelectors="@PartyFallbackFocus(p.InsurancePolicyId)"
+                                                                  OnEditParty="@(_canUpdate ? PartyEdit(p.InsurancePolicyId) : default)"
+                                                                  OnRemoveParty="@(_canUpdate ? PartyRemove(p.InsurancePolicyId) : default)" />
                                     </OdsInfoTileGrid>
                                 </div>
                             }

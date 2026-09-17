@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
 
-public partial class InsurancePolicyLinkTiles
+public partial class InsurancePolicyLinkTiles : IAsyncDisposable
 {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
 
     /// <summary>Members a collection names before it collapses into "+N more".</summary>
     public const int TileLimit = 5;
@@ -36,12 +39,109 @@ public partial class InsurancePolicyLinkTiles
     [Parameter] public EventCallback<(InsurancePartyRole Role, Guid TargetId)> OnRemoveParty { get; set; }
 
     /// <summary>
+    /// Where focus lands when a removal empties THIS collection, so focus is not dropped on the
+    /// document. The host supplies it because the answer is outside these tiles — another collection's
+    /// menu in the same policy, or the policy's own row actions.
+    /// </summary>
+    [Parameter] public string[]? FallbackFocusSelectors { get; set; }
+
+    /// <summary>
     /// True for the insured-ACCOUNT collection. Only the "Open …" item reads it — the three contact
     /// collections point at contacts, this one at an account.
     /// </summary>
     [Parameter] public bool IsAccount { get; set; }
 
     private bool _expanded;
+
+    // Focus return across a removal. The tile that had focus is gone by the time the new Members
+    // arrive, so the neighbour to land on is computed BEFORE the write and applied after the list
+    // actually shrinks. A removal that fails leaves this armed, which is harmless: the only thing
+    // that disarms it is the member disappearing, and that is a removal too.
+    private Guid? _awaitingRemovalOf;
+    private string? _focusAfterRemoval;
+    private bool _pendingFocus;
+    private IJSObjectReference? _focusJs;
+
+    internal string PartyMenuId(LinkTileMember member) => PartyMenuIdFor(member.Key);
+
+    private string PartyMenuIdFor(string key) => $"ins-party-{Role}-{key}";
+
+    protected override void OnParametersSet()
+    {
+        if (_awaitingRemovalOf is not { } removed)
+        {
+            return;
+        }
+
+        // Wait for the round trip: until the host re-fetches, Members still holds the removed member.
+        if (Members.Any(member => member.Key == removed.ToString()))
+        {
+            return;
+        }
+
+        _awaitingRemovalOf = null;
+        _pendingFocus = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_pendingFocus)
+        {
+            return;
+        }
+
+        _pendingFocus = false;
+        var neighbour = _focusAfterRemoval;
+        _focusAfterRemoval = null;
+
+        try
+        {
+            _focusJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
+            string?[] candidates =
+            [
+                neighbour is null ? null : $"#{PartyMenuIdFor(neighbour)} button",
+                .. FallbackFocusSelectors ?? [],
+            ];
+            await _focusJs.InvokeVoidAsync("focusFirst", candidates);
+        }
+        catch (Exception)
+        {
+            // Best-effort: the removal is already announced through the page's live region, so a
+            // failed focus return degrades rather than losing the outcome.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_focusJs is not null)
+        {
+            try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
+    }
+
+    /// <summary>
+    /// Raises the removal, having first noted which tile focus should land on — the next member, or
+    /// the previous one when the removed tile was last.
+    /// </summary>
+    private Task RemovePartyAsync(InsurancePartyRole role, Guid targetId)
+    {
+        _awaitingRemovalOf = targetId;
+        _focusAfterRemoval = NeighbourKeyOf(targetId.ToString());
+        return OnRemoveParty.InvokeAsync((role, targetId));
+    }
+
+    private string? NeighbourKeyOf(string key)
+    {
+        var index = -1;
+        for (var i = 0; i < Members.Count; i++)
+        {
+            if (Members[i].Key == key) { index = i; break; }
+        }
+
+        if (index < 0) return null;
+        if (index + 1 < Members.Count) return Members[index + 1].Key;
+        return index > 0 ? Members[index - 1].Key : null;
+    }
 
     private static string UnnamedIcon(LinkTileMember member) =>
         member.State == LinkAvailability.Archived ? "inventory_2" : "link_off";
@@ -102,7 +202,7 @@ public partial class InsurancePolicyLinkTiles
                 Icon = "link_off",
                 Label = $"Remove {noun}",
                 Danger = true,
-                OnClick = EventCallback.Factory.Create(this, () => OnRemoveParty.InvokeAsync((role, targetId))),
+                OnClick = EventCallback.Factory.Create(this, () => RemovePartyAsync(role, targetId)),
             });
         }
 

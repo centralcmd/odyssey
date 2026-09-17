@@ -1,4 +1,6 @@
 using Bunit;
+using Bunit.TestDoubles;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MudBlazor.Services;
@@ -50,9 +52,16 @@ public class InsurancePolicyPartyTileTests
     private static IRenderedComponent<TilesHost> Render(
         IReadOnlyList<InsurancePolicyLinkTiles.LinkTileMember> members,
         bool writable = true,
+        bool isAccount = false) => Render(members, out _, writable, isAccount);
+
+    private static IRenderedComponent<TilesHost> Render(
+        IReadOnlyList<InsurancePolicyLinkTiles.LinkTileMember> members,
+        out BunitContext context,
+        bool writable = true,
         bool isAccount = false)
     {
         var ctx = new BunitContext();
+        context = ctx;
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
@@ -191,6 +200,38 @@ public class InsurancePolicyPartyTileTests
     /// waiting only ever hands back a LIVE handler — an item that genuinely does not raise its
     /// callback still fails.
     /// </remarks>
+    // The "Open …" item was previously covered by its LABEL only, which does not exercise the
+    // destination — the one thing that differs between the two collections. Clicking it is the same
+    // bar the Remove case is already held to.
+    [Theory]
+    [InlineData(false, "Open contact", "contacts")]
+    [InlineData(true, "Open account", "accounts")]
+    public void The_open_item_navigates_to_the_list_for_its_target_kind(bool isAccount, string label, string route)
+    {
+        var cut = Render([Member(AcmeId, "Acme Insurance")], out var ctx, isAccount: isAccount);
+        var navigation = (BunitNavigationManager)ctx.Services.GetRequiredService<NavigationManager>();
+        OpenMenu(cut);
+
+        cut.FindAll("div.mud-menu-item")
+            .First(node => node.TextContent.Contains(label, StringComparison.Ordinal))
+            .Click();
+
+        Assert.Equal($"{navigation.BaseUri}{route}", navigation.Uri);
+    }
+
+    // The wrapper's id is the anchor a removal returns focus to (WCAG 2.4.3): the tile that had focus
+    // is destroyed by the re-render, so the neighbour is re-found by id afterwards. It has to stay
+    // per-member and stable, or the focus return silently lands nowhere.
+    [Fact]
+    public void Each_menu_carries_a_stable_per_member_focus_anchor()
+    {
+        var cut = Render([Member(AcmeId, "Acme Insurance"), Member(GhostId, "Unavailable", LinkAvailability.Unresolvable)]);
+
+        Assert.Equal(
+            [$"ins-party-Insurer-{AcmeId}", $"ins-party-Insurer-{GhostId}"],
+            cut.FindAll(".ins-tile-menu").Select(node => node.GetAttribute("id")));
+    }
+
     private static void OpenMenu(IRenderedComponent<TilesHost> cut)
     {
         cut.Find(".ins-tile-menu button").Click();

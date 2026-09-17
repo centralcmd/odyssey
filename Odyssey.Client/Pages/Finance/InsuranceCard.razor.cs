@@ -560,6 +560,39 @@ public partial class InsuranceCard
         _partyOpen = true;
     }
 
+    // The four collections share one edit / remove callback each, built here so the razor stays a
+    // wiring list. Withheld entirely without insurance.update rather than offered and no-opped: the
+    // menu is always visible now, so a dead item is a dead item a reader can see — and it is what
+    // InsurancePolicyLinkTiles already documents ("unset means the tiles are read-only, which is also
+    // what a caller without insurance.update passes"). The handlers keep their own guard regardless.
+    private EventCallback<(InsurancePartyRole Role, Guid TargetId)> PartyEdit(Guid policyId) =>
+        EventCallback.Factory.Create<(InsurancePartyRole Role, Guid TargetId)>(
+            this, link => EditParty(policyId, link.Role, link.TargetId));
+
+    private EventCallback<(InsurancePartyRole Role, Guid TargetId)> PartyRemove(Guid policyId) =>
+        EventCallback.Factory.Create<(InsurancePartyRole Role, Guid TargetId)>(
+            this, link => RemovePartyAsync(policyId, link.Role, link.TargetId));
+
+    /// <summary>
+    /// Where focus goes when a removal empties one collection: any party menu still rendered in this
+    /// policy, and failing that the policy's own row actions, which outlive every party.
+    /// </summary>
+    /// <remarks>
+    /// Ordered most- to least-preferred; the first that resolves wins. One case is out of reach from
+    /// here: removing the LAST party of the whole policy unrenders the Parties section along with the
+    /// tiles, so the component is disposed before it can place focus. The removal is still announced
+    /// through the page's live region, which is what keeps that case merely unpolished rather than
+    /// silent.
+    /// </summary>
+    // Two selectors, tried IN ORDER — deliberately not one comma-separated selector, which
+    // querySelector resolves in DOCUMENT order and would hand back the row-actions button (rendered
+    // above the tiles) even when a sibling collection still has a party menu to land on.
+    private static string[] PartyFallbackFocus(Guid policyId) =>
+    [
+        $"#ins-{policyId} .ins-tile-menu button",
+        $"#ins-{policyId} button[aria-label^=\"Actions for \"]",
+    ];
+
     // Detaching the link leaves the contact or account itself untouched, which is why this is not
     // worded as a delete and does not go through a delete confirmation. It lives on the tile's own ⋯
     // menu rather than in the edit dialog's footer: a destructive action beside Save reads as the

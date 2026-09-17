@@ -41,10 +41,15 @@
     @* Label is the collection's SINGULAR name, repeated per member — no position and no count: the
        tiles themselves are the count, and the caption slot keeps the type, which is where the
        record's meaning lives in text. *@
+    @* @key is load-bearing, not tidiness: a removal shrinks this list in place, and without an
+       identity Blazor diffs the survivors POSITIONALLY — it would keep the focused tile's DOM node
+       and re-point it at the NEXT member's data, so a menu a keyboard user is sitting on silently
+       starts describing a different party under the same focus (WCAG 4.1.2). *@
     @foreach (var member in shown)
     {
         var m = member;
-        <OdsInfoTile Icon="@(m.Unnamed ? UnnamedIcon(m) : (m.Icon ?? FallbackIcon))"
+        <OdsInfoTile @key="m.Key"
+                     Icon="@(m.Unnamed ? UnnamedIcon(m) : (m.Icon ?? FallbackIcon))"
                      IconColor="@(m.Unnamed ? null : m.IconColor)"
                      IconSoft="@(m.Unnamed ? null : m.IconSoft)"
                      LabelContent="@LabelFor(m)"
@@ -85,7 +90,9 @@
             }
             @if (MenuFor(member) is { Count: > 0 } items)
             {
-                <span class="ins-tile-menu">
+                @* The id is the focus anchor a removal lands on — see FocusAfterRemovalAsync. It goes on
+                   the wrapper rather than the trigger so OdsMenu needs no new parameter. *@
+                <span class="ins-tile-menu" id="@PartyMenuId(member)">
                     <OdsMenu Items="items" AriaLabel="@($"Actions for {Label?.ToLowerInvariant()} {member.Display}")" />
                 </span>
             }
