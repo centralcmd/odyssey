@@ -56,6 +56,15 @@ public partial class JournalCard
     private IReadOnlyList<OdsOption> _photoPeopleOptions = [];
     private IJSObjectReference? _focusJs;
 
+    // Focus return across a link removal (WCAG 2.4.3). Removing a contact or tag destroys the very
+    // tile menu that had focus, which otherwise drops focus to <body>. The neighbour to land on is
+    // computed BEFORE the write, because by the time the refreshed entry arrives the removed tile is
+    // gone and its position with it. Same shape as InsurancePolicyLinkTiles, which solved this for the
+    // policy party tiles these link tiles are modelled on.
+    private string? _focusAfterRemoval;
+    private bool _pendingFocus;
+    private IJSObjectReference? _focusReturnJs;
+
     // ── Permissions ────────────────────────────────────────────────────────────
     private bool _canCreate;
     private bool _canUpdate;
@@ -63,6 +72,7 @@ public partial class JournalCard
     private bool _canReadFiles;
     private bool _canReadContacts;
     private bool _canCreateContacts;
+    private bool _canReadJournalTags;
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "journal-page";
@@ -184,6 +194,10 @@ public partial class JournalCard
         _canDelete = user.HasPermission(PermissionClaims.JournalDelete);
         _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
+        // /journal-tags is gated on its OWN claim, which journal.read does not imply. Without this the
+        // tag tile's "Open journal tags" item is a dead end for a caller who holds one and not the
+        // other — the same reason "Open contact" is gated on contacts.read.
+        _canReadJournalTags = user.HasPermission(PermissionClaims.JournalTagsRead);
         _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
@@ -261,12 +275,9 @@ public partial class JournalCard
         StateHasChanged();
     }
 
-    // An unselected option is "don't filter", never "must be absent": the picker offers presence only,
-    // so it sends null rather than false — false would mean "entries with NO photos", which is a
-    // different question and not one this control asks.
-    private bool? WantPhotos => _mediaFilter.Contains(MediaPhotos) ? true : null;
+    private bool? WantPhotos => JournalMediaFilter.Want(_mediaFilter, MediaPhotos);
 
-    private bool? WantFiles => _mediaFilter.Contains(MediaFiles) ? true : null;
+    private bool? WantFiles => JournalMediaFilter.Want(_mediaFilter, MediaFiles);
 
     // The range is inclusive on both ends and both sides of the comparison are whole days: the picker
     // hands back a date, an entry's EntryDate is the picked day stored at midnight, and the server's
@@ -826,22 +837,100 @@ public partial class JournalCard
     // The write re-projects the loaded entry with one id removed, so nothing else about the entry
     // changes and no file is re-uploaded.
     private Task UnlinkContactAsync(ExistingJournalEntry entry, Guid contactId) =>
-        UpdateLinksAsync(entry, JournalWrite.WithoutContact(entry, contactId), "Contact removed from the entry.", "Unable to remove the contact");
+        UpdateLinksAsync(entry, ContactKey(contactId), JournalWrite.WithoutContact(entry, contactId),
+            "Contact removed from the entry.", "Unable to remove the contact");
 
     private Task UnlinkTagAsync(ExistingJournalEntry entry, Guid tagId) =>
-        UpdateLinksAsync(entry, JournalWrite.WithoutTag(entry, tagId), "Tag removed from the entry.", "Unable to remove the tag");
+        UpdateLinksAsync(entry, TagKey(tagId), JournalWrite.WithoutTag(entry, tagId),
+            "Tag removed from the entry.", "Unable to remove the tag");
 
-    private async Task UpdateLinksAsync(ExistingJournalEntry entry, UpdateJournalEntry update, string success, string failure)
+    private async Task UpdateLinksAsync(
+        ExistingJournalEntry entry, string removedKey, UpdateJournalEntry update, string success, string failure)
     {
         if (!_canUpdate)
         {
             return;
         }
 
+        // Computed before the write: afterwards the entry is refetched and the removed tile's position
+        // is gone with it. A failed write leaves it set, which is harmless — nothing reads it unless a
+        // removal actually lands.
+        _focusAfterRemoval = NeighbourKeyOf(entry, removedKey);
+
         if ((await Journal.UpdateAsync(entry.JournalEntryId, update)).Toast(Snackbar, failure, success))
         {
             _announce = success;
             await ReloadEntry(entry.JournalEntryId);
+            _pendingFocus = true;
+        }
+    }
+
+    // ── Link tile identity + focus targets ─────────────────────────────────────
+    // Contacts and tags share one section and one grid, so the neighbour is computed over the two in
+    // render order rather than per kind: removing the last contact should land on the first tag, which
+    // is what the reader sees next.
+    private static string ContactKey(Guid id) => $"cp-{id}";
+
+    private static string TagKey(Guid id) => $"tag-{id}";
+
+    internal static string TileMenuId(Guid entryId, string key) => $"je-link-{entryId}-{key}";
+
+    private List<string> LinkKeys(ExistingJournalEntry entry) =>
+    [
+        .. entry.ContactIds.Select(ContactKey),
+        .. EntryTags(entry.TagIds).Select(t => TagKey(t.JournalTagId)),
+    ];
+
+    private string? NeighbourKeyOf(ExistingJournalEntry entry, string key)
+    {
+        var keys = LinkKeys(entry);
+        var index = keys.IndexOf(key);
+        if (index < 0)
+        {
+            return null;
+        }
+
+        if (index + 1 < keys.Count)
+        {
+            return keys[index + 1];
+        }
+
+        return index > 0 ? keys[index - 1] : null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_pendingFocus)
+        {
+            return;
+        }
+
+        _pendingFocus = false;
+        var neighbour = _focusAfterRemoval;
+        _focusAfterRemoval = null;
+
+        if (_expandedId is not { } entryId)
+        {
+            return;
+        }
+
+        try
+        {
+            _focusReturnJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
+            // The neighbouring tile's menu, else the card's own row menu — a section that just lost its
+            // last link has no tile left to land on, and the card is the nearest thing still standing.
+            string?[] candidates =
+            [
+                neighbour is null ? null : $"#{TileMenuId(entryId, neighbour)} button",
+                $"#je-{entryId} .odc-record-ctl button",
+                $"#je-{entryId} .odc-record-trigger",
+            ];
+            await _focusReturnJs.InvokeVoidAsync("focusFirst", candidates);
+        }
+        catch (Exception)
+        {
+            // Best-effort: the removal is already announced through the page's live region, so a failed
+            // focus return degrades rather than losing the outcome.
         }
     }
 
@@ -850,6 +939,11 @@ public partial class JournalCard
         if (_focusJs is not null)
         {
             try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
+
+        if (_focusReturnJs is not null)
+        {
+            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 }

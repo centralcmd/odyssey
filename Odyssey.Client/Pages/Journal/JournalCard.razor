@@ -220,7 +220,7 @@
                                                          Icon="@(cp is null ? "link_off" : cpMeta!.Icon)"
                                                          IconColor="@(cp is null ? null : cpMeta!.Color)"
                                                          IconSoft="@(cp is null ? null : cpMeta!.Soft)"
-                                                         LabelContent="@TileLabel("Contact", ContactTileMenu(detail, cpId, cp))"
+                                                         LabelContent="@TileLabel("Contact", TileMenuId(detail.JournalEntryId, ContactKey(cpId)), ContactTileMenu(detail, cpId, cp))"
                                                          ValueVariant="OdsInfoTileVariant.Text"
                                                          WrapValue="true"
                                                          Tone="@(cp is null ? OdsInfoTileTone.Muted : OdsInfoTileTone.Default)"
@@ -234,7 +234,7 @@
                                                          Icon="label"
                                                          IconColor="var(--tag-text)"
                                                          IconSoft="var(--tag-soft)"
-                                                         LabelContent="@TileLabel("Tag", TagTileMenu(detail, t))"
+                                                         LabelContent="@TileLabel("Tag", TileMenuId(detail.JournalEntryId, TagKey(t.JournalTagId)), TagTileMenu(detail, t))"
                                                          ValueVariant="OdsInfoTileVariant.Text"
                                                          WrapValue="true">
                                                 <Value>@t.Name</Value>
@@ -343,12 +343,15 @@
     // in the LABEL rather than over the value, so it never sits on top of a wrapped contact name — the
     // same corner and the same 24px target the policy party tiles use, and always visible rather than
     // hover-revealed: a menu that appears only on hover is invisible to a touch user.
-    private RenderFragment TileLabel(string label, RenderFragment? menu) =>
+    private RenderFragment TileLabel(string label, string menuId, RenderFragment? menu) =>
         @<text>
             @label
             @if (menu is not null)
             {
-                <span class="je-tile-menu">@menu</span>
+                @* The id is the focus anchor a removal lands on — see OnAfterRenderAsync. It goes on
+                   the wrapper rather than the trigger so OdsMenu needs no new parameter, the same
+                   placement InsurancePolicyLinkTiles uses. *@
+                <span class="je-tile-menu" id="@menuId">@menu</span>
             }
         </text>;
 
@@ -403,15 +406,21 @@
             },
             new()
             {
-                Icon = "local_offer", Label = "Open journal tags",
-                OnClick = EventCallback.Factory.Create(this, () => Nav.NavigateTo("/journal-tags")),
-            },
-            new()
-            {
                 Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
                 OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(tag.JournalTagId.ToString(), "Tag ID copied.")),
             },
         };
+        // /journal-tags carries its own claim, which journal.read does not imply — an ungated item
+        // would be a dead end for a caller holding one and not the other. Same gate as "Open contact".
+        if (_canReadJournalTags)
+        {
+            items.Insert(1, new OdsMenuItem
+            {
+                Icon = "local_offer", Label = "Open journal tags",
+                OnClick = EventCallback.Factory.Create(this, () => Nav.NavigateTo("/journal-tags")),
+            });
+        }
+
         if (_canUpdate)
         {
             items.Add(new OdsMenuItem { Divider = true });
