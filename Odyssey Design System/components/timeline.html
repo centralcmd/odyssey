@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Timeline" subtitle="Vertical rail history list — the alternative rendering of any effective-dated record table (terms, estimates, renewals). Rail node, body, and a right-hand figures column that hosts a Delta and a RowActions." viewport="900x520" -->
+<html lang="en" data-theme="dark">
+<head>
+<title>Odyssey · Timeline</title>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+<style>
+html,body{margin:0;background:var(--mud-palette-background)}
+body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:26px 30px}
+h1{font:var(--fw-bold) var(--fs-h6)/1 var(--font-sans);margin:0 0 18px}
+#root{max-width:640px;background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-lg);padding:18px 20px}
+.pill{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);padding:3px 7px;border-radius:var(--radius-pill);background:var(--mud-palette-action-default-hover);color:var(--mud-palette-text-secondary)}
+.pill.on{color:var(--finance-income);background:var(--finance-income-soft)}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+</head>
+<body>
+<h1>Timeline</h1>
+<div id="root"></div>
+<script>
+(function(){
+  var e = React.createElement;
+  var NS = window.OdysseyDesignSystem_d5aa51 || {};
+  var Timeline = NS.Timeline, TimelineItem = NS.TimelineItem, RowActions = NS.RowActions, Delta = NS.Delta;
+  var noop = function(){};
+  var nok = function(n){ return 'kr ' + Math.abs(Math.round(n)).toLocaleString('en-US'); };
+  var acts = e(RowActions, { actions: [
+    { icon:'edit', label:'Edit entry', onClick:noop },
+    { icon:'delete', label:'Delete entry', danger:true, onClick:noop }
+  ]});
+  var items = [
+    { label:'Interest rate', date:'1 Feb 2026', value:'4.35 %', current:true, status:'In force', delta:0.35, note:'Repricing after the December policy meeting.' },
+    { label:'Interest rate', date:'1 Nov 2025', value:'4.00 %', delta:-0.20, status:'Superseded' },
+    { label:'Platform fee',  date:'1 Aug 2025', value:'0.24 %', delta:null, status:'Superseded', note:'Tiered schedule replaced by a flat rate.' }
+  ];
+
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    e(Timeline, null, items.map(function(it,i){
+      return e(TimelineItem, {
+        key:i, label:it.label, date:it.date, value:it.value, current:it.current, note:it.note,
+        meta: e('span',{className:'pill' + (it.current ? ' on' : '')}, it.status),
+        aside: it.delta == null ? null : e(Delta,{mode:'directional',value:it.delta,neutral:true,format:function(n){return Math.abs(n).toFixed(2)+' pp';}}),
+        actions: acts
+      });
+    }))
+  );
+})();
+</script>
+</body>
+</html>

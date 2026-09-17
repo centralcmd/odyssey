@@ -120,25 +120,6 @@ const ContactChip = ({ cp }) => {
   return Cmp ? <Cmp contact={cp} size="sm" /> : null;
 };
 
-// Small text-labelled count indicators (photos / files / links) — never
-// colour/icon alone; the number + noun are the signal.
-const JournalCounts = ({ e, size = 'sm' }) => {
-  const items = [];
-  if (e.photos && e.photos.length) items.push({ icon: 'photo_library', n: e.photos.length, noun: e.photos.length === 1 ? 'photo' : 'photos' });
-  if (e.attachments && e.attachments.length) items.push({ icon: 'attach_file', n: e.attachments.length, noun: e.attachments.length === 1 ? 'file' : 'files' });
-  if (!items.length) return null;
-  return (
-    <span className={`je-counts${size === 'sm' ? ' sm' : ''}`}>
-      {items.map((it) => (
-        <span className="je-count" key={it.noun}>
-          <MIcon name={it.icon} size={14} />
-          <span className="mono">{it.n}</span> {it.noun}
-        </span>
-      ))}
-    </span>
-  );
-};
-
 // The attachment well — the SAME files surface the Accounts detail uses: the
 // shared DS FilesTable (components/FilesTable.jsx), scoped to journal entries.
 // Read-only here (files are edited from the entry's edit dialog); the menu
@@ -218,7 +199,7 @@ const PhotoLightbox = ({ photos, index, onClose, onIndex }) => {
 };
 
 /* ---------- Expanded DETAIL ---------- */
-const JournalDetail = ({ e }) => {
+const JournalDetail = ({ e, onNavigate, onUnlinkContact, onUnlinkTag }) => {
   const { useState } = React;
   const tags = J_H.jEntryTags(e);
   const cps = J_H.jContacts(e);
@@ -249,36 +230,88 @@ const JournalDetail = ({ e }) => {
     addToAlbums: () => {}, removeFromAlbums: () => {},
   };
   const editRec = editId != null ? photoRecs.find((r) => r.id === editId) : null;
+  const nPhotos = galleryPhotos.length;
+  const nFiles = (e.attachments || []).length;
   return (
-    <div className="acct-detail">
-      <div className="meta-grid je-meta">
-        <MetaTile label="Entry date" value={J_H.jEntryDate(e.entryDate)} mono />
-        <MetaTile label="Location" value={e.location || '—'} />
-        <MetaTile label="Written by" value={e.createdBy} />
-        <MetaTile label="Last edited" value={e.updatedBy && e.updatedBy !== e.createdBy ? `${e.updatedBy} · ${J_H.jDateTime(e.updatedAt)}` : `${J_H.jDateTime(e.updatedAt)}`} />
-        <MetaTile label="Tags" value={tags.length ? <TagChips tags={tags.map((t) => ({ label: t.name }))} /> : '—'} />
-        <MetaTile label="Contacts" value={cps.length
-          ? <span className="je-cp-row">{cps.map((cp) => <ContactChip cp={cp} key={cp.id} />)}</span>
-          : '—'} />
-        {e.archived ? <MetaTile label="Archived" value={J_H.jDateTime(e.archived)} mono /> : null}
-        <div className="je-content-cell">
-          <MetaTile label="Content" value={<div className="je-content">{e.content}</div>} />
+    <React.Fragment>
+      {/* DETAILS — the entry's full field set, in the shared DS tile grid every
+          record detail uses (Accounts / Contracts / Insurance). */}
+      <InfoTileGrid>
+        <InfoTile icon="event" label="Entry date" value={J_H.jEntryDate(e.entryDate)} valueVariant="sm" />
+        {e.location ? <InfoTile icon="place" label="Location" value={e.location} valueVariant="text" /> : null}
+        <InfoTile icon="person" label="Written by" value={e.createdBy} valueVariant="text" />
+        <InfoTile icon="history" label="Last edited" value={J_H.jDateTime(e.updatedAt)} valueVariant="sm"
+          foot={e.updatedBy && e.updatedBy !== e.createdBy ? `by ${e.updatedBy}` : null} />
+        {e.archived ? <InfoTile icon="inventory_2" label="Archived" value={J_H.jDateTime(e.archived)} valueVariant="sm" foot="hidden from the default list" /> : null}
+      </InfoTileGrid>
+
+      {/* CONTENT — the entry text, in one wide tile (the `content` slot's shape). */}
+      <InfoTileGrid>
+        <InfoTile icon="notes" label="Content" value={<div className="je-content">{e.content}</div>} wide />
+      </InfoTileGrid>
+
+      {/* LINKS — the entry's contacts and tags in ONE section, one tile per
+          link: a contact in its own type icon + colour (a reference to another
+          record stays recognisable as that record), a tag in the tag colour.
+          The same shape a policy's Parties section uses, kept to a single
+          divider so the card doesn't grow a section per link kind. */}
+      {cps.length || tags.length ? (
+        <div className="je-section">
+          <SectionDivider label="Contacts & tags"
+            meta={[cps.length ? `${cps.length} contact${cps.length === 1 ? '' : 's'}` : null,
+              tags.length ? `${tags.length} tag${tags.length === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')} />
+          <InfoTileGrid>
+            {cps.map((cp) => {
+              const meta = (!cp.unavailable && J_D.contactTypeByKey[cp.type]) || {};
+              // The same ⋯ menu the policy party tiles carry — same corner, same
+              // 24px target, always visible rather than hover-revealed.
+              const menu = (
+                <span className="je-tile-menu">
+                  <ActionMenu items={[
+                    ...(!cp.unavailable ? [{ icon: 'content_copy', label: 'Copy name', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(cp.name); } }] : []),
+                    ...(!cp.unavailable && onNavigate ? [{ icon: 'groups', label: 'Open contact', onClick: () => onNavigate('contacts') }] : []),
+                    { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(cp.id); } },
+                    ...(onUnlinkContact ? [{ divider: true }, { icon: 'link_off', label: 'Remove contact', danger: true, onClick: () => onUnlinkContact(cp.id) }] : []),
+                  ]} />
+                </span>
+              );
+              return (
+                <InfoTile key={cp.id}
+                  icon={cp.unavailable ? 'link_off' : (meta.icon || 'groups')}
+                  iconColor={cp.unavailable ? undefined : meta.color}
+                  iconSoft={cp.unavailable ? undefined : meta.soft}
+                  label={<React.Fragment>Contact{menu}</React.Fragment>} valueVariant="text"
+                  className={`wrapvalue${cp.unavailable ? ' tone-muted' : ''}`}
+                  value={cp.unavailable ? 'Unavailable' : cp.name}
+                  foot={cp.unavailable ? 'no longer readable' : (meta.label || 'Contact')} />
+              );
+            })}
+            {tags.map((t) => (
+              <InfoTile key={t.id} icon="label" iconColor="var(--tag-text)" iconSoft="var(--tag-soft)"
+                label={<React.Fragment>Tag<span className="je-tile-menu">
+                  <ActionMenu items={[
+                    { icon: 'content_copy', label: 'Copy name', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(t.name); } },
+                    { icon: 'local_offer', label: 'Open journal tags', onClick: () => onNavigate && onNavigate('journal-tags') },
+                    { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(t.id); } },
+                    ...(onUnlinkTag ? [{ divider: true }, { icon: 'link_off', label: 'Remove tag', danger: true, onClick: () => onUnlinkTag(t.id) }] : []),
+                  ]} />
+                </span></React.Fragment>}
+                value={t.name} valueVariant="text" className="wrapvalue" />
+            ))}
+          </InfoTileGrid>
         </div>
+      ) : null}
+
+      <div className="je-section">
+        <SectionDivider label="Photos" meta={`${nPhotos} ${nPhotos === 1 ? 'photo' : 'photos'}`} />
+        <JournalPhotoGallery title={null} photos={galleryPhotos} onOpen={(p) => setViewIdx(galleryPhotos.findIndex((x) => x.id === p.id))} />
       </div>
 
-      <div className="je-media">
-        <section className="je-photos">
-          <div className="meta-grid">
-            <div className="je-content-cell">
-              <MetaTile label="Photos" value={<JournalPhotoGallery title={null} photos={galleryPhotos} onOpen={(p) => setViewIdx(galleryPhotos.findIndex((x) => x.id === p.id))} />} />
-            </div>
-          </div>
-        </section>
-        <section className="je-attachments">
-          <Collapsible icon="attach_file" title="Attachments" count={(e.attachments || []).length} defaultOpen>
-            <JournalFilesTable files={e.attachments} />
-          </Collapsible>
-        </section>
+      <div className="je-section">
+        <SectionDivider label="Attachments" meta={`${nFiles} file${nFiles === 1 ? '' : 's'}`} />
+        <div className="je-tbl-frame">
+          <JournalFilesTable files={e.attachments} />
+        </div>
       </div>
       {viewIdx != null && PhotoView && (
         <PhotoView photos={photoRecs} index={viewIdx} lib={photoLib} contained={false}
@@ -288,27 +321,33 @@ const JournalDetail = ({ e }) => {
       {editRec && PhotoEdit && (
         <PhotoEdit photo={editRec} lib={photoLib} contained={false} onClose={() => setEditId(null)} />
       )}
-    </div>
+    </React.Fragment>
   );
 };
 
-/* ---------- One entry card ---------- */
-const JournalListItem = ({ row, defaultOpen, highlight, onSave, onDelete, onExport }) => {
+/* ---------- One entry card ----------
+   The shared DS RecordCard — the same expandable record card Accounts,
+   Contracts, Insurance and Subscriptions use. A journal entry has no headline
+   figure, so `figure` is omitted rather than invented. */
+const JournalListItem = ({ row, open: openProp, onToggle, highlight, onSave, onDelete, onExport, onNavigate }) => {
   const { useState, useRef, useEffect } = React;
-  const [open, setOpen] = useState(!!defaultOpen);
+  const open = !!openProp;
+  const setOpen = (next) => onToggle && onToggle(typeof next === 'function' ? next(open) : next);
   const [showEdit, setShowEdit] = useState(false);
   const cardRef = useRef(null);
   const e = row;
   const dimmed = !!e.archived;
   const tags = J_H.jEntryTags(e);
   const cps = J_H.jContacts(e);
+  const nPhotos = (e.photos || []).length;
+  const nFiles = (e.attachments || []).length;
 
   const saveEdit = (patch) => { onSave(e.id, patch); setShowEdit(false); };
   const toggleArchive = () => onSave(e.id, { archived: e.archived ? null : new Date().toISOString() });
 
   useEffect(() => {
     if (!highlight || !cardRef.current) return;
-    setOpen(true);
+    if (!open) setOpen(true);
     const el = cardRef.current;
     let scroller = el.parentElement;
     while (scroller && scroller !== document.body) {
@@ -325,47 +364,43 @@ const JournalListItem = ({ row, defaultOpen, highlight, onSave, onDelete, onExpo
   }, [highlight]);
 
   return (
-    <Card className={`acct-item ${open ? 'open' : ''} ${dimmed ? 'dimmed' : ''} ${highlight ? 'flash' : ''}`} ref={cardRef}>
-      <div className="acct-head" onClick={() => setOpen((o) => !o)}>
-        <Avatar icon="menu_book" tone={{ bg: 'var(--tag-soft)', fg: 'var(--tag-text)' }} square size="lg" />
-
-        <div className="acct-id">
-          <div className="acct-name-row">
-            <span className="acct-name">{e.title}</span>
-            {e.archived ? <span className="odc-chip outline odc-todo-archived" style={{ padding: '1px 8px', fontSize: 'var(--fs-caption)' }}><span className="odc-chip-dot" aria-hidden="true" />Archived</span> : null}
-          </div>
-          <div className="acct-tags je-subline">
-            <span className="je-when mono">{J_H.jEntryDate(e.entryDate)}</span>
-            <span className="acct-dot">·</span>
-            <span className="je-author"><MIcon name="person" size={14} />{e.createdBy}</span>
-            {e.location ? <React.Fragment><span className="acct-dot">·</span><span className="je-loc"><MIcon name="place" size={14} />{e.location}</span></React.Fragment> : null}
-          </div>
-          <div className="je-snippet">{J_H.jSnippet(e.content)}</div>
-          <div className="je-cardfoot">
-            {tags.length ? <TagChips tags={tags.map((t) => ({ label: t.name }))} max={4} /> : null}
-            {cps.length ? <span className="je-cp-row">{cps.map((cp) => <ContactChip cp={cp} key={cp.id} />)}</span> : null}
-            <JournalCounts e={e} />
-          </div>
-        </div>
-
-        <div className="acct-controls" onClick={(ev) => ev.stopPropagation()}>
-          <ActionMenu items={[
-            { icon: 'edit', label: 'Edit entry', onClick: () => setShowEdit(true) },
-            { icon: 'event_note', label: 'Export VJOURNAL', onClick: () => onExport && onExport(e) },
-            { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(e.id); } },
-            { divider: true },
-            { icon: e.archived ? 'unarchive' : 'inventory_2', label: e.archived ? 'Unarchive' : 'Archive', onClick: toggleArchive },
-            { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(e.id) },
-          ]} />
-          <button className="acct-expand" onClick={() => setOpen((o) => !o)} aria-label="Expand">
-            <MIcon name="expand_more" size={22} className={`chev ${open ? 'open' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {open && <JournalDetail e={e} />}
+    <div ref={cardRef}>
+      <RecordCard
+        icon="menu_book"
+        accent="var(--tag-text)"
+        accentSoft="var(--tag-soft)"
+        name={e.title}
+        chips={e.archived ? <Chip tone="outline" dot>Archived</Chip> : null}
+        meta={[
+          <span className="je-when mono">{J_H.jEntryDate(e.entryDate)}</span>,
+          <span className="je-author"><MIcon name="person" size={14} /><span>{e.createdBy}</span></span>,
+          e.location ? <span className="je-loc"><MIcon name="place" size={14} /><span>{e.location}</span></span> : null,
+        ]}
+        counts={[
+          ...(cps.length > 0 ? [{ icon: 'groups', value: cps.length, label: 'Contacts' }] : []),
+          ...(tags.length > 0 ? [{ icon: 'label', value: tags.length, label: 'Tags' }] : []),
+          ...(nPhotos > 0 ? [{ icon: 'photo_library', value: nPhotos, label: 'Photos' }] : []),
+          ...(nFiles > 0 ? [{ icon: 'attach_file', value: nFiles, label: 'Files' }] : []),
+        ]}
+        dimmed={dimmed}
+        highlight={highlight}
+        open={open}
+        onToggle={setOpen}
+        actions={<ActionMenu items={[
+          { icon: 'edit', label: 'Edit entry', onClick: () => setShowEdit(true) },
+          { icon: 'event_note', label: 'Export VJOURNAL', onClick: () => onExport && onExport(e) },
+          { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(e.id); } },
+          { divider: true },
+          { icon: e.archived ? 'unarchive' : 'inventory_2', label: e.archived ? 'Unarchive' : 'Archive', onClick: toggleArchive },
+          { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(e.id) },
+        ]} />}
+      >
+        <JournalDetail e={e} onNavigate={onNavigate}
+          onUnlinkContact={(id) => onSave(e.id, { contactIds: (e.contactIds || []).filter((x) => x !== id) })}
+          onUnlinkTag={(id) => onSave(e.id, { tagIds: (e.tagIds || []).filter((x) => x !== id) })} />
+      </RecordCard>
       {showEdit && <AddJournalEntryModal entry={e} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
-    </Card>
+    </div>
   );
 };
 
@@ -439,16 +474,20 @@ const AddJournalEntryModal = ({ onClose, onCreate, onSave, entry = null }) => {
 };
 
 /* ---------- Page ---------- */
-const Journal = ({ tweaks = {} }) => {
+const Journal = ({ tweaks = {}, onNavigate }) => {
   const { useState, useEffect, useMemo } = React;
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
 
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [tagFilter, setTagFilter] = useState([]);
+  const [cpFilter, setCpFilter] = useState([]);
+  const [mediaFilter, setMediaFilter] = useState([]); // 'photos' | 'files'
+  const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [statusFilter, setStatusFilter] = useState([]); // 'active' | 'archived'
   const [adding, setAdding] = useState(false);
   const [rows, setRows] = useState(J_D.journalEntries);
+  const [openId, setOpenId] = useState('je1'); // one card open at a time (RecordCard)
   const [sort, setSort] = useState({ key: 'entryDate', dir: 'desc' });
   const [batch, setBatch] = useState(25);
   const [importOpen, setImportOpen] = useState(false);
@@ -479,19 +518,27 @@ const Journal = ({ tweaks = {} }) => {
     if (statusFilter.length && !statusFilter.includes(st)) return false;
     else if (!statusFilter.length && e.archived) return false; // hide archived by default
     if (tagFilter.length && !(e.tagIds || []).some((t) => tagFilter.includes(t))) return false;
+    if (cpFilter.length && !(e.contactIds || []).some((c) => cpFilter.includes(c))) return false;
+    // Media flags are AND-ed: picking both wants entries carrying both.
+    if (mediaFilter.includes('photos') && !(e.photos || []).length) return false;
+    if (mediaFilter.includes('files') && !(e.attachments || []).length) return false;
+    // Entry-date range, inclusive on both ends (dates only, stored UTC).
+    const day = (e.entryDate || '').slice(0, 10);
+    if (dateRange.from && (!day || day < dateRange.from)) return false;
+    if (dateRange.to && (!day || day > dateRange.to)) return false;
     if (debouncedQ) {
       const hay = `${e.title} ${e.content} ${e.location || ''}`.toLowerCase();
       if (!hay.includes(debouncedQ.toLowerCase())) return false;
     }
     return true;
-  }), [rows, statusFilter, tagFilter, debouncedQ]);
+  }), [rows, statusFilter, tagFilter, cpFilter, mediaFilter, dateRange, debouncedQ]);
 
   const sortedRows = DS.SortHelpers ? DS.SortHelpers.sortRows(filtered, sortFields, sort, (e) => e.id) : filtered;
 
   const active = rows.filter((e) => !e.archived);
   const photoCount = active.reduce((n, e) => n + (e.photos ? e.photos.length : 0), 0);
-  const hasFilters = !!(debouncedQ || tagFilter.length || statusFilter.length);
-  const clearFilters = () => { setQ(''); setTagFilter([]); setStatusFilter([]); };
+  const hasFilters = !!(debouncedQ || tagFilter.length || statusFilter.length || cpFilter.length || mediaFilter.length || dateRange.from || dateRange.to);
+  const clearFilters = () => { setQ(''); setTagFilter([]); setStatusFilter([]); setCpFilter([]); setMediaFilter([]); setDateRange({ from: null, to: null }); };
 
   // Per-entry export (action menu, spec §3/§7.1) — a single-VJOURNAL .ics.
   // Filename is always the timestamp form, never the entry title (spec §3 #2).
@@ -559,6 +606,16 @@ const Journal = ({ tweaks = {} }) => {
               <MultiSelect allLabel="Any tag" value={tagFilter} onChange={setTagFilter}
                 options={JOURNAL_TAG_OPTIONS()} />
             </div>
+            <div style={{ minWidth: 180 }}>
+              <MultiSelect allLabel="Any contact" value={cpFilter} onChange={setCpFilter}
+                options={JOURNAL_CP_OPTIONS()} />
+            </div>
+            <div style={{ minWidth: 170 }}>
+              <MultiSelect allLabel="Any attachment" value={mediaFilter} onChange={setMediaFilter}
+                options={[{ value: 'photos', label: 'Has photos' }, { value: 'files', label: 'Has files' }]} />
+            </div>
+            <DateRangePicker label="Entry date" icon="event" ariaLabel="Filter by entry date"
+              value={dateRange} onChange={(r) => setDateRange({ from: r.from || null, to: r.to || null })} />
             <div style={{ minWidth: 160 }}>
               <MultiSelect allLabel="Active" value={statusFilter} onChange={setStatusFilter}
                 options={[{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }]} />
@@ -595,7 +652,8 @@ const Journal = ({ tweaks = {} }) => {
             itemKey={(e) => e.id}
             noun="entries"
             renderItem={(e) => (
-              <JournalListItem row={e} defaultOpen={e.id === 'je1'} onSave={onSave} onDelete={onDelete} onExport={exportEntry} />
+              <JournalListItem row={e} open={openId === e.id} onToggle={(o) => setOpenId(o ? e.id : null)}
+                onSave={onSave} onDelete={onDelete} onExport={exportEntry} onNavigate={onNavigate} />
             )}
             empty={(
               <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>

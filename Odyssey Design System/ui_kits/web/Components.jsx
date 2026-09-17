@@ -1442,3 +1442,9 @@ Object.assign(window, {
 // `ContactChip` adapter in the shared global lexical scope. Used by the
 // Journal links row and the Photos "People" (Contacts of type Person).
 window.ContactChip = DS.ContactChip;
+
+// PageHeader: same pattern — the typed DS component is the single source of
+// truth (components/PageHeader.jsx + .d.ts). Globalized here for the kit's
+// Babel-script pages. Guarded so an older bundle that already globalized a
+// working PageHeader is never clobbered with undefined.
+if (DS.PageHeader) window.PageHeader = DS.PageHeader;

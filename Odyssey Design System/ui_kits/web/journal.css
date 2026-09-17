@@ -35,6 +35,24 @@
 
 .je-media { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
 
+/* Expanded detail — the shared RecordCard body: DS tile grid + sub-dividers,
+   the same sections Accounts / Contracts use. */
+.je-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.odc-record-body .je-tbl-frame {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-1);
+  padding: 8px 8px 4px;
+}
+/* Each link tile carries the same ⋯ menu the policy party tiles do — same
+   corner, same target, always visible rather than hover-revealed. */
+.je-section .odc-tilegrid > .odc-infotile { position: relative; }
+.je-tile-menu { position: absolute; top: 6px; right: 6px; z-index: 1; }
+
+/* Content snippet styles removed with the header snippet — the entry text now
+   lives only in the body's Content tile. */
+
 /* Photo lightbox — full-screen overlay with a large placeholder/image + caption */
 .je-lightbox {
   position: fixed; inset: 0; z-index: 1300;

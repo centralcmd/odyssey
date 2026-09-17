@@ -19,3 +19,15 @@
 @import url('./ui_kits/web/account.css');
 @import url('./ui_kits/web/account-signals.css');
 @import url('./ui_kits/web/admin.css');
+@import url('./ui_kits/web/account-estimates.css');
+@import url('./ui_kits/web/account-terms.css');
+@import url('./ui_kits/web/calendar.css');
+@import url('./ui_kits/web/contacts.css');
+@import url('./ui_kits/web/contracts.css');
+@import url('./ui_kits/web/insurance.css');
+@import url('./ui_kits/web/journal.css');
+@import url('./ui_kits/web/legal.css');
+@import url('./ui_kits/web/onboarding.css');
+@import url('./ui_kits/web/photos.css');
+@import url('./ui_kits/web/subscriptions.css');
+@import url('./ui_kits/web/tax-statements.css');
