@@ -1,7 +1,10 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
+using System.Text.RegularExpressions;
 using Odyssey.Api.Identity;
+using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Dtos.Finance;
 using Xunit;
 
@@ -22,6 +25,11 @@ namespace Odyssey.Api.Tests;
 /// so a new controller returning contract or renewal files is caught the day it is written.</item>
 /// <item>Every <c>…ByUserId</c> property reachable from any controller's success responses has a
 /// resolved companion, so a new attribution column on an existing DTO fails here.</item>
+/// <item>Every individual ACTION returning such a response actually calls the enricher. The first
+/// three layers all work at type granularity — a controller keeps its constructor dependency and its
+/// DTOs keep their companions even if one action's call is dropped, so the full suite stays green
+/// while that action ships bare ids again. This layer reads the controller SOURCE, because the call
+/// is a statement and no reflection over the compiled assembly can see it.</item>
 /// </list>
 /// </remarks>
 public sealed class FinanceFileAttributionGuardTests
@@ -126,6 +134,99 @@ public sealed class FinanceFileAttributionGuardTests
         }
     }
 
+    /// <summary>
+    /// The enricher call is per ACTION, so it is checked per action — in the source, since a method
+    /// body is invisible to reflection. Without this, dropping a single
+    /// <c>EnrichFileAttributionAsync</c> line leaves every other guard and every behavioural test on
+    /// the OTHER actions passing, which is exactly how a bare id would come back.
+    /// </summary>
+    [Fact]
+    public void EveryActionReturningAnAttributedFile_CallsTheEnricher()
+    {
+        var offenders = new List<string>();
+
+        foreach (var controller in Controllers.Where(ReturnsAttributedFile))
+        {
+            var source = ControllerSource(controller);
+
+            foreach (var action in controller
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(method => SuccessResponseTypes(method).Any(type => ContainsAttributedFile(type, []))))
+            {
+                if (!CallsEnricher(source, action, out var reason))
+                {
+                    offenders.Add($"{controller.Name}.{action.Name} ({reason})");
+                }
+            }
+        }
+
+        Assert.True(
+            offenders.Count == 0,
+            "These actions declare a success response that can carry an attributed file but never call "
+            + $"{nameof(FileAttributionExtensions.EnrichFileAttributionAsync)}, so their attribution "
+            + "fields ship as bare user ids (issue #106): " + string.Join(", ", offenders.Order()));
+
+        // Same anti-vacuity pin as the layer above: a source scan that stopped matching action bodies
+        // would report zero offenders forever.
+        Assert.NotEmpty(EnricherCallSites());
+    }
+
+    /// <summary>
+    /// Every <c>EnrichFileAttributionAsync</c> call site across the guarded controllers, so the scan
+    /// above cannot pass by finding nothing at all.
+    /// </summary>
+    private static IReadOnlyList<string> EnricherCallSites() =>
+        Controllers
+            .Where(ReturnsAttributedFile)
+            .SelectMany(controller => Regex
+                .Matches(ControllerSource(controller), "EnrichFileAttributionAsync\\(")
+                .Select(match => $"{controller.Name}@{match.Index}"))
+            .ToList();
+
+    private static string ControllerSource(Type controller) =>
+        RepositoryRoot.ReadAllText(Path.Combine("Odyssey.Api", "Controllers", $"{controller.Name}.cs"));
+
+    /// <summary>
+    /// Whether the action's body calls the enricher.
+    /// </summary>
+    /// <remarks>
+    /// Anchored on the action's ROUTE NAME (<c>[HttpGet("{id}", Name = "GetContract")]</c>), never on
+    /// the method name: <c>ContractController</c> and four others carry two overloads called
+    /// <c>Get</c>, and a name-anchored scan silently reads the list overload's body while reporting on
+    /// the by-id one. The route name is unique per action and is what the framework itself keys on.
+    /// An action with no route name, or one the scan cannot locate, is reported as an offender rather
+    /// than skipped — a guard must never excuse itself.
+    /// </remarks>
+    private static bool CallsEnricher(string source, MethodInfo action, out string reason)
+    {
+        var routeName = action
+            .GetCustomAttributes<HttpMethodAttribute>()
+            .Select(attribute => attribute.Name)
+            .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name));
+
+        if (routeName is null)
+        {
+            reason = "no route name to anchor on; add Name = \"…\" to its [Http…] attribute";
+            return false;
+        }
+
+        var anchor = source.IndexOf($"Name = \"{routeName}\"", StringComparison.Ordinal);
+        if (anchor < 0)
+        {
+            reason = $"route name {routeName} not found in the source";
+            return false;
+        }
+
+        // From this action's attribute block to the start of the next action's, which is the whole of
+        // its attributes plus its body.
+        var rest = source[anchor..];
+        var next = Regex.Match(rest, @"^    \[Http", RegexOptions.Multiline);
+        var body = next.Success ? rest[..next.Index] : rest;
+
+        reason = "no EnrichFileAttributionAsync call in its body";
+        return body.Contains("EnrichFileAttributionAsync(", StringComparison.Ordinal);
+    }
+
     private static bool ReturnsAttributedFile(Type controller)
     {
         var visited = new HashSet<Type>();
@@ -161,7 +262,11 @@ public sealed class FinanceFileAttributionGuardTests
     private static IEnumerable<Type> SuccessResponseTypes(Type controller) =>
         controller
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .SelectMany(method => method.GetCustomAttributes<ProducesResponseTypeAttribute>())
+            .SelectMany(SuccessResponseTypes);
+
+    private static IEnumerable<Type> SuccessResponseTypes(MethodInfo action) =>
+        action
+            .GetCustomAttributes<ProducesResponseTypeAttribute>()
             .Where(attribute =>
                 attribute.StatusCode is StatusCodes.Status200OK or StatusCodes.Status201Created
                 && attribute.Type is not null)
