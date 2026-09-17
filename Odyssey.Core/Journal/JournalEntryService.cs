@@ -77,27 +77,91 @@ public class JournalEntryService
                 EntryDate = e.EntryDate,
                 Location = e.Location,
                 CreatedByUserId = e.CreatedByUserId,
+                UpdatedByUserId = e.UpdatedByUserId,
+                CreatedAt = e.CreatedAt,
+                UpdatedAt = e.UpdatedAt,
                 Archived = e.Archived,
                 TagIds = e.EntryTags.Select(t => t.JournalTagId).ToList(),
-                PhotoCount = e.Photos.Count,
+                ContactIds = e.Contacts.Select(c => c.ContactId).ToList(),
+                PhotoLinks = e.Photos
+                    .OrderBy(p => p.Position)
+                    .Select(p => new EntryPhotoRow
+                    {
+                        JournalEntryPhotoId = p.JournalEntryPhotoId,
+                        PhotoId = p.PhotoId,
+                        Position = p.Position,
+                        CreatedAt = p.CreatedAt,
+                    })
+                    .ToList(),
                 AttachmentCount = e.Attachments.Count,
-                ContactCount = e.Contacts.Count,
             });
 
-        return await rows.ToPagedResultAsync(query.Offset, query.Limit, row => new JournalEntrySummary
+        // The link rows are captured as the page materialises, because the paged mapper hands the DTO
+        // on and the row with it — and the file ids they need are ONE batched lookup for the whole
+        // page rather than one per entry.
+        var linkRows = new Dictionary<Guid, List<EntryPhotoRow>>();
+        var page = await rows.ToPagedResultAsync(query.Offset, query.Limit, row =>
         {
-            JournalEntryId = row.JournalEntryId,
-            Title = row.Title,
-            Snippet = JournalText.Truncate(row.Content, 200),
-            EntryDate = row.EntryDate,
-            Location = row.Location,
-            CreatedByUserId = row.CreatedByUserId,
-            Archived = row.Archived,
-            TagIds = row.TagIds,
-            PhotoCount = row.PhotoCount,
-            AttachmentCount = row.AttachmentCount,
-            ContactCount = row.ContactCount,
+            linkRows[row.JournalEntryId] = row.PhotoLinks;
+            return new JournalEntrySummary
+            {
+                JournalEntryId = row.JournalEntryId,
+                Title = row.Title,
+                Content = row.Content,
+                EntryDate = row.EntryDate,
+                Location = row.Location,
+                CreatedByUserId = row.CreatedByUserId,
+                UpdatedByUserId = row.UpdatedByUserId,
+                CreatedAt = row.CreatedAt,
+                UpdatedAt = row.UpdatedAt,
+                Archived = row.Archived,
+                TagIds = row.TagIds,
+                ContactIds = row.ContactIds,
+                AttachmentCount = row.AttachmentCount,
+            };
         }, cancellationToken);
+
+        await AttachPhotoLinksAsync(page.Items, linkRows, cancellationToken);
+        return page;
+    }
+
+    /// <summary>
+    /// Fill each row's photo links with their library <c>Photo</c>'s FileId, in ONE batched lookup for
+    /// the whole page — the same enrichment the detail read does per entry, and the reason the list
+    /// projection carries link rows without a file id of their own. A link whose PhotoId no longer
+    /// resolves is dropped, exactly as on the detail read, so FileId is never empty on a returned link.
+    /// </summary>
+    private async Task AttachPhotoLinksAsync(
+        IReadOnlyList<JournalEntrySummary> items,
+        Dictionary<Guid, List<EntryPhotoRow>> linkRows,
+        CancellationToken cancellationToken)
+    {
+        var photoIds = linkRows.Values.SelectMany(rows => rows.Select(r => r.PhotoId)).Distinct().ToList();
+        if (photoIds.Count == 0)
+        {
+            return;
+        }
+
+        var fileIdByPhotoId = await photos.ResolveFileIdsAsync(photoIds, cancellationToken);
+        foreach (var item in items)
+        {
+            if (!linkRows.TryGetValue(item.JournalEntryId, out var rows))
+            {
+                continue;
+            }
+
+            item.Photos = rows
+                .Where(r => fileIdByPhotoId.ContainsKey(r.PhotoId))
+                .Select(r => new JournalEntryPhotoDto
+                {
+                    JournalEntryPhotoId = r.JournalEntryPhotoId,
+                    PhotoId = r.PhotoId,
+                    FileId = fileIdByPhotoId[r.PhotoId],
+                    Position = r.Position,
+                    CreatedAt = r.CreatedAt,
+                })
+                .ToList();
+        }
     }
 
     public async Task<ExistingJournalEntry?> Get(Guid id, CancellationToken cancellationToken = default)
@@ -589,14 +653,33 @@ public class JournalEntryService
 
         public string? CreatedByUserId { get; set; }
 
+        public string? UpdatedByUserId { get; set; }
+
+        public DateTime CreatedAt { get; set; }
+
+        public DateTime UpdatedAt { get; set; }
+
         public DateTime? Archived { get; set; }
 
         public List<Guid> TagIds { get; set; } = [];
 
-        public int PhotoCount { get; set; }
+        public List<Guid> ContactIds { get; set; } = [];
+
+        public List<EntryPhotoRow> PhotoLinks { get; set; } = [];
 
         public int AttachmentCount { get; set; }
+    }
 
-        public int ContactCount { get; set; }
+    /// <summary>A photo link as the list query returns it: everything but the library Photo's FileId,
+    /// which is resolved for the whole page at once afterwards.</summary>
+    private sealed class EntryPhotoRow
+    {
+        public Guid JournalEntryPhotoId { get; set; }
+
+        public Guid PhotoId { get; set; }
+
+        public int Position { get; set; }
+
+        public DateTime CreatedAt { get; set; }
     }
 }

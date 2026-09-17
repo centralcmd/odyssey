@@ -2,7 +2,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Dtos.Journal;
 
-/// <summary>List-row projection for a task: scalar fields, tag ids, and attachment count.</summary>
+/// <summary>
+/// List-row projection for a task. The list card is always open and IS the detail, so the row carries
+/// the task's content in full rather than a truncated snippet; the board card clamps the same text to
+/// two lines in CSS. Attachments stay a count — the card shows the count and nothing else.
+/// </summary>
 public sealed record JournalTaskSummary
 {
     public required Guid JournalTaskId { get; set; }
@@ -10,9 +14,9 @@ public sealed record JournalTaskSummary
     [StringLength(200)]
     public required string Title { get; set; }
 
-    /// <summary>A short plain-text preview of the task's content (truncated), for the card body.</summary>
-    [StringLength(200)]
-    public string? Snippet { get; set; }
+    /// <summary>The task's note in full — the list card renders it unclamped.</summary>
+    [StringLength(4096)]
+    public string? Content { get; set; }
 
     public DateOnly? Deadline { get; set; }
 

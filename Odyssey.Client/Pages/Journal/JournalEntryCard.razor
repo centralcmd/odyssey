@@ -1,0 +1,203 @@
+@using System.Globalization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@using Odyssey.Dtos.Journal
+
+@*
+    JournalEntryCard — one journal entry as the purpose-built entry card.
+
+    Not the shared OdsRecordCard: an entry has no headline figure and nothing worth collapsing, so the
+    card is always open and IS the detail — no chevron, no expand step, no counts row. The date is the
+    card's anchor, carried as a calendar leaf down the left edge, so the meta line never repeats it.
+
+    The entry text and the tag/contact chips are never clamped. Attachments are the one thing that
+    stays folded: the footer count is the disclosure, and the host hydrates the file metadata when it
+    opens rather than for every card on the page.
+*@
+
+<article id="@Id" class="jec-card @(Archived ? "archived" : "") @(Highlight ? "highlight" : "")">
+    @* The date leaf, in the reader's local zone. EntryDate is stored date-only in UTC, so two entries
+       on one date simply repeat it — the leaf anchors, it does not group. *@
+    <div class="jec-leaf">
+        <span class="jec-dow" aria-hidden="true">@_leafDow</span>
+        <span class="jec-day" aria-hidden="true">@_leafDay</span>
+        <span class="jec-mon" aria-hidden="true">@_leafMon</span>
+        <span class="sr-only">@_leafAccessible</span>
+    </div>
+
+    <div class="jec-body">
+        <div class="jec-head">
+            <h3 class="jec-title">@Entry.Title</h3>
+            <span class="je-cardmenu">
+                <OdsMenu Items="Actions" AriaLabel="@($"Actions for {Entry.Title}")" />
+            </span>
+        </div>
+
+        @* Who wrote it, where, and whether it has been edited since — the entry date is the leaf and
+           is not repeated here. *@
+        <div class="jec-meta">
+            @if (!string.IsNullOrWhiteSpace(Entry.CreatedByName))
+            {
+                <span><span class="material-icons" aria-hidden="true">person</span>@Entry.CreatedByName</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Entry.Location))
+            {
+                <span><span class="material-icons" aria-hidden="true">place</span>@Entry.Location</span>
+            }
+            @if (Edited)
+            {
+                <span>
+                    <span class="material-icons" aria-hidden="true">history</span>edited
+                    @Entry.UpdatedAt.ToLocalTime().ToString("MMM d, yyyy, HH:mm")@EditedBy
+                </span>
+            }
+            @if (Entry.Archived is { } archivedAt)
+            {
+                <span>
+                    <OdsChip Tone="OdsChipTone.Outline" Class="archived sm">Archived</OdsChip>
+                    <span class="jec-archived-at">@archivedAt.ToLocalTime().ToString("MMM d, yyyy, HH:mm")</span>
+                </span>
+            }
+        </div>
+
+        @* Never clamped: this card IS the detail. *@
+        @if (!string.IsNullOrWhiteSpace(Entry.Content))
+        {
+            <p class="jec-text">@Entry.Content</p>
+        }
+
+        @* Title explicitly cleared — the card has no section dividers, so the gallery's own head would
+           be a heading with nothing to head. *@
+        @if (Photos.Count > 0)
+        {
+            <JournalPhotoGallery Photos="Photos" Title="@null" MinTile="120" OnOpen="OnOpenPhoto" />
+        }
+
+        @if (Contacts.Count > 0 || Tags.Count > 0 || Entry.AttachmentCount > 0)
+        {
+            @* Two tracks: contacts and tags uncapped in the first, the attachment disclosure fixed in
+               the second so a chip wrap can never displace it. *@
+            <div class="jec-foot">
+                <div class="jec-chips">
+                    @foreach (var cp in Contacts)
+                    {
+                        <OdsContactChip @key="cp.Id" Name="@cp.Name" Type="@cp.Type"
+                                        Archived="cp.Archived" Unavailable="@(cp.Name is null)" Compact="true" />
+                    }
+                    <JournalTagChips Names="_tagNames" Icon="label" />
+                </div>
+                @if (Entry.AttachmentCount > 0)
+                {
+                    <button type="button" class="jec-filecount" aria-expanded="@(_filesOpen ? "true" : "false")" aria-controls="@FilesListId"
+                            @onclick="ToggleFiles">
+                        <span class="material-icons" aria-hidden="true">attach_file</span>
+                        <span class="jec-fcount">@Entry.AttachmentCount</span>
+                        @(Entry.AttachmentCount == 1 ? "file" : "files")
+                        <span class="material-icons chev" aria-hidden="true">expand_more</span>
+                    </button>
+                }
+            </div>
+        }
+
+        @if (_filesOpen && Entry.AttachmentCount > 0)
+        {
+            @if (Attachments is null)
+            {
+                <div role="status" aria-live="polite" aria-busy="true">
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                    <span class="sr-only">Loading attachments…</span>
+                </div>
+            }
+            else if (Attachments.Count == 0)
+            {
+                <div class="jec-files-empty">No readable attachments.</div>
+            }
+            else
+            {
+                <JournalFileRows Id="@FilesListId" Attachments="Attachments"
+                                 CanDownload="CanReadFiles" OnRemove="OnRemoveFile" />
+            }
+        }
+    </div>
+</article>
+
+@code {
+    /// <summary>A contact link as the card renders it. A null <c>Name</c> is an id the caller cannot
+    /// resolve — the chip keeps its place and states "Unavailable" rather than leaking a GUID.</summary>
+    public sealed record ContactLink(Guid Id, string? Name, string? Type, bool Archived);
+
+    [Parameter, EditorRequired] public JournalEntrySummary Entry { get; set; } = default!;
+
+    /// <summary>The card's DOM id — the deep-link scroll target.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter] public IReadOnlyList<ContactLink> Contacts { get; set; } = [];
+
+    [Parameter] public IReadOnlyList<string> Tags { get; set; } = [];
+
+    [Parameter] public IReadOnlyList<JournalPhotoGallery.Photo> Photos { get; set; } = [];
+
+    /// <summary>Hydrated attachment metadata, or <c>null</c> while the host is still fetching it.</summary>
+    [Parameter] public IReadOnlyList<FileMetadataResponse>? Attachments { get; set; }
+
+    [Parameter] public IReadOnlyList<OdsMenuItem> Actions { get; set; } = [];
+
+    [Parameter] public bool Highlight { get; set; }
+
+    [Parameter] public bool CanReadFiles { get; set; }
+
+    /// <summary>Raised the first time the attachment disclosure opens, so the host hydrates then.</summary>
+    [Parameter] public EventCallback OnFilesOpened { get; set; }
+
+    [Parameter] public EventCallback<JournalPhotoGallery.Photo> OnOpenPhoto { get; set; }
+
+    /// <summary>Detach a file from the entry. Unset = no Remove item on the file menus.</summary>
+    [Parameter] public EventCallback<Guid>? OnRemoveFile { get; set; }
+
+    private bool _filesOpen;
+    private List<string> _tagNames = [];
+    private string _leafDow = "";
+    private string _leafDay = "—";
+    private string _leafMon = "";
+    private string _leafAccessible = "";
+
+    private bool Archived => Entry.Archived is not null;
+
+    private string FilesListId => $"jec-files-{Entry.JournalEntryId}";
+
+    // Only when the entry has actually been revised — a create writes both stamps, so comparing them is
+    // what keeps "edited" off every untouched entry.
+    private bool Edited => Entry.UpdatedAt > Entry.CreatedAt;
+
+    // Named only when the editor is someone other than the author; the stable ids decide, the resolved
+    // name displays.
+    private string EditedBy =>
+        !string.IsNullOrWhiteSpace(Entry.UpdatedByUserId)
+        && Entry.UpdatedByUserId != Entry.CreatedByUserId
+        && !string.IsNullOrWhiteSpace(Entry.UpdatedByName)
+            ? $" by {Entry.UpdatedByName}"
+            : string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        _tagNames = [.. Tags];
+
+        var d = Entry.EntryDate.ToLocalTime();
+        _leafDow = d.ToString("ddd", CultureInfo.CurrentCulture);
+        // The day ALONE. "d" on its own is .NET's standard short-date pattern ("5/25/2026"), which
+        // overflows the rail; the day number needs the single custom specifier escaped.
+        _leafDay = d.Day.ToString(CultureInfo.CurrentCulture);
+        _leafMon = d.ToString("MMM yy", CultureInfo.CurrentCulture);
+        // The leaf's three lines are one date; read as one rather than as three fragments.
+        _leafAccessible = d.ToString("dddd, MMMM d, yyyy", CultureInfo.CurrentCulture);
+    }
+
+    private async Task ToggleFiles()
+    {
+        _filesOpen = !_filesOpen;
+        if (_filesOpen && Attachments is null)
+        {
+            await OnFilesOpened.InvokeAsync();
+        }
+    }
+}

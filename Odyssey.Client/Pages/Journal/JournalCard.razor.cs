@@ -1,4 +1,3 @@
-using System.Globalization;
 using Odyssey.ApiClient;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Components;
@@ -36,7 +35,11 @@ public partial class JournalCard
     private bool _refetching;
     private bool _loadError;
     private string _announce = "";
-    private Guid? _expandedId;
+
+    // Hydrated attachment metadata per entry, filled when a card's footer count is opened. A missing
+    // key means "not fetched yet" — the card shows its own loading row — and is what keeps the page
+    // from hydrating every attachment on every card.
+    private readonly Dictionary<Guid, IReadOnlyList<FileMetadataResponse>> _attachments = new();
 
     // Photo detail dialog — the shared library lightbox (Odyssey Design System · Photos · detail).
     // null index = closed.
@@ -55,15 +58,6 @@ public partial class JournalCard
     private IReadOnlyList<OdsOption> _photoAlbumOptions = [];
     private IReadOnlyList<OdsOption> _photoPeopleOptions = [];
     private IJSObjectReference? _focusJs;
-
-    // Focus return across a link removal (WCAG 2.4.3). Removing a contact or tag destroys the very
-    // tile menu that had focus, which otherwise drops focus to <body>. The neighbour to land on is
-    // computed BEFORE the write, because by the time the refreshed entry arrives the removed tile is
-    // gone and its position with it. Same shape as InsurancePolicyLinkTiles, which solved this for the
-    // policy party tiles these link tiles are modelled on.
-    private string? _focusAfterRemoval;
-    private bool _pendingFocus;
-    private IJSObjectReference? _focusReturnJs;
 
     // ── Permissions ────────────────────────────────────────────────────────────
     private bool _canCreate;
@@ -112,13 +106,11 @@ public partial class JournalCard
     [
         new() { Key = "entryDate", Label = "Entry date", Type = OdsSortType.Date, DefaultDir = OdsSortDirection.Desc, SortValue = e => e.EntryDate },
         new() { Key = "title", Label = "Title", Type = OdsSortType.Text, SortValue = e => e.Title.ToLowerInvariant() },
-        // Server-side sort (the API maps "createdAt" → CreatedAt); the summary carries no CreatedAt, so
-        // no client SortValue — the list is displayed in the order the server returns.
-        new() { Key = "createdAt", Label = "Created", Type = OdsSortType.Date, DefaultDir = OdsSortDirection.Desc },
+        new() { Key = "createdAt", Label = "Created", Type = OdsSortType.Date, DefaultDir = OdsSortDirection.Desc, SortValue = e => e.CreatedAt },
     ];
 
     // ── Computed / overview ─────────────────────────────────────────────────────
-    private int PhotoTotal => _entries.Sum(e => e.PhotoCount);
+    private int PhotoTotal => _entries.Sum(e => e.Photos.Count);
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _tagFilter.Count > 0
         || _statusFilter.Count > 0 || _contactFilter.Count > 0 || _mediaFilter.Count > 0
         || _from is not null || _to is not null;
@@ -135,44 +127,18 @@ public partial class JournalCard
             })
             .Where(r => (int)r.Count > 0)];
 
-    private List<ExistingJournalTag> EntryTags(IReadOnlyList<Guid> ids) =>
-        [.. ids.Select(id => _tagById.GetValueOrDefault(id)).Where(t => t is not null).Cast<ExistingJournalTag>()];
+    private IReadOnlyList<string> TagNames(IReadOnlyList<Guid> ids) =>
+        [.. ids.Select(id => _tagById.GetValueOrDefault(id)).Where(t => t is not null).Select(t => t!.Name)];
 
-    // The "Last edited" tile's FOOT — who edited it, and only when that is someone other than the
-    // author. Compare on the stable ids; display the resolver's resolved name (always non-null —
-    // issue #316). The date itself is the tile's value, so the foot never repeats it. Null when the
-    // author is also the last editor, and OdsInfoTile.Caption then renders no foot element at all.
-    private static string? LastEditedBy(ExistingJournalEntry e) =>
-        !string.IsNullOrWhiteSpace(e.UpdatedByUserId) && e.UpdatedByUserId != e.CreatedByUserId
-            ? $"by {e.UpdatedByName}"
-            : null;
-
-    // The header counts — the body's table of contents, in the same order and with the same glyphs as
-    // the sections below. A collection with nothing in it contributes no count.
-    private static IReadOnlyList<OdsRecordCount> EntryCounts(JournalEntrySummary e) =>
-    [
-        .. new (string Icon, int Value, string Label)[]
+    // A contact link the caller cannot resolve — deleted, or no contacts.read — keeps its place and
+    // renders as "Unavailable" rather than leaking the id into the chip row.
+    private IReadOnlyList<JournalEntryCard.ContactLink> EntryContacts(JournalEntrySummary e) =>
+        [.. e.ContactIds.Select(id =>
         {
-            ("groups", e.ContactCount, "Contacts"),
-            ("label", e.TagIds.Count, "Tags"),
-            ("photo_library", e.PhotoCount, "Photos"),
-            ("attach_file", e.AttachmentCount, "Files"),
-        }
-        .Where(k => k.Value > 0)
-        .Select(k => new OdsRecordCount(k.Icon, k.Value.ToString(CultureInfo.CurrentCulture), k.Label)),
-    ];
-
-    private static string CountLabel(int n, string singular, string plural) =>
-        $"{n} {(n == 1 ? singular : plural)}";
-
-    // Contacts and tags share ONE section, so the divider's meta names both — and drops the half that
-    // is empty rather than printing "0 tags".
-    private static string LinkCountLabel(int contacts, int tags) =>
-        string.Join(" · ", new[]
-        {
-            contacts > 0 ? CountLabel(contacts, "contact", "contacts") : null,
-            tags > 0 ? CountLabel(tags, "tag", "tags") : null,
-        }.Where(part => part is not null));
+            var c = _canReadContacts ? _contactById.GetValueOrDefault(id) : null;
+            return new JournalEntryCard.ContactLink(
+                id, c?.ResolvedDisplayName, c?.Type.ToString(), c?.Archived is not null);
+        })];
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
@@ -273,6 +239,10 @@ public partial class JournalCard
         _isLoading = false;
         _refetching = false;
         StateHasChanged();
+
+        // Every card renders its gallery, so the page's photo filenames are hydrated once per load
+        // rather than per card. Deliberately after the render above: the list must not wait on it.
+        await HydratePagePhotosAsync();
     }
 
     private bool? WantPhotos => JournalMediaFilter.Want(_mediaFilter, MediaPhotos);
@@ -362,59 +332,113 @@ public partial class JournalCard
         public int BatchSize { get; set; } = OdsPageSizes.Batch[0];
     }
 
-    // ── Expand / detail load + hydration ─────────────────────────────────────────
-    private bool IsExpanded(Guid id) => _expandedId == id;
-
-    // ONE CARD OPEN AT A TIME — the list owns a single open id and every card is controlled from it,
-    // so opening a record closes its siblings. OdsRecordCard reports the NEXT state rather than asking
-    // to be toggled.
-    private async Task ToggleExpand(Guid id, bool open)
+    // ── Detail on demand + file hydration ────────────────────────────────────────
+    // The card renders from the list projection, so a detail fetch is no longer part of DISPLAY: it is
+    // fetched only for the writes that must re-project the whole entry (edit, archive, detach a file).
+    private async Task<ExistingJournalEntry?> EnsureDetail(Guid id)
     {
-        if (!open)
+        if (_details.TryGetValue(id, out var cached))
         {
-            if (_expandedId == id)
-            {
-                _expandedId = null;
-            }
-            return;
+            return cached;
         }
-        _expandedId = id;
-        await EnsureDetail(id);
-    }
-
-    private async Task EnsureDetail(Guid id)
-    {
-        if (_details.ContainsKey(id))
-            return;
-
-        _announce = "Loading entry…";
-        StateHasChanged();
 
         var entry = await Journal.GetAsync(id);
-        if (entry is null)
+        if (entry is not null)
+        {
+            _details[id] = entry;
+        }
+
+        return entry;
+    }
+
+    // Photo file metadata (name/size/type) for every entry on the page, so each gallery tile carries a
+    // real filename as its caption and accessible name. Fetched once per file id and cached, in
+    // parallel rather than in sequence — a page of cards would otherwise serialise dozens of round
+    // trips. A file the caller can't read (no files.read) or that was deleted resolves to null and
+    // renders as an "Unavailable" placeholder.
+    private async Task HydratePagePhotosAsync()
+    {
+        if (!_canReadFiles)
+        {
             return;
-        _details[id] = entry;
-        await HydrateFilesAsync(entry);
+        }
+
+        var ids = _entries
+            .SelectMany(e => e.Photos.Select(p => p.FileId))
+            .Distinct()
+            .Where(id => !_fileMeta.ContainsKey(id))
+            .ToList();
+        if (ids.Count == 0)
+        {
+            return;
+        }
+
+        var metas = await Task.WhenAll(ids.Select(id => Files.GetMetadataAsync(id)));
+        for (var i = 0; i < ids.Count; i++)
+        {
+            _fileMeta[ids[i]] = metas[i];
+        }
+
         StateHasChanged();
     }
 
-    // Fetch file metadata (name/size/type) for an entry's photos + attachments, so the gallery/table
-    // can name them. A file the caller can't read (no files.read) or that was deleted resolves to null
-    // and renders as an "Unavailable" placeholder (spec §11 / FE #7).
-    private async Task HydrateFilesAsync(ExistingJournalEntry entry)
+    // The attachment list behind the card's footer count. The summary carries only the count — the
+    // file ids live on the detail — so opening the disclosure is what pays for both fetches, on the one
+    // card the reader actually asked about.
+    private async Task LoadAttachmentsAsync(JournalEntrySummary e)
     {
-        if (!_canReadFiles)
-            return;
-        var ids = entry.Photos.Select(p => p.FileId).Concat(entry.Attachments.Select(a => a.FileId)).Distinct();
-        foreach (var fileId in ids)
+        if (_attachments.ContainsKey(e.JournalEntryId))
         {
-            if (_fileMeta.ContainsKey(fileId))
-                continue;
-            _fileMeta[fileId] = await Files.GetMetadataAsync(fileId);
+            return;
+        }
+
+        var detail = await EnsureDetail(e.JournalEntryId);
+        if (detail is null)
+        {
+            return;
+        }
+
+        var ids = detail.Attachments.Select(a => a.FileId).Distinct().ToList();
+        var missing = _canReadFiles ? ids.Where(id => !_fileMeta.ContainsKey(id)).ToList() : [];
+        if (missing.Count > 0)
+        {
+            var metas = await Task.WhenAll(missing.Select(id => Files.GetMetadataAsync(id)));
+            for (var i = 0; i < missing.Count; i++)
+            {
+                _fileMeta[missing[i]] = metas[i];
+            }
+        }
+
+        _attachments[e.JournalEntryId] = ResolvedAttachments(detail);
+        StateHasChanged();
+    }
+
+    // Detaching a file edits the ENTRY, never the file: the row stays in the files store.
+    private async Task RemoveAttachmentAsync(JournalEntrySummary e, Guid fileId)
+    {
+        if (!_canUpdate)
+        {
+            return;
+        }
+
+        var detail = await EnsureDetail(e.JournalEntryId);
+        if (detail is null)
+        {
+            return;
+        }
+
+        var update = JournalWrite.WithoutAttachment(detail, fileId);
+        if ((await Journal.UpdateAsync(e.JournalEntryId, update)).Toast(
+                Snackbar, "Unable to remove the file", "File removed from the entry."))
+        {
+            _announce = "File removed from the entry.";
+            _attachments.Remove(e.JournalEntryId);
+            await ReloadEntry(e.JournalEntryId);
+            await LoadAttachmentsAsync(e);
         }
     }
 
-    private IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(ExistingJournalEntry e) =>
+    private IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(JournalEntrySummary e) =>
         [.. e.Photos.OrderBy(p => p.Position).Select(p =>
         {
             var meta = _canReadFiles ? _fileMeta.GetValueOrDefault(p.FileId) : null;
@@ -434,7 +458,7 @@ public partial class JournalCard
     // Clicking a gallery tile opens the shared PhotoDetailDialog over the entry's photos. The gallery
     // keys tiles by FileId; the entry's link order (Position) drives the dialog's prev/next, so the
     // summary list is built in that same order and the clicked tile's ordinal is the opening index.
-    private async Task OpenPhotoDetail(ExistingJournalEntry e, JournalPhotoGallery.Photo photo)
+    private async Task OpenPhotoDetail(JournalEntrySummary e, JournalPhotoGallery.Photo photo)
     {
         _focusJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/overlay-focus.js");
         await _focusJs.InvokeVoidAsync("remember");
@@ -543,8 +567,9 @@ public partial class JournalCard
         }
     }
 
-    // Re-fetch the open entry so the gallery + counts reflect an edit/archive/delete. Clears the entry's
-    // cached file metadata first so a rename shows through (HydrateFilesAsync skips ids already cached).
+    // Re-fetch after a photo edit/archive/delete so the galleries reflect it. The list projection
+    // carries the photo links, so this is a list reload — the cached file metadata for the entry's
+    // photos is dropped first, or a rename would never show through.
     private async Task RefreshOpenEntryAsync()
     {
         if (_detailEntryId is not { } eid)
@@ -552,24 +577,17 @@ public partial class JournalCard
             return;
         }
 
-        if (_details.TryGetValue(eid, out var current))
+        var entry = _entries.FirstOrDefault(e => e.JournalEntryId == eid);
+        if (entry is not null)
         {
-            foreach (var fid in current.Photos.Select(p => p.FileId))
+            foreach (var fid in entry.Photos.Select(p => p.FileId))
             {
                 _fileMeta.Remove(fid);
             }
         }
 
-        var entry = await Journal.GetAsync(eid);
-        if (entry is null)
-        {
-            _details.Remove(eid);
-            return;
-        }
-
-        _details[eid] = entry;
-        await HydrateFilesAsync(entry);
-        StateHasChanged();
+        _details.Remove(eid);
+        await LoadEntries();
     }
 
     private string PhotoTagName(Guid id) => _photoTagNames.GetValueOrDefault(id, "—");
@@ -611,8 +629,7 @@ public partial class JournalCard
     private async Task EditClicked(JournalEntrySummary e)
     {
         if (!_canUpdate) return;
-        await EnsureDetail(e.JournalEntryId);
-        if (!_details.TryGetValue(e.JournalEntryId, out var detail))
+        if (await EnsureDetail(e.JournalEntryId) is not { } detail)
             return;
 
         _editEntry = detail;
@@ -633,8 +650,7 @@ public partial class JournalCard
     private async Task ToggleArchive(JournalEntrySummary e)
     {
         if (!_canUpdate) return;
-        await EnsureDetail(e.JournalEntryId);
-        if (!_details.TryGetValue(e.JournalEntryId, out var detail)) return;
+        if (await EnsureDetail(e.JournalEntryId) is not { } detail) return;
 
         var archiving = detail.Archived is null;
         var update = JournalWrite.FromDetail(detail, archiving);
@@ -659,7 +675,7 @@ public partial class JournalCard
         {
             _announce = "Entry deleted.";
             _details.Remove(e.JournalEntryId);
-            if (_expandedId == e.JournalEntryId) _expandedId = null;
+            _attachments.Remove(e.JournalEntryId);
             await LoadEntries();
         }
     }
@@ -667,7 +683,7 @@ public partial class JournalCard
     private async Task ReloadEntry(Guid id)
     {
         _details.Remove(id);
-        await EnsureDetail(id);
+        _attachments.Remove(id);
         await LoadEntries();
     }
 
@@ -757,27 +773,15 @@ public partial class JournalCard
         Snackbar.Add($"Exported {file.FileName}", Severity.Success);
     }
 
-    // After an import that created/updated rows: refresh the list + overview counts, then actively
-    // re-fetch a still-expanded row's detail and file metadata — clearing it alone would leave the open
-    // row spinning forever, since expansion only re-fetches on toggle (§3 #6).
+    // After an import that created/updated rows: drop everything cached per entry and reload. The card
+    // renders from the list projection, so one reload refreshes every card — but the cached file
+    // metadata has to go with it, or a re-imported photo keeps its old name.
     private async Task OnEntriesImported()
     {
-        if (_expandedId is { } eid && _details.TryGetValue(eid, out var current))
-        {
-            foreach (var fileId in current.Photos.Select(p => p.FileId))
-            {
-                _fileMeta.Remove(fileId);
-            }
-
-            _details.Remove(eid);
-        }
-
+        _details.Clear();
+        _attachments.Clear();
+        _fileMeta.Clear();
         await LoadEntries();
-
-        if (_expandedId is { } openId)
-        {
-            await EnsureDetail(openId);
-        }
     }
 
     // ── Row action menu ────────────────────────────────────────────────────────
@@ -832,118 +836,15 @@ public partial class JournalCard
         return items;
     }
 
-    // ── Link removal from a body tile ──────────────────────────────────────────
-    // Detaching a link edits the ENTRY, never the contact or the tag: the linked record is untouched.
-    // The write re-projects the loaded entry with one id removed, so nothing else about the entry
-    // changes and no file is re-uploaded.
-    private Task UnlinkContactAsync(ExistingJournalEntry entry, Guid contactId) =>
-        UpdateLinksAsync(entry, ContactKey(contactId), JournalWrite.WithoutContact(entry, contactId),
-            "Contact removed from the entry.", "Unable to remove the contact");
-
-    private Task UnlinkTagAsync(ExistingJournalEntry entry, Guid tagId) =>
-        UpdateLinksAsync(entry, TagKey(tagId), JournalWrite.WithoutTag(entry, tagId),
-            "Tag removed from the entry.", "Unable to remove the tag");
-
-    private async Task UpdateLinksAsync(
-        ExistingJournalEntry entry, string removedKey, UpdateJournalEntry update, string success, string failure)
-    {
-        if (!_canUpdate)
-        {
-            return;
-        }
-
-        // Computed before the write: afterwards the entry is refetched and the removed tile's position
-        // is gone with it. A failed write leaves it set, which is harmless — nothing reads it unless a
-        // removal actually lands.
-        _focusAfterRemoval = NeighbourKeyOf(entry, removedKey);
-
-        if ((await Journal.UpdateAsync(entry.JournalEntryId, update)).Toast(Snackbar, failure, success))
-        {
-            _announce = success;
-            await ReloadEntry(entry.JournalEntryId);
-            _pendingFocus = true;
-        }
-    }
-
-    // ── Link tile identity + focus targets ─────────────────────────────────────
-    // Contacts and tags share one section and one grid, so the neighbour is computed over the two in
-    // render order rather than per kind: removing the last contact should land on the first tag, which
-    // is what the reader sees next.
-    private static string ContactKey(Guid id) => $"cp-{id}";
-
-    private static string TagKey(Guid id) => $"tag-{id}";
-
-    internal static string TileMenuId(Guid entryId, string key) => $"je-link-{entryId}-{key}";
-
-    private List<string> LinkKeys(ExistingJournalEntry entry) =>
-    [
-        .. entry.ContactIds.Select(ContactKey),
-        .. EntryTags(entry.TagIds).Select(t => TagKey(t.JournalTagId)),
-    ];
-
-    private string? NeighbourKeyOf(ExistingJournalEntry entry, string key)
-    {
-        var keys = LinkKeys(entry);
-        var index = keys.IndexOf(key);
-        if (index < 0)
-        {
-            return null;
-        }
-
-        if (index + 1 < keys.Count)
-        {
-            return keys[index + 1];
-        }
-
-        return index > 0 ? keys[index - 1] : null;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!_pendingFocus)
-        {
-            return;
-        }
-
-        _pendingFocus = false;
-        var neighbour = _focusAfterRemoval;
-        _focusAfterRemoval = null;
-
-        if (_expandedId is not { } entryId)
-        {
-            return;
-        }
-
-        try
-        {
-            _focusReturnJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
-            // The neighbouring tile's menu, else the card's own row menu — a section that just lost its
-            // last link has no tile left to land on, and the card is the nearest thing still standing.
-            string?[] candidates =
-            [
-                neighbour is null ? null : $"#{TileMenuId(entryId, neighbour)} button",
-                $"#je-{entryId} .odc-record-ctl button",
-                $"#je-{entryId} .odc-record-trigger",
-            ];
-            await _focusReturnJs.InvokeVoidAsync("focusFirst", candidates);
-        }
-        catch (Exception)
-        {
-            // Best-effort: the removal is already announced through the page's live region, so a failed
-            // focus return degrades rather than losing the outcome.
-        }
-    }
+    // Tag and contact links are no longer detached from the card: the card shows them as chips and the
+    // edit dialog owns the picker that adds and removes them. The focus-return dance that used to land
+    // a caller on a neighbouring tile went with them — a dialog returns focus to its own trigger.
 
     public async ValueTask DisposeAsync()
     {
         if (_focusJs is not null)
         {
             try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
-        }
-
-        if (_focusReturnJs is not null)
-        {
-            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 }

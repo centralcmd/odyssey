@@ -1,63 +1,130 @@
-/* TaskListRow — a task rendered on the record-row vocabulary (flat List view + Archived
-   section). Deliberately a *variant*, not an OdsExpandableCard: the row does not expand,
-   so it carries no hover/press affordance, a tighter head, and a whole-row dim. These
-   overrides sit on top of the shared `.acct-*` block in odyssey-components.css. */
-.acct-item {
+/* Task list card — /tasks List view + the Archived section.
+   Purpose-built (.tkc-*), not the shared .acct-item record row: a task has no headline figure and
+   nothing worth collapsing, so the card is always open and IS the detail — the journal entry card's
+   premise, with the rail repointed. The rail carries the DEADLINE COUNT (signed days, top-aligned)
+   above a hairline, then the cycling status control; the calendar date lives in the body's meta line
+   where it can be labelled "Due". State colour is a 3px stripe at the card's outer edge — the
+   furthest point from the count, so state and urgency never read as one signal. */
+.tkc-card {
+    display: grid; grid-template-columns: 92px minmax(0, 1fr);
     background: var(--mud-palette-surface);
     border: 1px solid var(--mud-palette-divider);
-    border-radius: 8px;
-    box-shadow: var(--mud-elevation-1);
+    border-radius: var(--radius-md); box-shadow: var(--mud-elevation-1);
     overflow: hidden;
 }
-.acct-item.dimmed { opacity: 0.72; }
+.tkc-card.archived { opacity: 0.72; }
 
-.acct-head {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 16px;
-    align-items: center;
-    padding: 12px 18px;
+/* Backlog carries no stripe — it is the resting state, and a stripe on every card would stop marking
+   anything. Doing takes --info-text rather than the design system's --sea-400: the token is
+   theme-scoped (sea-700 in light, sea-400 in dark), which keeps the stripe at 3:1 against the rail's
+   surface in both themes — WCAG 1.4.11. Same substitution the status control already makes. */
+.tkc-card[data-status="Doing"] { --tkc-state: var(--info-text); }
+.tkc-card[data-status="Done"] { --tkc-state: var(--finance-income); }
+.tkc-card[data-status="Archived"] { --tkc-state: var(--mud-palette-text-disabled); }
+
+.tkc-rail {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 16px 14px 14px; text-align: center;
+    background: var(--mud-palette-background-gray);
+    border-right: 1px solid var(--mud-palette-divider);
+    box-shadow: inset 3px 0 0 var(--tkc-state, transparent);
 }
-/* The row is not a disclosure trigger — no click, so no hover highlight either. */
-.acct-head:hover { background: none; }
-.acct-id { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.acct-name-row { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
-.acct-name {
-    font-size: 1rem; font-weight: 500; line-height: 1.25;
-    color: var(--mud-palette-text-primary);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+/* 92px is sized on the widest count the scale produces (−366). */
+.tkc-count { font: var(--fw-light) var(--fs-h2)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.tkc-sign { color: var(--mud-palette-text-secondary); }
+.tkc-unit {
+    font: var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
 }
-.acct-dot { opacity: 0.4; color: var(--mud-palette-text-secondary); }
-.acct-controls { display: flex; align-items: center; gap: 8px; }
+.tkc-word {
+    font: var(--fw-medium) var(--fs-h6)/1.1 var(--font-sans);
+    letter-spacing: var(--tracking-wide); text-transform: uppercase;
+}
+.tkc-dash { font: var(--fw-light) var(--fs-h3)/1 var(--font-sans); color: var(--mud-palette-text-disabled); }
+.tkc-tick.material-icons { font-size: 26px; line-height: 1; }
+/* The control keeps a fixed slot below the hairline, so it can't drift with card height the way a
+   justified rail's would. */
+.tkc-st {
+    display: flex; justify-content: center; width: 44px;
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider);
+}
+.tkc-rail[data-tone="overdue"] .tkc-count,
+.tkc-rail[data-tone="overdue"] .tkc-unit,
+.tkc-rail[data-tone="overdue"] .tkc-word { color: var(--finance-expense); }
+.tkc-rail[data-tone="soon"] .tkc-count,
+.tkc-rail[data-tone="soon"] .tkc-unit,
+.tkc-rail[data-tone="soon"] .tkc-word { color: var(--pending-text); }
+.tkc-rail[data-tone="done"] .tkc-count,
+.tkc-rail[data-tone="done"] .tkc-unit,
+.tkc-rail[data-tone="done"] .tkc-tick { color: var(--finance-income); }
+.tkc-rail[data-tone="muted"] .tkc-tick,
+.tkc-rail[data-tone="muted"] .tkc-unit { color: var(--mud-palette-text-secondary); }
 
-.tk-subline { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.75rem; color: var(--mud-palette-text-secondary); }
-.tk-subline .mono { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
-.je-author { display: inline-flex; align-items: center; gap: 4px; color: var(--mud-palette-text-secondary); }
-.je-author .material-icons { font-size: 14px; }
-.je-cardfoot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.tkc-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 14px; min-width: 0; }
+.tkc-top { display: flex; align-items: flex-start; gap: 10px; }
+/* -4px centres the 32px action button on the title's first line; -6px pulls its box out so the glyph
+   sits optically on the padding edge. */
+.tkc-top .je-cardmenu { margin: -4px -6px 0 0; }
+.tkc-title {
+    margin: 0; flex: 1; min-width: 0;
+    font: var(--fw-medium) var(--fs-h6)/var(--lh-snug) var(--font-sans);
+    text-wrap: pretty;
+}
+/* Per-status TITLE colour is deliberately NOT applied: the title keeps primary ink in Backlog /
+   Doing / Done so a list doesn't read as three type styles. State shows in the rail (count + control)
+   and the card's edge stripe; Archived is the one exception, greyed with the whole card. */
+.tkc-card[data-status="Archived"] .tkc-title { color: var(--mud-palette-text-secondary); }
+/* The title and its meta line are one unit — the 12px body gap is for the gaps BETWEEN groups. */
+.tkc-top + .tkc-meta { margin-top: -7px; }
+.tkc-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+    color: var(--mud-palette-text-secondary); font-size: var(--fs-caption);
+}
+.tkc-meta > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.tkc-meta .material-icons { font-size: 14px; }
+.tkc-meta .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+/* The deadline is the meta line's one primary-ink fact. */
+.tkc-due { color: var(--mud-palette-text-primary); }
+.tkc-due .material-icons { color: var(--mud-palette-text-secondary); }
+/* Uncapped by decision: the card is the detail, so the note is never clamped. */
+.tkc-note {
+    margin: 0; color: var(--mud-palette-text-secondary);
+    font: var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans);
+    text-wrap: pretty; white-space: pre-wrap;
+}
+/* Two tracks, so the attachment count keeps a fixed slot instead of drifting to wherever the tag
+   chips happen to wrap. */
+.tkc-foot {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+    gap: 8px 14px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider-light);
+}
+.tkc-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.tkc-chips:empty { display: none; }
+.tkc-att {
+    display: inline-flex; align-items: center; gap: 5px; flex: none;
+    color: var(--mud-palette-text-secondary); font-size: var(--fs-caption);
+}
+.tkc-att .material-icons { font-size: 15px; }
+.tkc-att .mono { color: var(--mud-palette-text-primary); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+/* The archived label is the only text stating the state, and an ancestor's opacity rasterizes the
+   subtree — a descendant opacity:1 can't escape it — so raise the ink instead of fighting the dim. */
+.tkc-card.archived ::deep .odc-chip.archived { color: var(--mud-palette-text-primary); }
 
-/* Per-status title colour (Backlog default · Doing accent · Done green · Archived greyed). */
-/* --info-text is theme-scoped (sea-700 in light for ≥4.5:1, sea-400 in dark) — WCAG 1.4.3. */
-.acct-head[data-status="Doing"] .acct-name { color: var(--info-text); }
-.acct-head[data-status="Done"] .acct-name { color: var(--finance-income); }
-.acct-head[data-status="Archived"] .acct-name { color: var(--mud-palette-text-secondary); }
-
-/* Cycling status control. */
+/* ── Cycling status control (unchanged; it moved from the row head into the rail) ── */
 .tk-status-btn {
     display: inline-flex; align-items: center; justify-content: center; flex: none;
     appearance: none; background: none; border: none; padding: 4px; cursor: pointer; border-radius: 50%;
-    color: var(--mud-palette-text-primary); transition: background-color var(--duration-fast) var(--ease-standard);
+    color: var(--mud-palette-text-primary);
+    transition: background-color var(--duration-fast) var(--ease-standard);
 }
 .tk-status-btn:hover:not(:disabled) { background: var(--mud-palette-action-default-hover); }
 .tk-status-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 .tk-status-btn:disabled { cursor: default; opacity: 0.75; }
 .tk-status-btn .material-icons { font-size: 22px; }
+/* --info-text is theme-scoped (sea-700 in light for ≥4.5:1, sea-400 in dark) — WCAG 1.4.3. */
 .tk-status-btn[data-s="Doing"] .material-icons { color: var(--info-text); }
 .tk-status-btn[data-s="Done"] .material-icons { color: var(--finance-income); }
 .tk-status-btn[data-s="Archived"] .material-icons { color: var(--mud-palette-text-secondary); }
-
-.tk-att-count { display: inline-flex; align-items: center; gap: 3px; color: var(--mud-palette-text-secondary); font-size: 0.75rem; }
-.tk-att-count .mono { color: var(--mud-palette-text-primary); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
-.tk-att-count .material-icons { font-size: 13px; }
 
 @media (prefers-reduced-motion: reduce) { .tk-status-btn { transition: none; } }

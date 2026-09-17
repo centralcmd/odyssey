@@ -2676,7 +2676,6 @@ tr:focus-within > .odc-rowactions.reveal,
 @media (max-width: 900px) { .odc-board { grid-template-columns: 1fr; } }
 
 /* Journal attachment table empty note (JournalFilesTable child component) */
-.je-att-empty { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* Photo gallery image fallback — if a streamed <img> fails to load (e.g. cross-origin under a
    split-port dev stack), reveal the placeholder instead of a broken-image icon (issue #315 review). */
@@ -2932,7 +2931,10 @@ tr:focus-within > .odc-rowactions.reveal,
 .cal-tg-allchip { appearance: none; border: none; cursor: pointer; text-align: left; border-radius: var(--radius-sm); padding: 2px 7px; height: 20px; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .cal-tg-allchip[draggable="true"] { cursor: grab; }
 .cal-tg-allchip:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
-.cal-tg-body-scroll { max-height: 560px; overflow-y: auto; }
+/* Scroll container for the day/week time grid. The shared .odc-scroll utility supplies the thin
+   themed scrollbar — its thumb insets with a 3px surface-coloured border, so the grid keeps a surface
+   backing here. */
+.cal-tg-body-scroll { max-height: 560px; overflow-y: auto; background: var(--mud-palette-surface); }
 .cal-tg-body { display: grid; position: relative; }
 .cal-tg-gutter { border-right: 1px solid var(--mud-palette-divider); }
 .cal-tg-hour { position: relative; }

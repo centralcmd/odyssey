@@ -124,21 +124,13 @@ public static class JournalWrite
         AttachmentFileIds = [.. e.Attachments.Select(a => a.FileId)],
     };
 
-    /// <summary>Re-project a loaded entry with one CONTACT link removed and everything else unchanged —
-    /// the per-tile "Remove contact" action. Detaching edits the entry, never the contact.</summary>
-    public static UpdateJournalEntry WithoutContact(ExistingJournalEntry e, Guid contactId)
+    /// <summary>Re-project a loaded entry with one ATTACHMENT link removed and everything else
+    /// unchanged — the file row's "Remove from entry" action. Detaching edits the entry; the file stays
+    /// in the files store.</summary>
+    public static UpdateJournalEntry WithoutAttachment(ExistingJournalEntry e, Guid fileId)
     {
         var update = FromDetail(e, e.Archived is not null);
-        update.ContactIds = [.. e.ContactIds.Where(id => id != contactId)];
-        return update;
-    }
-
-    /// <summary>Re-project a loaded entry with one TAG link removed and everything else unchanged —
-    /// the per-tile "Remove tag" action. The tag itself is untouched.</summary>
-    public static UpdateJournalEntry WithoutTag(ExistingJournalEntry e, Guid tagId)
-    {
-        var update = FromDetail(e, e.Archived is not null);
-        update.TagIds = [.. e.TagIds.Where(id => id != tagId)];
+        update.AttachmentFileIds = [.. e.Attachments.Select(a => a.FileId).Where(id => id != fileId)];
         return update;
     }
 

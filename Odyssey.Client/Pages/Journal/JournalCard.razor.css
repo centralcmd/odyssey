@@ -1,47 +1,9 @@
-/* Journal — /journal (issue #311)
-   Sibling of Accounts / Contracts / Insurance: the entry row is the shared OdsRecordCard
-   and its body the shared OdsRecordBody, so the card chrome, the tile grid and the section
-   dividers all ship globally (wwwroot/css/odyssey-components.css). What is left here is
-   the journal-specific meta-line entry, the section rhythm inside the body, the entry-text
-   block and the link tiles' ⋯ menu placement. The board / photo-grid / status-chip visuals
-   are global too. */
+/* Journal — /journal.
+   The entry row is JournalEntryCard, which owns its own scoped CSS, and the board / photo-grid /
+   status-chip visuals ship globally (wwwroot/css/odyssey-components.css). What is left here is the
+   page shell's accent. */
 
 .je-shell { --je: var(--tag-text); }
 
-
-/* ── Header Overview ── */
-/* .je-overview / .je-stat-tiles now live in odyssey-components.css (global) with a container query,
-   shared with the Photos overview — the DS ca4a9c4 change: collapse on the card's width, not the
-   viewport's. */
-
-/* ── Card head — the entry is an OdsRecordCard now, so the collapsed row is the shared
-   .odc-record block. What is left here is the one meta-line entry with its own glyph.
-   The header carries no content snippet: the entry text lives only in the body's
-   Content tile, so the row cannot say the same thing twice at two fidelities. ── */
-.je-meta-item { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
-.je-meta-item .material-icons { font-size: 14px; }
-
-/* ── Expanded detail — the shared RecordCard body: DS tile grid + section dividers,
-   the same sections Accounts / Contracts use. ── */
-.je-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
-.je-content {
-    white-space: pre-wrap; color: var(--mud-palette-text-primary);
-    font-size: 0.9375rem; line-height: 1.6;
-}
-
-/* The attachments table framed like the tiles beside it — same surface, border, radius
-   and elevation; the table keeps its own cell padding, so the frame only adds the inset.
-   ::deep because the body is rendered by OdsRecordBody, not by this page. */
-.acct-list ::deep .odc-record-body .je-tbl-frame {
-    background: var(--mud-palette-surface);
-    border: 1px solid var(--mud-palette-divider);
-    border-radius: var(--radius-md);
-    box-shadow: var(--mud-elevation-1);
-    padding: var(--space-2) var(--space-2) 4px;
-}
-
-/* Each link tile carries the same ⋯ menu the policy party tiles do — same corner, same
-   target, always visible rather than hover-revealed: a menu that appears only on hover is
-   invisible to a touch user and to anyone reading the grid without a pointer. */
-.acct-list ::deep .je-section .odc-tilegrid > .odc-infotile { position: relative; }
-.acct-list ::deep .je-tile-menu { position: absolute; top: 6px; right: 6px; z-index: 1; }
+/* .je-overview / .je-stat-tiles live in odyssey-components.css (global) with a container query,
+   shared with the Photos overview: collapse on the card's width, not the viewport's. */

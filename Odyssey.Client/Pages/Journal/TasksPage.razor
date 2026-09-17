@@ -98,9 +98,11 @@
                                     </MudMenu>
                                 </div>
                             </div>
-                            @if (!string.IsNullOrWhiteSpace(t.Snippet))
+                            @* The board card clamps the note to two lines in CSS — the list card is the
+                               one that shows it in full. *@
+                            @if (!string.IsNullOrWhiteSpace(t.Content))
                             {
-                                <div class="tk-card-note">@t.Snippet</div>
+                                <div class="tk-card-note">@t.Content</div>
                             }
                             <div class="tk-card-foot">
                                 <OdsTodoStatusChip Status="t.Status" Compact="true" />

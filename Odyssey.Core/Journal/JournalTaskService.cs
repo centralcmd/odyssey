@@ -76,7 +76,7 @@ public class JournalTaskService
         {
             JournalTaskId = row.JournalTaskId,
             Title = row.Title,
-            Snippet = JournalText.Truncate(row.Content, 200),
+            Content = row.Content,
             Deadline = row.Deadline,
             Status = DeriveStatus(row.Archived, row.CompletedAt, row.StartedAt),
             Position = row.Position,

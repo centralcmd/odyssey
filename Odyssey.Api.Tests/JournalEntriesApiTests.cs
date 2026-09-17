@@ -363,10 +363,11 @@ public class JournalEntriesApiTests
         Assert.DoesNotContain(results!, e => e.JournalEntryId == unrelated);
     }
 
-    // The summary Snippet previews Content, truncated to 200 chars. Entry Content is required (never
-    // null), so this covers the short (≤ 200, returned whole) and long (> 200, truncated) branches.
+    // The list card is always open and renders the entry text in full, so the summary carries Content
+    // whole rather than a truncated preview. Covers the short and the long (> the old 200-char cap)
+    // branches, which is where a reinstated truncation would show.
     [Fact]
-    public async Task List_Summary_Snippet_TruncatesContentToMax()
+    public async Task List_Summary_Content_IsReturnedWhole()
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
@@ -379,11 +380,8 @@ public class JournalEntriesApiTests
 
         var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
 
-        Assert.Equal(shortContent, results!.Single(e => e.JournalEntryId == shortId).Snippet);
-
-        var longSnippet = results!.Single(e => e.JournalEntryId == longId).Snippet;
-        Assert.Equal(200, longSnippet.Length);
-        Assert.Equal(longContent[..200], longSnippet);
+        Assert.Equal(shortContent, results!.Single(e => e.JournalEntryId == shortId).Content);
+        Assert.Equal(longContent, results!.Single(e => e.JournalEntryId == longId).Content);
     }
 
     // Author-name attribution (#316): the controller resolves CreatedByUserId → the profile's display

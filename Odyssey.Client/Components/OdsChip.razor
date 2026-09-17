@@ -9,7 +9,7 @@
     use the income/expense tones.
 *@
 
-<span class="odc-chip @ToneClass">
+<span class="@ChipClass">
     @if (Dot)
     {
         <span class="odc-chip-dot" aria-hidden="true"></span>
@@ -31,7 +31,13 @@
     /// <summary>Show a leading status dot (uses the tone color).</summary>
     [Parameter] public bool Dot { get; set; }
 
+    /// <summary>Extra modifier classes (e.g. "sm", "archived"). Appended after the tone.</summary>
+    [Parameter] public string? Class { get; set; }
+
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string ChipClass => string.Join(' ', new[] { "odc-chip", ToneClass, Class }
+        .Where(c => !string.IsNullOrEmpty(c)));
 
     private string ToneClass => Tone switch
     {
