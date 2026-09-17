@@ -24,8 +24,24 @@
             </div>
         </div>
 
+        @* The preview mark IS the picture control (Odyssey Design System · Account kit): Change /
+           Remove appear over the image on hover, and on focus for keyboard and touch. The token it
+           writes belongs to the PAGE, raised through ProfileChanged below, so the header mark
+           re-renders with it — a section-local token would satisfy the upload and leave the header
+           showing the monogram. *@
         <div class="acc-profile-preview">
-            <span class="acc-avatar-xl">@ProfileValidation.Initials(_draft)</span>
+            <OdsProfilePictureField Variant="OdsProfilePictureVariant.Overlay"
+                                    Version="@RenderableVersion"
+                                    Src="@ImageSrc"
+                                    Initials="@ProfileValidation.Initials(_draft)"
+                                    Alt="Your profile picture"
+                                    Bg="color-mix(in srgb, var(--mud-palette-primary) 14%, transparent)"
+                                    Fg="var(--mud-palette-primary)"
+                                    Busy="_uploading"
+                                    Removing="_removing"
+                                    Disabled="@ImageControlsDisabled"
+                                    OnAdd="OpenCropDialog"
+                                    OnRemove="RequestRemoval" />
             <div class="acc-profile-preview-id">
                 <div class="acc-profile-preview-name">@PreviewName</div>
                 <div class="acc-profile-preview-meta">
@@ -37,6 +53,21 @@
 
         <OdsProfileFields Model="_draft" ModelChanged="OnFieldsChanged"
                           Errors="Errors" IdPrefix="acc" />
+
+        @* The pre-claim window, stated where the disabled control is (issue #94 §3). Writes are
+           claim-free while the read is gated, so without this a session that predates the deploy would
+           upload successfully, get a 200 and a token, and see nothing. The same disable covers Remove,
+           so the GDPR Art. 17 self-service control is unavailable for that window — self-healing in one
+           sign-out, and the message says so. Folding the claim into the token instead is NOT the fix: a
+           null token would flip the button back to "Add picture" after a successful upload, which is
+           worse than an honest disabled state. *@
+        @if (ImageControlsDisabled)
+        {
+            <p class="acc-picture-meta">
+                <span class="material-icons" aria-hidden="true">info</span>
+                <span>@ClaimStaleReason</span>
+            </p>
+        }
 
         <OdsProfileTransparencyNote />
 
@@ -57,3 +88,46 @@
         </div>
     </MudCardContent>
 </MudCard>
+
+@* The shared crop dialog, bound to the self-scoped POST. The delegate is the only thing this surface
+   supplies that the contact surface does not — the stage, the controls and the accessibility contract
+   are the component's. *@
+<OdsImageCropDialog @bind-Open="_cropOpen"
+                    Title="Crop profile picture"
+                    Subject="picture"
+                    ChooseLabel="Choose a picture"
+                    Cover="true"
+                    EmptyIcon="person"
+                    Note="Saved as a square JPEG and shown as a circle. Location, capture time and device details are removed from the stored file."
+                    AllowedContentTypes="UserProfileImageLimits.AllowedContentTypes"
+                    TypeLabel="@UserProfileImageLimits.TypeLabel"
+                    MaxSourceBytes="UserProfileImageLimits.MaxSourceBytes"
+                    MaxSourceDimension="UserProfileImageLimits.MaxSourceDimension"
+                    OutputDimension="UserProfileImageLimits.OutputDimension"
+                    JpegQuality="UserProfileImageLimits.JpegQuality"
+                    SurfaceMegabytes="UserProfileImageLimits.MaxImageMegabytes"
+                    UploadName="profile-picture"
+                    OnUpload="UploadImageAsync"
+                    OnSaved="ImageSavedAsync" />
+
+@* Removal deletes the stored bytes — it is not undone by re-picking the same crop — so it is
+   confirmed. The copy belongs here, with the page that knows whose picture it is; the field raises
+   OnRemove and nothing else. *@
+<OdsFormDialog @bind-Open="_removeOpen"
+               Icon="hide_image"
+               IconTone="OdsModalTone.Warning"
+               RequiredLegend="false"
+               Title="Remove profile picture?"
+               SubmitLabel="Remove picture"
+               SubmitIcon="delete_outline"
+               SubmitVariant="OdsButtonVariant.Danger"
+               OnSubmit="RemoveImageConfirmedAsync">
+    <p class="cpl-note">
+        The stored image is <strong>deleted, not hidden</strong> — your initials are shown everywhere
+        you appear. You can add a new picture at any time.
+    </p>
+</OdsFormDialog>
+
+@* /account has no general-purpose status region to borrow — its only one is a static info alert — so
+   a completed removal is announced through the reusable channel the import dialogs already use. *@
+<OdsLiveAnnouncer Message="@_live" />

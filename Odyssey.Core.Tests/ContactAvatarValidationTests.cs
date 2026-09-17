@@ -1,4 +1,5 @@
 using Odyssey.Core;
+using Odyssey.Core.Imaging;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Dtos.Journal;
 using Odyssey.TestData.Fixtures;

@@ -4293,6 +4293,67 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("UserProfiles");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.UserProfileImage", b =>
+                {
+                    b.Property<Guid>("UserProfileImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ImageVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Sha256Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("UploadedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserProfileImageId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserProfileImages");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.UserProfileImageBlob", b =>
+                {
+                    b.Property<Guid>("UserProfileImageId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("longblob");
+
+                    b.HasKey("UserProfileImageId");
+
+                    b.ToTable("UserProfileImageBlobs");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -5190,6 +5251,26 @@ namespace Odyssey.Context.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Odyssey.Context.UserProfileImage", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithOne()
+                        .HasForeignKey("Odyssey.Context.UserProfileImage", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.UserProfileImageBlob", b =>
+                {
+                    b.HasOne("Odyssey.Context.UserProfileImage", "Image")
+                        .WithOne("Blob")
+                        .HasForeignKey("Odyssey.Context.UserProfileImageBlob", "UserProfileImageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Image");
+                });
+
             modelBuilder.Entity("Odyssey.Context.Account", b =>
                 {
                     b.Navigation("AccountEstimates");
@@ -5343,6 +5424,11 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("BudgetItems");
 
                     b.Navigation("TransactionTagLinks");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.UserProfileImage", b =>
+                {
+                    b.Navigation("Blob");
                 });
 #pragma warning restore 612, 618
         }

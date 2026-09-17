@@ -10,6 +10,7 @@ using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.Journal;
+using Odyssey.Core.Imaging;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;

@@ -1,5 +1,6 @@
 using Odyssey.Core;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Imaging;
 using Odyssey.Dtos;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -738,7 +739,7 @@ public class ContactVCardService
                 continue;
             }
 
-            ValidatedAvatar validated;
+            ValidatedImage validated;
             try
             {
                 // The IDENTICAL pipeline an upload runs: allow-list, magic bytes, byte cap, dimension

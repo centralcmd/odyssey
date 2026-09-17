@@ -1,0 +1,85 @@
+@inject Odyssey.ApiClient.Resources.IProfileApiClient ProfileApi
+@*
+    UserProfileMark — the /users identity mark: a user's profile picture where they have one, the
+    role-tinted initials monogram where they do not (issue #94 §3, Odyssey Design System · Users kit).
+
+    PRESENCE IS THE ROW'S OWN `ExistingUser.ProfileImageVersion` TOKEN, never a probe of the byte
+    endpoint. That is what lets a 50-row page render with ZERO speculative requests: a null token
+    emits no <img> at all, so an administratively disabled subject — whose token the server nulls —
+    produces no request, no 404 and no flicker to the monogram.
+
+    THE FAILED STATE IS PER ROW, and this component is the row. OdsAvatar.OnError only invokes the
+    callback and holds no flag, so the consumer owns it; one page-level flag would blank every avatar
+    after a single failure. It is keyed on the token, so a replace retries.
+
+    THE TINT TRAVELS AS Bg/Fg, NEVER AS A CLASS. The role tints are declared in Users.razor.css, which
+    is SCOPED — scoped CSS does not cross a component boundary, so a `Class` would silently do nothing
+    and every monogram would fall back to the default.
+
+    ALT TEXT FOLLOWS WHAT THE IMAGE IS, and the two call sites differ: in a LIST ROW the adjacent cell
+    names the person, so the mark is decorative (Alt=""); in the DETAIL PANEL the neighbour is a mono
+    user id rather than a name, so it carries the subject's resolved display name. That is the caller's
+    call, passed in — never guessed here.
+
+    A load failure is silent. No broken-image glyph, no toast: an identity token that cannot load is
+    not the user's problem to act on.
+*@
+
+@if (ShowImage)
+{
+    <OdsAvatar Size="Size" Src="@ImageSrc" Alt="@Alt" OnError="OnImageError" />
+}
+else
+{
+    <OdsAvatar Size="Size" Initials="@UserDisplay.Initials(User)" Alt="@Alt"
+               Bg="@UserDisplay.AvatarBg(User.Role)" Fg="@UserDisplay.AvatarFg(User.Role)" />
+}
+
+@code {
+    /// <summary>The row this mark belongs to. Its token is the presence signal.</summary>
+    [Parameter, EditorRequired] public ExistingUser User { get; set; } = default!;
+
+    /// <summary>
+    /// Whether this principal holds <c>profile-images.read</c>. The token is the SUBJECT half of
+    /// "renderable"; this is the CALLER half. Without it a 50-row render would fire fifty requests
+    /// that all 403 — claims are baked into the auth cookie at sign-in, so a session that predates
+    /// the claim's deploy does not hold it.
+    /// </summary>
+    [Parameter] public bool CanReadProfileImages { get; set; }
+
+    /// <summary>
+    /// <c>""</c> in a list row, where the adjacent cell names the person; the subject's resolved
+    /// display name in the detail panel, where the neighbour is a mono user id.
+    /// </summary>
+    [Parameter] public string Alt { get; set; } = "";
+
+    [Parameter] public OdsSize Size { get; set; } = OdsSize.Md;
+
+    private bool _imageFailed;
+    private Guid? _failedFor;
+
+    private Guid? RenderableVersion => CanReadProfileImages ? User.ProfileImageVersion : null;
+
+    private string? ImageSrc =>
+        RenderableVersion is { } version ? ProfileApi.ImageUrl(User.Id, version) : null;
+
+    private bool ShowImage =>
+        ImageSrc is not null && !(_imageFailed && _failedFor == User.ProfileImageVersion);
+
+    protected override void OnParametersSet()
+    {
+        // Keyed on the token rather than cleared unconditionally: re-rendering for an unrelated reason
+        // (a sort, a filter) must not retry an image that is genuinely gone, but a replace must.
+        if (_failedFor != User.ProfileImageVersion)
+        {
+            _imageFailed = false;
+            _failedFor = null;
+        }
+    }
+
+    private void OnImageError()
+    {
+        _imageFailed = true;
+        _failedFor = User.ProfileImageVersion;
+    }
+}

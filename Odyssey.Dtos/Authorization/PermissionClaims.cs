@@ -150,6 +150,30 @@ public static class PermissionClaims
     public const string CalendarUpdate = "calendar.update";
     public const string CalendarDelete = "calendar.delete";
 
+    /// <summary>
+    /// Read another user's profile picture (issue #94 §10.5). A deliberately <b>low-tier</b> claim,
+    /// granted to <b>every</b> role including Guest, so its effective reach equals "any authenticated
+    /// caller" — what it buys is a revocation lever that exists <i>before</i> release, since claim
+    /// values are baked into the auth cookie at sign-in and retrofitting one later de-authorizes live
+    /// sessions.
+    ///
+    /// <para>
+    /// The tempting argument for claim-free access — a caller can only fetch a picture for someone they
+    /// already see <i>named</i> — is <b>false</b> here:
+    /// <c>ExistingTransactionFile.AttachedByUserId</c>, <c>ExistingAccountFile.AttachedByUserId</c> and
+    /// the nested <c>ExistingFileMetadata.UploadedByUserId</c> return raw user ids with no name
+    /// attached, and Guest holds <c>transactions.read</c>, <c>accounts.read</c> and <c>files.read</c>.
+    /// So a Guest can harvest ids and build a face↔id mapping for people the application never named to
+    /// them. Revoking this claim from Guest is the supported way to narrow who sees colleagues'
+    /// pictures.
+    /// </para>
+    ///
+    /// <para>
+    /// The two <i>write</i> endpoints stay claim-free and self-scoped, like <c>PUT /api/profile</c>.
+    /// </para>
+    /// </summary>
+    public const string ProfileImagesRead = "profile-images.read";
+
     // System settings (issue #349). Admin-only across all three — never granted to Owner/User/Guest.
     // Read is uniform sensitivity (no PII, no IDOR surface); the write claim is split by sensitivity:
     // Update covers the two cosmetic/policy fields (Insurance), SecurityUpdate covers the three

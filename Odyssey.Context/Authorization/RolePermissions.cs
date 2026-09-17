@@ -132,6 +132,7 @@ public static class RolePermissions
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
         ..CalendarModuleClaims,
+        ProfileImagesRead,
         SystemSettingsRead,
         SystemSettingsUpdate,
         SystemSettingsSecurityUpdate,
@@ -206,6 +207,7 @@ public static class RolePermissions
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
         ..CalendarModuleClaims,
+        ProfileImagesRead,
     ];
 
     public static readonly string[] UserClaims =
@@ -240,6 +242,7 @@ public static class RolePermissions
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
         ..CalendarModuleClaims,
+        ProfileImagesRead,
     ];
 
     public static readonly string[] GuestClaims =
@@ -259,6 +262,10 @@ public static class RolePermissions
         FilesRead,
         TaxesRead,
         AccountsEstimatesRead,
+        // Granted to Guest too (issue #94 §10.5). The picture identifies a person the caller already
+        // meets by name on shared records, and the point of the claim is that it is REVOCABLE per role
+        // without a code change — not that it narrows anything today.
+        ProfileImagesRead,
     ];
 
     /// <summary>

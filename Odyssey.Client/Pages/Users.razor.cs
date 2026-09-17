@@ -6,6 +6,7 @@ using Odyssey.Dtos.Application;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Authorization;
 
 namespace Odyssey.Client.Pages;
 
@@ -68,6 +69,15 @@ public partial class Users
     private bool _editSaving;
     private string? _editError;
 
+    /// <summary>
+    /// Whether this principal holds <c>profile-images.read</c> (issue #94 §3). The per-row token is the
+    /// SUBJECT half of "renderable"; this is the CALLER half. Without it a 50-row render would fire
+    /// fifty requests that all 403 — claims are baked into the auth cookie at sign-in, so a session
+    /// that predates the claim's deploy does not hold it. The rows degrade to monograms, which is the
+    /// correct outcome here: on this page the picture is decorative.
+    /// </summary>
+    private bool _canReadProfileImages;
+
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
@@ -75,7 +85,9 @@ public partial class Users
 
         await RestorePageStateAsync();
         StateHasChanged();
-        _actorUserId = (await AuthenticationStateProvider.GetUserAsync()).UserId();
+        var actor = await AuthenticationStateProvider.GetUserAsync();
+        _actorUserId = actor.UserId();
+        _canReadProfileImages = actor.HasPermission(PermissionClaims.ProfileImagesRead);
         await LoadRolesAsync();
         await LoadUsersAsync();
         await RefreshAllUsersAsync();

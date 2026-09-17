@@ -1,4 +1,4 @@
-namespace Odyssey.Core.Journal.Avatar;
+namespace Odyssey.Core.Imaging;
 
 /// <summary>Why a container walk produced no usable output.</summary>
 public enum ImageWalkOutcome
@@ -7,7 +7,7 @@ public enum ImageWalkOutcome
     Ok,
 
     /// <summary>The bytes are not a well-formed container of the declared type — truncated, corrupt,
-    /// or carrying a structure the walk cannot account for. For an avatar this is a defect, not a
+    /// or carrying a structure the walk cannot account for. For an identity image this is a defect, not a
     /// degraded read, so it is rejected rather than stored.</summary>
     Undecodable,
 

@@ -783,6 +783,42 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // The user profile picture (issue #94 §6). Two tables that share NOTHING with the domain file
+        // store — no relationship in either direction, so no files.* claim reaches them and no
+        // FileService code path touches them.
+        //
+        // Three things here are load-bearing and were each got backwards at least once in review:
+        //
+        //  1. ImageVersion is the CONCURRENCY TOKEN. A replace updates the row in place, so the unique
+        //     index below can only fire for two concurrent FIRST uploads; without the token two
+        //     concurrent REPLACES both succeed and the later silently wins. The version is regenerated
+        //     per write, so a stale-version UPDATE affects zero rows and raises
+        //     DbUpdateConcurrencyException at no extra cost. It is also what makes a DELETE racing a
+        //     POST a 409 rather than a 500.
+        //  2. The blob is the DEPENDENT, inverting FileMetadata/FileBlob. That is what makes
+        //     AspNetUsers → UserProfileImage → UserProfileImageBlob an unbroken cascade chain, so a
+        //     deleted account takes its facial image bytes with it rather than orphaning them
+        //     permanently. Its PK is its FK, so it needs no separate index.
+        //  3. Both cascades are declared explicitly rather than left to EF's default for a required
+        //     relationship, because the erasure guarantee rests on them.
+        modelBuilder.Entity<UserProfileImage>(entity =>
+        {
+            entity.HasOne<ApplicationUser>()
+                .WithOne()
+                .HasForeignKey<UserProfileImage>(image => image.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(image => image.ImageVersion).IsConcurrencyToken();
+        });
+
+        modelBuilder.Entity<UserProfileImageBlob>(entity =>
+        {
+            entity.HasOne(blob => blob.Image)
+                .WithOne(image => image!.Blob)
+                .HasForeignKey<UserProfileImageBlob>(blob => blob.UserProfileImageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // Migration-seeded singleton-per-key rows (issue #349): Key is the primary key (a natural
         // key), so seeding is a plain HasData insert, not the positional-id hand-written-migration
         // dance the permission-claim seeds below need. GET assembles the DTO from these five rows and
@@ -1287,6 +1323,18 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
 
     public DbSet<UserPreference> UserPreferences => Set<UserPreference>();
+
+    /// <summary>
+    /// A user's one profile picture (issue #94). Deliberately NOT in the domain file store: the pair
+    /// below shares no relationship with <see cref="FileMetadata"/>/<see cref="FileBlob"/> in either
+    /// direction, which is what keeps a face out of reach of every <c>files.*</c> claim and out of the
+    /// admin file export. Both are declared out of scope on <c>DataExportTableCoverageTests</c>,
+    /// alongside the identity tables they belong with.
+    /// </summary>
+    public DbSet<UserProfileImage> UserProfileImages => Set<UserProfileImage>();
+
+    /// <inheritdoc cref="UserProfileImages" />
+    public DbSet<UserProfileImageBlob> UserProfileImageBlobs => Set<UserProfileImageBlob>();
 
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 

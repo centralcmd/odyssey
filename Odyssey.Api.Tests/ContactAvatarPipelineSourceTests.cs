@@ -5,7 +5,7 @@ using Xunit;
 namespace Odyssey.Api.Tests;
 
 /// <summary>
-/// Source lints over the contact-image pipeline (issue #86 §4.4, §5.3, §6).
+/// Source lints over the shared still-image pipeline (issue #86 §4.4, §5.3, §6; issue #94 §5).
 ///
 /// <para>
 /// These are lints rather than behavioural tests because every defect they catch <b>compiles, runs and
@@ -13,15 +13,97 @@ namespace Odyssey.Api.Tests;
 /// container walk does, an <c>ExecuteDeleteAsync</c> works perfectly against MariaDB, and a fourth
 /// release site that forgets the rule deletes files quietly and correctly-looking.
 /// </para>
+///
+/// <para>
+/// <b>They are re-pointed at <c>Odyssey.Core/Imaging</c>, and that was a precondition of the
+/// extraction rather than a follow-up.</b> These lints are path-scoped, and
+/// <c>ContactAvatarService.cs</c> / <c>ContactAvatarRelease.cs</c> stayed behind in
+/// <c>Journal/Avatar</c> — so scanning the old directory would still have enumerated files, and every
+/// lint would still have <b>passed</b>, while the files they exist to protect had silently left their
+/// scope. <see cref="The_imaging_scan_set_is_not_empty"/> is the guard against the same thing
+/// happening again.
+/// </para>
 /// </summary>
 public class ContactAvatarPipelineSourceTests
 {
+    /// <summary>
+    /// The shared pipeline: the container walk, the metadata strip, the magic-byte table and the
+    /// parameterised validator. Storage-agnostic, so a contact image and a user profile picture run
+    /// the identical parser.
+    /// </summary>
+    private static string ImagingDirectory =>
+        Path.Combine(RepositoryRoot.Path, "Odyssey.Core", "Imaging");
+
+    /// <summary>
+    /// The surfaces that bind the pipeline to a store. They apply the same lints, because a raster
+    /// dependency or a bulk statement is no more acceptable a step away from the walk.
+    /// </summary>
     private static string AvatarDirectory =>
         Path.Combine(RepositoryRoot.Path, "Odyssey.Core", "Journal", "Avatar");
 
+    private static string ProfileImageDirectory =>
+        Path.Combine(RepositoryRoot.Path, "Odyssey.Core", "Profiles");
+
     private static IEnumerable<(string File, string Text)> AvatarSources() =>
-        Directory.EnumerateFiles(AvatarDirectory, "*.cs", SearchOption.AllDirectories)
+        new[] { ImagingDirectory, AvatarDirectory, ProfileImageDirectory }
+            .SelectMany(dir => Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories))
             .Select(file => (File: Path.GetFileName(file), Text: WithoutComments(File.ReadAllText(file))));
+
+    /// <summary>
+    /// AC 28. A path-scoped lint that scans nothing passes vacuously, which is exactly how the
+    /// extraction could have gone wrong: the files move, the directory still exists because two others
+    /// stayed behind, and every assertion below keeps reporting success about code it no longer reads.
+    /// </summary>
+    [Fact]
+    public void The_imaging_scan_set_is_not_empty()
+    {
+        var imaging = Directory.EnumerateFiles(ImagingDirectory, "*.cs", SearchOption.AllDirectories).ToList();
+
+        Assert.True(imaging.Count > 0,
+            $"No sources under {ImagingDirectory}: every lint in this class would pass having read "
+            + "nothing. The shared pipeline has moved — re-point them.");
+
+        // Named rather than counted, so a file that quietly leaves fails here and not somewhere subtler.
+        var names = imaging.Select(Path.GetFileName).ToList();
+        Assert.Contains("ImageContainerWalk.cs", names);
+        Assert.Contains("StillImageValidator.cs", names);
+
+        Assert.True(AvatarSources().Any(), "The combined scan set is empty.");
+    }
+
+    /// <summary>
+    /// AC 29. The invariant the whole extraction exists for: there is exactly ONE implementation of
+    /// the container walk and the metadata strip in the solution. Two copies of a parser on an
+    /// untrusted-input path will diverge, and the copy with fewer eyes on it is the one that will.
+    /// </summary>
+    [Fact]
+    public void Exactly_one_container_walk_exists_and_it_is_under_Odyssey_Core_Imaging()
+    {
+        var declarations = Directory
+            .EnumerateFiles(RepositoryRoot.Path, "*.cs", SearchOption.AllDirectories)
+            .Where(file => !IsBuildOutput(file))
+            .Select(file => (File: file, Text: WithoutComments(File.ReadAllText(file))))
+            .Where(pair => Regex.IsMatch(pair.Text, @"\b(class|record|struct)\s+\w*ImageContainerWalk\w*\b")
+                        || Regex.IsMatch(pair.Text, @"\b(class|record|struct)\s+\w*(MetadataStrip|ImageStripper)\w*\b"))
+            .Select(pair => Path.GetRelativePath(RepositoryRoot.Path, pair.File))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            declarations.Count == 1
+            && declarations[0].Replace('\\', '/') == "Odyssey.Core/Imaging/ImageContainerWalk.cs",
+            "The container walk must be declared exactly once, under Odyssey.Core/Imaging. Found: "
+            + string.Join(", ", declarations));
+    }
+
+    private static bool IsBuildOutput(string file)
+    {
+        var relative = Path.GetRelativePath(RepositoryRoot.Path, file);
+        return relative.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+            || relative.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+            || relative.StartsWith($"obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+            || relative.StartsWith($"bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// Comments discuss the very identifiers these lints ban — the point of several of them is to say
@@ -142,11 +224,13 @@ public class ContactAvatarPipelineSourceTests
 
     // ── Log redaction (§10.11) ────────────────────────────────────────────────────────────────────
 
-    [Fact]
-    public void No_avatar_log_line_carries_the_client_declared_content_type_or_a_filename()
+    [Theory]
+    [InlineData("Odyssey.Core", "Journal", "Avatar", "ContactAvatarService.cs")]
+    [InlineData("Odyssey.Core", "Profiles", "UserProfileImageService.cs")]
+    public void No_image_log_line_carries_the_client_declared_content_type_or_a_filename(params string[] path)
     {
         var service = WithoutComments(File.ReadAllText(
-            Path.Combine(AvatarDirectory, "ContactAvatarService.cs")));
+            Path.Combine([RepositoryRoot.Path, .. path])));
 
         foreach (Match log in Regex.Matches(service, @"Log(Information|Warning|Error)\((?<body>[^;]*);", RegexOptions.Singleline))
         {

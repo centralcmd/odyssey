@@ -40,4 +40,19 @@ public sealed record ProfileDto
     /// lets the client show the gate form instead of a screen of failed requests.
     /// </summary>
     public bool MustChangePassword { get; set; }
+
+    /// <summary>
+    /// Response-only (issue #94 §6): the caller's own profile-picture version token, or <c>null</c>
+    /// when they have no picture. Read from the image row on every fetch and ignored on input, exactly
+    /// like <see cref="IsComplete"/> and <see cref="MustChangePassword"/> — a client that posts it
+    /// cannot set or clear it.
+    ///
+    /// <para>
+    /// It is <b>both</b> the presence signal and the URL cache key: a non-null token means "render the
+    /// picture", <c>null</c> means "render the monogram and issue no request", and a replace re-keys
+    /// the <c>src</c> so the browser re-requests. An <c>&lt;img&gt;</c> plus an error handler cannot
+    /// drive a button label, which is why presence is never discovered by probing the byte endpoint.
+    /// </para>
+    /// </summary>
+    public Guid? ProfileImageVersion { get; set; }
 }

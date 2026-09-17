@@ -26,6 +26,16 @@ public class ContactAvatarSurfaceTests
         File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", name));
 
     /// <summary>
+    /// The SHARED crop dialog (issue #94 §5). The six tests below used to read
+    /// <c>Pages/Finance/ContactAvatarDialog.razor</c> by hardcoded path and assert on literals the
+    /// extraction changed — the <c>cav-*</c> element ids among them. Left alone they would have failed
+    /// with <c>FileNotFoundException</c>, which is not a readable failure; re-pointed, they keep
+    /// testing the contract they were written for, now at the one place it lives.
+    /// </summary>
+    private static string CropDialog(string name) =>
+        File.ReadAllText(Path.Combine(ClientSource.Root, "Components", name));
+
+    /// <summary>
     /// The source with its comments removed. Documentation legitimately DISCUSSES the very things these
     /// lints look for — <c>role="dialog"</c>, <c>&lt;input type="range"&gt;</c>, a megabyte figure — and
     /// a test a doc comment can fail is a test that gets the docs deleted. Same reason
@@ -138,7 +148,7 @@ public class ContactAvatarSurfaceTests
     [Fact]
     public void The_crop_dialog_composes_the_form_dialog_rather_than_hand_rolling_a_dialog()
     {
-        var markup = WithoutComments(Page("ContactAvatarDialog.razor"));
+        var markup = WithoutComments(CropDialog("OdsImageCropDialog.razor"));
 
         // overlay-focus.js already owns focus trapping and focus return, and OdsModal owns the Escape
         // handling — so Escape closing and returning focus to the invoking control comes for free, and
@@ -150,12 +160,16 @@ public class ContactAvatarSurfaceTests
     [Fact]
     public void The_crop_controls_are_native_range_inputs_each_labelled_and_value_texted()
     {
-        var markup = WithoutComments(Page("ContactAvatarDialog.razor"));
+        var markup = WithoutComments(CropDialog("OdsImageCropDialog.razor"));
 
-        foreach (var id in new[] { "cav-zoom", "cav-x", "cav-y" })
+        // The ids are now GENERATED PER INSTANCE (AC 32) rather than the hardcoded cav-zoom / cav-x /
+        // cav-y this grew from — a shared component mounted twice would otherwise emit duplicate ids
+        // and break every <label for> and aria-describedby, silently. So the assertion is that each
+        // control's `for` and `id` name the SAME per-instance property, not that they equal a literal.
+        foreach (var id in new[] { "ZoomId", "OffsetXId", "OffsetYId" })
         {
-            Assert.Contains($"for=\"{id}\"", markup, StringComparison.Ordinal);
-            Assert.Contains($"id=\"{id}\" type=\"range\"", markup, StringComparison.Ordinal);
+            Assert.Contains($"for=\"@{id}\"", markup, StringComparison.Ordinal);
+            Assert.Contains($"id=\"@{id}\" type=\"range\"", markup, StringComparison.Ordinal);
         }
 
         // Arrow / Home / End work BY CONSTRUCTION on a native range. That is why the widget is built
@@ -164,25 +178,50 @@ public class ContactAvatarSurfaceTests
         Assert.Equal(3, Regex.Matches(markup, @"aria-valuetext=").Count);
     }
 
+    /// <summary>
+    /// AC 32. The extracted dialog can be mounted twice on one page — the contact surface and the
+    /// account surface are different pages today, but nothing stops a third — and a hardcoded id would
+    /// break <c>&lt;label for&gt;</c> and <c>aria-describedby</c> the moment that happened, without
+    /// failing anything else.
+    /// </summary>
+    [Fact]
+    public void The_crop_dialogs_element_ids_are_generated_per_instance()
+    {
+        var markup = WithoutComments(CropDialog("OdsImageCropDialog.razor"));
+        var code = WithoutComments(CropDialog("OdsImageCropDialog.razor.cs"));
+
+        foreach (var id in new[] { "cav-file", "cav-zoom", "cav-x", "cav-y" })
+        {
+            Assert.DoesNotContain($"\"{id}\"", markup, StringComparison.Ordinal);
+        }
+
+        // Every id derives from the same per-instance handle, which is a fresh GUID per mount.
+        Assert.Contains("Guid.NewGuid():N", code, StringComparison.Ordinal);
+        foreach (var member in new[] { "FileId", "ZoomId", "OffsetXId", "OffsetYId" })
+        {
+            Assert.Contains($"private string {member} => $\"{{_handle}}", code, StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public void The_preview_canvas_is_hidden_from_assistive_tech_and_described_in_text_beside_it()
     {
-        var markup = Page("ContactAvatarDialog.razor");
+        var markup = CropDialog("OdsImageCropDialog.razor");
 
         // A canvas exposes no accessible structure at all, and the three ranges already carry the state.
         Assert.Contains("<canvas @ref=\"_canvas\" aria-hidden=\"true\">", markup, StringComparison.Ordinal);
-        Assert.Contains("class=\"cav-state\">@StateText<", markup, StringComparison.Ordinal);
+        Assert.Contains("class=\"odc-crop-state\">@StateText<", markup, StringComparison.Ordinal);
     }
 
     [Fact]
     public void A_server_failure_is_announced_in_place_and_a_field_failure_is_not()
     {
-        var markup = Page("ContactAvatarDialog.razor");
-        var code = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "ContactAvatarDialog.razor.cs"));
+        var markup = CropDialog("OdsImageCropDialog.razor");
+        var code = CropDialog("OdsImageCropDialog.razor.cs");
 
         // Not attributable to a control → role="alert", focus stays put, and the text is the server's
         // own ProblemDetails message, which names the actual limit.
-        Assert.Contains("class=\"cav-alert\" role=\"alert\"", markup, StringComparison.Ordinal);
+        Assert.Contains("class=\"odc-crop-alert\" role=\"alert\"", markup, StringComparison.Ordinal);
         Assert.Contains("result.Problem?.Detail", code, StringComparison.Ordinal);
 
         // Attributable to a control → rendered on that control and focus MOVES there. Deliberately not
@@ -207,9 +246,8 @@ public class ContactAvatarSurfaceTests
     [Fact]
     public void The_crop_dialog_names_no_limit_as_a_literal()
     {
-        var markup = WithoutComments(Page("ContactAvatarDialog.razor"));
-        var code = WithoutComments(
-            File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "ContactAvatarDialog.razor.cs")));
+        var markup = WithoutComments(CropDialog("OdsImageCropDialog.razor"));
+        var code = WithoutComments(CropDialog("OdsImageCropDialog.razor.cs"));
 
         foreach (var (name, text) in new[] { ("markup", markup), ("code-behind", code) })
         {
@@ -222,12 +260,24 @@ public class ContactAvatarSurfaceTests
             Assert.DoesNotContain("1024 ×", text, StringComparison.Ordinal);
         }
 
-        // The stored cap comes from the live instance value, tightened by the shared constant. min is
-        // the only correct direction: a surface may be stricter, but it must never override a cap an
-        // administrator has lowered.
+        // The stored cap comes from the live instance value, tightened by the SURFACE's constant, which
+        // the caller supplies. min is the only correct direction: a surface may be stricter, but it
+        // must never override a cap an administrator has lowered.
         Assert.Contains("UploadLimits.GetAsync()", code, StringComparison.Ordinal);
-        Assert.Contains("TightenTo(ContactAvatarLimits.MaxAvatarMegabytes)", code, StringComparison.Ordinal);
+        Assert.Contains("TightenTo(SurfaceMegabytes)", code, StringComparison.Ordinal);
         Assert.Contains("Math.Min(", code, StringComparison.Ordinal);
+
+        // And each binding surface supplies its own constant rather than a number. The shared dialog
+        // could otherwise satisfy every check above while a call site typed "2".
+        foreach (var (surface, expected) in new[]
+        {
+            (Page("ContactAvatarDialog.razor"), "ContactAvatarLimits.MaxAvatarMegabytes"),
+            (File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "AccountProfileSection.razor")),
+                "UserProfileImageLimits.MaxImageMegabytes"),
+        })
+        {
+            Assert.Contains($"SurfaceMegabytes=\"{expected}\"", surface, StringComparison.Ordinal);
+        }
     }
 
     // ── Row-menu gating (AC 39) ───────────────────────────────────────────────────────────────────

@@ -1,0 +1,212 @@
+@*
+    OdsProfilePictureField — the identity control on a person's OWN account page
+    (Odyssey Design System · Components · User profile picture · ProfilePictureField).
+
+    Their picture, the button that attaches or replaces it, and the button that removes it. It is the
+    only write surface for a user profile picture — there is no administrator path, by design — so
+    this field never takes a target user.
+
+    PRESENCE IS THE `Version` TOKEN, never a probe of the byte endpoint. A non-null token means
+    "renderable by this caller", and it is also the cache key that re-keys Src on a replace. With no
+    token the field renders the monogram and issues no request, and the button reads "Add picture";
+    with one it reads "Change picture" and a "Remove picture" button appears beside it.
+
+    A LOAD FAILURE IS SILENT. OdsAvatar.OnError only invokes the callback and holds no failed-state
+    flag, so this component owns that state — and it is keyed on Version, so a replace clears it.
+    Nothing is surfaced: an identity token that cannot load is not the user's problem to act on.
+
+    Disabled + DisabledReason cover the one honest dead end (issue #94 §3): a session that predates the
+    read claim's deploy can upload successfully and see nothing, so the write is refused honestly
+    instead. THE SAME DISABLE COVERS REMOVE, which is a self-service erasure control — so the reason
+    says how to clear it and never reads as a failure the user caused.
+
+    Size is lg (56 px), the same step the page header uses, and it is not configurable: OdsAvatar
+    writes its size as an INLINE style, which no class rule beats and which a page's scoped CSS would
+    not match anyway. A larger preview needs a new size step on both OdsAvatar and the design-system
+    Avatar.
+
+    The confirmation in front of removal belongs to the CALLER — this field raises OnRemove and
+    nothing else, so the copy stays with the page that knows whose picture it is. The caller also owns
+    the live-region announcement; this field does not carry one.
+*@
+
+<div class="@RootClass">
+    @if (ShowImage)
+    {
+        <OdsAvatar Size="OdsSize.Lg" Src="@Src" Alt="@Alt" OnError="OnImageError" />
+    }
+    else
+    {
+        <OdsAvatar Size="OdsSize.Lg" Initials="@Initials" Alt="@Alt" Bg="@Bg" Fg="@Fg" Tone="@Tone" />
+    }
+
+    @if (Variant == OdsProfilePictureVariant.Overlay)
+    {
+        @* The mark IS the control. Hover alone is never the affordance: the buttons are real,
+           always-rendered buttons (so Tab reaches them and :focus-within reveals the overlay, which is
+           also what makes them work on touch), and a small pencil badge stays visible so the control
+           is discoverable without hovering at all. *@
+        @if (!Disabled)
+        {
+            <span class="odc-picedit-badge" aria-hidden="true">
+                <span class="material-icons">edit</span>
+            </span>
+            <span class="odc-picedit-actions">
+                <button type="button" class="odc-picedit-btn" @onclick="OnAdd"
+                        disabled="@(Busy || Removing)"
+                        aria-label="@(HasPicture ? "Change profile picture" : "Add profile picture")"
+                        title="@(HasPicture ? "Change profile picture" : "Add profile picture")">
+                    <span class="material-icons" aria-hidden="true">edit</span>
+                </button>
+                @if (HasPicture)
+                {
+                    <button type="button" class="odc-picedit-btn danger" @onclick="OnRemove"
+                            disabled="@(Busy || Removing)"
+                            aria-label="Remove profile picture"
+                            title="Remove profile picture">
+                        <span class="material-icons" aria-hidden="true">delete_outline</span>
+                    </button>
+                }
+            </span>
+        }
+    }
+    else
+    {
+        <div class="odc-picfield-body">
+            <div class="odc-picfield-label">@Label</div>
+            <p class="odc-picfield-hint">@Hint</p>
+            <div class="odc-picfield-actions">
+                <OdsButton Variant="OdsButtonVariant.Outlined" Icon="photo_camera"
+                           Disabled="@(Disabled || Busy || Removing)" OnClick="OnAdd">
+                    @(HasPicture ? "Change picture" : "Add picture")
+                </OdsButton>
+                @if (HasPicture)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="delete_outline"
+                               Disabled="@(Disabled || Busy || Removing)" OnClick="OnRemove">
+                        Remove picture
+                    </OdsButton>
+                }
+            </div>
+            @if (Disabled && !string.IsNullOrWhiteSpace(DisabledReason))
+            {
+                <p class="odc-picfield-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>@DisabledReason</span>
+                </p>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The image URL, already keyed by <see cref="Version"/>. Built by the typed API client, never
+    /// composed at a call site.
+    /// </summary>
+    [Parameter] public string? Src { get; set; }
+
+    /// <summary>
+    /// The read DTO's image-version token. <c>null</c> = no picture: render the monogram and issue no
+    /// request. It is both the presence signal and the cache key.
+    /// </summary>
+    [Parameter] public Guid? Version { get; set; }
+
+    /// <summary>Monogram shown whenever there is no picture, or an image fails to load.</summary>
+    [Parameter] public string? Initials { get; set; }
+
+    /// <summary>
+    /// Descriptive alt — the picture is the subject of its own controls here, so it is never
+    /// decorative on this surface.
+    /// </summary>
+    [Parameter] public string Alt { get; set; } = "Your profile picture";
+
+    /// <summary>Monogram tone, when no custom <see cref="Bg"/>/<see cref="Fg"/> pair is given.</summary>
+    [Parameter] public OdsAvatarTone Tone { get; set; } = OdsAvatarTone.Tide;
+
+    /// <summary>
+    /// Custom monogram background. Carry the page's own tint across rather than taking the default —
+    /// a page's scoped CSS does not cross a component boundary, so a class would do nothing here.
+    /// </summary>
+    [Parameter] public string? Bg { get; set; }
+
+    /// <summary>Custom monogram foreground, paired with <see cref="Bg"/>.</summary>
+    [Parameter] public string? Fg { get; set; }
+
+    [Parameter] public string Label { get; set; } = "Profile picture";
+
+    /// <summary>Overrides the state sentence under the label.</summary>
+    [Parameter] public string? Hint { get; set; }
+
+    /// <summary>An upload is in flight.</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    /// <summary>A removal is in flight.</summary>
+    [Parameter] public bool Removing { get; set; }
+
+    /// <summary>
+    /// Disables both controls — the pre-claim session window. Never used for a validation failure.
+    /// </summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Why the controls are disabled, and how to clear it. Required whenever <see cref="Disabled"/>
+    /// is set. Rendered by the row variant; an overlay caller shows it beside the mark.
+    /// </summary>
+    [Parameter] public string? DisabledReason { get; set; }
+
+    /// <summary>
+    /// Row (default) = labelled control with text buttons, the discoverable default for a settings
+    /// page. Overlay = the mark IS the control, for a card that already shows the avatar and cannot
+    /// spare a second block.
+    /// </summary>
+    [Parameter] public OdsProfilePictureVariant Variant { get; set; } = OdsProfilePictureVariant.Row;
+
+    /// <summary>Open the crop dialog.</summary>
+    [Parameter] public EventCallback OnAdd { get; set; }
+
+    /// <summary>
+    /// Raise the removal. The caller owns the confirmation and the live-region announcement, because
+    /// the copy belongs to the page that knows whose picture it is.
+    /// </summary>
+    [Parameter] public EventCallback OnRemove { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>
+    /// Whether the image failed to load. Owned here rather than by <c>OdsAvatar</c>, which only
+    /// invokes its callback — and reset whenever the token or URL changes, so a replace clears it.
+    /// </summary>
+    private bool _imageFailed;
+
+    private Guid? _failedFor;
+
+    private bool HasPicture => Version is not null && !string.IsNullOrEmpty(Src) && !_imageFailed;
+
+    private bool ShowImage => Version is not null && !string.IsNullOrEmpty(Src) && !_imageFailed;
+
+    private string RootClass =>
+        string.Join(' ', new[]
+        {
+            Variant == OdsProfilePictureVariant.Overlay ? "odc-picedit" : "odc-picfield",
+            Disabled ? "disabled" : null,
+            Class,
+        }.Where(part => !string.IsNullOrEmpty(part)));
+
+    protected override void OnParametersSet()
+    {
+        // Keyed on the version rather than cleared unconditionally: re-rendering for an unrelated
+        // reason must not retry an image that is genuinely gone, but a REPLACE must.
+        if (_failedFor != Version)
+        {
+            _failedFor = null;
+            _imageFailed = false;
+        }
+    }
+
+    private void OnImageError()
+    {
+        _imageFailed = true;
+        _failedFor = Version;
+    }
+}

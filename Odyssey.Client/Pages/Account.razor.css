@@ -25,6 +25,15 @@
     letter-spacing: 0.02em;
     background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
     color: var(--mud-palette-primary);
+    overflow: hidden;
+}
+/* The picture, when there is one, fills the same circle the monogram occupies — so the tint above
+   stays the fallback's, and the mark does not change size or shape between the two states. */
+.ph-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 /* ── Merged settings list (sections stacked like Preferences) ── */
 .acc-list {

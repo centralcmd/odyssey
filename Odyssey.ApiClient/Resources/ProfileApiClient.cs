@@ -18,6 +18,33 @@ public interface IProfileApiClient
 
     /// <summary>Saves the profile. On failure the result carries the parsed problem (400 → inline errors).</summary>
     Task<ApiResult> SaveAsync(ProfileDto profile, CancellationToken ct = default);
+
+    // ── Profile picture (issue #94 §7) ───────────────────────────────────────────
+    // Self-scoped: neither write takes a user id, in route or body, so there is no id to tamper with.
+
+    /// <summary>
+    /// Attaches or replaces the caller's own picture, returning the new <c>ImageVersion</c>. The
+    /// caller must re-key the image URL with it — without that the <c>src</c> string is unchanged and
+    /// the browser never re-requests, so a replace would simply not appear.
+    /// </summary>
+    Task<ApiResult<ProfileImageVersionDto>> UploadImageAsync(ApiUpload image, CancellationToken ct = default);
+
+    /// <summary>Removes the caller's own picture and its bytes. <c>404</c> when there is none.</summary>
+    Task<ApiResult> DeleteImageAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// The absolute URL of a user's picture, resolved against the configured API base the same way the
+    /// typed clients form request URLs — so it works both behind the nginx <c>/api/</c> proxy and
+    /// against an absolute API host. Suitable as an <c>&lt;img src&gt;</c>; the auth cookie rides along.
+    ///
+    /// <para>
+    /// <paramref name="imageVersion"/> is appended as <c>?v=</c>. The server does not bind it at all —
+    /// it is purely what makes the URL string change on a replace, which is what makes the browser
+    /// re-request and the <c>no-cache</c>/<c>ETag</c> revalidation take effect. That is why the URL is
+    /// never hand-built at a call site.
+    /// </para>
+    /// </summary>
+    string ImageUrl(string userId, Guid imageVersion);
 }
 
 /// <inheritdoc cref="IProfileApiClient" />
@@ -30,4 +57,15 @@ public sealed class ProfileApiClient(IOdysseyApi api) : IProfileApiClient
 
     public Task<ApiResult> SaveAsync(ProfileDto profile, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Put, Url, profile, ct);
+
+    public Task<ApiResult<ProfileImageVersionDto>> UploadImageAsync(ApiUpload image, CancellationToken ct = default) =>
+        api.UploadAsync<ProfileImageVersionDto>($"{Url}/image", image, ct: ct);
+
+    public Task<ApiResult> DeleteImageAsync(CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Delete, $"{Url}/image", body: null, ct);
+
+    // The READ is its own plural resource, deliberately not under /api/users: it takes a target id and
+    // must not appear to inherit that controller's users.read gate.
+    public string ImageUrl(string userId, Guid imageVersion) =>
+        new Uri(api.BaseAddress!, $"api/profile-images/{Uri.EscapeDataString(userId)}?v={imageVersion}").ToString();
 }

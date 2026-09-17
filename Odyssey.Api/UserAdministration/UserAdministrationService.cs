@@ -8,6 +8,7 @@ using Odyssey.Context;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Pagination;
+using Odyssey.Core.Profiles;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
@@ -34,6 +35,7 @@ public sealed class UserAdministrationService
     private readonly IEmailSendThrottle emailThrottle;
     private readonly IEmailRecipientHashKey recipientHashKey;
     private readonly IPasswordResetLinkSender resetLinkSender;
+    private readonly UserProfileImageService profileImages;
     private readonly ILogger<UserAdministrationService> logger;
 
     public UserAdministrationService(
@@ -45,6 +47,7 @@ public sealed class UserAdministrationService
         IEmailSendThrottle emailThrottle,
         IEmailRecipientHashKey recipientHashKey,
         IPasswordResetLinkSender resetLinkSender,
+        UserProfileImageService profileImages,
         ILogger<UserAdministrationService> logger)
     {
         this.context = context;
@@ -55,6 +58,7 @@ public sealed class UserAdministrationService
         this.emailThrottle = emailThrottle;
         this.recipientHashKey = recipientHashKey;
         this.resetLinkSender = resetLinkSender;
+        this.profileImages = profileImages;
         this.logger = logger;
     }
 
@@ -145,10 +149,17 @@ public sealed class UserAdministrationService
             .ToListAsync(cancellationToken);
 
         var resolvedNames = await displayNames.ResolveAsync(caller, rows.Select(x => (string?)x.User.Id), cancellationToken);
+
+        // One query for the whole page rather than one per row. MapUserAsync still owns the
+        // renderable-by-this-caller rule below — this only saves it the lookup.
+        var imageVersions = await profileImages.GetVersionsAsync(
+            rows.Select(x => x.User.Id).ToList(), cancellationToken);
+
         var items = new List<ExistingUser>(rows.Count);
         foreach (var row in rows)
         {
-            items.Add(await MapUserAsync(row.User, row.Profile, resolvedNames.GetValueOrDefault(row.User.Id)));
+            items.Add(await MapUserAsync(
+                row.User, row.Profile, resolvedNames.GetValueOrDefault(row.User.Id), imageVersions));
         }
 
         return new PagedResult<ExistingUser>
@@ -575,9 +586,36 @@ public sealed class UserAdministrationService
         }
     }
 
-    private async Task<ExistingUser> MapUserAsync(ApplicationUser user, UserProfile? profile, string? displayName)
+    /// <summary>
+    /// The <b>single</b> point every <see cref="ExistingUser"/> is projected through — the list, the
+    /// detail panel's <c>GET /api/users/{id}</c>, and the row returned by the admin update that
+    /// performs a disable. The profile-image token's renderable-by-this-caller rule lives here for
+    /// exactly that reason (issue #94 §6): putting it in the list query's projection instead would
+    /// pass its criterion and ship the flicker one surface over — the first render after an account is
+    /// disabled is the likeliest moment for a stale non-null token.
+    /// </summary>
+    /// <param name="imageVersions">
+    /// Pre-resolved versions for a whole page, so the list costs one query rather than one per row.
+    /// <c>null</c> means "look this one up".
+    /// </param>
+    private async Task<ExistingUser> MapUserAsync(
+        ApplicationUser user,
+        UserProfile? profile,
+        string? displayName,
+        IReadOnlyDictionary<string, Guid>? imageVersions = null)
     {
         var roles = await userManager.GetRolesAsync(user);
+
+        // NOT derived from Enabled below. Enabled is sign-in eligibility, which a TRANSIENT lockout
+        // makes false; this is the administrative-disable sentinel. Deriving one from the other
+        // reintroduces the 200 → 404 → 200 password-spray oracle the read path's 404 exists to avoid,
+        // and does so quietly — it passes every criterion but the one written for it.
+        Guid? imageVersion = AccountLockout.IsAdministrativelyDisabled(user.LockoutEnd)
+            ? null
+            : imageVersions is not null
+                ? imageVersions.TryGetValue(user.Id, out var known) ? known : null
+                : await profileImages.GetVersionAsync(user.Id);
+
         return new ExistingUser
         {
             Id = user.Id,
@@ -595,6 +633,7 @@ public sealed class UserAdministrationService
             LastName = profile?.LastName,
             BirthDate = profile?.BirthDate,
             Sex = profile?.Sex,
+            ProfileImageVersion = imageVersion,
         };
     }
 

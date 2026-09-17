@@ -2,32 +2,88 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using Odyssey.ApiClient;
-using Odyssey.Client.Components;
 using Odyssey.Client.Services;
-using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
-using Odyssey.Dtos.Journal;
 
-namespace Odyssey.Client.Pages.Finance;
+namespace Odyssey.Client.Components;
 
 /// <summary>
-/// State and interop for <see cref="ContactAvatarDialog"/>. The markup, and the reasoning behind the
-/// native range controls, the aria-hidden canvas and the one validation-failure rule, live in
-/// ContactAvatarDialog.razor.
+/// State and interop for <see cref="OdsImageCropDialog"/>. The markup, and the reasoning behind the
+/// native range controls, the aria-hidden canvas, the per-instance element ids and the one
+/// validation-failure rule, live in OdsImageCropDialog.razor.
 /// </summary>
-public partial class ContactAvatarDialog : IAsyncDisposable
+public partial class OdsImageCropDialog : IAsyncDisposable
 {
     /// <summary>Controls visibility. Bindable via <c>@bind-Open</c>.</summary>
     [Parameter] public bool Open { get; set; }
 
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
 
-    /// <summary>The contact whose image is being set. Its type decides the mask, the framing and the
-    /// output format; its id is the endpoint the crop is POSTed to.</summary>
-    [Parameter, EditorRequired] public ExistingContact? Contact { get; set; }
+    /// <summary>Dialog title, e.g. "Crop profile picture".</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = "Crop image";
 
-    /// <summary>Raised after a successful save, so the list can re-read the contact's new
-    /// <c>AvatarFileId</c> and invalidate its session cache.</summary>
+    /// <summary>
+    /// What is being cropped, used throughout the copy — "picture", "logo". Lower-case, because it
+    /// reads inside a sentence.
+    /// </summary>
+    [Parameter] public string Subject { get; set; } = "image";
+
+    /// <summary>The label on the source field before a file is chosen ("Choose a picture").</summary>
+    [Parameter] public string ChooseLabel { get; set; } = "Choose an image";
+
+    /// <summary>
+    /// <c>true</c> square-crops a photograph into a circle; <c>false</c> letterboxes on a neutral
+    /// ground, never cutting it. Chosen from what the image IS, not from the shape: a wordmark
+    /// cropped to a circle is unrecognisable.
+    /// </summary>
+    [Parameter] public bool Cover { get; set; } = true;
+
+    /// <summary>Material ligature shown in the empty frame before a file is chosen.</summary>
+    [Parameter] public string EmptyIcon { get; set; } = "person";
+
+    /// <summary>The metadata-strip footnote, which says what actually happens to the file.</summary>
+    [Parameter, EditorRequired] public string Note { get; set; } = string.Empty;
+
+    // ── Caps ─────────────────────────────────────────────────────────────────────────────────────
+    // Supplied by the surface's own limits class. NOT resolved from a constant here: the two surfaces
+    // have their own caps, and a literal in this file would be a client-side copy of a server number.
+
+    /// <summary>The surface's MIME allow-list.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<string> AllowedContentTypes { get; set; } = [];
+
+    /// <summary>How the accepted types are named in user-visible text ("PNG, JPEG or WebP").</summary>
+    [Parameter, EditorRequired] public string TypeLabel { get; set; } = string.Empty;
+
+    /// <summary>What the dialog will open, in the browser only.</summary>
+    [Parameter, EditorRequired] public long MaxSourceBytes { get; set; }
+
+    /// <summary>The source's pixel-dimension cap, in the browser only.</summary>
+    [Parameter, EditorRequired] public int MaxSourceDimension { get; set; }
+
+    /// <summary>The square canvas the crop renders to, on both axes.</summary>
+    [Parameter, EditorRequired] public int OutputDimension { get; set; }
+
+    /// <summary>Encoder quality for a <c>cover</c> crop.</summary>
+    [Parameter] public double JpegQuality { get; set; } = 0.85;
+
+    /// <summary>
+    /// The surface's own stored cap in whole megabytes — from its limits class, never a literal at the
+    /// call site. The dialog resolves <c>min(live instance cap, this)</c>; <c>min</c> is the only
+    /// correct direction, since a surface may tighten an instance-wide cap but must never override one
+    /// an administrator has lowered.
+    /// </summary>
+    [Parameter, EditorRequired] public int SurfaceMegabytes { get; set; }
+
+    /// <summary>The filename the upload part carries. Server-generated storage never uses it.</summary>
+    [Parameter] public string UploadName { get; set; } = "image";
+
+    /// <summary>
+    /// The upload itself. A delegate rather than an injected resource client: the two surfaces POST to
+    /// different endpoints and a component under <c>Components/</c> must know neither.
+    /// </summary>
+    [Parameter, EditorRequired] public Func<ApiUpload, Task<ApiResult>>? OnUpload { get; set; }
+
+    /// <summary>Raised after a successful save, so the caller can re-read whatever the write changed.</summary>
     [Parameter] public EventCallback OnSaved { get; set; }
 
     /// <summary>Optional announcement hook for the page's own live region.</summary>
@@ -37,8 +93,20 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     private ElementReference _canvas;
     private ElementReference _dropzoneHost;
 
-    /// <summary>Identifies this dialog's decoded source inside the interop module's own map.</summary>
+    /// <summary>
+    /// Identifies this dialog's decoded source inside the interop module's own map, <b>and</b> is the
+    /// prefix for every element id below. One generated value per instance is what lets the shared
+    /// dialog be mounted twice without breaking <c>&lt;label for&gt;</c> or <c>aria-describedby</c>.
+    /// </summary>
     private readonly string _handle = $"cav-{Guid.NewGuid():N}";
+
+    private string FileId => $"{_handle}-file";
+
+    private string ZoomId => $"{_handle}-zoom";
+
+    private string OffsetXId => $"{_handle}-x";
+
+    private string OffsetYId => $"{_handle}-y";
 
     private IReadOnlyList<OdsUploadFile> _files = [];
     private bool _hasImage;
@@ -64,29 +132,28 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     /// <summary>Pointer-drag origin, or null when no drag is in progress.</summary>
     private (double X, double Y, int OffsetX, int OffsetY)? _drag;
 
-    private bool IsPerson => Contact?.Type != ContactType.Organization;
+    private string ResolvedTitle => Title;
 
-    private string Noun => IsPerson ? "picture" : "logo";
-
-    private static string AcceptAttribute => string.Join(',', ContactAvatarLimits.AllowedContentTypes);
+    private string AcceptAttribute => string.Join(',', AllowedContentTypes);
 
     /// <summary>
-    /// The crop is encoded as JPEG for a photograph and PNG for a logo — PNG keeps the transparency the
-    /// contained frame relies on, and a wordmark re-encoded as JPEG picks up ringing around its edges.
+    /// The crop is encoded as JPEG for a photograph and PNG for a contained mark — PNG keeps the
+    /// transparency the contained frame relies on, and a wordmark re-encoded as JPEG picks up ringing
+    /// around its edges.
     /// </summary>
-    private string OutputContentType => IsPerson ? "image/jpeg" : "image/png";
+    private string OutputContentType => Cover ? "image/jpeg" : "image/png";
 
     /// <summary>
-    /// Interpolated from the shared constants, never typed as a literal — the source caps are the
+    /// Interpolated from the supplied caps, never typed as a literal — the source caps are the
     /// browser's own and are what this field actually enforces.
     /// </summary>
     private string SourceHint =>
-        $"{ContactAvatarLimits.TypeLabel} · up to {FormatMegabytes(ContactAvatarLimits.MaxSourceBytes)} · "
-        + $"{ContactAvatarLimits.MaxSourceDimension} × {ContactAvatarLimits.MaxSourceDimension} px · one image";
+        $"{TypeLabel} · up to {FormatMegabytes(MaxSourceBytes)} · "
+        + $"{MaxSourceDimension} × {MaxSourceDimension} px · one image";
 
     private string Subtitle =>
-        $"{ContactAvatarLimits.TypeLabel} · up to {FormatMegabytes(ContactAvatarLimits.MaxSourceBytes)} · "
-        + $"stored at {ContactAvatarLimits.OutputDimension} × {ContactAvatarLimits.OutputDimension}";
+        $"{TypeLabel} · up to {FormatMegabytes(MaxSourceBytes)} · "
+        + $"stored at {OutputDimension} × {OutputDimension}";
 
     private static string Percent(int value) => $"{value} %";
 
@@ -99,9 +166,9 @@ public partial class ContactAvatarDialog : IAsyncDisposable
         : $"{Math.Abs(_offsetY)} % {(_offsetY < 0 ? "above centre" : "below centre")}";
 
     private string StateText => _hasImage
-        ? $"Showing {(_offsetX == 0 && _offsetY == 0 ? "the centre" : "an off-centre area")} of your {Noun} at {_zoom} %."
-        : $"No image chosen yet. The {Noun} is "
-          + (IsPerson
+        ? $"Showing {(_offsetX == 0 && _offsetY == 0 ? "the centre" : "an off-centre area")} of your {Subject} at {_zoom} %."
+        : $"No image chosen yet. The {Subject} is "
+          + (Cover
               ? "cropped to a square and shown as a circle."
               : "contained, never cropped, on a neutral ground.");
 
@@ -109,7 +176,7 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     {
         // A 503 from /api/upload-limits leaves the dialog usable with the cache's compiled fallback —
         // GetAsync never returns null and never caches a failure.
-        _limits = (await UploadLimits.GetAsync()).TightenTo(ContactAvatarLimits.MaxAvatarMegabytes);
+        _limits = (await UploadLimits.GetAsync()).TightenTo(SurfaceMegabytes);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -128,7 +195,7 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     }
 
     private async Task<IJSObjectReference> ModuleAsync() =>
-        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/contact-avatar.js");
+        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/image-crop.js");
 
     // ── Source ────────────────────────────────────────────────────────────────────────────────────
 
@@ -146,18 +213,18 @@ public partial class ContactAvatarDialog : IAsyncDisposable
         }
 
         // The type and byte caps are checked HERE, where IBrowserFile already knows both, rather than
-        // after streaming 20 MB into the browser's heap to find out.
-        if (!ContactAvatarLimits.IsAllowedContentType(source.ContentType))
+        // after streaming the whole source into the browser's heap to find out.
+        if (!AllowedContentTypes.Contains(source.ContentType))
         {
-            RejectSource($"That file is a {Describe(source.ContentType)}. Choose a {ContactAvatarLimits.TypeLabel} image.");
+            RejectSource($"That file is a {Describe(source.ContentType)}. Choose a {TypeLabel} image.");
             return;
         }
 
-        if (source.Size > ContactAvatarLimits.MaxSourceBytes)
+        if (source.Size > MaxSourceBytes)
         {
             RejectSource(
                 $"That file is {FormatMegabytes(source.Size)}. "
-                + $"Choose an image of {FormatMegabytes(ContactAvatarLimits.MaxSourceBytes)} or less.");
+                + $"Choose an image of {FormatMegabytes(MaxSourceBytes)} or less.");
             return;
         }
 
@@ -167,14 +234,14 @@ public partial class ContactAvatarDialog : IAsyncDisposable
         {
             // A DotNetStreamReference, not a byte[]: a byte[] crossing interop is base64-marshalled,
             // which would inflate the source by a third on the way over.
-            await using var stream = source.OpenReadStream(ContactAvatarLimits.MaxSourceBytes);
+            await using var stream = source.OpenReadStream(MaxSourceBytes);
             using var streamRef = new DotNetStreamReference(stream, leaveOpen: true);
             result = await module.InvokeAsync<LoadResult>(
-                "load", _handle, streamRef, source.ContentType, ContactAvatarLimits.MaxSourceDimension);
+                "load", _handle, streamRef, source.ContentType, MaxSourceDimension);
         }
         catch (JSException)
         {
-            RejectSource($"Unable to read that image. Choose a {ContactAvatarLimits.TypeLabel} file.");
+            RejectSource($"Unable to read that image. Choose a {TypeLabel} file.");
             return;
         }
 
@@ -184,8 +251,8 @@ public partial class ContactAvatarDialog : IAsyncDisposable
             {
                 "dimensions" =>
                     $"That image is {result.Width} × {result.Height} pixels. It must be at most "
-                    + $"{ContactAvatarLimits.MaxSourceDimension} × {ContactAvatarLimits.MaxSourceDimension}.",
-                _ => $"Unable to read that image. Choose a {ContactAvatarLimits.TypeLabel} file.",
+                    + $"{MaxSourceDimension} × {MaxSourceDimension}.",
+                _ => $"Unable to read that image. Choose a {TypeLabel} file.",
             });
             return;
         }
@@ -233,8 +300,7 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     private async Task DrawAsync()
     {
         var module = await ModuleAsync();
-        await module.InvokeVoidAsync(
-            "draw", _handle, _canvas, ContactAvatarLimits.OutputDimension, IsPerson, _zoom, _offsetX, _offsetY);
+        await module.InvokeVoidAsync("draw", _handle, _canvas, OutputDimension, Cover, _zoom, _offsetX, _offsetY);
     }
 
     // Pointer drag — an addition to the three ranges, never a replacement, so the same area is
@@ -270,28 +336,28 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     /// </summary>
     private async Task<bool> SaveAsync()
     {
-        if (Contact is not { } contact)
+        if (OnUpload is not { } upload)
         {
             return false;
         }
 
         if (!_hasImage)
         {
-            RejectSource($"Choose an image to use as this contact's {Noun}.");
+            RejectSource($"Choose an image to use as your {Subject}.");
             return false;
         }
 
         _serverError = null;
         _saving = true;
-        _live = $"Uploading {Noun}…";
+        _live = $"Uploading {Subject}…";
 
         try
         {
             var module = await ModuleAsync();
             byte[] bytes;
             await using (var encoded = await module.InvokeAsync<IJSStreamReference>(
-                "encode", _canvas, OutputContentType, ContactAvatarLimits.JpegQuality))
-            await using (var stream = await encoded.OpenReadStreamAsync(ContactAvatarLimits.MaxSourceBytes))
+                "encode", _canvas, OutputContentType, JpegQuality))
+            await using (var stream = await encoded.OpenReadStreamAsync(MaxSourceBytes))
             {
                 using var buffer = new MemoryStream();
                 await stream.CopyToAsync(buffer);
@@ -305,34 +371,34 @@ public partial class ContactAvatarDialog : IAsyncDisposable
                 // not a compiled-in one, which would refuse at the old value after an administrator
                 // lowered or raised it.
                 _serverError =
-                    $"Unable to save the {Noun}. The image must be {FormatMegabytes(cap)} or smaller. "
+                    $"Unable to save the {Subject}. The image must be {FormatMegabytes(cap)} or smaller. "
                     + "Zoom out, or choose a different file.";
                 return false;
             }
 
-            var upload = new ApiUpload(
-                $"contact-{Noun}{ContactAvatarLimits.ExtensionFor(OutputContentType)}",
+            var apiUpload = new ApiUpload(
+                $"{UploadName}{ExtensionFor(OutputContentType)}",
                 OutputContentType,
                 bytes.LongLength,
                 () => new MemoryStream(bytes));
 
-            var result = await ContactsApi.UploadAvatarAsync(contact.ContactId, upload);
+            var result = await upload(apiUpload);
             if (!result.IsSuccess)
             {
                 // The server's own ProblemDetails text — it names the actual limit or the accepted
                 // types — rather than a generic client string.
                 _serverError = result.Problem?.Detail
-                    ?? $"Unable to save the {Noun}. The server could not be reached. Check your connection and try again.";
+                    ?? $"Unable to save the {Subject}. The server could not be reached. Check your connection and try again.";
                 return false;
             }
 
-            _live = IsPerson ? "Picture saved" : "Logo saved";
+            _live = $"{char.ToUpperInvariant(Subject[0])}{Subject[1..]} saved";
             await OnAnnounce.InvokeAsync(_live);
             return true;
         }
         catch (JSException)
         {
-            _serverError = $"Unable to prepare the {Noun} for upload. Try a different image.";
+            _serverError = $"Unable to prepare the {Subject} for upload. Try a different image.";
             return false;
         }
         finally
@@ -348,7 +414,15 @@ public partial class ContactAvatarDialog : IAsyncDisposable
     private long EffectiveMaxBytes =>
         Math.Min(
             _limits?.MaxUploadBytes ?? UploadLimitsCache.Fallback.MaxUploadBytes,
-            ContactAvatarLimits.MaxAvatarBytes);
+            (long)SurfaceMegabytes * 1024 * 1024);
+
+    /// <summary>The extension for the encoded output; derived, never hardcoded at a call site.</summary>
+    private static string ExtensionFor(string contentType) => contentType switch
+    {
+        "image/png" => ".png",
+        "image/webp" => ".webp",
+        _ => ".jpg",
+    };
 
     private static string FormatMegabytes(long bytes) =>
         $"{Math.Round(bytes / (1024d * 1024d), 1)} MB";
@@ -359,7 +433,7 @@ public partial class ContactAvatarDialog : IAsyncDisposable
             ? "file of an unknown type"
             : contentType.Length > 64 ? contentType[..64] : contentType;
 
-    /// <summary>What <c>contact-avatar.js</c>'s <c>load</c> reports back.</summary>
+    /// <summary>What <c>image-crop.js</c>'s <c>load</c> reports back.</summary>
     private sealed record LoadResult(bool Ok, string? Reason, int Width, int Height);
 
     public async ValueTask DisposeAsync()

@@ -280,6 +280,9 @@ builder.Services.AddIdentityRateLimiter(builder.Configuration);
 builder.Services.AddImportExportRateLimiter();
 builder.Services.AddNetWorthHistoryRateLimiter();
 builder.Services.AddAdminActionRateLimiter(builder.Configuration);
+// A THIRD AddRateLimiter call, again setting neither OnRejected nor GlobalLimiter so it cannot clobber
+// the per-IP mail window (issue #94 §10.12).
+builder.Services.AddProfileImageRateLimiter(builder.Configuration);
 
 // The instance-wide half of the export concurrency control (issue #343 §5) — a singleton so every
 // request's ExportConcurrencyFilter instance (one per request, via [TypeFilter]) shares the same
@@ -301,6 +304,7 @@ builder.Services.AddScoped<TransactionTagService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.ContactService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.ContactVCardService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.Avatar.ContactAvatarService>();
+builder.Services.AddScoped<Odyssey.Core.Profiles.UserProfileImageService>();
 builder.Services.AddScoped<CurrencyService>();
 builder.Services.AddScoped<ExchangeRateService>();
 builder.Services.AddScoped<CurrencyConversionService>();

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
+using Odyssey.Core.Imaging;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;

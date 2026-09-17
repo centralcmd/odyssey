@@ -5,18 +5,30 @@
    the page, which reaches it here through `.acc-section ::deep`. */
 
 /* ── Profile (identity) card — issue #316 ── */
-.acc-avatar-xl {
-    flex: 0 0 64px;
-    width: 64px;
-    height: 64px;
-    border-radius: var(--radius-pill);
-    display: grid;
-    place-items: center;
-    font: 400 24px/1 var(--font-sans);
-    background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent);
-    color: var(--mud-palette-primary);
-    letter-spacing: 0.02em;
+/* `.acc-avatar-xl` (the 64px monogram span) is GONE, not merely unused: the preview mark is now
+   OdsProfilePictureField, whose avatar is the design system's own lg step (56px) written as an inline
+   style. A leftover rule here would be dead and unreachable — scoped CSS does not cross a component
+   boundary — and the tint it carried travels as the field's Bg/Fg pair instead (issue #94 §3). */
+
+/* The pre-claim advisory under the control. Same voice as the DS's .acc-picture-meta: a state of the
+   session, not a failure the user caused. */
+.acc-picture-meta {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin: 12px 0 0;
+    max-width: 62ch;
+    font: 400 0.78125rem/1.5 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+    text-wrap: pretty;
 }
+.acc-picture-meta .material-icons {
+    flex: none;
+    margin-top: 1px;
+    font-size: 15px;
+    color: var(--mud-palette-placeholder);
+}
+
 /* Live preview strip: the resolved label + avatar the rest of the app shows. */
 .acc-profile-preview {
     display: flex;

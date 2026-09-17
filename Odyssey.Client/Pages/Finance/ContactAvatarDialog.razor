@@ -1,134 +1,84 @@
 @*
-    ContactAvatarDialog — the client-side crop + downscale dialog behind "Add / Change picture"
-    ("… logo" for an organization). Issue #86 §3, Odyssey Design System · ContactAvatarDialog.
+    ContactAvatarDialog — the contact surface's binding of the shared crop dialog
+    (issue #86 §3, issue #94 §5). It supplies ContactAvatarLimits, the person/organization copy and
+    the POST; OdsImageCropDialog owns the stage, the three range controls, the accessibility contract
+    and the upload construction.
 
-    It COMPOSES OdsFormDialog rather than hand-rolling role="dialog", focus trapping and focus return:
-    the modal shell already owns all three, so Escape closes the dialog and returns focus to the
-    invoking control for free, and there is no keyboard trap to get wrong twice.
+    It is a thin wrapper rather than nothing at all because the contact/organization split lives here:
+    the mask, the framing, the output format and every noun in the copy follow Contact.Type, and that
+    is contact knowledge the shared component must not carry.
 
-    The controls are native <input type="range"> — Zoom, Horizontal, Vertical — each with a visible,
-    programmatically associated <label>, an aria-valuetext that reads as a percentage, and arrow /
-    Home / End support BY CONSTRUCTION. That is why the widget is built from range inputs rather than a
-    custom draggable surface: pointer drag on the canvas is an ADDITIONAL affordance, never the only
-    one.
-
-    The <canvas> is aria-hidden and the preview state is described in text beside it. A canvas exposes
-    no accessible structure at all, and the three ranges already carry the state.
-
-    ONE VALIDATION-FAILURE RULE:
-      · A failure attributable to a CONTROL (a rejected file) sets aria-invalid on that control, links
-        the message with aria-describedby and MOVES FOCUS to it. It is not role="alert" — focusing a
-        control whose description is the error already announces it, and adding the role announces it
-        twice.
-      · A failure NOT attributable to a control (rejected by the server, network) goes to a role="alert"
-        region and focus does not move. Its text is the server's own ProblemDetails message, which names
-        the actual limit, rather than a generic client string.
-
-    NO NUMBER IS WRITTEN DOWN HERE. The stored cap comes from IUploadLimitsCache tightened by
-    ContactAvatarLimits — min(instance cap, surface cap), never max — and the source caps are the
-    shared constants. A literal would go stale the moment an administrator changed the setting.
+    NO NUMBER IS WRITTEN DOWN HERE either — the caps are ContactAvatarLimits members handed straight
+    across.
 *@
 
-@implements IAsyncDisposable
-@inject IJSRuntime JS
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Journal
 @inject IContactsApiClient ContactsApi
-@inject IUploadLimitsCache UploadLimits
 
-<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
-               Icon="crop"
-               Wide="true"
-               RequiredLegend="false"
-               Title="@(IsPerson ? "Crop profile picture" : "Crop logo")"
-               Subtitle="@Subtitle"
-               SubmitLabel="Save"
-               SubmitIcon="check"
-               OnSubmit="SaveAsync"
-               OnSaved="OnSaved">
-    <div class="cav-body" aria-busy="@(_saving ? "true" : null)">
-        @* Not attributable to any control the user can correct — announced where it is, focus stays. *@
-        @if (!string.IsNullOrEmpty(_serverError))
+<OdsImageCropDialog Open="Open" OpenChanged="OpenChanged"
+                    Title="@(IsPerson ? "Crop profile picture" : "Crop logo")"
+                    Subject="@Noun"
+                    ChooseLabel="@(IsPerson ? "Choose a picture" : "Choose a logo")"
+                    Cover="IsPerson"
+                    EmptyIcon="@(IsPerson ? "person" : "corporate_fare")"
+                    Note="@Note"
+                    AllowedContentTypes="ContactAvatarLimits.AllowedContentTypes"
+                    TypeLabel="@ContactAvatarLimits.TypeLabel"
+                    MaxSourceBytes="ContactAvatarLimits.MaxSourceBytes"
+                    MaxSourceDimension="ContactAvatarLimits.MaxSourceDimension"
+                    OutputDimension="ContactAvatarLimits.OutputDimension"
+                    JpegQuality="ContactAvatarLimits.JpegQuality"
+                    SurfaceMegabytes="ContactAvatarLimits.MaxAvatarMegabytes"
+                    UploadName="@($"contact-{Noun}")"
+                    OnUpload="UploadAsync"
+                    OnSaved="OnSaved"
+                    OnAnnounce="OnAnnounce" />
+
+@code {
+    /// <summary>Controls visibility. Bindable via <c>@bind-Open</c>.</summary>
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The contact whose image is being set. Its type decides the mask, the framing and the
+    /// output format; its id is the endpoint the crop is POSTed to.</summary>
+    [Parameter, EditorRequired] public ExistingContact? Contact { get; set; }
+
+    /// <summary>Raised after a successful save, so the list can re-read the contact's new
+    /// <c>AvatarFileId</c> and invalidate its session cache.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>Optional announcement hook for the page's own live region.</summary>
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+
+    private bool IsPerson => Contact?.Type != ContactType.Organization;
+
+    private string Noun => IsPerson ? "picture" : "logo";
+
+    private string Note => IsPerson
+        ? "Saved as a square JPEG and shown as a circle. Location, capture time and device details are removed from the stored file."
+        : "Saved as a PNG with its transparency and shown contained on a neutral ground — a wordmark is never cut. Metadata is removed from the stored file.";
+
+    /// <summary>
+    /// The one piece the shared dialog cannot own: which endpoint the bytes go to. It is a delegate
+    /// rather than an injected client inside <c>Components/</c>, so the shared dialog knows no
+    /// resource at all.
+    /// </summary>
+    private async Task<ApiResult> UploadAsync(ApiUpload upload)
+    {
+        if (Contact is not { } contact)
         {
-            <div class="cav-alert" role="alert">
-                <span class="material-icons" aria-hidden="true" style="font-size:18px;">error_outline</span>
-                <span>@_serverError</span>
-            </div>
+            return ApiResult.Failure(
+                System.Net.HttpStatusCode.BadRequest,
+                new ApiProblem { Detail = "No contact is selected." });
         }
 
-        @* The shared upload field, single-file and kind-less: one image per contact, and the file's
-           KIND is not the user's to set here — the stored filename and description are generated. *@
-        <OdsFieldShell Label="@(_hasImage ? "Source image" : (IsPerson ? "Choose a picture" : "Choose a logo"))">
-            <div @ref="_dropzoneHost">
-                <OdsFileUpload Id="cav-file"
-                               Compact="true"
-                               Multiple="false"
-                               ShowKinds="false"
-                               Accept="@AcceptAttribute"
-                               Files="_files"
-                               FilesChanged="OnFilesChangedAsync"
-                               Error="@_fileError"
-                               Hint="@SourceHint" />
-            </div>
-        </OdsFieldShell>
-
-        <div class="cav-stage">
-            @* Pointer drag is an addition to the ranges. The frame carries no tab stop and no role:
-               everything it offers is reachable from the three controls beside it. *@
-            <div class="cav-frame @(IsPerson ? "round" : "ground")"
-                 @onpointerdown="OnPointerDown" @onpointermove="OnPointerMove"
-                 @onpointerup="OnPointerUp" @onpointerleave="OnPointerUp">
-                <canvas @ref="_canvas" aria-hidden="true"></canvas>
-                @if (!_hasImage)
-                {
-                    <span class="cav-frame-empty" aria-hidden="true">
-                        <span class="material-icons" style="font-size:30px;">@(IsPerson ? "person" : "corporate_fare")</span>
-                    </span>
-                }
-            </div>
-
-            <div class="cav-controls">
-                @* The canvas is aria-hidden, so this sentence IS the preview for anyone not looking
-                   at it. *@
-                <p class="cav-state">@StateText</p>
-
-                <label class="cav-ctl" for="cav-zoom">
-                    <span class="cav-ctl-l">Zoom<b>@Percent(_zoom)</b></span>
-                    <input id="cav-zoom" type="range" class="odc-range" min="100" max="300" step="5"
-                           value="@_zoom" disabled="@(!_hasImage)"
-                           aria-valuetext="@Percent(_zoom)"
-                           @oninput="@(e => SetZoom(e.Value?.ToString()))" />
-                </label>
-
-                <label class="cav-ctl" for="cav-x">
-                    <span class="cav-ctl-l">Horizontal<b>@HorizontalText</b></span>
-                    <input id="cav-x" type="range" class="odc-range" min="-100" max="100" step="2"
-                           value="@_offsetX" disabled="@(!_hasImage)"
-                           aria-valuetext="@HorizontalText"
-                           @oninput="@(e => SetOffsetX(e.Value?.ToString()))" />
-                </label>
-
-                <label class="cav-ctl" for="cav-y">
-                    <span class="cav-ctl-l">Vertical<b>@VerticalText</b></span>
-                    <input id="cav-y" type="range" class="odc-range" min="-100" max="100" step="2"
-                           value="@_offsetY" disabled="@(!_hasImage)"
-                           aria-valuetext="@VerticalText"
-                           @oninput="@(e => SetOffsetY(e.Value?.ToString()))" />
-                </label>
-
-                <div class="cav-reset">
-                    <OdsButton Variant="OdsButtonVariant.Text" Icon="restart_alt" OnClick="ResetAsync">Reset</OdsButton>
-                </div>
-            </div>
-        </div>
-
-        @* Says what actually happens to the file, because the server strip is not otherwise visible. *@
-        <p class="cav-note">
-            @(IsPerson
-                ? "Saved as a square JPEG and shown as a circle. Location, capture time and device details are removed from the stored file."
-                : "Saved as a PNG with its transparency and shown contained on a neutral ground — a wordmark is never cut. Metadata is removed from the stored file.")
-        </p>
-
-        @* The page's own polite region is elsewhere; the dialog carries its own because its async
-           states begin and end inside it. *@
-        <OdsLiveAnnouncer Message="@_live" />
-    </div>
-</OdsFormDialog>
+        // The contact endpoint answers with the updated contact; the shared dialog only needs to know
+        // whether it succeeded, so the body is dropped here rather than widening the delegate.
+        var result = await ContactsApi.UploadAvatarAsync(contact.ContactId, upload);
+        return result.IsSuccess
+            ? ApiResult.Success(result.Status)
+            : ApiResult.Failure(result.Status, result.Problem!);
+    }
+}
