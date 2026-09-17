@@ -9,7 +9,8 @@ namespace Odyssey.Dtos.Journal;
 // (tagIds → TagIds, statuses → Statuses). These are sealed class rather than record only because they are
 // query-string binding models.
 
-/// <summary>Journal-entries list query: filter by tag(s), contact link(s), entry-date range, and archival status.</summary>
+/// <summary>Journal-entries list query: filter by tag(s), contact link(s), entry-date range, attachment
+/// presence, and archival status.</summary>
 public sealed class JournalEntriesQueryParams : QueryParams<JournalEntrySortBy>
 {
     public Guid[]? TagIds { get; set; }
@@ -19,6 +20,22 @@ public sealed class JournalEntriesQueryParams : QueryParams<JournalEntrySortBy>
     public DateTime? From { get; set; }
 
     public DateTime? To { get; set; }
+
+    /// <summary>
+    /// Restrict to entries that carry at least one photo (<c>true</c>) or none at all (<c>false</c>).
+    /// <c>null</c> — the default — does not filter.
+    ///
+    /// <para>
+    /// A nullable <c>bool</c> rather than a flag enum, because it pairs with
+    /// <see cref="HasFiles"/> and the two are AND-ed: setting both wants entries carrying both, which
+    /// a single "media kind" enum could not express.
+    /// </para>
+    /// </summary>
+    public bool? HasPhotos { get; set; }
+
+    /// <summary>Restrict to entries that carry at least one attachment (<c>true</c>) or none
+    /// (<c>false</c>). <c>null</c> does not filter. AND-ed with <see cref="HasPhotos"/>.</summary>
+    public bool? HasFiles { get; set; }
 
     public ArchivalStatus? Status { get; set; }
 }

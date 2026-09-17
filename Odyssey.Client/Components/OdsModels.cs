@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Odyssey.Client.Components;
 
@@ -235,6 +236,36 @@ public sealed class OdsMenuItem
     /// </para>
     /// </summary>
     public string? Description { get; set; }
+}
+
+/// <summary>
+/// One button in an <see cref="OdsRowActions"/> cluster (Odyssey Design System · <c>RowAction</c>).
+///
+/// <para>
+/// <see cref="Label"/> is the button's accessible name and is REQUIRED — a row action shows no
+/// visible text, so without it the control is an unnamed glyph to a screen reader.
+/// </para>
+/// </summary>
+public sealed record OdsRowAction
+{
+    /// <summary>Material Icons ligature name (use the <c>Icons.Material.Filled.*</c> constants).</summary>
+    public required string Icon { get; init; }
+
+    /// <summary>Accessible name — REQUIRED, the button has no visible text.</summary>
+    public required string Label { get; init; }
+
+    public EventCallback<MouseEventArgs> OnClick { get; init; }
+
+    /// <summary>Tint for destructive actions (delete / detach).</summary>
+    public bool Danger { get; init; }
+
+    public bool Disabled { get; init; }
+
+    /// <summary>Override the cluster's size for this one button.</summary>
+    public OdsSize? Size { get; init; }
+
+    /// <summary>Stable @@key for the button (falls back to <see cref="Icon"/>, then the index).</summary>
+    public string? Key { get; init; }
 }
 
 /// <summary>A file-kind descriptor for <see cref="OdsFileUpload"/> (Statement / Document / Receipt / Tax).</summary>

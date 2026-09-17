@@ -5,8 +5,15 @@
 // its preferred landing spot plus the fallbacks to try when that is gone too. Same shape as
 // journal-board.js's focusMove, generalized: the kanban has exactly one fallback (the card), a list
 // whose group can empty entirely needs a chain.
-export function focusFirst(selectors) {
-    for (const selector of selectors ?? []) {
+// Takes the candidates either as one array or as separate arguments, and that is not politeness: .NET's
+// InvokeVoidAsync(identifier, params object?[] args) binds a string[] as the ARGS array itself, so the
+// natural-looking `InvokeVoidAsync("focusFirst", candidates)` arrives here spread into separate string
+// arguments rather than as one array. Bound as `selectors`, the first of those is a string, and
+// iterating a string yields characters — the first being "#", which throws "'#' is not a valid
+// selector" and takes the whole focus return down with it. Both callers had it that way, so the caller
+// is not where this can be relied on to stay right; flattening here is.
+export function focusFirst(...args) {
+    for (const selector of args.flat()) {
         if (!selector) {
             continue;
         }

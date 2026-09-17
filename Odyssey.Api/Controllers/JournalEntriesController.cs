@@ -41,7 +41,7 @@ public class JournalEntriesController : ControllerBase
     [Authorize(Policy = PermissionClaims.JournalRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<JournalEntrySummary>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List journal entries with search, tag/contact/date-range filters, sort and paging.")]
+    [SwaggerOperation(Summary = "List journal entries with search, tag/contact/date-range/attachment-presence filters, sort and paging.")]
     public async Task<IActionResult> Get(
         [FromQuery] JournalEntriesQueryParams query,
         CancellationToken cancellationToken = default)

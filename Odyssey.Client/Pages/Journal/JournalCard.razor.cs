@@ -1,3 +1,4 @@
+using System.Globalization;
 using Odyssey.ApiClient;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Components;
@@ -55,6 +56,15 @@ public partial class JournalCard
     private IReadOnlyList<OdsOption> _photoPeopleOptions = [];
     private IJSObjectReference? _focusJs;
 
+    // Focus return across a link removal (WCAG 2.4.3). Removing a contact or tag destroys the very
+    // tile menu that had focus, which otherwise drops focus to <body>. The neighbour to land on is
+    // computed BEFORE the write, because by the time the refreshed entry arrives the removed tile is
+    // gone and its position with it. Same shape as InsurancePolicyLinkTiles, which solved this for the
+    // policy party tiles these link tiles are modelled on.
+    private string? _focusAfterRemoval;
+    private bool _pendingFocus;
+    private IJSObjectReference? _focusReturnJs;
+
     // ── Permissions ────────────────────────────────────────────────────────────
     private bool _canCreate;
     private bool _canUpdate;
@@ -62,6 +72,7 @@ public partial class JournalCard
     private bool _canReadFiles;
     private bool _canReadContacts;
     private bool _canCreateContacts;
+    private bool _canReadJournalTags;
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "journal-page";
@@ -69,7 +80,23 @@ public partial class JournalCard
     private bool _searchOpen = true;
     private string _searchString = string.Empty;
     private IReadOnlyCollection<string> _tagFilter = [];
+    private IReadOnlyCollection<string> _contactFilter = [];
+    private IReadOnlyCollection<string> _mediaFilter = [];
+    private DateTime? _from;
+    private DateTime? _to;
     private IReadOnlyCollection<string> _statusFilter = [];
+
+    // Attachment presence. The two are AND-ed — picking both wants entries carrying both — and both are
+    // server-side predicates (hasPhotos / hasFiles), like every other filter on this page. That is what
+    // lets the ICS export carry them too, so "Export filtered" and the list describe the same set.
+    private const string MediaPhotos = "photos";
+    private const string MediaFiles = "files";
+
+    private static readonly IReadOnlyList<OdsOption> _mediaOptions =
+    [
+        new(MediaPhotos, "Has photos"),
+        new(MediaFiles, "Has files"),
+    ];
 
     // Status: single "Active / Archived" multiselect. Empty = hide archived (Active only); both = all.
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
@@ -92,7 +119,9 @@ public partial class JournalCard
 
     // ── Computed / overview ─────────────────────────────────────────────────────
     private int PhotoTotal => _entries.Sum(e => e.PhotoCount);
-    private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _tagFilter.Count > 0 || _statusFilter.Count > 0;
+    private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _tagFilter.Count > 0
+        || _statusFilter.Count > 0 || _contactFilter.Count > 0 || _mediaFilter.Count > 0
+        || _from is not null || _to is not null;
 
     private IReadOnlyList<OdsBreakdownRow> TagRows =>
         [.. _tags.Where(t => t.Archived is null)
@@ -109,11 +138,41 @@ public partial class JournalCard
     private List<ExistingJournalTag> EntryTags(IReadOnlyList<Guid> ids) =>
         [.. ids.Select(id => _tagById.GetValueOrDefault(id)).Where(t => t is not null).Cast<ExistingJournalTag>()];
 
-    // Compare on the stable ids; display the resolver's resolved name (always non-null — issue #316).
-    private static string LastEdited(ExistingJournalEntry e) =>
+    // The "Last edited" tile's FOOT — who edited it, and only when that is someone other than the
+    // author. Compare on the stable ids; display the resolver's resolved name (always non-null —
+    // issue #316). The date itself is the tile's value, so the foot never repeats it. Null when the
+    // author is also the last editor, and OdsInfoTile.Caption then renders no foot element at all.
+    private static string? LastEditedBy(ExistingJournalEntry e) =>
         !string.IsNullOrWhiteSpace(e.UpdatedByUserId) && e.UpdatedByUserId != e.CreatedByUserId
-            ? $"{e.UpdatedByName} · {e.UpdatedAt.ToLocalTime():MMM d, yyyy}"
-            : e.UpdatedAt.ToLocalTime().ToString("MMM d, yyyy");
+            ? $"by {e.UpdatedByName}"
+            : null;
+
+    // The header counts — the body's table of contents, in the same order and with the same glyphs as
+    // the sections below. A collection with nothing in it contributes no count.
+    private static IReadOnlyList<OdsRecordCount> EntryCounts(JournalEntrySummary e) =>
+    [
+        .. new (string Icon, int Value, string Label)[]
+        {
+            ("groups", e.ContactCount, "Contacts"),
+            ("label", e.TagIds.Count, "Tags"),
+            ("photo_library", e.PhotoCount, "Photos"),
+            ("attach_file", e.AttachmentCount, "Files"),
+        }
+        .Where(k => k.Value > 0)
+        .Select(k => new OdsRecordCount(k.Icon, k.Value.ToString(CultureInfo.CurrentCulture), k.Label)),
+    ];
+
+    private static string CountLabel(int n, string singular, string plural) =>
+        $"{n} {(n == 1 ? singular : plural)}";
+
+    // Contacts and tags share ONE section, so the divider's meta names both — and drops the half that
+    // is empty rather than printing "0 tags".
+    private static string LinkCountLabel(int contacts, int tags) =>
+        string.Join(" · ", new[]
+        {
+            contacts > 0 ? CountLabel(contacts, "contact", "contacts") : null,
+            tags > 0 ? CountLabel(tags, "tag", "tags") : null,
+        }.Where(part => part is not null));
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
@@ -135,6 +194,10 @@ public partial class JournalCard
         _canDelete = user.HasPermission(PermissionClaims.JournalDelete);
         _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
+        // /journal-tags is gated on its OWN claim, which journal.read does not imply. Without this the
+        // tag tile's "Open journal tags" item is a dead end for a caller who holds one and not the
+        // other — the same reason "Open contact" is gated on contacts.read.
+        _canReadJournalTags = user.HasPermission(PermissionClaims.JournalTagsRead);
         _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
@@ -190,14 +253,14 @@ public partial class JournalCard
         var requests = StatusRequests();
         if (requests.Count == 1)
         {
-            var result = await Journal.ListAsync(_searchString, _tagFilter, null, requests[0], _sort.Key, dir);
+            var result = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[0], _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles);
             _entries = result.ItemsOrToast(Snackbar, "journal entries");
             _loadError = !result.IsSuccess;
         }
         else
         {
-            var activeResult = await Journal.ListAsync(_searchString, _tagFilter, null, requests[0], _sort.Key, dir);
-            var archivedResult = await Journal.ListAsync(_searchString, _tagFilter, null, requests[1], _sort.Key, dir);
+            var activeResult = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[0], _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles);
+            var archivedResult = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[1], _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles);
             var active = activeResult.ItemsOrToast(Snackbar, "journal entries");
             var archived = archivedResult.ItemsOrToast(Snackbar, "archived journal entries");
             _entries = [.. active, .. archived];
@@ -212,6 +275,15 @@ public partial class JournalCard
         StateHasChanged();
     }
 
+    private bool? WantPhotos => JournalMediaFilter.Want(_mediaFilter, MediaPhotos);
+
+    private bool? WantFiles => JournalMediaFilter.Want(_mediaFilter, MediaFiles);
+
+    // The range is inclusive on both ends and both sides of the comparison are whole days: the picker
+    // hands back a date, an entry's EntryDate is the picked day stored at midnight, and the server's
+    // bounds are >= from / <= to. So the dates go over as-is — .Date only strips a time a future picker
+    // might carry, which would otherwise exclude the "to" day's own entries.
+
     // ── Page-state persistence ─────────────────────────────────────────────────
     private Task RestorePageStateAsync() =>
         PageState.RestoreOrSeedAsync<JournalPageState>(PageStateKey, ApplyPageState, BuildPageState);
@@ -222,6 +294,10 @@ public partial class JournalCard
         _searchOpen = state.SearchOpen;
         _searchString = state.Search ?? string.Empty;
         _tagFilter = state.TagFilter ?? [];
+        _contactFilter = state.ContactFilter ?? [];
+        _mediaFilter = _mediaOptions.KnownValues(state.MediaFilter);
+        _from = state.From;
+        _to = state.To;
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
         _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
         _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
@@ -233,6 +309,10 @@ public partial class JournalCard
         SearchOpen = _searchOpen,
         Search = _searchString,
         TagFilter = [.. _tagFilter],
+        ContactFilter = [.. _contactFilter],
+        MediaFilter = [.. _mediaFilter],
+        From = _from,
+        To = _to,
         StatusFilter = [.. _statusFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
@@ -245,6 +325,10 @@ public partial class JournalCard
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _searchString = value ?? string.Empty; PersistPageState(); }
     private async Task OnTagFilterChanged(IReadOnlyCollection<string> values) { _tagFilter = values ?? []; PersistPageState(); await LoadEntries(); }
+    private async Task OnContactFilterChanged(IReadOnlyCollection<string> values) { _contactFilter = values ?? []; PersistPageState(); await LoadEntries(); }
+    private async Task OnMediaFilterChanged(IReadOnlyCollection<string> values) { _mediaFilter = values ?? []; PersistPageState(); await LoadEntries(); }
+    private async Task OnFromChanged(DateTime? value) { _from = value; PersistPageState(); await LoadEntries(); }
+    private async Task OnToChanged(DateTime? value) { _to = value; PersistPageState(); await LoadEntries(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await LoadEntries(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await LoadEntries(); }
     private void OnBatchChanged(int size) { _batch = size; PersistPageState(); StateHasChanged(); }
@@ -253,6 +337,10 @@ public partial class JournalCard
     {
         _searchString = string.Empty;
         _tagFilter = [];
+        _contactFilter = [];
+        _mediaFilter = [];
+        _from = null;
+        _to = null;
         _statusFilter = [];
         PersistPageState();
         await LoadEntries();
@@ -264,6 +352,10 @@ public partial class JournalCard
         public bool SearchOpen { get; set; } = true;
         public string Search { get; set; } = string.Empty;
         public List<string> TagFilter { get; set; } = [];
+        public List<string> ContactFilter { get; set; } = [];
+        public List<string> MediaFilter { get; set; } = [];
+        public DateTime? From { get; set; }
+        public DateTime? To { get; set; }
         public List<string> StatusFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
@@ -273,11 +365,17 @@ public partial class JournalCard
     // ── Expand / detail load + hydration ─────────────────────────────────────────
     private bool IsExpanded(Guid id) => _expandedId == id;
 
-    private async Task ToggleExpand(Guid id)
+    // ONE CARD OPEN AT A TIME — the list owns a single open id and every card is controlled from it,
+    // so opening a record closes its siblings. OdsRecordCard reports the NEXT state rather than asking
+    // to be toggled.
+    private async Task ToggleExpand(Guid id, bool open)
     {
-        if (_expandedId == id)
+        if (!open)
         {
-            _expandedId = null;
+            if (_expandedId == id)
+            {
+                _expandedId = null;
+            }
             return;
         }
         _expandedId = id;
@@ -618,8 +716,11 @@ public partial class JournalCard
         StateHasChanged();
         try
         {
+            // Every filter is passed, so "Export filtered" and the list describe the same set. The
+            // export endpoint binds the same query model as the list, which is what makes that hold
+            // without a second definition of "filtered" living here.
             var result = filtered
-                ? await JournalIcs.ExportAsync(_searchString, _tagFilter, ExportStatusParam())
+                ? await JournalIcs.ExportAsync(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles)
                 : await JournalIcs.ExportAsync();
             if (result.OrToast(Snackbar, "Unable to export journal entries") is { } file)
             {
@@ -679,11 +780,170 @@ public partial class JournalCard
         }
     }
 
+    // ── Row action menu ────────────────────────────────────────────────────────
+    // The card's own ⋯ menu, built from the caller's claims. It is an OdsMenu item list rather than
+    // inline MudMenuItems because OdsRecordCard's Actions slot takes one control, and the shared menu
+    // is what gives the Copy ID row its trailing affordance and a danger item its tint.
+    private List<OdsMenuItem> BuildActions(JournalEntrySummary e)
+    {
+        var archived = e.Archived is not null;
+        var items = new List<OdsMenuItem>();
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit", Label = "Edit entry",
+                OnClick = EventCallback.Factory.Create(this, () => EditClicked(e)),
+            });
+        }
+
+        items.Add(new OdsMenuItem
+        {
+            Icon = "event_note", Label = "Export VJOURNAL",
+            OnClick = EventCallback.Factory.Create(this, () => ExportEntryAsync(e)),
+        });
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId)),
+        });
+
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = archived ? "unarchive" : "inventory_2",
+                Label = archived ? "Unarchive" : "Archive",
+                OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(e)),
+            });
+        }
+
+        if (_canDelete)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "delete", Label = "Delete", Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => ConfirmDelete(e)),
+            });
+        }
+
+        return items;
+    }
+
+    // ── Link removal from a body tile ──────────────────────────────────────────
+    // Detaching a link edits the ENTRY, never the contact or the tag: the linked record is untouched.
+    // The write re-projects the loaded entry with one id removed, so nothing else about the entry
+    // changes and no file is re-uploaded.
+    private Task UnlinkContactAsync(ExistingJournalEntry entry, Guid contactId) =>
+        UpdateLinksAsync(entry, ContactKey(contactId), JournalWrite.WithoutContact(entry, contactId),
+            "Contact removed from the entry.", "Unable to remove the contact");
+
+    private Task UnlinkTagAsync(ExistingJournalEntry entry, Guid tagId) =>
+        UpdateLinksAsync(entry, TagKey(tagId), JournalWrite.WithoutTag(entry, tagId),
+            "Tag removed from the entry.", "Unable to remove the tag");
+
+    private async Task UpdateLinksAsync(
+        ExistingJournalEntry entry, string removedKey, UpdateJournalEntry update, string success, string failure)
+    {
+        if (!_canUpdate)
+        {
+            return;
+        }
+
+        // Computed before the write: afterwards the entry is refetched and the removed tile's position
+        // is gone with it. A failed write leaves it set, which is harmless — nothing reads it unless a
+        // removal actually lands.
+        _focusAfterRemoval = NeighbourKeyOf(entry, removedKey);
+
+        if ((await Journal.UpdateAsync(entry.JournalEntryId, update)).Toast(Snackbar, failure, success))
+        {
+            _announce = success;
+            await ReloadEntry(entry.JournalEntryId);
+            _pendingFocus = true;
+        }
+    }
+
+    // ── Link tile identity + focus targets ─────────────────────────────────────
+    // Contacts and tags share one section and one grid, so the neighbour is computed over the two in
+    // render order rather than per kind: removing the last contact should land on the first tag, which
+    // is what the reader sees next.
+    private static string ContactKey(Guid id) => $"cp-{id}";
+
+    private static string TagKey(Guid id) => $"tag-{id}";
+
+    internal static string TileMenuId(Guid entryId, string key) => $"je-link-{entryId}-{key}";
+
+    private List<string> LinkKeys(ExistingJournalEntry entry) =>
+    [
+        .. entry.ContactIds.Select(ContactKey),
+        .. EntryTags(entry.TagIds).Select(t => TagKey(t.JournalTagId)),
+    ];
+
+    private string? NeighbourKeyOf(ExistingJournalEntry entry, string key)
+    {
+        var keys = LinkKeys(entry);
+        var index = keys.IndexOf(key);
+        if (index < 0)
+        {
+            return null;
+        }
+
+        if (index + 1 < keys.Count)
+        {
+            return keys[index + 1];
+        }
+
+        return index > 0 ? keys[index - 1] : null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_pendingFocus)
+        {
+            return;
+        }
+
+        _pendingFocus = false;
+        var neighbour = _focusAfterRemoval;
+        _focusAfterRemoval = null;
+
+        if (_expandedId is not { } entryId)
+        {
+            return;
+        }
+
+        try
+        {
+            _focusReturnJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
+            // The neighbouring tile's menu, else the card's own row menu — a section that just lost its
+            // last link has no tile left to land on, and the card is the nearest thing still standing.
+            string?[] candidates =
+            [
+                neighbour is null ? null : $"#{TileMenuId(entryId, neighbour)} button",
+                $"#je-{entryId} .odc-record-ctl button",
+                $"#je-{entryId} .odc-record-trigger",
+            ];
+            await _focusReturnJs.InvokeVoidAsync("focusFirst", candidates);
+        }
+        catch (Exception)
+        {
+            // Best-effort: the removal is already announced through the page's live region, so a failed
+            // focus return degrades rather than losing the outcome.
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_focusJs is not null)
         {
             try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
+
+        if (_focusReturnJs is not null)
+        {
+            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
         }
     }
 }

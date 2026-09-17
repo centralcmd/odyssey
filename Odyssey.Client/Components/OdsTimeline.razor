@@ -1,0 +1,28 @@
+@* DS parity — no consumer yet. The rail list is the design system's ALTERNATIVE rendering
+   of an effective-dated record table, and both candidates — account terms and account
+   estimates — render their history as a table today (the estimates timeline's per-surface
+   CSS was never mounted either). Built here so the atom exists once rather than being
+   re-derived per surface the first time one of them offers the switch. *@
+@*
+    OdsTimeline — the vertical rail history list (Odyssey Design System · components/Timeline).
+
+    The alternative rendering of any effective-dated record table — terms, estimates,
+    renewals. A plain rail container; the rows are <OdsTimelineItem> children, newest
+    first. The rail segment is drawn by each item, so the list needs no wrapper line and
+    the last item ends the rail cleanly whatever the count.
+*@
+
+<div class="odc-timeline @Class" @attributes="UserAttributes">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary><see cref="OdsTimelineItem"/> children, newest first.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}
