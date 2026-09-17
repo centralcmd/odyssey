@@ -5,6 +5,7 @@ using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Journal;
 using Odyssey.Dtos.Authorization;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -18,6 +19,7 @@ public partial class TransactionsCard
     private TransactionSummary? _summary;
     private List<ExistingAccount> _accounts = new();
     private List<ExistingTransactionTag> _tags = new();
+    private List<ExistingContact> _contacts = new();
 
     private bool _isLoading = true;
     private bool _refetching;
@@ -35,6 +37,10 @@ public partial class TransactionsCard
     private bool _canDownloadFiles;
     private bool _canUploadFiles;
     private bool _canDeleteFiles;
+    // The merchant picker reads the contacts list endpoint, which transactions.read alone does not
+    // buy. Without the claim the filter is withheld rather than offered empty — the ledger's merchant
+    // COLUMN still reads, because the server embeds the resolved name on the transaction itself.
+    private bool _canReadContacts;
 
     private const string PageStateKey = "transactions-page";
     private bool _overviewOpen = true;
@@ -43,6 +49,7 @@ public partial class TransactionsCard
     private IReadOnlyCollection<string> _accountFilter = [];
     private IReadOnlyCollection<string> _statusFilter = [];
     private IReadOnlyCollection<string> _tagFilter = [];
+    private IReadOnlyCollection<string> _merchantFilter = [];
     private IReadOnlyCollection<string> _directionFilter = [];
 
     // Sort (§6.2): the curated keys already back the OdsTxnTable columns; one OdsTableSort syncs
@@ -54,7 +61,7 @@ public partial class TransactionsCard
         new() { Key = "date", Label = "Date", Type = OdsSortType.Date },
         new() { Key = "amount", Label = "Amount", Type = OdsSortType.Number },
         new() { Key = "desc", Label = "Description", Type = OdsSortType.Text },
-        new() { Key = "contact", Label = "Contact", Type = OdsSortType.Text },
+        new() { Key = "contact", Label = "Merchant", Type = OdsSortType.Text },
         new() { Key = "account", Label = "Account", Type = OdsSortType.Text },
         new() { Key = "status", Label = "Status", Type = OdsSortType.Status },
     ];
@@ -64,6 +71,10 @@ public partial class TransactionsCard
         [.. _accounts.Select(account => new OdsOption(account.AccountId.ToString(), account.Name))];
     private IReadOnlyList<OdsOption> _tagOptions =>
         [.. _tags.Select(tag => new OdsOption(tag.TransactionTagId.ToString(), tag.Name))];
+    // The merchant picker lists every contact, not just the ones present on the loaded page: the list
+    // is server-paged, so "the contacts on these rows" would shrink as the user pages through.
+    private IReadOnlyList<OdsOption> _merchantOptions =>
+        [.. _contacts.Select(contact => new OdsOption(contact.ContactId.ToString(), contact.ResolvedDisplayName))];
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
         [.. Enum.GetValues<TransactionStatus>().Select(status => new OdsOption(status.ToString(), status.ToString()))];
 
@@ -105,7 +116,7 @@ public partial class TransactionsCard
 
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_search)
         || _accountFilter.Count > 0 || _statusFilter.Count > 0
-        || _tagFilter.Count > 0 || _directionFilter.Count > 0;
+        || _tagFilter.Count > 0 || _merchantFilter.Count > 0 || _directionFilter.Count > 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -132,6 +143,7 @@ public partial class TransactionsCard
         _search = state.Search ?? string.Empty;
         _accountFilter = state.AccountFilter ?? [];
         _tagFilter = state.TagFilter ?? [];
+        _merchantFilter = state.MerchantFilter ?? [];
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
         _directionFilter = _directionOptions.KnownValues(state.DirectionFilter);
         _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
@@ -146,6 +158,7 @@ public partial class TransactionsCard
         AccountFilter = [.. _accountFilter],
         StatusFilter = [.. _statusFilter],
         TagFilter = [.. _tagFilter],
+        MerchantFilter = [.. _merchantFilter],
         DirectionFilter = [.. _directionFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
@@ -160,6 +173,7 @@ public partial class TransactionsCard
     private async Task OnAccountFilterChanged(IReadOnlyCollection<string> values) { _accountFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnTagFilterChanged(IReadOnlyCollection<string> values) { _tagFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
+    private async Task OnMerchantFilterChanged(IReadOnlyCollection<string> values) { _merchantFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnDirectionFilterChanged(IReadOnlyCollection<string> values) { _directionFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await ReloadAsync(); }
 
@@ -171,6 +185,7 @@ public partial class TransactionsCard
         public List<string> AccountFilter { get; set; } = [];
         public List<string> StatusFilter { get; set; } = [];
         public List<string> TagFilter { get; set; } = [];
+        public List<string> MerchantFilter { get; set; } = [];
         public List<string> DirectionFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
@@ -222,9 +237,11 @@ public partial class TransactionsCard
         _canDownloadFiles = user.HasPermission(PermissionClaims.FilesRead);
         _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate);
         _canDeleteFiles = user.HasPermission(PermissionClaims.FilesDelete);
+        _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
     }
 
-    // Server-side fetch (issue #277): search + account/status/tag/direction filters + sort applied by the API.
+    // Server-side fetch (issue #277): search + account/status/tag/merchant/direction filters + sort
+    // applied by the API.
     private async Task GetTransactions()
     {
         // First load blanks the table for a spinner; every later fetch keeps the rows and shows the bar.
@@ -241,6 +258,7 @@ public partial class TransactionsCard
             accountIds: _accountFilter,
             statuses: _statusFilter,
             tagIds: _tagFilter,
+            contactIds: _merchantFilter,
             direction: _directionFilter,
             sortBy: _sort.Key,
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
@@ -265,7 +283,7 @@ public partial class TransactionsCard
         StateHasChanged();
     }
 
-    // Account / tag lists feed the header filters. Loaded after the table so the grid paints first;
+    // Account / tag / contact lists feed the header filters. Loaded after the table so the grid paints first;
     // failures are non-fatal.
     private async Task LoadOptionsAsync()
     {
@@ -273,6 +291,9 @@ public partial class TransactionsCard
             .OrderBy(a => a.Name).ToList();
 
         _tags = [.. (await ReferenceData.TransactionTagsAsync()).OrderBy(t => t.Name)];
+
+        if (_canReadContacts)
+            _contacts = [.. (await ReferenceData.ContactsAsync()).OrderBy(c => c.ResolvedDisplayName)];
 
         StateHasChanged();
     }
@@ -283,6 +304,7 @@ public partial class TransactionsCard
         _accountFilter = [];
         _statusFilter = [];
         _tagFilter = [];
+        _merchantFilter = [];
         _directionFilter = [];
         PersistPageState();
         await ReloadAsync();

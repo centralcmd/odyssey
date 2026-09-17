@@ -19,6 +19,7 @@ public interface ITransactionsApiClient
         IReadOnlyCollection<string>? accountIds = null,
         IReadOnlyCollection<string>? statuses = null,
         IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? contactIds = null,
         IReadOnlyCollection<string>? direction = null,
         DateTime? from = null,
         DateTime? to = null,
@@ -35,6 +36,7 @@ public interface ITransactionsApiClient
         IReadOnlyCollection<string>? accountIds = null,
         IReadOnlyCollection<string>? statuses = null,
         IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? contactIds = null,
         IReadOnlyCollection<string>? direction = null,
         DateTime? from = null,
         DateTime? to = null,
@@ -83,6 +85,7 @@ public sealed class TransactionsApiClient(IOdysseyApi api) : ITransactionsApiCli
         IReadOnlyCollection<string>? accountIds = null,
         IReadOnlyCollection<string>? statuses = null,
         IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? contactIds = null,
         IReadOnlyCollection<string>? direction = null,
         DateTime? from = null,
         DateTime? to = null,
@@ -90,7 +93,7 @@ public sealed class TransactionsApiClient(IOdysseyApi api) : ITransactionsApiCli
         string? sortDir = null,
         CancellationToken ct = default) =>
         api.GetPagedAsync<ExistingTransaction>(
-            Query(search, accountIds, statuses, tagIds, direction, from, to, sortBy, sortDir)
+            Query(search, accountIds, statuses, tagIds, contactIds, direction, from, to, sortBy, sortDir)
                 .Window(page, pageSize)
                 .Build(),
             ct);
@@ -100,6 +103,7 @@ public sealed class TransactionsApiClient(IOdysseyApi api) : ITransactionsApiCli
         IReadOnlyCollection<string>? accountIds = null,
         IReadOnlyCollection<string>? statuses = null,
         IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? contactIds = null,
         IReadOnlyCollection<string>? direction = null,
         DateTime? from = null,
         DateTime? to = null,
@@ -107,7 +111,7 @@ public sealed class TransactionsApiClient(IOdysseyApi api) : ITransactionsApiCli
         string? sortDir = null,
         CancellationToken ct = default) =>
         api.GetAllAsync<ExistingTransaction>(
-            Query(search, accountIds, statuses, tagIds, direction, from, to, sortBy, sortDir).Build(), ct);
+            Query(search, accountIds, statuses, tagIds, contactIds, direction, from, to, sortBy, sortDir).Build(), ct);
 
     // Direction is a two-value toggle (income/expense): AddSingle filters only when exactly one is
     // selected, so "neither" and "both" correctly mean no filter.
@@ -116,6 +120,7 @@ public sealed class TransactionsApiClient(IOdysseyApi api) : ITransactionsApiCli
         IReadOnlyCollection<string>? accountIds,
         IReadOnlyCollection<string>? statuses,
         IReadOnlyCollection<string>? tagIds,
+        IReadOnlyCollection<string>? contactIds,
         IReadOnlyCollection<string>? direction,
         DateTime? from,
         DateTime? to,
@@ -126,6 +131,7 @@ public sealed class TransactionsApiClient(IOdysseyApi api) : ITransactionsApiCli
             .AddMany("accountIds", accountIds)
             .AddMany("statuses", statuses)
             .AddMany("tagIds", tagIds)
+            .AddMany("contactIds", contactIds)
             .AddSingle("direction", direction)
             .Add("from", from)
             .Add("to", to)

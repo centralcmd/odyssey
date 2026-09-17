@@ -617,6 +617,59 @@ public class TransactionServiceTests
     }
 
 
+    // The MERCHANT filter (design system · Transactions). A transaction with no contact matches no
+    // value, so it drops out of a filtered list rather than surviving as an "unassigned" bucket.
+    [Fact]
+    public async Task SearchForFiltersByContactIds()
+    {
+        await using var context = TestContextFactory.Create();
+        var account = new Account
+        {
+            Name = "Card",
+            Description = "Card account",
+            AccountType = ContextAccountType.CheckingAccount,
+            Opened = new DateTime(2024, 12, 1, 0, 0, 0, DateTimeKind.Utc),
+        };
+        context.Accounts.Add(account);
+        await context.SaveChangesAsync();
+
+        await using var journal = TestContextFactory.CreateJournal();
+        var ikea = new Contact
+        {
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+            NormalizedName = "IKEA",
+            Type = ContactType.Organization,
+            OrganizationDetails = new() { LegalName = "IKEA" },
+        };
+        var spotify = new Contact
+        {
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+            NormalizedName = "SPOTIFY",
+            Type = ContactType.Organization,
+            OrganizationDetails = new() { LegalName = "Spotify" },
+        };
+        journal.Contacts.AddRange(ikea, spotify);
+        await journal.SaveChangesAsync();
+
+        var service = new TransactionService(context, TestContextFactory.ContactLookup(journal));
+        await service.Create(new NewTransaction { Description = "Desk", Amount = -350, AccountId = account.AccountId, ContactId = ikea.ContactId });
+        await service.Create(new NewTransaction { Description = "Shelf", Amount = -90, AccountId = account.AccountId, ContactId = ikea.ContactId });
+        await service.Create(new NewTransaction { Description = "Premium", Amount = -12, AccountId = account.AccountId, ContactId = spotify.ContactId });
+        await service.Create(new NewTransaction { Description = "Cash", Amount = -20, AccountId = account.AccountId });
+
+        var ikeaOnly = (await service.ListAsync(new TransactionsQueryParams { ContactIds = [ikea.ContactId] })).Items;
+        Assert.Equal(2, ikeaOnly.Count);
+        Assert.All(ikeaOnly, t => Assert.Equal(ikea.ContactId, t.ContactId));
+
+        var both = (await service.ListAsync(new TransactionsQueryParams { ContactIds = [ikea.ContactId, spotify.ContactId] })).Items;
+        Assert.Equal(3, both.Count);
+        // The contactless row is excluded by any non-empty filter.
+        Assert.DoesNotContain(both, t => t.ContactId is null);
+
+        Assert.Equal(4, (await service.ListAsync(new TransactionsQueryParams())).Items.Count);
+        Assert.Equal(4, (await service.ListAsync(new TransactionsQueryParams { ContactIds = [] })).Items.Count);
+    }
+
     [Fact]
     public async Task CreateTransactionWithContactRoundTripsContact()
     {

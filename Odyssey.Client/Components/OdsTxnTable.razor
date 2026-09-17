@@ -4,7 +4,7 @@
     THE shared transaction-row surface: the sortable, expandable, editable table behind
     the Transactions page, the Accounts per-account section, the Budgets matched-
     transactions panel and the Dashboard recent list. It owns the canonical column set
-    (direction avatar · Description · Contact · Account · Tag · Status · Amount ·
+    (direction avatar · Description · Merchant · Account · Tag · Status · Amount ·
     Date · row menu), the status→tone chip mapping and the signed income/expense amount
     encoding, so a transaction row reads identically on every surface. No pagination —
     the filtered list renders whole.
@@ -68,7 +68,10 @@
             },
             new()
             {
-                Key = "contact", HeaderText = "Contact", Sortable = true, CellClass = "odc-rec-muted",
+                // The COLUMN says "Merchant" (design system · TxnTable) while the sort key, the
+                // detail tile and the DTO keep "contact": the key is a wire contract, and the tile
+                // names the RECORD the link points at, which is a contact and may well be a person.
+                Key = "contact", HeaderText = "Merchant", Sortable = true, CellClass = "odc-rec-muted",
                 SortValue = t => (t.Contact?.ResolvedDisplayName ?? "~").ToLowerInvariant(),
                 Cell = (t, ctx) => @<text>@(string.IsNullOrWhiteSpace(t.Contact?.ResolvedDisplayName) ? "—" : t.Contact!.ResolvedDisplayName)</text>
             },

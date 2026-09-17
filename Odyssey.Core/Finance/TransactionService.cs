@@ -63,6 +63,13 @@ public class TransactionService
             q = q.Where(t => t.TransactionTags.Any(tag => tagIds.Contains(tag.TransactionTagId)));
         }
 
+        // The merchant filter. A transaction with no contact matches no value, so it drops out of a
+        // filtered list rather than surviving as an "unassigned" bucket the picker cannot express.
+        if (query.ContactIds is { Length: > 0 } contactIds)
+        {
+            q = q.Where(t => t.ContactId != null && contactIds.Contains(t.ContactId.Value));
+        }
+
         q = query.Direction switch
         {
             TransactionDirection.Income => q.Where(t => t.Amount >= 0),

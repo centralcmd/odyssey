@@ -48,7 +48,6 @@ public partial class AddPolicyPartyDialog
     private DateTime? _toDate;
     private readonly Dictionary<string, string> _errors = [];
     private bool _isSaving;
-    private bool _isRemoving;
 
     private bool IsEdit => Party is not null;
 
@@ -214,7 +213,7 @@ public partial class AddPolicyPartyDialog
 
     private async Task SubmitAsync()
     {
-        if (_isSaving || _isRemoving) return;
+        if (_isSaving) return;
         _error = null;
         _errors.Clear();
 
@@ -281,26 +280,6 @@ public partial class AddPolicyPartyDialog
         finally
         {
             _isSaving = false;
-        }
-    }
-
-    private async Task RemoveAsync()
-    {
-        if (Party is not { } link || _isSaving || _isRemoving) return;
-
-        _isRemoving = true;
-        try
-        {
-            var ok = (await Insurance.RemovePartyAsync(Policy.InsurancePolicyId, link.Role, link.TargetId))
-                .Toast(Snackbar, "Unable to remove party", "Party removed.");
-            if (!ok) return;
-
-            await OnSaved.InvokeAsync();
-            await OpenChanged.InvokeAsync(false);
-        }
-        finally
-        {
-            _isRemoving = false;
         }
     }
 }
