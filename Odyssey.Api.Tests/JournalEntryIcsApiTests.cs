@@ -211,6 +211,24 @@ public class JournalEntryIcsApiTests
         Assert.Contains(match.ExternalUid, body);
     }
 
+    // The export binds the SAME query model as the list, which is what lets the page's "Export
+    // filtered" describe exactly the set on screen. The attachment filter is the one that had no
+    // server predicate, so it is the one worth pinning here.
+    [Fact]
+    public async Task ExportFiltered_ByAttachmentPresence_ReturnsMatchingSet()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead]).ToArray());
+        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        using var client = factory.CreateClient();
+        var withPhoto = await CreateAsync(client, NewEntry("Trip", photoFileIds: [imageId]));
+        await CreateAsync(client, NewEntry("Grocery run"));
+
+        var body = await (await client.GetAsync($"{IcsPath}?hasPhotos=true")).Content.ReadAsStringAsync();
+
+        Assert.Equal(1, Count(body, "BEGIN:VJOURNAL"));
+        Assert.Contains(withPhoto.ExternalUid, body);
+    }
+
     [Fact]
     public async Task ExportReservedCharacters_RoundTripUnchanged()
     {

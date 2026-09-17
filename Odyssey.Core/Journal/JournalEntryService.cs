@@ -41,14 +41,13 @@ public class JournalEntryService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    /// <summary>Server-side paged list (issue #277): free-text search + tag/contact/date-range/archival filters + allowlisted sort.</summary>
+    /// <summary>Server-side paged list (issue #277): free-text search + tag/contact/date-range/
+    /// attachment-presence/archival filters + allowlisted sort.</summary>
     public async Task<PagedResult<JournalEntrySummary>> ListAsync(
         JournalEntriesQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        var q = ApplyFilters(
-            context.JournalEntries.AsQueryable(),
-            query.Search, query.TagIds, query.ContactIds, query.From, query.To);
+        var q = ApplyFilters(context.JournalEntries.AsQueryable(), query);
 
         // Archived is a derived (column) state, hidden by default; included only when explicitly requested.
         if (query.Status == ArchivalStatus.Archived)
@@ -235,13 +234,17 @@ public class JournalEntryService
         }
     }
 
-    // The search / tag / contact / date-range filter surface shared by the server-side list (#277)
-    // and the VJOURNAL export (#339). Archival status is applied by the caller, because the two paths
-    // differ on the default: the list hides archived rows, the export includes them (§5).
-    internal static IQueryable<JournalEntry> ApplyFilters(
-        IQueryable<JournalEntry> q, string? search, Guid[]? tagIds, Guid[]? contactIds, DateTime? from, DateTime? to)
+    // The search / tag / contact / date-range / attachment-presence filter surface shared by the
+    // server-side list (#277) and the VJOURNAL export (#339). Archival status is applied by the caller,
+    // because the two paths differ on the default: the list hides archived rows, the export includes
+    // them (§5).
+    //
+    // It takes the whole query rather than one parameter per filter (the ContactService shape): both
+    // callers hold the same JournalEntriesQueryParams and were already unpacking every field from it,
+    // so a positional list only grows a place for the two of them to disagree.
+    internal static IQueryable<JournalEntry> ApplyFilters(IQueryable<JournalEntry> q, JournalEntriesQueryParams query)
     {
-        var term = ListQuery.NormalizeSearch(search);
+        var term = ListQuery.NormalizeSearch(query.Search);
         if (term is not null)
         {
             var pattern = ListQuery.ContainsPattern(term);
@@ -251,26 +254,39 @@ public class JournalEntryService
                 (e.Location != null && EF.Functions.Like(e.Location, pattern)));
         }
 
-        if (tagIds is { Length: > 0 } tags)
+        if (query.TagIds is { Length: > 0 } tags)
         {
             var ids = tags.Distinct().ToList();
             q = q.Where(e => e.EntryTags.Any(t => ids.Contains(t.JournalTagId)));
         }
 
-        if (contactIds is { Length: > 0 } contacts)
+        if (query.ContactIds is { Length: > 0 } contacts)
         {
             var ids = contacts.Distinct().ToList();
             q = q.Where(e => e.Contacts.Any(c => ids.Contains(c.ContactId)));
         }
 
-        if (from is { } fromDate)
+        if (query.From is { } fromDate)
         {
             q = q.Where(e => e.EntryDate >= fromDate);
         }
 
-        if (to is { } toDate)
+        if (query.To is { } toDate)
         {
             q = q.Where(e => e.EntryDate <= toDate);
+        }
+
+        // Attachment presence. AND-ed with each other, so asking for both wants entries carrying both.
+        // Translated as EXISTS rather than a count comparison: the question is only whether the
+        // collection is non-empty, and EXISTS can stop at the first row.
+        if (query.HasPhotos is { } wantPhotos)
+        {
+            q = wantPhotos ? q.Where(e => e.Photos.Any()) : q.Where(e => !e.Photos.Any());
+        }
+
+        if (query.HasFiles is { } wantFiles)
+        {
+            q = wantFiles ? q.Where(e => e.Attachments.Any()) : q.Where(e => !e.Attachments.Any());
         }
 
         return q;

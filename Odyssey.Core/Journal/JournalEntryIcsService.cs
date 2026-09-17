@@ -134,9 +134,7 @@ public class JournalEntryIcsService
         JournalEntriesQueryParams query, bool includeContacts, Stream output, Action<string, int> onReady,
         CancellationToken cancellationToken = default)
     {
-        var baseQuery = JournalEntryService.ApplyFilters(
-            context.JournalEntries.AsNoTracking(),
-            query.Search, query.TagIds, query.ContactIds, query.From, query.To);
+        var baseQuery = JournalEntryService.ApplyFilters(context.JournalEntries.AsNoTracking(), query);
 
         baseQuery = query.Status switch
         {

@@ -466,6 +466,99 @@ public class JournalEntriesApiTests
         Assert.DoesNotContain(results!, e => e.JournalEntryId == january);
     }
 
+    // ── Attachment-presence filters (hasPhotos / hasFiles) ───────────────────────
+    // The Journal page's "Any attachment" picker. Server-side rather than a client-side narrowing of
+    // the fetched page, so the ICS export — which binds the same query model — carries them too.
+
+    [Fact]
+    public async Task List_HasPhotosFilter_KeepsOnlyEntriesCarryingAPhoto()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        using var client = factory.CreateClient();
+
+        var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoFileIds: [imageId]));
+        var plain = await CreateAsync(client, NewEntry(title: "Plain"));
+
+        var results = await client.GetPagedItemsAsync<JournalEntrySummary>($"{Path}?hasPhotos=true");
+
+        Assert.Contains(results!, e => e.JournalEntryId == withPhoto);
+        Assert.DoesNotContain(results!, e => e.JournalEntryId == plain);
+    }
+
+    [Fact]
+    public async Task List_HasFilesFilter_KeepsOnlyEntriesCarryingAnAttachment()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var pdfId = await SeedFileAsync(factory, "receipt.pdf", "application/pdf");
+        using var client = factory.CreateClient();
+
+        var withFile = await CreateAsync(client, NewEntry(title: "With file", attachmentFileIds: [pdfId]));
+        var plain = await CreateAsync(client, NewEntry(title: "Plain"));
+
+        var results = await client.GetPagedItemsAsync<JournalEntrySummary>($"{Path}?hasFiles=true");
+
+        Assert.Contains(results!, e => e.JournalEntryId == withFile);
+        Assert.DoesNotContain(results!, e => e.JournalEntryId == plain);
+    }
+
+    // The two are AND-ed, not OR-ed: asking for both wants an entry carrying BOTH, so an entry with
+    // only one of them is excluded. This is the case a single "media kind" filter could not express,
+    // and the one an OR would silently get backwards.
+    [Fact]
+    public async Task List_HasPhotosAndHasFiles_AreAnded()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var pdfId = await SeedFileAsync(factory, "receipt.pdf", "application/pdf");
+        using var client = factory.CreateClient();
+
+        var both = await CreateAsync(client, NewEntry(title: "Both", photoFileIds: [imageId], attachmentFileIds: [pdfId]));
+        var photoOnly = await CreateAsync(client, NewEntry(title: "Photo only", photoFileIds: [imageId]));
+        var fileOnly = await CreateAsync(client, NewEntry(title: "File only", attachmentFileIds: [pdfId]));
+
+        var results = await client.GetPagedItemsAsync<JournalEntrySummary>($"{Path}?hasPhotos=true&hasFiles=true");
+
+        Assert.Contains(results!, e => e.JournalEntryId == both);
+        Assert.DoesNotContain(results!, e => e.JournalEntryId == photoOnly);
+        Assert.DoesNotContain(results!, e => e.JournalEntryId == fileOnly);
+    }
+
+    // false is a real filter ("entries with NO photos"), not a synonym for "don't filter". The client's
+    // picker only ever sends true or omits the key, but the contract has to hold for any caller.
+    [Fact]
+    public async Task List_HasPhotosFalse_KeepsOnlyEntriesWithoutPhotos()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        using var client = factory.CreateClient();
+
+        var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoFileIds: [imageId]));
+        var plain = await CreateAsync(client, NewEntry(title: "Plain"));
+
+        var results = await client.GetPagedItemsAsync<JournalEntrySummary>($"{Path}?hasPhotos=false");
+
+        Assert.Contains(results!, e => e.JournalEntryId == plain);
+        Assert.DoesNotContain(results!, e => e.JournalEntryId == withPhoto);
+    }
+
+    // An omitted key does not filter — the healthy default, and what every unfiltered list relies on.
+    [Fact]
+    public async Task List_WithoutAttachmentFilters_ReturnsEntriesRegardlessOfMedia()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        using var client = factory.CreateClient();
+
+        var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoFileIds: [imageId]));
+        var plain = await CreateAsync(client, NewEntry(title: "Plain"));
+
+        var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
+
+        Assert.Contains(results!, e => e.JournalEntryId == withPhoto);
+        Assert.Contains(results!, e => e.JournalEntryId == plain);
+    }
+
     [Fact]
     public async Task List_Pagination_LimitAndOffset_WindowResults()
     {

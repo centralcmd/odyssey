@@ -82,11 +82,7 @@
 
         <ActionMenu>
             <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="@(() => ExportAsync(filtered: false))">Export all as iCalendar</MudMenuItem>
-            @* The attachment filter cannot be expressed on the export endpoint, so an export taken while
-               it is on covers the wider set — said here rather than discovered in the downloaded file. *@
-            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">
-                Export filtered (@_entries.Count) as iCalendar@(_mediaFilter.Count > 0 ? " — ignores the attachment filter" : "")
-            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">Export filtered (@_entries.Count) as iCalendar</MudMenuItem>
             @if (_canImport)
             {
                 <MudDivider />

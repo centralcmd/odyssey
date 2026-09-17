@@ -11,8 +11,10 @@ namespace Odyssey.ApiClient.Resources;
 public interface IJournalApiClient
 {
     /// <summary>Lists journal entries (lean summary projection) with server-side search, tag / contact /
-    /// date-range / archival filters and sort (issue #277). <paramref name="from"/> / <paramref name="to"/>
-    /// bound the ENTRY date and are inclusive on both ends.</summary>
+    /// date-range / attachment-presence / archival filters and sort (issue #277).
+    /// <paramref name="from"/> / <paramref name="to"/> bound the ENTRY date and are inclusive on both
+    /// ends. <paramref name="hasPhotos"/> / <paramref name="hasFiles"/> are AND-ed, so passing both
+    /// wants entries carrying both; <c>null</c> does not filter.</summary>
     Task<ApiResult<List<JournalEntrySummary>>> ListAsync(
         string? search = null,
         IReadOnlyCollection<string>? tagIds = null,
@@ -22,6 +24,8 @@ public interface IJournalApiClient
         string? sortDir = null,
         DateTime? from = null,
         DateTime? to = null,
+        bool? hasPhotos = null,
+        bool? hasFiles = null,
         CancellationToken ct = default);
 
     /// <summary>Loads one entry with its full content + link id sets. Null on failure.</summary>
@@ -48,6 +52,8 @@ public sealed class JournalApiClient(IOdysseyApi api) : IJournalApiClient
         string? sortDir = null,
         DateTime? from = null,
         DateTime? to = null,
+        bool? hasPhotos = null,
+        bool? hasFiles = null,
         CancellationToken ct = default) =>
         api.GetAllAsync<JournalEntrySummary>(
             PagedQuery.For(Base)
@@ -59,6 +65,8 @@ public sealed class JournalApiClient(IOdysseyApi api) : IJournalApiClient
                 .Add("sortDir", sortDir)
                 .Add("from", from)
                 .Add("to", to)
+                .AddBool("hasPhotos", hasPhotos)
+                .AddBool("hasFiles", hasFiles)
                 .Build(),
             ct);
 
@@ -198,12 +206,13 @@ public interface IJournalIcsApiClient
 {
     /// <summary>Exports the entries matching the given filters as a VJOURNAL <c>.ics</c> file. Omit all
     /// filters for "export all" (every status, including archived); pass the current search / tags /
-    /// contacts / entry-date range / status to export the filtered set. The parameters mirror
-    /// <see cref="IJournalApiClient.ListAsync"/>'s, because the export endpoint binds the same query
-    /// model — so an exported set can match the view the caller is looking at.</summary>
+    /// contacts / entry-date range / attachment presence / status to export the filtered set. The
+    /// parameters mirror <see cref="IJournalApiClient.ListAsync"/>'s, because the export endpoint binds
+    /// the same query model — so an exported set matches the view the caller is looking at.</summary>
     Task<ApiResult<ApiFile>> ExportAsync(
         string? search = null, IReadOnlyCollection<string>? tagIds = null, string? status = null,
         IReadOnlyCollection<string>? contactIds = null, DateTime? from = null, DateTime? to = null,
+        bool? hasPhotos = null, bool? hasFiles = null,
         CancellationToken ct = default);
 
     /// <summary>Exports a single entry as a one-VJOURNAL <c>.ics</c> file.</summary>
@@ -228,6 +237,7 @@ public sealed class JournalIcsApiClient(IOdysseyApi api) : IJournalIcsApiClient
     public Task<ApiResult<ApiFile>> ExportAsync(
         string? search = null, IReadOnlyCollection<string>? tagIds = null, string? status = null,
         IReadOnlyCollection<string>? contactIds = null, DateTime? from = null, DateTime? to = null,
+        bool? hasPhotos = null, bool? hasFiles = null,
         CancellationToken ct = default) =>
         api.GetFileAsync(
             PagedQuery.For($"{Base}/vjournal")
@@ -237,6 +247,8 @@ public sealed class JournalIcsApiClient(IOdysseyApi api) : IJournalIcsApiClient
                 .AddMany("contactIds", contactIds)
                 .Add("from", from)
                 .Add("to", to)
+                .AddBool("hasPhotos", hasPhotos)
+                .AddBool("hasFiles", hasFiles)
                 .Build(),
             "odyssey-journal-entries.ics",
             completenessMarker: "BEGIN:VJOURNAL",

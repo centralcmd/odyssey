@@ -76,10 +76,9 @@ public partial class JournalCard
     private DateTime? _to;
     private IReadOnlyCollection<string> _statusFilter = [];
 
-    // Attachment presence. The two are AND-ed — picking both wants entries carrying both — and, unlike
-    // every other filter on this page, they are applied CLIENT-SIDE: the list endpoint exposes no
-    // has-photos / has-files predicate, and the summary already carries both counts, so the whole
-    // fetched set can be narrowed without another round trip. See LoadEntries for what that costs.
+    // Attachment presence. The two are AND-ed — picking both wants entries carrying both — and both are
+    // server-side predicates (hasPhotos / hasFiles), like every other filter on this page. That is what
+    // lets the ICS export carry them too, so "Export filtered" and the list describe the same set.
     private const string MediaPhotos = "photos";
     private const string MediaFiles = "files";
 
@@ -240,25 +239,19 @@ public partial class JournalCard
         var requests = StatusRequests();
         if (requests.Count == 1)
         {
-            var result = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[0], _sort.Key, dir, _from?.Date, _to?.Date);
+            var result = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[0], _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles);
             _entries = result.ItemsOrToast(Snackbar, "journal entries");
             _loadError = !result.IsSuccess;
         }
         else
         {
-            var activeResult = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[0], _sort.Key, dir, _from?.Date, _to?.Date);
-            var archivedResult = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[1], _sort.Key, dir, _from?.Date, _to?.Date);
+            var activeResult = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[0], _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles);
+            var archivedResult = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[1], _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles);
             var active = activeResult.ItemsOrToast(Snackbar, "journal entries");
             var archived = archivedResult.ItemsOrToast(Snackbar, "archived journal entries");
             _entries = [.. active, .. archived];
             _loadError = !activeResult.IsSuccess || !archivedResult.IsSuccess;
         }
-
-        // The attachment filter has no server predicate, so it narrows the fetched set here — which is
-        // exact, since the list client pages through the WHOLE match set rather than one page of it.
-        // Applied to _entries itself so every downstream count (the overview, the announcement, the
-        // export-filtered label) describes the set actually on screen.
-        _entries = [.. _entries.Where(MatchesMediaFilter)];
 
         _announce = _loadError ? "Couldn't load journal entries."
             : _entries.Count == 0 ? "No entries match your filters."
@@ -268,9 +261,12 @@ public partial class JournalCard
         StateHasChanged();
     }
 
-    private bool MatchesMediaFilter(JournalEntrySummary e) =>
-        (!_mediaFilter.Contains(MediaPhotos) || e.PhotoCount > 0)
-        && (!_mediaFilter.Contains(MediaFiles) || e.AttachmentCount > 0);
+    // An unselected option is "don't filter", never "must be absent": the picker offers presence only,
+    // so it sends null rather than false — false would mean "entries with NO photos", which is a
+    // different question and not one this control asks.
+    private bool? WantPhotos => _mediaFilter.Contains(MediaPhotos) ? true : null;
+
+    private bool? WantFiles => _mediaFilter.Contains(MediaFiles) ? true : null;
 
     // The range is inclusive on both ends and both sides of the comparison are whole days: the picker
     // hands back a date, an entry's EntryDate is the picked day stored at midnight, and the server's
@@ -709,12 +705,11 @@ public partial class JournalCard
         StateHasChanged();
         try
         {
-            // Every filter the export endpoint can express is passed, so "Export filtered" and the list
-            // describe the same set — with ONE exception it cannot: the attachment filter has no server
-            // predicate (see LoadEntries), so an export taken while it is on covers the wider set. The
-            // menu item says so rather than quietly exporting more rows than the label counts.
+            // Every filter is passed, so "Export filtered" and the list describe the same set. The
+            // export endpoint binds the same query model as the list, which is what makes that hold
+            // without a second definition of "filtered" living here.
             var result = filtered
-                ? await JournalIcs.ExportAsync(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date)
+                ? await JournalIcs.ExportAsync(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles)
                 : await JournalIcs.ExportAsync();
             if (result.OrToast(Snackbar, "Unable to export journal entries") is { } file)
             {
