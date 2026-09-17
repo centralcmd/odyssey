@@ -98,7 +98,7 @@ public partial class OdsImageCropDialog : IAsyncDisposable
     /// prefix for every element id below. One generated value per instance is what lets the shared
     /// dialog be mounted twice without breaking <c>&lt;label for&gt;</c> or <c>aria-describedby</c>.
     /// </summary>
-    private readonly string _handle = $"cav-{Guid.NewGuid():N}";
+    private readonly string _handle = $"crop-{Guid.NewGuid():N}";
 
     private string FileId => $"{_handle}-file";
 

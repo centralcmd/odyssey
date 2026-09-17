@@ -292,6 +292,37 @@ public class UserProfilePictureSurfaceTests
         // Self-healing in one sign-out, and the message says so rather than reading as a failure the
         // user caused.
         Assert.Contains("Sign out and back in", code, StringComparison.Ordinal);
+
+        // WCAG 2.2 1.3.1. The reason has to reach the FIELD, which renders it beside the mark — an
+        // earlier revision passed no reason at all and put the text in a page-level paragraph several
+        // fields below, related to the disabled control by nothing but proximity it did not have.
+        Assert.Contains("DisabledReason=\"@ClaimStaleReason\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("acc-picture-meta", markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// WCAG 2.2 1.3.1, the overlay half. Disabled, that variant renders no badge and no buttons — so
+    /// the mark becomes a bare picture with nothing saying a control exists or why it is gone. The
+    /// reason renders beside it and is <b>programmatically related</b> to it, not merely adjacent.
+    /// </summary>
+    [Fact]
+    public void The_overlay_variant_explains_its_disabled_state_at_the_mark()
+    {
+        var field = WithoutComments(Read("Components", "OdsProfilePictureField.razor"));
+
+        Assert.Contains("odc-picedit-note", field, StringComparison.Ordinal);
+        Assert.Contains("id=\"@DisabledReasonId\"", field, StringComparison.Ordinal);
+        Assert.Contains("aria-describedby=\"@DescribedBy\"", field, StringComparison.Ordinal);
+
+        // Per instance, so two mounted fields never collide on one id — the same rule the crop dialog
+        // follows.
+        Assert.Contains("Guid.NewGuid():N", field, StringComparison.Ordinal);
+
+        // And the description points at nothing when there is nothing to point at: an aria-describedby
+        // naming an absent element describes nothing and is worse than none.
+        Assert.Contains(
+            "Disabled && !string.IsNullOrWhiteSpace(DisabledReason) ? DisabledReasonId : null",
+            field, StringComparison.Ordinal);
     }
 
     /// <summary>

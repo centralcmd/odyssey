@@ -40,6 +40,7 @@
                                     Busy="_uploading"
                                     Removing="_removing"
                                     Disabled="@ImageControlsDisabled"
+                                    DisabledReason="@ClaimStaleReason"
                                     OnAdd="OpenCropDialog"
                                     OnRemove="RequestRemoval" />
             <div class="acc-profile-preview-id">
@@ -53,21 +54,6 @@
 
         <OdsProfileFields Model="_draft" ModelChanged="OnFieldsChanged"
                           Errors="Errors" IdPrefix="acc" />
-
-        @* The pre-claim window, stated where the disabled control is (issue #94 §3). Writes are
-           claim-free while the read is gated, so without this a session that predates the deploy would
-           upload successfully, get a 200 and a token, and see nothing. The same disable covers Remove,
-           so the GDPR Art. 17 self-service control is unavailable for that window — self-healing in one
-           sign-out, and the message says so. Folding the claim into the token instead is NOT the fix: a
-           null token would flip the button back to "Add picture" after a successful upload, which is
-           worse than an honest disabled state. *@
-        @if (ImageControlsDisabled)
-        {
-            <p class="acc-picture-meta">
-                <span class="material-icons" aria-hidden="true">info</span>
-                <span>@ClaimStaleReason</span>
-            </p>
-        }
 
         <OdsProfileTransparencyNote />
 

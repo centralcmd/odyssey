@@ -30,7 +30,7 @@
     the live-region announcement; this field does not carry one.
 *@
 
-<div class="@RootClass">
+<div class="@RootClass" aria-describedby="@DescribedBy">
     @if (ShowImage)
     {
         <OdsAvatar Size="OdsSize.Lg" Src="@Src" Alt="@Alt" OnError="OnImageError" />
@@ -46,7 +46,23 @@
            always-rendered buttons (so Tab reaches them and :focus-within reveals the overlay, which is
            also what makes them work on touch), and a small pencil badge stays visible so the control
            is discoverable without hovering at all. *@
-        @if (!Disabled)
+        @if (Disabled)
+        {
+            @* WCAG 2.2 1.3.1. Disabled, the overlay renders no badge and no buttons — so without this
+               the mark is a bare picture with no hint that a control exists or why it is gone, and the
+               page's own note sits several fields away with nothing relating the two. The reason goes
+               HERE, beside the mark, and is linked to it: the design system's own contract for this
+               variant says the caller "shows it beside the mark", so this is a compliance miss on both
+               counts. *@
+            @if (!string.IsNullOrWhiteSpace(DisabledReason))
+            {
+                <span class="odc-picedit-note" id="@DisabledReasonId">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>@DisabledReason</span>
+                </span>
+            }
+        }
+        else
         {
             <span class="odc-picedit-badge" aria-hidden="true">
                 <span class="material-icons">edit</span>
@@ -181,9 +197,27 @@
 
     private Guid? _failedFor;
 
+    /// <summary>Per instance, so two mounted fields never collide on one id.</summary>
+    private readonly string _instance = $"opf-{Guid.NewGuid():N}";
+
+    private string DisabledReasonId => $"{_instance}-reason";
+
+    /// <summary>
+    /// Relates the mark to the reason its controls are missing. Only when there IS a reason rendered —
+    /// an <c>aria-describedby</c> pointing at an element that does not exist describes nothing and is
+    /// worse than none.
+    /// </summary>
+    private string? DescribedBy =>
+        Disabled && !string.IsNullOrWhiteSpace(DisabledReason) ? DisabledReasonId : null;
+
+    /// <summary>
+    /// Whether there is a picture to change or remove — which is also, and always, exactly whether
+    /// there is one to render. The two were written out separately and were byte-identical, which a
+    /// later edit could have forked silently; one now derives from the other so they cannot.
+    /// </summary>
     private bool HasPicture => Version is not null && !string.IsNullOrEmpty(Src) && !_imageFailed;
 
-    private bool ShowImage => Version is not null && !string.IsNullOrEmpty(Src) && !_imageFailed;
+    private bool ShowImage => HasPicture;
 
     private string RootClass =>
         string.Join(' ', new[]
