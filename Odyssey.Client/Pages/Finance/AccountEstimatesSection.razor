@@ -188,12 +188,13 @@
                                         <td class="est-cell-act">
                                             @if (CanWrite)
                                             {
-                                                <span class="est-rowbtns">
-                                                    <OdsIconButton Icon="@Icons.Material.Filled.Edit" Size="OdsSize.Sm"
-                                                                   AriaLabel="Edit estimate" OnClick="@(() => OpenEdit(e))" />
-                                                    <OdsIconButton Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" Danger="true"
-                                                                   AriaLabel="Delete estimate" OnClick="@(() => DeleteAsync(e))" />
-                                                </span>
+                                                <OdsRowActions Actions="@(new OdsRowAction[]
+                                                               {
+                                                                   new() { Icon = Icons.Material.Filled.Edit, Label = "Edit estimate",
+                                                                           OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, () => OpenEdit(e)) },
+                                                                   new() { Icon = Icons.Material.Filled.Delete, Label = "Delete estimate", Danger = true,
+                                                                           OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, () => DeleteAsync(e)) },
+                                                               })" />
                                             }
                                         </td>
                                     </tr>

@@ -221,12 +221,13 @@
                             <td class="trm-cell-act">
                                 @if (CanWrite)
                                 {
-                                    <span class="trm-rowbtns">
-                                        <OdsIconButton Icon="@Icons.Material.Filled.Edit" Size="OdsSize.Sm"
-                                                       AriaLabel="Edit term" OnClick="@(() => OpenEdit(t))" />
-                                        <OdsIconButton Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" Danger="true"
-                                                       AriaLabel="Delete term" OnClick="@(() => DeleteAsync(t))" />
-                                    </span>
+                                    <OdsRowActions Actions="@(new OdsRowAction[]
+                                                   {
+                                                       new() { Icon = Icons.Material.Filled.Edit, Label = "Edit term",
+                                                               OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, () => OpenEdit(t)) },
+                                                       new() { Icon = Icons.Material.Filled.Delete, Label = "Delete term", Danger = true,
+                                                               OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, () => DeleteAsync(t)) },
+                                                   })" />
                                 }
                             </td>
                         </tr>

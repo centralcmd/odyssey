@@ -1,0 +1,58 @@
+@*
+    OdsRowActions — the end-of-row icon cluster (Odyssey Design System · components/RowActions).
+
+    The edit / delete / detach buttons that sit at the end of a table row or a list
+    item. Promoted from the near-identical .trm-rowbtns / .est-rowbtns / .ua-row-actions
+    blocks each surface had reimplemented.
+
+    Reveal: hidden until the containing <tr> — or any element carrying
+    .odc-rowactions-host — is hovered or focused within, and ALWAYS visible on touch
+    devices, where there is no hover. Reveal="false" pins the cluster visible.
+
+    The reveal is opacity-only by design: the cluster keeps its footprint whether or not
+    it is showing, so a row does not reflow under the pointer, and the buttons stay
+    focusable and reachable by keyboard the whole time (which is what makes the
+    :focus-within half of the rule work at all).
+
+    Each action's Label is its accessible name — the buttons carry no visible text.
+*@
+
+<span class="@RootClass" @attributes="UserAttributes">
+    @foreach (var (action, index) in Actions.Select((a, i) => (a, i)))
+    {
+        <OdsIconButton @key="@(action.Key ?? action.Icon ?? index.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                       Icon="@action.Icon"
+                       AriaLabel="@action.Label"
+                       Danger="@action.Danger"
+                       Disabled="@action.Disabled"
+                       Size="@(action.Size ?? Size)"
+                       OnClick="@action.OnClick" />
+    }
+    @ChildContent
+</span>
+
+@code {
+    /// <summary>The buttons, left to right. Put the destructive action last.</summary>
+    [Parameter] public IReadOnlyList<OdsRowAction> Actions { get; set; } = [];
+
+    /// <summary>Size of every button in the cluster; an action may override its own. Default Sm (28px).</summary>
+    [Parameter] public OdsSize Size { get; set; } = OdsSize.Sm;
+
+    /// <summary>
+    /// Fade in on row hover / focus-within (default). Touch devices see the cluster regardless.
+    /// Pass <c>false</c> to pin it visible — for a row whose actions are the point of the row.
+    /// </summary>
+    [Parameter] public bool Reveal { get; set; } = true;
+
+    /// <summary>Extra controls appended after <see cref="Actions"/> — typically an OdsMenu trigger.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string RootClass =>
+        $"odc-rowactions{(Reveal ? " reveal" : string.Empty)}{(string.IsNullOrEmpty(Class) ? string.Empty : " " + Class)}";
+}

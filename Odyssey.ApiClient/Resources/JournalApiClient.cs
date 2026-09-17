@@ -11,7 +11,8 @@ namespace Odyssey.ApiClient.Resources;
 public interface IJournalApiClient
 {
     /// <summary>Lists journal entries (lean summary projection) with server-side search, tag / contact /
-    /// date-range / archival filters and sort (issue #277).</summary>
+    /// date-range / archival filters and sort (issue #277). <paramref name="from"/> / <paramref name="to"/>
+    /// bound the ENTRY date and are inclusive on both ends.</summary>
     Task<ApiResult<List<JournalEntrySummary>>> ListAsync(
         string? search = null,
         IReadOnlyCollection<string>? tagIds = null,
@@ -19,6 +20,8 @@ public interface IJournalApiClient
         string? status = null,
         string? sortBy = null,
         string? sortDir = null,
+        DateTime? from = null,
+        DateTime? to = null,
         CancellationToken ct = default);
 
     /// <summary>Loads one entry with its full content + link id sets. Null on failure.</summary>
@@ -43,6 +46,8 @@ public sealed class JournalApiClient(IOdysseyApi api) : IJournalApiClient
         string? status = null,
         string? sortBy = null,
         string? sortDir = null,
+        DateTime? from = null,
+        DateTime? to = null,
         CancellationToken ct = default) =>
         api.GetAllAsync<JournalEntrySummary>(
             PagedQuery.For(Base)
@@ -52,6 +57,8 @@ public sealed class JournalApiClient(IOdysseyApi api) : IJournalApiClient
                 .Add("status", status)
                 .Add("sortBy", sortBy)
                 .Add("sortDir", sortDir)
+                .Add("from", from)
+                .Add("to", to)
                 .Build(),
             ct);
 
@@ -190,10 +197,13 @@ public sealed class TaskApiClient(IOdysseyApi api) : ITaskApiClient
 public interface IJournalIcsApiClient
 {
     /// <summary>Exports the entries matching the given filters as a VJOURNAL <c>.ics</c> file. Omit all
-    /// filters for "export all" (every status, including archived); pass search/tags/status to export the
-    /// current filtered set.</summary>
+    /// filters for "export all" (every status, including archived); pass the current search / tags /
+    /// contacts / entry-date range / status to export the filtered set. The parameters mirror
+    /// <see cref="IJournalApiClient.ListAsync"/>'s, because the export endpoint binds the same query
+    /// model — so an exported set can match the view the caller is looking at.</summary>
     Task<ApiResult<ApiFile>> ExportAsync(
         string? search = null, IReadOnlyCollection<string>? tagIds = null, string? status = null,
+        IReadOnlyCollection<string>? contactIds = null, DateTime? from = null, DateTime? to = null,
         CancellationToken ct = default);
 
     /// <summary>Exports a single entry as a one-VJOURNAL <c>.ics</c> file.</summary>
@@ -217,12 +227,16 @@ public sealed class JournalIcsApiClient(IOdysseyApi api) : IJournalIcsApiClient
 
     public Task<ApiResult<ApiFile>> ExportAsync(
         string? search = null, IReadOnlyCollection<string>? tagIds = null, string? status = null,
+        IReadOnlyCollection<string>? contactIds = null, DateTime? from = null, DateTime? to = null,
         CancellationToken ct = default) =>
         api.GetFileAsync(
             PagedQuery.For($"{Base}/vjournal")
                 .Add("search", search)
                 .AddMany("tagIds", tagIds)
                 .Add("status", status)
+                .AddMany("contactIds", contactIds)
+                .Add("from", from)
+                .Add("to", to)
                 .Build(),
             "odyssey-journal-entries.ics",
             completenessMarker: "BEGIN:VJOURNAL",

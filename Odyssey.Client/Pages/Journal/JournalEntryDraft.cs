@@ -124,6 +124,24 @@ public static class JournalWrite
         AttachmentFileIds = [.. e.Attachments.Select(a => a.FileId)],
     };
 
+    /// <summary>Re-project a loaded entry with one CONTACT link removed and everything else unchanged —
+    /// the per-tile "Remove contact" action. Detaching edits the entry, never the contact.</summary>
+    public static UpdateJournalEntry WithoutContact(ExistingJournalEntry e, Guid contactId)
+    {
+        var update = FromDetail(e, e.Archived is not null);
+        update.ContactIds = [.. e.ContactIds.Where(id => id != contactId)];
+        return update;
+    }
+
+    /// <summary>Re-project a loaded entry with one TAG link removed and everything else unchanged —
+    /// the per-tile "Remove tag" action. The tag itself is untouched.</summary>
+    public static UpdateJournalEntry WithoutTag(ExistingJournalEntry e, Guid tagId)
+    {
+        var update = FromDetail(e, e.Archived is not null);
+        update.TagIds = [.. e.TagIds.Where(id => id != tagId)];
+        return update;
+    }
+
     // EntryDate is a whole-day value the user picks in local time; store the start of that day as UTC.
     private static DateTime ToUtc(DateTime local) =>
         DateTime.SpecifyKind(local.Date, DateTimeKind.Utc);

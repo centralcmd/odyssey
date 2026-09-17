@@ -1,0 +1,94 @@
+@* DS parity — no consumer yet: it is <OdsTimeline>'s row, and nothing mounts the timeline
+   yet. See that component's header for why. *@
+@*
+    OdsTimelineItem — one entry of an <OdsTimeline> (Odyssey Design System · components/Timeline).
+
+    Three columns: the rail node (tinted by Color) · the body (Label, Date, trailing Meta,
+    Note, then any ChildContent) · the figures column (Value, Aside, Actions).
+
+    Current marks the in-force entry and tints the value in the income hue; it is also the
+    node's default colour. The item is its own .odc-rowactions-host, so an <OdsRowActions>
+    passed as Actions reveals on hover / focus of this item — a timeline row is not a <tr>
+    and would otherwise have nothing to hang the reveal off.
+*@
+
+<div class="@RootClass" @attributes="UserAttributes">
+    <div class="odc-tl-rail">
+        <span class="odc-tl-node" style="@($"background:{NodeColor};color:{NodeColor}")"></span>
+    </div>
+    <div class="odc-tl-body">
+        <div class="odc-tl-top">
+            @if (Label is not null)
+            {
+                <span class="odc-tl-label">@Label</span>
+            }
+            @if (Date is not null)
+            {
+                <span class="odc-tl-date">@Date</span>
+            }
+            @Meta
+        </div>
+        @if (Note is not null)
+        {
+            <div class="odc-tl-note">@Note</div>
+        }
+        @ChildContent
+    </div>
+    @if (Value is not null || Aside is not null || Actions is not null)
+    {
+        <div class="odc-tl-figs">
+            @if (Value is not null)
+            {
+                <span class="odc-tl-value">@Value</span>
+            }
+            @Aside
+            @Actions
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Primary text — what changed (term kind, event name).</summary>
+    [Parameter] public RenderFragment? Label { get; set; }
+
+    /// <summary>Effective date, rendered in the mono face.</summary>
+    [Parameter] public RenderFragment? Date { get; set; }
+
+    /// <summary>Trailing nodes on the top row — a status pill, a billing tag.</summary>
+    [Parameter] public RenderFragment? Meta { get; set; }
+
+    /// <summary>Secondary line under the top row.</summary>
+    [Parameter] public RenderFragment? Note { get; set; }
+
+    /// <summary>Headline figure in the right-hand column.</summary>
+    [Parameter] public RenderFragment? Value { get; set; }
+
+    /// <summary>Under the value — typically an <see cref="OdsDelta"/>.</summary>
+    [Parameter] public RenderFragment? Aside { get; set; }
+
+    /// <summary>Typically an <see cref="OdsRowActions"/>; reveals on hover / focus of this item.</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    /// <summary>Rail node colour. Defaults to the income hue when <see cref="Current"/>, else muted.</summary>
+    [Parameter] public string? Color { get; set; }
+
+    /// <summary>Marks the in-force entry — tints the value.</summary>
+    [Parameter] public bool Current { get; set; }
+
+    /// <summary>Extra body content below <see cref="Note"/>.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string RootClass =>
+        $"odc-tl-item odc-rowactions-host{(Current ? " current" : string.Empty)}{(string.IsNullOrEmpty(Class) ? string.Empty : " " + Class)}";
+
+    private string NodeColor =>
+        !string.IsNullOrEmpty(Color) ? Color
+        : Current ? "var(--finance-income)"
+        : "var(--mud-palette-text-secondary)";
+}

@@ -1620,6 +1620,60 @@
     flex-direction: column;
 }
 
+/* ---------- RowActions (OdsRowActions — DS components/RowActions) ----------
+   The end-of-row icon cluster, revealed on hover / focus-within of the containing
+   row. A <tr> needs no marker; any other row element carries .odc-rowactions-host.
+   The reveal is opacity-only so the cluster keeps its footprint and its buttons stay
+   focusable — which is what makes the :focus-within half of the rule reachable. */
+.odc-rowactions { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.odc-rowactions.reveal { opacity: 0; transition: opacity var(--duration-base) var(--ease-standard); }
+tr:hover > * > .odc-rowactions.reveal,
+tr:hover > .odc-rowactions.reveal,
+tr:focus-within > * > .odc-rowactions.reveal,
+tr:focus-within > .odc-rowactions.reveal,
+.odc-rowactions-host:hover .odc-rowactions.reveal,
+.odc-rowactions-host:focus-within .odc-rowactions.reveal,
+.odc-rowactions.reveal:focus-within { opacity: 1; }
+/* No hover on touch — the actions must always be reachable there. */
+@media (hover: none) { .odc-rowactions.reveal { opacity: 1; } }
+
+/* ---------- Timeline (OdsTimeline / OdsTimelineItem — DS components/Timeline) ----------
+   The vertical rail-and-node history list: the alternative rendering of any
+   effective-dated record table (terms, estimates, renewals). Rail node - body
+   (label, date, meta, note) - figures column (value, aside, actions). */
+.odc-timeline { position: relative; padding-left: 6px; }
+.odc-tl-item {
+    position: relative;
+    display: grid; grid-template-columns: 28px 1fr auto;
+    gap: 12px; align-items: start;
+    padding: 0 4px 18px 0;
+}
+.odc-tl-item:last-child { padding-bottom: 2px; }
+.odc-tl-rail { position: relative; display: flex; justify-content: center; }
+.odc-tl-rail::before {
+    content: ""; position: absolute; top: 22px; bottom: -18px; left: 50%;
+    width: 2px; transform: translateX(-50%);
+    background: var(--mud-palette-divider);
+}
+.odc-tl-item:last-child .odc-tl-rail::before { display: none; }
+.odc-tl-node {
+    position: relative; z-index: 1; margin-top: 3px;
+    width: 13px; height: 13px; border-radius: var(--radius-pill);
+    border: 2.5px solid var(--mud-palette-surface);
+    box-shadow: 0 0 0 1.5px currentColor;
+}
+.odc-tl-body { min-width: 0; }
+.odc-tl-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.odc-tl-label { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-tl-date { font: var(--fw-regular) var(--fs-overline)/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.odc-tl-note { font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; }
+.odc-tl-figs { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.odc-tl-value {
+    font: var(--fw-medium) var(--fs-h6)/1 var(--font-mono); font-variant-numeric: tabular-nums;
+    color: var(--mud-palette-text-primary);
+}
+.odc-tl-item.current .odc-tl-value { color: var(--finance-income); }
+
 /* ---------- Layout utilities ---------- */
 /* Hairline card/panel outline — replaces the inline
    `border:1px solid var(--mud-palette-divider)` repeated across pages. */
@@ -1715,10 +1769,8 @@
 .trm-superseded { font: 400 10.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); opacity: 0.7; }
 .trm-cell-act { text-align: right; }
 
-/* Row actions (OdsIconButton) — reveal on row hover/focus, per the design system. */
-.trm-tbl tbody tr .trm-rowbtns { opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); display: inline-flex; gap: 2px; justify-content: flex-end; }
-.trm-tbl tbody tr:hover .trm-rowbtns,
-.trm-tbl tbody tr:focus-within .trm-rowbtns { opacity: 1; }
+/* Row actions are the shared <OdsRowActions> (.odc-rowactions) — the reveal on row
+   hover/focus lives with the component, not here. */
 
 
 /* ---- NEW / EDIT TERM dialog — the kind picker is OdsCardSelect (.odc-cardsel); .trm-kind-opt is the edit-mode locked tile ---- */
@@ -1868,13 +1920,12 @@
 .est-superseded { font: 400 10.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); opacity: 0.7; }
 .est-cell-act { text-align: right; }
 
-/* The estimates timeline (.est-timeline / .est-tl-*) and its .est-iconbtn were never
-   mounted — the estimates section renders the .est-tbl table — so their rules are gone. */
+/* The per-surface estimates timeline (.est-timeline / .est-tl-*) and its .est-iconbtn were
+   never mounted — the estimates section renders the .est-tbl table. The timeline itself is
+   now the shared <OdsTimeline> atom (.odc-timeline), so no surface-local copy belongs here. */
 
-/* Reveal row actions on hover */
-.est-tbl tbody tr .est-rowbtns { opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); display: inline-flex; gap: 2px; }
-.est-tbl tbody tr:hover .est-rowbtns,
-.est-tbl tbody tr:focus-within .est-rowbtns { opacity: 1; }
+/* Row actions are the shared <OdsRowActions> (.odc-rowactions) — the reveal on row
+   hover/focus lives with the component, not here. */
 
 /* ---- EMPTY STATE — guided treatment ---- */
 .est-empty-guided { border: 1px dashed var(--mud-palette-divider); border-radius: 10px; padding: 22px; display: flex; flex-direction: column; gap: 16px; }

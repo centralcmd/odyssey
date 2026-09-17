@@ -14,6 +14,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject IClipboardService Clipboard
+@inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject Odyssey.Client.Services.IPageStateService PageState
 @inject IJSRuntime JS
@@ -59,6 +60,18 @@
                                 Placeholder="Search title, content, location…" Class="ph-search" />
                 <OdsMultiSelect Label="Any tag" Values="_tagFilter" ValuesChanged="OnTagFilterChanged"
                                 Options="_tagOptions" Class="ph-select" />
+                @* The contact filter is only offered to a caller who can read contacts: without
+                   contacts.read the option list is empty, and an always-empty picker is a dead control. *@
+                @if (_canReadContacts)
+                {
+                    <OdsMultiSelect Label="Any contact" Values="_contactFilter" ValuesChanged="OnContactFilterChanged"
+                                    Options="_contactOptions" Class="ph-select" />
+                }
+                <OdsMultiSelect Label="Any attachment" Values="_mediaFilter" ValuesChanged="OnMediaFilterChanged"
+                                Options="_mediaOptions" Class="ph-select" />
+                <OdsDateRangePicker Label="Entry date" Icon="event" AriaLabel="Filter by entry date"
+                                    From="_from" FromChanged="OnFromChanged"
+                                    To="_to" ToChanged="OnToChanged" />
                 <OdsMultiSelect Label="Active" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
                                 Options="_statusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="JournalEntrySummary" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
@@ -69,7 +82,11 @@
 
         <ActionMenu>
             <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="@(() => ExportAsync(filtered: false))">Export all as iCalendar</MudMenuItem>
-            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">Export filtered (@_entries.Count) as iCalendar</MudMenuItem>
+            @* The attachment filter cannot be expressed on the export endpoint, so an export taken while
+               it is on covers the wider set — said here rather than discovered in the downloaded file. *@
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">
+                Export filtered (@_entries.Count) as iCalendar@(_mediaFilter.Count > 0 ? " — ignores the attachment filter" : "")
+            </MudMenuItem>
             @if (_canImport)
             {
                 <MudDivider />
@@ -90,167 +107,165 @@
                     var isExpanded = IsExpanded(e.JournalEntryId);
                     var archived = e.Archived is not null;
                     var detail = _details.GetValueOrDefault(e.JournalEntryId);
-                    var tags = EntryTags(e.TagIds);
+
+                    @* The one meta line: when it happened, who wrote it, where. Ellipsised, never
+                       wrapped — the entry TEXT is no longer here, it is the body's Content tile. *@
+                    var meta = new List<RenderFragment?>
+                    {
+                        OdsRecordMeta.Mono(e.EntryDate.ToLocalTime().ToString("ddd, MMM d, yyyy")),
+                        IconMeta("person", e.CreatedByName),
+                        IconMeta("place", e.Location),
+                    };
+
+                    @* Counts are the body's table of contents: same glyphs, same order as the
+                       sections below. A collection with nothing in it contributes no count. *@
+                    var counts = EntryCounts(e);
                 }
-                <OdsExpandableCard Open="isExpanded"
-                                   Dimmed="archived"
-                                   AlignTop="true"
-                                   Label="@e.Title"
-                                   OnToggle="@(() => ToggleExpand(e.JournalEntryId))">
+                @* A journal entry has no TYPE, so the accent is the module's tag hue rather than a
+                   type colour — and no headline FIGURE, so none is invented. *@
+                <OdsRecordCard Id="@($"je-{e.JournalEntryId}")"
+                               Icon="menu_book"
+                               Accent="var(--tag-text)"
+                               AccentSoft="var(--tag-soft)"
+                               Name="@e.Title"
+                               Meta="meta"
+                               Counts="counts"
+                               Dimmed="archived"
+                               Open="isExpanded"
+                               OnToggle="@(open => ToggleExpand(e.JournalEntryId, open))">
 
-                    <Lead>
-                        <div class="acct-badge">
-                            <span class="material-icons" aria-hidden="true">menu_book</span>
-                        </div>
-                    </Lead>
-
-                    <Head>
-                            <div class="acct-name-row">
-                                <span class="acct-name">@e.Title</span>
-                                @if (archived)
-                                {
-                                    <OdsChip Tone="OdsChipTone.Outline" Dot="true" Class="odc-todo-archived">Archived</OdsChip>
-                                }
-                            </div>
-                            <div class="je-subline">
-                                <span class="je-when mono">@e.EntryDate.ToLocalTime().ToString("ddd, MMM d, yyyy")</span>
-                                <span class="acct-dot">·</span>
-                                <span class="je-author"><span class="material-icons" aria-hidden="true">person</span>@e.CreatedByName</span>
-                                @if (!string.IsNullOrWhiteSpace(e.Location))
-                                {
-                                    <span class="acct-dot">·</span>
-                                    <span class="je-loc"><span class="material-icons" aria-hidden="true">place</span>@e.Location</span>
-                                }
-                            </div>
-                            <div class="je-snippet">@e.Snippet</div>
-                            <div class="je-cardfoot">
-                                @if (tags.Count > 0)
-                                {
-                                    <JournalTagChips Names="@tags.Select(t => t.Name)" Max="4" />
-                                }
-                                @if (e.ContactCount > 0)
-                                {
-                                    <span class="je-count"><span class="material-icons" aria-hidden="true">link</span><span class="mono">@e.ContactCount</span> @(e.ContactCount == 1 ? "contact" : "contacts")</span>
-                                }
-                                <JournalCounts Photos="e.PhotoCount" Files="e.AttachmentCount" />
-                            </div>
-                    </Head>
+                    <Chips>
+                        @if (archived)
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
+                        }
+                    </Chips>
 
                     <Actions>
-                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"
-                                     AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.TopRight">
-                                @if (_canUpdate)
-                                {
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => EditClicked(e))">Edit entry</MudMenuItem>
-                                }
-                                <MudMenuItem Icon="@Icons.Material.Filled.EventNote" OnClick="@(() => ExportEntryAsync(e))">Export VJOURNAL</MudMenuItem>
-                                <MudMenuItem OnClick="@(() => CopyId(e.JournalEntryId))">
-                                    <span class="odc-menu-item">
-                                        <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
-                                        <span>Copy ID</span>
-                                        <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
-                                    </span>
-                                </MudMenuItem>
-                                @if (_canUpdate)
-                                {
-                                    <MudDivider />
-                                    <MudMenuItem Icon="@(archived ? Icons.Material.Filled.Unarchive : Icons.Material.Filled.Inventory2)" OnClick="@(() => ToggleArchive(e))">
-                                        @(archived ? "Unarchive" : "Archive")
-                                    </MudMenuItem>
-                                }
-                                @if (_canDelete)
-                                {
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" Style="color:var(--mud-palette-error);" OnClick="@(() => ConfirmDelete(e))">Delete</MudMenuItem>
-                                }
-                            </MudMenu>
+                        <OdsMenu Items="BuildActions(e)" AriaLabel="@($"Actions for {e.Title}")" />
                     </Actions>
 
-                    <Detail>
-                            @if (detail is null)
-                            {
-                                <div role="status" aria-live="polite" aria-busy="true">
-                                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
-                                    <span class="sr-only">Loading entry…</span>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="je-meta-grid">
-                                    <OdsMetaTile Mono="true">
-                                        <Label>Entry date</Label>
-                                        <ChildContent>@detail.EntryDate.ToLocalTime().ToString("ddd, MMM d, yyyy")</ChildContent>
-                                    </OdsMetaTile>
-                                    <OdsMetaTile>
-                                        <Label>Location</Label>
-                                        <ChildContent>@(string.IsNullOrWhiteSpace(detail.Location) ? "—" : detail.Location)</ChildContent>
-                                    </OdsMetaTile>
-                                    <OdsMetaTile>
-                                        <Label>Written by</Label>
-                                        <ChildContent>@detail.CreatedByName</ChildContent>
-                                    </OdsMetaTile>
-                                    <OdsMetaTile>
-                                        <Label>Last edited</Label>
-                                        <ChildContent>@LastEdited(detail)</ChildContent>
-                                    </OdsMetaTile>
-                                    <OdsMetaTile>
-                                        <Label>Tags</Label>
-                                        <ChildContent>
-                                            @{ var dtags = EntryTags(detail.TagIds); }
-                                            @if (dtags.Count > 0) { <JournalTagChips Names="@dtags.Select(t => t.Name)" /> } else { <text>—</text> }
-                                        </ChildContent>
-                                    </OdsMetaTile>
-                                    <OdsMetaTile>
-                                        <Label>Contacts</Label>
-                                        <ChildContent>
-                                            @if (detail.ContactIds.Count > 0)
-                                            {
-                                                <span class="je-cp-row">
-                                                    @foreach (var cpId in detail.ContactIds)
-                                                    {
-                                                        var cp = _canReadContacts ? _contactById.GetValueOrDefault(cpId) : null;
-                                                        @if (cp is not null)
-                                                        {
-                                                            <OdsContactChip Name="@cp.ResolvedDisplayName" Type="@cp.Type.ToString()" Archived="@(cp.Archived is not null)" />
-                                                        }
-                                                        else
-                                                        {
-                                                            <OdsContactChip Unavailable="true" />
-                                                        }
-                                                    }
-                                                </span>
-                                            }
-                                            else { <text>—</text> }
-                                        </ChildContent>
-                                    </OdsMetaTile>
-                                    @if (detail.Archived is { } archivedAt)
-                                    {
-                                        <OdsMetaTile Mono="true">
-                                            <Label>Archived</Label>
-                                            <ChildContent>@archivedAt.ToLocalTime().ToString("MMM dd, yyyy")</ChildContent>
-                                        </OdsMetaTile>
-                                    }
-                                    <div class="je-content-cell">
-                                        <OdsMetaTile>
-                                            <Label>Content</Label>
-                                            <ChildContent><div class="je-content">@detail.Content</div></ChildContent>
-                                        </OdsMetaTile>
-                                    </div>
-                                </div>
+                    <Details>
+                        @if (detail is null)
+                        {
+                            <div role="status" aria-live="polite" aria-busy="true">
+                                <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                                <span class="sr-only">Loading entry…</span>
+                            </div>
+                        }
+                        else
+                        {
+                            @* The entry's full field set as tiles — including what the collapsed header
+                               already shows: at tile scale each value arrives with its own label, so the
+                               header's meta line and a labelled Entry date tile read as two things. A
+                               tile renders if and only if ITS field has a value. *@
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="event" Label="Entry date" ValueVariant="OdsInfoTileVariant.Sm">
+                                    <Value>@detail.EntryDate.ToLocalTime().ToString("ddd, MMM d, yyyy")</Value>
+                                </OdsInfoTile>
+                                @if (!string.IsNullOrWhiteSpace(detail.Location))
+                                {
+                                    <OdsInfoTile Icon="place" Label="Location" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                                        <Value>@detail.Location</Value>
+                                    </OdsInfoTile>
+                                }
+                                <OdsInfoTile Icon="person" Label="Written by" ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value>@detail.CreatedByName</Value>
+                                </OdsInfoTile>
+                                <OdsInfoTile Icon="history" Label="Last edited" ValueVariant="OdsInfoTileVariant.Sm"
+                                             Foot="@OdsInfoTile.Caption(LastEditedBy(detail))">
+                                    <Value>@detail.UpdatedAt.ToLocalTime().ToString("MMM d, yyyy")</Value>
+                                </OdsInfoTile>
+                                @if (detail.Archived is { } archivedAt)
+                                {
+                                    <OdsInfoTile Icon="inventory_2" Label="Archived" ValueVariant="OdsInfoTileVariant.Sm"
+                                                 Foot="@OdsInfoTile.Caption("hidden from the default list")">
+                                        <Value>@archivedAt.ToLocalTime().ToString("MMM d, yyyy")</Value>
+                                    </OdsInfoTile>
+                                }
+                            </OdsInfoTileGrid>
+                        }
+                    </Details>
 
-                                <div class="je-media">
-                                    <JournalPhotoGallery Photos="GalleryPhotos(detail)" Title="Photos"
-                                                         OnOpen="@(p => OpenPhotoDetail(detail, p))" />
-                                    <OdsCollapsible Icon="attach_file" DefaultOpen="true">
-                                        <Title>Attachments</Title>
-                                        <Count>@detail.Attachments.Count</Count>
-                                        <ChildContent>
-                                            <JournalFilesTable Attachments="ResolvedAttachments(detail)" CanDownload="_canReadFiles" />
-                                        </ChildContent>
-                                    </OdsCollapsible>
+                    <Content>
+                        @if (detail is not null)
+                        {
+                            @* Prose is not a field: the entry text goes in one wide tile that wraps
+                               across the grid, never squeezed into a tile column. *@
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="notes" Label="Content" Wide="true"
+                                             ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value><div class="je-content">@detail.Content</div></Value>
+                                </OdsInfoTile>
+                            </OdsInfoTileGrid>
+                        }
+                    </Content>
+
+                    <Sections>
+                        @if (detail is not null)
+                        {
+                            var dtags = EntryTags(detail.TagIds);
+                            var dcontacts = detail.ContactIds;
+
+                            @* LINKS — the entry's contacts and tags in ONE section, one tile per link:
+                               a contact in its own type icon and colour (a reference to another record
+                               stays recognisable as that record), a tag in the tag colour. One divider,
+                               so the card does not grow a section per link kind. *@
+                            @if (dcontacts.Count > 0 || dtags.Count > 0)
+                            {
+                                <div class="je-section">
+                                    <OdsSectionDivider Label="Contacts & tags" Meta="@LinkCountLabel(dcontacts.Count, dtags.Count)" />
+                                    <OdsInfoTileGrid>
+                                        @foreach (var cpId in dcontacts)
+                                        {
+                                            var cp = _canReadContacts ? _contactById.GetValueOrDefault(cpId) : null;
+                                            var cpMeta = cp is null ? null : OdsTypeRegistries.ContactTypeOf(cp.Type.ToString());
+                                            <OdsInfoTile @key="cpId"
+                                                         Icon="@(cp is null ? "link_off" : cpMeta!.Icon)"
+                                                         IconColor="@(cp is null ? null : cpMeta!.Color)"
+                                                         IconSoft="@(cp is null ? null : cpMeta!.Soft)"
+                                                         LabelContent="@TileLabel("Contact", ContactTileMenu(detail, cpId, cp))"
+                                                         ValueVariant="OdsInfoTileVariant.Text"
+                                                         WrapValue="true"
+                                                         Tone="@(cp is null ? OdsInfoTileTone.Muted : OdsInfoTileTone.Default)"
+                                                         Foot="@OdsInfoTile.Caption(cp is null ? "no longer readable" : cpMeta!.Label)">
+                                                <Value>@(cp is null ? "Unavailable" : cp.ResolvedDisplayName)</Value>
+                                            </OdsInfoTile>
+                                        }
+                                        @foreach (var t in dtags)
+                                        {
+                                            <OdsInfoTile @key="t.JournalTagId"
+                                                         Icon="label"
+                                                         IconColor="var(--tag-text)"
+                                                         IconSoft="var(--tag-soft)"
+                                                         LabelContent="@TileLabel("Tag", TagTileMenu(detail, t))"
+                                                         ValueVariant="OdsInfoTileVariant.Text"
+                                                         WrapValue="true">
+                                                <Value>@t.Name</Value>
+                                            </OdsInfoTile>
+                                        }
+                                    </OdsInfoTileGrid>
                                 </div>
                             }
-                    </Detail>
-                </OdsExpandableCard>
+
+                            <div class="je-section">
+                                <OdsSectionDivider Label="Photos" Meta="@CountLabel(detail.Photos.Count, "photo", "photos")" />
+                                @* Title explicitly cleared: the section divider above IS the heading
+                                   and carries the count, so the gallery's own head would state both a
+                                   second time. *@
+                                <JournalPhotoGallery Photos="GalleryPhotos(detail)" Title="@null"
+                                                     OnOpen="@(p => OpenPhotoDetail(detail, p))" />
+                            </div>
+
+                            <div class="je-section">
+                                <OdsSectionDivider Label="Attachments" Meta="@CountLabel(detail.Attachments.Count, "file", "files")" />
+                                <div class="je-tbl-frame">
+                                    <JournalFilesTable Attachments="ResolvedAttachments(detail)" CanDownload="_canReadFiles" />
+                                </div>
+                            </div>
+                        }
+                    </Sections>
+                </OdsRecordCard>
             </RenderItem>
             <CreateAction>
                 @if (_canCreate)
@@ -316,3 +331,100 @@
                  TagOptions="_photoTagOptions" PeopleOptions="_photoPeopleOptions" AlbumOptions="_photoAlbumOptions"
                  CanCreateTags="_canCreatePhotoTags" CanCreateContacts="_canCreateContacts"
                  CanRenameFile="_canRenameFile" OnSaved="OnPhotoSaved" />
+
+@code {
+    // Inline render fragments are Razor syntax, so these cannot live in the code-behind.
+
+    // A meta entry with its own leading glyph. Null / blank text returns null, which the card drops —
+    // an absent fact must not leave a stray separator on the meta line.
+    private RenderFragment? IconMeta(string icon, string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null :
+        @<span class="je-meta-item">
+            <span class="material-icons" aria-hidden="true">@icon</span><span>@text</span>
+        </span>;
+
+    // A link tile's overline: the collection's singular name plus the tile's own ⋯ menu. The menu goes
+    // in the LABEL rather than over the value, so it never sits on top of a wrapped contact name — the
+    // same corner and the same 24px target the policy party tiles use, and always visible rather than
+    // hover-revealed: a menu that appears only on hover is invisible to a touch user.
+    private RenderFragment TileLabel(string label, RenderFragment? menu) =>
+        @<text>
+            @label
+            @if (menu is not null)
+            {
+                <span class="je-tile-menu">@menu</span>
+            }
+        </text>;
+
+    // The ⋯ menu on a contact tile. An unresolvable contact keeps its row and loses its name, so the
+    // items that would echo the name are dropped — but Copy ID and Remove stay: the id is what keeps a
+    // read-modify-write round trip honest, and an explicit removal naming the link says what it means.
+    private RenderFragment? ContactTileMenu(ExistingJournalEntry entry, Guid contactId, ExistingContact? contact)
+    {
+        var items = new List<OdsMenuItem>();
+        if (contact is not null)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "content_copy", Label = "Copy name",
+                OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(contact.ResolvedDisplayName, "Contact name copied.")),
+            });
+            if (_canReadContacts)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "groups", Label = "Open contact",
+                    OnClick = EventCallback.Factory.Create(this, () => Nav.NavigateTo("/contacts")),
+                });
+            }
+        }
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
+            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(contactId.ToString(), "Contact ID copied.")),
+        });
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "link_off", Label = "Remove contact", Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => UnlinkContactAsync(entry, contactId)),
+            });
+        }
+        var name = contact?.ResolvedDisplayName ?? "unavailable contact";
+        return @<OdsMenu Items="items" AriaLabel="@($"Actions for contact {name}")" />;
+    }
+
+    private RenderFragment TagTileMenu(ExistingJournalEntry entry, ExistingJournalTag tag)
+    {
+        var items = new List<OdsMenuItem>
+        {
+            new()
+            {
+                Icon = "content_copy", Label = "Copy name",
+                OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(tag.Name, "Tag name copied.")),
+            },
+            new()
+            {
+                Icon = "local_offer", Label = "Open journal tags",
+                OnClick = EventCallback.Factory.Create(this, () => Nav.NavigateTo("/journal-tags")),
+            },
+            new()
+            {
+                Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
+                OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(tag.JournalTagId.ToString(), "Tag ID copied.")),
+            },
+        };
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "link_off", Label = "Remove tag", Danger = true,
+                OnClick = EventCallback.Factory.Create(this, () => UnlinkTagAsync(entry, tag.JournalTagId)),
+            });
+        }
+        return @<OdsMenu Items="items" AriaLabel="@($"Actions for tag {tag.Name}")" />;
+    }
+}
