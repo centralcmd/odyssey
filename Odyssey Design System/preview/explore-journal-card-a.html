@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Journal card A — resolved</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<script src="../ui_kits/web/photos-data.js"></script>
+<style>
+html{background:var(--mud-palette-background)}
+body{margin:0;padding:40px 32px 96px;background:var(--mud-palette-background);color:var(--mud-palette-text-primary);font:var(--fw-regular) var(--fs-body1)/var(--lh-normal) var(--font-sans)}
+.wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:52px}
+a{color:var(--brand-text)}a:hover{color:var(--tide-300)}
+.doc-head{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--mud-palette-divider);padding-bottom:20px}
+.doc-head h1{margin:0;font:var(--fw-light) var(--fs-h2)/var(--lh-snug) var(--font-sans);letter-spacing:var(--tracking-tight)}
+.doc-head p{margin:0;max-width:78ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty}
+.sec{display:flex;flex-direction:column;gap:16px}
+.sec-head{display:flex;flex-direction:column;gap:6px}
+.sec-head h2{margin:0;font:var(--fw-regular) var(--fs-h4)/var(--lh-snug) var(--font-sans)}
+.sec-head p{margin:0;max-width:82ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty}
+.case{font:var(--fw-medium) var(--fs-overline)/1.4 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.stack{display:flex;flex-direction:column;gap:12px}
+/* Photo tiles paint with the kit's own renderer: photos-data.js `plPhotoBg(seed)`,
+   seeded by Journal.jsx's `jPhotoSeed` id hash — the same scene a photo shows in
+   the Photos library and the journal gallery. */
+.ph{position:relative;display:block;border-radius:var(--radius-sm);overflow:hidden;background:var(--mud-palette-background-gray)}
+.ph::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 1px rgb(255 255 255 / 0.07)}
+.iconbtn{appearance:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--radius-sm);border:none;background:none;color:var(--mud-palette-text-secondary);cursor:pointer;transition:background-color var(--duration-fast) var(--ease-standard),color var(--duration-fast) var(--ease-standard)}
+.iconbtn:hover{background:var(--mud-palette-action-default-hover);color:var(--mud-palette-text-primary)}
+.iconbtn:focus-visible{outline:var(--focus-ring-width) solid var(--focus-ring);outline-offset:var(--focus-ring-offset)}
+.iconbtn .material-icons{font-size:20px}
+
+/* ---------- the card ---------- */
+.a-card{display:grid;grid-template-columns:96px minmax(0,1fr);background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);box-shadow:var(--mud-elevation-1);overflow:hidden}
+.a-card.dim{opacity:.72}
+/* The archived label is the only text that states the state, so it has to stay
+   legible through the card dim. An ancestor's opacity rasterizes the subtree —
+   a descendant opacity:1 can't escape it — so raise the chip's ink instead:
+   primary ink through the same 0.72 dim the card's body text already survives. */
+.a-card.dim .odc-chip.archived{opacity:1;color:var(--mud-palette-text-primary)}
+/* The rail's first line shares the title's line: body padding 22px + half the
+   title's 23.4px line box = 33.7px to the centre; "Sun" is an 11px line box,
+   so 33.7 - 5.5 ≈ 28px of padding puts the two centres together. */
+.a-date{display:flex;flex-direction:column;align-items:center;gap:2px;padding:28px 8px 20px;background:var(--mud-palette-background-gray);border-right:1px solid var(--mud-palette-divider)}
+.a-dow{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.a-day{font:var(--fw-light) var(--fs-h1)/1 var(--font-sans);font-variant-numeric:tabular-nums}
+.a-mon{font:var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:var(--brand-text)}
+.a-body{display:flex;flex-direction:column;gap:14px;padding:22px 20px 18px;min-width:0}
+/* The title and its author/location line are one unit — the 14px body gap is
+   for the gaps BETWEEN groups, so pull the meta line up under the title. */
+.a-top+.a-sub{margin-top:-9px}
+/* The ⋯ button's 32px box centres a 20px glyph, so 6px of empty box sits
+   between the glyph and the card's 20px padding edge — the title's left edge
+   has none, which reads as a misaligned row. Pull the box out by that 6px so
+   the glyph aligns optically with the text edge. Same offset the footer's file
+   count already uses. */
+.a-top{display:flex;align-items:flex-start;gap:12px}
+/* -4px centres the 32px button on the title's 23.4px first line instead of
+   top-aligning the two boxes, which left the glyph 4.3px low. */
+.a-top .iconbtn{margin:-4px -6px 0 0}
+.a-title{margin:0;flex:1;min-width:0;font:var(--fw-medium) var(--fs-h5)/var(--lh-snug) var(--font-sans);text-wrap:pretty}
+.a-sub{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.a-sub span{display:inline-flex;align-items:center;gap:4px}
+.a-sub .material-icons{font-size:14px}
+.a-text{margin:0;font:var(--fw-regular) var(--fs-body2)/1.65 var(--font-sans);text-wrap:pretty;white-space:pre-wrap}
+/* The photo strip IS the shipped JournalPhotoGallery grid — auto-fill
+   minmax(120px,1fr), wrapping, never capped. Matches the gallery in the
+   expanded detail today and the "never cap" rule the files list follows. */
+.a-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.a-strip .ph{aspect-ratio:4/3;border-radius:var(--radius-sm)}
+/* The footer is a two-track row: contacts and tags wrap freely and uncapped in
+   the first track, the attachment count keeps its own slot so a wrap can never
+   orphan it onto a line of its own. Matches the photo grid and files list —
+   the card hides nothing. */
+.a-foot{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px 14px;padding-top:12px;border-top:1px solid var(--mud-palette-divider-light)}
+.a-chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.a-foot .a-files{margin:0 -6px 0 0}
+
+/* the attachment disclosure — a count that opens the full, uncapped list */
+.a-files{display:inline-flex;align-items:center;gap:5px;appearance:none;background:none;border:none;padding:4px 6px;margin-right:-6px;border-radius:var(--radius-sm);color:var(--mud-palette-text-secondary);font:var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);cursor:pointer;transition:background-color var(--duration-fast) var(--ease-standard),color var(--duration-fast) var(--ease-standard)}
+.a-files:hover{background:var(--mud-palette-action-default-hover);color:var(--mud-palette-text-primary)}
+.a-files:focus-visible{outline:var(--focus-ring-width) solid var(--focus-ring);outline-offset:var(--focus-ring-offset)}
+.a-files .material-icons{font-size:15px}
+.a-files .chev{transition:transform var(--duration-base) var(--ease-standard)}
+.a-files[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.a-files[aria-expanded="true"]{color:var(--mud-palette-text-primary)}
+.a-fcount{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--mud-palette-text-primary)}
+
+.f-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:6px;margin-top:2px}
+.f-list[hidden]{display:none}
+.f-row{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-sm);background:var(--mud-palette-background-gray);min-width:0}
+.f-row .odc-avatar{width:26px;height:26px;border-radius:var(--radius-sm);flex:none}
+.f-row .odc-avatar .material-icons{font-size:16px}
+.f-row .up{order:3;flex:none;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.f-row .odc-chip.sm{order:1}.f-row .sz{order:2}.f-row .iconbtn{order:4}
+.f-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-body2)}
+.f-row .odc-chip.sm{flex:none}
+.f-row .sz{flex:none;color:var(--mud-palette-text-secondary);font-family:var(--font-mono);font-size:var(--fs-caption)}
+.f-row .iconbtn{width:26px;height:26px;flex:none}
+.f-row .iconbtn .material-icons{font-size:17px}
+
+/* per-file actions — the shared Menu's item vocabulary, shown open for review */
+.menu-demo{position:relative;display:inline-block}
+.menu{min-width:244px;padding:4px;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);background:var(--mud-palette-surface);box-shadow:var(--mud-elevation-8)}
+.menu-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);font:var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans);color:var(--mud-palette-text-primary)}
+.menu-item .material-icons{font-size:18px;color:var(--mud-palette-text-secondary)}
+.menu-item .material-icons.trail{margin-left:auto;font-size:16px}
+.menu-item.danger,.menu-item.danger .material-icons{color:var(--mud-palette-error)}
+.menu-div{height:1px;margin:4px 6px;background:var(--mud-palette-divider)}
+.menu-shell{display:flex;gap:24px;align-items:flex-start;padding:16px;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);background:var(--mud-palette-background-gray)}
+.menu-note{flex:1;min-width:0;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty}
+.menu-box{width:252px;flex:none}
+
+/* ---------- photo overflow treatments ---------- */
+/* P1 — wrap: the shipped JournalPhotoGallery grid, auto-fill minmax(120px,1fr). */
+.p-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.p-wrap .ph{aspect-ratio:4/3}
+/* P2 — one row, capped, with a counted overflow tile. */
+.p-cap{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+.p-cap .ph{aspect-ratio:4/3}
+.p-rest{position:relative;appearance:none;border:none;padding:0;border-radius:var(--radius-sm);overflow:hidden;cursor:pointer}
+.p-rest .sc{position:absolute;inset:0;display:grid;place-items:center;gap:2px;background:rgb(8 12 24 / 0.62);color:var(--ink-50);font:var(--fw-medium) var(--fs-h5)/1 var(--font-sans)}
+.p-rest:focus-visible{outline:var(--focus-ring-width) solid var(--focus-ring);outline-offset:var(--focus-ring-offset)}
+/* P3 — one row, fixed tile size, scrolled horizontally. */
+.p-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.p-scroll .ph{flex:none;width:148px;aspect-ratio:4/3;scroll-snap-align:start}
+
+
+/* Kept only to demonstrate the rejected one-track footer: chips and the count
+   in a single flex row, the count pushed right with margin-left:auto — which is
+   what orphans it onto its own line once the chips wrap. */
+.a-foot-1track{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--mud-palette-divider-light)}
+.a-foot-1track .a-files{margin-left:auto}
+/* ---------- same-date treatments ---------- */
+/* D2 — run-in: the second and later cards of a date keep the rail but drop the
+   leaf, so the date reads once per group. */
+/* The run-in rail echoes the leaf's own rhythm — a quiet tick where the day
+   number sits, then the date in the month's slot — so the 96px track stays
+   filled and the body's left edge still lines up with the leaf cards above.
+   The label carries the grouping meaning, so it takes secondary ink (the same
+   ink .a-dow uses), never disabled. */
+.a-date.runin{justify-content:flex-start;padding-top:22px;gap:10px}
+.a-date.runin .tick{width:10px;height:10px;border-radius:50%;border:2px solid var(--mud-palette-lines-inputs)}
+.a-date.runin .also{font:var(--fw-medium) var(--fs-caption)/1.3 var(--font-sans);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:var(--mud-palette-text-secondary);text-align:center}
+.d-group{display:flex;flex-direction:column;gap:8px}
+/* D3 — a date heading over the group; the rail narrows to an accent edge. */
+.d3-head{display:flex;align-items:baseline;gap:10px;padding:0 2px 2px}
+.d3-day{font:var(--fw-regular) var(--fs-h6)/1.3 var(--font-sans);font-variant-numeric:tabular-nums}
+.d3-meta{font:var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.a-card.flat{grid-template-columns:4px minmax(0,1fr)}
+.a-card.flat .a-date{padding:0;background:var(--tag-text);border-right:none}
+/* kept only to show the rejected single-row behaviour */
+.p-slivers{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+.p-slivers .ph{aspect-ratio:4/3;border-radius:var(--radius-sm)}
+@media (max-width:840px){.a-card{grid-template-columns:72px minmax(0,1fr)}}
+.map{width:100%;border-collapse:collapse;font-size:var(--fs-body2)}
+.map th{text-align:left;padding:8px 12px 8px 0;font:var(--fw-medium) var(--fs-overline)/1.4 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);border-bottom:1px solid var(--mud-palette-divider)}
+.map td{padding:9px 12px 9px 0;border-bottom:1px solid var(--mud-palette-divider-light);vertical-align:top;color:var(--mud-palette-text-secondary)}
+.map td:first-child{color:var(--mud-palette-text-primary);font-family:var(--font-mono);font-size:var(--fs-caption);white-space:nowrap}
+.map code{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--brand-text)}
+.deadlist{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.deadlist li{font-family:var(--font-mono);font-size:var(--fs-caption);color:var(--mud-palette-text-secondary);padding:3px 8px;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-sm)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="doc-head">
+<h1>Direction A — resolved</h1>
+<p>Your three answers: the footer carries a <strong>count</strong>, not filenames; the list is <strong>never capped</strong>; each file offers <strong>preview, download, copy ID, remove</strong>. So the count is the disclosure — click it and the full attachment list unfolds in place, however long it is. The card stays quiet in a scanned list and complete when you need it. Try the counts below.</p>
+<p><strong>Three changes to shipped behaviour</strong>, all of them consequences of those answers rather than things I'd change on their own. Today <span class="mono">Journal.jsx</span> renders the shared <span class="mono">FilesTable</span> — a full <span class="mono">RecordTable</span> with sortable <em>Name · Type · Size · Uploaded</em> columns — inside an <span class="mono">InlinePager</span>, read-only, with a Download / Copy&nbsp;ID menu. A replaces that table with the compact rows below (a table's headers and column rhythm don't survive at card width), drops the pager to honour “never cap”, and adds <em>Preview</em> and <em>Remove from entry</em> — two items the journal files menu does not currently have. Remove in particular is new write capability on a surface that is read-only today, so it needs a decision beyond this card.</p>
+</header>
+
+<section class="sec">
+<div class="sec-head">
+<h2>Default — attachments closed</h2>
+<p>Tags and linked contacts on the left of the footer, the attachment count right-aligned with a chevron. Photos keep their own strip above; the count covers files only, so the two never compete.</p>
+</div>
+<div class="stack">
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span><span><span class="material-icons">place</span>San Francisco, CA</span></div>
+      <p class="a-text">Keys handed over at 3pm. The notary appointment ran long but everything cleared. Wired the balance from the joint account this morning; the confirmation is attached. Need to switch the utilities over and set up a maintenance log.</p>
+      <div class="a-strip"><span class="ph" data-photo="je1-p1"></span><span class="ph" data-photo="je1-p2"></span><span class="ph" data-photo="je1-p3"></span><span class="ph" data-photo="je1-p4"></span></div>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip info"><span class="material-icons">domain</span>ACME Co Payroll<span class="odc-chip-sub">Organization</span></span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div><button class="a-files" type="button" aria-expanded="false" aria-controls="fl-1"><span class="material-icons">attach_file</span><span class="a-fcount">2</span> files<span class="material-icons chev">expand_more</span></button></div>
+      <div class="f-list" id="fl-1" hidden>
+        <div class="f-row"><span class="odc-avatar" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" aria-hidden="true">description</span></span><span class="nm">wire-confirmation.pdf</span><span class="up">Jun 28, 2026</span><span class="odc-chip sm" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)">Statement</span><span class="sz">240 KB</span><button class="iconbtn" type="button" aria-label="Actions for wire-confirmation.pdf"><span class="material-icons">more_vert</span></button></div>
+        <div class="f-row"><span class="odc-avatar" style="background:oklch(0.72 0.16 295 / 0.16);color:oklch(0.72 0.16 295)"><span class="material-icons" aria-hidden="true">history_edu</span></span><span class="nm">closing-statement.pdf</span><span class="up">Jun 28, 2026</span><span class="odc-chip sm" style="background:oklch(0.72 0.16 295 / 0.16);color:oklch(0.72 0.16 295)">Contract</span><span class="sz">1.1 MB</span><button class="iconbtn" type="button" aria-label="Actions for closing-statement.pdf"><span class="material-icons">more_vert</span></button></div>
+      </div>
+    </div>
+  </article>
+  <div class="case">No attachments — the count and the whole row disappear</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Thu</span><span class="a-day">11</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Annual service on the estate car</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Tom Sato</span><span><span class="material-icons">place</span>Oakland, CA</span></div>
+      <p class="a-text">Rear brake pads replaced and the cabin filter swapped. The garage flagged a slow coolant leak to watch over the summer.</p>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Vehicle</span></div></div>
+    </div>
+  </article>
+</div>
+</section>
+
+<section class="sec">
+<div class="sec-head">
+<h2>Opened — uncapped</h2>
+<p>Nine files, all nine rows. Each row keeps the <span class="mono">FilesTable</span> field set in a single line — <span class="mono">odc-avatar</span> kind glyph, name, kind chip, size, uploaded, row ⋯ — with the registry's colours from <span class="mono">fileTypeByKey</span>, so a kind reads the same here as in the Accounts detail. What's lost versus the real table is sorting and the column headers. Two-up above 360px per column, single column on a narrow card. No “show all”, no dialog — the card grows.</p>
+</div>
+<article class="a-card">
+  <div class="a-date"><span class="a-dow">Tue</span><span class="a-day">19</span><span class="a-mon">May 26</span></div>
+  <div class="a-body">
+    <div class="a-top"><h3 class="a-title">Filed the 2025 return</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+    <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+    <p class="a-text">Submitted through the portal with the two rental schedules. Refund expected in six weeks.</p>
+    <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Tax</span></div><button class="a-files" type="button" aria-expanded="true" aria-controls="fl-2"><span class="material-icons">attach_file</span><span class="a-fcount">9</span> files<span class="material-icons chev">expand_more</span></button></div>
+    <div class="f-list" id="fl-2">
+      <div class="f-row"><span class="odc-avatar" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" aria-hidden="true">request_quote</span></span><span class="nm">return-2025-final.pdf</span><span class="up">May 19, 2026</span><span class="odc-chip sm" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)">Tax</span><span class="sz">3.4 MB</span><button class="iconbtn" type="button" aria-label="Actions for return-2025-final.pdf"><span class="material-icons">more_vert</span></button></div>
+      <div class="f-row"><span class="odc-avatar" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" aria-hidden="true">description</span></span><span class="nm">rental-schedule-a.xlsx</span><span class="up">May 19, 2026</span><span class="odc-chip sm" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)">Statement</span><span class="sz">88 KB</span><button class="iconbtn" type="button" aria-label="Actions for rental-schedule-a.xlsx"><span class="material-icons">more_vert</span></button></div>
+      <div class="f-row"><span class="odc-avatar" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" aria-hidden="true">description</span></span><span class="nm">rental-schedule-b.xlsx</span><span class="up">May 19, 2026</span><span class="odc-chip sm" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)">Statement</span><span class="sz">91 KB</span><button class="iconbtn" type="button" aria-label="Actions for rental-schedule-b.xlsx"><span class="material-icons">more_vert</span></button></div>
+      <div class="f-row"><span class="odc-avatar" style="background:oklch(0.74 0.02 250 / 0.16);color:oklch(0.74 0.02 250)"><span class="material-icons" aria-hidden="true">insert_drive_file</span></span><span class="nm">portal-receipt.pdf</span><span class="up">May 19, 2026</span><span class="odc-chip sm" style="background:oklch(0.74 0.02 250 / 0.16);color:oklch(0.74 0.02 250)">Other</span><span class="sz">62 KB</span><button class="iconbtn" type="button" aria-label="Actions for portal-receipt.pdf"><span class="material-icons">more_vert</span></button></div>
+      <div class="f-row"><span class="odc-avatar" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" aria-hidden="true">request_quote</span></span><span class="nm">1099-int-summary.pdf</span><span class="up">Apr 2, 2026</span><span class="odc-chip sm" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)">Tax</span><span class="sz">44 KB</span><button class="iconbtn" type="button" aria-label="Actions for 1099-int-summary.pdf"><span class="material-icons">more_vert</span></button></div>
+      <div class="f-row"><span class="odc-avatar" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" aria-hidden="true">request_quote</span></span><span class="nm">w2-2025.pdf</span><span class="up">Feb 14, 2026</span><span class="odc-chip sm" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)">Tax</span><span class="sz">39 KB</span><button class="iconbtn" type="button" aria-label="Actions for w2-2025.pdf"><span class="material-icons">more_vert</span></button></div>
+      <div class="f-row"><span class="odc-avatar" style="background:oklch(0.74 0.02 250 / 0.16);color:oklch(0.74 0.02 250)"><span class="material-icons" aria-hidden="true">insert_drive_file</span></span><span class="nm">deductions.xlsx</span><span class="up">May 12, 2026</span><span class="odc-chip sm" style="background:oklch(0.74 0.02 250 / 0.16);color:oklch(0.74 0.02 250)">Other</span><span class="sz">120 KB</span><button class="iconbtn" type="button" aria-label="Actions for deductions.xlsx"><span class="material-icons">more_vert</span></button></div>
+      <div class="f-row"><span class="odc-avatar" style="background:oklch(0.77 0.14 110 / 0.16);color:oklch(0.77 0.14 110)"><span class="material-icons" aria-hidden="true">menu_book</span></span><span class="nm">accountant-notes.docx</span><span class="up">May 16, 2026</span><span class="odc-chip sm" style="background:oklch(0.77 0.14 110 / 0.16);color:oklch(0.77 0.14 110)">Documentation</span><span class="sz">28 KB</span><button class="iconbtn" type="button" aria-label="Actions for accountant-notes.docx"><span class="material-icons">more_vert</span></button></div>
+      <div class="f-row"><span class="odc-avatar" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" aria-hidden="true">request_quote</span></span><span class="nm">prior-year-ref.pdf</span><span class="up">Mar 9, 2026</span><span class="odc-chip sm" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)">Tax</span><span class="sz">2.2 MB</span><button class="iconbtn" type="button" aria-label="Actions for prior-year-ref.pdf"><span class="material-icons">more_vert</span></button></div>
+    </div>
+  </div>
+</article>
+</section>
+
+<section class="sec">
+<div class="sec-head">
+<h2>Per-file actions</h2>
+<p>The four you picked, in the shared <span class="mono">Menu</span>'s vocabulary and order. <strong>Download</strong> and <strong>Copy ID</strong> are what the journal's <span class="mono">FilesTable</span> offers today; <strong>Preview</strong> and <strong>Remove from entry</strong> are new to the journal. Preview is <span class="mono">FilesTable</span>'s own item name — it opens the <span class="mono">FileViewerModal</span> — so it costs nothing but wiring. Remove unlinks the file from the entry without deleting it from Files — but the journal files well is read-only today, so this one is a capability decision, not a styling one.</p>
+</div>
+<div class="menu-shell">
+  <p class="menu-note">Opened from a row's ⋯. Preview goes to the shared file viewer; “Remove from entry” is the only item that changes the entry, so it sits alone below the divider in error colour, same as the card's own Delete.</p>
+  <div class="menu-box">
+    <div class="menu">
+      <div class="menu-item"><span class="material-icons">visibility</span>Preview<span class="odc-chip sm" style="margin-left:auto;background:var(--brand-soft);color:var(--brand-text)">new</span></div>
+      <div class="menu-item"><span class="material-icons">download</span>Download</div>
+      <div class="menu-item"><span class="material-icons">fingerprint</span>Copy ID<span class="material-icons trail">content_copy</span></div>
+      <div class="menu-div"></div>
+      <div class="menu-item danger"><span class="material-icons">link_off</span>Remove from entry<span class="odc-chip sm" style="margin-left:auto;background:var(--brand-soft);color:var(--brand-text)">new</span></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="sec">
+<div class="sec-head">
+<h2>Entry actions — the card's own ⋯</h2>
+<p>Unchanged from what ships. <span class="mono">Journal.jsx</span> gives <span class="mono">RecordCard</span> an <span class="mono">ActionMenu</span> of <em>Edit entry · Export VJOURNAL · Copy ID</em>, then a divider, then <em>Archive</em> and <em>Delete</em> — the standard DS order: the edit affordance, the exports and ids, then the two state changes. A needs nothing added: it moves the entry's content into the card rather than the menu.</p>
+</div>
+<div class="menu-shell">
+  <p class="menu-note">One thing A does change: the card is always open, so <span class="mono">RecordCard</span>'s chevron and its <span class="mono">open</span>/<span class="mono">onToggle</span> pair have no job. The ⋯ becomes the only control in the card's top-right corner, which is why it keeps its full 32px target there rather than shrinking to a hover-revealed icon.<br /><br />Archive stays in the menu and keeps the shipped <span class="mono">dimmed</span> treatment — the archived card below.</p>
+  <div class="menu-box">
+    <div class="menu">
+      <div class="menu-item"><span class="material-icons">edit</span>Edit entry</div>
+      <div class="menu-item"><span class="material-icons">event_note</span>Export VJOURNAL</div>
+      <div class="menu-item"><span class="material-icons">fingerprint</span>Copy ID<span class="material-icons trail">content_copy</span></div>
+      <div class="menu-div"></div>
+      <div class="menu-item"><span class="material-icons">inventory_2</span>Archive</div>
+      <div class="menu-item danger"><span class="material-icons">delete</span>Delete</div>
+    </div>
+  </div>
+</div>
+<div class="case">Archived — dimmed, same as the shipped card</div>
+<article class="a-card dim">
+  <div class="a-date"><span class="a-dow">Tue</span><span class="a-day">03</span><span class="a-mon">Feb 26</span></div>
+  <div class="a-body">
+    <div class="a-top"><h3 class="a-title">Old storage unit cleared out</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+    <div class="a-sub"><span><span class="material-icons">person</span>Tom Sato</span><span class="odc-chip sm outline archived">Archived</span></div>
+    <p class="a-text">Everything either sold or moved to the garage. Contract ended at the end of the month.</p>
+    <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div></div>
+  </div>
+</article>
+</section>
+
+<section class="sec">
+<div class="sec-head">
+<h2>When the photo strip overflows — resolved: P1</h2>
+<p>The strip wraps and never caps, which is exactly what the shipped <span class="mono">JournalPhotoGallery</span> does: <span class="mono">auto-fill minmax(120px, 1fr)</span>. Every card above now uses it. Kept below for the record: the single-row version this replaces, and the two alternatives, all at 14 photos.</p>
+</div>
+<div class="stack">
+  <div class="case">Rejected — the original single row: 14 photos collapse to ~40px slivers</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sat</span><span class="a-day">06</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Garden rebuild, first weekend</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <p class="a-text">Cleared the back bed and laid the new edging. Photos from before, during and after.</p>
+      <div class="p-slivers"><span class="ph" data-photo="g1"></span><span class="ph" data-photo="g2"></span><span class="ph" data-photo="g3"></span><span class="ph" data-photo="g4"></span><span class="ph" data-photo="g5"></span><span class="ph" data-photo="g6"></span><span class="ph" data-photo="g7"></span><span class="ph" data-photo="g8"></span><span class="ph" data-photo="g9"></span><span class="ph" data-photo="g10"></span><span class="ph" data-photo="g11"></span><span class="ph" data-photo="g12"></span><span class="ph" data-photo="g13"></span><span class="ph" data-photo="g14"></span></div>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div></div>
+    </div>
+  </article>
+  <div class="case">Chosen — P1, wrap and never cap</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sat</span><span class="a-day">06</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Garden rebuild, first weekend</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <p class="a-text">Cleared the back bed and laid the new edging. Photos from before, during and after.</p>
+      <div class="p-wrap"><span class="ph" data-photo="g1"></span><span class="ph" data-photo="g2"></span><span class="ph" data-photo="g3"></span><span class="ph" data-photo="g4"></span><span class="ph" data-photo="g5"></span><span class="ph" data-photo="g6"></span><span class="ph" data-photo="g7"></span><span class="ph" data-photo="g8"></span><span class="ph" data-photo="g9"></span><span class="ph" data-photo="g10"></span><span class="ph" data-photo="g11"></span><span class="ph" data-photo="g12"></span><span class="ph" data-photo="g13"></span><span class="ph" data-photo="g14"></span></div>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div></div>
+    </div>
+  </article>
+  <div class="case">Rejected — P2, one row capped at 5 with a counted overflow tile</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sat</span><span class="a-day">06</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Garden rebuild, first weekend</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <p class="a-text">Cleared the back bed and laid the new edging. Photos from before, during and after.</p>
+      <div class="p-cap"><span class="ph" data-photo="g1"></span><span class="ph" data-photo="g2"></span><span class="ph" data-photo="g3"></span><span class="ph" data-photo="g4"></span><span class="ph" data-photo="g5"></span><button class="p-rest" type="button" aria-label="Show all 14 photos"><span class="ph" data-photo="g6" style="width:100%;height:100%"></span><span class="sc">+9</span></button></div>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div></div>
+    </div>
+  </article>
+  <div class="case">Rejected — P3, one row at a fixed 148px tile, scrolled sideways</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sat</span><span class="a-day">06</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Garden rebuild, first weekend</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <p class="a-text">Cleared the back bed and laid the new edging. Photos from before, during and after.</p>
+      <div class="p-scroll"><span class="ph" data-photo="g1"></span><span class="ph" data-photo="g2"></span><span class="ph" data-photo="g3"></span><span class="ph" data-photo="g4"></span><span class="ph" data-photo="g5"></span><span class="ph" data-photo="g6"></span><span class="ph" data-photo="g7"></span><span class="ph" data-photo="g8"></span><span class="ph" data-photo="g9"></span><span class="ph" data-photo="g10"></span><span class="ph" data-photo="g11"></span><span class="ph" data-photo="g12"></span><span class="ph" data-photo="g13"></span><span class="ph" data-photo="g14"></span></div>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div></div>
+    </div>
+  </article>
+</div>
+<p style="margin:0;max-width:82ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty">P1 costs height — a 14-photo entry takes three or four rows depending on card width — so photo-heavy entries are tall in a scanned list. Worth knowing before it ships: if that becomes a complaint, the fix is the page's density control rather than a cap inside the card, because both the gallery and the files list now behave the same way.</p>
+</section>
+
+<section class="sec">
+<div class="sec-head">
+<h2>Two entries on the same date — resolved: D1</h2>
+<p>The leaf simply repeats. <span class="mono">entryDate</span> is date-only (<span class="mono">T00:00:00Z</span> in the seed), so two entries on Jun 28 have no time to tell them apart — order within a date falls back to <span class="mono">createdAt</span>. Repeating keeps every card self-contained, which is what lets the list sort by Title or Created and filter without the grouping going stale. Kept below: the two grouping alternatives this rejects.</p>
+</div>
+<div class="stack">
+  <div class="case">Chosen — D1, repeat the leaf</div>
+  <div class="d-group">
+    <article class="a-card"><div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div><div class="a-body">
+      <div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+      <p class="a-text">Keys handed over at 3pm. The notary appointment ran long but everything cleared.</p>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span></div></div>
+    </div></article>
+    <article class="a-card"><div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div><div class="a-body">
+      <div class="a-top"><h3 class="a-title">Utilities switched to our name</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+      <p class="a-text">Power and water transferred the same afternoon. Internet is scheduled for the 3rd.</p>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div></div>
+    </div></article>
+  </div>
+  <div class="case">Rejected — D2, the date appears once and later cards echo it quietly</div>
+  <div class="d-group">
+    <article class="a-card"><div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div><div class="a-body">
+      <div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+      <p class="a-text">Keys handed over at 3pm. The notary appointment ran long but everything cleared.</p>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span></div></div>
+    </div></article>
+    <article class="a-card"><div class="a-date runin"><span class="tick"></span><span class="also">Also<br />Jun 28</span></div><div class="a-body">
+      <div class="a-top"><h3 class="a-title">Utilities switched to our name</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+      <p class="a-text">Power and water transferred the same afternoon. Internet is scheduled for the 3rd.</p>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div></div>
+    </div></article>
+  </div>
+  <div class="case">Rejected — D3, a date heading over the group with the rail as an accent edge</div>
+  <div class="d-group">
+    <div class="d3-head"><span class="d3-day">Sunday, June 28, 2026</span><span class="d3-meta">2 entries</span></div>
+    <article class="a-card flat"><div class="a-date"></div><div class="a-body">
+      <div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+      <p class="a-text">Keys handed over at 3pm. The notary appointment ran long but everything cleared.</p>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span></div></div>
+    </div></article>
+    <article class="a-card flat"><div class="a-date"></div><div class="a-body">
+      <div class="a-top"><h3 class="a-title">Utilities switched to our name</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+      <p class="a-text">Power and water transferred the same afternoon. Internet is scheduled for the 3rd.</p>
+      <div class="a-foot"><div class="a-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div></div>
+    </div></article>
+  </div>
+</div>
+<p style="margin:0;max-width:82ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty">Why not the others: D2 reads better on a doubled date but breaks silently under any sort other than Entry date — “Also Jun 28” means nothing once cards aren't date-ordered. D3 fixes that by making the grouping explicit, but it gives up the date leaf that made A different from a ledger row, and lands close to direction C.</p>
+</section>
+
+<section class="sec">
+<div class="sec-head">
+<h2>When contacts and tags overflow — resolved: T1</h2>
+<p>The footer wraps, so 4 contacts and 12 tags become three lines — and the attachment count, pinned with <span class="mono">margin-left:auto</span>, has no fixed position: it parks at the right end of whichever line the final wrap leaves room on, sharing it with however many chips landed there, and moves as tags are added or removed. On a nearly-full last line it ends up alone. The DS already has a convention for this: <span class="mono">TagChips</span> takes a <span class="mono">max</span> and rolls the remainder into a <span class="mono">+N</span> chip carrying the hidden names in <span class="mono">title</span> and in <span class="mono">sr-only</span> text — “the detail panel omits <span class="mono">max</span> to show them all”. A is both list row and detail, so it follows the detail-panel side of that sentence: no <span class="mono">max</span>, every chip shown. Every card above now uses the two-track footer.</p>
+</div>
+<div class="stack">
+  <div class="case">Rejected — one-track footer: the count drifts to wherever the last wrap leaves room</div>
+  <article class="a-card"><div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body"><div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <p class="a-text">Keys handed over at 3pm. Wired the balance from the joint account this morning; the confirmation is attached.</p>
+      <div class="a-foot-1track"><span class="odc-chip info"><span class="material-icons">domain</span>ACME Co Payroll<span class="odc-chip-sub">Organization</span></span><span class="odc-chip info"><span class="material-icons">person</span>Jane Sato<span class="odc-chip-sub">Person</span></span><span class="odc-chip info"><span class="material-icons">domain</span>Bay Notary Services<span class="odc-chip-sub">Organization</span></span><span class="odc-chip info"><span class="material-icons">person</span>Ruth Okonjo<span class="odc-chip-sub">Person</span></span><span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span><span class="odc-chip tag"><span class="material-icons">label</span>Property</span><span class="odc-chip tag"><span class="material-icons">label</span>Legal</span><span class="odc-chip tag"><span class="material-icons">label</span>Tax</span><span class="odc-chip tag"><span class="material-icons">label</span>Insurance</span><span class="odc-chip tag"><span class="material-icons">label</span>Renovation</span><span class="odc-chip tag"><span class="material-icons">label</span>Utilities</span><span class="odc-chip tag"><span class="material-icons">label</span>Mortgage</span><span class="odc-chip tag"><span class="material-icons">label</span>Moving</span><span class="odc-chip tag"><span class="material-icons">label</span>Receipts</span><span class="odc-chip tag"><span class="material-icons">label</span>Warranty</span><span class="odc-chip tag"><span class="material-icons">label</span>Inspection</span><button class="a-files" type="button" aria-expanded="false"><span class="material-icons">attach_file</span><span class="a-fcount">2</span> files<span class="material-icons chev">expand_more</span></button></div>
+    </div>
+  </article>
+
+  <div class="case">Chosen — T1, uncapped, count in its own track</div>
+  <article class="a-card"><div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body"><div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <p class="a-text">Keys handed over at 3pm. Wired the balance from the joint account this morning; the confirmation is attached.</p>
+      <div class="a-foot">
+        <div class="a-chips"><span class="odc-chip info"><span class="material-icons">domain</span>ACME Co Payroll<span class="odc-chip-sub">Organization</span></span><span class="odc-chip info"><span class="material-icons">person</span>Jane Sato<span class="odc-chip-sub">Person</span></span><span class="odc-chip info"><span class="material-icons">domain</span>Bay Notary Services<span class="odc-chip-sub">Organization</span></span><span class="odc-chip info"><span class="material-icons">person</span>Ruth Okonjo<span class="odc-chip-sub">Person</span></span><span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span><span class="odc-chip tag"><span class="material-icons">label</span>Property</span><span class="odc-chip tag"><span class="material-icons">label</span>Legal</span><span class="odc-chip tag"><span class="material-icons">label</span>Tax</span><span class="odc-chip tag"><span class="material-icons">label</span>Insurance</span><span class="odc-chip tag"><span class="material-icons">label</span>Renovation</span><span class="odc-chip tag"><span class="material-icons">label</span>Utilities</span><span class="odc-chip tag"><span class="material-icons">label</span>Mortgage</span><span class="odc-chip tag"><span class="material-icons">label</span>Moving</span><span class="odc-chip tag"><span class="material-icons">label</span>Receipts</span><span class="odc-chip tag"><span class="material-icons">label</span>Warranty</span><span class="odc-chip tag"><span class="material-icons">label</span>Inspection</span></div>
+        <button class="a-files" type="button" aria-expanded="false"><span class="material-icons">attach_file</span><span class="a-fcount">2</span> files<span class="material-icons chev">expand_more</span></button>
+      </div>
+    </div>
+  </article>
+
+  <div class="case">Rejected — T2, the TagChips convention verbatim: contacts capped at 1, tags at 3, remainder in a static +N chip (names on hover and to assistive tech, no expansion)</div>
+  <article class="a-card"><div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body"><div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <p class="a-text">Keys handed over at 3pm. Wired the balance from the joint account this morning; the confirmation is attached.</p>
+      <div class="a-foot">
+        <div class="a-chips"><span class="odc-chip info"><span class="material-icons">domain</span>ACME Co Payroll<span class="odc-chip-sub">Organization</span></span><span class="odc-chip info odc-tagchips-more" title="Jane Sato, Bay Notary Services, Ruth Okonjo">+3<span class="sr-only"> more contacts: Jane Sato, Bay Notary Services, Ruth Okonjo</span></span><span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span><span class="odc-chip tag"><span class="material-icons">label</span>Property</span><span class="odc-chip tag"><span class="material-icons">label</span>Legal</span><span class="odc-chip tag odc-tagchips-more" title="Tax, Insurance, Renovation, Utilities, Mortgage, Moving, Receipts, Warranty, Inspection">+9<span class="sr-only"> more tags: Tax, Insurance, Renovation, Utilities, Mortgage, Moving, Receipts, Warranty, Inspection</span></span></div>
+        <button class="a-files" type="button" aria-expanded="false"><span class="material-icons">attach_file</span><span class="a-fcount">2</span> files<span class="material-icons chev">expand_more</span></button>
+      </div>
+    </div>
+  </article>
+</div>
+<p style="margin:0;max-width:82ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty">Why T1: it is consistent with the two rules already set — the photo grid and the files list both show everything — and it means the card never hides a linked contact, which is the field most likely to be the reason you're scanning. It costs up to three extra lines on a heavily tagged entry. T2 keeps the footer to a single line and is the only one of the two with DS precedent — but the caps have to be tight to get there, because a contact chip carrying its type sub-label runs past 200px: one contact and three tags is what fits. It also follows <span class="mono">TagChips</span> in making the <span class="mono">+N</span> static, so the hidden contacts and tags are reachable only on hover or through a screen reader — acceptable in a table column, harder to defend on a card that is meant to be the entry. Either way the count needs moving out of <span class="mono">margin-left:auto</span> into its own track, so its position is fixed regardless of how the chips wrap.</p>
+</section>
+
+<section class="sec">
+<div class="sec-head">
+<h2>Class naming — A gets its own <span class="mono">.jec-</span> prefix</h2>
+<p><span class="mono">/journal</span> and <span class="mono">/tasks</span> both load <span class="mono">journal.css</span>, and Tasks borrows three classes from it. Restyling those in place would silently restyle Tasks' list rows, so A's card is written under a new <span class="mono">.jec-</span> prefix and the shared three are left alone.</p>
+</div>
+<table class="map">
+<thead><tr><th>New class</th><th>Mock class</th><th>Replaces</th></tr></thead>
+<tbody>
+<tr><td>.jec-card</td><td style="font-family:var(--font-mono);font-size:var(--fs-caption)">.a-card</td><td>The grid shell. <code>.archived</code> replaces the old <code>dimmed</code> flag.</td></tr><tr><td>.jec-leaf, -dow, -day, -mon</td><td style="font-family:var(--font-mono);font-size:var(--fs-caption)">.a-date …</td><td>The date rail. No equivalent today.</td></tr><tr><td>.jec-body, -head, -title</td><td style="font-family:var(--font-mono);font-size:var(--fs-caption)">.a-body, -top, -title</td><td>Replaces the RecordCard header slots.</td></tr><tr><td>.jec-meta</td><td style="font-family:var(--font-mono);font-size:var(--fs-caption)">.a-sub</td><td>Author and location. Replaces <code>.je-subline</code> + <code>.je-when</code>.</td></tr><tr><td>.jec-text</td><td style="font-family:var(--font-mono);font-size:var(--fs-caption)">.a-text</td><td>Full entry content. Replaces <code>.je-snippet</code> and its 2-line clamp.</td></tr><tr><td>.jec-photos</td><td style="font-family:var(--font-mono);font-size:var(--fs-caption)">.a-strip</td><td>The wrapping photo grid (P1). Mirrors <code>.odc-photogrid-list</code>.</td></tr><tr><td>.jec-foot, .jec-chips</td><td style="font-family:var(--font-mono);font-size:var(--fs-caption)">.a-foot, .a-chips</td><td>The two-track footer (T1). Replaces <code>.je-cardfoot</code> <em>on the journal side only</em>.</td></tr><tr><td>.jec-filecount</td><td style="font-family:var(--font-mono);font-size:var(--fs-caption)">.a-files</td><td>The count disclosure. Replaces <code>.je-counts</code>.</td></tr><tr><td>.jec-files, .jec-file</td><td style="font-family:var(--font-mono);font-size:var(--fs-caption)">.f-list, .f-row</td><td>The uncapped attachment rows. Replaces the whole <code>.je-att-*</code> block.</td></tr>
+</tbody>
+</table>
+<div class="sec-head" style="margin-top:8px"><h2 style="font:var(--fw-regular) var(--fs-h6)/1.3 var(--font-sans)">Shared with /tasks — do not touch</h2></div>
+<table class="map">
+<thead><tr><th>Class</th><th>Tasks depends on it for</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td>.je-author</td><td>Tasks.jsx:173 uses it for the task creator</td><td>Leave as is — <code>.jec-meta</code> styles its own children.</td></tr><tr><td>.je-cardfoot</td><td>Tasks.jsx:177 uses it for the task tag row</td><td>Leave as is — the journal stops using it; Tasks keeps it.</td></tr><tr><td>.je-create-grid</td><td>Tasks.jsx:224 uses it for the edit dialog grid</td><td>Untouched — A changes no dialog.</td></tr>
+</tbody>
+</table>
+<div class="sec-head" style="margin-top:8px"><h2 style="font:var(--fw-regular) var(--fs-h6)/1.3 var(--font-sans)">Dead once A ships</h2>
+<p>Journal-only, nothing else in the kit references them — safe to delete with the build rather than leaving two card vocabularies in the file.</p></div>
+<ul class="deadlist"><li>.je-subline</li><li>.je-when</li><li>.je-snippet</li><li>.je-counts</li><li>.je-attachments</li><li>.je-att-empty</li><li>.je-att-list</li><li>.je-att-row</li><li>.je-att-ic</li><li>.je-att-name</li><li>.je-att-size</li><li>.je-att-dl</li></ul>
+</section>
+</div>
+<script>
+/* Same hash Journal.jsx uses (jPhotoSeed), same renderer the library uses. */
+var jPhotoSeed = function (id) { var hh = 0; for (var i = 0; i < id.length; i++) hh = (hh * 31 + id.charCodeAt(i)) >>> 0; return hh; };
+document.querySelectorAll('.ph[data-photo]').forEach(function (el) {
+  if (!window.plPhotoBg) return;
+  el.style.background = window.plPhotoBg(jPhotoSeed(el.dataset.photo)).background;
+});
+document.querySelectorAll('.a-files').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var list = document.getElementById(btn.getAttribute('aria-controls'));
+    if (!list) return;
+    var open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    list.hidden = open;
+  });
+});
+</script>
+</body>
+</html>

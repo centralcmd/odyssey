@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Journal entry card — alternative directions</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+html{background:var(--mud-palette-background)}
+body{margin:0;padding:40px 32px 96px;background:var(--mud-palette-background);color:var(--mud-palette-text-primary);font:var(--fw-regular) var(--fs-body1)/var(--lh-normal) var(--font-sans)}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:64px}
+a{color:var(--brand-text)}a:hover{color:var(--tide-300)}
+.doc-head{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--mud-palette-divider);padding-bottom:20px}
+.doc-head h1{margin:0;font:var(--fw-light) var(--fs-h2)/var(--lh-snug) var(--font-sans);letter-spacing:var(--tracking-tight)}
+.doc-head p{margin:0;max-width:74ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty}
+.opt{display:flex;flex-direction:column;gap:20px}
+.opt-head{display:flex;flex-direction:column;gap:6px}
+.opt-badge{display:inline-flex;align-items:center;gap:8px;font:var(--fw-medium) var(--fs-overline)/1.4 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.opt-badge b{display:grid;place-items:center;width:20px;height:20px;border-radius:var(--radius-sm);background:var(--brand-soft);color:var(--brand-text);font-size:var(--fs-caption)}
+.opt-head h2{margin:0;font:var(--fw-regular) var(--fs-h4)/var(--lh-snug) var(--font-sans)}
+.opt-head p{margin:0;max-width:80ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.ph{display:grid;place-items:center;background:repeating-linear-gradient(45deg,var(--mud-palette-surface) 0 8px,var(--mud-palette-background-gray) 8px 16px);border:1px solid var(--mud-palette-divider);color:var(--mud-palette-text-secondary);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;overflow:hidden}
+.iconbtn{appearance:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--radius-sm);border:none;background:none;color:var(--mud-palette-text-secondary);cursor:pointer;transition:background-color var(--duration-fast) var(--ease-standard),color var(--duration-fast) var(--ease-standard)}
+.iconbtn:hover{background:var(--mud-palette-action-default-hover);color:var(--mud-palette-text-primary)}
+.iconbtn:focus-visible{outline:var(--focus-ring-width) solid var(--focus-ring);outline-offset:var(--focus-ring-offset)}
+.iconbtn .material-icons{font-size:20px}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* ============ A — Datebook ============ */
+.a-card{display:grid;grid-template-columns:96px minmax(0,1fr);background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);box-shadow:var(--mud-elevation-1);overflow:hidden}
+.a-date{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:20px 8px;background:var(--mud-palette-background-gray);border-right:1px solid var(--mud-palette-divider)}
+.a-dow{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.a-day{font:var(--fw-light) var(--fs-h1)/1 var(--font-sans);font-variant-numeric:tabular-nums;color:var(--mud-palette-text-primary)}
+.a-mon{font:var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:var(--brand-text)}
+.a-body{display:flex;flex-direction:column;gap:14px;padding:18px 20px 16px;min-width:0}
+.a-top{display:flex;align-items:flex-start;gap:12px}
+.a-title{margin:0;flex:1;min-width:0;font:var(--fw-medium) var(--fs-h5)/var(--lh-snug) var(--font-sans);text-wrap:pretty}
+.a-sub{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.a-sub span{display:inline-flex;align-items:center;gap:4px}
+.a-sub .material-icons{font-size:14px}
+.a-text{margin:0;color:var(--mud-palette-text-primary);font:var(--fw-regular) var(--fs-body2)/1.65 var(--font-sans);text-wrap:pretty;white-space:pre-wrap}
+.a-strip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+.a-strip .ph{aspect-ratio:4/3;border-radius:var(--radius-sm)}
+.a-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--mud-palette-divider-light)}
+.a-files{margin-left:auto;display:inline-flex;align-items:center;gap:5px;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.a-files .material-icons{font-size:15px}
+
+/* ============ B — Photo-led ============ */
+.b-card{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);box-shadow:var(--mud-elevation-1);overflow:hidden}
+.b-band{display:grid;grid-template-columns:2fr 1fr 1fr;gap:2px;background:var(--mud-palette-divider)}
+.b-band .ph{border:none;height:168px;border-radius:0}
+.b-band .ph:first-child{height:168px}
+.b-more{position:relative}
+.b-more::after{content:"+2";position:absolute;inset:0;display:grid;place-items:center;background:rgba(8,12,24,.62);color:var(--ink-50);font:var(--fw-medium) var(--fs-h5)/1 var(--font-sans)}
+.b-body{display:flex;flex-direction:column;gap:10px;padding:16px 18px}
+.b-row{display:flex;align-items:flex-start;gap:12px}
+.b-title{margin:0;flex:1;min-width:0;font:var(--fw-medium) var(--fs-h5)/var(--lh-snug) var(--font-sans)}
+.b-when{display:inline-flex;align-items:center;gap:6px;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.b-snip{margin:0;color:var(--mud-palette-text-secondary);font:var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:pretty}
+.b-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.b-expand{display:inline-flex;align-items:center;gap:4px;margin-left:auto;appearance:none;background:none;border:none;padding:4px 2px;color:var(--brand-text);font:var(--fw-medium) var(--fs-caption)/1 var(--font-sans);cursor:pointer}
+.b-expand .material-icons{font-size:16px}
+
+/* ============ C — Timeline ============ */
+.c-feed{display:flex;flex-direction:column;gap:4px;padding-left:4px}
+.c-item{display:grid;grid-template-columns:132px 28px minmax(0,1fr);gap:0}
+.c-when{padding:2px 16px 28px 0;text-align:right;color:var(--mud-palette-text-secondary)}
+.c-when .d{display:block;font:var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);color:var(--mud-palette-text-primary);font-variant-numeric:tabular-nums}
+.c-when .y{display:block;font-size:var(--fs-caption)}
+.c-spine{position:relative;display:flex;justify-content:center}
+.c-spine::before{content:"";position:absolute;top:0;bottom:0;width:1px;background:var(--mud-palette-divider)}
+.c-dot{position:relative;margin-top:5px;width:11px;height:11px;border-radius:50%;background:var(--mud-palette-background);border:2px solid var(--tag-text)}
+.c-content{display:flex;flex-direction:column;gap:10px;padding:0 4px 30px 16px;min-width:0}
+.c-title{margin:0;font:var(--fw-medium) var(--fs-h6)/var(--lh-snug) var(--font-sans)}
+.c-text{margin:0;color:var(--mud-palette-text-secondary);font:var(--fw-regular) var(--fs-body2)/1.65 var(--font-sans);text-wrap:pretty;max-width:74ch}
+.c-strip{display:flex;flex-wrap:wrap;gap:6px}
+.c-strip .ph{width:88px;height:66px;border-radius:var(--radius-sm)}
+.c-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.c-line span{display:inline-flex;align-items:center;gap:4px}
+.c-line .material-icons{font-size:14px}
+.c-line .sep{width:1px;height:12px;background:var(--mud-palette-divider);display:inline-block}
+.c-head{display:flex;align-items:flex-start;gap:8px}
+.c-head .c-title{flex:1;min-width:0}
+
+/* ============ D — Page ============ */
+.d-card{display:grid;grid-template-columns:minmax(0,1fr) 248px;background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);box-shadow:var(--mud-elevation-2);overflow:hidden}
+.d-main{display:flex;flex-direction:column;justify-content:center;gap:14px;padding:22px 24px}
+/* Short entries: the metadata margin is the taller track, so its blocks pack to the
+   top and the leftover run of the column is absorbed by the last block rather than
+   showing as dead surface under the text. */
+.d-side .d-block:last-child{flex:1}
+.d-kicker{display:flex;align-items:center;gap:8px;font:var(--fw-medium) var(--fs-overline)/1.4 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--brand-text)}
+.d-title{margin:0;font:var(--fw-regular) var(--fs-h3)/1.25 var(--font-sans);letter-spacing:var(--tracking-tight);text-wrap:pretty}
+.d-text{margin:0;color:var(--mud-palette-text-primary);font:var(--fw-regular) var(--fs-body1)/1.7 var(--font-sans);text-wrap:pretty;max-width:66ch;white-space:pre-wrap}
+.d-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:2px}
+.d-strip .ph{aspect-ratio:3/2;border-radius:var(--radius-sm)}
+.d-side{align-self:stretch;display:flex;flex-direction:column;gap:0;background:var(--mud-palette-background-gray);border-left:1px solid var(--mud-palette-divider)}
+.d-act{display:flex;justify-content:flex-end;gap:2px;padding:8px 10px 0}
+.d-block{display:flex;flex-direction:column;gap:4px;padding:9px 18px}
+.d-block+.d-block{border-top:1px solid var(--mud-palette-divider-light)}
+.d-lab{font:var(--fw-medium) var(--fs-overline)/1.4 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.d-val{font:var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans);color:var(--mud-palette-text-primary)}
+.d-val.mono{font-family:var(--font-mono)}
+.d-chips{display:flex;flex-wrap:wrap;gap:6px}
+.d-file{display:flex;align-items:center;gap:8px;font-size:var(--fs-body2);color:var(--mud-palette-text-primary)}
+.d-file .material-icons{font-size:16px;color:var(--mud-palette-text-secondary);flex:none}
+.d-file .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:840px){.d-card{grid-template-columns:1fr}.d-side{border-left:none;border-top:1px solid var(--mud-palette-divider)}.c-item{grid-template-columns:0 20px minmax(0,1fr)}.c-when{display:none}.a-card{grid-template-columns:72px minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="doc-head">
+<h1>Journal entry card — four directions</h1>
+<p>All four break from the shared <span class="mono">RecordCard</span> row: the entry text is readable without expanding, photos carry weight, and the meta line is no longer a run of tiny count icons. A and D are always-open (no chevron); B stays collapsible; C drops the card box entirely. Same content in each, so they compare directly.</p>
+</header>
+
+<!-- ===== A ===== -->
+<section class="opt">
+<div class="opt-head">
+<div class="opt-badge"><b>A</b> Datebook</div>
+<h2>Date rail, open by default</h2>
+<p>The date becomes the anchor instead of a mono string in the meta line — a calendar-leaf rail down the left edge. Full text, a photo strip, and one footer line of tags and contacts. Nothing to expand; the card is the entry.</p>
+</div>
+<div class="stack">
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top">
+        <h3 class="a-title">Closed on the Sunset Ave flat</h3>
+        <button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button>
+      </div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span><span><span class="material-icons">place</span>San Francisco, CA</span></div>
+      <p class="a-text">Keys handed over at 3pm. The notary appointment ran long but everything cleared. Wired the balance from the joint account this morning; the confirmation is attached. Need to switch the utilities over and set up a maintenance log.</p>
+      <div class="a-strip"><span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span></div>
+      <div class="a-foot">
+        <span class="odc-chip info"><span class="material-icons">domain</span>ACME Co Payroll<span class="odc-chip-sub">Organization</span></span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Property</span>
+        <span class="a-files"><span class="material-icons">attach_file</span>2 files</span>
+      </div>
+    </div>
+  </article>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Thu</span><span class="a-day">11</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top">
+        <h3 class="a-title">Annual service on the estate car</h3>
+        <button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button>
+      </div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Tom Sato</span><span><span class="material-icons">place</span>Oakland, CA</span></div>
+      <p class="a-text">Rear brake pads replaced and the cabin filter swapped. The garage flagged a slow coolant leak to watch over the summer.</p>
+      <div class="a-foot">
+        <span class="odc-chip tag"><span class="material-icons">label</span>Vehicle</span>
+        <span class="a-files"><span class="material-icons">attach_file</span>1 file</span>
+      </div>
+    </div>
+  </article>
+</div>
+</section>
+
+<!-- ===== B ===== -->
+<section class="opt">
+<div class="opt-head">
+<div class="opt-badge"><b>B</b> Photo-led</div>
+<h2>Photo band on top, still collapsible</h2>
+<p>Photos are the card's first impression: a full-bleed band, hero plus two, overflow counted in the corner. Below it a two-line snippet so the list still scans, and expand for the full text, attachments and links. Entries without photos drop the band and read as a compact text card.</p>
+</div>
+<div class="stack">
+  <article class="b-card">
+    <div class="b-band"><span class="ph">photo</span><span class="ph">photo</span><span class="ph b-more">photo</span></div>
+    <div class="b-body">
+      <div class="b-row">
+        <h3 class="b-title">Closed on the Sunset Ave flat</h3>
+        <button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button>
+      </div>
+      <div class="b-when"><span class="mono">Sun, Jun 28, 2026</span> · Jane Sato · San Francisco, CA</div>
+      <p class="b-snip">Keys handed over at 3pm. The notary appointment ran long but everything cleared. Wired the balance from the joint account this morning; the confirmation is attached. Need to switch the utilities over and set up a maintenance log.</p>
+      <div class="b-meta">
+        <span class="odc-chip info"><span class="material-icons">domain</span>ACME Co Payroll<span class="odc-chip-sub">Organization</span></span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Property</span>
+        <button class="b-expand" type="button">Read entry<span class="material-icons">expand_more</span></button>
+      </div>
+    </div>
+  </article>
+  <article class="b-card">
+    <div class="b-body">
+      <div class="b-row">
+        <h3 class="b-title">Annual service on the estate car</h3>
+        <button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button>
+      </div>
+      <div class="b-when"><span class="mono">Thu, Jun 11, 2026</span> · Tom Sato · Oakland, CA</div>
+      <p class="b-snip">Rear brake pads replaced and the cabin filter swapped. The garage flagged a slow coolant leak to watch over the summer.</p>
+      <div class="b-meta">
+        <span class="odc-chip tag"><span class="material-icons">label</span>Vehicle</span>
+        <button class="b-expand" type="button">Read entry<span class="material-icons">expand_more</span></button>
+      </div>
+    </div>
+  </article>
+</div>
+</section>
+
+<!-- ===== C ===== -->
+<section class="opt">
+<div class="opt-head">
+<div class="opt-badge"><b>C</b> Timeline</div>
+<h2>No card at all — entries on a spine</h2>
+<p>The box goes away. A dated spine carries the entries, each one a heading, its text, a thumbnail strip and a quiet meta line. The least chrome of the four and the furthest from a ledger row; the tradeoff is weaker row boundaries and no per-entry surface to hang an expanded detail on.</p>
+</div>
+<div class="c-feed">
+  <div class="c-item">
+    <div class="c-when"><span class="d">Sun, Jun 28</span><span class="y">2026</span></div>
+    <div class="c-spine"><span class="c-dot"></span></div>
+    <div class="c-content">
+      <div class="c-head">
+        <h3 class="c-title">Closed on the Sunset Ave flat</h3>
+        <button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button>
+      </div>
+      <p class="c-text">Keys handed over at 3pm. The notary appointment ran long but everything cleared. Wired the balance from the joint account this morning; the confirmation is attached. Need to switch the utilities over and set up a maintenance log.</p>
+      <div class="c-strip"><span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span></div>
+      <div class="c-line">
+        <span><span class="material-icons">person</span>Jane Sato</span><span class="sep"></span>
+        <span><span class="material-icons">place</span>San Francisco, CA</span><span class="sep"></span>
+        <span><span class="material-icons">domain</span>ACME Co Payroll</span><span class="sep"></span>
+        <span><span class="material-icons">label</span>Milestone, Property</span><span class="sep"></span>
+        <span><span class="material-icons">attach_file</span>2 files</span>
+      </div>
+    </div>
+  </div>
+  <div class="c-item">
+    <div class="c-when"><span class="d">Thu, Jun 11</span><span class="y">2026</span></div>
+    <div class="c-spine"><span class="c-dot"></span></div>
+    <div class="c-content">
+      <div class="c-head">
+        <h3 class="c-title">Annual service on the estate car</h3>
+        <button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button>
+      </div>
+      <p class="c-text">Rear brake pads replaced and the cabin filter swapped. The garage flagged a slow coolant leak to watch over the summer.</p>
+      <div class="c-line">
+        <span><span class="material-icons">person</span>Tom Sato</span><span class="sep"></span>
+        <span><span class="material-icons">place</span>Oakland, CA</span><span class="sep"></span>
+        <span><span class="material-icons">label</span>Vehicle</span><span class="sep"></span>
+        <span><span class="material-icons">attach_file</span>1 file</span>
+      </div>
+    </div>
+  </div>
+  <div class="c-item">
+    <div class="c-when"><span class="d">Tue, May 19</span><span class="y">2026</span></div>
+    <div class="c-spine"><span class="c-dot"></span></div>
+    <div class="c-content">
+      <div class="c-head">
+        <h3 class="c-title">Filed the 2025 return</h3>
+        <button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button>
+      </div>
+      <p class="c-text">Submitted through the portal with the two rental schedules. Refund expected in six weeks.</p>
+      <div class="c-line">
+        <span><span class="material-icons">person</span>Jane Sato</span><span class="sep"></span>
+        <span><span class="material-icons">label</span>Tax</span><span class="sep"></span>
+        <span><span class="material-icons">attach_file</span>3 files</span>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== D ===== -->
+<section class="opt">
+<div class="opt-head">
+<div class="opt-badge"><b>D</b> Page</div>
+<h2>Entry as a page, metadata in a margin</h2>
+<p>The text is the card: larger type, generous measure, nothing clamped. Every field the expanded detail used to reveal — date, author, location, tags, contacts, attachments — sits in a right-hand margin column, so there is no expand step and no nested tile grid. The heaviest of the four per row; best paired with a smaller default page size.</p>
+</div>
+<div class="stack">
+  <article class="d-card">
+    <div class="d-main">
+      <div class="d-kicker"><span class="material-icons" style="font-size:15px">menu_book</span>Journal entry</div>
+      <h3 class="d-title">Closed on the Sunset Ave flat</h3>
+      <p class="d-text">Keys handed over at 3pm. The notary appointment ran long but everything cleared. Wired the balance from the joint account this morning; the confirmation is attached. Need to switch the utilities over and set up a maintenance log.</p>
+      <div class="d-strip"><span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span></div>
+    </div>
+    <aside class="d-side">
+      <div class="d-act">
+        <button class="iconbtn" type="button" aria-label="Edit entry"><span class="material-icons">edit</span></button>
+        <button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button>
+      </div>
+      <div class="d-block"><span class="d-lab">Entry date</span><span class="d-val mono">Sun, Jun 28, 2026</span></div>
+      <div class="d-block"><span class="d-lab">Written by</span><span class="d-val">Jane Sato</span><span class="d-lab" style="text-transform:none;letter-spacing:0">edited Jun 29, 12:04 AM</span></div>
+      <div class="d-block"><span class="d-lab">Location</span><span class="d-val">San Francisco, CA</span></div>
+      <div class="d-block"><span class="d-lab">Contacts &amp; tags</span><div class="d-chips"><span class="odc-chip info"><span class="material-icons">domain</span>ACME Co Payroll<span class="odc-chip-sub">Organization</span></span><span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span><span class="odc-chip tag"><span class="material-icons">label</span>Property</span></div></div>
+      <div class="d-block"><span class="d-lab">Attachments</span><span class="d-file"><span class="material-icons">picture_as_pdf</span><span class="nm">wire-confirmation.pdf</span></span><span class="d-file"><span class="material-icons">description</span><span class="nm">closing-statement.pdf</span></span></div>
+    </aside>
+  </article>
+  <article class="d-card">
+    <div class="d-main">
+      <div class="d-kicker"><span class="material-icons" style="font-size:15px">menu_book</span>Journal entry</div>
+      <h3 class="d-title">Annual service on the estate car</h3>
+      <p class="d-text">Rear brake pads replaced and the cabin filter swapped. The garage flagged a slow coolant leak to watch over the summer.</p>
+    </div>
+    <aside class="d-side">
+      <div class="d-act">
+        <button class="iconbtn" type="button" aria-label="Edit entry"><span class="material-icons">edit</span></button>
+        <button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button>
+      </div>
+      <div class="d-block"><span class="d-lab">Entry date</span><span class="d-val mono">Thu, Jun 11, 2026</span></div>
+      <div class="d-block"><span class="d-lab">Written by</span><span class="d-val">Tom Sato</span></div>
+      <div class="d-block"><span class="d-lab">Location</span><span class="d-val">Oakland, CA</span></div>
+      <div class="d-block"><span class="d-lab">Contacts &amp; tags</span><div class="d-chips"><span class="odc-chip tag"><span class="material-icons">label</span>Vehicle</span></div></div>
+      <div class="d-block"><span class="d-lab">Attachments</span><span class="d-file"><span class="material-icons">description</span><span class="nm">service-invoice.pdf</span></span></div>
+    </aside>
+  </article>
+</div>
+</section>
+</div>
+</body>
+</html>

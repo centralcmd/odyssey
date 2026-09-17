@@ -184,7 +184,7 @@ const CalTimeGrid = ({ days, events, onEventClick, onSlotClick, onEventChange, t
           </div>
         ))}
       </div>
-      <div className="cal-tg-body-scroll" ref={scrollRef}>
+      <div className="cal-tg-body-scroll odc-scroll" ref={scrollRef}>
         <div className="cal-tg-body" ref={bodyRef} style={{ gridTemplateColumns: `56px repeat(${days.length}, 1fr)`, height: 24 * HOUR }}>
           <div className="cal-tg-gutter">
             {Array.from({ length: 24 }, (_, h) => <div key={h} className="cal-tg-hour" style={{ height: HOUR }}><span>{h === 0 ? '' : `${calPad(h)}:00`}</span></div>)}

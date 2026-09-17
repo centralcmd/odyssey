@@ -1350,6 +1350,7 @@
       "--tide-deep",
       "--tide-glow",
       "--tide-ink",
+      "--tkc-state",
       "--tracking-caps",
       "--tracking-normal",
       "--tracking-tight",
@@ -1574,7 +1575,8 @@
       "--con-accent-line": "color",
       "--ins-accent": "color",
       "--ins-accent-soft": "color",
-      "--ins-accent-line": "color"
+      "--ins-accent-line": "color",
+      "--tkc-state": "color"
     },
     "fontFamilies": [
       "Material Icons",

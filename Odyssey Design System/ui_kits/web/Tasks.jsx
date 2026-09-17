@@ -157,37 +157,92 @@ const TaskStatusButton = ({ status, onCycle }) => {
   );
 };
 
-/* ---------- Flat LIST view ---------- */
-const TaskListRow = ({ t, onStatus, onEdit, onArchive, onDelete, onExport }) => (
-  <Card className="acct-item tk-row">
-    <div className="acct-head" style={{ cursor: 'default' }} data-status={T_H.taskStatus(t)}>
-      <div onClick={(e) => e.stopPropagation()}>
-        <TaskStatusButton status={T_H.taskStatus(t)} onCycle={(v) => onStatus(t, v)} />
-      </div>
-      <div className="acct-id">
-        <div className="acct-name-row">
-          <span className="acct-name">{t.title}</span>
-          {t.deadline ? <DeadlineChip deadline={t.deadline} /> : null}
-        </div>
-        <div className="acct-tags tk-subline">
-          <span className="je-author"><MIcon name="person" size={14} />{t.createdBy}</span>
-          {t.completedAt ? <React.Fragment><span className="acct-dot">·</span><span className="mono">Done {T_H.jDateTime(t.completedAt)}</span></React.Fragment> : null}
-          {t.content ? <React.Fragment><span className="acct-dot">·</span><span className="tk-note-inline">{T_H.jSnippet(t.content, 80)}</span></React.Fragment> : null}
-        </div>
-        <div className="je-cardfoot"><TaskTagChips t={t} /></div>
-      </div>
-      <div className="acct-controls" onClick={(e) => e.stopPropagation()}>
-        <ActionMenu items={[
-          { icon: 'edit', label: 'Edit task', onClick: () => onEdit(t) },
-          { icon: 'event_note', label: 'Export as iCalendar', onClick: () => onExport && onExport(t) },
-          { divider: true },
-          { icon: t.archived ? 'unarchive' : 'inventory_2', label: t.archived ? 'Unarchive' : 'Archive', onClick: () => onArchive(t) },
-          { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete(t.id) },
-        ]} />
-      </div>
+/* ---------- Flat LIST view ----------
+   The rail's count: signed whole days to the deadline, with the edges of the
+   range spelled out instead of computed — a bare "0" reads as "no deadline",
+   and past 90 days a raw day count stops being parseable. Completed states show
+   a tick: a finished task has no countdown left to run. */
+const taskRail = (t, status) => {
+  if (status === 'Done') return { tone: 'done', tick: true, unit: 'done' };
+  if (status === 'Archived') return { tone: 'muted', tick: true, unit: 'archived' };
+  const n = T_H.jDaysUntil(t.deadline);
+  if (n == null) return { tone: null, dash: true };
+  const tone = n < 0 ? 'overdue' : n <= 3 ? 'soon' : null;
+  if (n === 0) return { tone, word: 'today' };
+  if (n === 1) return { tone, word: 'tmrw' };
+  const abs = Math.abs(n);
+  if (abs > 90) return { tone, sign: n < 0 ? '−' : '+', count: Math.round(abs / 30), unit: 'months' };
+  return { tone, sign: n < 0 ? '−' : '+', count: abs, unit: abs === 1 ? 'day' : 'days' };
+};
+
+const TaskRail = ({ t, status, onStatus }) => {
+  const r = taskRail(t, status);
+  return (
+    <div className="tkc-rail" data-tone={r.tone || undefined}>
+      {r.dash ? <span className="tkc-dash" aria-hidden="true">—</span> : null}
+      {r.tick ? <span className="tkc-tick material-icons" aria-hidden="true">check</span> : null}
+      {r.word ? <span className="tkc-word">{r.word}</span> : null}
+      {r.count != null ? <span className="tkc-count"><span className="tkc-sign">{r.sign}</span>{r.count}</span> : null}
+      {r.unit ? <span className="tkc-unit">{r.unit}</span> : null}
+      <span className="tkc-st" onClick={(e) => e.stopPropagation()}>
+        <TaskStatusButton status={status} onCycle={(v) => onStatus(t, v)} />
+      </span>
     </div>
-  </Card>
+  );
+};
+
+// The meta line: the deadline first, labelled and in primary ink, then the
+// author. Once completed the deadline's slot carries the completion instead.
+const TaskMeta = ({ t, status }) => (
+  <div className="tkc-meta">
+    {status === 'Archived' ? <span className="odc-chip outline sm archived">Archived</span> : null}
+    {status === 'Done' && t.completedAt ? (
+      <span className="tkc-due"><MIcon name="check" size={14} />Completed <span className="mono">{T_H.jDateTime(t.completedAt)}</span></span>
+    ) : t.deadline ? (
+      <span className="tkc-due"><MIcon name="event" size={14} />Due <span className="mono">{T_H.jDeadline(t.deadline)}</span></span>
+    ) : (
+      <span>No deadline</span>
+    )}
+    {status === 'Archived' && t.archived ? <span>archived <span className="mono">{T_H.jDateTime(t.archived)}</span></span> : null}
+    <span><MIcon name="person" size={14} />{t.createdBy}</span>
+  </div>
 );
+
+const TaskListRow = ({ t, onStatus, onEdit, onArchive, onDelete, onExport }) => {
+  const status = T_H.taskStatus(t);
+  const atts = (t.attachments || []).length;
+  const tags = T_H.jTaskTags(t);
+  return (
+    <article className={`tkc-card${t.archived ? ' archived' : ''}`} data-status={status}>
+      <TaskRail t={t} status={status} onStatus={onStatus} />
+      <div className="tkc-body">
+        <div className="tkc-top">
+          <h3 className="tkc-title">{t.title}</h3>
+          <div className="je-cardmenu" onClick={(e) => e.stopPropagation()}>
+            <ActionMenu items={[
+              { icon: 'edit', label: 'Edit task', onClick: () => onEdit(t) },
+              { icon: 'event_note', label: 'Export as iCalendar', onClick: () => onExport && onExport(t) },
+              { divider: true },
+              { icon: t.archived ? 'unarchive' : 'inventory_2', label: t.archived ? 'Unarchive' : 'Archive', onClick: () => onArchive(t) },
+              { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete(t.id) },
+            ]} />
+          </div>
+        </div>
+        <TaskMeta t={t} status={status} />
+        {t.content ? <p className="tkc-note">{t.content}</p> : null}
+        {tags.length || atts ? (
+          <div className="tkc-foot">
+            {/* Same treatment as the journal entry card's footer chips: the tag tone with a label glyph, rendered directly rather than through TagChips' entity-outline chips. */}
+            <div className="tkc-chips">{tags.map((x) => (
+              <span className="odc-chip tag" key={x.id}><MIcon name="label" size={13} />{x.name}</span>
+            ))}</div>
+            {atts ? <span className="tkc-att"><MIcon name="attach_file" size={15} /><span className="mono">{atts}</span></span> : null}
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+};
 
 /* ---------- Create / edit dialog ---------- */
 const AddTaskModal = ({ task, onClose, onSubmit }) => {

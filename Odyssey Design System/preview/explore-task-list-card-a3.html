@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Task list card A3 — countdown rail</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../components.css" />
+<style>
+html{background:var(--mud-palette-background)}
+body{margin:0;padding:40px 32px 96px;background:var(--mud-palette-background);color:var(--mud-palette-text-primary);font:var(--fw-regular) var(--fs-body1)/var(--lh-normal) var(--font-sans)}
+*{box-sizing:border-box}
+.wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:52px}
+a{color:var(--brand-text)}a:hover{color:var(--tide-300)}
+.doc-head{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--mud-palette-divider);padding-bottom:20px}
+.doc-head h1{margin:0;font:var(--fw-light) var(--fs-h2)/var(--lh-snug) var(--font-sans);letter-spacing:var(--tracking-tight)}
+.doc-head p{margin:0;max-width:78ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty}
+.sec{display:flex;flex-direction:column;gap:16px}
+.sec-head{display:flex;flex-direction:column;gap:6px}
+.sec-head h2{margin:0;font:var(--fw-regular) var(--fs-h4)/var(--lh-snug) var(--font-sans)}
+.sec-head h2 .tagn{color:var(--mud-palette-text-secondary);font-family:var(--font-mono);font-size:var(--fs-body2);margin-right:8px}
+.sec-head p{margin:0;max-width:82ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty}
+.case{font:var(--fw-medium) var(--fs-overline)/1.4 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.stack{display:flex;flex-direction:column;gap:10px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.iconbtn{appearance:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--radius-sm);border:none;background:none;color:var(--mud-palette-text-secondary);cursor:pointer;transition:background-color var(--duration-fast) var(--ease-standard),color var(--duration-fast) var(--ease-standard)}
+.iconbtn:hover{background:var(--mud-palette-action-default-hover);color:var(--mud-palette-text-primary)}
+.iconbtn .material-icons{font-size:20px}
+.st{appearance:none;display:inline-flex;align-items:center;justify-content:center;flex:none;background:none;border:none;padding:4px;border-radius:50%;cursor:pointer;color:var(--mud-palette-text-primary);transition:background-color var(--duration-fast) var(--ease-standard)}
+.st:hover{background:var(--mud-palette-action-default-hover)}
+.st .material-icons{font-size:22px}
+.st[data-s="Doing"] .material-icons{color:var(--sea-400)}
+.st[data-s="Done"] .material-icons{color:var(--finance-income)}
+.st[data-s="Archived"] .material-icons{color:var(--mud-palette-text-secondary)}
+
+/* card shell + body, shared by every variant */
+.tc{display:grid;grid-template-columns:100px minmax(0,1fr);background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);box-shadow:var(--mud-elevation-1);overflow:hidden}
+.tc.dim{opacity:.72}
+.tc.dim .odc-chip.archived{opacity:1;color:var(--mud-palette-text-primary)}
+.tc-title{margin:0;flex:1;min-width:0;font:var(--fw-medium) var(--fs-h6)/var(--lh-snug) var(--font-sans);text-wrap:pretty}
+.tc[data-status="Doing"] .tc-title{color:var(--sea-400)}
+.tc[data-status="Done"] .tc-title{color:var(--finance-income)}
+.tc[data-status="Archived"] .tc-title{color:var(--mud-palette-text-secondary)}
+.tc-note{margin:0;color:var(--mud-palette-text-secondary);font:var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans);text-wrap:pretty}
+.tc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.tc-meta>span{display:inline-flex;align-items:center;gap:4px}
+.tc-meta .material-icons{font-size:14px}
+.tc-foot{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px 14px;padding-top:10px;border-top:1px solid var(--mud-palette-divider-light)}
+.tc-chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.tc-att{display:inline-flex;align-items:center;gap:5px;flex:none;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.tc-att .material-icons{font-size:15px}
+.tc-att .mono{color:var(--mud-palette-text-primary)}
+.body{display:flex;flex-direction:column;gap:12px;padding:16px 18px 14px;min-width:0}
+.top{display:flex;align-items:flex-start;gap:10px}
+.top .st{margin:-2px 0 0}
+.top .iconbtn{margin:-4px -6px 0 0}
+.ind{padding-left:40px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.ind .tc-meta{margin-top:-7px}
+
+/* ---- the countdown rail, shared skeleton ---- */
+.rail{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:18px 8px;background:var(--mud-palette-background-gray);border-right:1px solid var(--mud-palette-divider);text-align:center}
+.r-count{font:var(--fw-light) var(--fs-h2)/1 var(--font-sans);font-variant-numeric:tabular-nums}
+.r-unit{font:var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);text-wrap:balance}
+.r-date{margin-top:8px;font:var(--fw-regular) var(--fs-caption)/1.2 var(--font-sans);font-variant-numeric:tabular-nums;color:var(--mud-palette-text-secondary)}
+.r-word{font:var(--fw-medium) var(--fs-h6)/1.1 var(--font-sans);letter-spacing:var(--tracking-wide);text-transform:uppercase}
+.r-dash{font:var(--fw-light) var(--fs-h3)/1 var(--font-sans);color:var(--mud-palette-text-disabled)}
+
+/* tone: ink only (the A3 baseline) */
+.t-ink .rail[data-tone="overdue"] .r-count,.t-ink .rail[data-tone="overdue"] .r-unit,.t-ink .rail[data-tone="overdue"] .r-word{color:var(--finance-expense)}
+.t-ink .rail[data-tone="soon"] .r-count,.t-ink .rail[data-tone="soon"] .r-unit,.t-ink .rail[data-tone="soon"] .r-word{color:var(--pending-text)}
+.t-ink .rail[data-tone="done"] .r-count,.t-ink .rail[data-tone="done"] .r-unit,.t-ink .rail[data-tone="done"] .r-word{color:var(--finance-income)}
+
+/* ===== A3.1 · signed number ===== */
+.v1 .r-count{font-family:var(--font-mono);font-weight:var(--fw-light)}
+.v1 .r-sign{color:var(--mud-palette-text-secondary)}
+
+/* ===== A3.2 · word-first near term ===== */
+/* no extra rules — uses .r-word in place of .r-count */
+
+/* ===== A3.3 · tinted field ===== */
+.v3 .rail[data-tone="overdue"]{background:var(--finance-expense-soft);border-right-color:color-mix(in oklab,var(--finance-expense) 35%,transparent)}
+.v3 .rail[data-tone="overdue"] .r-count,.v3 .rail[data-tone="overdue"] .r-unit,.v3 .rail[data-tone="overdue"] .r-date,.v3 .rail[data-tone="overdue"] .r-word{color:var(--finance-expense)}
+.v3 .rail[data-tone="soon"]{background:var(--finance-pending-soft);border-right-color:color-mix(in oklab,var(--pending-text) 35%,transparent)}
+.v3 .rail[data-tone="soon"] .r-count,.v3 .rail[data-tone="soon"] .r-unit,.v3 .rail[data-tone="soon"] .r-date,.v3 .rail[data-tone="soon"] .r-word{color:var(--pending-text)}
+
+/* ===== A3.4 · ring: the count inside a window-elapsed arc ===== */
+.v4 .rail{gap:0}
+.r-ring{position:relative;display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:conic-gradient(var(--ring-c) calc(var(--p) * 1%),color-mix(in oklab,var(--mud-palette-divider) 80%,transparent) 0)}
+.r-ring::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--mud-palette-background-gray)}
+.r-ring>*{position:relative;z-index:1}
+.r-ring .r-count{font:var(--fw-light) var(--fs-h4)/1 var(--font-sans);font-variant-numeric:tabular-nums}
+.r-ring .r-unit{font-size:9px;letter-spacing:0.1em}
+.v4 .r-date{margin-top:7px}
+
+/* ===== A3.5 · compact ===== */
+.v5{grid-template-columns:78px minmax(0,1fr)}
+.v5 .rail{padding:12px 6px}
+.v5 .r-count{font:var(--fw-light) var(--fs-h4)/1 var(--font-sans)}
+.v5 .r-unit{font-size:10px}
+.v5 .r-word{font:var(--fw-medium) var(--fs-body2)/1.1 var(--font-sans)}
+.v5 .r-date{margin-top:5px;font-size:11px}
+.v5 .body{gap:8px;padding:12px 16px 11px}
+.v5 .tc-title{font:var(--fw-medium) var(--fs-body1)/var(--lh-snug) var(--font-sans)}
+.v5 .ind{padding-left:36px;gap:8px}
+.v5 .tc-foot{padding-top:8px}
+.v5 .st .material-icons{font-size:20px}
+
+/* scale table */
+.scale{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sc{display:flex;flex-direction:column;gap:8px}
+.sc-rail{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;height:112px;padding:12px 8px;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-sm);background:var(--mud-palette-background-gray);text-align:center}
+.sc-cap{color:var(--mud-palette-text-secondary);font-family:var(--font-mono);font-size:var(--fs-caption);text-align:center}
+.sc-rail[data-tone="overdue"] .r-count,.sc-rail[data-tone="overdue"] .r-unit,.sc-rail[data-tone="overdue"] .r-word{color:var(--finance-expense)}
+.sc-rail[data-tone="soon"] .r-count,.sc-rail[data-tone="soon"] .r-unit,.sc-rail[data-tone="soon"] .r-word{color:var(--pending-text)}
+.sc-rail[data-tone="done"] .r-count,.sc-rail[data-tone="done"] .r-unit,.sc-rail[data-tone="done"] .r-word{color:var(--finance-income)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="doc-head">
+    <h1>A3 · the countdown rail</h1>
+    <p>A3 puts distance in the rail instead of a date: the number is how many days, the calendar date drops to a caption. That trade only works if the number holds up across the whole range a task can sit in — today, tomorrow, four months out, a year overdue — so these five variants argue about the number's format and tone, and the last section runs every one of them through the full scale.</p>
+  </div>
+
+  <!-- ============ A3.1 ============ -->
+  <section class="sec t-ink">
+    <div class="sec-head">
+      <h2><span class="tagn">A3.1</span>Signed number</h2>
+      <p>Round two's card, tightened: the count set in the mono face with a leading sign, so overdue and remaining are the same glyph pattern and the column of numbers aligns down the list. "DAYS" stops being repeated in two wordings — the sign carries the direction.</p>
+    </div>
+    <div class="stack">
+      <article class="tc v1" data-status="Backlog">
+        <div class="rail" data-tone="overdue"><span class="r-count"><span class="r-sign">−</span>8</span><span class="r-unit">days</span><span class="r-date">9 Sep 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Respond to the CP2000 notice</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span><span><span class="material-icons" aria-hidden="true">schedule</span>Added <span class="mono">2 Sep 2026</span></span></div>
+            <p class="tc-note">Draft the written disagreement, attach the 1099-B corrections from the broker, and post it certified before the 30-day window closes.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Tax</span><span class="odc-chip tag sm">Correspondence</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">3</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v1" data-status="Doing">
+        <div class="rail" data-tone="soon"><span class="r-count"><span class="r-sign">+</span>2</span><span class="r-unit">days</span><span class="r-date">19 Sep 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Doing" aria-label="Status: Doing. Click to set Done."><span class="material-icons" aria-hidden="true">radio_button_checked</span></button><h3 class="tc-title">Reconcile the Q3 brokerage statement</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span></div>
+            <p class="tc-note">Two dividend lines still don't match the cash ledger.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Finance</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">1</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v1" data-status="Backlog">
+        <div class="rail"><span class="r-count"><span class="r-sign">+</span>27</span><span class="r-unit">days</span><span class="r-date">14 Oct 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Re-key the safe deposit inventory</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind"><div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span></div><div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Household</span></div></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ A3.2 ============ -->
+  <section class="sec t-ink">
+    <div class="sec-head">
+      <h2><span class="tagn">A3.2</span>Word-first near term</h2>
+      <p>Inside three days the number is replaced by the word people actually use — TODAY, TOMORROW, OVERDUE — and the count only appears where it's informative (past four days out). The rail becomes a status of time rather than an arithmetic result. Loses the aligned numeric column A3.1 buys.</p>
+    </div>
+    <div class="stack">
+      <article class="tc v2" data-status="Backlog">
+        <div class="rail" data-tone="overdue"><span class="r-word">overdue</span><span class="r-unit">by 8 days</span><span class="r-date">9 Sep 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Respond to the CP2000 notice</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span><span><span class="material-icons" aria-hidden="true">schedule</span>Added <span class="mono">2 Sep 2026</span></span></div>
+            <p class="tc-note">Draft the written disagreement, attach the 1099-B corrections from the broker, and post it certified before the 30-day window closes.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Tax</span><span class="odc-chip tag sm">Correspondence</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">3</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v2" data-status="Doing">
+        <div class="rail" data-tone="soon"><span class="r-word">in 2<br />days</span><span class="r-date">19 Sep 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Doing" aria-label="Status: Doing. Click to set Done."><span class="material-icons" aria-hidden="true">radio_button_checked</span></button><h3 class="tc-title">Reconcile the Q3 brokerage statement</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span></div>
+            <p class="tc-note">Two dividend lines still don't match the cash ledger.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Finance</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">1</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v2" data-status="Backlog">
+        <div class="rail"><span class="r-count">27</span><span class="r-unit">days left</span><span class="r-date">14 Oct 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Re-key the safe deposit inventory</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind"><div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span></div><div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Household</span></div></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ A3.3 ============ -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2><span class="tagn">A3.3</span>Tinted field</h2>
+      <p>A3.1's numbers with the urgency wash filling the rail. The countdown becomes a colour-coded gutter you can scan without reading — and unlike the date rail, a tinted countdown column never looks like a calendar, so the tint has nothing to fight. Fine at one or two per screen; a fully-overdue list is loud.</p>
+    </div>
+    <div class="stack">
+      <article class="tc v1 v3" data-status="Backlog">
+        <div class="rail" data-tone="overdue"><span class="r-count"><span class="r-sign">−</span>8</span><span class="r-unit">days</span><span class="r-date">9 Sep 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Respond to the CP2000 notice</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span><span><span class="material-icons" aria-hidden="true">schedule</span>Added <span class="mono">2 Sep 2026</span></span></div>
+            <p class="tc-note">Draft the written disagreement, attach the 1099-B corrections from the broker, and post it certified before the 30-day window closes.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Tax</span><span class="odc-chip tag sm">Correspondence</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">3</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v1 v3" data-status="Doing">
+        <div class="rail" data-tone="soon"><span class="r-count"><span class="r-sign">+</span>2</span><span class="r-unit">days</span><span class="r-date">19 Sep 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Doing" aria-label="Status: Doing. Click to set Done."><span class="material-icons" aria-hidden="true">radio_button_checked</span></button><h3 class="tc-title">Reconcile the Q3 brokerage statement</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span></div>
+            <p class="tc-note">Two dividend lines still don't match the cash ledger.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Finance</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">1</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v1 v3" data-status="Backlog">
+        <div class="rail"><span class="r-count"><span class="r-sign">+</span>27</span><span class="r-unit">days</span><span class="r-date">14 Oct 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Re-key the safe deposit inventory</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind"><div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span></div><div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Household</span></div></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ A3.4 ============ -->
+  <section class="sec t-ink">
+    <div class="sec-head">
+      <h2><span class="tagn">A3.4</span>Ring</h2>
+      <p>The count sits inside an arc showing how much of the task's own window — created date to deadline — has burned. Two facts in the space of one: how long is left, and whether that's most or a sliver of the time allowed. An overdue task fills the ring completely. The arc is decoration on any task created the same day it's due, which is a fair share of them.</p>
+    </div>
+    <div class="stack">
+      <article class="tc v4" data-status="Backlog">
+        <div class="rail" data-tone="overdue"><span class="r-ring" style="--p:100;--ring-c:var(--finance-expense)"><span class="r-count">−8</span><span class="r-unit">days</span></span><span class="r-date">9 Sep 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Respond to the CP2000 notice</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span><span><span class="material-icons" aria-hidden="true">schedule</span>Added <span class="mono">2 Sep 2026</span></span></div>
+            <p class="tc-note">Draft the written disagreement, attach the 1099-B corrections from the broker, and post it certified before the 30-day window closes.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Tax</span><span class="odc-chip tag sm">Correspondence</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">3</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v4" data-status="Doing">
+        <div class="rail" data-tone="soon"><span class="r-ring" style="--p:84;--ring-c:var(--pending-text)"><span class="r-count">2</span><span class="r-unit">days</span></span><span class="r-date">19 Sep 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Doing" aria-label="Status: Doing. Click to set Done."><span class="material-icons" aria-hidden="true">radio_button_checked</span></button><h3 class="tc-title">Reconcile the Q3 brokerage statement</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span></div>
+            <p class="tc-note">Two dividend lines still don't match the cash ledger.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Finance</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">1</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v4" data-status="Backlog">
+        <div class="rail"><span class="r-ring" style="--p:22;--ring-c:var(--brand-text)"><span class="r-count">27</span><span class="r-unit">days</span></span><span class="r-date">14 Oct 2026</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Re-key the safe deposit inventory</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind"><div class="tc-meta"><span><span class="material-icons" aria-hidden="true">person</span>Dana Whitfield</span></div><div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Household</span></div></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ A3.5 ============ -->
+  <section class="sec t-ink">
+    <div class="sec-head">
+      <h2><span class="tagn">A3.5</span>Compact</h2>
+      <p>A3.1 at queue density: 78px rail, h4 count, body1 title, meta line dropped to the author only where it earns the line. Five or six tasks per screen. The count survives the shrink better than a date leaf does — three glyphs at h4 still read instantly, where "Tue 9 Sep" at the same size does not.</p>
+    </div>
+    <div class="stack">
+      <article class="tc v1 v5" data-status="Backlog">
+        <div class="rail" data-tone="overdue"><span class="r-count"><span class="r-sign">−</span>8</span><span class="r-unit">days</span><span class="r-date">9 Sep</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Respond to the CP2000 notice</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <p class="tc-note">Draft the written disagreement, attach the 1099-B corrections from the broker, and post it certified before the 30-day window closes.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Tax</span><span class="odc-chip tag sm">Correspondence</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">3</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v1 v5" data-status="Doing">
+        <div class="rail" data-tone="soon"><span class="r-count"><span class="r-sign">+</span>2</span><span class="r-unit">days</span><span class="r-date">19 Sep</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Doing" aria-label="Status: Doing. Click to set Done."><span class="material-icons" aria-hidden="true">radio_button_checked</span></button><h3 class="tc-title">Reconcile the Q3 brokerage statement</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind">
+            <p class="tc-note">Two dividend lines still don't match the cash ledger.</p>
+            <div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Finance</span></div><span class="tc-att"><span class="material-icons" aria-hidden="true">attach_file</span><span class="mono">1</span></span></div>
+          </div>
+        </div>
+      </article>
+      <article class="tc v1 v5" data-status="Backlog">
+        <div class="rail none"><span class="r-dash">—</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Backlog" aria-label="Status: Backlog. Click to set Doing."><span class="material-icons" aria-hidden="true">radio_button_unchecked</span></button><h3 class="tc-title">Re-key the safe deposit inventory</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind"><div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Household</span></div></div></div>
+        </div>
+      </article>
+      <article class="tc v1 v5" data-status="Done">
+        <div class="rail" data-tone="done"><span class="r-count">✓</span><span class="r-unit">done</span><span class="r-date">14 Sep</span></div>
+        <div class="body">
+          <div class="top"><button type="button" class="st" data-s="Done" aria-label="Status: Done. Click to set Archived."><span class="material-icons" aria-hidden="true">task_alt</span></button><h3 class="tc-title">Collect the renewal quote from Meridian</h3><button type="button" class="iconbtn" aria-label="Task actions"><span class="material-icons" aria-hidden="true">more_horiz</span></button></div>
+          <div class="ind"><div class="tc-foot"><div class="tc-chips"><span class="odc-chip tag sm">Insurance</span></div></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============ the scale ============ -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>The whole scale</h2>
+      <p>Every rail state a task can produce, at A3.1's format. The two that need a decision are the long tail (a deadline four months out: 121 days is a number nobody parses — does it collapse to months?) and the completed states, where a countdown is meaningless and the rail has to hand its slot to something else.</p>
+    </div>
+    <div class="scale">
+      <div class="sc"><div class="sc-rail" data-tone="overdue"><span class="r-count mono">−366</span><span class="r-unit">days</span><span class="r-date">17 Sep 2025</span></div><div class="sc-cap">a year overdue<br />4 glyphs — widest case</div></div>
+      <div class="sc"><div class="sc-rail" data-tone="overdue"><span class="r-count mono">−8</span><span class="r-unit">days</span><span class="r-date">9 Sep 2026</span></div><div class="sc-cap">overdue</div></div>
+      <div class="sc"><div class="sc-rail" data-tone="overdue"><span class="r-count mono">−1</span><span class="r-unit">day</span><span class="r-date">16 Sep 2026</span></div><div class="sc-cap">yesterday<br />singular unit</div></div>
+      <div class="sc"><div class="sc-rail" data-tone="soon"><span class="r-word">today</span><span class="r-date">17 Sep 2026</span></div><div class="sc-cap">zero — a "0" would read<br />as no deadline</div></div>
+      <div class="sc"><div class="sc-rail" data-tone="soon"><span class="r-word">tmrw</span><span class="r-date">18 Sep 2026</span></div><div class="sc-cap">or "+1 day"<br />— pick one</div></div>
+      <div class="sc"><div class="sc-rail" data-tone="soon"><span class="r-count mono">+2</span><span class="r-unit">days</span><span class="r-date">19 Sep 2026</span></div><div class="sc-cap">due soon (≤3d)</div></div>
+      <div class="sc"><div class="sc-rail"><span class="r-count mono">+27</span><span class="r-unit">days</span><span class="r-date">14 Oct 2026</span></div><div class="sc-cap">neutral</div></div>
+      <div class="sc"><div class="sc-rail"><span class="r-count mono">+121</span><span class="r-unit">days</span><span class="r-date">16 Jan 2027</span></div><div class="sc-cap">long tail, raw days</div></div>
+      <div class="sc"><div class="sc-rail"><span class="r-count mono">+4</span><span class="r-unit">months</span><span class="r-date">16 Jan 2027</span></div><div class="sc-cap">long tail, collapsed<br />past 90 days</div></div>
+      <div class="sc"><div class="sc-rail" data-tone="done"><span class="r-count">✓</span><span class="r-unit">done</span><span class="r-date">14 Sep 2026</span></div><div class="sc-cap">done — glyph + date</div></div>
+      <div class="sc"><div class="sc-rail" data-tone="done"><span class="r-count mono">−2</span><span class="r-unit">days early</span><span class="r-date">14 Sep 2026</span></div><div class="sc-cap">done — kept as a count<br />against its deadline</div></div>
+      <div class="sc"><div class="sc-rail"><span class="r-dash">—</span></div><div class="sc-cap">no deadline</div></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head">
+      <h2>Reading</h2>
+      <p>A3.5 on A3.1's signed format, with three rules from the scale: TODAY and TMRW as words (a bare "0" reads as absent), days collapsing to months past 90, and a tick with the completion date once a task is Done — the "2 days early" variant is a nice fact but it makes a finished task look like it still has a clock. The ring in A3.4 is the one I'd hold back: it needs a created-to-due window that half the seeded tasks don't really have.</p>
+    </div>
+  </section>
+</div>
+</body>
+</html>

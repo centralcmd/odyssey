@@ -53,7 +53,10 @@
 .cal-tg-allcell { border-right: 1px solid var(--mud-palette-divider); padding: 4px; display: flex; flex-direction: column; gap: 3px; min-width: 0; cursor: pointer; }
 .cal-tg-allcell:last-child { border-right: none; }
 .cal-tg-allchip { appearance: none; border: none; cursor: pointer; text-align: left; border-radius: var(--radius-sm); padding: 2px 7px; height: 20px; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.cal-tg-body-scroll { max-height: 560px; overflow-y: auto; }
+/* Scroll container for the day/week time grid. The shared .odc-scroll utility
+   (components.css) supplies the thin themed scrollbar — its thumb insets with a
+   3px surface-coloured border, so the grid keeps a surface backing here. */
+.cal-tg-body-scroll { max-height: 560px; overflow-y: auto; background: var(--mud-palette-surface); }
 .cal-tg-body { display: grid; position: relative; }
 .cal-tg-gutter { border-right: 1px solid var(--mud-palette-divider); }
 .cal-tg-hour { position: relative; }

@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Journal card A — how files work</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+html{background:var(--mud-palette-background)}
+body{margin:0;padding:40px 32px 96px;background:var(--mud-palette-background);color:var(--mud-palette-text-primary);font:var(--fw-regular) var(--fs-body1)/var(--lh-normal) var(--font-sans)}
+.wrap{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+a{color:var(--brand-text)}a:hover{color:var(--tide-300)}
+.doc-head{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--mud-palette-divider);padding-bottom:20px}
+.doc-head h1{margin:0;font:var(--fw-light) var(--fs-h2)/var(--lh-snug) var(--font-sans);letter-spacing:var(--tracking-tight)}
+.doc-head p{margin:0;max-width:76ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty}
+.opt{display:flex;flex-direction:column;gap:18px}
+.opt-head{display:flex;flex-direction:column;gap:6px}
+.opt-badge{display:inline-flex;align-items:center;gap:8px;font:var(--fw-medium) var(--fs-overline)/1.4 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.opt-badge b{display:grid;place-items:center;padding:0 6px;height:20px;border-radius:var(--radius-sm);background:var(--brand-soft);color:var(--brand-text);font-size:var(--fs-caption)}
+.opt-head h2{margin:0;font:var(--fw-regular) var(--fs-h4)/var(--lh-snug) var(--font-sans)}
+.opt-head p{margin:0;max-width:82ch;color:var(--mud-palette-text-secondary);font-size:var(--fs-body2);text-wrap:pretty}
+.case{font:var(--fw-medium) var(--fs-overline)/1.4 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.ph{display:grid;place-items:center;background:repeating-linear-gradient(45deg,var(--mud-palette-surface) 0 8px,var(--mud-palette-background-gray) 8px 16px);border:1px solid var(--mud-palette-divider);color:var(--mud-palette-text-secondary);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;overflow:hidden}
+.iconbtn{appearance:none;display:grid;place-items:center;width:32px;height:32px;border-radius:var(--radius-sm);border:none;background:none;color:var(--mud-palette-text-secondary);cursor:pointer;transition:background-color var(--duration-fast) var(--ease-standard),color var(--duration-fast) var(--ease-standard)}
+.iconbtn:hover{background:var(--mud-palette-action-default-hover);color:var(--mud-palette-text-primary)}
+.iconbtn:focus-visible{outline:var(--focus-ring-width) solid var(--focus-ring);outline-offset:var(--focus-ring-offset)}
+.iconbtn .material-icons{font-size:20px}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* --- direction A shell (unchanged from the exploration) --- */
+.a-card{display:grid;grid-template-columns:96px minmax(0,1fr);background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);box-shadow:var(--mud-elevation-1);overflow:hidden}
+.a-date{display:flex;flex-direction:column;align-items:center;gap:2px;padding:20px 8px;background:var(--mud-palette-background-gray);border-right:1px solid var(--mud-palette-divider)}
+.a-dow{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.a-day{font:var(--fw-light) var(--fs-h1)/1 var(--font-sans);font-variant-numeric:tabular-nums}
+.a-mon{font:var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans);letter-spacing:var(--tracking-wide);text-transform:uppercase;color:var(--brand-text)}
+.a-body{display:flex;flex-direction:column;gap:14px;padding:18px 20px 16px;min-width:0}
+.a-top{display:flex;align-items:flex-start;gap:12px}
+.a-title{margin:0;flex:1;min-width:0;font:var(--fw-medium) var(--fs-h5)/var(--lh-snug) var(--font-sans);text-wrap:pretty}
+.a-sub{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.a-sub span{display:inline-flex;align-items:center;gap:4px}
+.a-sub .material-icons{font-size:14px}
+.a-text{margin:0;font:var(--fw-regular) var(--fs-body2)/1.65 var(--font-sans);text-wrap:pretty}
+.a-strip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+.a-strip .ph{aspect-ratio:4/3;border-radius:var(--radius-sm)}
+.a-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--mud-palette-divider-light)}
+
+/* F1 — count only */
+.f-count{margin-left:auto;display:inline-flex;align-items:center;gap:5px;color:var(--mud-palette-text-secondary);font-size:var(--fs-caption)}
+.f-count .material-icons{font-size:15px}
+
+/* F2 — file chips in the footer row */
+.f-chip{display:inline-flex;align-items:center;gap:6px;max-width:260px;padding:3px 10px 3px 7px;border-radius:var(--radius-pill);border:1px solid var(--mud-palette-divider);background:var(--mud-palette-background-gray);color:var(--mud-palette-text-primary);font:var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);cursor:pointer;text-align:left}
+.f-chip:hover{border-color:var(--mud-palette-lines-inputs);background:var(--mud-palette-action-default-hover)}
+.f-chip:focus-visible{outline:var(--focus-ring-width) solid var(--focus-ring);outline-offset:var(--focus-ring-offset)}
+.f-chip .material-icons{font-size:14px;flex:none}
+.f-chip .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.f-chip .sz{color:var(--mud-palette-text-secondary);font-family:var(--font-mono);flex:none}
+.f-rest{appearance:none;background:none;border:none;padding:3px 4px;color:var(--brand-text);font:var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans);cursor:pointer}
+
+/* F3 — named rows in their own labelled block */
+.f-block{display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--mud-palette-divider-light)}
+.f-lab{display:flex;align-items:center;gap:6px;font:var(--fw-medium) var(--fs-overline)/1.4 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.f-lab .material-icons{font-size:14px}
+.f-rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:6px}
+.f-row{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-sm);background:var(--mud-palette-background-gray);min-width:0}
+.f-row>.material-icons{font-size:17px;flex:none}
+.f-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-body2)}
+.f-row .sz{flex:none;color:var(--mud-palette-text-secondary);font-family:var(--font-mono);font-size:var(--fs-caption)}
+.f-row .iconbtn{width:26px;height:26px;flex:none}
+.f-row .iconbtn .material-icons{font-size:17px}
+.f-more{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border:1px dashed var(--mud-palette-divider);border-radius:var(--radius-sm);background:none;color:var(--brand-text);font:var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans);cursor:pointer}
+
+/* F4 — one media strip: photos and files as sibling tiles */
+.f-media{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.f-media .ph{aspect-ratio:4/3;border-radius:var(--radius-sm)}
+.f-tile{display:flex;flex-direction:column;justify-content:space-between;gap:8px;aspect-ratio:4/3;padding:10px;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-sm);background:var(--mud-palette-background-gray);cursor:pointer;text-align:left}
+.f-tile:hover{border-color:var(--mud-palette-lines-inputs)}
+.f-tile:focus-visible{outline:var(--focus-ring-width) solid var(--focus-ring);outline-offset:var(--focus-ring-offset)}
+.f-tile .fk{width:30px;height:30px}
+.f-tile .fk .material-icons{font-size:19px}
+.f-tile .nm{font:var(--fw-regular) var(--fs-caption)/1.35 var(--font-sans);color:var(--mud-palette-text-primary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all}
+.f-tile .sz{font:var(--fw-regular) 10px/1 var(--font-mono);color:var(--mud-palette-text-secondary)}
+.fk{display:grid;place-items:center;width:26px;height:26px;border-radius:var(--radius-sm);flex:none}
+.fk .material-icons{font-size:16px}
+.f-chip .odc-chip.sm,.f-row .odc-chip.sm{flex:none}
+@media (max-width:840px){.a-card{grid-template-columns:72px minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="doc-head">
+<h1>Direction A — how attachments work</h1>
+<p>A is always open, so the expanded <span class="mono">FilesTable</span> the old card revealed has nowhere to live. Four ways to carry files instead, each shown with two files and with nine. Photos stay in the strip above in every case; each file's kind glyph, colour and label come from the shared account-file registry (<span class="mono">accountFileTypes</span>) exactly as <span class="mono">FilesTable</span> resolves them — the kinds here are Statement, Contract, Tax, Documentation and Other.</p>
+</header>
+
+<!-- F1 -->
+<section class="opt">
+<div class="opt-head">
+<div class="opt-badge"><b>F1</b> Count only</div>
+<h2>A count in the footer; files open from the ⋯ menu</h2>
+<p>What the card does today. Cheapest vertically and identical at 2 or 90 files, but a filename is never visible on the list — you cannot tell an invoice from a photo of an invoice without opening something.</p>
+</div>
+<div class="stack">
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span><span><span class="material-icons">place</span>San Francisco, CA</span></div>
+      <p class="a-text">Keys handed over at 3pm. Wired the balance from the joint account this morning; the confirmation is attached.</p>
+      <div class="a-foot">
+        <span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Property</span>
+        <span class="f-count"><span class="material-icons">attach_file</span>2 files</span>
+      </div>
+    </div>
+  </article>
+</div>
+</section>
+
+<!-- F2 -->
+<section class="opt">
+<div class="opt-head">
+<div class="opt-badge"><b>F2</b> File chips</div>
+<h2>Files as named chips, in the same row as the tags</h2>
+<p>Filenames become part of the footer's chip language: kind glyph, name, size, click to open. Adds no new block and no vertical cost for the common one-or-two-file entry; past three the row overflows into a “+6 more” that opens the full list, and long filenames truncate.</p>
+</div>
+<div class="stack">
+  <div class="case">2 files</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span><span><span class="material-icons">place</span>San Francisco, CA</span></div>
+      <p class="a-text">Keys handed over at 3pm. Wired the balance from the joint account this morning; the confirmation is attached.</p>
+      <div class="a-strip"><span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span></div>
+      <div class="a-foot">
+        <span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span>
+        <button class="f-chip" type="button"><span class="material-icons" style="color:oklch(0.79 0.115 188);font-size:14px" aria-hidden="true">description</span><span class="nm">wire-confirmation.pdf</span><span class="odc-chip sm" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)">Statement</span><span class="sz">240 KB</span></button>
+        <button class="f-chip" type="button"><span class="material-icons" style="color:oklch(0.72 0.16 295);font-size:14px" aria-hidden="true">history_edu</span><span class="nm">closing-statement.pdf</span><span class="odc-chip sm" style="background:oklch(0.72 0.16 295 / 0.16);color:oklch(0.72 0.16 295)">Contract</span><span class="sz">1.1 MB</span></button>
+      </div>
+    </div>
+  </article>
+  <div class="case">9 files</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Tue</span><span class="a-day">19</span><span class="a-mon">May 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Filed the 2025 return</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+      <p class="a-text">Submitted through the portal with the two rental schedules. Refund expected in six weeks.</p>
+      <div class="a-foot">
+        <span class="odc-chip tag"><span class="material-icons">label</span>Tax</span>
+        <button class="f-chip" type="button"><span class="material-icons" style="color:oklch(0.75 0.16 330);font-size:14px" aria-hidden="true">request_quote</span><span class="nm">return-2025-final.pdf</span><span class="odc-chip sm" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)">Tax</span><span class="sz">3.4 MB</span></button>
+        <button class="f-chip" type="button"><span class="material-icons" style="color:oklch(0.79 0.115 188);font-size:14px" aria-hidden="true">description</span><span class="nm">rental-schedule-a.xlsx</span><span class="odc-chip sm" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)">Statement</span><span class="sz">88 KB</span></button>
+        <button class="f-rest" type="button">+7 more</button>
+      </div>
+    </div>
+  </article>
+</div>
+</section>
+
+<!-- F3 -->
+<section class="opt">
+<div class="opt-head">
+<div class="opt-badge"><b>F3</b> Attachment block</div>
+<h2>A labelled block of named rows below the footer</h2>
+<p>The closest relative of the old <span class="mono">FilesTable</span>: every file named, sized and individually downloadable, in a two-up grid that wraps. Unambiguous and scannable, at the cost of real height — nine files means a five-row block, so it caps at four with a “show all” row.</p>
+</div>
+<div class="stack">
+  <div class="case">2 files</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span><span><span class="material-icons">place</span>San Francisco, CA</span></div>
+      <p class="a-text">Keys handed over at 3pm. Wired the balance from the joint account this morning; the confirmation is attached.</p>
+      <div class="a-strip"><span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span></div>
+      <div class="f-block">
+        <span class="f-lab"><span class="material-icons">attach_file</span>Attachments · 2</span>
+        <div class="f-rows">
+          <div class="f-row"><span class="fk" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" style="color:oklch(0.79 0.115 188);font-size:16px" aria-hidden="true">description</span></span><span class="nm">wire-confirmation.pdf</span><span class="odc-chip sm" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)">Statement</span><span class="sz">240 KB</span><button class="iconbtn" type="button" aria-label="Download wire-confirmation.pdf"><span class="material-icons">download</span></button></div>
+          <div class="f-row"><span class="fk" style="background:oklch(0.72 0.16 295 / 0.16);color:oklch(0.72 0.16 295)"><span class="material-icons" style="color:oklch(0.72 0.16 295);font-size:16px" aria-hidden="true">history_edu</span></span><span class="nm">closing-statement.pdf</span><span class="odc-chip sm" style="background:oklch(0.72 0.16 295 / 0.16);color:oklch(0.72 0.16 295)">Contract</span><span class="sz">1.1 MB</span><button class="iconbtn" type="button" aria-label="Download closing-statement.pdf"><span class="material-icons">download</span></button></div>
+        </div>
+      </div>
+      <div class="a-foot">
+        <span class="odc-chip info"><span class="material-icons">domain</span>ACME Co Payroll<span class="odc-chip-sub">Organization</span></span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Property</span>
+      </div>
+    </div>
+  </article>
+  <div class="case">9 files — capped at four</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Tue</span><span class="a-day">19</span><span class="a-mon">May 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Filed the 2025 return</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+      <p class="a-text">Submitted through the portal with the two rental schedules. Refund expected in six weeks.</p>
+      <div class="f-block">
+        <span class="f-lab"><span class="material-icons">attach_file</span>Attachments · 9</span>
+        <div class="f-rows">
+          <div class="f-row"><span class="fk" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" style="color:oklch(0.75 0.16 330);font-size:16px" aria-hidden="true">request_quote</span></span><span class="nm">return-2025-final.pdf</span><span class="odc-chip sm" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)">Tax</span><span class="sz">3.4 MB</span><button class="iconbtn" type="button" aria-label="Download return-2025-final.pdf"><span class="material-icons">download</span></button></div>
+          <div class="f-row"><span class="fk" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" style="color:oklch(0.79 0.115 188);font-size:16px" aria-hidden="true">description</span></span><span class="nm">rental-schedule-a.xlsx</span><span class="odc-chip sm" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)">Statement</span><span class="sz">88 KB</span><button class="iconbtn" type="button" aria-label="Download rental-schedule-a.xlsx"><span class="material-icons">download</span></button></div>
+          <div class="f-row"><span class="fk" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" style="color:oklch(0.79 0.115 188);font-size:16px" aria-hidden="true">description</span></span><span class="nm">rental-schedule-b.xlsx</span><span class="odc-chip sm" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)">Statement</span><span class="sz">91 KB</span><button class="iconbtn" type="button" aria-label="Download rental-schedule-b.xlsx"><span class="material-icons">download</span></button></div>
+          <div class="f-row"><span class="fk" style="background:oklch(0.74 0.02 250 / 0.16);color:oklch(0.74 0.02 250)"><span class="material-icons" style="color:oklch(0.74 0.02 250);font-size:16px" aria-hidden="true">insert_drive_file</span></span><span class="nm">portal-receipt.pdf</span><span class="odc-chip sm" style="background:oklch(0.74 0.02 250 / 0.16);color:oklch(0.74 0.02 250)">Other</span><span class="sz">62 KB</span><button class="iconbtn" type="button" aria-label="Download portal-receipt.pdf"><span class="material-icons">download</span></button></div>
+          <button class="f-more" type="button"><span class="material-icons" style="font-size:15px">expand_more</span>Show all 9 files</button>
+        </div>
+      </div>
+      <div class="a-foot"><span class="odc-chip tag"><span class="material-icons">label</span>Tax</span></div>
+    </div>
+  </article>
+</div>
+</section>
+
+<!-- F4 -->
+<section class="opt">
+<div class="opt-head">
+<div class="opt-badge"><b>F4</b> One media strip</div>
+<h2>Photos and files in a single strip of tiles</h2>
+<p>Drops the photo/file distinction in the card: one “what's attached here” strip where a photo is a thumbnail and a file is a named tile. Visually the strongest, and it is how the entry's evidence actually feels — but a tile costs far more width per file than a row, so a nine-file entry wraps to three rows of tiles, and it reads oddest when there are no photos at all.</p>
+</div>
+<div class="stack">
+  <div class="case">4 photos + 2 files</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Sun</span><span class="a-day">28</span><span class="a-mon">Jun 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Closed on the Sunset Ave flat</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span><span><span class="material-icons">place</span>San Francisco, CA</span></div>
+      <p class="a-text">Keys handed over at 3pm. Wired the balance from the joint account this morning; the confirmation is attached.</p>
+      <div class="f-media">
+        <span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span><span class="ph">photo</span>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" style="color:oklch(0.79 0.115 188);font-size:16px" aria-hidden="true">description</span></span><span class="nm">wire-confirmation.pdf</span><span class="sz">Statement · 240 KB</span></button>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.72 0.16 295 / 0.16);color:oklch(0.72 0.16 295)"><span class="material-icons" style="color:oklch(0.72 0.16 295);font-size:16px" aria-hidden="true">history_edu</span></span><span class="nm">closing-statement.pdf</span><span class="sz">Contract · 1.1 MB</span></button>
+      </div>
+      <div class="a-foot">
+        <span class="odc-chip info"><span class="material-icons">domain</span>ACME Co Payroll<span class="odc-chip-sub">Organization</span></span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Milestone</span>
+        <span class="odc-chip tag"><span class="material-icons">label</span>Property</span>
+      </div>
+    </div>
+  </article>
+  <div class="case">No photos, 9 files</div>
+  <article class="a-card">
+    <div class="a-date"><span class="a-dow">Tue</span><span class="a-day">19</span><span class="a-mon">May 26</span></div>
+    <div class="a-body">
+      <div class="a-top"><h3 class="a-title">Filed the 2025 return</h3><button class="iconbtn" type="button" aria-label="Entry actions"><span class="material-icons">more_vert</span></button></div>
+      <div class="a-sub"><span><span class="material-icons">person</span>Jane Sato</span></div>
+      <p class="a-text">Submitted through the portal with the two rental schedules. Refund expected in six weeks.</p>
+      <div class="f-media">
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" style="color:oklch(0.75 0.16 330);font-size:16px" aria-hidden="true">request_quote</span></span><span class="nm">return-2025-final.pdf</span><span class="sz">Tax · 3.4 MB</span></button>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" style="color:oklch(0.79 0.115 188);font-size:16px" aria-hidden="true">description</span></span><span class="nm">rental-schedule-a.xlsx</span><span class="sz">Statement · 88 KB</span></button>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.79 0.115 188 / 0.16);color:oklch(0.79 0.115 188)"><span class="material-icons" style="color:oklch(0.79 0.115 188);font-size:16px" aria-hidden="true">description</span></span><span class="nm">rental-schedule-b.xlsx</span><span class="sz">Statement · 91 KB</span></button>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.74 0.02 250 / 0.16);color:oklch(0.74 0.02 250)"><span class="material-icons" style="color:oklch(0.74 0.02 250);font-size:16px" aria-hidden="true">insert_drive_file</span></span><span class="nm">portal-receipt.pdf</span><span class="sz">Other · 62 KB</span></button>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" style="color:oklch(0.75 0.16 330);font-size:16px" aria-hidden="true">request_quote</span></span><span class="nm">1099-int-summary.pdf</span><span class="sz">Tax · 44 KB</span></button>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" style="color:oklch(0.75 0.16 330);font-size:16px" aria-hidden="true">request_quote</span></span><span class="nm">w2-2025.pdf</span><span class="sz">Tax · 39 KB</span></button>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.74 0.02 250 / 0.16);color:oklch(0.74 0.02 250)"><span class="material-icons" style="color:oklch(0.74 0.02 250);font-size:16px" aria-hidden="true">insert_drive_file</span></span><span class="nm">deductions.xlsx</span><span class="sz">Other · 120 KB</span></button>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.77 0.14 110 / 0.16);color:oklch(0.77 0.14 110)"><span class="material-icons" style="color:oklch(0.77 0.14 110);font-size:16px" aria-hidden="true">menu_book</span></span><span class="nm">accountant-notes.docx</span><span class="sz">Documentation · 28 KB</span></button>
+        <button class="f-tile" type="button"><span class="fk" style="background:oklch(0.75 0.16 330 / 0.16);color:oklch(0.75 0.16 330)"><span class="material-icons" style="color:oklch(0.75 0.16 330);font-size:16px" aria-hidden="true">request_quote</span></span><span class="nm">prior-year-ref.pdf</span><span class="sz">Tax · 2.2 MB</span></button>
+      </div>
+      <div class="a-foot"><span class="odc-chip tag"><span class="material-icons">label</span>Tax</span></div>
+    </div>
+  </article>
+</div>
+</section>
+</div>
+</body>
+</html>
