@@ -92,6 +92,23 @@ public class JournalEntryIcsApiTests
         Assert.Matches(@"^odyssey-journal-entries-filtered-\d{8}-\d{6}Z\.ics$", fileName!);
     }
 
+    // The attachment filter narrows the set like any other, so the filename has to say so. Caught in
+    // review: the filter was added to the query model without extending HasAnyFilter, which would have
+    // handed the user a narrowed export named as the full one.
+    [Theory]
+    [InlineData("hasPhotos=true")]
+    [InlineData("hasFiles=true")]
+    [InlineData("hasPhotos=false")]
+    public async Task ExportFilteredByAttachmentPresence_FileName_HasFilteredSegment(string filter)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await CreateAsync(client, NewEntry("A"));
+
+        var fileName = await FileNameOf(await client.GetAsync($"{IcsPath}?{filter}"));
+        Assert.Matches(@"^odyssey-journal-entries-filtered-\d{8}-\d{6}Z\.ics$", fileName!);
+    }
+
     [Fact]
     public async Task Export_WithoutReadClaim_ReturnsForbidden()
     {

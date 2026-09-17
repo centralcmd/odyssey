@@ -216,12 +216,18 @@ public class JournalEntryIcsService
         await IcsChunkSerializer.WriteAsync(output, tail, cancellationToken);
     }
 
+    // Every filter JournalEntriesQueryParams carries has to be listed here, because this decides the
+    // "-filtered" segment in the exported filename — a set narrowed by a filter this misses would be
+    // handed to the user named as the full export. Adding a filter to the query model means adding it
+    // here too; ExportFiltered_FileName_* pins each one.
     private static bool HasAnyFilter(JournalEntriesQueryParams query) =>
         !string.IsNullOrWhiteSpace(query.Search)
         || query.TagIds is { Length: > 0 }
         || query.ContactIds is { Length: > 0 }
         || query.From is not null
         || query.To is not null
+        || query.HasPhotos is not null
+        || query.HasFiles is not null
         || query.Status is not null;
 
     private async Task<string> SerializeAsync(
