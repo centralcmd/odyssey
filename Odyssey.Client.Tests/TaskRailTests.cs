@@ -65,6 +65,25 @@ public class TaskRailTests
         Assert.DoesNotContain("-", Rail(-5).Sign!, StringComparison.Ordinal);
     }
 
+    // The rollover is on the ABSOLUTE distance, so it has to be pinned on the overdue side too — a
+    // scale that rolled only forwards would print "−120 days" beside "+4 months".
+    [Theory]
+    [InlineData(90, "days")]
+    [InlineData(91, "months")]
+    [InlineData(-90, "days")]
+    [InlineData(-91, "months")]
+    public void The_rollover_boundary_is_ninety_days_in_both_directions(int days, string unit)
+        => Assert.Equal(unit, Rail(days).Unit);
+
+    // 135 days is exactly 4.5 months. Banker's rounding would give 4 there and 6 at 165 (5.5); away
+    // from zero gives 5 and 6, which is what keeps the count rising as the deadline recedes.
+    [Theory]
+    [InlineData(135, 5)]
+    [InlineData(165, 6)]
+    [InlineData(-135, 5)]
+    public void A_half_month_rounds_away_from_zero(int days, int months)
+        => Assert.Equal(months, Rail(days).Count);
+
     [Theory]
     [InlineData(91, "+", 3, "Due in 3 months")]
     [InlineData(121, "+", 4, "Due in 4 months")]

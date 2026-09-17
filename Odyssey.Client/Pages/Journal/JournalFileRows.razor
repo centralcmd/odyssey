@@ -14,6 +14,10 @@
     upload date, ⋯ menu), so a kind reads identically across surfaces. Never paginated, by decision.
 
     The kind glyph is decorative: the kind is also stated as a chip beside it.
+
+    Removing a file destroys the very menu that had focus. The HOST returns focus, not this component:
+    removing the last row unmounts this component altogether, so the thing that lands focus afterwards
+    has to be the one still mounted. MenuId is what lets it name a row.
 *@
 
 <div class="jec-files" id="@Id">
@@ -26,10 +30,14 @@
                 <span class="material-icons" aria-hidden="true">@meta.Icon</span>
             </span>
             <span class="jec-file-name" title="@f.FileName">@f.FileName</span>
-            <OdsChip Class="jec-file-kind">@kind</OdsChip>
+            @* The kind's own colour on the chip as well as the well, the way the design system's file
+               row carries it — the kind then reads twice, in the glyph and in the label. *@
+            <OdsChip Bg="@meta.Soft" Fg="@meta.Color">@kind</OdsChip>
             <span class="jec-file-size mono">@FormatSize(f.SizeBytes)</span>
-            <span class="jec-file-up">@f.UploadedAtUtc.ToLocalTime().ToString("MMM d, yyyy")</span>
-            <span class="je-cardmenu">
+            @* The size carries its unit, and the kind its own word; the date is the one bare value, so
+               it says what it is for a reader who cannot see the column it sits in. *@
+            <span class="jec-file-up"><span class="sr-only">Uploaded </span>@f.UploadedAtUtc.ToLocalTime().ToString("MMM d, yyyy")</span>
+            <span class="je-cardmenu" id="@MenuId(Id, f.Id)">
                 <OdsMenu Items="BuildMenu(f)" AriaLabel="@($"Actions for file {f.FileName}")" />
             </span>
         </div>
@@ -47,6 +55,13 @@
 
     /// <summary>The list's DOM id — the card's disclosure button points at it with aria-controls.</summary>
     [Parameter] public string? Id { get; set; }
+
+    /// <summary>
+    /// The DOM id of one row's ⋯ wrapper. Static so the host can name a row's menu as a focus target
+    /// without this component having to hand its ids out — a removal destroys the menu that had focus,
+    /// and the host is what is still mounted afterwards to put focus back (WCAG 2.4.3).
+    /// </summary>
+    public static string MenuId(string? listId, Guid fileId) => $"{listId ?? "jec-files"}-menu-{fileId}";
 
     private static string KindLabel(string contentType) => contentType switch
     {

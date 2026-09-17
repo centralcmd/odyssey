@@ -1,7 +1,8 @@
-@using System.Globalization
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
 @using Odyssey.Dtos.Journal
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 @*
     JournalEntryCard — one journal entry as the purpose-built entry card.
@@ -15,7 +16,7 @@
     opens rather than for every card on the page.
 *@
 
-<article id="@Id" class="jec-card @(Archived ? "archived" : "") @(Highlight ? "highlight" : "")">
+<article id="@Id" class="jec-card @(Archived ? "archived" : "")">
     @* The date leaf, in the reader's local zone. EntryDate is stored date-only in UTC, so two entries
        on one date simply repeat it — the leaf anchors, it does not group. *@
     <div class="jec-leaf">
@@ -115,89 +116,9 @@
             else
             {
                 <JournalFileRows Id="@FilesListId" Attachments="Attachments"
-                                 CanDownload="CanReadFiles" OnRemove="OnRemoveFile" />
+                                 CanDownload="CanReadFiles"
+                                 OnRemove="@(OnRemoveFile is null ? null : EventCallback.Factory.Create<Guid>(this, RemoveFileAsync))" />
             }
         }
     </div>
 </article>
-
-@code {
-    /// <summary>A contact link as the card renders it. A null <c>Name</c> is an id the caller cannot
-    /// resolve — the chip keeps its place and states "Unavailable" rather than leaking a GUID.</summary>
-    public sealed record ContactLink(Guid Id, string? Name, string? Type, bool Archived);
-
-    [Parameter, EditorRequired] public JournalEntrySummary Entry { get; set; } = default!;
-
-    /// <summary>The card's DOM id — the deep-link scroll target.</summary>
-    [Parameter] public string? Id { get; set; }
-
-    [Parameter] public IReadOnlyList<ContactLink> Contacts { get; set; } = [];
-
-    [Parameter] public IReadOnlyList<string> Tags { get; set; } = [];
-
-    [Parameter] public IReadOnlyList<JournalPhotoGallery.Photo> Photos { get; set; } = [];
-
-    /// <summary>Hydrated attachment metadata, or <c>null</c> while the host is still fetching it.</summary>
-    [Parameter] public IReadOnlyList<FileMetadataResponse>? Attachments { get; set; }
-
-    [Parameter] public IReadOnlyList<OdsMenuItem> Actions { get; set; } = [];
-
-    [Parameter] public bool Highlight { get; set; }
-
-    [Parameter] public bool CanReadFiles { get; set; }
-
-    /// <summary>Raised the first time the attachment disclosure opens, so the host hydrates then.</summary>
-    [Parameter] public EventCallback OnFilesOpened { get; set; }
-
-    [Parameter] public EventCallback<JournalPhotoGallery.Photo> OnOpenPhoto { get; set; }
-
-    /// <summary>Detach a file from the entry. Unset = no Remove item on the file menus.</summary>
-    [Parameter] public EventCallback<Guid>? OnRemoveFile { get; set; }
-
-    private bool _filesOpen;
-    private List<string> _tagNames = [];
-    private string _leafDow = "";
-    private string _leafDay = "—";
-    private string _leafMon = "";
-    private string _leafAccessible = "";
-
-    private bool Archived => Entry.Archived is not null;
-
-    private string FilesListId => $"jec-files-{Entry.JournalEntryId}";
-
-    // Only when the entry has actually been revised — a create writes both stamps, so comparing them is
-    // what keeps "edited" off every untouched entry.
-    private bool Edited => Entry.UpdatedAt > Entry.CreatedAt;
-
-    // Named only when the editor is someone other than the author; the stable ids decide, the resolved
-    // name displays.
-    private string EditedBy =>
-        !string.IsNullOrWhiteSpace(Entry.UpdatedByUserId)
-        && Entry.UpdatedByUserId != Entry.CreatedByUserId
-        && !string.IsNullOrWhiteSpace(Entry.UpdatedByName)
-            ? $" by {Entry.UpdatedByName}"
-            : string.Empty;
-
-    protected override void OnParametersSet()
-    {
-        _tagNames = [.. Tags];
-
-        var d = Entry.EntryDate.ToLocalTime();
-        _leafDow = d.ToString("ddd", CultureInfo.CurrentCulture);
-        // The day ALONE. "d" on its own is .NET's standard short-date pattern ("5/25/2026"), which
-        // overflows the rail; the day number needs the single custom specifier escaped.
-        _leafDay = d.Day.ToString(CultureInfo.CurrentCulture);
-        _leafMon = d.ToString("MMM yy", CultureInfo.CurrentCulture);
-        // The leaf's three lines are one date; read as one rather than as three fragments.
-        _leafAccessible = d.ToString("dddd, MMMM d, yyyy", CultureInfo.CurrentCulture);
-    }
-
-    private async Task ToggleFiles()
-    {
-        _filesOpen = !_filesOpen;
-        if (_filesOpen && Attachments is null)
-        {
-            await OnFilesOpened.InvokeAsync();
-        }
-    }
-}

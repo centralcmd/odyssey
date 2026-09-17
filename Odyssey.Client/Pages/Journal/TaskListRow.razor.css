@@ -41,7 +41,12 @@
     font: var(--fw-medium) var(--fs-h6)/1.1 var(--font-sans);
     letter-spacing: var(--tracking-wide); text-transform: uppercase;
 }
-.tkc-dash { font: var(--fw-light) var(--fs-h3)/1 var(--font-sans); color: var(--mud-palette-text-disabled); }
+/* The design system colours this --mud-palette-text-disabled. Held at --mud-palette-text-secondary
+   instead: the em dash is the rail's whole content on an undated task — meaningful text, not an inert
+   disabled control — and text-disabled lands at 2.4:1 against the rail in the light theme, under the
+   3:1 large-text minimum (WCAG 1.4.3). text-secondary reads 6.9:1 light / 7.8:1 dark, and is already
+   the rail's own secondary ink (.tkc-sign, .tkc-unit). */
+.tkc-dash { font: var(--fw-light) var(--fs-h3)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .tkc-tick.material-icons { font-size: 26px; line-height: 1; }
 /* The control keeps a fixed slot below the hairline, so it can't drift with card height the way a
    justified rail's would. */

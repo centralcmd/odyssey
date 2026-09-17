@@ -384,6 +384,166 @@ public class JournalEntriesApiTests
         Assert.Equal(longContent, results!.Single(e => e.JournalEntryId == longId).Content);
     }
 
+    // ── The list projection's own fields (the entry card renders from it, never from a detail fetch) ──
+
+    // The photo links are resolved for the WHOLE PAGE in one batched lookup, so the case that matters
+    // is more than one entry — and two entries pointing at the same file, which is what makes the
+    // batch's de-duplication load-bearing rather than incidental.
+    [Fact]
+    public async Task List_Summary_CarriesPhotoLinks_ForEveryEntryOnThePage()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var shared = await SeedFileAsync(factory, "shared.jpg", "image/jpeg");
+        var own = await SeedFileAsync(factory, "own.jpg", "image/jpeg");
+        using var client = factory.CreateClient();
+
+        var first = await CreateAsync(client, NewEntry(title: "First", photoFileIds: [shared]));
+        var second = await CreateAsync(client, NewEntry(title: "Second", photoFileIds: [shared, own]));
+        var none = await CreateAsync(client, NewEntry(title: "None"));
+
+        var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
+
+        Assert.Equal([shared], results!.Single(e => e.JournalEntryId == first).Photos.Select(p => p.FileId));
+        Assert.Equal([shared, own], results!.Single(e => e.JournalEntryId == second).Photos.Select(p => p.FileId));
+        Assert.Empty(results!.Single(e => e.JournalEntryId == none).Photos);
+    }
+
+    // Position, not insertion order, is the gallery's order — and the list has to agree with the detail
+    // read about it, or the lightbox opens on a different photo than the tile that was clicked.
+    [Fact]
+    public async Task List_Summary_PhotoLinks_AreOrderedByPosition()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var a = await SeedFileAsync(factory, "a.jpg", "image/jpeg");
+        var b = await SeedFileAsync(factory, "b.jpg", "image/jpeg");
+        var c = await SeedFileAsync(factory, "c.jpg", "image/jpeg");
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, NewEntry(photoFileIds: [c, a, b]));
+
+        var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
+        var listed = results!.Single(e => e.JournalEntryId == id).Photos;
+
+        Assert.Equal([0, 1, 2], listed.Select(p => p.Position));
+        Assert.Equal([c, a, b], listed.Select(p => p.FileId));
+
+        var detail = await client.GetFromJsonAsync<ExistingJournalEntry>($"{Path}/{id}");
+        Assert.Equal(detail!.Photos.Select(p => p.FileId), listed.Select(p => p.FileId));
+    }
+
+    // A link whose library Photo no longer resolves is DROPPED rather than returned with an empty file
+    // id — the same rule the detail read follows, now on the list path too. The entry itself still
+    // reads; only the unresolvable link goes.
+    [Fact]
+    public async Task List_Summary_DropsAPhotoLinkWhoseLibraryPhotoIsGone()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var kept = await SeedFileAsync(factory, "kept.jpg", "image/jpeg");
+        var lost = await SeedFileAsync(factory, "lost.jpg", "image/jpeg");
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, NewEntry(photoFileIds: [kept, lost]));
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var photo = await context.Photos.FirstAsync(p => p.FileId == lost);
+            context.Photos.Remove(photo);
+            await context.SaveChangesAsync();
+        }
+
+        var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
+        var row = results!.Single(e => e.JournalEntryId == id);
+
+        Assert.Equal([kept], row.Photos.Select(p => p.FileId));
+        Assert.DoesNotContain(row.Photos, p => p.FileId == Guid.Empty);
+    }
+
+    // The card draws its contact chips from the list row, so the links have to be on it — and an id
+    // whose contact is gone stays, because dropping it would hide a link the caller can still remove.
+    [Fact]
+    public async Task List_Summary_CarriesContactIds_IncludingADanglingOne()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var kept = await SeedContactAsync(factory, "Kept Ltd");
+        var deleted = await SeedContactAsync(factory, "Since-deleted Ltd");
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, NewEntry(contactIds: [kept, deleted]));
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var contact = await context.Contacts.FirstAsync(c => c.ContactId == deleted);
+            context.Contacts.Remove(contact);
+            await context.SaveChangesAsync();
+        }
+
+        var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
+        var row = results!.Single(e => e.JournalEntryId == id);
+
+        Assert.Contains(kept, row.ContactIds);
+        Assert.Contains(deleted, row.ContactIds);
+    }
+
+    // The card shows an "edited" line, and shows it only on an entry that has actually been revised —
+    // which is a comparison of the two stamps, so both have to arrive on the row.
+    [Fact]
+    public async Task List_Summary_CarriesBothStamps_EqualUntilTheEntryIsEdited()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, NewEntry(title: "Fresh"));
+
+        var created = (await client.GetPagedItemsAsync<JournalEntrySummary>(Path))!
+            .Single(e => e.JournalEntryId == id);
+        Assert.Equal(created.CreatedAt, created.UpdatedAt);
+
+        var put = await client.PutAsJsonAsync($"{Path}/{id}", new UpdateJournalEntry
+        {
+            Title = "Revised",
+            Content = "Dear journal, today was a day.",
+            EntryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        put.EnsureSuccessStatusCode();
+
+        var edited = (await client.GetPagedItemsAsync<JournalEntrySummary>(Path))!
+            .Single(e => e.JournalEntryId == id);
+        Assert.True(edited.UpdatedAt > edited.CreatedAt);
+    }
+
+    // UpdatedByName goes through NameForOptional, which differs from NameForAuthor exactly where it
+    // matters here: an entry nobody has edited has no editor, and that reads as null rather than as
+    // "Unknown user" — otherwise every untouched entry would claim an anonymous editor.
+    [Fact]
+    public async Task List_Summary_EditorName_IsNullUntilEdited_ThenResolves()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        await factory.SeedActorUserAsync(displayName: "Ada L.");
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, NewEntry(title: "Fresh"));
+
+        var created = (await client.GetPagedItemsAsync<JournalEntrySummary>(Path))!
+            .Single(e => e.JournalEntryId == id);
+        Assert.Null(created.UpdatedByUserId);
+        Assert.Null(created.UpdatedByName);
+
+        var put = await client.PutAsJsonAsync($"{Path}/{id}", new UpdateJournalEntry
+        {
+            Title = "Revised",
+            Content = "Dear journal, today was a day.",
+            EntryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        put.EnsureSuccessStatusCode();
+
+        var edited = (await client.GetPagedItemsAsync<JournalEntrySummary>(Path))!
+            .Single(e => e.JournalEntryId == id);
+        Assert.NotNull(edited.UpdatedByUserId);
+        Assert.Equal("Ada L.", edited.UpdatedByName);
+    }
+
     // Author-name attribution (#316): the controller resolves CreatedByUserId → the profile's display
     // name via the claim-aware resolver, on both the list and the detail read. A journal reader without
     // users.read still gets the display name (it is not the email), demonstrating the minimisation fix.

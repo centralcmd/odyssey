@@ -11,8 +11,8 @@
     overflow: hidden;
 }
 .jec-card.archived { opacity: 0.72; }
-/* Deep-link target — the same ring the record cards use for a highlighted row. */
-.jec-card.highlight { border-color: var(--brand-text); box-shadow: 0 0 0 2px var(--brand-soft); }
+/* The design system also defines a `.highlight` deep-link ring here. It is not carried: /journal has
+   no deep link to an entry, so the state has nothing to raise it — it lands with the link, not before. */
 
 /* The date rail — the entry's anchor, in place of the record card's icon well. padding-top puts the
    weekday on the title's first line (body padding 22px + half the title's line box, less half the

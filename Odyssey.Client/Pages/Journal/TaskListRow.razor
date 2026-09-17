@@ -34,7 +34,7 @@
         {
             <span class="tkc-unit" aria-hidden="true">@unit</span>
         }
-        <span class="tkc-st" @onclick:stopPropagation="true">
+        <span class="tkc-st">
             <button type="button" class="tk-status-btn" data-s="@_status" disabled="@(_status == JournalTaskStatus.Archived)"
                     aria-label="@StatusButtonLabel"
                     @onclick="@(() => { if (_status != JournalTaskStatus.Archived) OnStatus.InvokeAsync(NextStatus); })">
@@ -46,7 +46,7 @@
     <div class="tkc-body">
         <div class="tkc-top">
             <h3 class="tkc-title">@Task.Title</h3>
-            <div class="je-cardmenu" @onclick:stopPropagation="true">
+            <div class="je-cardmenu">
                 <OdsMenu Items="BuildActions()" AriaLabel="@($"Actions for {Task.Title}")" />
             </div>
         </div>
