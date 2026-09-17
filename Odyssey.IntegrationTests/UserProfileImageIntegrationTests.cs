@@ -130,12 +130,28 @@ public class UserProfileImageIntegrationTests(MariaDbFixture fixture)
     // ── AC 17, 18: two races, two mechanisms ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// AC 17 — the <b>unique-index</b> path. Two concurrent first uploads for a user with no picture
-    /// leave exactly one row pair, and the loser gets the curated <c>409</c> rather than a raw
-    /// duplicate-key error surfacing as a <c>500</c>.
+    /// AC 17 — the <b>unique-index</b> path. A first upload whose "does this user have a picture?"
+    /// read returned <i>nothing</i>, but which another request beat to the insert, leaves exactly one
+    /// row pair and gets the curated <c>409</c> — not a raw duplicate-key error surfacing as a
+    /// <c>500</c>.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The interleaving is forced, not raced.</b> An earlier version of this test ran two
+    /// <c>SetAsync</c> calls under <c>Task.WhenAll</c> and asserted one of them conflicted — and it was
+    /// <b>flaky</b>, for a reason worth recording: nothing made both contexts read before either wrote.
+    /// When the first upload happened to commit before the second's <c>SELECT</c>, the second found the
+    /// row and took the <i>update</i> branch, which legitimately succeeds. Two valid outcomes, one
+    /// asserted. The product was right both times; the test was wrong to assume which one it got.
+    /// </para>
+    /// <para>
+    /// A <c>DbCommandInterceptor</c> inserts the competing row the moment the loser's read returns,
+    /// which pins the one interleaving the unique index exists for. That is strictly stronger than the
+    /// racy version: it exercises that path on <i>every</i> run instead of on most of them.
+    /// </para>
+    /// </remarks>
     [SkippableFact]
-    public async Task Two_concurrent_first_uploads_leave_one_row_pair_and_one_curated_conflict()
+    public async Task A_first_upload_beaten_to_the_insert_leaves_one_row_pair_and_a_curated_conflict()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         var options = await MigratedSchemaAsync();
@@ -145,24 +161,68 @@ public class UserProfileImageIntegrationTests(MariaDbFixture fixture)
             await SeedUserAsync(seed, SubjectId);
         }
 
-        // Two contexts, so neither can see the other's change tracker — the database arbitrates.
-        await using var first = new OdysseyContext(options);
-        await using var second = new OdysseyContext(options);
+        // The winner, written from its own context and connection once the loser has already read.
+        async Task InsertCompetitorAsync()
+        {
+            await using var winner = new OdysseyContext(OptionsFor(fixture.ConnectionStringFor(Database)));
+            await ServiceFor(winner).SetAsync(SubjectId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
+        }
 
-        var outcomes = await Task.WhenAll(
-            AttemptAsync(first, ContactImageFixtures.BaselineJpeg(), "image/jpeg"),
-            AttemptAsync(second, ContactImageFixtures.BaselinePng(), "image/png"));
+        var interceptor = new InsertAfterFirstReadOf("UserProfileImages", InsertCompetitorAsync);
 
-        var conflicts = outcomes.OfType<DomainConflictException>().ToList();
-        Assert.Single(conflicts);
+        await using var loser = new OdysseyContext(
+            OptionsFor(fixture.ConnectionStringFor(Database), interceptor));
+
+        var outcome = await AttemptAsync(loser, ContactImageFixtures.BaselinePng(), "image/png");
+
+        Assert.True(interceptor.Fired, "The competing row was never inserted; the race was not set up.");
+
+        var conflict = Assert.IsType<DomainConflictException>(outcome);
 
         // The CURATED message, not GlobalExceptionHandler's generic conflict text — a message written
         // only in a spec would never reach a user.
-        Assert.Contains("profile picture", conflicts[0].Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("profile picture", conflict.Message, StringComparison.OrdinalIgnoreCase);
 
         await using var verify = new OdysseyContext(options);
         Assert.Equal(1, await verify.UserProfileImages.CountAsync());
         Assert.Equal(1, await verify.UserProfileImageBlobs.CountAsync());
+
+        // The WINNER's bytes survived, and the loser left none of its own behind.
+        var row = await verify.UserProfileImages.AsNoTracking().SingleAsync();
+        Assert.Equal("image/jpeg", row.ContentType);
+
+        await DropAsync();
+    }
+
+    /// <summary>
+    /// The other interleaving, which is equally legitimate and must NOT be a conflict: a second upload
+    /// whose read happens after the first has committed finds the row and takes the update branch.
+    ///
+    /// <para>
+    /// This is the case the flaky version above was silently landing on half the time. Asserting it
+    /// explicitly is what stops a future "fix" from turning every second upload into a <c>409</c>.
+    /// </para>
+    /// </summary>
+    [SkippableFact]
+    public async Task A_second_upload_whose_read_sees_the_first_updates_in_place_without_conflict()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var options = await MigratedSchemaAsync();
+
+        await using (var seed = new OdysseyContext(options))
+        {
+            await SeedUserAsync(seed, SubjectId);
+            await ServiceFor(seed).SetAsync(SubjectId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
+        }
+
+        await using (var second = new OdysseyContext(options))
+        {
+            Assert.Null(await AttemptAsync(second, ContactImageFixtures.BaselinePng(), "image/png"));
+        }
+
+        await using var verify = new OdysseyContext(options);
+        Assert.Equal(1, await verify.UserProfileImages.CountAsync());
+        Assert.Equal("image/png", (await verify.UserProfileImages.AsNoTracking().SingleAsync()).ContentType);
 
         await DropAsync();
     }
@@ -516,6 +576,32 @@ public class UserProfileImageIntegrationTests(MariaDbFixture fixture)
     {
         public Task<UploadLimits> GetAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new UploadLimits(maxBytes, (int)(maxBytes / (1024 * 1024)), IsDegraded: false));
+    }
+
+    /// <summary>
+    /// Runs <paramref name="insert"/> once, immediately after the first read that names
+    /// <paramref name="table"/> returns — turning a timing-dependent race into a pinned interleaving.
+    /// </summary>
+    private sealed class InsertAfterFirstReadOf(string table, Func<Task> insert) : DbCommandInterceptor
+    {
+        private int fired;
+
+        public bool Fired => Volatile.Read(ref fired) == 1;
+
+        public override async ValueTask<DbDataReader> ReaderExecutedAsync(
+            DbCommand command,
+            CommandExecutedEventData eventData,
+            DbDataReader result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains(table, StringComparison.OrdinalIgnoreCase)
+                && Interlocked.Exchange(ref fired, 1) == 0)
+            {
+                await insert();
+            }
+
+            return result;
+        }
     }
 
     /// <summary>Records the SQL every command carries, so "the blob was not read" is an assertion.</summary>
