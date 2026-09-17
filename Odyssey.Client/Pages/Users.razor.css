@@ -64,23 +64,11 @@
     gap: 12px;
 }
 
-.avatar {
-    flex: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 999px;
-    display: inline-grid;
-    place-items: center;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    background: var(--mud-palette-action-disabled-background);
-    color: var(--mud-palette-text-primary);
-}
-
-.usr-av-owner { background: color-mix(in srgb, var(--mud-palette-primary) 14%, transparent); color: var(--mud-palette-primary); }
-.usr-av-admin { background: color-mix(in srgb, var(--mud-palette-tertiary) 18%, transparent); color: var(--mud-palette-tertiary); }
-.usr-av-user  { background: color-mix(in srgb, var(--mud-palette-secondary) 16%, transparent); color: var(--mud-palette-secondary); }
-.usr-av-guest { background: var(--mud-palette-action-disabled-background); color: var(--mud-palette-text-secondary); }
+/* The `.avatar` span and its four `usr-av-*` role tints are GONE, not merely unused (issue #94 §3).
+   The row mark is now UserProfileMark → OdsAvatar, a separate component, and scoped CSS does not cross
+   that boundary — so these rules would have been dead and unreachable while still reading as the source
+   of truth for the role tints. The tints themselves moved to UserDisplay.AvatarBg / AvatarFg, which is
+   what the component is actually handed. */
 
 .usr-user-name {
     font-size: 0.875rem;

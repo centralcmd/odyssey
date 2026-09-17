@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Dtos.Application;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -30,14 +31,33 @@ public class UploadCapSourceTests
     /// scoping to all of <c>Pages/</c> flags the byte-formatting helpers and the settings catalogue's
     /// prose about the reverse-proxy ceiling, neither of which is an upload cap.
     /// </summary>
-    private static IEnumerable<(string File, string Text)> UploadSurfaces() =>
+    private static IEnumerable<(string File, string Text)> UploadSurfaces()
+    {
         // Components/ as well as Pages/ (issue #86 §13). It scanned only Pages/ until a shared component
         // rendered an upload field, at which point all three lints below went BLIND to it — a dialog
         // under Components/ could hardcode a cap and every one of them would pass vacuously.
-        ClientSource.RazorFilesIn("Pages", "Components")
+        var all = ClientSource.RazorFilesIn("Pages", "Components")
             .Select(file => (File: file, Text: File.ReadAllText(file)))
+            .ToList();
+
+        // A COMPONENT AND ITS CODE-BEHIND ARE ONE SURFACE (issue #94 §6). The markup renders the picker
+        // and the code-behind constructs the ApiUpload, so matching each file alone let the crop dialog
+        // — the one surface that generates its own bytes — satisfy "reads a live cap" vacuously, by
+        // being in neither half of the filter. Pairing them is what makes that check mean something
+        // here; it is also what the spec warns splitting the two would break.
+        var matched = all
             .Where(pair => pair.Text.Contains("OdsFileUpload", StringComparison.Ordinal)
-                        || pair.Text.Contains("MudFileUpload", StringComparison.Ordinal));
+                        || pair.Text.Contains("MudFileUpload", StringComparison.Ordinal))
+            .Select(pair => pair.File)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var partners = matched
+            .Select(file => file.EndsWith(".razor", StringComparison.Ordinal) ? file + ".cs" : file)
+            .Where(File.Exists)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return all.Where(pair => matched.Contains(pair.File) || partners.Contains(pair.File));
+    }
 
     /// <summary>
     /// A cap-shaped byte literal (<c>N * 1024 * 1024</c>) on an upload surface. The cap belongs to
@@ -127,5 +147,108 @@ public class UploadCapSourceTests
         Assert.True(offenders.Count == 0,
             "Surfaces that upload without consulting a live cap — they would pre-validate against "
             + "nothing, or against a literal: " + string.Join(", ", offenders));
+    }
+
+    /// <summary>
+    /// AC 30. The three lints above are <b>path-and-content scoped</b>, and the profile-picture surface
+    /// is exactly the shape that can slip past all three: <see cref="UploadSurfaces"/> only sees files
+    /// containing <c>OdsFileUpload</c>, and "reads a live cap" keys on <c>new ApiUpload(</c> — so
+    /// splitting the picker from the upload construction would make every check vacuous for it.
+    ///
+    /// <para>
+    /// It does <b>not</b> split them: <c>OdsImageCropDialog</c> is the file that renders the picker and
+    /// the file that constructs the <c>ApiUpload</c>, which is why it keeps <c>IUploadLimitsCache</c>
+    /// rather than taking fully-resolved caps as parameters. This asserts the scan set actually
+    /// contains it, so the three above are known not to be passing about nothing.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void The_crop_dialog_is_inside_the_scanned_upload_surfaces()
+    {
+        var scanned = UploadSurfaces().Select(pair => ClientSource.Relative(pair.File)).ToList();
+
+        Assert.True(scanned.Count > 0, "The upload-surface scan set is empty; the three lints above prove nothing.");
+
+        Assert.Contains(
+            scanned,
+            name => name.Replace('\\', '/').EndsWith("Components/OdsImageCropDialog.razor", StringComparison.Ordinal));
+
+        Assert.Contains(
+            scanned,
+            name => name.Replace('\\', '/').EndsWith("Components/OdsImageCropDialog.razor.cs", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// AC 30's other half: no <see cref="UserProfileImageLimits"/> number may appear as a literal
+    /// anywhere in the client. Its reach is client-only on purpose — the server's own use of the same
+    /// constants is not a client-side copy of anything.
+    /// </summary>
+    [Fact]
+    public void No_profile_image_limit_is_written_as_a_literal_in_the_client()
+    {
+        // Each number paired with the constant that should have been named instead, so a failure says
+        // what to write rather than only what not to.
+        var forbidden = new (string Pattern, string Constant)[]
+        {
+            (@"\b2 \* 1024 \* 1024\b", nameof(UserProfileImageLimits.MaxImageBytes)),
+            (@"\b20 \* 1024 \* 1024\b", nameof(UserProfileImageLimits.MaxSourceBytes)),
+            (@"\b1024 (×|x) 1024\b", nameof(UserProfileImageLimits.MaxImageDimension)),
+            (@"\b8192 (×|x) 8192\b", nameof(UserProfileImageLimits.MaxSourceDimension)),
+            (@"\b512 (×|x) 512\b", nameof(UserProfileImageLimits.OutputDimension)),
+        };
+
+        var scanned = new List<string>();
+        var offenders = new List<string>();
+
+        foreach (var file in ClientSource.SourceFiles())
+        {
+            var text = File.ReadAllText(file);
+            scanned.Add(file);
+
+            foreach (var (pattern, constant) in forbidden)
+            {
+                foreach (Match match in Regex.Matches(text, pattern))
+                {
+                    offenders.Add(
+                        $"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)} "
+                        + $"('{match.Value}' — name {constant})");
+                }
+            }
+        }
+
+        Assert.True(scanned.Count > 0, "Scanned no client sources at all.");
+        Assert.True(offenders.Count == 0,
+            "A profile-picture limit is written as a literal in the client; name the constant on "
+            + "UserProfileImageLimits instead: " + string.Join(", ", offenders));
+    }
+
+    /// <summary>
+    /// AC 31. The navigation rail stays unchanged (issue #94 §2 non-goal 2): the chrome is not an
+    /// identity surface in this version, and its Account entry keeps its <c>account_circle</c>
+    /// ligature. A lint rather than a review note because adding an avatar to the rail foot is a
+    /// one-line change that would look like an improvement.
+    /// </summary>
+    [Fact]
+    public void No_layout_component_references_the_profile_image_surface()
+    {
+        var layout = Path.Combine(ClientSource.Root, "Layout");
+        var files = Directory.EnumerateFiles(layout, "*.razor", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(layout, "*.cs", SearchOption.AllDirectories))
+            .ToList();
+
+        Assert.True(files.Count > 0, $"Scanned no files under {layout}.");
+
+        var offenders = files
+            .Select(file => (File: file, Text: File.ReadAllText(file)))
+            .Where(pair => pair.Text.Contains("profile-images", StringComparison.Ordinal)
+                        || pair.Text.Contains("ProfileImageVersion", StringComparison.Ordinal)
+                        || pair.Text.Contains("OdsProfilePictureField", StringComparison.Ordinal)
+                        || pair.Text.Contains("ImageUrl(", StringComparison.Ordinal))
+            .Select(pair => ClientSource.Relative(pair.File))
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            "The navigation chrome is not an identity surface in this version (issue #94 §2 non-goal 2): "
+            + string.Join(", ", offenders));
     }
 }

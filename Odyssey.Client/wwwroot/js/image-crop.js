@@ -1,5 +1,6 @@
-// Client-side crop + downscale for a contact's image (issue #86 §5.5), following the existing
-// interop-module pattern (cal-timegrid.js, overlay-focus.js).
+// Client-side crop + downscale for the product's ONE image-crop dialog (issue #86 §5.5, issue #94 §5),
+// following the existing interop-module pattern (cal-timegrid.js, overlay-focus.js). Two surfaces mount
+// it: a contact's image/logo, and the signed-in user's own profile picture.
 //
 // WHAT THIS IS FOR. The dialog normalises what gets uploaded: a square cover crop for a Person, a
 // contained canvas for an Organization (a wordmark is never cut). That keeps the stored bytes small
@@ -9,7 +10,7 @@
 // WHAT IT RETURNS. The encoded crop comes back as a Blob behind an IJSStreamReference, never as a
 // byte[]: a byte[] crossing JS interop is base64-marshalled, inflating a 2 MB payload by a third.
 //
-// Every number is passed in from ContactAvatarLimits on the .NET side. Nothing here holds a cap.
+// Every number is passed in from the surface's limits class on the .NET side. Nothing here holds a cap.
 
 const state = new Map();
 

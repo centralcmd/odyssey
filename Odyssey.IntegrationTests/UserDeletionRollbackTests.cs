@@ -9,6 +9,8 @@ using Odyssey.Api.Identity;
 using Odyssey.Api.Legal;
 using Odyssey.Api.UserAdministration;
 using Odyssey.Context;
+using Odyssey.Core.Finance;
+using Odyssey.Core.Profiles;
 using Odyssey.Context.Secrets;
 using Odyssey.Dtos.Application;
 using Microsoft.Extensions.Hosting;
@@ -129,6 +131,13 @@ public class UserDeletionRollbackTests(MariaDbFixture fixture)
             new StubEmailSendThrottle(),
             new StubEmailRecipientHashKey(),
             new StubPasswordResetLinkSender(),
+            // The profile picture cascades away with the account rather than being purged by this
+            // service, so the only thing it is asked for here is the read projection's image token —
+            // and the upload cap it never reaches is a stub for the same reason the mail
+            // collaborators are.
+            new UserProfileImageService(
+                scope.ServiceProvider.GetRequiredService<OdysseyContext>(),
+                new StubUploadLimitsLookup()),
             NullLogger<UserAdministrationService>.Instance);
 
     /// <summary>
@@ -166,6 +175,13 @@ public class UserDeletionRollbackTests(MariaDbFixture fixture)
             new StubHostEnvironment("Testing")));
 
         return services.BuildServiceProvider();
+    }
+
+    /// <summary>The upload cap, which this fixture never reaches — it only reads image tokens.</summary>
+    private sealed class StubUploadLimitsLookup : IUploadLimitsLookup
+    {
+        public Task<UploadLimits> GetAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new UploadLimits(64L * 1024 * 1024, 64, IsDegraded: false));
     }
 
     /// <summary>A store/concurrency failure at the deletion step, without needing to provoke a real one.</summary>

@@ -3,8 +3,15 @@
    catalogue. Extracted from Users.razor (issue #373) along with the .usr-claim* rules it owns. *@
 
 <div class="acct-detail">
-    <div class="meta-grid usr-meta-grid">
+    @* A NEW surface, not a replacement — the panel had no mark before (issue #94 §3). Its neighbouring
+       cell is a mono user id rather than the person's name, so the image is NOT decorative here and
+       carries the subject's resolved display name. *@
+    <div class="usr-detail-identity">
+        <UserProfileMark User="User" CanReadProfileImages="CanReadProfileImages"
+                         Size="OdsSize.Lg" Alt="@UserDisplay.DisplayName(User)" />
         <div class="meta-tile wide"><div class="meta-tile-label">User ID</div><div class="meta-tile-value mono">@User.Id</div></div>
+    </div>
+    <div class="meta-grid usr-meta-grid">
         <div class="meta-tile"><div class="meta-tile-label">Username</div><div class="meta-tile-value mono">@(User.UserName ?? "—")</div></div>
         <div class="meta-tile"><div class="meta-tile-label">Email</div><div class="meta-tile-value">@(User.Email ?? "—")</div></div>
         <div class="meta-tile"><div class="meta-tile-label">Full name</div><div class="meta-tile-value">@(UserDisplay.FullName(User) ?? "—")</div></div>
@@ -57,6 +64,12 @@
 @code {
     /// <summary>The row this detail belongs to.</summary>
     [Parameter, EditorRequired] public ExistingUser User { get; set; } = default!;
+
+    /// <summary>
+    /// Whether this principal holds <c>profile-images.read</c> — the caller half of "renderable",
+    /// passed down from the page rather than re-resolved here.
+    /// </summary>
+    [Parameter] public bool CanReadProfileImages { get; set; }
 
     /// <summary>The claims the user's role grants — read-only here; access changes by role.</summary>
     [Parameter] public IReadOnlyList<string> Permissions { get; set; } = [];

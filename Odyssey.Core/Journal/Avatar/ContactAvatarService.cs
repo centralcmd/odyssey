@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Imaging;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Core.Journal.Avatar;
@@ -197,7 +198,7 @@ public class ContactAvatarService
     /// </summary>
     public Task StageAttachAsync(
         Contact contact,
-        ValidatedAvatar validated,
+        ValidatedImage validated,
         string? userId,
         CancellationToken cancellationToken = default)
     {
@@ -220,7 +221,7 @@ public class ContactAvatarService
     /// Validates bytes for the vCard import path, which decodes base64 rather than receiving a
     /// multipart part but must run the <b>identical</b> pipeline.
     /// </summary>
-    public ValidatedAvatar ValidateForImport(byte[] bytes, string? declaredContentType, long effectiveMaxBytes) =>
+    public ValidatedImage ValidateForImport(byte[] bytes, string? declaredContentType, long effectiveMaxBytes) =>
         ContactAvatarValidator.Validate(bytes, declaredContentType, effectiveMaxBytes);
 
     /// <summary>

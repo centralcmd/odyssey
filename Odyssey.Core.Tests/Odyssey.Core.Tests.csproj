@@ -23,6 +23,12 @@
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Moq" />
     <PackageReference Include="AwesomeAssertions" />
+    <!-- The INDEPENDENT oracle for the metadata-strip guarantee (issue #86 §5.3, issue #94 AC 14). It
+         is a test-only dependency on purpose: a source-lint keeps it off the request path, where the
+         production walk produces the same two integers without a full EXIF/IPTC/ICC/XMP parse over
+         untrusted input. Strip-then-verify only means something when the verifier shares no code with
+         the stripper. -->
+    <PackageReference Include="MetadataExtractor" />
   </ItemGroup>
 
 </Project>

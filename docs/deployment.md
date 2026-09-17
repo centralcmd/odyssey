@@ -486,6 +486,47 @@ a loopback exemption so the dev stack keeps working over `http://localhost`), an
 when the saved origin differs from the one you are browsing from. That residual is stated and
 accepted; see issue #8 §10.2.
 
+### Release note: user profile pictures (issue #94)
+
+A signed-in user can attach, replace and remove **one picture of themselves** from `/account`. It then
+stands in for their initials wherever the application already identifies them: the account page header,
+and the administrator's user list and detail panel. Four things an operator should know before
+upgrading.
+
+**A new permission claim, `profile-images.read`, and revoking it from Guest is the supported way to
+narrow who sees colleagues' pictures.** It is granted to **every** role out of the box, so its effective
+reach is "any authenticated caller" — what it buys is a *revocation lever that exists before release*
+rather than narrower access today. It needs **no migration**: `RoleClaimSeeder` reconciles
+`AspNetRoleClaims` at runtime and applies removals as well as additions. A revocation lever nobody knows
+about is not a lever, which is why it is written down here.
+
+**Pictures stay blank for already-signed-in users until they sign out and back in.** Claim values are
+baked into the auth cookie at sign-in, so a session that predates this deploy does not hold the new
+claim and sees the initials monogram. It is a one-time, self-healing degradation to a decorative
+surface. On `/account` the picture *is* the feature rather than decoration, so for that window the
+controls are disabled with "Sign out and back in to manage your profile picture" — note that the same
+disable covers **Remove**, so the self-service erasure control is briefly unavailable too. One sign-out
+clears it.
+
+**Disabling an account also hides its picture — from administrators as well.** The read endpoint `404`s
+an administratively disabled subject, which is what makes "disable the account" a proportionate remedy
+for an abusive upload (there is deliberately no administrator write path, so an admin can neither
+replace nor remove someone else's picture). The row survives, but only direct database access reaches
+it. **So capture the evidence before disabling**, not after. Note this applies to an *administrative*
+disable only — a user locked out by five mistyped passwords keeps their picture, deliberately: hiding
+it would turn the endpoint into a `200 → 404 → 200` confirmation channel for failed-login lockouts.
+
+**`Down` on the `AddUserProfileImage` migration destroys the stored images.** The schema is reversible;
+the data is not. The migration is otherwise purely additive — two new tables, one unique index, two
+cascade foreign keys, no existing table altered and no rows seeded.
+
+Three new `RateLimiting:*` sections are shipped with defaults and stay in deploy-time configuration
+(`ProfileImageWrite`, `ProfileImageDelete`, `ProfileImageRead`). The write and delete budgets are
+**separate on purpose** — sharing one would mean a user who had exhausted their upload budget could not
+*remove* their picture, which throttles a GDPR Art. 17 control. The read budget is deliberately generous:
+a rejected read is invisible to the user (the avatar silently falls back to the monogram), so a tight
+limit produces a silent defect rather than an error anyone reports.
+
 ## Backups
 
 The only stateful pieces are two named volumes — back both up:

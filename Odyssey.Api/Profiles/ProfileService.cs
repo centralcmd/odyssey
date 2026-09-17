@@ -2,6 +2,7 @@ using Odyssey.Dtos.Application;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
+using Odyssey.Core.Profiles;
 
 namespace Odyssey.Api.Profiles;
 
@@ -18,11 +19,13 @@ public sealed class ProfileService
 
     private readonly OdysseyContext context;
     private readonly TimeProvider timeProvider;
+    private readonly UserProfileImageService profileImages;
 
-    public ProfileService(OdysseyContext context, TimeProvider timeProvider)
+    public ProfileService(OdysseyContext context, TimeProvider timeProvider, UserProfileImageService profileImages)
     {
         this.context = context;
         this.timeProvider = timeProvider;
+        this.profileImages = profileImages;
     }
 
     /// <summary>Read the caller's profile; an absent row returns an empty, incomplete DTO to prefill onboarding.</summary>
@@ -34,6 +37,10 @@ public sealed class ProfileService
 
         var dto = profile is null ? new ProfileDto { IsComplete = false } : ToDto(profile);
         dto.MustChangePassword = await MustChangePasswordAsync(userId, cancellationToken);
+
+        // The picture is keyed to the IDENTITY row, not the profile row, so it resolves even for a
+        // user who has not completed onboarding and has no UserProfile at all (issue #94 §6).
+        dto.ProfileImageVersion = await profileImages.GetVersionAsync(userId, cancellationToken);
         return dto;
     }
 
@@ -100,9 +107,12 @@ public sealed class ProfileService
         await context.SaveChangesAsync(cancellationToken);
 
         var dto = ToDto(profile);
-        // Read back from the identity row, never from `request`: the field is response-only, so a client
-        // that posts it can neither set nor clear it.
+        // Both read back from their own row, never from `request`: the fields are response-only, so a
+        // client that posts them can neither set nor clear them. The image token has to be carried on
+        // this response as well as on GET — a name save that answered `null` would read to the client
+        // as "the picture is gone" and flip the control back to "Add picture".
         dto.MustChangePassword = await MustChangePasswordAsync(userId, cancellationToken);
+        dto.ProfileImageVersion = await profileImages.GetVersionAsync(userId, cancellationToken);
         return dto;
     }
 

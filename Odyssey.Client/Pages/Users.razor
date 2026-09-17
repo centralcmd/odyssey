@@ -91,7 +91,9 @@
                                 @onkeydown="@(e => OnRowKeyDown(e, user.Id))">
                                 <td>
                                     <div class="usr-user-cell">
-                                        <span class="avatar @UserDisplay.AvatarClass(user.Role)">@UserDisplay.Initials(user)</span>
+                                        @* Decorative: the name cell beside it already identifies the
+                                           person, and the picture never carries a fact of its own. *@
+                                        <UserProfileMark User="user" CanReadProfileImages="_canReadProfileImages" Alt="" />
                                         <div>
                                             <div class="usr-user-name">@UserDisplay.DisplayName(user)</div>
                                             <div class="usr-user-id">@@@(user.UserName ?? "—")</div>
@@ -177,7 +179,8 @@
                             {
                                 <tr class="usr-detail-row">
                                     <td class="usr-detail-cell" colspan="9">
-                                        <UserDetailPanel User="user" Permissions="RolePermissionsFor(user.Role)"
+                                        <UserDetailPanel User="user" CanReadProfileImages="_canReadProfileImages"
+                                                         Permissions="RolePermissionsFor(user.Role)"
                                                          ClaimsOpen="@(_claimsOpenId == user.Id)"
                                                          OnToggleClaims="@(() => ToggleClaims(user.Id))" />
                                     </td>

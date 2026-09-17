@@ -44,6 +44,15 @@ public enum OdsValueTone { Income, Expense }
 public enum OdsAvatarTone { Neutral, Tide }
 
 /// <summary>
+/// How <c>OdsProfilePictureField</c> presents itself (Odyssey Design System · ProfilePictureField).
+/// <c>Row</c> is the labelled control with text buttons — the discoverable default for a settings
+/// page. <c>Overlay</c> makes the mark ITSELF the control, for a card that already shows the avatar
+/// and cannot spare a second block; its actions are revealed on hover <b>and</b> on focus, with a
+/// persistent badge, so hover is never the only affordance.
+/// </summary>
+public enum OdsProfilePictureVariant { Row, Overlay }
+
+/// <summary>
 /// How an avatar image meets its frame (Odyssey Design System · components/Avatar).
 /// <c>Cover</c> square-crops — a person's photograph. <c>Contain</c> LETTERBOXES the image on a neutral
 /// ground with a 3:1 boundary — a company logo, which carries transparency, is rarely square and must

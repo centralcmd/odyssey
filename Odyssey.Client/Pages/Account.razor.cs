@@ -22,6 +22,14 @@ public partial class Account
     private string? _role;
     private List<string> _permissions = [];
 
+    /// <summary>
+    /// Whether this principal holds <c>profile-images.read</c> (issue #94 §3). A session that predates
+    /// the claim's deploy does not, and without this check the page would render an <c>&lt;img&gt;</c>
+    /// that 403s. The token on the profile is the SUBJECT half of "renderable"; this is the CALLER
+    /// half, and both must pass before an image is emitted.
+    /// </summary>
+    private bool _canReadProfileImages;
+
     // The canonical profile (issue #316). The Profile section edits a working copy and hands the
     // saved server values back, so the header, avatar and Permissions tile re-render with no reload.
     private ProfileDto _profile = new();
@@ -61,6 +69,33 @@ public partial class Account
         ProfileValidation.Initials(_profile) is { } initials && initials != "?" ? initials : _initials;
 
     private string ShortId => _userId.Length > 8 ? _userId[..8] : _userId;
+
+    /// <summary>
+    /// The header mark's image URL, or <c>null</c> to render the monogram and issue no request. Both
+    /// halves of "renderable" have to hold: the caller's claim, and the subject's token.
+    /// </summary>
+    private string? ProfileImageSrc =>
+        _canReadProfileImages && _profile.ProfileImageVersion is { } version && !string.IsNullOrEmpty(_userId)
+            ? ProfileApi.ImageUrl(_userId, version)
+            : null;
+
+    /// <summary>
+    /// The header mark's own failed-image state. <c>OdsAvatar.OnError</c> only invokes its callback, so
+    /// the consumer owns this; it is keyed on the token so a replace retries and a genuinely missing
+    /// image does not. A failure is silent — the monogram simply comes back.
+    /// </summary>
+    private bool _headerImageFailed;
+
+    private Guid? _headerImageFailedFor;
+
+    private bool ShowHeaderImage =>
+        ProfileImageSrc is not null && !(_headerImageFailed && _headerImageFailedFor == _profile.ProfileImageVersion);
+
+    private void OnHeaderImageError()
+    {
+        _headerImageFailed = true;
+        _headerImageFailedFor = _profile.ProfileImageVersion;
+    }
 
     private string RoleIcon => _role switch
     {
@@ -150,6 +185,7 @@ public partial class Account
             .Select(c => c.Value)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(v => v, StringComparer.Ordinal)];
+        _canReadProfileImages = user.HasPermission(PermissionClaims.ProfileImagesRead);
 
         var info = await AuthApiClient.GetInfoAsync();
         if (info is not null)
@@ -189,6 +225,12 @@ public partial class Account
             StateHasChanged();
     }
 
+    /// <summary>
+    /// The PAGE owns the profile, image token included (issue #94 §3 step 6). The control lives in the
+    /// Profile section and the mark in the header's Leading fragment — different components — so a
+    /// section-local token would satisfy the upload while leaving the header stale, and no acceptance
+    /// criterion would catch it. The section raises the whole DTO here and both re-render.
+    /// </summary>
     private void OnProfileSaved(ProfileDto profile) => _profile = profile;
 
     private void OnTwoFactorChanged(AccountTwoFactorSection.TwoFactorStatus status) => _twoFactor = status;

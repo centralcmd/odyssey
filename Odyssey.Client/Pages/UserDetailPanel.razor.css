@@ -1,3 +1,16 @@
+/* Detail-panel identity strip (issue #94 §3, Odyssey Design System · admin.css): the profile picture
+   — new here — beside the mono user id, which is why the mark's accessible name has to be the person
+   rather than "". */
+.usr-detail-identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.usr-detail-identity .meta-tile {
+    min-width: 0;
+}
+
 /* ── Role-permission claim chips ── moved here from Users.razor.css with the markup they style.
    The surrounding .acct-detail / .meta-* overrides stay on the page, which already reaches them
    through `.usr-detail-cell ::deep`. */

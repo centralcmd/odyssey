@@ -1,0 +1,142 @@
+@*
+    OdsImageCropDialog — the product's ONE client-side crop + downscale dialog
+    (Odyssey Design System · Components · ImageCropDialog). Extracted from
+    ContactAvatarDialog when the user profile picture arrived (issue #94 §5): one cropper,
+    two surfaces — a contact's image or logo, and the signed-in user's own picture.
+
+    It COMPOSES OdsFormDialog rather than hand-rolling role="dialog", focus trapping and focus return:
+    the modal shell already owns all three, so Escape closes the dialog and returns focus to the
+    invoking control for free, and there is no keyboard trap to get wrong twice.
+
+    The controls are native <input type="range"> — Zoom, Horizontal, Vertical — each with a visible,
+    programmatically associated <label>, an aria-valuetext that reads as a percentage, and arrow /
+    Home / End support BY CONSTRUCTION. That is why the widget is built from range inputs rather than a
+    custom draggable surface: pointer drag on the canvas is an ADDITIONAL affordance, never the only
+    one.
+
+    EVERY ELEMENT ID IS GENERATED PER INSTANCE. The extracted dialog can be mounted twice on one page,
+    and the hardcoded ids this grew from (`cav-zoom`, `cav-x`, `cav-y`, `cav-file`) would break every
+    <label for> and aria-describedby the moment that happened — silently defeating the two
+    accessibility contracts below rather than failing loudly.
+
+    The <canvas> is aria-hidden and the preview state is described in text beside it. A canvas exposes
+    no accessible structure at all, and the three ranges already carry the state.
+
+    ONE VALIDATION-FAILURE RULE:
+      · A failure attributable to a CONTROL (a rejected file) sets aria-invalid on that control, links
+        the message with aria-describedby and MOVES FOCUS to it. It is not role="alert" — focusing a
+        control whose description is the error already announces it, and adding the role announces it
+        twice.
+      · A failure NOT attributable to a control (rejected by the server, network) goes to a role="alert"
+        region and focus does not move. Its text is the server's own ProblemDetails message, which names
+        the actual limit, rather than a generic client string.
+
+    NO NUMBER IS WRITTEN DOWN HERE. The stored cap comes from IUploadLimitsCache tightened by the
+    caller's SurfaceMegabytes — min(instance cap, surface cap), never max — and the source caps arrive
+    as parameters from the surface's own limits class. A literal would go stale the moment an
+    administrator changed the setting.
+
+    THE UPLOAD IS A DELEGATE, not an injected resource client: the two surfaces POST to different
+    endpoints and this component under Components/ must not know either. But it KEEPS
+    @inject IUploadLimitsCache and resolves the cap itself, because it is the file that constructs the
+    ApiUpload — and UploadCapSourceTests' "reads a live cap" lint keys on exactly that pairing.
+*@
+
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject IUploadLimitsCache UploadLimits
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
+               Icon="crop"
+               Wide="true"
+               RequiredLegend="false"
+               Title="@ResolvedTitle"
+               Subtitle="@Subtitle"
+               SubmitLabel="Save"
+               SubmitIcon="check"
+               OnSubmit="SaveAsync"
+               OnSaved="OnSaved">
+    <div class="odc-crop-body" aria-busy="@(_saving ? "true" : null)">
+        @* Not attributable to any control the user can correct — announced where it is, focus stays. *@
+        @if (!string.IsNullOrEmpty(_serverError))
+        {
+            <div class="odc-crop-alert" role="alert">
+                <span class="material-icons" aria-hidden="true" style="font-size:18px;">error_outline</span>
+                <span>@_serverError</span>
+            </div>
+        }
+
+        @* The shared upload field, single-file and kind-less: one image per subject, and the file's
+           KIND is not the user's to set here — what gets stored is generated. *@
+        <OdsFieldShell Label="@(_hasImage ? "Source image" : ChooseLabel)">
+            <div @ref="_dropzoneHost">
+                <OdsFileUpload Id="@FileId"
+                               Compact="true"
+                               Multiple="false"
+                               ShowKinds="false"
+                               Accept="@AcceptAttribute"
+                               Files="_files"
+                               FilesChanged="OnFilesChangedAsync"
+                               Error="@_fileError"
+                               Hint="@SourceHint" />
+            </div>
+        </OdsFieldShell>
+
+        <div class="odc-crop-stage">
+            @* Pointer drag is an addition to the ranges. The frame carries no tab stop and no role:
+               everything it offers is reachable from the three controls beside it. *@
+            <div class="odc-crop-frame @(Cover ? "round" : "ground")"
+                 @onpointerdown="OnPointerDown" @onpointermove="OnPointerMove"
+                 @onpointerup="OnPointerUp" @onpointerleave="OnPointerUp">
+                <canvas @ref="_canvas" aria-hidden="true"></canvas>
+                @if (!_hasImage)
+                {
+                    <span class="odc-crop-frame-empty" aria-hidden="true">
+                        <span class="material-icons" style="font-size:30px;">@EmptyIcon</span>
+                    </span>
+                }
+            </div>
+
+            <div class="odc-crop-controls">
+                @* The canvas is aria-hidden, so this sentence IS the preview for anyone not looking
+                   at it. *@
+                <p class="odc-crop-state">@StateText</p>
+
+                <label class="odc-crop-ctl" for="@ZoomId">
+                    <span class="odc-crop-ctl-l">Zoom<b>@Percent(_zoom)</b></span>
+                    <input id="@ZoomId" type="range" class="odc-range" min="100" max="300" step="5"
+                           value="@_zoom" disabled="@(!_hasImage)"
+                           aria-valuetext="@Percent(_zoom)"
+                           @oninput="@(e => SetZoom(e.Value?.ToString()))" />
+                </label>
+
+                <label class="odc-crop-ctl" for="@OffsetXId">
+                    <span class="odc-crop-ctl-l">Horizontal<b>@HorizontalText</b></span>
+                    <input id="@OffsetXId" type="range" class="odc-range" min="-100" max="100" step="2"
+                           value="@_offsetX" disabled="@(!_hasImage)"
+                           aria-valuetext="@HorizontalText"
+                           @oninput="@(e => SetOffsetX(e.Value?.ToString()))" />
+                </label>
+
+                <label class="odc-crop-ctl" for="@OffsetYId">
+                    <span class="odc-crop-ctl-l">Vertical<b>@VerticalText</b></span>
+                    <input id="@OffsetYId" type="range" class="odc-range" min="-100" max="100" step="2"
+                           value="@_offsetY" disabled="@(!_hasImage)"
+                           aria-valuetext="@VerticalText"
+                           @oninput="@(e => SetOffsetY(e.Value?.ToString()))" />
+                </label>
+
+                <div class="odc-crop-reset">
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="restart_alt" OnClick="ResetAsync">Reset</OdsButton>
+                </div>
+            </div>
+        </div>
+
+        @* Says what actually happens to the file, because the server strip is not otherwise visible. *@
+        <p class="odc-crop-note">@Note</p>
+
+        @* The page's own polite region is elsewhere; the dialog carries its own because its async
+           states begin and end inside it. *@
+        <OdsLiveAnnouncer Message="@_live" />
+    </div>
+</OdsFormDialog>

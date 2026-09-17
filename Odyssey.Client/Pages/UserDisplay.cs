@@ -86,11 +86,34 @@ internal static class UserDisplay
         _ => Icons.Material.Filled.Person,
     };
 
-    public static string AvatarClass(string role) => role.ToLowerInvariant() switch
+    /// <summary>
+    /// The role tint as a <c>{ bg, fg }</c> pair for <c>OdsAvatar</c> — <b>the only copy</b>, and the
+    /// authoritative one (issue #94 §3).
+    ///
+    /// <para>
+    /// <b>It has to be a value, not a class.</b> The <c>usr-av-*</c> rules these values came from were
+    /// <b>scoped</b> to <c>Users.razor</c>, and scoped CSS does not cross a component boundary — a
+    /// <c>Class</c> handed to a component would compile, render, and silently produce the default
+    /// neutral tint on every row. Those rules, and the <c>AvatarClass</c> helper that named them, are
+    /// <b>deleted</b> rather than left behind: the page no longer renders a plain
+    /// <c>&lt;span class="avatar"&gt;</c> anywhere, so a surviving rule would be dead and unreachable
+    /// while still reading as the source of truth.
+    /// </para>
+    /// </summary>
+    public static string AvatarBg(string role) => role.ToLowerInvariant() switch
     {
-        "owner" => "usr-av-owner",
-        "admin" => "usr-av-admin",
-        "user" => "usr-av-user",
-        _ => "usr-av-guest",
+        "owner" => "color-mix(in srgb, var(--mud-palette-primary) 14%, transparent)",
+        "admin" => "color-mix(in srgb, var(--mud-palette-tertiary) 18%, transparent)",
+        "user" => "color-mix(in srgb, var(--mud-palette-secondary) 16%, transparent)",
+        _ => "var(--mud-palette-action-disabled-background)",
+    };
+
+    /// <inheritdoc cref="AvatarBg" />
+    public static string AvatarFg(string role) => role.ToLowerInvariant() switch
+    {
+        "owner" => "var(--mud-palette-primary)",
+        "admin" => "var(--mud-palette-tertiary)",
+        "user" => "var(--mud-palette-secondary)",
+        _ => "var(--mud-palette-text-secondary)",
     };
 }

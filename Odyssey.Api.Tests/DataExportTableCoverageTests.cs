@@ -75,6 +75,19 @@ public class DataExportTableCoverageTests
         ["RoleClaims"] = "Application/Identity: out of scope",
         ["UserProfiles"] = "Application/Identity: out of scope",
         ["UserPreferences"] = "Application/Identity: out of scope",
+
+        // The user profile picture (issue #94 §10.14). Out of scope for the same reason the identity
+        // tables above are, and for two more that are specific to it: this export deliberately omits a
+        // person's name and birth date, so adding their FACE to it would export more identifying data
+        // than the document it sits in; and the export is gated on data.export, not held by the data
+        // subject, so it would put an aggregated face dataset in a downloadable artifact while serving
+        // Art. 20 not at all. The subject holds the original, uploaded it themselves, and can retrieve
+        // the stored copy from /account at any time.
+        //
+        // The FileBlob precedent does NOT apply: that is excluded BECAUSE FileMetadata is exported, and
+        // for unboundedness — neither fits one <= 2 MB row the subject supplied themselves.
+        ["UserProfileImages"] = "Application/Identity: out of scope",
+        ["UserProfileImageBlobs"] = "Application/Identity: out of scope",
         ["SystemSettings"] = "Application: instance policy, not subject data",
         ["SystemSettingSecrets"] = "Application: encrypted secrets, never exported",
         ["LicenseAcceptances"] = "Application/Legal: out of scope",

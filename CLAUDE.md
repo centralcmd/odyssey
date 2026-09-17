@@ -330,6 +330,86 @@ represent and is not implemented**. AC 36's "identity tile alt text" has no surf
 reason; the list-card image is decorative (`alt=""`), which §3 requires anyway. Reinstating the tile
 re-opens the partial-success state along with it.
 
+**A user's profile picture is stored SEPARATELY from the domain file store, and that separation is a
+security boundary** (issue #94). `UserProfileImage` / `UserProfileImageBlob` sit beside `UserProfile`
+in `Odyssey.Context` with **zero relationships in either direction** to `FileMetadata` / `FileBlob`. A
+holder of `files.read` cannot read a person's face, `files.delete` cannot destroy it, and
+`AdminFileExportService` — which enumerates `FileMetadata` and pulls matching blobs wholesale — cannot
+sweep one into an admin file export. The cost is a standing tax: every storage-wide concern
+(encryption at rest, quota accounting, orphan sweeps, backup tooling) now has two places to be applied.
+An integration test asserts the zero-FK property in both directions, because one convenience key added
+later would quietly undo all of it.
+
+The duplication is accepted for **storage, limits and the read path**, and explicitly **not** for the
+**validation pipeline**: two copies of a parser on an untrusted-input path will diverge, and the copy
+with fewer eyes on it is the one that will. So `Odyssey.Core/Imaging/` holds the solution's **one**
+container walk, metadata strip, magic-byte table and parameterised validator (`StillImageValidator` +
+`StillImagePolicy`); `ContactAvatarValidator` and `UserProfileImageValidator` are thin callers that
+supply their own caps. A source-lint asserts exactly one walk exists and that its scan set is non-empty
+— the lints are path-scoped, and `ContactAvatarService`/`ContactAvatarRelease` stayed behind in
+`Journal/Avatar`, so a lint left pointing at the old directory would have kept **passing** while the
+files it protects had silently left its scope.
+
+Six rules around it are easy to get backwards:
+
+- **The blob's FK direction is INVERTED relative to `FileMetadata`/`FileBlob`, deliberately.** There the
+  *blob* is the principal, so the cascade runs blob → metadata and never the reverse — which is why
+  `ContactAvatarRelease` removes both rows by hand. Copying that shape would leave every deleted user's
+  facial image bytes a permanent orphan. Making the blob the *dependent* gives an unbroken
+  `AspNetUsers → UserProfileImage → UserProfileImageBlob` chain, so GDPR Art. 17 erasure holds through
+  a bare `userManager.DeleteAsync` inside the existing delete transaction, which carries no purge code.
+- **A replace UPDATES the row in place; it never deletes and re-inserts.** Three things break together
+  otherwise: EF does not guarantee DELETE-before-INSERT ordering in one `SaveChangesAsync`, so the
+  *ordinary* replace path raises a duplicate-key error against the unique index on `UserId` —
+  self-inflicted, not a race; the concurrency token becomes dead weight (EF emits no
+  `WHERE ImageVersion = @original` on an `INSERT`); and `UserProfileImageId` changes, which is the
+  blob's PK *and* FK, so the old blob cascades away and "new blob content" becomes inexpressible.
+- **`ImageVersion` is the concurrency token, and that is what makes the `409` reachable at all.** Under
+  update-in-place the unique index can only fire for two concurrent *first* uploads; the token catches
+  two concurrent *replaces*, where both `UPDATE`s affect one row and the later would silently win. The
+  two races are separate integration tests for that reason.
+- **The blob write shares the metadata write's `SaveChangesAsync`.** Split across two saves, the loser
+  of a replace race commits its *bytes* and is refused on the *metadata*, leaving its image stored under
+  the winner's `Sha256Hash` — not a lost update but a silent integrity break, on a read path whose whole
+  design rests on revalidation being correct.
+- **The read path `404`s an ADMINISTRATIVELY DISABLED subject, and only that.**
+  `AccountLockout.IsAdministrativelyDisabled` tests the sentinel; `AccountLockout.IsEnabled` answers
+  *sign-in eligibility*, which a **transient** lockout also affects. Substituting one for the other is a
+  security defect, not a tidy-up: a deliberate removal never reverts while a lockout reverts in about
+  five minutes, so any `profile-images.read` holder polling a known id would observe `200 → 404 → 200`
+  and learn that account is under a failed-login lockout — a password-spray oracle outside the login
+  endpoint and its rate limiter. The helper is for **materialised entities only**; the read path is a
+  join onto `AspNetUsers`, and EF translates no arbitrary static method call, so it compares against
+  `AccountLockout.DisabledLockoutEnd` **inline** (still naming the constant, never a literal).
+- **`ExistingUser.ProfileImageVersion` means "renderable by this caller", not "a row exists"**, and the
+  nulling lives at `UserAdministrationService.MapUserAsync` — the single point every `ExistingUser` is
+  projected through, including the row the admin update that *performs* a disable returns. **Do not
+  derive it from `ExistingUser.Enabled`**: the two come from different predicates, so a `/users` row can
+  legitimately show `Enabled == false` beside a rendering picture. The tempting consistency fix
+  reintroduces the transient-lockout oracle quietly.
+
+There is **no administrator write path** — the write endpoints take no user id in route or body at all,
+so the IDOR mitigation is structural rather than a check. The remedies for an abusive upload are
+disable (which now also stops the read) or delete (which cascades the bytes away), never editing
+another person's identity. One operational consequence: **disabling puts the image beyond every
+endpoint, the administrator's included**, so evidence must be captured before disabling. Adding a
+remove-only admin path later is *the trigger* to add an attribution column, since from that point
+uploader and subject can differ.
+
+`profile-images.read` is granted to **every** role, Guest included, so its effective reach equals "any
+authenticated caller". What it buys is a **revocation lever that exists before release** — claim values
+are baked into the auth cookie at sign-in, so retrofitting one later de-authorizes live sessions. The
+premise that would license claim-free access ("a caller can only fetch a picture for someone they
+already see *named*") is **false**: `ExistingTransactionFile.AttachedByUserId`,
+`ExistingAccountFile.AttachedByUserId` and the nested `ExistingFileMetadata.UploadedByUserId` return raw
+user ids with no name attached, and Guest holds `transactions.read`, `accounts.read` and `files.read`.
+That raw-id leak is pre-existing and out of scope here; it has its own issue.
+
+Both tables are declared **out of scope** on `DataExportTableCoverageTests`, alongside the identity
+tables they belong with — that guard reflects over every `DbSet` and fails the build otherwise. Adding
+the picture to the whole-database admin export would export a face from a document that deliberately
+omits the subject's name and birth date, to a `data.export` holder who is never the data subject.
+
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed only because the
 insurer foreign key had been removed; three real `RESTRICT` keys are back, so the database arbitrates
 the race it was written for and its violation maps to a `409` rather than a `500`. Removing the
@@ -688,7 +768,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 101 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 102 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`

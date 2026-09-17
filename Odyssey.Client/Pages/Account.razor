@@ -34,7 +34,26 @@
                 OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled">
         <Leading>
-            <span class="ph-avatar" aria-hidden="true">@ResolvedInitials</span>
+            @* The picture where there is one, the initials monogram where there is not (issue #94 §3).
+               The <img> sits INSIDE the existing .ph-avatar span rather than replacing it with an
+               OdsAvatar, which is what the design system's Account kit does and what keeps this
+               page's soft color-mix tint — OdsAvatarTone.Tide is a SOLID primary fill, so taking the
+               default would silently change the monogram's appearance and its 4.5:1 pairing, and the
+               scoped .ph-avatar rule would not cross a component boundary to correct it.
+
+               aria-hidden stays: the header title beside it already names the person, so the mark is
+               decorative here whichever of the two it renders. A load failure falls back silently. *@
+            <span class="ph-avatar" aria-hidden="true">
+                @if (ShowHeaderImage)
+                {
+                    <img src="@ProfileImageSrc" alt="" loading="lazy" decoding="async"
+                         @onerror="OnHeaderImageError" />
+                }
+                else
+                {
+                    @ResolvedInitials
+                }
+            </span>
         </Leading>
         <SubLine>@_email · @@@_username</SubLine>
         <TitleChips>
@@ -167,7 +186,8 @@
             @if (Matches("profile"))
             {
                 <div id="acc-sec-profile" class="acc-section">
-                    <AccountProfileSection Profile="_profile" ProfileChanged="OnProfileSaved" />
+                    <AccountProfileSection Profile="_profile" ProfileChanged="OnProfileSaved"
+                                           UserId="@_userId" CanReadProfileImages="_canReadProfileImages" />
                 </div>
             }
 

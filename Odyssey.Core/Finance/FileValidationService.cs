@@ -1,4 +1,5 @@
 using Odyssey.Core;
+using Odyssey.Core.Imaging;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
@@ -119,53 +120,21 @@ public class FileValidationService
     /// SVG are deliberately off the allow-list entirely (see GetDefaultAllowedMimeTypes).
     ///
     /// <para>
-    /// <b>Public rather than private</b> (issue #86 §4.3): the contact-avatar path applies a narrower
-    /// image allow-list on top of this one and needs the same check over a byte span it already holds
-    /// (the vCard import path decodes base64 and has no <c>IFormFile</c> at all). Promoted to a seam so
-    /// the two paths cannot drift on what a JPEG is; duplicating the signature table was the
-    /// alternative, and a signature fixed in one copy would have stayed wrong in the other.
+    /// <b>Public rather than private</b> (issue #86 §4.3): the image paths apply a narrower allow-list
+    /// on top of this one and need the same check over a byte span they already hold (the vCard import
+    /// path decodes base64 and has no <c>IFormFile</c> at all).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>The table itself moved to <see cref="FileHeaderSignatures"/></b> (issue #94 §5) and this
+    /// forwards to it. The shared still-image pipeline is storage-agnostic and cannot reach into
+    /// <c>Odyssey.Core.Finance</c> to learn what a JPEG is; keeping the table here and copying the
+    /// image rows over there would have produced exactly the two-parsers-that-drift outcome the
+    /// extraction exists to prevent. This signature is kept so no caller had to change.
     /// </para>
     /// </summary>
-    public static bool HeaderMatchesContentType(string contentType, ReadOnlySpan<byte> header)
-    {
-        static bool StartsWith(ReadOnlySpan<byte> bytes, ReadOnlySpan<byte> signature) =>
-            bytes.Length >= signature.Length && bytes[..signature.Length].SequenceEqual(signature);
-
-        switch (contentType)
-        {
-            case "application/pdf":
-                return StartsWith(header, "%PDF"u8);
-            case "image/jpeg":
-            case "image/jpg":
-                return StartsWith(header, [0xFF, 0xD8, 0xFF]);
-            case "image/png":
-                return StartsWith(header, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-            case "image/gif":
-                return StartsWith(header, "GIF87a"u8) || StartsWith(header, "GIF89a"u8);
-            case "image/webp":
-                // RIFF container with a "WEBP" form type at offset 8.
-                return StartsWith(header, "RIFF"u8)
-                    && header.Length >= 12 && header.Slice(8, 4).SequenceEqual("WEBP"u8);
-            case "application/zip":
-            case "application/x-zip-compressed":
-            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-                // ZIP local-file-header "PK" — also the container for OOXML (docx/xlsx/pptx).
-                return StartsWith(header, [0x50, 0x4B]);
-            case "application/msword":
-            case "application/vnd.ms-excel":
-            case "application/vnd.ms-powerpoint":
-                // OLE2 compound-file header — the legacy Office binary format.
-                return StartsWith(header, [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]);
-            case "application/x-7z-compressed":
-                return StartsWith(header, [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C]);
-            case "application/x-rar-compressed":
-                return StartsWith(header, "Rar!"u8);
-            default:
-                return true;
-        }
-    }
+    public static bool HeaderMatchesContentType(string contentType, ReadOnlySpan<byte> header) =>
+        FileHeaderSignatures.Matches(contentType, header);
 
     private static IEnumerable<string> GetDefaultAllowedMimeTypes()
     {

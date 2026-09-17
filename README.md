@@ -47,7 +47,7 @@ your own infrastructure.
 
 - Cookie-based authentication with TOTP two-factor, email confirmation, self-service and
   admin-initiated password reset, and admin approval for new registrations.
-- Fine-grained authorization: 101 permission claims mapped onto Admin / Owner / User / Guest
+- Fine-grained authorization: 102 permission claims mapped onto Admin / Owner / User / Guest
   roles, enforced server-side on every endpoint.
 - A dark-first design system, keyboard command palette, and per-user page-state persistence.
 
