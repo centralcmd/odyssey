@@ -58,7 +58,7 @@ public class CreatedAtRouteControllerTests
     {
         await using var context = TestContextFactory.Create();
         await using var journalContext = TestContextFactory.CreateJournal();
-        var controller = new BudgetController(NullLogger<BudgetController>.Instance, new BudgetService(context, new ContactLookup(journalContext)));
+        var controller = new BudgetController(NullLogger<BudgetController>.Instance, new BudgetService(context, new ContactLookup(journalContext)), new UserDisplayNameResolver(context));
 
         var missingId = Guid.NewGuid();
         var result = await controller.Put(missingId, new NewBudget

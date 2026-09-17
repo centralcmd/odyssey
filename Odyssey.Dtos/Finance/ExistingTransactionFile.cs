@@ -1,6 +1,6 @@
 namespace Odyssey.Dtos.Finance;
 
-public sealed record ExistingTransactionFile
+public sealed record ExistingTransactionFile : IAttributedFile
 {
     public required Guid Id { get; set; }
 

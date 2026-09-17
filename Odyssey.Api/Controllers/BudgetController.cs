@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Swashbuckle.AspNetCore.Annotations;
 
+using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 
 namespace Odyssey.Api.Controllers;
@@ -17,11 +18,16 @@ public class BudgetController : ControllerBase
 {
     private readonly ILogger<BudgetController> logger;
     private readonly BudgetService budgetService;
+    private readonly IUserDisplayNameResolver displayNames;
 
-    public BudgetController(ILogger<BudgetController> logger, BudgetService budgetService)
+    public BudgetController(
+        ILogger<BudgetController> logger,
+        BudgetService budgetService,
+        IUserDisplayNameResolver displayNames)
     {
         this.logger = logger;
         this.budgetService = budgetService;
+        this.displayNames = displayNames;
     }
 
     [HttpGet(Name = "GetBudgets")]
@@ -143,6 +149,7 @@ public class BudgetController : ControllerBase
             return this.NotFoundProblem($"Budget ID {id} not found.");
         }
 
+        await displayNames.EnrichFileAttributionAsync(User, transactions.Transactions, cancellationToken);
         return Ok(transactions);
     }
 }
