@@ -534,10 +534,9 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
               ) : null}
               {curTerms.map((t) => {
                 const info = window.trmKindInfo(t.kind);
-                // The billing period is what separates a $695 annual fee from a
-                // $695 monthly one, so it rides in the foot beside the date.
-                const bill = t.billingPeriod ? H.billingInfo(t.billingPeriod) : null;
-                const period = bill && bill.key !== 'OneTime' ? bill.label : null;
+                // The cadence is what separates a $695 annual fee from a $695
+                // monthly one, so it rides in the foot beside the date.
+                const period = H.cadenceTextFor(t);
                 // A fee is NAMED by its label, with the kind wording leading the
                 // caption — so six fees read as six distinct tiles, in text, not
                 // six identical ones.

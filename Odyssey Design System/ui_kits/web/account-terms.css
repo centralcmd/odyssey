@@ -126,7 +126,12 @@
   padding: 3px 7px; border-radius: 999px;
   background: var(--mud-palette-action-default-hover);
   color: var(--mud-palette-text-secondary);
+  white-space: nowrap;
 }
+
+/* ---- Cadence block in the New / Edit term dialog ---- */
+.trm-cadence { display: flex; flex-direction: column; gap: var(--space-2); }
+.trm-cadence-echo { margin-top: -2px; }
 
 /* ---- Compact row ---- */
 .trm-summary.row {

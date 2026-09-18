@@ -242,10 +242,12 @@ const TermHero = ({ terms, account }) => {
 /* =============================================================
    Current terms summary — three styles
    ============================================================= */
-const BillTag = ({ billingPeriod }) => {
-  const b = H.billingInfo(billingPeriod);
-  if (!b || b.key === 'OneTime') return null;
-  return <span className="trm-bill">{b.chip || b.label}</span>;
+/* The cadence tag — interval AND count, in words, from the shared helper. A
+   one-time charge and an unset interval carry no cadence and render nothing. */
+const CadenceTag = ({ term }) => {
+  const text = H.cadenceTextFor(term);
+  if (!text) return null;
+  return <span className="trm-bill">{text}</span>;
 };
 
 const CurrentTermsSummary = ({ current, style, account }) => {
@@ -263,7 +265,7 @@ const CurrentTermsSummary = ({ current, style, account }) => {
               </span>
               <TermName t={t} account={account} nameClass="trm-srow-kind" />
               <span className="trm-srow-meta">
-                <BillTag billingPeriod={t.billingPeriod} />
+                <CadenceTag term={t} />
                 <span className="trm-srow-date">since {trmMonY(t.effectiveFrom)}</span>
                 <span className="trm-srow-value" style={{ color: H.costColor(t, account) || undefined }}>{H.fmtTermValueFor(t, account)}</span>
               </span>
@@ -310,7 +312,7 @@ const CurrentTermsSummary = ({ current, style, account }) => {
             <div className="trm-tile-value" style={{ color: H.costColor(t, account) || info.color }}>{H.fmtTermValueFor(t, account)}</div>
             <div className="trm-tile-foot">
               <span>since {trmMonY(t.effectiveFrom)}</span>
-              <BillTag billingPeriod={t.billingPeriod} />
+              <CadenceTag term={t} />
             </div>
           </div>
         );
@@ -350,7 +352,7 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
       {rows.map(t => {
         const info = trmKindInfo(t.kind);
         const isCurrent = currentIds.has(t.id);
-        const b = H.billingInfo(t.billingPeriod);
+        const cadence = H.cadenceTextFor(t);
         return (
           <tr key={t.id} className={isCurrent ? 'current' : ''}>
             <td>
@@ -366,7 +368,7 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
             </td>
             <td className="trm-cell-date">{H.dateLong(t.effectiveFrom)}</td>
             <td className="trm-cell-value" style={isCurrent ? { color: H.costColor(t, account) || info.color } : undefined}>
-              {H.fmtTermValueFor(t, account)}{b && b.suffix ? <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400 }}> {b.suffix}</span> : null}
+              {H.fmtTermValueFor(t, account)}{cadence ? <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400 }}> {cadence}</span> : null}
             </td>
             <td><TermStatus t={t} currentIds={currentIds} /></td>
             <td className="trm-cell-act"><RowActions onEdit={() => onEdit(t)} onDelete={() => onDelete(t)} /></td>
@@ -381,7 +383,7 @@ const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account }) => (
   <div className="trm-timeline">
     {rows.map(t => {
       const info = trmKindInfo(t.kind);
-      const b = H.billingInfo(t.billingPeriod);
+      const cadence = H.cadenceTextFor(t);
       return (
         <div className="trm-tl-item" key={t.id}>
           <div className="trm-tl-rail">
@@ -397,7 +399,7 @@ const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account }) => (
           </div>
           <div className="trm-tl-figs">
             <span className="trm-tl-value" style={currentIds.has(t.id) ? { color: H.costColor(t, account) || info.color } : undefined}>
-              {H.fmtTermValueFor(t, account)}{b && b.suffix ? <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400, fontSize: 12 }}> {b.suffix}</span> : null}
+              {H.fmtTermValueFor(t, account)}{cadence ? <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400, fontSize: 12 }}> {cadence}</span> : null}
             </span>
             <span className="trm-rowbtns trm-tl-actions">
               <button type="button" className="trm-iconbtn" aria-label="Edit term" onClick={() => onEdit(t)}><MIcon name="edit" size={16} /></button>
@@ -542,6 +544,6 @@ const AccountTerms = ({ account, summaryStyle = 'tiles', historyStyle = 'table',
 };
 
 Object.assign(window, {
-  AccountTerms, TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName,
+  AccountTerms, TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName, CadenceTag,
   trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmToday, trmKey,
 });

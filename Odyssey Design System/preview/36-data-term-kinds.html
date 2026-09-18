@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Reference data" name="Term kinds" subtitle="The three-value TermKind enum behind account rate &amp; fee history — two rates plus one Fee — with name, group, Material icon, fixed oklch color, default unit, account-type eligibility and label rule per member. Plus the BillingPeriod enum. Driven by the OdysseyData registries." viewport="1100x1500" -->
+<!-- @dsCard group="Reference data" name="Term kinds" subtitle="The three-value TermKind enum behind account rate &amp; fee history — two rates plus one Fee — with name, group, Material icon, fixed oklch color, default unit, account-type eligibility and label rule per member. Plus the Interval enum. Driven by the OdysseyData registries." viewport="1100x1500" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -61,10 +61,10 @@
 <body>
   <div class="spec-doc">
     <h2>Term kinds</h2>
-    <p class="spec-lead">The <b>TermKind</b> enum classifies each entry in an account's rate &amp; fee history (the <b>AccountTerm</b> feature). It carries <b>three</b> values: two <b>rates</b> — <code>InterestRate</code> and the optional <code>ExpectedReturn</code> — and one <b>Fee</b>. Like every Odyssey registry, the enum carries only a name; the <b>group</b>, <b>icon</b>, <b>color</b> and <b>default unit</b> are a design-system decision, defined once in <code>OdysseyData.termKinds</code> so a kind reads identically in the step chart, the current-terms summary, the history, the picker and the row subtitle. Hues sit in the shared categorical band (L ~0.74–0.80, C ~0.13–0.16) — <b>brand tide stays out of it</b>, and the kinds never encode income / expense / status. Each kind is gated to the account types it can apply to.</p>
+    <p class="spec-lead">The <b>TermKind</b> enum classifies each entry in an account's rate &amp; fee history (the <b>Term</b> feature). It carries <b>three</b> values: two <b>rates</b> — <code>InterestRate</code> and the optional <code>ExpectedReturn</code> — and one <b>Fee</b>. Like every Odyssey registry, the enum carries only a name; the <b>group</b>, <b>icon</b>, <b>color</b> and <b>default unit</b> are a design-system decision, defined once in <code>OdysseyData.termKinds</code> so a kind reads identically in the step chart, the current-terms summary, the history, the picker and the row subtitle. Hues sit in the shared categorical band (L ~0.74–0.80, C ~0.13–0.16) — <b>brand tide stays out of it</b>, and the kinds never encode income / expense / status. Each kind is gated to the account types it can apply to.</p>
     <div class="spec-src">
-      <span class="pill">Enum <b>TermKind</b> · <b>TermValueUnit</b> · <b>BillingPeriod</b></span>
-      <span class="pill">Registry <b>OdysseyData.termKinds</b> · <b>billingPeriods</b></span>
+      <span class="pill">Enum <b>TermKind</b> · <b>TermValueUnit</b> · <b>Interval</b></span>
+      <span class="pill">Registry <b>OdysseyData.termKinds</b> · <b>intervals</b></span>
       <span class="pill">Matrix <b>termKindEligibility</b></span>
       <span class="pill">Source <b>data.js</b></span>
     </div>
@@ -76,7 +76,7 @@
   <div class="stage-label"><span class="material-icons">sell</span>Fee<span class="ctx">— group: fee · one kind, named by its own label · percentage or a money amount</span></div>
   <div class="cpt-grid" id="fee-grid"></div>
 
-  <div class="stage-label"><span class="material-icons">event_repeat</span>Billing period<span class="ctx">— BillingPeriod · optional context for fees, null for rates</span></div>
+  <div class="stage-label"><span class="material-icons">event_repeat</span>Billing interval<span class="ctx">— Interval · optional context for fees, null for rates · paired with IntervalCount, see “Term cadence &amp; anchor date”</span></div>
   <div class="bill-row" id="bill-row"></div>
 
   <div class="spec-doc">
@@ -129,11 +129,11 @@
       const kinds = D.termKinds || [];
       document.getElementById('rate-grid').innerHTML = kinds.filter(k => k.group === 'rate').map(cardFor).join('');
       document.getElementById('fee-grid').innerHTML = kinds.filter(k => k.group === 'fee').map(cardFor).join('');
-      document.getElementById('bill-row').innerHTML = (D.billingPeriods || []).map(b => `
+      document.getElementById('bill-row').innerHTML = (D.intervals || []).map(b => `
         <span class="bill-chip">
           <span class="bill-en">${b.enumValue}</span>
           <span class="bill-lab">${b.label}</span>
-          ${b.suffix ? `<span class="bill-suf">${b.suffix}</span>` : ''}
+          <span class="bill-suf">${b.periodic ? 'periodic · takes a count' : 'no count'}</span>
         </span>`).join('');
     })();
   </script>

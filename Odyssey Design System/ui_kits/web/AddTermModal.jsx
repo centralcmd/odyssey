@@ -1,8 +1,8 @@
-/* AddTermModal — New / Edit dialog for an AccountTerm (interest-rate & fee history).
+/* AddTermModal — New / Edit dialog for a Term (interest-rate & fee history).
 
    Opened from the "Terms" section (Accounts → account detail). Built on the
    shared DS Modal shell, like every other create/edit dialog. Field set mirrors
-   the NewAccountTerm DTO and enforces the spec's validation:
+   the NewTerm DTO and enforces the spec's validation:
 
      • TermKind        — eligibility-gated by the account's AccountType (matrix in
                          data.js). Three values: InterestRate (interest-bearing
@@ -18,7 +18,17 @@
                          [-1, 1] (3.40 → 0.0340; negative allowed). Amount: ≥ 0.
      • CurrencyCode    — required for Amount (defaults to the account currency);
                          null for Percentage.
-     • BillingPeriod   — optional context for fees; null for rate kinds.
+     • Interval        — optional context for fees; null for rate kinds. The
+                         cadence UNIT only: OneTime / PerOccurrence / PerUnit /
+                         Daily / Weekly / Monthly / Annually. Quarterly is gone —
+                         it is Monthly with a count of 3.
+     • IntervalCount   — the multiplier, 1…1000. Offered, and written, ONLY for a
+                         periodic unit; null in every other case (including a
+                         null interval), never a meaningless 1.
+     • AnchorDate      — optional, fees only: when the term is FIRST BILLED, as
+                         opposed to when its price took effect. No ordering
+                         against EffectiveFrom is imposed — arrears and prepaid
+                         are both legitimate records.
      • EffectiveFrom   — required; past or future allowed (future = scheduled).
      • Note            — optional, ≤ 512 chars.
 
@@ -31,9 +41,10 @@ const TRM_CURRENCIES = (window.OdysseyData.currencies || [])
   .filter(c => !c.archived)
   .map(c => ({ value: c.code, label: c.name }));
 
-/* One default billing period for a new fee — there is no longer a fee kind to
+/* One default interval for a new fee — there is no longer a fee kind to
    guess from, and the four kind-specific guesses went away with the kinds. */
-const trmDefaultBilling = () => window.OdysseyData.defaultFeeBillingPeriod;
+const trmDefaultInterval = () => window.OdysseyData.defaultFeeInterval;
+const TRM_COUNT = window.OdysseyData.termIntervalCount; // { min: 1, max: 1000 }
 
 /* percent fraction → editable percent string ("0.0340" → "3.4") */
 const fracToPctStr = (f) => {
@@ -60,7 +71,9 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
     unit: term ? term.unit : initInfo.defaultUnit,
     valueStr: term ? (term.unit === 'Percentage' ? fracToPctStr(term.value) : String(term.value)) : '',
     currency: term ? (term.currency || account.currency || 'USD') : (account.currency || 'USD'),
-    billingPeriod: term ? (term.billingPeriod || '') : (initInfo.group === 'fee' ? trmDefaultBilling() : ''),
+    interval: term ? (term.interval || '') : (initInfo.group === 'fee' ? trmDefaultInterval() : ''),
+    intervalCount: term && term.intervalCount != null ? String(term.intervalCount) : '',
+    anchorDate: term ? (term.anchorDate || '') : '',
     effectiveFrom: term ? term.effectiveFrom : new Date().toISOString().slice(0, 10),
     label: term ? (term.label || '') : '',
     note: term ? (term.note || '') : '',
@@ -71,6 +84,10 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
   const isRate = info.group === 'rate';
   const isPct = draft.unit === 'Percentage';
   const labelRule = H.termLabelRule(draft.kind); // hidden | optional | required
+  // The one condition the cadence fields hang off: a count exists only for a
+  // periodic unit, so the field is not merely disabled — it is not there.
+  const periodic = H.intervalIsPeriodic(draft.interval);
+  const intervalInfo = H.intervalInfo(draft.interval);
 
   const set = (k) => (v) => {
     setDraft(d => ({ ...d, [k]: v }));
@@ -85,7 +102,10 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
       unit: ki.defaultUnit,
       // A rate kind refuses a label, so a typed one is discarded on the switch.
       label: H.termLabelRule(k) === 'hidden' ? '' : d.label,
-      billingPeriod: ki.group === 'fee' ? (d.billingPeriod || trmDefaultBilling()) : '',
+      interval: ki.group === 'fee' ? (d.interval || trmDefaultInterval()) : '',
+      // A rate is not billed, so it carries neither half of a billing description.
+      intervalCount: ki.group === 'fee' ? d.intervalCount : '',
+      anchorDate: ki.group === 'fee' ? d.anchorDate : '',
     }));
     setErrors({});
   };
@@ -105,6 +125,17 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
     }
 
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
+
+    // IntervalCount range — the same bound as the DTO's [Range], which the
+    // service re-checks for callers that never pass through model binding.
+    const countRaw = String(draft.intervalCount).trim();
+    let count = null;
+    if (!isRate && periodic && countRaw !== '') {
+      count = parseInt(countRaw, 10);
+      if (isNaN(count) || count < TRM_COUNT.min || count > TRM_COUNT.max) {
+        next.intervalCount = `Enter a whole number between ${TRM_COUNT.min} and ${TRM_COUNT.max}.`;
+      }
+    }
     if (draft.note.length > 512) next.note = 'Keep the note under 512 characters.';
 
     // Label rules — refused on rate kinds, required on every fee, ≤ 64 chars.
@@ -132,7 +163,11 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
       unit: draft.unit,
       value,
       currency: isPct ? null : draft.currency,
-      billingPeriod: isRate ? null : (draft.billingPeriod || null),
+      interval: isRate ? null : (draft.interval || null),
+      // Stored as 1 when a periodic unit is left without a count (the identity
+      // cadence), and as null — never 1 — in every non-periodic case.
+      intervalCount: !isRate && periodic ? (count == null ? 1 : count) : null,
+      anchorDate: isRate ? null : (draft.anchorDate || null),
       effectiveFrom: draft.effectiveFrom,
       label,
       // LabelKey is derived, never posted — this stands in for the server's
@@ -143,6 +178,8 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
   };
 
   const sym = TRM_SYM[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
+  // The cadence in words, from the single helper every surface reads.
+  const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
   const previewFrac = (() => {
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     return isNaN(raw) ? null : raw / 100;
@@ -257,7 +294,7 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
             currencyOptions={TRM_CURRENCIES}
             currencySearchThreshold={0}
             error={errors.value}
-            help={<React.Fragment>Flat amount in <b>{draft.currency}</b>{draft.billingPeriod && draft.billingPeriod !== 'OneTime' ? <React.Fragment> · {(H.billingInfo(draft.billingPeriod) || {}).label}</React.Fragment> : ''}</React.Fragment>}
+            help={<React.Fragment>Flat amount in <b>{draft.currency}</b>{cadence ? <React.Fragment> · {cadence}</React.Fragment> : ''}</React.Fragment>}
           />
         )}
       </div>
@@ -270,12 +307,40 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
       </FormRow>
       {errors.effectiveFrom && <div className="helper aam-err" style={{ marginTop: -6 }}>{errors.effectiveFrom}</div>}
 
-      {/* Billing period — fees only */}
+{/* Cadence — fees only. The unit picker always; the count only once the unit
+          is periodic, so a "how many" question is never asked about a one-time
+          or per-occurrence charge. */}
       {!isRate && (
-        <FieldShell label="Billing period">
-          <Select value={draft.billingPeriod} onChange={set('billingPeriod')}
-            options={[{ value: '', label: 'Not specified' }, ...D.billingPeriods.map(b => ({ value: b.key, label: b.label }))]} />
-        </FieldShell>
+        <div className="trm-cadence">
+          <FormRow cols={periodic ? 2 : 1}>
+            <FieldShell label="Billing interval"
+              help={periodic ? undefined : (intervalInfo && intervalInfo.key !== 'OneTime' ? `Charged ${intervalInfo.adverb}` : undefined)}>
+              <Select value={draft.interval} onChange={set('interval')}
+                options={[{ value: '', label: 'Not specified' }, ...D.intervals.map(b => ({ value: b.key, label: b.label }))]} />
+            </FieldShell>
+            {periodic && (
+              <NumberField
+                label="Every"
+                min={TRM_COUNT.min}
+                max={TRM_COUNT.max}
+                step={1}
+                unit={intervalInfo ? intervalInfo.many : ''}
+                placeholder="1"
+                value={draft.intervalCount === '' ? null : Number(draft.intervalCount)}
+                onChange={(v) => set('intervalCount')(v == null ? '' : String(v))}
+                error={errors.intervalCount}
+                help={errors.intervalCount ? undefined : `Leave blank for ${intervalInfo.adverb}`} />
+            )}
+          </FormRow>
+          {periodic && !errors.intervalCount && (
+            <div className="helper trm-cadence-echo">Charged {cadence}.</div>
+          )}
+          {draft.interval === 'PerUnit' && (
+            <div className="helper trm-cadence-echo">Name the unit in the fee’s name — “Custody · per share”.</div>
+          )}
+          <DateField label="First billed on" value={draft.anchorDate} onChange={set('anchorDate')}
+            helper="When this is first actually charged, if that isn’t the effective date" />
+        </div>
       )}
 
       {/* Note */}

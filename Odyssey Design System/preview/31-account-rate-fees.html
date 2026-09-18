@@ -69,10 +69,10 @@
 <body>
   <div class="spec-doc">
     <h2>Account rate &amp; fee history · <span style="color:var(--mud-palette-text-secondary);font-weight:400;">accounts/{id} → Terms</span></h2>
-    <p class="spec-lead">A time-versioned history of an account's <b>terms</b> — its interest rate, an optional expected return, and the prices of its bank services (fees) — living as a new section inside the expanded account record, beside Files &amp; Transactions. A term's series key is <b>(kind, label)</b>: one kind can hold several concurrently in-force fees, named by the user (<i>ATM withdrawal · abroad</i>), and within one name the latest entry on or before a date is the value <b>in force</b> (implicit supersession — no <code>EffectiveTo</code>). It leads with the interest rate: a <b>step-line chart</b> of the rate over time, a <b>current-terms</b> summary, then the full <b>grouped, editable history</b>. Frontend for the backend <code>AccountTerm</code> spec.</p>
+    <p class="spec-lead">A time-versioned history of an account's <b>terms</b> — its interest rate, an optional expected return, and the prices of its bank services (fees) — living as a new section inside the expanded account record, beside Files &amp; Transactions. A term's series key is <b>(kind, label)</b>: one kind can hold several concurrently in-force fees, named by the user (<i>ATM withdrawal · abroad</i>), and within one name the latest entry on or before a date is the value <b>in force</b> (implicit supersession — no <code>EffectiveTo</code>). It leads with the interest rate: a <b>step-line chart</b> of the rate over time, a <b>current-terms</b> summary, then the full <b>grouped, editable history</b>. Frontend for the backend <code>Term</code> spec.</p>
     <div class="spec-src">
-      <span class="pill">DTO <b>NewAccountTerm</b> · <b>ExistingAccountTerm</b> · <b>CurrentAccountTerm</b></span>
-      <span class="pill">Enum <b>TermKind</b> · <b>TermValueUnit</b> · <b>BillingPeriod</b></span>
+      <span class="pill">DTO <b>NewTerm</b> · <b>ExistingTerm</b> · <b>CurrentTerm</b></span>
+      <span class="pill">Enum <b>TermKind</b> · <b>TermValueUnit</b> · <b>Interval</b></span>
       <span class="pill">API <b>AccountController</b> /terms</span>
       <span class="pill">Claims <b>accounts.terms.{read,write}</b></span>
     </div>
@@ -81,13 +81,14 @@
       <thead><tr><th>Zone / column</th><th>DTO field</th><th>Type</th><th>Notes</th></tr></thead>
       <tbody>
         <tr><td>Hero chart</td><td class="f">Value · EffectiveFrom</td><td class="t">decimal · date</td><td>Step line — the rate holds flat and jumps on each change; current value + delta vs the prior entry.</td></tr>
-        <tr><td>Current terms</td><td class="f">CurrentAccountTerm</td><td class="t">projection</td><td>One value in force per <b>series</b> (<code>GET …/terms/current</code>). Summary style is tweakable: tiles · row · chips.</td></tr>
+        <tr><td>Current terms</td><td class="f">CurrentTerm</td><td class="t">projection</td><td>One value in force per <b>series</b> (<code>GET …/terms/current</code>). Summary style is tweakable: tiles · row · chips.</td></tr>
         <tr><td>Term</td><td class="f">TermKind</td><td class="t">enum</td><td>Three values: two rates plus one <code>Fee</code>. Glyph + tint per kind, rates first. Eligibility-gated by account type.</td></tr>
         <tr><td>Name</td><td class="f">Label</td><td class="t">string? (64)</td><td>User-authored series name. Refused on rate kinds, <b>required</b> on every fee — a fee is named by its label, not its kind.</td></tr>
         <tr><td>Value</td><td class="f">Value · ValueUnit</td><td class="t">decimal · enum</td><td>Percentage (fraction in [-1,1]) or a money Amount; currency required for amounts.</td></tr>
         <tr><td>Effective from</td><td class="f">EffectiveFrom</td><td class="t">DateTime</td><td>Past or future (future = <code>Scheduled</code>). Default sort, newest first. <code>(kind, label, date)</code> must be unique — the <code>409</code>.</td></tr>
-        <tr><td>Billing</td><td class="f">BillingPeriod</td><td class="t">enum?</td><td>Optional context for fees (<code>/mo · /yr · /txn</code>); null for rates.</td></tr>
-        <tr><td>Actions</td><td class="f">AccountTermId</td><td class="t">Guid</td><td>Edit / Delete in place; New term opens the create dialog. <code>accounts.terms.write</code>.</td></tr>
+        <tr><td>Cadence</td><td class="f">Interval · IntervalCount</td><td class="t">enum? · int?</td><td>Optional context for fees, null for rates. The unit (<code>OneTime · PerOccurrence · PerUnit · Daily · Weekly · Monthly · Annually</code>) plus a multiplier, 1–1000, offered only for a periodic unit. <code>Quarterly</code> is gone — it is Monthly × 3.</td></tr>
+        <tr><td>First billed on</td><td class="f">AnchorDate</td><td class="t">DateTime?</td><td>When the term is first actually charged, as distinct from when its price took effect. Fees only. No ordering against <code>EffectiveFrom</code> — arrears and prepaid are both valid. Dialog-only surface; nothing is derived from it.</td></tr>
+        <tr><td>Actions</td><td class="f">TermId</td><td class="t">Guid</td><td>Edit / Delete in place; New term opens the create dialog. <code>accounts.terms.write</code>.</td></tr>
       </tbody>
     </table>
 
@@ -96,6 +97,8 @@
       <li><span class="material-icons">rule</span><b>Eligibility is enforced in the dialog.</b> Interest rate only on interest-bearing accounts, expected return only on investment / pension, <code>Fee</code> everywhere. Ineligible kinds are hidden \u2014 and where only one kind is eligible the picker is not rendered at all.</li>
       <li><span class="material-icons">label</span><b>A label makes a series.</b> Two fees with different names coexist on the same date; a labelled tile is <b>named by its label</b> with the kind wording as a text caption beneath. Names are matched trimmed and case-folded, so <i>“ATM abroad”</i> and <i>“  atm   Abroad ”</i> are one series.</li>
       <li><span class="material-icons">history</span><b>History is append-style.</b> A newer-dated entry supersedes the prior one <b>in its own series only</b>, while both stay visible in the full history; the in-force row is marked.</li>
+      <li><span class="material-icons">repeat</span><b>Cadence is two fields, worded as one.</b> The count field appears only once the unit is periodic, and every surface reads the pair through one helper — <i>monthly</i>, <i>every 3 months</i>, <i>every 2 weeks</i>, <i>per occurrence</i>, <i>per unit</i>. A periodic unit left blank stores 1; a non-periodic one stores null, never a meaningless 1.</li>
+      <li><span class="material-icons">event</span><b>Effective ≠ first billed.</b> A fee raised on the 1st but first charged on the 15th records both dates. The anchor never enters supersession, the series key or the <code>409</code> — the in-force term still resolves on <code>EffectiveFrom</code> alone.</li>
       <li><span class="material-icons">tune</span><b>Tweak the surface.</b> Toggle the current-terms summary (tiles / row / chips) and the history view (table / timeline) in the bar below.</li>
     </ul>
   </div>

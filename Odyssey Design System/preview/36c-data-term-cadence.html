@@ -1,0 +1,137 @@
+<!doctype html>
+<!-- @dsCard group="Reference data" name="Term cadence & anchor date" subtitle="Interval + IntervalCount — the two-part fee cadence that replaced the single BillingPeriod enum (Quarterly is Monthly × 3, ordinal 4 retired) — with the periodic/count rules, the one wording helper every surface reads, and the AnchorDate “first billed on” rule. Driven by OdysseyData.intervals." viewport="1100x1500" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Term cadence &amp; anchor date</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<script src="../ui_kits/web/data.js"></script>
+<style>
+html,body{min-height:0;background:var(--mud-palette-background)}
+body{width:1100px;padding:24px;box-sizing:border-box;font-family:var(--font-sans);color:var(--mud-palette-text-primary)}
+a{color:var(--tide-400)}a:hover{color:var(--tide-300, var(--tide-400));text-decoration:underline}
+.spec-doc{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:12px;padding:20px 22px;margin-bottom:20px}
+.spec-doc h2{font:600 16px/1.3 var(--font-sans);margin:0 0 7px}
+.spec-lead{font:400 13px/1.6 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0 0 14px;max-width:96ch}
+.spec-lead b{color:var(--tide-400);font-weight:500}
+.spec-lead code,.spec-notes li code,td code{font:500 11.5px/1 var(--font-mono);color:var(--tide-400)}
+.spec-src{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.spec-src .pill{font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-secondary);background:rgba(255,255,255,0.05);border:1px solid var(--mud-palette-divider);border-radius:999px;padding:6px 11px}
+.spec-src .pill b{color:var(--tide-400);font-weight:600}
+.stage-label{font:500 11px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:4px 0 12px 2px;display:flex;align-items:center;gap:8px}
+.stage-label .material-icons{font-size:15px;color:var(--tide-400)}
+.stage-label .ctx{font-family:var(--font-mono);letter-spacing:0;text-transform:none;color:var(--mud-palette-text-disabled)}
+.iv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.iv-card{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:9px}
+.iv-card.retired{border-style:dashed;opacity:.72}
+.iv-top{display:flex;align-items:center;gap:8px}
+.iv-en{font:600 10px/1 var(--font-mono);color:var(--mud-palette-text-secondary);background:var(--mud-palette-action-default-hover);border-radius:6px;padding:4px 7px}
+.iv-lab{font:500 14px/1.1 var(--font-sans)}
+.iv-tag{font:600 9px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 7px;align-self:flex-start}
+.iv-tag.per{color:var(--tide-400);border:1px solid color-mix(in oklch,var(--tide-400) 45%,transparent)}
+.iv-tag.non{color:var(--mud-palette-text-secondary);border:1px solid var(--mud-palette-divider)}
+.iv-words{font:400 12px/1.5 var(--font-mono);color:var(--mud-palette-text-secondary)}
+.iv-words b{color:var(--mud-palette-text-primary);font-weight:500}
+table.spec-tbl{width:100%;border-collapse:collapse;margin:0}
+table.spec-tbl th{text-align:left;font:600 10px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);padding:0 12px 8px;border-bottom:1px solid var(--mud-palette-divider)}
+table.spec-tbl td{font:400 12.5px/1.5 var(--font-sans);color:var(--mud-palette-text-primary);padding:9px 12px;border-bottom:1px solid var(--mud-palette-divider-light);vertical-align:top}
+table.spec-tbl td.f{font-family:var(--font-mono);color:var(--tide-400);white-space:nowrap}
+table.spec-tbl td.o{font-family:var(--font-mono);color:var(--mud-palette-text-secondary);white-space:nowrap}
+table.spec-tbl tr:last-child td{border-bottom:none}
+.spec-notes{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.spec-notes li{position:relative;padding-left:22px;font:400 12.5px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.spec-notes li b{color:var(--mud-palette-text-primary);font-weight:500}
+.spec-notes li .material-icons{position:absolute;left:0;top:0;font-size:16px;color:var(--tide-400)}
+.date-pair{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:24px}
+.date-card{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.date-k{font:600 9.5px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.date-v{font:400 20px/1 var(--font-mono);color:var(--mud-palette-text-primary)}
+.date-d{font:400 12.5px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0}
+</style>
+</head>
+<body>
+<div class="spec-doc">
+  <h2>Term cadence &amp; anchor date</h2>
+  <p class="spec-lead">A fee's cadence is <b>two fields</b>, not one: <code>Interval</code> names the unit and <code>IntervalCount</code> names how many of them — so <i>every 3 months</i>, <i>every 2 weeks</i> and <i>every 6 months</i> are recordable without the enum growing a value for each. <code>Quarterly</code> is gone (it is Monthly × 3), <code>PerTransaction</code> is the broader <code>PerOccurrence</code>, and <code>PerUnit</code> and <code>Weekly</code> are new. Alongside them, <code>AnchorDate</code> separates <b>when a price took effect</b> from <b>when it is first actually charged</b> — a fee raised on the 1st but billed on the 15th is two dates, and the term could previously record only one.</p>
+  <div class="spec-src">
+    <span class="pill">Enum <b>Interval</b></span>
+    <span class="pill">Field <b>IntervalCount</b> · <b>AnchorDate</b></span>
+    <span class="pill">Registry <b>OdysseyData.intervals</b> · <b>termIntervalCount</b></span>
+    <span class="pill">Helper <b>cadenceText(interval, count)</b></span>
+    <span class="pill">Source <b>data.js</b></span>
+  </div>
+</div>
+
+<div class="stage-label"><span class="material-icons">event_repeat</span>Interval<span class="ctx">— the cadence unit · optional on a fee, refused on a rate</span></div>
+<div class="iv-grid" id="iv-grid"></div>
+
+<div class="stage-label"><span class="material-icons">tag</span>Interval count<span class="ctx">— the multiplier · offered, and stored, only for a periodic unit</span></div>
+<div class="spec-doc">
+  <table class="spec-tbl">
+    <thead><tr><th>Interval</th><th>Count submitted</th><th>Stored</th><th>Reads as</th></tr></thead>
+    <tbody id="rule-rows"></tbody>
+  </table>
+</div>
+
+<div class="stage-label"><span class="material-icons">event</span>Anchor date<span class="ctx">— “First billed on” · fees only · pure record-keeping</span></div>
+<div class="date-pair">
+  <div class="date-card">
+    <span class="date-k">Effective from</span>
+    <span class="date-v">2026-01-01</span>
+    <p class="date-d">When the price took effect. Required. Drives sort order, supersession, the in-force projection and the <code>409</code> duplicate guard.</p>
+  </div>
+  <div class="date-card">
+    <span class="date-k">First billed on · AnchorDate</span>
+    <span class="date-v">2026-01-15</span>
+    <p class="date-d">When the term is first actually charged. Optional, fees only. Drives <b>nothing</b> — no schedule, no accrual, no projection, no next-charge date.</p>
+  </div>
+</div>
+
+<div class="spec-doc">
+  <ul class="spec-notes">
+    <li><span class="material-icons">block</span><b>Ordinal 4 is retired, and <code>Weekly</code> does not take it.</b> A stored row still holding the old <code>Quarterly</code> must fail as an undefined value, not silently become something else — so <code>Weekly</code> is 7 and the gap at 4 stays open. The out-of-sequence numbering is the price of that.</li>
+    <li><span class="material-icons">rule</span><b>A count exists only for a periodic unit.</b> The dialog does not disable the field, it does not render it: a "how many" question is never asked about a one-time or per-occurrence charge. Periodic and blank stores <b>1</b>; non-periodic stores <b>null</b>, never a meaningless 1 that the next read-modify-write would have to defend against.</li>
+    <li><span class="material-icons">straighten</span><b>The bound is one definition.</b> <code>termIntervalCount</code> carries <b>1–1000</b> — the same pair the DTO's <code>[Range]</code> and the service's re-check name, so the two layers cannot drift. The dialog validates against the same constant.</li>
+    <li><span class="material-icons">format_quote</span><b>One wording helper.</b> Chips, tiles, table rows, timeline entries and the dialog's own echo all call <code>cadenceText(interval, count)</code> — <i>monthly</i> · <i>every 3 months</i> · <i>every 2 weeks</i> · <i>per occurrence</i> · <i>per unit</i>. A one-time or unset interval has no cadence and renders nothing at all.</li>
+    <li><span class="material-icons">label</span><b><code>PerUnit</code> names no unit.</b> The unit is carried by the term's <b>Label</b> — <i>"Custody · per share"</i>, <i>"Storage · per box"</i> — not by a field of its own, so the picker stays one enum and the name keeps doing the naming.</li>
+    <li><span class="material-icons">swap_vert</span><b>No ordering between the two dates.</b> Billed in arrears (anchor later) and prepaid (anchor earlier) are both legitimate records, and equal dates are fine — the server refuses neither direction, so neither does the dialog.</li>
+    <li><span class="material-icons">visibility_off</span><b>The anchor is a dialog-only surface.</b> No chip, tile, row or record card carries it: it changes nothing a reader of the list is deciding from, and the in-force term still resolves on <code>EffectiveFrom</code> alone — a term whose anchor is in the future is still current once its effective date has passed. Two entries differing only by anchor still collide with a <code>409</code>.</li>
+  </ul>
+</div>
+
+<script>
+(function(){
+  const D = window.OdysseyData || {}, H = window.OdysseyHelpers || {};
+  const ex = { Daily: 10, Weekly: 2, Monthly: 3, Annually: 2 };
+  document.getElementById('iv-grid').innerHTML = (D.intervals || []).map(i => `
+    <div class="iv-card">
+      <div class="iv-top"><span class="iv-en">${i.enumValue}</span><span class="iv-lab">${i.label}</span></div>
+      <span class="iv-tag ${i.periodic ? 'per' : 'non'}">${i.periodic ? 'Periodic · takes a count' : 'No count'}</span>
+      <div class="iv-words">${i.periodic
+        ? `1 → <b>${H.cadenceText(i.key, 1)}</b><br>${ex[i.key]} → <b>${H.cadenceText(i.key, ex[i.key])}</b>`
+        : (H.cadenceText(i.key, null) ? `<b>${H.cadenceText(i.key, null)}</b>` : '<b>no cadence shown</b>')}</div>
+    </div>`).join('')
+    + `<div class="iv-card retired">
+         <div class="iv-top"><span class="iv-en">4</span><span class="iv-lab">Retired</span></div>
+         <span class="iv-tag non">Never reassigned</span>
+         <div class="iv-words">was <b>Quarterly</b><br>now <b>${H.cadenceText('Monthly', 3)}</b></div>
+       </div>`;
+
+  const C = D.termIntervalCount || { min: 1, max: 1000 };
+  const rows = [
+    ['Monthly', '3', '3', H.cadenceText('Monthly', 3)],
+    ['Monthly', '— (blank)', '1', H.cadenceText('Monthly', 1)],
+    ['Weekly', '2', '2', H.cadenceText('Weekly', 2)],
+    ['PerOccurrence', '2', '400 — refused', 'IntervalCount is only allowed for a periodic interval'],
+    ['— (unset)', '2', '400 — refused', 'IntervalCount is only allowed for a periodic interval'],
+    ['PerUnit', '— (blank)', 'null', H.cadenceText('PerUnit', null)],
+    ['OneTime', '— (blank)', 'null', 'nothing rendered'],
+    ['Monthly', '0 · ' + (C.max + 1), '400 — refused', 'IntervalCount must be between ' + C.min + ' and ' + C.max],
+    ['4 (retired)', '—', '400 — refused', 'Interval ‘4’ is not a recognised value'],
+  ];
+  document.getElementById('rule-rows').innerHTML = rows.map(r =>
+    `<tr><td class="f">${r[0]}</td><td class="o">${r[1]}</td><td class="o">${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+})();
+</script>
+</body>
+</html>
