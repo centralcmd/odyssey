@@ -57,7 +57,7 @@ gh pr diff <N> --name-only
 
 **Read `.claude/agent-review-dispatch.md` for the dispatch mechanics** — the `model: "sonnet"` pin,
 single-message parallel dispatch, what each agent is given, `agentId` retention, and the relay format.
-Those are shared with `odyssey-spec-writer`'s spec-review loop and are not repeated here.
+Those are shared with the two spec-writer skills' review loops and are not repeated here.
 
 Dispatch all five `subagent_type`s from the table above, giving each the PR number and URL plus the
 one-line file summary from Step 1.
@@ -71,7 +71,7 @@ Prompt skeleton for each agent (fill in N / URL / file summary):
 ## Step 3 — Report findings to the user
 
 Relay the consolidated report per the shared mechanics. **Do not** approve, merge, or change the PR —
-unlike `odyssey-spec-writer`'s loop, this skill never edits the artifact under review.
+unlike the spec-writer skills' loops, this skill never edits the artifact under review.
 
 ## Step 4 — Hand off
 
@@ -87,5 +87,5 @@ Close with what happens next, rather than leaving the user holding five verdicts
 
 - **You are not a sixth reviewer.** The user was explicit: report the agents' findings, don't add your
   own. Resist the urge to "also notice" things — that's the agents' job.
-- This is the PR-stage analog of the `odyssey-spec-writer` skill's spec-review loop; the difference is
+- This is the PR-stage analog of the spec-writer skills' review loop; the difference is
   scope (a PR diff vs. a spec issue) and that this skill never edits the artifact under review.
