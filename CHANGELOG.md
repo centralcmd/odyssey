@@ -5,6 +5,23 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0](https://github.com/centralcmd/odyssey/compare/v0.30.0...v0.31.0) (2026-09-18)
+
+
+### Features
+
+* **client:** drop the visible filename caption from journal photo tiles ([#113](https://github.com/centralcmd/odyssey/issues/113)) ([f1595ff](https://github.com/centralcmd/odyssey/commit/f1595ff9e07e051581d1dd84269ddeefb70e6b9f))
+
+
+### Bug Fixes
+
+* **api:** evict the finance-caps entry for the insurance request caps ([#114](https://github.com/centralcmd/odyssey/issues/114)) ([22c4508](https://github.com/centralcmd/odyssey/commit/22c450897136c4f170c9a4c1c562dca2df5c4a02))
+
+
+### Documentation
+
+* update design system ([c74ebc8](https://github.com/centralcmd/odyssey/commit/c74ebc8151d96584fbe3cfdc6339ba08e5023b19))
+
 ## [0.30.0](https://github.com/centralcmd/odyssey/compare/v0.29.0...v0.30.0) (2026-09-17)
 
 
