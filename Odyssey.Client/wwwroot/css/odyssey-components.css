@@ -2619,11 +2619,6 @@ tr:focus-within > .odc-rowactions.reveal,
   text-transform: uppercase; letter-spacing: var(--tracking-caps);
   color: var(--mud-palette-text-secondary); opacity: 0.75;
 }
-.odc-photogrid-name {
-  font: var(--fw-regular) 11px/1.2 var(--font-mono); color: var(--mud-palette-text-secondary);
-  padding: 6px 8px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  border-top: 1px solid var(--mud-palette-divider);
-}
 
 /* ---------- OdsTaskBoard (kanban) ---------- */
 .odc-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); align-items: start; }

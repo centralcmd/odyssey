@@ -7,8 +7,9 @@
     v1 has no EXIF / caption / thumbnail pipeline: a tile renders the image at native
     fidelity with loading="lazy" and a capped display size, or — when no renderable
     Src is supplied (no files.read access, dangling reference, or not yet loaded) — a
-    striped placeholder carrying a monospace label + filename. The count is announced
-    as text in the heading, never colour/icon alone.
+    striped placeholder carrying a monospace label. The filename is never shown as a
+    visible caption: it lives in the tile's accessible name and title tooltip only.
+    The count is announced as text in the heading, never colour/icon alone.
 *@
 
 <section class="odc-photogrid @Class" aria-label="@AriaLabel">
@@ -33,6 +34,7 @@
                 <li class="odc-photogrid-item">
                     <button type="button" class="odc-photogrid-tile"
                             aria-label="@($"Open photo {p.Name}")"
+                            title="@(string.IsNullOrEmpty(p.Name) ? null : p.Name)"
                             @onclick="@(() => OnOpen.InvokeAsync(p))">
                         @if (!string.IsNullOrEmpty(p.Src))
                         {
@@ -50,7 +52,6 @@
                                 <span class="odc-photogrid-ph-label mono">@(p.Unavailable ? "no access" : "photo")</span>
                             </span>
                         }
-                        <span class="odc-photogrid-name mono" title="@p.Name">@p.Name</span>
                     </button>
                 </li>
             }
