@@ -353,8 +353,13 @@ internal static class SystemSettingsRegistry
         //
         // Three cache keys, not one: the caps span two domain projects, and a lookup interface lives
         // in the project that consumes it so that project's tests can fake it. Contracts and Insurance
-        // are Odyssey.Core.Finance (insurance reusing the existing entry, so one eviction covers it);
-        // photos and journal are Odyssey.Core.Journal.
+        // are Odyssey.Core.Finance; photos and journal are Odyssey.Core.Journal.
+        //
+        // Every cap below evicts FinanceCapsCacheKey, the insurance ones included, because all of them
+        // are served off FinanceRequestCaps. InsuranceCacheKey holds a DIFFERENT pair — the
+        // expiring-soon window and the summary cap — so evicting it here would leave the changed cap
+        // stale for the cache TTL while needlessly dropping two rows the change never touched
+        // (issue #28).
         new IntSetting
         {
             Key = SystemSettingsKeys.ContractMaxPartiesPerContract,
@@ -399,7 +404,7 @@ internal static class SystemSettingsRegistry
             FieldName = nameof(SystemSettingsUpdate.InsuranceMaxRenewalsPerPolicy),
             RequiredClaim = PermissionClaims.SystemSettingsUpdate,
             DefaultValue = Int(SystemSettingsDefaults.InsuranceMaxRenewalsPerPolicy),
-            CacheKeyToEvict = SystemSettingsService.InsuranceCacheKey,
+            CacheKeyToEvict = SystemSettingsService.FinanceCapsCacheKey,
             Read = r => r.InsuranceMaxRenewalsPerPolicy,
             Write = (dto, v) => dto.InsuranceMaxRenewalsPerPolicy = v,
         },
@@ -411,7 +416,7 @@ internal static class SystemSettingsRegistry
             FieldName = nameof(SystemSettingsUpdate.InsuranceMaxFilesPerParent),
             RequiredClaim = PermissionClaims.SystemSettingsUpdate,
             DefaultValue = Int(SystemSettingsDefaults.InsuranceMaxFilesPerParent),
-            CacheKeyToEvict = SystemSettingsService.InsuranceCacheKey,
+            CacheKeyToEvict = SystemSettingsService.FinanceCapsCacheKey,
             Read = r => r.InsuranceMaxFilesPerParent,
             Write = (dto, v) => dto.InsuranceMaxFilesPerParent = v,
         },
