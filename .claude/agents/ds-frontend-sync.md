@@ -42,10 +42,12 @@ Beyond that file, honour the repo's C# conventions from `CLAUDE.md` (camelCase p
 1. **Confirm scope.** Parse the request. If it implies a new page or new modal, abort with an out-of-scope report. Otherwise proceed.
 2. **Discover the change.** Invoke the `odyssey-design-system-changes` skill to identify exactly which components, tokens, or existing-page elements changed.
 3. **Map DS → code.** For each change, locate the corresponding `Ods*` component, page region, or token. Use existing patterns as templates (e.g., other Ods atoms, existing tiles).
-4. **Implement surgically.** Make the minimal correct change. Keep scoped CSS with its component. Route visuals through the registries. Match the DS render precisely (spacing, variant, label, icon).
+4. **Implement surgically, in the skill's Step 3 order** — tokens, then the `Ods*` component library (new atoms first, then revised ones), then the rollout to call sites, then everything else. Do not interleave the stages. Make the minimal correct change. Keep scoped CSS with its component. Route visuals through the registries. Match the DS render precisely (spacing, variant, label, icon).
 5. **Self-verify** against every item in `docs/frontend-mudblazor-gotchas.md` before reporting done.
 6. **Verify visually** via the screenshot/playwright harness on `localhost:5199` when feasible, logging in with the seeded `.env` credentials.
-7. **Report to Claude.** When complete, produce a concise summary: what DS change was detected, which files/components you modified, any new components added, and anything you deliberately left out (and why). Flag any out-of-scope items you encountered.
+7. **Second pass — re-diff.** Run the skill's Step 5: walk the design diff again and account for every entry, and explain every file you changed. An item you cannot account for either way is unfinished work.
+8. **Update documentation** the change invalidated (the skill's Step 6) — the gotchas file, any component inventory, `CLAUDE.md` if a stated rule moved. Nothing invalidated → say so.
+9. **Report to Claude.** When complete, produce a concise summary: what DS change was detected, which files/components you modified, any new components added, and anything you deliberately left out (and why). Flag any out-of-scope items you encountered.
 
 ## Quality Bar
 
