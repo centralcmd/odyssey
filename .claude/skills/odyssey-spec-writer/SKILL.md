@@ -115,7 +115,10 @@ gh repo view --json nameWithOwner -q .nameWithOwner
 ```
 
 2. Create the issue using a heredoc to avoid shell escaping problems. **Label it with the full review
-   trigger set** — `specification,accessibility,security,review` — in addition to `claude,feature`:
+   set** — `specification,accessibility,security,review` — in addition to `claude,feature`. These are
+   **taxonomy, not triggers**: no workflow fires on a label (`claude.yml` runs on comments and issue
+   open/assign; `claude-code-review.yml` only on an `@claude review` comment), so they mark which
+   reviews the issue is *in scope for*, and Step 5 does the actual dispatching:
 ```bash
 gh issue create \
   --title "{{ FEATURE_TITLE }}" \
@@ -147,23 +150,33 @@ gh label create review --color fbca04 --description "Needs review"
 
 ## Step 5 — Automated Multi-Agent Review Loop
 
-After the issue exists, run it through the reviewer agents and drive it to consensus. **The approval
-set is exactly three agents:** `senior-architect-reviewer`, `senior-frontend-reviewer`, and
-`appsec-security-auditor`. (The `accessibility` label is applied for the accessibility-auditor's own
-trigger, but that agent is **not** part of this skill's gating approval set — do not block on it.)
+After the issue exists, run it through the reviewer agents and drive it to consensus.
+
+**Read `.claude/agent-review-dispatch.md` for the dispatch mechanics** — the `model: "sonnet"` pin,
+single-message parallel dispatch, `agentId` retention, and the relay format. Those are shared with
+`pr-review` and are not repeated here.
+
+**The approval set is exactly three agents:**
+
+| Agent | Reviews |
+|---|---|
+| `senior-architect-reviewer` | architecture, backend, data model, API contract, EF/migrations |
+| `senior-frontend-reviewer` | Blazor client surfaces, design-system reuse, state, a11y intersection |
+| `appsec-security-auditor` | OWASP/ASVS, authz/claim boundaries, data minimisation, mass-assignment |
+
+The `accessibility-auditor` is **not** dispatched here and not part of the approval set. Spec-stage
+accessibility is covered by the cross-cutting checklist walked in Steps 1–2; the auditor's own review
+belongs at the PR stage, where there is markup to audit. Do not read the `accessibility` label as a
+request for it.
 
 ### Round 1 — dispatch
-Dispatch all three reviewer agents (in parallel) via the Agent tool, each pointed at the issue number
-and asked to post its specification-review verdict as a comment on the issue:
-- `senior-architect-reviewer` — architecture, backend, data model, API contract, EF/migrations.
-- `senior-frontend-reviewer` — Blazor client surfaces, design-system reuse, state, a11y intersection.
-- `appsec-security-auditor` — OWASP/ASVS, authz/claim boundaries, data minimisation, mass-assignment.
-
-Keep each agent's `agentId` from its spawn result — you will resume the same agent for re-review so it
-keeps its review context.
+Dispatch the three agents per the shared mechanics, each pointed at the issue number and asked to post
+its specification-review verdict as a comment on the issue.
 
 ### Triage — update the spec *or* rebut
-For every finding across the three reviews, do **one** of:
+This is where this loop differs from `pr-review`: the orchestrator **may edit the artifact**. For every
+finding across the three reviews, do **one** of:
+
 - **Update the spec** — edit the issue body (`gh issue edit <n> --body-file <updated-spec>`), bump the
   `Draft vN` version in the title line, and note which finding each change addresses (e.g.
   "addresses architect finding #3"). This is the default for valid findings.
@@ -174,18 +187,14 @@ For every finding across the three reviews, do **one** of:
   document that trade-off.)
 
 ### Round 2 — re-review
-Once the spec is updated, **resume the same three agents** (via SendMessage with their `agentId`, so
-they retain context) and ask each to re-verify its prior findings against the new draft and post a
-follow-up verdict comment.
+Once the spec is updated, resume the same three agents by `agentId` and ask each to re-verify its prior
+findings against the new draft and post a follow-up verdict comment.
 
 ### Stop condition
 - **All three approve on round 2** → the spec is cleared; report the consensus to the user with links
   to the verdict comments.
 - **Not all three approve after round 2** → **stop. Do not loop a third time automatically.** Summarize
   the outstanding findings (who still requests changes and why) and **consult the user** for direction.
-
-> Note: This loop gates on the three named reviewers only. If the user separately asks for the
-> accessibility-auditor or senior-tester, run them, but they do not change this skill's stop condition.
 
 ---
 

@@ -53,19 +53,14 @@ agents will have something to review):
 gh pr diff <N> --name-only
 ```
 
-## Step 2 — Dispatch all five agents (in parallel)
+## Step 2 — Dispatch all five agents
 
-In a **single message**, make five `Agent` tool calls — one per `subagent_type` above. Run them
-concurrently; they are independent. Give each the **PR number and URL**, a one-line note of what the
-PR touches (from `--name-only`), and ask it to perform its standard PR review and **post its verdict
-as a PR comment**, then return its findings to you.
+**Read `.claude/agent-review-dispatch.md` for the dispatch mechanics** — the `model: "sonnet"` pin,
+single-message parallel dispatch, what each agent is given, `agentId` retention, and the relay format.
+Those are shared with `odyssey-spec-writer`'s spec-review loop and are not repeated here.
 
-**Model:** pass `model: "sonnet"` on every one of the five `Agent` calls so the reviewers run on the
-latest Sonnet (not the orchestrator's model). This is deliberate — the review fleet uses Sonnet; do not
-omit it and let the agents inherit Opus.
-
-Keep each agent's `agentId` from its spawn result (in case the user later wants a re-review after the
-PR is updated — resume the same agent with `SendMessage` so it keeps context).
+Dispatch all five `subagent_type`s from the table above, giving each the PR number and URL plus the
+one-line file summary from Step 1.
 
 Prompt skeleton for each agent (fill in N / URL / file summary):
 
@@ -75,25 +70,22 @@ Prompt skeleton for each agent (fill in N / URL / file summary):
 
 ## Step 3 — Report findings to the user
 
-Once all five return, relay a **consolidated report** — do not editorialize or add your own review:
+Relay the consolidated report per the shared mechanics. **Do not** approve, merge, or change the PR —
+unlike `odyssey-spec-writer`'s loop, this skill never edits the artifact under review.
 
-- A per-agent line: **agent → verdict (✅ approved / ❌ changes requested / ⏭️ no relevant changes)**
-  and its key findings (severity-tagged where the agent provided it).
-- Links to the verdict comments the agents posted on the PR.
-- A one-line bottom line: how many requested changes vs. approved.
+## Step 4 — Hand off
 
-If an agent errored or returned nothing, say so plainly rather than filling the gap with your own
-assessment. **Do not** approve, merge, or change the PR — this skill only gathers and reports.
+Close with what happens next, rather than leaving the user holding five verdicts:
+
+- If anything requested changes, **offer** to address the findings — naming which ones you would take
+  and which need their call. Acting on them is a separate request; don't start pushing on the strength
+  of having run the review.
+- If the author pushes changes and wants another pass, resume the same agents by `agentId` (they retain
+  their first-round context) rather than spawning fresh ones.
 
 ## Notes & gotchas
 
 - **You are not a sixth reviewer.** The user was explicit: report the agents' findings, don't add your
   own. Resist the urge to "also notice" things — that's the agents' job.
-- **Outward-facing:** the agents post public comments on the GitHub PR. That's their normal behavior
-  and is expected here; just be aware the run is visible on the PR, not only in the chat.
-- **Backend-only PRs:** `senior-frontend-reviewer` and `accessibility-auditor` will self-skip — that's
-  a valid result, relay it; it is not an error.
-- **Re-review loop:** if the author pushes changes and wants another pass, resume the same agents by
-  `agentId` via `SendMessage` (they retain their first-round context) rather than spawning fresh ones.
 - This is the PR-stage analog of the `odyssey-spec-writer` skill's spec-review loop; the difference is
   scope (a PR diff vs. a spec issue) and that this skill never edits the artifact under review.
