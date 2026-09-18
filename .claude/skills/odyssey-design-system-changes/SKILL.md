@@ -72,15 +72,47 @@ ls Odyssey.Client/Components/Ods*.razor
 grep -rn "<token-name>" Odyssey.Client/wwwroot/css Odyssey.Client/Components   # every consumer to update
 ```
 
-## Step 3 — Update the implementation
+## Step 3 — Update the implementation, in this order
 
-- **Tokens:** change the value in `app.css` (and `OdysseyTheme.cs` for palette tokens) so it equals the
-  new `colors_and_type.css` value. Update **both** dark (primary) and light. Consumers referencing
-  `var(--…)` need no edit — fixing the token cascades.
-- **Atoms:** edit or create `OdsName.razor` to expose the same variants, props and states the revised
-  `.jsx` defines. Route enum icon/colour/label visuals through `OdsTypeRegistries.cs`; shared types go
-  in `OdsModels.cs`.
+**The order is load-bearing — do not interleave it.** A page rolled out against a half-updated atom
+gets patched twice, and the second patch is the one that gets forgotten. Finish each stage across the
+whole change before starting the next.
+
+### 3.1 — Foundation: tokens first
+
+Components consume tokens, so a token left stale makes every atom built on it wrong.
+
+- Change the value in `app.css` (and `OdysseyTheme.cs` for palette tokens) so it equals the new
+  `colors_and_type.css` value. Update **both** dark (primary) and light.
+- Consumers referencing `var(--…)` need no edit — fixing the token cascades.
+
+### 3.2 — The component library: new atoms, then revised atoms
+
+Bring `Odyssey.Client/Components/Ods*.razor` to parity **before touching a single page**.
+
+- **New atoms in the design system get an `Ods*` wrapper now**, even if nothing consumes them yet —
+  the library is the unit of parity, not the pages that happen to use it. Confirm none of the existing
+  atoms already covers it (`ls Odyssey.Client/Components/Ods*.razor`) before creating a duplicate.
+- **Revised atoms** get edited to expose the same variants, props and states the updated `.jsx`
+  defines. Route enum icon/colour/label visuals through `OdsTypeRegistries.cs`; shared types go in
+  `OdsModels.cs`.
+- Global/scoped CSS matching `components.css` belongs to this stage too —
+  `wwwroot/css/odyssey-components.css` or the relevant scoped `.razor.css`.
 - **Moving markup into a child moves its scoped `.razor.css` with it.**
+
+### 3.3 — Roll the components out
+
+Only once the library is correct, replace the consuming markup with it.
+
+- Every place that hand-rolls what a new or revised atom now expresses switches to the `Ods*`
+  component. `grep -rn "Ods<Name>" Odyssey.Client` and the inverse — search for the raw markup the
+  atom replaces — so a rollout does not stop at the pages you happened to remember.
+- A revised atom's changed props ripple to every existing call site; enumerate them, don't sample.
+
+### 3.4 — Everything else
+
+Pages, new pages, layout and preview-state changes, copy, icons — whatever the diff still lists once
+3.1–3.3 are done. By this point the pieces these pages are built from are already correct.
 
 ## Step 4 — Verify parity against the NEW design renders
 
@@ -93,16 +125,55 @@ A token or atom change ripples across pages. Confirm the running app matches the
   bringing a stack up, and `docs/frontend-mudblazor-gotchas.md` for the host-scoped-cookie and
   dev-server rebuild caveats).
 
-## Step 5 — Final checklist
+## Step 5 — Second pass: re-diff and prove nothing was dropped
+
+**This is a separate pass, run after you believe you are done — not a feeling that you finished.**
+The Step 1 list is long, the work is spread across four stages, and the items lost are the ones that
+looked small when you read them.
+
+Go back to the diff and walk it again, top to bottom:
+
+```bash
+git diff <ds-commit>^..<ds-commit> -- "Odyssey Design System/" --stat   # the full inventory again
+git status && git diff --stat                                          # what you actually changed
+```
+
+For **every** entry in the design diff, name the implementation file that answers it — or state
+explicitly why it needs none (e.g. a preview page that only re-renders unchanged atoms). An item you
+cannot account for either way is unfinished work, not an edge case.
+
+Check the inverse too: a file you changed that no design-system change asked for is either an
+undeclared fix (say so) or a mistake.
+
+## Step 6 — Update the documentation
+
+A sync that leaves the docs describing the old design has moved the drift rather than removed it.
+Update whatever the change actually invalidated:
+
+- `docs/frontend-mudblazor-gotchas.md` — if the change adds or retires a token convention, a registry
+  entry, or a MudBlazor trap you hit while implementing it.
+- Any component inventory, `README.md` or `docs/` page that lists the `Ods*` atoms or the token set,
+  when the change adds or renames one.
+- `CLAUDE.md`, if the change alters a rule stated there.
+- This skill, if the sync surfaced a step that was missing from it.
+
+Don't invent new documentation to have something to write; if nothing is invalidated, say so.
+
+## Step 7 — Final checklist
 
 - [ ] Diffed `Odyssey Design System/` to enumerate exactly what changed (Step 1)
+- [ ] Worked in order: tokens → component library → rollout → pages/rest (Step 3), not interleaved
 - [ ] Every changed token mirrored into `app.css` + `OdysseyTheme.cs`, dark **and** light
-- [ ] Every changed/added atom reflected in its `Ods*` component (+ scoped CSS); new atoms created, not duplicated
+- [ ] Every **new** atom added to the `Ods*` library, even if no page consumes it yet
+- [ ] Every **revised** atom reflected in its `Ods*` component (+ scoped CSS), not duplicated
+- [ ] New/revised components rolled out to **every** call site, found by grep rather than by memory
 - [ ] Global/scoped CSS updated to match `components.css`
 - [ ] Consuming pages updated where a preview/state changed
 - [ ] No raw hex, no raw `px` introduced — values flow from tokens
 - [ ] `docs/frontend-mudblazor-gotchas.md` checked before editing `.razor`
-- [ ] Verified visually in both themes against the new renders
+- [ ] Verified visually in both themes against the new renders (Step 4)
+- [ ] Second pass done: every design-diff entry accounted for, and every file you changed explained (Step 5)
+- [ ] Documentation updated where the change invalidated it (Step 6)
 - [ ] No drift left between the design system and the implementation
 - [ ] Did **not** edit `Odyssey Design System/` to accommodate the implementation
 
