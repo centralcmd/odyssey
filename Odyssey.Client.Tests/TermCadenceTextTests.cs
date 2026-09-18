@@ -85,7 +85,7 @@ public class TermCadenceTextTests
     {
         foreach (var interval in Enum.GetValues<Interval>())
         {
-            var info = TermKindVisuals.IntervalInfo(interval);
+            var info = TermKindVisuals.InfoFor(interval);
 
             Assert.NotNull(info);
             Assert.NotEmpty(info!.Label);
@@ -106,7 +106,7 @@ public class TermCadenceTextTests
     [Fact]
     public void The_retired_quarterly_ordinal_has_no_display_context()
     {
-        Assert.Null(TermKindVisuals.IntervalInfo((Interval)4));
+        Assert.Null(TermKindVisuals.InfoFor((Interval)4));
         Assert.Null(TermKindVisuals.CadenceText((Interval)4, 1));
         Assert.False(TermKindVisuals.IsPeriodic((Interval)4));
     }

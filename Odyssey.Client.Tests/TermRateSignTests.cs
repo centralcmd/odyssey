@@ -108,7 +108,7 @@ public class TermRateSignTests
     }
 
     // ── Delta direction ────────────────────────────────────────────────────────
-    // Extracted out of TermsSection.BuildHero so it can be asserted at all: the old code
+    // Extracted out of AccountTermsSection.BuildHero so it can be asserted at all: the old code
     // computed it from the sign-flipped series, so a liability's rate RISE trended downward.
 
     [Theory]

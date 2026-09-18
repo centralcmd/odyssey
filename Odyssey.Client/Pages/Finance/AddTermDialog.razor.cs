@@ -65,7 +65,7 @@ public partial class AddTermDialog
         _intervalOptions =
         [
             new OdsOption("", "Not specified"),
-            .. TermKindVisuals.AllIntervals.Select(i => new OdsOption(i.ToString(), TermKindVisuals.IntervalInfo(i)!.Label)),
+            .. TermKindVisuals.AllIntervals.Select(i => new OdsOption(i.ToString(), TermKindVisuals.InfoFor(i)!.Label)),
         ];
 
         if (Term is not null)
@@ -133,7 +133,7 @@ public partial class AddTermDialog
     private bool IsPeriodicInterval => TermKindVisuals.IsPeriodic(SelectedInterval);
 
     /// <summary>The plural unit noun the count reads in ("every 3 <b>months</b>").</summary>
-    private string IntervalUnitNoun => TermKindVisuals.IntervalInfo(SelectedInterval)?.Many ?? "";
+    private string IntervalUnitNoun => TermKindVisuals.InfoFor(SelectedInterval)?.Many ?? "";
 
     /// <summary>The cadence in words, as the request would store it — blank counts as the identity
     /// cadence, which is exactly what the service writes.</summary>
@@ -141,14 +141,36 @@ public partial class AddTermDialog
         TermKindVisuals.CadenceText(SelectedInterval, EffectiveIntervalCount);
 
     private string? IntervalCountHelp =>
-        TermKindVisuals.IntervalInfo(SelectedInterval) is { } info ? $"Leave blank for {info.Adverb}" : null;
+        TermKindVisuals.InfoFor(SelectedInterval) is { } info ? $"Leave blank for {info.Adverb}" : null;
 
-    /// <summary>The non-periodic units say what they mean on the picker itself, since they have no
-    /// count field to explain them. One-time needs no gloss.</summary>
-    private string? NonPeriodicHint =>
-        !IsPeriodicInterval && SelectedInterval is { } interval && interval != Interval.OneTime
-            ? $"Charged {TermKindVisuals.IntervalInfo(interval)!.Adverb}"
-            : null;
+    /// <summary>
+    /// The interval picker's own description. The non-periodic units say what they mean here, since
+    /// they have no count field to explain them, and <c>PerUnit</c> adds where the unit itself is
+    /// named — both through the Help slot rather than a loose sibling element, so MudSelect wires
+    /// them into the control's <c>aria-describedby</c>. One-time needs no gloss.
+    /// </summary>
+    private string? IntervalHelp
+    {
+        get
+        {
+            if (IsPeriodicInterval || SelectedInterval is not { } interval || interval == Interval.OneTime)
+                return null;
+
+            var charged = $"Charged {TermKindVisuals.InfoFor(interval)!.Adverb}";
+
+            return interval == Interval.PerUnit
+                ? $"{charged} — name the unit in the fee\u2019s name, e.g. \u201cCustody \u00b7 per share\u201d"
+                : charged;
+        }
+    }
+
+    /// <summary>The id the count field points its <c>aria-describedby</c> at.</summary>
+    private const string CadenceEchoId = "trm-cadence-echo";
+
+    /// <summary>Whether the echo renders — and therefore whether the count field may name it.
+    /// A field describing an element that is not in the DOM is a dangling reference.</summary>
+    private bool ShowsCadenceEcho =>
+        IsPeriodicInterval && !_errors.ContainsKey("intervalCount") && CadenceEcho is not null;
 
     /// <summary>What a blank count resolves to on a periodic unit: the identity cadence, 1.</summary>
     private int EffectiveIntervalCount =>

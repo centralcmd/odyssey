@@ -1,7 +1,7 @@
 namespace Odyssey.Context;
 
 /// <summary>
-/// What an <see cref="Term"/> prices. THREE values, not a taxonomy: a kind earns an enum value
+/// What a <see cref="Term"/> prices. THREE values, not a taxonomy: a kind earns an enum value
 /// when the application treats it differently — eligibility, ordering, or a headline surface that has
 /// to pick it out. The two rates qualify (the account row headlines the rate, the step chart picks its
 /// series, and the cost-rate tint keys off <see cref="InterestRate"/>); a fee's category does not, and

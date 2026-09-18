@@ -144,30 +144,32 @@
             {
                 <div class="trm-cadence">
                     <OdsFormRow Cols="@(IsPeriodicInterval ? 2 : 1)">
-                        @* The unit carries its own label, so the cadence block introduces no
-                           label-less control and no new ARIA contract. *@
-                        <OdsSelect Label="Billing interval" Help="@NonPeriodicHint"
+                        @* The unit carries its own label, and the non-periodic branch's guidance
+                           rides its Help slot rather than a loose sibling — MudSelect wires that
+                           into aria-describedby, which a bare <div> beside the control is not. *@
+                        <OdsSelect Label="Billing interval" Help="@IntervalHelp"
                                    Value="@_interval" ValueChanged="OnIntervalChanged" Options="_intervalOptions" />
                         @if (IsPeriodicInterval)
                         {
+                            @* The echo below is named here, not left beside the field: it is what the
+                               typed count MEANS, so a screen-reader user landing on this control has
+                               to receive it the same way a sighted one sees it appear (WCAG 1.3.1).
+                               AriaDescribedBy appends to the field's own help and unit ids. *@
                             <OdsNumberField Label="Every"
                                             Min="TermIntervalCount.Min" Max="TermIntervalCount.Max" Step="1"
                                             Unit="@IntervalUnitNoun" Placeholder="1"
                                             Value="_intervalCount" ValueChanged="OnIntervalCountChanged"
                                             Help="@IntervalCountHelp"
+                                            AriaDescribedBy="@(ShowsCadenceEcho ? CadenceEchoId : null)"
                                             Error="@(_errors.TryGetValue("intervalCount", out var countErr) ? countErr : null)" />
                         }
                     </OdsFormRow>
 
                     @* The cadence echoed in words, from the one helper every surface reads — so what
                        the dialog promises and what the tile later shows cannot diverge. *@
-                    @if (IsPeriodicInterval && !_errors.ContainsKey("intervalCount") && CadenceEcho is { } cadence)
+                    @if (ShowsCadenceEcho)
                     {
-                        <div class="trm-cadence-echo">Charged @cadence.</div>
-                    }
-                    @if (_interval == nameof(Interval.PerUnit))
-                    {
-                        <div class="trm-cadence-echo">Name the unit in the fee’s name — “Custody · per share”.</div>
+                        <div class="trm-cadence-echo" id="@CadenceEchoId">Charged @CadenceEcho.</div>
                     }
 
                     <OdsDatePicker Value="_anchorDate" ValueChanged="OnAnchorDateChanged"

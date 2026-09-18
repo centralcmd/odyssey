@@ -80,7 +80,13 @@ public static class TermKindVisuals
     /// <summary>All cadence units in reading order, for the dialog's interval picker.</summary>
     public static readonly IReadOnlyList<Interval> AllIntervals = [.. Intervals.Select(entry => entry.Key)];
 
-    public static IntervalInfo? IntervalInfo(Interval? interval) =>
+    /// <summary>
+    /// The display context for a cadence unit, or <c>null</c> when it is unset or undefined — a
+    /// stale row holding the retired ordinal renders no cadence rather than borrowing another
+    /// unit's wording. Named <c>InfoFor</c>, not <c>IntervalInfo</c>: a method sharing its return
+    /// type's identifier compiles but reads as a constructor call at every call site.
+    /// </summary>
+    public static IntervalInfo? InfoFor(Interval? interval) =>
         interval is { } value && IntervalRegistry.TryGetValue(value, out var info) ? info : null;
 
     /// <summary>
@@ -88,7 +94,7 @@ public static class TermKindVisuals
     /// than a rhythm, so "how many of them between charges" has no meaning — which is why the count
     /// field is absent, not merely disabled, whenever this is false.
     /// </summary>
-    public static bool IsPeriodic(Interval? interval) => IntervalInfo(interval) is { Periodic: true };
+    public static bool IsPeriodic(Interval? interval) => InfoFor(interval) is { Periodic: true };
 
     /// <summary>
     /// The cadence in words — the ONE place an interval and its count become copy, so a tile, a table
@@ -102,7 +108,7 @@ public static class TermKindVisuals
     /// </remarks>
     public static string? CadenceText(Interval? interval, int? count)
     {
-        if (IntervalInfo(interval) is not { } info || interval == Interval.OneTime)
+        if (InfoFor(interval) is not { } info || interval == Interval.OneTime)
             return null;
 
         if (!info.Periodic)
