@@ -8,122 +8,104 @@ description: >
   typography. Trigger on phrases like: "create a component", "add a page", "update the UI", "style this",
   "fix the layout", "change the color", "add a button/form/dialog", or any Blazor/MudBlazor frontend work.
   Do NOT skip this skill just because the task seems small — even single-component edits must follow the design system.
+  For reconciling the implementation after the design system ITSELF changed, use odyssey-design-system-changes.
 ---
 
-# Odyssey Design System Skill
+# Odyssey Design System — Build Against the Existing System
 
-## Purpose
+You are **consuming** the design system: it is fixed, your code is what changes. Every component, page
+or style must draw its values from the system rather than restating them.
 
-Ensure all Blazor + MudBlazor frontend work is consistent with the **Odyssey Design System**. Every component,
-page, or style change must reference the design system — never hardcode values that the design system already defines.
+> If the design system has *already changed* and the implementation needs to catch up, that is the
+> other direction — use **`odyssey-design-system-changes`** instead.
 
 ---
 
-## Step 1: Load the Design System
+## Step 1 — Load the design system (selectively)
 
-Before writing or modifying any frontend code, read the design system files:
+`Odyssey Design System/` holds ~607 files / 11 MB. **Do not read it all.** Read in this order and
+stop as soon as you have what the task needs:
 
-```
-{{ PROJECT_ROOT }}/Odyssey Design System/
-```
-
-Read ALL files in this folder. They contain:
-
-| File type | What it defines |
+| Read | For |
 |---|---|
-| MudTheme overrides | MudBlazor palette, typography, shape, shadows |
-| CSS variables | Spacing, colors, borders, breakpoints |
-| Color palette | Named colors and their intended usage |
-| Typography settings | Font families, sizes, weights, line heights |
+| `Odyssey Design System/SKILL.md` | The rules of thumb, in 64 lines. Always start here. |
+| `README.md` → **Quick reference** section | Cheat sheet, component catalogue (name → purpose → specimen), token map, page & template map |
+| `colors_and_type.css` | The actual token values, when you need a specific one |
+| `components/<Name>.html` or `preview/*.html` | The specimen for the exact pattern you are building |
+| `ui_kits/web/<Page>.jsx` | The reference implementation of a whole page pattern |
 
-### Light & Dark Mode
+The README's Quick reference is the index — use it to find the two or three files that matter instead
+of scanning the tree. If the folder is missing or empty, **stop and tell the user**.
 
-The design system defines both a **light** and **dark** theme. When writing frontend code:
+> Path quoting: the folder name contains a space — `"Odyssey Design System/..."`.
 
-- All color references must be valid in **both** themes — use semantic palette tokens (`Color.Primary`, `var(--mud-palette-surface)`, etc.), never hardcode a color that only works in one mode
-- If a component behaves differently per theme, use MudBlazor's built-in theme-aware props rather than manual CSS overrides
-- Test your mental model against both theme definitions before outputting code
+### Both themes, always
 
-If the folder is missing or empty, **stop and inform the user** — do not proceed with frontend work.
+Dark is the primary surface, light is a first-class alternate. Every colour you write must be valid in
+both. Use semantic tokens (`Color.Primary`, `var(--mud-palette-surface)`) — never a literal that only
+works in one mode, and never ask the user to pick a mode.
 
 ---
 
-## Step 2: Check for Existing Components
+## Step 2 — Check what already exists
 
-Before creating anything new, scan the project for existing Blazor components that may already serve the purpose:
+`Odyssey.Client/Components/` already holds **135 `Ods*` atoms**. Building a duplicate is the most
+common failure here.
 
 ```bash
-find {{ PROJECT_ROOT }} -name "*.razor" | sort
+ls Odyssey.Client/Components/Ods*.razor
+grep -rn "<OdsSomething" Odyssey.Client/Pages   # how existing pages consume it
 ```
 
-- If a suitable component exists, **reuse or extend it** — do not create a duplicate
-- If a similar component exists but needs modification, update it and inform the user
-- Only create a new component if nothing suitable exists
+Cross-check the DS component catalogue (README Quick reference) against that listing: the naming
+contract is design-system `Foo.jsx` ⇄ Blazor `OdsFoo.razor`.
+
+- Suitable component exists → **reuse or extend it**
+- Close but not quite → **modify it**, and say so in your summary
+- Genuinely nothing → create one, following the nearest existing atom as a template
 
 ---
 
-## Step 3: Understand the Task
+## Step 3 — Apply the system
 
-Identify what is being created or modified:
+**Read `docs/frontend-mudblazor-gotchas.md` (repo root) before
+writing any `.razor`.** It carries the traps that compile fine and break at runtime (literal string
+params, icon ligatures, `MudMenu` activators, modal CSS specificity) plus the token and registry
+conventions. Those rules are not repeated here — that file is the single copy.
 
-- New Blazor component (`.razor`)
-- New page
-- Updating existing component or page
-- Changing styles or layout
-- Adding MudBlazor components
+The short form:
 
----
-
-## Step 4: Apply Design System Rules
-
-### MudBlazor Components
-- Use only MudBlazor components (`MudButton`, `MudTextField`, `MudCard`, etc.) — no raw HTML equivalents when a MudBlazor component exists
-- Apply `Color`, `Variant`, and `Size` props using values consistent with the MudTheme — never hardcode hex colors
-- Use theme palette references: `Color.Primary`, `Color.Secondary`, `Color.Error`, etc.
-
-### CSS / Styling
-- Use CSS variables defined in the design system — never hardcode pixel values, colors, or font sizes that the design system defines
-- Correct: `var(--mud-palette-primary)`, `var(--spacing-md)`
-- Wrong: `#3D5AFE`, `16px`, `font-size: 1rem` (if defined in the design system)
-
-### Typography
-- Use MudBlazor `Typo` enum values (`Typo.h1`, `Typo.body1`, etc.) that map to the design system typography settings
-- Never override font-family or font-size inline unless explicitly instructed
-
-### Colors
-- Reference the named palette from the design system
-- Never introduce new colors not defined in the palette without asking the user first
-
-### Spacing & Layout
-- Use MudBlazor spacing props (`Margin`, `Padding`, `Gap`) with values consistent with the design system spacing scale
-- Use CSS variables for spacing where inline styles are necessary
+- **Components:** MudBlazor primitives (`MudButton`, `MudTextField`, `MudCard`) over raw HTML wherever
+  one exists. Wrap them in an `Ods*` atom when the pattern is reusable.
+- **Colour:** semantic palette tokens only. No raw hex.
+- **Spacing:** `var(--space-1…16)` (4px base) or MudBlazor `pa-N` / `ma-N`, which map 1:1. No raw `px`.
+- **Typography:** MudBlazor `Typo` values. Don't override font-family or font-size inline.
+- **Visual metadata** for an enum (icon, colour, label) goes in `OdsTypeRegistries.cs`, not at the
+  call site.
+- **New colour not in the palette** → ask the user first.
 
 ---
 
-## Step 5: Write the Code
+## Step 4 — Self-check before you output code
 
-Follow this checklist before outputting any code:
-
-- [ ] Existing components scanned — no duplicate being created
-- [ ] All colors use semantic tokens valid in both light and dark mode
-- [ ] All typography uses MudBlazor `Typo` enum or design system CSS variables
-- [ ] All spacing uses MudBlazor props or design system CSS variables
-- [ ] No raw hardcoded hex, pixel, or font values that duplicate design system definitions
-- [ ] Only MudBlazor components used where applicable
-- [ ] Component follows existing naming and structure conventions seen in the project
-
----
-
-## Step 6: Call Out Deviations
-
-If the user's request would require deviating from the design system (e.g., a custom color, non-standard spacing), explicitly flag it:
-
-> ⚠️ This would deviate from the Odyssey Design System. The closest design-system equivalent is `{{ ALTERNATIVE }}`. Proceed with deviation or use the alternative?
+- [ ] Read the DS `SKILL.md` + the Quick reference entry for this pattern — not the whole folder
+- [ ] Checked the 135 existing `Ods*` atoms — not creating a duplicate
+- [ ] Read `docs/frontend-mudblazor-gotchas.md`; string params prefixed with `@`; icons are SVG
+      constants or `material-icons` spans
+- [ ] Colours are semantic tokens, valid in dark **and** light
+- [ ] Spacing and type flow from tokens — no raw hex, no raw `px`
+- [ ] Scoped `.razor.css` sits with its component
+- [ ] Matches the DS specimen for this pattern
 
 ---
 
-## Notes
+## Step 5 — Call out deviations
 
-- The design system folder name contains a space: `Odyssey Design System` — handle path quoting accordingly
-- Both light and dark themes are always present — write code compatible with both; do not ask the user to pick one
-- When in doubt about a design token, prefer reading the source file over guessing
+If the request needs something the system doesn't define, flag it instead of inventing it:
+
+> ⚠️ This would deviate from the Odyssey Design System. The closest equivalent is `{{ ALTERNATIVE }}`
+> (`{{ SPECIMEN_PATH }}`). Proceed with the deviation, or use the alternative?
+
+Never edit `Odyssey Design System/` to make your implementation easier — it is generated by a separate
+design pipeline and re-exported wholesale, so the edit would be lost and the drift would be real in
+the meantime.
