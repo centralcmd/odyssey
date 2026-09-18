@@ -1,14 +1,15 @@
 # Dispatching the review agents
 
-Shared mechanics for the two skills that drive Odyssey's specialist review agents:
+Shared mechanics for the skills that drive Odyssey's specialist review agents:
 
 | Skill | Artifact | Agents | May edit the artifact? |
 |---|---|---|---|
-| `odyssey-spec-writer` (Step 5) | A spec **issue** | 3 — architect, frontend, security | **Yes** — it updates the spec and rebuts findings |
-| `pr-review` | A **pull request** diff | 5 — the three above + accessibility, tester | **Never** — pure relay |
+| `odyssey-spec-writer-backend` (Step 4) | A backend spec **issue** | 2 — architect, security | **Yes** — it updates the spec and rebuts findings |
+| `odyssey-spec-writer-frontend` (Step 4) | A frontend spec **issue** | 3 — frontend, accessibility, security | **Yes** — same |
+| `pr-review` | A **pull request** diff | 5 — architect, frontend, accessibility, security, tester | **Never** — pure relay |
 
-Everything below applies to both. What differs — which agents, whether the orchestrator may edit, and
-the stop condition — stays in each skill. This file is the **single copy** of the mechanics; a second
+Everything below applies to all three. What differs — which agents, whether the orchestrator may edit,
+and the stop condition — stays in each skill. This file is the **single copy** of the mechanics; a second
 copy is how the model pin below came to be stated in one skill and silently omitted in the other.
 
 ## Model

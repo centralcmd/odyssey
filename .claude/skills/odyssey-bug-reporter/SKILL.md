@@ -1,7 +1,7 @@
 ---
 name: odyssey-bug-reporter
 description: >
-  Creates and refines well-structured, root-caused bug reports for the Odyssey .NET Blazor + MudBlazor project, then publishes them as GitHub issues. Use this skill whenever the user wants to write, draft, file, log, or improve a bug report or defect — e.g. "file a bug for X", "report this bug", "create a GitHub issue for this bug", "write up this defect", "something's broken in Y, log it", or after you discover a reproducible problem while testing. Its core strength is investigating the codebase to pin the precise root cause (file:line + snippet) and a concrete suggested fix, not just describing symptoms. Do not skip just because the user already has a rough description — gap-filling, root-cause analysis, and reformatting are core uses. For new *features* (not defects), use odyssey-spec-writer instead.
+  Creates and refines well-structured, root-caused bug reports for the Odyssey .NET Blazor + MudBlazor project, then publishes them as GitHub issues. Use this skill whenever the user wants to write, draft, file, log, or improve a bug report or defect — e.g. "file a bug for X", "report this bug", "create a GitHub issue for this bug", "write up this defect", "something's broken in Y, log it", or after you discover a reproducible problem while testing. Its core strength is investigating the codebase to pin the precise root cause (file:line + snippet) and a concrete suggested fix, not just describing symptoms. Do not skip just because the user already has a rough description — gap-filling, root-cause analysis, and reformatting are core uses. For new *features* (not defects), use odyssey-spec-writer-backend or odyssey-spec-writer-frontend instead.
 compatibility:
   tools: [gh]
 ---
@@ -12,7 +12,8 @@ Produces consistent, well-formed, **root-caused** bug reports for the Odyssey pr
 
 What sets a good Odyssey bug report apart — and what the maintainer values — is a **precise root cause** (`file:line` + a code snippet) and a **concrete suggested fix**, not just a symptom. Spend your effort there.
 
-> Filing a *feature*, not a defect? Use `odyssey-spec-writer` instead.
+> Filing a *feature*, not a defect? Use `odyssey-spec-writer-backend` (API, data, services) or
+> `odyssey-spec-writer-frontend` (UI, UX, accessibility) instead — most features need both.
 
 ---
 
@@ -132,7 +133,7 @@ EOF
 5. Report the issue URL back to the user.
 
 ### Labels, milestone, project
-- **Always:** `claude` (AI-generated) + `bug`. Mirrors `odyssey-spec-writer`'s `claude,feature`.
+- **Always:** `claude` (AI-generated) + `bug`. Mirrors the spec-writer skills' `claude,feature`.
 - **Add one secondary label when it fits:** `security` (security-relevant), `build` (CI / pipeline / release), `test` (test-only), `doc` (docs). Do **not** use `fix` — that label is for non-bug changes.
 - **Assignee:** `centralcmd` (repo convention).
 - **Milestone (optional):** bug fixes in this repo usually belong under **"Quality of Life Update"**; use **"MVP"** only if it's release-blocking. Default to none and let triage decide — don't force one. To set it, add `--milestone "Quality of Life Update"` (title must match exactly; list with `gh api repos/<owner>/<repo>/milestones --jq '.[].title'`).
