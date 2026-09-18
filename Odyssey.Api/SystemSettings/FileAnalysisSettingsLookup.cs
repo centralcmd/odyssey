@@ -46,6 +46,26 @@ public sealed class FileAnalysisSettingsLookup(
 {
     internal const string CacheKey = "system-settings:file-analysis-settings";
 
+    /// <summary>
+    /// The keys this entry serves. A named static rather than a method-local, so it is the one place
+    /// the served set is written down — <c>SystemSettingsCacheEvictionTests</c> reads it to assert every
+    /// descriptor evicting <see cref="CacheKey"/> is actually served by it (issue #28).
+    /// </summary>
+    private static readonly string[] Keys =
+    [
+        SystemSettingsKeys.FileAnalysisProcessor,
+        SystemSettingsKeys.FileAnalysisProcessorRegion,
+        SystemSettingsKeys.FileAnalysisLawfulBasis,
+        SystemSettingsKeys.FileAnalysisPrivacyNoticeUrl,
+        SystemSettingsKeys.FileAnalysisMaxFutureTransactionDays,
+        SystemSettingsKeys.FileAnalysisMatchAutoLinkThreshold,
+        SystemSettingsKeys.FileAnalysisMaxTokens,
+        SystemSettingsKeys.FileAnalysisMatchMaxVocabulary,
+        SystemSettingsKeys.FileAnalysisMatchTimeoutSeconds,
+        SystemSettingsKeys.FileAnalysisModel,
+        SystemSettingsKeys.FileAnalysisBaseUrl,
+    ];
+
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
 
     /// <summary>
@@ -68,26 +88,11 @@ public sealed class FileAnalysisSettingsLookup(
             return cached;
         }
 
-        var keys = new[]
-        {
-            SystemSettingsKeys.FileAnalysisProcessor,
-            SystemSettingsKeys.FileAnalysisProcessorRegion,
-            SystemSettingsKeys.FileAnalysisLawfulBasis,
-            SystemSettingsKeys.FileAnalysisPrivacyNoticeUrl,
-            SystemSettingsKeys.FileAnalysisMaxFutureTransactionDays,
-            SystemSettingsKeys.FileAnalysisMatchAutoLinkThreshold,
-            SystemSettingsKeys.FileAnalysisMaxTokens,
-            SystemSettingsKeys.FileAnalysisMatchMaxVocabulary,
-            SystemSettingsKeys.FileAnalysisMatchTimeoutSeconds,
-            SystemSettingsKeys.FileAnalysisModel,
-            SystemSettingsKeys.FileAnalysisBaseUrl,
-        };
-
         Dictionary<string, string>? values = null;
         try
         {
             values = await context.SystemSettings.AsNoTracking()
-                .Where(row => keys.Contains(row.Key))
+                .Where(row => Keys.Contains(row.Key))
                 .ToDictionaryAsync(row => row.Key, row => row.Value, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
