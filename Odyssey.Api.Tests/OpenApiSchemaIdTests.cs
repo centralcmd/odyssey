@@ -52,7 +52,7 @@ public class OpenApiSchemaIdTests
     [InlineData("AccountType")]
     [InlineData("TermKind")]
     [InlineData("TermValueUnit")]
-    [InlineData("BillingPeriod")]
+    [InlineData("Interval")]
     [InlineData("BudgetCategoryType")]
     [InlineData("AccountFileType")]
     [InlineData("TransactionFileType")]

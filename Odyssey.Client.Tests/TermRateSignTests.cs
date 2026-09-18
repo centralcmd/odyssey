@@ -24,9 +24,9 @@ public class TermRateSignTests
         AccountType = type,
     };
 
-    private static ExistingAccountTerm Rate(string value, TermKind kind = TermKind.InterestRate) => new()
+    private static ExistingTerm Rate(string value, TermKind kind = TermKind.InterestRate) => new()
     {
-        AccountTermId = Guid.NewGuid(),
+        TermId = Guid.NewGuid(),
         AccountId = Guid.NewGuid(),
         TermKind = kind,
         ValueUnit = TermValueUnit.Percentage,
@@ -108,7 +108,7 @@ public class TermRateSignTests
     }
 
     // ── Delta direction ────────────────────────────────────────────────────────
-    // Extracted out of AccountTermsSection.BuildHero so it can be asserted at all: the old code
+    // Extracted out of TermsSection.BuildHero so it can be asserted at all: the old code
     // computed it from the sign-flipped series, so a liability's rate RISE trended downward.
 
     [Theory]

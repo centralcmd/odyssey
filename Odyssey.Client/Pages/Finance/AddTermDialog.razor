@@ -7,9 +7,10 @@
 @*
     AddTermDialog — New / Edit dialog for an account term (interest-rate & fee history),
     built on the shared OdsModal shell like every other create/edit dialog. The field set
-    mirrors the NewAccountTerm DTO and the AccountTermService validation: eligibility-gated
-    kind, the series name (required on a fee, refused on a rate), percentage-or-amount
-    value, currency (amount only), effective date, billing period (fees only), and a note.
+    mirrors the NewTerm DTO and the TermService validation: eligibility-gated kind, the
+    series name (required on a fee, refused on a rate), percentage-or-amount value,
+    currency (amount only), effective date, the two-part cadence and the anchor date
+    (fees only), and a note.
     Rejects a (kind, label, effectiveFrom) duplicate client-side on the SAME normalized,
     case-folded key the server writes — the shared TermLabel delegate, not a second
     implementation. The API still has the final say (400 / 409 surfaced as a toast).
@@ -116,7 +117,7 @@
                                    AriaLabel="Value"
                                    Error="@(_errors.TryGetValue("value", out var valErr) ? valErr : null)">
                         <HelpContent>
-                            <text>Flat amount in <b>@_currency</b>@BillingSuffixHint</text>
+                            <text>Flat amount in <b>@_currency</b>@CadenceValueHint</text>
                         </HelpContent>
                     </OdsMoneyField>
                 }
@@ -133,12 +134,45 @@
                 <div class="trm-err" style="margin-top:-6px;">@dateErr</div>
             }
 
-            @* Billing period — fees only *@
+            @* Cadence — fees only. The unit picker always; the count ONLY once the unit is periodic,
+               so a "how many" question is never asked about a one-time or per-occurrence charge. The
+               field is absent rather than disabled because the answer is not merely unknown there —
+               it has no meaning, and the request writes null. Beneath them, the anchor date: when the
+               term is first actually charged, which is a different fact from when its price took
+               effect. *@
             @if (!IsRate)
             {
-                <div class="trm-field">
-                    <div class="trm-label">Billing period</div>
-                    <OdsSelect Value="@_billingPeriod" ValueChanged="OnBillingChanged" Options="_billingOptions" />
+                <div class="trm-cadence">
+                    <OdsFormRow Cols="@(IsPeriodicInterval ? 2 : 1)">
+                        @* The unit carries its own label, so the cadence block introduces no
+                           label-less control and no new ARIA contract. *@
+                        <OdsSelect Label="Billing interval" Help="@NonPeriodicHint"
+                                   Value="@_interval" ValueChanged="OnIntervalChanged" Options="_intervalOptions" />
+                        @if (IsPeriodicInterval)
+                        {
+                            <OdsNumberField Label="Every"
+                                            Min="TermIntervalCount.Min" Max="TermIntervalCount.Max" Step="1"
+                                            Unit="@IntervalUnitNoun" Placeholder="1"
+                                            Value="_intervalCount" ValueChanged="OnIntervalCountChanged"
+                                            Help="@IntervalCountHelp"
+                                            Error="@(_errors.TryGetValue("intervalCount", out var countErr) ? countErr : null)" />
+                        }
+                    </OdsFormRow>
+
+                    @* The cadence echoed in words, from the one helper every surface reads — so what
+                       the dialog promises and what the tile later shows cannot diverge. *@
+                    @if (IsPeriodicInterval && !_errors.ContainsKey("intervalCount") && CadenceEcho is { } cadence)
+                    {
+                        <div class="trm-cadence-echo">Charged @cadence.</div>
+                    }
+                    @if (_interval == nameof(Interval.PerUnit))
+                    {
+                        <div class="trm-cadence-echo">Name the unit in the fee’s name — “Custody · per share”.</div>
+                    }
+
+                    <OdsDatePicker Value="_anchorDate" ValueChanged="OnAnchorDateChanged"
+                                   Label="First billed on" Clearable="true"
+                                   HelperText="When this is first actually charged, if that isn’t the effective date" />
                 </div>
             }
 

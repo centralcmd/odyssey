@@ -35,7 +35,7 @@ namespace Odyssey.Client.Tests;
 /// <c>OnInitializedAsync</c> returns early outside the browser.
 /// </para>
 /// </summary>
-public class AccountTermSeriesSurfaceTests
+public class TermSeriesSurfaceTests
 {
     private static readonly Guid AccountId = Guid.NewGuid();
 
@@ -49,9 +49,9 @@ public class AccountTermSeriesSurfaceTests
         CurrencyCode = "USD",
     };
 
-    private static ExistingAccountTerm Fee(string label, decimal value, DateTime effectiveFrom) => new()
+    private static ExistingTerm Fee(string label, decimal value, DateTime effectiveFrom) => new()
     {
-        AccountTermId = Guid.NewGuid(),
+        TermId = Guid.NewGuid(),
         AccountId = AccountId,
         TermKind = TermKind.Fee,
         Label = label,
@@ -62,9 +62,9 @@ public class AccountTermSeriesSurfaceTests
         CreatedAtUtc = effectiveFrom,
     };
 
-    private static ExistingAccountTerm Rate(decimal value, DateTime effectiveFrom) => new()
+    private static ExistingTerm Rate(decimal value, DateTime effectiveFrom) => new()
     {
-        AccountTermId = Guid.NewGuid(),
+        TermId = Guid.NewGuid(),
         AccountId = AccountId,
         TermKind = TermKind.InterestRate,
         ValueUnit = TermValueUnit.Percentage,
@@ -186,7 +186,7 @@ public class AccountTermSeriesSurfaceTests
             cut.Markup,
             StringComparison.Ordinal);
         client.Verify(
-            c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewAccountTerm>(), It.IsAny<CancellationToken>()),
+            c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewTerm>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -206,7 +206,7 @@ public class AccountTermSeriesSurfaceTests
         // collided is the thing the user cannot otherwise tell.
         Assert.Contains("already has an entry on that date", cut.Markup, StringComparison.Ordinal);
         client.Verify(
-            c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewAccountTerm>(), It.IsAny<CancellationToken>()),
+            c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewTerm>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -221,7 +221,7 @@ public class AccountTermSeriesSurfaceTests
         Submit(cut);
 
         client.Verify(
-            c => c.AddTermAsync(AccountId, It.Is<NewAccountTerm>(t => t.Label == "ATM · domestic"), It.IsAny<CancellationToken>()),
+            c => c.AddTermAsync(AccountId, It.Is<NewTerm>(t => t.Label == "ATM · domestic"), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -235,7 +235,7 @@ public class AccountTermSeriesSurfaceTests
         Submit(cut);
 
         client.Verify(
-            c => c.AddTermAsync(AccountId, It.Is<NewAccountTerm>(t => t.Label == "ATM Abroad"), It.IsAny<CancellationToken>()),
+            c => c.AddTermAsync(AccountId, It.Is<NewTerm>(t => t.Label == "ATM Abroad"), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -253,7 +253,7 @@ public class AccountTermSeriesSurfaceTests
         Submit(cut);
 
         client.Verify(
-            c => c.AddTermAsync(AccountId, It.Is<NewAccountTerm>(t => t.TermKind == TermKind.Fee), It.IsAny<CancellationToken>()),
+            c => c.AddTermAsync(AccountId, It.Is<NewTerm>(t => t.TermKind == TermKind.Fee), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -301,12 +301,14 @@ public class AccountTermSeriesSurfaceTests
     public void The_record_cards_tile_foot_leads_with_the_kind_wording_for_a_labelled_term()
     {
         var term = Fee("Annual card fee", 95m, new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc));
-        term.BillingPeriod = BillingPeriod.Annually;
+        term.Interval = Interval.Annually;
+        term.IntervalCount = 1;
 
         var foot = AccountsCard.TermFoot(term, Card());
 
         Assert.StartsWith("Fee · since ", foot, StringComparison.Ordinal);
-        Assert.EndsWith(" · Annually", foot, StringComparison.Ordinal);
+        // The cadence in words, from the one shared helper — not a chip label.
+        Assert.EndsWith(" · annually", foot, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -323,7 +325,7 @@ public class AccountTermSeriesSurfaceTests
     {
         // "One-time" is the absence of a period, not a period; saying it would be noise.
         var term = Fee("Card replacement", 15m, new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc));
-        term.BillingPeriod = BillingPeriod.OneTime;
+        term.Interval = Interval.OneTime;
 
         Assert.DoesNotContain("One-time", AccountsCard.TermFoot(term, Card()), StringComparison.Ordinal);
     }
@@ -331,13 +333,13 @@ public class AccountTermSeriesSurfaceTests
     // ── Harness ──────────────────────────────────────────────────────────────
 
     private static IRenderedComponent<AccountTermsSection> RenderSection(
-        ExistingAccount account, IReadOnlyList<ExistingAccountTerm> terms)
+        ExistingAccount account, IReadOnlyList<ExistingTerm> terms)
     {
         var ctx = NewContext();
         var client = new Mock<IAccountsApiClient>();
         client
             .Setup(c => c.ListTermsAsync(account.AccountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<List<ExistingAccountTerm>>.Success([.. terms], HttpStatusCode.OK));
+            .ReturnsAsync(ApiResult<List<ExistingTerm>>.Success([.. terms], HttpStatusCode.OK));
         ctx.Services.AddSingleton(client.Object);
 
         var cut = ctx.Render<AccountTermsSection>(p => p
@@ -355,12 +357,12 @@ public class AccountTermSeriesSurfaceTests
     }
 
     private static (IRenderedComponent<DialogHost> Cut, Mock<IAccountsApiClient> Client) RenderDialog(
-        ExistingAccount account, IReadOnlyList<ExistingAccountTerm> existing)
+        ExistingAccount account, IReadOnlyList<ExistingTerm> existing)
     {
         var ctx = NewContext();
         var client = new Mock<IAccountsApiClient>();
         client
-            .Setup(c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewAccountTerm>(), It.IsAny<CancellationToken>()))
+            .Setup(c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewTerm>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created));
         ctx.Services.AddSingleton(client.Object);
 
@@ -387,7 +389,7 @@ public class AccountTermSeriesSurfaceTests
     {
         [Parameter] public ExistingAccount Account { get; set; } = default!;
 
-        [Parameter] public IReadOnlyList<ExistingAccountTerm> Existing { get; set; } = [];
+        [Parameter] public IReadOnlyList<ExistingTerm> Existing { get; set; } = [];
 
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
         {

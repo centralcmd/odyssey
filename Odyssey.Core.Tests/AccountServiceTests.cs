@@ -645,16 +645,16 @@ public class AccountServiceTests
             Archived = false,
         });
 
-        context.AccountTerms.AddRange(
+        context.Terms.AddRange(
             // Superseded by the 2026 rate below — the card's Current band shows what is in force,
             // not the history.
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.03m, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow },
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.025m, EffectiveFrom = new DateTime(2026, 1, 1), CreatedAtUtc = DateTime.UtcNow },
+            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.03m, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow },
+            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.025m, EffectiveFrom = new DateTime(2026, 1, 1), CreatedAtUtc = DateTime.UtcNow },
             // Future-dated → not yet in force, must be left out of the band entirely.
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
+            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
             // A second KIND: the widened query is what makes this reach the card at all — the old
             // one filtered to the two rate kinds and a fee could never appear.
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.Fee, Label = "Account fee", LabelKey = "account fee", ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", BillingPeriod = Context.BillingPeriod.Monthly, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
+            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.Fee, Label = "Account fee", LabelKey = "account fee", ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", Interval = Context.Interval.Monthly, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var dto = (await service.ListAsync(new AccountsQueryParams())).Items.Single(a => a.AccountId == account.AccountId);
@@ -671,7 +671,7 @@ public class AccountServiceTests
         Assert.Equal(5m, fee.Value);
         // The label is the tile's name on the record card, so the projection carries it.
         Assert.Equal("Account fee", fee.Label);
-        Assert.Equal(FinanceDtos.BillingPeriod.Monthly, fee.BillingPeriod);
+        Assert.Equal(FinanceDtos.Interval.Monthly, fee.Interval);
         Assert.Equal("USD", fee.CurrencyCode);
 
         // The single headline rate still resolves out of the same widened set.
@@ -694,7 +694,7 @@ public class AccountServiceTests
             Archived = false,
         });
 
-        context.AccountTerms.Add(new AccountTerm
+        context.Terms.Add(new Term
         {
             AccountId = account.AccountId,
             TermKind = Context.TermKind.InterestRate,
@@ -730,13 +730,13 @@ public class AccountServiceTests
             Archived = false,
         });
 
-        context.AccountTerms.AddRange(
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.03m, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow },
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.025m, EffectiveFrom = new DateTime(2026, 1, 1), CreatedAtUtc = DateTime.UtcNow },
+        context.Terms.AddRange(
+            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.03m, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow },
+            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.025m, EffectiveFrom = new DateTime(2026, 1, 1), CreatedAtUtc = DateTime.UtcNow },
             // Future-dated → not yet in force, must be ignored.
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
+            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
             // A fee in force must never be chosen for the rate.
-            new AccountTerm { AccountId = account.AccountId, TermKind = Context.TermKind.Fee, Label = "Account fee", LabelKey = "account fee", ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
+            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.Fee, Label = "Account fee", LabelKey = "account fee", ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var dto = (await service.ListAsync(new AccountsQueryParams())).Items.Single(a => a.AccountId == account.AccountId);
@@ -760,7 +760,7 @@ public class AccountServiceTests
             Archived = false,
         });
 
-        context.AccountTerms.Add(new AccountTerm
+        context.Terms.Add(new Term
         {
             AccountId = account.AccountId,
             TermKind = Context.TermKind.ExpectedReturn,

@@ -29,10 +29,17 @@ public sealed record AccountCurrentTerm
     public string? CurrencyCode { get; set; }
 
     /// <summary>
-    /// How often a money-valued term is charged. It is what separates a 695 annual fee from a 695
-    /// monthly one, so the card shows it beside the date rather than dropping it.
+    /// How often a money-valued term is charged — the cadence unit. It is what separates a 695
+    /// annual fee from a 695 monthly one, so the card shows it beside the date rather than dropping
+    /// it. Read with <see cref="IntervalCount"/>: the two are one cadence.
     /// </summary>
-    public BillingPeriod? BillingPeriod { get; set; }
+    public Interval? Interval { get; set; }
+
+    /// <summary>The cadence multiplier — non-null iff <see cref="Interval"/> is periodic.</summary>
+    public int? IntervalCount { get; set; }
+
+    /// <summary>When the term is first actually charged, if that differs from <see cref="EffectiveFrom"/>.</summary>
+    public DateTime? AnchorDate { get; set; }
 
     /// <summary>When this term took effect — the "since" the card's tile foot carries.</summary>
     public DateTime EffectiveFrom { get; set; }

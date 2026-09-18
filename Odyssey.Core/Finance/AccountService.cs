@@ -12,7 +12,7 @@ using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoAccountFileType = Odyssey.Dtos.Finance.AccountFileType;
 using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
-using DtoBillingPeriod = Odyssey.Dtos.Finance.BillingPeriod;
+using DtoInterval = Odyssey.Dtos.Finance.Interval;
 
 namespace Odyssey.Core.Finance;
 
@@ -239,7 +239,7 @@ public class AccountService
             .Select(g => new { AccountId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
 
-        var termCounts = await context.AccountTerms
+        var termCounts = await context.Terms
             .Where(t => accountIds.Contains(t.AccountId))
             .GroupBy(t => t.AccountId)
             .Select(g => new { AccountId = g.Key, Count = g.Count() })
@@ -326,7 +326,7 @@ public class AccountService
                 Balance = a.Transactions.Sum(t => (decimal?)t.Amount) ?? 0m,
                 FileCount = a.AccountFiles.Count(),
                 EstimateCount = a.AccountEstimates.Count(),
-                TermCount = a.AccountTerms.Count(),
+                TermCount = a.Terms.Count(),
                 SmartTagCount = a.SmartTags.Count(),
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -420,14 +420,14 @@ public class AccountService
     /// the N+1 the whole enrichment exists to avoid.
     /// </para>
     /// </summary>
-    private async Task<Dictionary<Guid, List<AccountTerm>>> GetCurrentTerms(
+    private async Task<Dictionary<Guid, List<Term>>> GetCurrentTerms(
         IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
     {
         if (accountIds.Count == 0)
             return [];
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var terms = await context.AccountTerms
+        var terms = await context.Terms
             .AsNoTracking()
             .Where(t => accountIds.Contains(t.AccountId) && t.EffectiveFrom <= now)
             .ToListAsync(cancellationToken);
@@ -448,11 +448,11 @@ public class AccountService
     /// The single rate the collapsed row headlines on, picked out of the in-force set: interest rate
     /// wins over expected return when both apply (registry order).
     /// </summary>
-    private static AccountTerm? RateTermOf(IReadOnlyList<AccountTerm> currentTerms) =>
+    private static Term? RateTermOf(IReadOnlyList<Term> currentTerms) =>
         currentTerms.FirstOrDefault(t => t.TermKind == ContextTermKind.InterestRate)
         ?? currentTerms.FirstOrDefault(t => t.TermKind == ContextTermKind.ExpectedReturn);
 
-    private static AccountCurrentTerm ToCurrentTerm(AccountTerm term) => new()
+    private static AccountCurrentTerm ToCurrentTerm(Term term) => new()
     {
         TermKind = term.TermKind.Adapt<DtoTermKind>(),
         // Carried because it is the tile's NAME — without it a card with several fees renders
@@ -461,7 +461,9 @@ public class AccountService
         ValueUnit = term.ValueUnit.Adapt<DtoTermValueUnit>(),
         Value = term.Value,
         CurrencyCode = term.CurrencyCode,
-        BillingPeriod = term.BillingPeriod?.Adapt<DtoBillingPeriod>(),
+        Interval = term.Interval?.Adapt<DtoInterval>(),
+        IntervalCount = term.IntervalCount,
+        AnchorDate = term.AnchorDate,
         EffectiveFrom = term.EffectiveFrom,
     };
 

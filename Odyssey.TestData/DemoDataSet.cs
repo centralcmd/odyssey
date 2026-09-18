@@ -19,7 +19,7 @@ public sealed class DemoDataSet
     public required IReadOnlyList<Contact> Contacts { get; init; }
     public required IReadOnlyList<Account> Accounts { get; init; }
     public required IReadOnlyList<AccountEstimate> AccountEstimates { get; init; }
-    public required IReadOnlyList<AccountTerm> AccountTerms { get; init; }
+    public required IReadOnlyList<Term> Terms { get; init; }
     public required IReadOnlyList<Budget> Budgets { get; init; }
     public required IReadOnlyList<BudgetItem> BudgetItems { get; init; }
     public required IReadOnlyList<Transaction> Transactions { get; init; }
@@ -119,7 +119,7 @@ public sealed class DemoDataSet
             ContactAvatarFiles = contactAvatars.Files,
             Accounts = accounts,
             AccountEstimates = AccountEstimateGenerator.Build(),
-            AccountTerms = AccountTermGenerator.Build(),
+            Terms = TermGenerator.Build(),
             Budgets = budgets,
             BudgetItems = budgetItems,
             Transactions = transactions,

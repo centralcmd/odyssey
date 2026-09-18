@@ -14,11 +14,11 @@ namespace Odyssey.Context;
 /// <c>(AccountId, TermKind)</c> prefix the kind-filtered history query uses.
 /// </summary>
 [Index(nameof(AccountId), nameof(TermKind), nameof(LabelKey), nameof(EffectiveFrom))]
-public class AccountTerm : IEffectiveDated
+public class Term : IEffectiveDated
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public Guid AccountTermId { get; set; }
+    public Guid TermId { get; set; }
 
     [Required]
     public Guid AccountId { get; set; }
@@ -56,7 +56,26 @@ public class AccountTerm : IEffectiveDated
     [StringLength(3)]
     public string? CurrencyCode { get; set; }
 
-    public BillingPeriod? BillingPeriod { get; set; }
+    /// <summary>
+    /// The cadence UNIT. Refused on the two rate kinds, optional on a fee.
+    /// </summary>
+    public Interval? Interval { get; set; }
+
+    /// <summary>
+    /// How many <see cref="Interval"/> units between charges — 3 with <c>Monthly</c> is quarterly.
+    /// Non-null IFF <see cref="Interval"/> is periodic (Daily/Weekly/Monthly/Annually); null in every
+    /// other case, including when the interval itself is null. A meaningless 1 on a one-time fee
+    /// would be indistinguishable from a deliberate one on the next read-modify-write round trip.
+    /// </summary>
+    public int? IntervalCount { get; set; }
+
+    /// <summary>
+    /// The date the term is first actually CHARGED, as distinct from <see cref="EffectiveFrom"/>,
+    /// when its price took effect. Pure record-keeping: nothing schedules, accrues or projects from
+    /// it, and it enters neither the series key, supersession nor the duplicate guard. Refused on the
+    /// two rate kinds; no ordering against <see cref="EffectiveFrom"/> is imposed in either direction.
+    /// </summary>
+    public DateTime? AnchorDate { get; set; }
 
     [Required]
     public DateTime EffectiveFrom { get; set; }

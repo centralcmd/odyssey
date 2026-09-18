@@ -20,10 +20,10 @@ using DtoTransactionFileType = Odyssey.Dtos.Finance.TransactionFileType;
 using DtoTaxStatementFileType = Odyssey.Dtos.Finance.TaxStatementFileType;
 using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
-using ContextBillingPeriod = Odyssey.Context.BillingPeriod;
+using ContextInterval = Odyssey.Context.Interval;
 using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
-using DtoBillingPeriod = Odyssey.Dtos.Finance.BillingPeriod;
+using DtoInterval = Odyssey.Dtos.Finance.Interval;
 using ContextBudgetItem = Odyssey.Context.BudgetItem;
 using DtoExistingBudgetItem = Odyssey.Dtos.Finance.ExistingBudgetItem;
 
@@ -138,21 +138,21 @@ public static class MapsterConfig
                 .MapWith(src => ConvertDtoToContext(src));
 
             // HEADS-UP (Mapster version): this MapWith converter is registered for the NON-nullable
-            // BillingPeriod pair, but AccountTerm.BillingPeriod is nullable and maps to the (different)
-            // nullable Dtos.BillingPeriod. Mapster 10.0.8 lifts this converter over Nullable<T> with a
+            // Interval pair, but Term.Interval is nullable and maps to the (different) nullable
+            // Dtos.Interval. Mapster 10.0.8 lifts this converter over Nullable<T> with a
             // null guard (null -> null); Mapster 10.0.9 regressed that lifting and calls src.Value
-            // unconditionally, throwing "Nullable object must have a value" for null billing periods
-            // (interest-rate/expected-return terms legitimately have none). That broke 17 AccountTerm
+            // unconditionally, throwing "Nullable object must have a value" for null intervals
+            // (interest-rate/expected-return terms legitimately have none). That broke 17 term
             // tests, so Mapster is pinned to 10.0.8 in Directory.Packages.props. Before accepting a bump
             // to >= 10.0.9, register null-guarded nullable converters here, e.g.
-            //   TypeAdapterConfig<ContextBillingPeriod?, DtoBillingPeriod?>.NewConfig()
+            //   TypeAdapterConfig<ContextInterval?, DtoInterval?>.NewConfig()
             //       .MapWith(src => src.HasValue ? ConvertContextToDto(src.Value) : null);
-            // (and the reverse), then re-verify the AccountTerm suites stay green.
-            TypeAdapterConfig<ContextBillingPeriod, DtoBillingPeriod>
+            // (and the reverse), then re-verify the term suites stay green.
+            TypeAdapterConfig<ContextInterval, DtoInterval>
                 .NewConfig()
                 .MapWith(src => ConvertContextToDto(src));
 
-            TypeAdapterConfig<DtoBillingPeriod, ContextBillingPeriod>
+            TypeAdapterConfig<DtoInterval, ContextInterval>
                 .NewConfig()
                 .MapWith(src => ConvertDtoToContext(src));
 
@@ -423,23 +423,34 @@ public static class MapsterConfig
         _ => ContextTermValueUnit.Percentage,
     };
 
-    private static DtoBillingPeriod ConvertContextToDto(ContextBillingPeriod src) => src switch
+    // Exhaustive and explicit, never a blanket Adapt: Odyssey.Dtos.Finance now holds TWO cadence
+    // enums (this one and the subscriptions' BillingInterval) whose member names overlap while no
+    // ordinal does, so a convention-mapped conversion between them would silently change meaning.
+    //
+    // There is deliberately NO arm for the retired ordinal 4 (was Quarterly): after the migration no
+    // row holds it, and an arm mapping it would keep a retired value alive on the read path. The
+    // `_ =>` fallthrough is unreachable from the write path — TermService refuses an undefined
+    // ordinal before the converter is called — so its only remaining job is keeping a STORED bad row
+    // readable and repairable rather than 500-ing the account page.
+    private static DtoInterval ConvertContextToDto(ContextInterval src) => src switch
     {
-        ContextBillingPeriod.PerTransaction => DtoBillingPeriod.PerTransaction,
-        ContextBillingPeriod.Daily => DtoBillingPeriod.Daily,
-        ContextBillingPeriod.Monthly => DtoBillingPeriod.Monthly,
-        ContextBillingPeriod.Quarterly => DtoBillingPeriod.Quarterly,
-        ContextBillingPeriod.Annually => DtoBillingPeriod.Annually,
-        _ => DtoBillingPeriod.OneTime,
+        ContextInterval.PerOccurrence => DtoInterval.PerOccurrence,
+        ContextInterval.Daily => DtoInterval.Daily,
+        ContextInterval.Monthly => DtoInterval.Monthly,
+        ContextInterval.Annually => DtoInterval.Annually,
+        ContextInterval.PerUnit => DtoInterval.PerUnit,
+        ContextInterval.Weekly => DtoInterval.Weekly,
+        _ => DtoInterval.OneTime,
     };
 
-    private static ContextBillingPeriod ConvertDtoToContext(DtoBillingPeriod src) => src switch
+    private static ContextInterval ConvertDtoToContext(DtoInterval src) => src switch
     {
-        DtoBillingPeriod.PerTransaction => ContextBillingPeriod.PerTransaction,
-        DtoBillingPeriod.Daily => ContextBillingPeriod.Daily,
-        DtoBillingPeriod.Monthly => ContextBillingPeriod.Monthly,
-        DtoBillingPeriod.Quarterly => ContextBillingPeriod.Quarterly,
-        DtoBillingPeriod.Annually => ContextBillingPeriod.Annually,
-        _ => ContextBillingPeriod.OneTime,
+        DtoInterval.PerOccurrence => ContextInterval.PerOccurrence,
+        DtoInterval.Daily => ContextInterval.Daily,
+        DtoInterval.Monthly => ContextInterval.Monthly,
+        DtoInterval.Annually => ContextInterval.Annually,
+        DtoInterval.PerUnit => ContextInterval.PerUnit,
+        DtoInterval.Weekly => ContextInterval.Weekly,
+        _ => ContextInterval.OneTime,
     };
 }

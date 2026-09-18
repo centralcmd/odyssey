@@ -97,7 +97,10 @@
                         @foreach (var t in _current)
                         {
                             var info = TermKindVisuals.Info(t.TermKind);
-                            var bill = TermKindVisuals.BillingInfo(t.BillingPeriod);
+                            @* The cadence in words, from the one helper every surface reads — so a
+                               tile, a history row and the dialog can never word a term differently.
+                               A one-time charge and an unset interval carry none and render nothing. *@
+                            var cadence = TermKindVisuals.CadenceText(t);
                             <div class="trm-tile">
                                 <div class="trm-tile-top">
                                     <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
@@ -110,9 +113,9 @@
                                 </div>
                                 <div class="trm-tile-foot">
                                     <span>since @MonthYear(t.EffectiveFrom)</span>
-                                    @if (bill is not null && t.BillingPeriod != BillingPeriod.OneTime)
+                                    @if (cadence is not null)
                                     {
-                                        <span class="trm-bill">@bill.Chip</span>
+                                        <span class="trm-bill">@cadence</span>
                                     }
                                 </div>
                             </div>
@@ -159,7 +162,7 @@
     // wording is the name. Both are plain text, so nothing is carried by the glyph or its hue alone
     // (WCAG 1.1.1 / 1.4.1) — and an unlabelled cost rate still reads "Interest charged", because
     // DisplayName falls back to LabelFor rather than the bare registry label.
-    private RenderFragment RenderTermName(ExistingAccountTerm t, string nameClass) => __builder =>
+    private RenderFragment RenderTermName(ExistingTerm t, string nameClass) => __builder =>
     {
         <span class="trm-name">
             <span class="@nameClass">@TermKindVisuals.DisplayName(t, Account)</span>
@@ -171,7 +174,7 @@
     };
 
     // ── History group + row ───────────────────────────────────────────────────
-    private RenderFragment RenderGroup(string icon, string label, List<ExistingAccountTerm> rows) => __builder =>
+    private RenderFragment RenderGroup(string icon, string label, List<ExistingTerm> rows) => __builder =>
     {
         if (rows.Count == 0) return;
 
@@ -195,8 +198,8 @@
                     @foreach (var t in rows)
                     {
                         var info = TermKindVisuals.Info(t.TermKind);
-                        var isCurrent = _currentIds.Contains(t.AccountTermId);
-                        var bill = TermKindVisuals.BillingInfo(t.BillingPeriod);
+                        var isCurrent = _currentIds.Contains(t.TermId);
+                        var cadence = TermKindVisuals.CadenceText(t);
                         <tr class="@(isCurrent ? "current" : "")">
                             <td>
                                 <div class="trm-row-kind">
@@ -214,8 +217,12 @@
                             </td>
                             <td class="trm-cell-date">@t.EffectiveFrom.ToString("MMM dd, yyyy")</td>
                             <td class="trm-cell-value" style="@(isCurrent ? $"color:{TermKindVisuals.CostColor(t, Account) ?? info.Color};" : "")">
-                                @TermKindVisuals.FormatValue(t, FormatMoney)@if (bill is not null && !string.IsNullOrEmpty(bill.Suffix))
-                                {<span style="color:var(--mud-palette-text-secondary);font-weight:400;"> @bill.Suffix</span>}
+                                @TermKindVisuals.FormatValue(t, FormatMoney)@if (cadence is not null)
+                                {@* The separator is an explicit string: Razor trims leading
+                                     whitespace inside an element, which glued "$45.00" to
+                                     "every 3 months". It read tolerably when the cadence was a
+                                     "/mo" suffix; it does not now. *@
+                                    <span style="color:var(--mud-palette-text-secondary);font-weight:400;">@($" {cadence}")</span>}
                             </td>
                             <td>@RenderStatus(t, isCurrent)</td>
                             <td class="trm-cell-act">
@@ -237,7 +244,7 @@
         </div>
     };
 
-    private RenderFragment RenderStatus(ExistingAccountTerm t, bool isCurrent) => __builder =>
+    private RenderFragment RenderStatus(ExistingTerm t, bool isCurrent) => __builder =>
     {
         if (t.EffectiveFrom.Date > DateTime.UtcNow.Date)
         {

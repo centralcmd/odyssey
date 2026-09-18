@@ -47,7 +47,7 @@ public class Account
 
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
     public ICollection<AccountFile> AccountFiles { get; set; } = new List<AccountFile>();
-    public ICollection<AccountTerm> AccountTerms { get; set; } = new List<AccountTerm>();
+    public ICollection<Term> Terms { get; set; } = new List<Term>();
     public ICollection<AccountEstimate> AccountEstimates { get; set; } = new List<AccountEstimate>();
     public ICollection<AccountSmartTag> SmartTags { get; set; } = new List<AccountSmartTag>();
 }

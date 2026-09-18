@@ -4,7 +4,7 @@ using Odyssey.Dtos.Finance;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using ContextAccountType = Odyssey.Context.AccountType;
-using ContextBillingPeriod = Odyssey.Context.BillingPeriod;
+using ContextInterval = Odyssey.Context.Interval;
 using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
 using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
@@ -23,12 +23,12 @@ namespace Odyssey.Core.Finance;
 /// label — a rise in the foreign ATM charge is not a change to the domestic one.
 /// </para>
 /// </summary>
-public class AccountTermService
+public class TermService
 {
     private readonly OdysseyContext context;
     private readonly TimeProvider timeProvider;
 
-    public AccountTermService(OdysseyContext context, TimeProvider? timeProvider = null)
+    public TermService(OdysseyContext context, TimeProvider? timeProvider = null)
     {
         this.context = context;
         this.timeProvider = timeProvider ?? TimeProvider.System;
@@ -59,13 +59,13 @@ public class AccountTermService
     /// Returns the full term history for an account (newest <c>EffectiveFrom</c> first), or
     /// <c>null</c> if the account does not exist. Optionally filtered by kind and/or an as-of date.
     /// </summary>
-    public async Task<IList<ExistingAccountTerm>?> GetHistory(Guid accountId, DtoTermKind? kind = null, DateTime? asOf = null, CancellationToken cancellationToken = default)
+    public async Task<IList<ExistingTerm>?> GetHistory(Guid accountId, DtoTermKind? kind = null, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
         if (!accountExists)
             return null;
 
-        var query = context.AccountTerms.AsNoTracking().Where(term => term.AccountId == accountId);
+        var query = context.Terms.AsNoTracking().Where(term => term.AccountId == accountId);
 
         if (kind is not null)
         {
@@ -84,7 +84,7 @@ public class AccountTermService
             .ThenByDescending(term => term.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
-        return terms.Adapt<List<ExistingAccountTerm>>();
+        return terms.Adapt<List<ExistingTerm>>();
     }
 
     /// <summary>
@@ -92,7 +92,7 @@ public class AccountTermService
     /// <paramref name="asOf"/> (default now), or <c>null</c> if the account does not exist. One kind
     /// contributes one entry per label, so a card charging four named fees returns four.
     /// </summary>
-    public async Task<IList<CurrentAccountTerm>?> GetCurrent(Guid accountId, DateTime? asOf = null, CancellationToken cancellationToken = default)
+    public async Task<IList<CurrentTerm>?> GetCurrent(Guid accountId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
         if (!accountExists)
@@ -100,7 +100,7 @@ public class AccountTermService
 
         var cutoff = NormalizeToUtc(asOf ?? timeProvider.GetUtcNow().UtcDateTime);
 
-        var terms = await context.AccountTerms
+        var terms = await context.Terms
             .AsNoTracking()
             .Where(term => term.AccountId == accountId && term.EffectiveFrom <= cutoff)
             .ToListAsync(cancellationToken);
@@ -112,7 +112,7 @@ public class AccountTermService
             .ThenBy(term => term.LabelKey, StringComparer.Ordinal)
             .ToList();
 
-        return current.Adapt<List<CurrentAccountTerm>>();
+        return current.Adapt<List<CurrentTerm>>();
     }
 
     /// <summary>
@@ -122,12 +122,12 @@ public class AccountTermService
     /// <exception cref="DomainValidationException">Validation or eligibility failed.</exception>
     /// <exception cref="DomainValidationException">The currency for an amount is unsupported.</exception>
     /// <exception cref="DomainConflictException">A term in the same series with that effective date exists.</exception>
-    public async Task<ExistingAccountTerm> Create(Guid accountId, NewAccountTerm newTerm, CancellationToken cancellationToken = default)
+    public async Task<ExistingTerm> Create(Guid accountId, NewTerm newTerm, CancellationToken cancellationToken = default)
     {
         var account = await context.Accounts.FirstOrDefaultAsync(a => a.AccountId == accountId, cancellationToken)
             ?? throw new DomainNotFoundException($"Account with ID {accountId} was not found.");
 
-        var term = new AccountTerm
+        var term = new Term
         {
             AccountId = accountId,
             CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
@@ -135,20 +135,20 @@ public class AccountTermService
 
         await ApplyAndValidate(term, newTerm, account, excludeTermId: null, cancellationToken);
 
-        context.AccountTerms.Add(term);
+        context.Terms.Add(term);
         await context.SaveChangesAsync(cancellationToken);
 
-        return term.Adapt<ExistingAccountTerm>();
+        return term.Adapt<ExistingTerm>();
     }
 
     /// <summary>
     /// Updates an existing term entry. Returns <c>false</c> if the term is not attached to the
     /// given account; otherwise applies the same validation as <see cref="Create"/>.
     /// </summary>
-    public async Task<bool> Update(Guid accountId, Guid termId, NewAccountTerm putTerm, CancellationToken cancellationToken = default)
+    public async Task<bool> Update(Guid accountId, Guid termId, NewTerm putTerm, CancellationToken cancellationToken = default)
     {
-        var term = await context.AccountTerms
-            .FirstOrDefaultAsync(t => t.AccountTermId == termId && t.AccountId == accountId, cancellationToken);
+        var term = await context.Terms
+            .FirstOrDefaultAsync(t => t.TermId == termId && t.AccountId == accountId, cancellationToken);
         if (term is null)
             return false;
 
@@ -167,18 +167,31 @@ public class AccountTermService
     /// </summary>
     public async Task<bool> Delete(Guid accountId, Guid termId, CancellationToken cancellationToken = default)
     {
-        var term = await context.AccountTerms
-            .FirstOrDefaultAsync(t => t.AccountTermId == termId && t.AccountId == accountId, cancellationToken);
+        var term = await context.Terms
+            .FirstOrDefaultAsync(t => t.TermId == termId && t.AccountId == accountId, cancellationToken);
         if (term is null)
             return false;
 
-        context.AccountTerms.Remove(term);
+        context.Terms.Remove(term);
         await context.SaveChangesAsync(cancellationToken);
         return true;
     }
 
-    private async Task ApplyAndValidate(AccountTerm term, NewAccountTerm source, Account account, Guid? excludeTermId, CancellationToken cancellationToken = default)
+    private async Task ApplyAndValidate(Term term, NewTerm source, Account account, Guid? excludeTermId, CancellationToken cancellationToken = default)
     {
+        // Rules 9-10 — input validation, ahead of every coherence rule below. [ApiController] model
+        // validation bounds the HTTP path, but a direct (non-HTTP) caller never reaches it: without
+        // this, an undefined ordinal would fall through the Mapster converter's `_ => OneTime` arm
+        // and be PERSISTED as OneTime, a write-path fail-open rather than a read-path degradation.
+        if (source.Interval is not null && !Enum.IsDefined(source.Interval.Value))
+            throw new DomainValidationException(
+                $"Interval '{(int)source.Interval.Value}' is not a recognised value.");
+
+        if (source.IntervalCount is { } requestedCount
+            && (requestedCount < TermIntervalCount.Min || requestedCount > TermIntervalCount.Max))
+            throw new DomainValidationException(
+                $"IntervalCount must be between {TermIntervalCount.Min} and {TermIntervalCount.Max}.");
+
         var kind = source.TermKind.Adapt<ContextTermKind>();
         if (kind == ContextTermKind.Unknown)
             throw new DomainValidationException("TermKind must be a recognised value.");
@@ -217,11 +230,39 @@ public class AccountTermService
             throw new DomainValidationException(
                 $"Term kind '{source.TermKind}' must be expressed as a percentage, not an amount.");
 
-        if (source.BillingPeriod is not null && (kind == ContextTermKind.InterestRate || kind == ContextTermKind.ExpectedReturn))
-            throw new DomainValidationException(
-                $"BillingPeriod is not allowed for term kind '{source.TermKind}'.");
+        var isRateKind = kind == ContextTermKind.InterestRate || kind == ContextTermKind.ExpectedReturn;
 
-        var billingPeriod = source.BillingPeriod?.Adapt<ContextBillingPeriod>();
+        if (source.Interval is not null && isRateKind)
+            throw new DomainValidationException(
+                $"Interval is not allowed for term kind '{source.TermKind}'.");
+
+        // A rate is not billed, so a rate row must not be able to carry half a billing description.
+        // The rule is KIND-based, not interval-based: a one-time fee charged on a known date is
+        // precisely a case worth recording.
+        if (source.AnchorDate is not null && isRateKind)
+            throw new DomainValidationException(
+                $"AnchorDate is not allowed for term kind '{source.TermKind}'.");
+
+        // A count is meaningful only for a periodic unit. Stored as 1 when a periodic interval
+        // arrives without one (the identity cadence), and as null — never 1 — otherwise: a
+        // meaningless 1 on a one-time fee would be indistinguishable from a deliberate one, and
+        // would trip this very rule on the next read-modify-write round trip.
+        var interval = source.Interval?.Adapt<ContextInterval>();
+        int? intervalCount;
+        if (interval is not null && interval.Value.IsPeriodic())
+        {
+            intervalCount = source.IntervalCount ?? TermIntervalCount.Min;
+        }
+        else
+        {
+            if (source.IntervalCount is not null)
+                throw new DomainValidationException(
+                    "IntervalCount is only allowed for a periodic interval (Daily, Weekly, Monthly, Annually).");
+
+            intervalCount = null;
+        }
+
+        var anchorDate = source.AnchorDate is null ? (DateTime?)null : NormalizeToUtc(source.AnchorDate.Value);
 
         string? currencyCode;
         if (unit == ContextTermValueUnit.Percentage)
@@ -248,12 +289,12 @@ public class AccountTermService
 
         // The guard is over the SERIES key, on the folded form, so "ATM abroad", "atm abroad" and
         // "  ATM   abroad  " collide while two differently-named fees on one date do not.
-        var duplicateExists = await context.AccountTerms.AnyAsync(existing =>
+        var duplicateExists = await context.Terms.AnyAsync(existing =>
             existing.AccountId == account.AccountId
             && existing.TermKind == kind
             && existing.LabelKey == labelKey
             && existing.EffectiveFrom == effectiveFrom
-            && (excludeTermId == null || existing.AccountTermId != excludeTermId), cancellationToken);
+            && (excludeTermId == null || existing.TermId != excludeTermId), cancellationToken);
         if (duplicateExists)
             throw new DomainConflictException(label is null
                 ? $"A '{source.TermKind}' term effective from {effectiveFrom:yyyy-MM-dd} already exists for this account."
@@ -265,7 +306,9 @@ public class AccountTermService
         term.ValueUnit = unit;
         term.Value = source.Value;
         term.CurrencyCode = currencyCode;
-        term.BillingPeriod = billingPeriod;
+        term.Interval = interval;
+        term.IntervalCount = intervalCount;
+        term.AnchorDate = anchorDate;
         term.EffectiveFrom = effectiveFrom;
         term.Note = source.Note;
     }

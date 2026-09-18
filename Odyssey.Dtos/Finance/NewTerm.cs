@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Dtos.Finance;
 
-public sealed record NewAccountTerm
+public sealed record NewTerm
 {
     [Required]
     [EnumDataType(typeof(TermKind))]
@@ -29,8 +29,26 @@ public sealed record NewAccountTerm
     [StringLength(3)]
     public string? CurrencyCode { get; set; }
 
-    [EnumDataType(typeof(BillingPeriod))]
-    public BillingPeriod? BillingPeriod { get; set; }
+    /// <summary>
+    /// The cadence UNIT. Refused on the two rate kinds; optional on a fee.
+    /// </summary>
+    [EnumDataType(typeof(Interval))]
+    public Interval? Interval { get; set; }
+
+    /// <summary>
+    /// How many <see cref="Interval"/> units between charges. Accepted only when the interval is
+    /// periodic (Daily/Weekly/Monthly/Annually); omitted there, it is stored as 1 — the identity
+    /// cadence. Stored as null, never 1, in every non-periodic case.
+    /// </summary>
+    [Range(TermIntervalCount.Min, TermIntervalCount.Max)]
+    public int? IntervalCount { get; set; }
+
+    /// <summary>
+    /// When the term is first actually charged, if that is not the date its price took effect.
+    /// Refused on the two rate kinds. No ordering against <see cref="EffectiveFrom"/> is imposed —
+    /// arrears (anchor later) and prepaid (anchor earlier) are both legitimate records.
+    /// </summary>
+    public DateTime? AnchorDate { get; set; }
 
     [Required]
     public DateTime EffectiveFrom { get; set; }

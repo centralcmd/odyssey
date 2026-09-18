@@ -76,11 +76,39 @@ Four kinds of object, because MariaDB commits each of their `CREATE`/`ALTER` sta
 and an interruption can therefore land between any two of them: **tables**, **columns**, **indexes**
 and **foreign keys**. A pending migration that would create one which already exists is drift.
 
-Every migration in the repository today bundles its indexes and foreign keys into `CreateTable`, so in
-practice a drifted database is caught on a table. The other two kinds are covered because a later
-index-only or constraint-only migration would drift in exactly the same way. Adding a fifth kind means
+Most migrations in the repository bundle their indexes and foreign keys into `CreateTable`, so in
+practice a drifted database is usually caught on a table. The other two kinds are covered because an
+index-only or constraint-only migration drifts in exactly the same way. Adding a fifth kind means
 one case in `MigrationRunner.CreatedBy`, one arm in the snapshot query, and one member on
 `SchemaObjectKind`.
+
+### The renamed-table half-state
+
+A **rename** counts as a create here, and that is not a technicality. `RenameTable`, `RenameColumn`
+and `RenameIndex` each emit their own `ALTER TABLE`, so an interruption can land between any two of
+them — and what it leaves behind is the object under its **new** name, with no history row. That is
+precisely the shape the guard reports on, so `MigrationRunner.CreatedBy` maps each `Rename*Operation`
+onto the object its `NewName` creates.
+
+`20260918225310_RenameAccountTermsToTermsAndReworkInterval` is the first migration in the repository
+to rename anything, and it renames a table, two columns and an index in one run. Interrupted, it
+leaves a database where, for example, `Terms` exists and `AccountTerms` does not, while
+`__EFMigrationsHistory` still says the migration is pending. The guard reports:
+
+```
+Table 'Terms' already exists, but the migration that creates it is still pending.
+```
+
+Diagnosing it is the same exercise as any other half-state — read the message, decide which of the
+two causes below you are in, and repair per the sections that follow. Note only that the *symptom*
+reads oddly: the table the message names is the one the database has, so on this migration the
+half-state shows up as objects under their **new** names, not their old ones. `SHOW TABLES` will show
+`Terms` and not `AccountTerms`; that is the rename having got that far, not a schema from a different
+build.
+
+The corresponding *drop* halves (`DropTable`, `DropColumn`, `DropIndex`, `DropForeignKey`) are
+deliberately **not** mapped. Replaying a drop cannot collide with an object already present, which is
+the only failure this guard is about.
 
 The test stays deliberately narrow: a pending migration creating an *existing* object. The cheaper
 test — "there are pending migrations and the schema is not empty" — describes every ordinary upgrade,

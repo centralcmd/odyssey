@@ -13,7 +13,7 @@ namespace Odyssey.Api.Controllers;
 
 /// <summary>
 /// ICS (RFC 5545) import/export for a calendar (issue #330). Shares the <c>api/calendars</c> prefix
-/// with <see cref="CalendarsController"/> (same sub-resource convention as e.g. AccountTerms). Export
+/// with <see cref="CalendarsController"/> (same sub-resource convention as e.g. Terms). Export
 /// is a plain GET; import is a POST to the same URI with a multipart body.
 /// </summary>
 [ApiController]

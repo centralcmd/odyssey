@@ -214,7 +214,7 @@ public class AccountsApiClientTests
         Assert.Equal($"/api/accounts/{Account}/files", handler.LastRequest!.RequestUri!.AbsolutePath);
     }
 
-    private static NewAccountTerm SampleTerm() => new()
+    private static NewTerm SampleTerm() => new()
     {
         TermKind = TermKind.InterestRate,
         ValueUnit = TermValueUnit.Percentage,

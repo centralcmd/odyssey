@@ -24,9 +24,19 @@ public sealed record TermKindInfo(
     string Soft,
     TermValueUnit DefaultUnit);
 
-/// <summary>Display context for a <see cref="BillingPeriod"/> — the full label, a compact chip, and
-/// the value suffix ("/mo", "/yr", …) shown beside a fee.</summary>
-public sealed record BillingPeriodInfo(string Label, string Chip, string Suffix);
+/// <summary>
+/// Display context for an <see cref="Interval"/> — the picker label, whether the unit is
+/// <paramref name="Periodic"/> (the one condition the whole cadence UI hangs off), the adverb a
+/// count of one reads as ("monthly"), and the singular/plural unit noun a higher count reads as
+/// ("every 3 <em>months</em>").
+/// </summary>
+/// <remarks>
+/// Mirrors the design system's <c>OdysseyData.intervals</c> registry (data.js). <c>Chip</c> and
+/// <c>Suffix</c> are gone with <c>BillingPeriod</c>: a cadence is now two fields, and "/mo" cannot
+/// say "every 3 months", so every surface words it through
+/// <see cref="TermKindVisuals.CadenceText"/> instead.
+/// </remarks>
+public sealed record IntervalInfo(string Label, bool Periodic, string Adverb, string One, string Many);
 
 public static class TermKindVisuals
 {
@@ -47,28 +57,70 @@ public static class TermKindVisuals
             ? info
             : new TermKindInfo(kind.ToString(), TermGroup.Fee, "sell", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-default-hover)", TermValueUnit.Amount);
 
-    private static readonly IReadOnlyDictionary<BillingPeriod, BillingPeriodInfo> Billing = new Dictionary<BillingPeriod, BillingPeriodInfo>
+    /// <summary>
+    /// The cadence units, in READING order rather than ordinal order — the occasions first, then the
+    /// rhythms shortest to longest. The ordinals are deliberately out of sequence (<c>PerUnit</c> is
+    /// 6 and <c>Weekly</c> is 7, while 4 stays retired), so ordering by them would put the picker in
+    /// an order no reader expects.
+    /// </summary>
+    private static readonly IReadOnlyList<KeyValuePair<Interval, IntervalInfo>> Intervals =
+    [
+        new(Interval.OneTime,       new("One-time",       Periodic: false, "one-time",       "", "")),
+        new(Interval.PerOccurrence, new("Per occurrence", Periodic: false, "per occurrence", "", "")),
+        new(Interval.PerUnit,       new("Per unit",       Periodic: false, "per unit",       "", "")),
+        new(Interval.Daily,         new("Daily",          Periodic: true,  "daily",          "day",   "days")),
+        new(Interval.Weekly,        new("Weekly",         Periodic: true,  "weekly",         "week",  "weeks")),
+        new(Interval.Monthly,       new("Monthly",        Periodic: true,  "monthly",        "month", "months")),
+        new(Interval.Annually,      new("Annually",       Periodic: true,  "annually",       "year",  "years")),
+    ];
+
+    private static readonly IReadOnlyDictionary<Interval, IntervalInfo> IntervalRegistry =
+        Intervals.ToDictionary(entry => entry.Key, entry => entry.Value);
+
+    /// <summary>All cadence units in reading order, for the dialog's interval picker.</summary>
+    public static readonly IReadOnlyList<Interval> AllIntervals = [.. Intervals.Select(entry => entry.Key)];
+
+    public static IntervalInfo? IntervalInfo(Interval? interval) =>
+        interval is { } value && IntervalRegistry.TryGetValue(value, out var info) ? info : null;
+
+    /// <summary>
+    /// Whether a count is meaningful for this unit. The non-periodic units name an occasion rather
+    /// than a rhythm, so "how many of them between charges" has no meaning — which is why the count
+    /// field is absent, not merely disabled, whenever this is false.
+    /// </summary>
+    public static bool IsPeriodic(Interval? interval) => IntervalInfo(interval) is { Periodic: true };
+
+    /// <summary>
+    /// The cadence in words — the ONE place an interval and its count become copy, so a tile, a table
+    /// row and a dialog can never word the same term differently.
+    /// </summary>
+    /// <remarks>
+    /// <c>(Monthly, 1)</c> → "monthly"; <c>(Monthly, 3)</c> → "every 3 months";
+    /// <c>(Weekly, 2)</c> → "every 2 weeks"; <c>(PerUnit, null)</c> → "per unit".
+    /// A one-time charge and an unset interval carry no cadence at all and return <c>null</c>, which
+    /// is what lets every caller render the result unconditionally.
+    /// </remarks>
+    public static string? CadenceText(Interval? interval, int? count)
     {
-        [BillingPeriod.OneTime]        = new("One-time", "One-time", ""),
-        [BillingPeriod.PerTransaction] = new("Per transaction", "Per txn", "/txn"),
-        [BillingPeriod.Daily]          = new("Daily", "Daily", "/day"),
-        [BillingPeriod.Monthly]        = new("Monthly", "Monthly", "/mo"),
-        [BillingPeriod.Quarterly]      = new("Quarterly", "Quarterly", "/qtr"),
-        [BillingPeriod.Annually]       = new("Annually", "Annually", "/yr"),
-    };
+        if (IntervalInfo(interval) is not { } info || interval == Interval.OneTime)
+            return null;
 
-    /// <summary>All billing periods in enum order, for the dialog's period picker.</summary>
-    public static readonly IReadOnlyList<BillingPeriod> BillingPeriods = Enum.GetValues<BillingPeriod>();
+        if (!info.Periodic)
+            return info.Adverb;
 
-    public static BillingPeriodInfo? BillingInfo(BillingPeriod? period) =>
-        period is { } p && Billing.TryGetValue(p, out var info) ? info : null;
+        var every = count ?? 1;
+        return every > 1 ? $"every {every} {info.Many}" : info.Adverb;
+    }
 
-    /// <summary>The billing period a new fee opens on. One honest default: with a single fee kind
+    /// <summary>The cadence of a term as stored — the shape every read surface calls.</summary>
+    public static string? CadenceText(ExistingTerm term) => CadenceText(term.Interval, term.IntervalCount);
+
+    /// <summary>The cadence unit a new fee opens on. One honest default: with a single fee kind
     /// there is nothing left to guess from, and the four kind-specific guesses were wrong three times
     /// in four.</summary>
-    public const BillingPeriod DefaultFeeBillingPeriod = BillingPeriod.Monthly;
+    public const Interval DefaultFeeInterval = Interval.Monthly;
 
-    // Eligibility matrix — mirrors the backend (AccountTermService): interest only on
+    // Eligibility matrix — mirrors the backend (TermService): interest only on
     // interest-bearing accounts, expected return on investment/pension, Fee on every type.
     private static readonly IReadOnlySet<AccountType> InterestRateTypes = new HashSet<AccountType>
     {
@@ -100,13 +152,13 @@ public static class TermKindVisuals
     /// <summary>Interest charged on a liability is a cost, so its rate is expense-colored — but only
     /// its color. The rate itself is never re-signed: a term renders with the sign the user entered,
     /// so a genuinely negative rate stays distinguishable from an ordinary one.</summary>
-    public static bool IsCostRate(ExistingAccountTerm term, ExistingAccount account) =>
+    public static bool IsCostRate(ExistingTerm term, ExistingAccount account) =>
         term.ValueUnit == TermValueUnit.Percentage
         && term.TermKind == TermKind.InterestRate
         && IsLiability(account.AccountType);
 
     /// <summary>Expense color for a cost-rate, else <c>null</c> (the caller keeps its own color).</summary>
-    public static string? CostColor(ExistingAccountTerm term, ExistingAccount account) =>
+    public static string? CostColor(ExistingTerm term, ExistingAccount account) =>
         IsCostRate(term, account) ? "var(--finance-expense)" : null;
 
     /// <summary>A term's kind label in the context of its account: a cost-rate reads "Interest
@@ -114,7 +166,7 @@ public static class TermKindVisuals
     /// cue that a liability's interest is money out (WCAG 1.4.1 Use of Color) — the sign used to be
     /// the second cue, so the word carries it now. Pair this with <see cref="CostColor"/> wherever a
     /// value is tinted, the way a balance pairs its color with a signed amount.</summary>
-    public static string LabelFor(ExistingAccountTerm term, ExistingAccount account) =>
+    public static string LabelFor(ExistingTerm term, ExistingAccount account) =>
         IsCostRate(term, account) ? "Interest charged" : Info(term.TermKind).Label;
 
     /// <summary>What a term is CALLED: its own label where it has one, else its kind wording. The
@@ -122,12 +174,12 @@ public static class TermKindVisuals
     /// rate on a liability still reads "Interest charged" — reaching for <c>Info(kind).Label</c> here
     /// would undo that non-colour cue silently, on a surface that still looks right for every other
     /// term. A rate is refused a label, so a cost rate can only ever take the fallback arm.</summary>
-    public static string DisplayName(ExistingAccountTerm term, ExistingAccount account) =>
+    public static string DisplayName(ExistingTerm term, ExistingAccount account) =>
         TermLabel.Normalize(term.Label) ?? LabelFor(term, account);
 
     /// <summary>Whether a term carries a label, and so renders its kind wording as a caption beneath
     /// its name rather than as the name itself.</summary>
-    public static bool IsLabelled(ExistingAccountTerm term) =>
+    public static bool IsLabelled(ExistingTerm term) =>
         TermLabel.Normalize(term.Label) is not null;
 
     /// <summary>The direction glyph for a rate change, from the rate as stored. A liability's rising
@@ -150,7 +202,7 @@ public static class TermKindVisuals
     /// <summary>A term's value as a display string, carrying the stored sign as entered: "6.49%" on a
     /// loan, "3.40%" on savings, "−0.5%" for a genuinely negative rate, or a money amount for fee
     /// amounts (formatted via <paramref name="money"/>).</summary>
-    public static string FormatValue(ExistingAccountTerm term, Func<decimal, string?, string> money)
+    public static string FormatValue(ExistingTerm term, Func<decimal, string?, string> money)
     {
         if (term.ValueUnit != TermValueUnit.Percentage)
             return money(term.Value, term.CurrencyCode);

@@ -39,8 +39,8 @@ public partial class AccountTermsSection
     /// <summary>Formats a fee amount in its currency — supplied by the host (per-account currency).</summary>
     [Parameter, EditorRequired] public Func<decimal, string?, string> FormatMoney { get; set; } = (v, _) => v.ToString(CultureInfo.InvariantCulture);
 
-    private List<ExistingAccountTerm> _terms = [];
-    private List<ExistingAccountTerm> _current = [];
+    private List<ExistingTerm> _terms = [];
+    private List<ExistingTerm> _current = [];
     private HashSet<Guid> _currentIds = [];
     private HeroModel? _hero;
 
@@ -49,7 +49,7 @@ public partial class AccountTermsSection
 
     private Guid _dialogKey = Guid.Empty;
     private bool _dialogOpen;
-    private ExistingAccountTerm? _editingTerm;
+    private ExistingTerm? _editingTerm;
 
     protected override async Task OnInitializedAsync()
     {
@@ -102,7 +102,7 @@ public partial class AccountTermsSection
             .OrderBy(t => kindOrder.TryGetValue(t.TermKind, out var i) ? i : int.MaxValue)
             .ThenBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
             .ToList();
-        _currentIds = _current.Select(t => t.AccountTermId).ToHashSet();
+        _currentIds = _current.Select(t => t.TermId).ToHashSet();
 
         _hero = BuildHero();
     }
@@ -114,14 +114,14 @@ public partial class AccountTermsSection
         _dialogOpen = true;
     }
 
-    private void OpenEdit(ExistingAccountTerm term)
+    private void OpenEdit(ExistingTerm term)
     {
         _editingTerm = term;
         _dialogKey = Guid.NewGuid();
         _dialogOpen = true;
     }
 
-    private async Task DeleteAsync(ExistingAccountTerm term)
+    private async Task DeleteAsync(ExistingTerm term)
     {
         // Named by what the user called it, so a card with several fees says which one is going.
         var confirmed = await DialogService.ShowMessageBoxAsync(
@@ -132,7 +132,7 @@ public partial class AccountTermsSection
         if (confirmed != true)
             return;
 
-        var ok = (await Accounts.DeleteTermAsync(Account.AccountId, term.AccountTermId))
+        var ok = (await Accounts.DeleteTermAsync(Account.AccountId, term.TermId))
             .Toast(Snackbar, "Unable to delete term", "Term deleted.");
 
         if (ok)

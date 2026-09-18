@@ -53,7 +53,7 @@ public class DemoDataSeederTests
 
         Assert.Equal(expected.Accounts.Count, await finance.Accounts.CountAsync());
         Assert.Equal(expected.AccountEstimates.Count, await finance.AccountEstimates.CountAsync());
-        Assert.Equal(expected.AccountTerms.Count, await finance.AccountTerms.CountAsync());
+        Assert.Equal(expected.Terms.Count, await finance.Terms.CountAsync());
         Assert.Equal(expected.Budgets.Count, await finance.Budgets.CountAsync());
         Assert.Equal(expected.Transactions.Count, await finance.Transactions.CountAsync());
         Assert.Equal(expected.TransactionTagLinks.Count, await finance.TransactionTagLinks.CountAsync());
@@ -159,7 +159,7 @@ public class DemoDataSeederTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
         var cardId = TestData.Catalog.Accounts.IdFor(TestData.Catalog.Accounts.TravelRewardsCard);
-        var fees = await context.AccountTerms
+        var fees = await context.Terms
             .AsNoTracking()
             .Where(t => t.AccountId == cardId && t.TermKind == TermKind.Fee)
             .ToListAsync();

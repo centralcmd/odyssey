@@ -131,7 +131,7 @@ public sealed class DataExportService
         CancellationToken cancellationToken)
     {
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Accounts), AccountsQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.AccountTerms), AccountTermsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Terms), TermsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Budgets), BudgetsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.BudgetItems), BudgetItemsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Contacts), ContactsQuery(), cancellationToken);
@@ -248,12 +248,12 @@ public sealed class DataExportService
                 CurrencyCode = account.CurrencyCode,
             });
 
-    private IQueryable<AccountTermExport> AccountTermsQuery() =>
-        context.AccountTerms.AsNoTracking()
-            .OrderBy(term => term.AccountTermId)
-            .Select(term => new AccountTermExport
+    private IQueryable<TermExport> TermsQuery() =>
+        context.Terms.AsNoTracking()
+            .OrderBy(term => term.TermId)
+            .Select(term => new TermExport
             {
-                AccountTermId = term.AccountTermId,
+                TermId = term.TermId,
                 AccountId = term.AccountId,
                 TermKind = (FinanceDtos.TermKind)term.TermKind,
                 Label = term.Label,
@@ -261,7 +261,9 @@ public sealed class DataExportService
                 ValueUnit = (FinanceDtos.TermValueUnit)term.ValueUnit,
                 Value = term.Value,
                 CurrencyCode = term.CurrencyCode,
-                BillingPeriod = (FinanceDtos.BillingPeriod?)term.BillingPeriod,
+                Interval = (FinanceDtos.Interval?)term.Interval,
+                IntervalCount = term.IntervalCount,
+                AnchorDate = term.AnchorDate,
                 EffectiveFrom = term.EffectiveFrom,
                 Note = term.Note,
                 CreatedAtUtc = term.CreatedAtUtc,

@@ -160,7 +160,7 @@ public class DataExportApiTests
         var finance = root.GetProperty("databases").GetProperty("finance");
         foreach (var collection in new[]
                  {
-                     "accounts", "accountTerms", "budgets", "budgetItems", "contacts", "currencies",
+                     "accounts", "terms", "budgets", "budgetItems", "contacts", "currencies",
                      "exchangeRates", "transactions", "transactionTags", "fileMetadata", "accountFiles",
                      "transactionFiles",
                      // Issue #33.
@@ -262,7 +262,7 @@ public class DataExportApiTests
     // ── Account terms included (issue #172) ───────────────────────────────────
 
     [Fact]
-    public async Task Export_IncludesAccountTerms_AsFlatRows()
+    public async Task Export_IncludesTerms_AsFlatRows()
     {
         await using var factory = new ApiFactory([PermissionClaims.DataExport]);
         await SeedFinanceAsync(factory);
@@ -271,8 +271,8 @@ public class DataExportApiTests
         using var document = await GetExportDocumentAsync(client);
         var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
 
-        var term = Assert.Single(finance.GetProperty("accountTerms").EnumerateArray());
-        Assert.NotEqual(Guid.Empty, term.GetProperty("accountTermId").GetGuid());
+        var term = Assert.Single(finance.GetProperty("terms").EnumerateArray());
+        Assert.NotEqual(Guid.Empty, term.GetProperty("termId").GetGuid());
         Assert.NotEqual(Guid.Empty, term.GetProperty("accountId").GetGuid());
 
         // Enums serialize as their stored integer, not a nested navigation object.
@@ -293,7 +293,7 @@ public class DataExportApiTests
     /// membership it encodes.
     /// </summary>
     [Fact]
-    public async Task Export_IncludesAccountTermSeriesLabels()
+    public async Task Export_IncludesTermSeriesLabels()
     {
         await using var factory = new ApiFactory([PermissionClaims.DataExport]);
         await SeedFinanceAsync(factory);
@@ -303,7 +303,7 @@ public class DataExportApiTests
         using var document = await GetExportDocumentAsync(client);
         var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
 
-        var fee = finance.GetProperty("accountTerms").EnumerateArray()
+        var fee = finance.GetProperty("terms").EnumerateArray()
             .Single(t => t.GetProperty("label").ValueKind != JsonValueKind.Null);
 
         Assert.Equal("ATM · Abroad", fee.GetProperty("label").GetString());
@@ -317,9 +317,9 @@ public class DataExportApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var accountId = await context.Accounts.Select(a => a.AccountId).FirstAsync();
 
-        context.AccountTerms.Add(new AccountTerm
+        context.Terms.Add(new Term
         {
-            AccountTermId = Guid.NewGuid(),
+            TermId = Guid.NewGuid(),
             AccountId = accountId,
             TermKind = TermKind.Fee,
             Label = label,
@@ -520,7 +520,7 @@ public class DataExportApiTests
     public static TheoryData<string, string[], KeyKind> OrderedCollections() => new()
     {
         { "accounts", ["accountId"], KeyKind.Guid },
-        { "accountTerms", ["accountTermId"], KeyKind.Guid },
+        { "terms", ["termId"], KeyKind.Guid },
         { "budgets", ["budgetId"], KeyKind.Guid },
         { "budgetItems", ["budgetItemId"], KeyKind.Guid },
         { "contacts", ["contactId"], KeyKind.Guid },
@@ -655,9 +655,9 @@ public class DataExportApiTests
         {
             var id = OrderingId(sequence);
 
-            context.AccountTerms.Add(new AccountTerm
+            context.Terms.Add(new Term
             {
-                AccountTermId = id, AccountId = accountId, TermKind = TermKind.InterestRate,
+                TermId = id, AccountId = accountId, TermKind = TermKind.InterestRate,
                 ValueUnit = TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = now, CreatedAtUtc = now,
             });
             context.AccountEstimates.Add(new AccountEstimate
@@ -866,9 +866,9 @@ public class DataExportApiTests
             new Account { AccountId = Guid.NewGuid(), Name = "Secondary", Description = "Second account", Opened = DateTime.UtcNow },
             new Account { AccountId = Guid.NewGuid(), Name = "Tertiary", Description = "Third account", Opened = DateTime.UtcNow });
 
-        context.AccountTerms.Add(new AccountTerm
+        context.Terms.Add(new Term
         {
-            AccountTermId = Guid.NewGuid(),
+            TermId = Guid.NewGuid(),
             AccountId = accountId,
             TermKind = TermKind.InterestRate,
             ValueUnit = TermValueUnit.Percentage,
