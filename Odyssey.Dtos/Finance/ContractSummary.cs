@@ -120,6 +120,13 @@ public sealed record ContractUpcomingCharge
 /// type, the recurring-cost run rate, and the derived upcoming charges. Archived contracts are counted
 /// in <see cref="CountsByStatus"/> but excluded from the active totals, the by-type breakdown, the run
 /// rate and the charges.
+///
+/// <para>
+/// A <b>paused</b> contract (issue #140) is excluded from the run rate, its by-type split and the
+/// charges — it is not costing anything while suspended — but stays in <see cref="CountsByType"/>,
+/// which is a headcount of the agreements on file rather than a cost split. The two by-type reads
+/// answer different questions and this is the one place they are answered differently.
+/// </para>
 /// </summary>
 public sealed record ContractSummary
 {

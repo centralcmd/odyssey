@@ -1173,11 +1173,16 @@ public class ContractsApiTests
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         using var problem = JsonDocument.Parse(await refused.Content.ReadAsStringAsync());
+        // The stable code AND the field key: the code is what a client branches on, the errors entry
+        // is what lets a form render the message on the control rather than only in a toast.
         Assert.Equal("contract_pause_requires_active", problem.RootElement.GetProperty("code").GetString());
-        Assert.True(await HasErrorKeyAsync(
-            await client.PutAsJsonAsync($"{Path}/{id}",
-                UpdateContract(isPaused: true, isArchived: archive, startDate: start, endDate: end)),
-            nameof(Odyssey.Dtos.Finance.UpdateContract.IsPaused)));
+        Assert.Contains(
+            problem.RootElement.GetProperty("errors").EnumerateObject().Select(e => e.Name),
+            name => string.Equals(name, nameof(Odyssey.Dtos.Finance.UpdateContract.IsPaused),
+                StringComparison.OrdinalIgnoreCase));
+        // The message names the contract's own derived status and no other record.
+        Assert.Contains(from.ToString(),
+            problem.RootElement.GetProperty("detail").GetString() ?? string.Empty, StringComparison.Ordinal);
 
         // A re-read shows the contract unchanged and still not paused.
         var unchanged = await GetAsync(client, id);
