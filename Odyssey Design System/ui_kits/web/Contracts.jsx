@@ -56,25 +56,51 @@ const ContractFilesTable = ({ files, onDelete, empty }) => {
 
 /* ====================== One party tile ====================== */
 /* Same shape as a policy's Parties section (Insurance.jsx `InsLinkTiles`): one
-   InfoTile per linked record, drawn in that record's own type icon and colour,
-   with the kind as the overline and the target type as the caption. The detach
-   action rides on the tile, revealed on hover / focus-within. */
-const PartyTile = ({ party, onDetach }) => {
+   InfoTile per linked record, drawn in that record's own type icon and colour.
+   What changes with the role feature is the OVERLINE: it now names what the
+   record DOES in the agreement (the ContractPartyRole), with the kind and the
+   record's own type demoted to the caption — "who is the employer and who is
+   the employee" is the question this section answers, and the kind was never
+   the answer to it. Under the role sits the TERM, when the party's term is not
+   simply the contract's own extent (both dates null, which needs no caption).
+   The tile's ⋯ menu carries Edit (the new PUT) and Detach. */
+const PartyTile = ({ party, today, onEdit, onDetach }) => {
   const r = CON_H.conResolveParty(party);
+  const role = CON_H.conPartyRoleInfo(party.role);
+  const term = CON_H.conPartyTermText(party);
+  // A closed term in the past: still a party of record, drawn quieter.
+  const past = CON_H.conPartyPast(party, today);
+  // Unspecified is "nobody has said", not a category — so it is drawn as an
+  // absence (muted, no colour), and never as the deliberate "Other".
+  const plain = role.key === 'Unspecified' || role.unknown;
   return (
     <div className="con-party-tile">
       <InfoTile icon={r.icon} iconColor={r.color} iconSoft={r.soft}
-        label={r.kindLabel} value={r.name} valueVariant="text" className="wrapvalue"
-        foot={r.typeLabel || undefined} />
-      <span className="con-party-detach" title={`Detach ${r.name}`}>
-        <IconButton icon="link_off" label={`Detach ${r.name}`} onClick={() => onDetach(party)} />
-      </span>
+        label={(
+          <React.Fragment>
+            <span className={`con-role${plain ? ' unset' : ''}`}>
+              <span>{role.key === 'Unspecified' ? 'No role set' : role.label}</span>
+            </span>
+            {term ? <span className={`con-term${past ? ' past' : ''}`}>{term}</span> : null}
+            <span className="con-tile-menu">
+              <ActionMenu items={[
+                { icon: 'edit', label: 'Edit party', onClick: () => onEdit && onEdit(party) },
+                { icon: 'content_copy', label: 'Copy name', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(r.name); } },
+                { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(party.id); } },
+                { divider: true },
+                { icon: 'link_off', label: 'Detach party', danger: true, onClick: () => onDetach(party) },
+              ]} />
+            </span>
+          </React.Fragment>
+        )}
+        value={r.name} valueVariant="text" className={`wrapvalue${past ? ' tone-muted' : ''}`}
+        foot={[r.kindLabel, r.typeLabel].filter(Boolean).join(' · ') || undefined} />
     </div>
   );
 };
 
 /* ====================== Expanded detail ====================== */
-const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onAttach }) => {
+const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
   const parties = contract.parties || [];
   const files = contract.files || [];
@@ -140,12 +166,12 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         <SectionDivider label="Parties" meta={`${parties.length} linked`} />
         {parties.length ? (
           <InfoTileGrid>
-            {parties.map(p => <PartyTile key={p.id} party={p} onDetach={detachParty} />)}
+            {parties.map(p => <PartyTile key={p.id} party={p} today={nowDate} onEdit={onEditParty} onDetach={detachParty} />)}
           </InfoTileGrid>
         ) : (
           <div className="con-empty-line">
             <MIcon name="diversity_3" size={20} />
-            <div style={{ flex: 1 }}>No parties yet — link the account or contact this contract relates to.</div>
+            <div style={{ flex: 1 }}>No parties yet — link the account or contact this contract relates to, and say what it does in the agreement.</div>
           </div>
         )}
       </div>
@@ -175,6 +201,9 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
   const [showEdit, setShowEdit] = useState(false);
   const [focusDocs, setFocusDocs] = useState(false);
   const [modal, setModal] = useState(null); // 'party' | 'file'
+  // The party being edited through the new PUT …/parties/{partyId}. The same
+  // dialog serves add and edit; the row id is what keeps it one party.
+  const [editParty, setEditParty] = useState(null);
   const cardRef = useRef(null);
 
   const typeInfo = CON_H.contractTypeInfo(c.type);
@@ -201,6 +230,14 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
     setShowEdit(false);
   };
   const addParty = (party) => { setC(prev => ({ ...prev, parties: [...(prev.parties || []), party] })); setModal(null); setOpen(true); };
+  /* The edit is a FULL REPLACEMENT of the row — role, target and both dates —
+     written in place, so `id` survives a role or target change and the party
+     stays one party (spec §5: the response's contractPartyId equals the one in
+     the route). */
+  const saveParty = (next) => {
+    setC(prev => ({ ...prev, parties: (prev.parties || []).map(p => (p.id === next.id ? { ...next } : p)) }));
+    setEditParty(null);
+  };
   const attachFile = (filesToAdd) => { const arr = Array.isArray(filesToAdd) ? filesToAdd : [filesToAdd]; setC(prev => ({ ...prev, files: [...(prev.files || []), ...arr] })); setModal(null); setOpen(true); setFocusDocs(true); };
   const toggleArchive = () => setC(prev => ({ ...prev, archived: prev.archived ? null : new Date().toISOString() }));
 
@@ -262,11 +299,12 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
         ]} />}
       >
         <ContractDetail contract={c} today={today} focusDocs={focusDocs} setContract={setC}
-          onAddParty={() => setModal('party')} onAttach={() => setModal('file')} />
+          onAddParty={() => setModal('party')} onEditParty={(p) => setEditParty(p)} onAttach={() => setModal('file')} />
       </RecordCard>
       {showEdit && <AddContractModal contract={c} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
 
       {modal === 'party' && <AddContractPartyModal contract={c} onClose={() => setModal(null)} onAdd={addParty} />}
+      {editParty && <AddContractPartyModal contract={c} party={editParty} onClose={() => setEditParty(null)} onSave={saveParty} />}
       {modal === 'file' && <AddContractFileModal contract={c} onClose={() => setModal(null)} onAttach={attachFile} />}
     </div>
   );

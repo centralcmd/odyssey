@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Tasks, where the List view has a purpose-built task card: a 92px rail carrying the deadline as a signed day count (TODAY / TMRW as words, months past 90 days, a tick once Done or Archived, an em dash when undated) above the cycling status control, the calendar date moved into the card as a labelled 'Due' line, an uncapped note, and a 3px state stripe on the card's outer edge — switch View to List to see it. Plus the contact import/export family across the productivity surfaces — Contacts as vCard (.vcf), Tasks as iCalendar VTODO, Journal as VJOURNAL, Calendar events as VEVENT — Budgets, the Calendar module, the User Profile, Subscriptions, Contracts, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
+<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Contracts, where every party carries a ROLE (Employee, Employer, Buyer, Seller, Service provider, Other — and Unspecified, drawn as an absence rather than a category) and an optional TERM in that role, with both dates empty meaning the contract’s own extent. Party tiles lead with the role, show a non-default term under it, and their ⋯ menu opens the new edit-in-place dialog (role, record and both dates are replaced as one). Plus the contact import/export family across the productivity surfaces, Tasks, Budgets, the Calendar module, the User Profile, Subscriptions, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -118,7 +118,7 @@
 
     function App() {
       const [authed, setAuthed] = useState(true); // start on dashboard for review
-      const [view, setView] = useState('tasks'); // open on Tasks to review the new list card
+      const [view, setView] = useState('contracts'); // open on Contracts to review party roles + terms
       const [authMode, setAuthMode] = useState('login');
       const [dark, setDark] = useState(true);
       const [tweaks, setTweak] = useTweaks({ reportLayout: 'table', summaryBaseCurrency: 'USD', endingWindowDays: 45, showOnboarding: false, cpCanImport: true, cpExportCap: false, cpImportOutcome: 'skips', cpResidualLabel: false, cpCanCreate: true, cpCanUpdate: true, cpCanDelete: true, cpAliasCap: 32, cpAvatarOutcome: 'ok', cpAvatarBroken: false, tCanImport: true, tExportCap: false, tImportOutcome: 'skips', jCanImport: true, jCanReadCp: true, jExportCap: false, jImportOutcome: 'skips', showPasswordGate: false, cprOutcome: 'success', usersResetOutcome: 'delivered', bgtCanCreateTag: true, bgtTagsFailed: false });

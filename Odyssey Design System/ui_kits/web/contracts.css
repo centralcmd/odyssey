@@ -67,25 +67,28 @@
 /* ============================================================
    Parties — one InfoTile per typed link (Account / Contact), the
    same tile design a policy's Parties section uses. Each tile is
-   drawn in the referenced record's own icon + colour; the detach
-   action sits top-right, revealed on hover / focus-within.
+   drawn in the referenced record's own icon + colour; the overline
+   carries the ROLE, the term (when it is not the contract's own
+   extent) sits under it, and the ⋯ menu (edit / detach) sits
+   top-right — the same tile vocabulary the policy parties use.
    ============================================================ */
 .con-party-tile { position: relative; display: flex; min-width: 0; }
 .con-party-tile > .odc-infotile { flex: 1; min-width: 0; }
-/* Detach control — a destructive ACTION, not a "broken link" status. Hidden at
-   rest so the tile stays quiet; revealed on tile hover (or keyboard focus
-   within it, for a11y), where it reads as an interactive destructive control
-   (coral on hover) so link_off isn't mistaken for a status glyph. */
-.con-party-detach {
-  position: absolute; top: 6px; right: 6px; z-index: 1;
-  opacity: 0; transition: opacity .12s ease;
+/* The overline stacks role over term, in the space the icon leaves, so the
+   type caption below stays one line and a long range never wraps. */
+.con-party-tile .odc-infotile-k { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; padding-right: 26px; }
+.con-role { display: inline-flex; align-items: center; gap: 5px; min-width: 0; color: var(--mud-palette-text-primary); }
+.con-role > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Unspecified / unrecognised: an absence, not a category — no colour, quieter
+   than a stated role, and never confusable with the deliberate "Other". */
+.con-role.unset { color: var(--mud-palette-text-secondary); font-style: italic; }
+.con-term {
+  font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
+  color: var(--mud-palette-text-secondary); white-space: nowrap; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis;
 }
-.con-party-tile:hover .con-party-detach,
-.con-party-tile:focus-within .con-party-detach { opacity: 1; }
-.con-party-detach .odc-iconbtn { color: var(--mud-palette-text-secondary); transition: color .12s ease, background-color 0s; }
-.con-party-tile:hover .con-party-detach .odc-iconbtn { color: var(--mud-palette-text-primary); }
-.con-party-detach .odc-iconbtn:hover,
-.con-party-detach .odc-iconbtn:focus-visible { color: var(--finance-expense); }
+.con-term.past { text-decoration: line-through; }
+.con-tile-menu { position: absolute; top: 6px; right: 6px; z-index: 1; }
 
 /* Empty-state for parties / documents inside a section */
 .con-empty-line {

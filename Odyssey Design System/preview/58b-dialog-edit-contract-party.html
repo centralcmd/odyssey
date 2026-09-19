@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- @dsCard group="Dialogs" name="New contract party" subtitle="AddContractPartyModal — the accessible party picker: choose a kind (Account / Contact), the ROLE the record plays in the agreement (Unspecified is a real member, not a placeholder), then the record itself from a pre-loaded Combobox. Records already holding the SELECTED role are filtered out — uniqueness is per role, so one contact can be Seller and Service provider on the same contract. The optional term below is the party’s own fact: empty means the contract’s own extent. Live." viewport="760x760" -->
+<!-- @dsCard group="Dialogs" name="Edit contract party" subtitle="AddContractPartyModal in EDIT mode — the new PUT …/parties/{partyId}: choose a kind (Account / Contact), the ROLE the record plays in the agreement (Unspecified is a real member, not a placeholder), then the record itself. The save is a FULL REPLACEMENT of the link — role, record and both dates — written in place, so the party keeps its id; the dialog says so where the decision is made. The party being edited is excluded from its own duplicate check, so a date-only edit is never a self-conflict. Live." viewport="760x760" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Odyssey · New contract party dialog</title>
+  <title>Odyssey · Edit contract party dialog</title>
   <link rel="stylesheet" href="../colors_and_type.css" />
   <link rel="stylesheet" href="../ui_kits/web/kit.css" />
   <link rel="stylesheet" href="../ui_kits/web/insurance.css" />
@@ -44,8 +44,9 @@
     const AddContractPartyModal = window.AddContractPartyModal;
     const D = window.OdysseyData;
     const contract = (D.contracts || []).find(c => c.id === 'ct-lease') || (D.contracts || [])[0] || { parties: [] };
+    const party = (contract.parties || [])[1] || (contract.parties || [])[0];
     ReactDOM.createRoot(document.getElementById('root')).render(
-      <AddContractPartyModal contract={contract} onClose={() => {}} onAdd={() => {}} />
+      <AddContractPartyModal contract={contract} party={party} onClose={() => {}} onSave={() => {}} />
     );
   </script>
 </body>

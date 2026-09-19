@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0a872c64aad8","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"caa6e940b80e","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"b6392757f0f9","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"3f9ea083a8bc","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"e1a9592d13f6","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/Contracts.jsx":"58f12e627d8e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"33971cdb04ee","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"ee9e202c4e4c","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"e3f4d3a1aec3","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"34f6e9b864fb","ui_kits/web/data.js":"a29165dd3f99","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0a872c64aad8","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"caa6e940b80e","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"eabd6ff65b3b","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"3f9ea083a8bc","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"1a11e3e044be","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/Contracts.jsx":"f284fe938452","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"33971cdb04ee","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"ee9e202c4e4c","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"e3f4d3a1aec3","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"88b928b54493","ui_kits/web/data.js":"a29165dd3f99","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -23658,18 +23658,32 @@ Object.assign(window, {
 
 // ui_kits/web/AddContractPartyModal.jsx
 try { (() => {
-/* AddContractPartyModal — add a party to a contract (§3 step 3, §7 POST
-   …/parties). The accessible two-step picker the spec mandates (frontend B2):
-     1. choose the party KIND — Account / Contact
-     2. pick the specific record from a type-to-filter `Combobox` whose options
-        are PRE-LOADED for the chosen kind (no in-widget async fetch — the
-        candidate lists are handed in up front, keeping it inside Combobox's
-        accessible contract). The inaccessible CreateTransactionDialog popover
-        is deliberately NOT used.
-   On save the party is created from a SCALAR ID only (accountId xor
-   contactId — the XOR + anti-over-posting invariant,
-   §6/§10). Already-linked targets are filtered out so the same record can't be
-   attached twice (the §9 duplicate guard, surfaced before submit). */
+/* AddContractPartyModal — add OR edit one party on a contract (§5:
+   POST …/parties and the new PUT …/parties/{partyId}).
+
+   The accessible picker the spec mandates (frontend B2), now three decisions
+   deep:
+     1. the party KIND — Account / Contact (the XOR target)
+     2. the ROLE the record plays in the agreement (ContractPartyRole; the
+        registry's `Unspecified` is a real, selectable member and the default)
+     3. the specific record, from a type-to-filter `Combobox` whose options are
+        PRE-LOADED for the chosen kind (no in-widget async fetch).
+   …plus the optional TERM — FromDate / ToDate — with the insurance-party
+   semantics: both null is the DEFAULT term, the contract's own extent, not an
+   unset value.
+
+   The save carries SCALAR IDS ONLY (accountId xor contactId) — never a nested
+   Account or Contact object (§4 write-path invariant), so a party write can
+   never create or rename the linked record.
+
+   Duplicate guard (§8 rule 6): uniqueness is (contract, target, ROLE), so the
+   picker only hides records already linked IN THE SELECTED ROLE, and the party
+   being edited is excluded from its own check. The same contact can therefore
+   be Seller and Service provider on one contract — one contract, two parties.
+
+   In edit mode the PUT is a FULL REPLACEMENT of the link, not a patch: an
+   omitted role resets to Unspecified and a cleared date clears. The dialog
+   states that where the decision is made rather than after the fact. */
 
 const CONTRACT_PARTY_KINDS = [{
   kind: 'account',
@@ -23684,37 +23698,43 @@ const CONTRACT_PARTY_KINDS = [{
 }];
 const AddContractPartyModal = ({
   contract,
+  party = null,
   onClose,
-  onAdd
+  onAdd,
+  onSave
 }) => {
   const {
     useState,
     useMemo
   } = React;
   const H = window.OdysseyHelpers;
-  const [kind, setKind] = useState('account');
-  const [value, setValue] = useState('');
+  const editing = !!party;
+  const [kind, setKind] = useState(editing && party.contactId ? 'contact' : 'account');
+  const [role, setRole] = useState(editing ? party.role || 'Unspecified' : 'Unspecified');
+  const [value, setValue] = useState(editing ? party.accountId || party.contactId || '' : '');
+  const [fromDate, setFromDate] = useState(editing ? party.fromDate || null : null);
+  const [toDate, setToDate] = useState(editing ? party.toDate || null : null);
   const [error, setError] = useState(null);
-
-  // Ids already linked to this contract, by field — so the picker offers only
-  // not-yet-linked records (the duplicate guard, pre-empted in the UI).
-  const linked = useMemo(() => {
-    const s = {
-      accountId: new Set(),
-      contactId: new Set()
-    };
-    (contract.parties || []).forEach(p => {
-      if (p.accountId) s.accountId.add(p.accountId);
-      if (p.contactId) s.contactId.add(p.contactId);
-    });
-    return s;
-  }, [contract.parties]);
+  const [dateError, setDateError] = useState({});
   const def = CONTRACT_PARTY_KINDS.find(k => k.kind === kind);
+  const roleInfo = H.conPartyRoleInfo(role);
+  // The contract's own start is the only anchor, and only when it has one: a
+  // one-off (completion date) and an open-started term take no lower bound.
+  const startDate = H.conDateOnly(contract.startDate);
+
+  // Records already holding THIS role on this contract — the only ones the
+  // picker must withhold (uniqueness is per role).
+  const taken = useMemo(() => H.conPartyTaken(contract.parties, def.field, role, editing ? party.id : null), [contract.parties, def.field, role, editing, party]);
   const allOptions = kind === 'account' ? H.conAccountOptions() : H.conInstitutionOptions();
-  const options = allOptions.filter(o => !linked[def.field].has(o.value));
+  const options = allOptions.filter(o => !taken.has(o.value));
+  const roleNoun = roleInfo.key === 'Unspecified' ? 'no role' : roleInfo.label.toLowerCase();
   const pickKind = k => {
     setKind(k);
     setValue('');
+    setError(null);
+  };
+  const pickRole = r => {
+    setRole(r);
     setError(null);
   };
   const submit = () => {
@@ -23722,14 +23742,26 @@ const AddContractPartyModal = ({
       setError(`Select an ${def.label.toLowerCase()} to link.`);
       return;
     }
-    onAdd && onAdd({
-      id: `cp-new-${Date.now()}`,
-      [def.field]: value
-    });
+    const de = {};
+    if (fromDate && startDate && fromDate < startDate) de.fromDate = `This contract starts ${H.conDate(startDate)} — a party can’t be in the role before that.`;
+    if (fromDate && toDate && toDate < fromDate) de.toDate = 'End date can’t be before the start date.';
+    if (Object.keys(de).length) {
+      setDateError(de);
+      return;
+    }
+    const dto = {
+      id: editing ? party.id : `cp-new-${Date.now()}`,
+      accountId: kind === 'account' ? value : null,
+      contactId: kind === 'contact' ? value : null,
+      role,
+      fromDate: fromDate || null,
+      toDate: toDate || null
+    };
+    if (editing) onSave && onSave(dto);else onAdd && onAdd(dto);
   };
   return /*#__PURE__*/React.createElement(Modal, {
-    title: "New party",
-    subtitle: "Link the account or contact this contract relates to.",
+    title: editing ? 'Edit party' : 'New party',
+    subtitle: editing ? 'Change the role, the linked record, or the dates this party is in the role.' : 'Link the account or contact this contract relates to, and say what it does in the agreement.',
     icon: "group_add",
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -23738,9 +23770,9 @@ const AddContractPartyModal = ({
     }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
       variant: "filled",
       color: "primary",
-      icon: "add",
+      icon: editing ? 'check' : 'add',
       onClick: submit
-    }, "Create party"))
+    }, editing ? 'Save changes' : 'Create party'))
   }, /*#__PURE__*/React.createElement(FieldShell, {
     label: "Party kind",
     required: true
@@ -23759,13 +23791,19 @@ const AddContractPartyModal = ({
       label: k.label,
       icon: k.icon
     }))
-  })), kind === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
+  })), /*#__PURE__*/React.createElement(ContractPartyRoleSelect, {
+    id: "acp-role",
+    label: "Role",
+    value: role,
+    onChange: pickRole,
+    helper: roleInfo.desc
+  }), kind === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
     id: "acp-target",
     label: def.label,
     required: true,
     error: error,
     allowCreate: true,
-    help: error ? undefined : options.length ? `${options.length} contact${options.length === 1 ? '' : 's'} available to link.` : 'Every contact is already linked to this contract — or add a new one below.',
+    help: error ? undefined : options.length ? `${options.length} contact${options.length === 1 ? '' : 's'} available in this role.` : `Every contact already holds ${roleNoun} on this contract — or add a new one below.`,
     value: value,
     onChange: v => {
       setValue(v || '');
@@ -23779,7 +23817,7 @@ const AddContractPartyModal = ({
     htmlFor: "acp-target",
     required: true,
     error: error,
-    helper: error ? undefined : options.length ? `${options.length} ${def.label.toLowerCase()}${options.length === 1 ? '' : 's'} available to link.` : `Every ${def.label.toLowerCase()} is already linked to this contract.`
+    helper: error ? undefined : options.length ? `${options.length} ${def.label.toLowerCase()}${options.length === 1 ? '' : 's'} available in this role.` : `Every ${def.label.toLowerCase()} already holds ${roleNoun} on this contract.`
   }, /*#__PURE__*/React.createElement(Combobox, {
     id: "acp-target",
     value: value,
@@ -23791,7 +23829,35 @@ const AddContractPartyModal = ({
     placeholder: `Search ${def.label.toLowerCase()}s…`,
     ariaLabel: def.label,
     invalid: !!error
-  })));
+  })), /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "In the role"
+  }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(DateField, {
+    label: "From",
+    value: fromDate,
+    onChange: v => {
+      setFromDate(v || null);
+      setDateError(e => ({
+        ...e,
+        fromDate: undefined
+      }));
+    },
+    help: startDate ? `Leave empty to start with the contract (${H.conDate(startDate)}).` : 'Leave empty to start with the contract.',
+    error: dateError.fromDate
+  }), /*#__PURE__*/React.createElement(DateField, {
+    label: "To",
+    value: toDate,
+    onChange: v => {
+      setToDate(v || null);
+      setDateError(e => ({
+        ...e,
+        toDate: undefined
+      }));
+    },
+    help: "Leave empty while the party is still in the role.",
+    error: dateError.toDate
+  })), editing ? /*#__PURE__*/React.createElement(Alert, {
+    severity: "info"
+  }, "Saving replaces the whole party \u2014 role, record and both dates. Clearing a date clears it on the contract; the party keeps its id, so this stays one party.") : null);
 };
 Object.assign(window, {
   AddContractPartyModal
@@ -31053,6 +31119,25 @@ const ContractTypeSelect = ({
     options: types ? optsFrom(types) : contractTypeOpts()
   }, props));
 };
+// ContractPartyRoleSelect — what a linked record DOES in a contract
+// (ContractPartyRole). Registry-backed like the type pickers; the value is the
+// role key, and `Unspecified` is a real, selectable member, not a placeholder.
+const contractPartyRoleOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.contractPartyRoles);
+const ContractPartyRoleSelect = ({
+  helper,
+  roles,
+  ...props
+}) => {
+  if (DS.ContractPartyRoleSelect) return /*#__PURE__*/React.createElement(DS.ContractPartyRoleSelect, _extends({
+    help: helper,
+    roles: roles
+  }, props));
+  return /*#__PURE__*/React.createElement(DS.Select, _extends({
+    help: helper,
+    options: roles ? optsFrom(roles) : contractPartyRoleOpts()
+  }, props));
+};
+
 // BudgetCategoryTypeSelect — Expense / Income, each with its category glyph + color.
 const BUDGET_CATEGORY_OPTS = [{
   value: 'Expense',
@@ -32949,6 +33034,7 @@ Object.assign(window, {
   odcTypeRows,
   odcStatusRows,
   ContractTypeSelect,
+  ContractPartyRoleSelect,
   BudgetCategoryTypeSelect,
   AddRow,
   ActionMenu,
@@ -36559,33 +36645,72 @@ const ContractFilesTable = ({
 
 /* ====================== One party tile ====================== */
 /* Same shape as a policy's Parties section (Insurance.jsx `InsLinkTiles`): one
-   InfoTile per linked record, drawn in that record's own type icon and colour,
-   with the kind as the overline and the target type as the caption. The detach
-   action rides on the tile, revealed on hover / focus-within. */
+   InfoTile per linked record, drawn in that record's own type icon and colour.
+   What changes with the role feature is the OVERLINE: it now names what the
+   record DOES in the agreement (the ContractPartyRole), with the kind and the
+   record's own type demoted to the caption — "who is the employer and who is
+   the employee" is the question this section answers, and the kind was never
+   the answer to it. Under the role sits the TERM, when the party's term is not
+   simply the contract's own extent (both dates null, which needs no caption).
+   The tile's ⋯ menu carries Edit (the new PUT) and Detach. */
 const PartyTile = ({
   party,
+  today,
+  onEdit,
   onDetach
 }) => {
   const r = CON_H.conResolveParty(party);
+  const role = CON_H.conPartyRoleInfo(party.role);
+  const term = CON_H.conPartyTermText(party);
+  // A closed term in the past: still a party of record, drawn quieter.
+  const past = CON_H.conPartyPast(party, today);
+  // Unspecified is "nobody has said", not a category — so it is drawn as an
+  // absence (muted, no colour), and never as the deliberate "Other".
+  const plain = role.key === 'Unspecified' || role.unknown;
   return /*#__PURE__*/React.createElement("div", {
     className: "con-party-tile"
   }, /*#__PURE__*/React.createElement(InfoTile, {
     icon: r.icon,
     iconColor: r.color,
     iconSoft: r.soft,
-    label: r.kindLabel,
+    label: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      className: `con-role${plain ? ' unset' : ''}`
+    }, /*#__PURE__*/React.createElement("span", null, role.key === 'Unspecified' ? 'No role set' : role.label)), term ? /*#__PURE__*/React.createElement("span", {
+      className: `con-term${past ? ' past' : ''}`
+    }, term) : null, /*#__PURE__*/React.createElement("span", {
+      className: "con-tile-menu"
+    }, /*#__PURE__*/React.createElement(ActionMenu, {
+      items: [{
+        icon: 'edit',
+        label: 'Edit party',
+        onClick: () => onEdit && onEdit(party)
+      }, {
+        icon: 'content_copy',
+        label: 'Copy name',
+        onClick: () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(r.name);
+        }
+      }, {
+        icon: 'fingerprint',
+        label: 'Copy ID',
+        trailingIcon: 'content_copy',
+        onClick: () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(party.id);
+        }
+      }, {
+        divider: true
+      }, {
+        icon: 'link_off',
+        label: 'Detach party',
+        danger: true,
+        onClick: () => onDetach(party)
+      }]
+    }))),
     value: r.name,
     valueVariant: "text",
-    className: "wrapvalue",
-    foot: r.typeLabel || undefined
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "con-party-detach",
-    title: `Detach ${r.name}`
-  }, /*#__PURE__*/React.createElement(IconButton, {
-    icon: "link_off",
-    label: `Detach ${r.name}`,
-    onClick: () => onDetach(party)
-  })));
+    className: `wrapvalue${past ? ' tone-muted' : ''}`,
+    foot: [r.kindLabel, r.typeLabel].filter(Boolean).join(' · ') || undefined
+  }));
 };
 
 /* ====================== Expanded detail ====================== */
@@ -36595,6 +36720,7 @@ const ContractDetail = ({
   focusDocs,
   setContract,
   onAddParty,
+  onEditParty,
   onAttach
 }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
@@ -36677,6 +36803,8 @@ const ContractDetail = ({
   }), parties.length ? /*#__PURE__*/React.createElement(InfoTileGrid, null, parties.map(p => /*#__PURE__*/React.createElement(PartyTile, {
     key: p.id,
     party: p,
+    today: nowDate,
+    onEdit: onEditParty,
     onDetach: detachParty
   }))) : /*#__PURE__*/React.createElement("div", {
     className: "con-empty-line"
@@ -36687,7 +36815,7 @@ const ContractDetail = ({
     style: {
       flex: 1
     }
-  }, "No parties yet \u2014 link the account or contact this contract relates to."))), /*#__PURE__*/React.createElement("div", {
+  }, "No parties yet \u2014 link the account or contact this contract relates to, and say what it does in the agreement."))), /*#__PURE__*/React.createElement("div", {
     className: "con-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Documents",
@@ -36732,6 +36860,9 @@ const ContractListItem = ({
   const [showEdit, setShowEdit] = useState(false);
   const [focusDocs, setFocusDocs] = useState(false);
   const [modal, setModal] = useState(null); // 'party' | 'file'
+  // The party being edited through the new PUT …/parties/{partyId}. The same
+  // dialog serves add and edit; the row id is what keeps it one party.
+  const [editParty, setEditParty] = useState(null);
   const cardRef = useRef(null);
   const typeInfo = CON_H.contractTypeInfo(c.type);
   const status = CON_H.conStatus(c, today);
@@ -36762,6 +36893,19 @@ const ContractListItem = ({
     }));
     setModal(null);
     setOpen(true);
+  };
+  /* The edit is a FULL REPLACEMENT of the row — role, target and both dates —
+     written in place, so `id` survives a role or target change and the party
+     stays one party (spec §5: the response's contractPartyId equals the one in
+     the route). */
+  const saveParty = next => {
+    setC(prev => ({
+      ...prev,
+      parties: (prev.parties || []).map(p => p.id === next.id ? {
+        ...next
+      } : p)
+    }));
+    setEditParty(null);
   };
   const attachFile = filesToAdd => {
     const arr = Array.isArray(filesToAdd) ? filesToAdd : [filesToAdd];
@@ -36884,6 +37028,7 @@ const ContractListItem = ({
     focusDocs: focusDocs,
     setContract: setC,
     onAddParty: () => setModal('party'),
+    onEditParty: p => setEditParty(p),
     onAttach: () => setModal('file')
   })), showEdit && /*#__PURE__*/React.createElement(AddContractModal, {
     contract: c,
@@ -36893,6 +37038,11 @@ const ContractListItem = ({
     contract: c,
     onClose: () => setModal(null),
     onAdd: addParty
+  }), editParty && /*#__PURE__*/React.createElement(AddContractPartyModal, {
+    contract: c,
+    party: editParty,
+    onClose: () => setEditParty(null),
+    onSave: saveParty
   }), modal === 'file' && /*#__PURE__*/React.createElement(AddContractFileModal, {
     contract: c,
     onClose: () => setModal(null),
@@ -54497,9 +54647,14 @@ try { (() => {
                         completionDate?, archived?, createdAtUtc, parties[], files[] }
                         — a contract is either TERM-based (startDate/endDate, either
                         optional) or ONE-OFF (a single completionDate, no term).
-     • ContractParty  { id, accountId? | contactId? }
+     • ContractParty  { id, accountId? | contactId?, role, fromDate?, toDate? }
                         — exactly one target (the XOR invariant, §6). The party
                         kind label for a contact target is "Contact".
+                        `role` is a ContractPartyRole key ('Unspecified' is the
+                        default and the backfill value); `fromDate`/`toDate` are
+                        the party's TERM IN THE ROLE — both null is the DEFAULT
+                        term (the contract's own extent), not an unset value,
+                        exactly as an insurance party's term reads.
      • ContractFile   { id, fileMetadataId, fileType, attachedByUserId,
                         attachedAtUtc } — a REFERENCE to an existing FileMetadata
                         record (rendered with the FilesTable shape
@@ -54591,6 +54746,73 @@ try { (() => {
     color: 'oklch(0.74 0.02 250)',
     soft: 'oklch(0.74 0.02 250 / 0.16)',
     desc: 'The enum default — anything outside the categories above.'
+  }];
+
+  /* ---- Canonical ContractPartyRole registry (Draft v4 §4) — what a linked
+     record DOES in the agreement, orthogonal to its kind (an account party may
+     carry any role; no role–type matrix in v1). ORDINALS ARE A WIRE AND
+     PERSISTENCE CONTRACT: later members append, none is renumbered.
+     `Unspecified` (0) and `Other` (6) are deliberately distinct — "nobody has
+     said" versus "somebody looked and none of these fit" — and this kit never
+     conflates them. Colours sit in the same categorical band as the other
+     registries; `Unspecified` stays neutral so an unstated role never reads as
+     a category. */
+  D.contractPartyRoles = [{
+    key: 'Unspecified',
+    label: 'Unspecified',
+    enumValue: 0,
+    icon: 'help_outline',
+    color: 'oklch(0.74 0.02 250)',
+    soft: 'oklch(0.74 0.02 250 / 0.14)',
+    desc: 'No role stated — the default, and what every pre-existing party reads as.'
+  }, {
+    key: 'Employee',
+    label: 'Employee',
+    enumValue: 1,
+    icon: 'badge',
+    color: 'oklch(0.76 0.13 265)',
+    soft: 'oklch(0.76 0.13 265 / 0.16)',
+    desc: 'The person employed under this agreement.'
+  }, {
+    key: 'Employer',
+    label: 'Employer',
+    enumValue: 2,
+    icon: 'corporate_fare',
+    color: 'oklch(0.75 0.14 300)',
+    soft: 'oklch(0.75 0.14 300 / 0.16)',
+    desc: 'The party that employs.'
+  }, {
+    key: 'Buyer',
+    label: 'Buyer',
+    enumValue: 3,
+    icon: 'shopping_bag',
+    color: 'oklch(0.79 0.14 145)',
+    soft: 'oklch(0.79 0.14 145 / 0.16)',
+    desc: 'The party acquiring under this agreement.'
+  }, {
+    key: 'Seller',
+    label: 'Seller',
+    enumValue: 4,
+    icon: 'sell',
+    color: 'oklch(0.80 0.13 90)',
+    soft: 'oklch(0.80 0.13 90 / 0.16)',
+    desc: 'The party disposing under this agreement.'
+  }, {
+    key: 'ServiceProvider',
+    label: 'Service provider',
+    enumValue: 5,
+    icon: 'home_repair_service',
+    color: 'oklch(0.78 0.14 195)',
+    soft: 'oklch(0.78 0.14 195 / 0.16)',
+    desc: 'The party delivering the service.'
+  }, {
+    key: 'Other',
+    label: 'Other',
+    enumValue: 6,
+    icon: 'more_horiz',
+    color: 'oklch(0.77 0.10 25)',
+    soft: 'oklch(0.77 0.10 25 / 0.16)',
+    desc: 'A deliberate role that is none of the above — not the same as Unspecified.'
   }];
 
   /* ---- The file library (the user's files.read-visible FileMetadata records).
@@ -54686,10 +54908,19 @@ try { (() => {
     createdAtUtc: '2024-02-20T09:00:00Z',
     parties: [{
       id: 'cp-emp-1',
-      contactId: 'c2'
-    }, {
+      contactId: 'c2',
+      role: 'Employer',
+      fromDate: null,
+      toDate: null
+    },
+    // The salary account is a party to the agreement with no role in the
+    // v1 vocabulary — Unspecified, not Other: nobody has stated one.
+    {
       id: 'cp-emp-2',
-      accountId: '1'
+      accountId: '1',
+      role: 'Unspecified',
+      fromDate: null,
+      toDate: null
     }],
     files: [{
       id: 'cf-emp-1',
@@ -54715,10 +54946,20 @@ try { (() => {
     createdAtUtc: '2025-08-14T10:00:00Z',
     parties: [{
       id: 'cp-lease-1',
-      accountId: '7'
-    }, {
+      accountId: '7',
+      role: 'Unspecified',
+      fromDate: null,
+      toDate: null
+    },
+    // A party that joined partway through the term — the case the term
+    // exists for. Landlord/tenant are not in the v1 vocabulary, so this is
+    // a deliberate Other, not an unstated role.
+    {
       id: 'cp-lease-2',
-      contactId: 'c9'
+      contactId: 'c9',
+      role: 'Other',
+      fromDate: '2026-02-01',
+      toDate: null
     }],
     files: [{
       id: 'cf-lease-1',
@@ -54751,10 +54992,16 @@ try { (() => {
     createdAtUtc: '2021-03-02T09:00:00Z',
     parties: [{
       id: 'cp-house-1',
-      accountId: '7'
+      accountId: '7',
+      role: 'Buyer',
+      fromDate: null,
+      toDate: null
     }, {
       id: 'cp-house-2',
-      contactId: 'c9'
+      contactId: 'c9',
+      role: 'Seller',
+      fromDate: null,
+      toDate: null
     }],
     files: [{
       id: 'cf-house-1',
@@ -54774,7 +55021,10 @@ try { (() => {
     createdAtUtc: '2025-01-22T09:00:00Z',
     parties: [{
       id: 'cp-fiber-1',
-      contactId: 'c3'
+      contactId: 'c3',
+      role: 'ServiceProvider',
+      fromDate: null,
+      toDate: null
     }],
     files: [{
       id: 'cf-fiber-1',
@@ -54800,7 +55050,10 @@ try { (() => {
     createdAtUtc: '2026-06-10T09:00:00Z',
     parties: [{
       id: 'cp-gym-1',
-      contactId: 'c11'
+      contactId: 'c11',
+      role: 'ServiceProvider',
+      fromDate: null,
+      toDate: null
     }],
     files: [{
       id: 'cf-gym-1',
@@ -54818,9 +55071,15 @@ try { (() => {
     endDate: '2025-12-31',
     archived: null,
     createdAtUtc: '2024-01-03T09:00:00Z',
-    parties: [{
+    parties: [
+    // Left the role when the unit was handed back, while the contract row
+    // stays on record — a closed term, rendered as a past party.
+    {
       id: 'cp-storage-1',
-      contactId: 'c8'
+      contactId: 'c8',
+      role: 'ServiceProvider',
+      fromDate: null,
+      toDate: '2025-12-31'
     }],
     files: [{
       id: 'cf-storage-1',
@@ -54840,7 +55099,10 @@ try { (() => {
     createdAtUtc: '2023-05-28T09:00:00Z',
     parties: [{
       id: 'cp-solar-1',
-      accountId: '7'
+      accountId: '7',
+      role: 'Other',
+      fromDate: null,
+      toDate: null
     }],
     files: [{
       id: 'cf-solar-1',
@@ -54861,6 +55123,7 @@ try { (() => {
   D.contractTypeByKey = Object.fromEntries(D.contractTypes.map(t => [t.key, t]));
   D.contractFileTypeByKey = Object.fromEntries(D.contractFileTypes.map(t => [t.key, t]));
   D.contractFileById = Object.fromEntries(D.contractFileLibrary.map(f => [f.id, f]));
+  D.contractPartyRoleByKey = Object.fromEntries(D.contractPartyRoles.map(r => [r.key, r]));
   Object.assign(H, {
     contractTypeInfo(key) {
       return D.contractTypeByKey[key] || {
@@ -54952,6 +55215,59 @@ try { (() => {
     // Resolve a party row to the minimal display projection (spec §10 #2) —
     // id + display name + type only, never the fuller cross-claim DTO. Returns
     // { kind, kindLabel, name, typeLabel, icon, color, soft, target }.
+    /* A ContractPartyRole key → its registry row. An UNKNOWN key is a real
+       runtime state, not a bug: ordinals append server-side, so a client older
+       than the deployment can be handed a member it has never heard of. It is
+       rendered honestly (neutral, named as unrecognised) rather than silently
+       collapsed into Unspecified, which would read as "no role stated". */
+    conPartyRoleInfo(key) {
+      if (key == null || key === '') return D.contractPartyRoleByKey.Unspecified;
+      return D.contractPartyRoleByKey[key] || {
+        key,
+        label: 'Unrecognised role',
+        icon: 'help',
+        color: 'var(--ink-300)',
+        soft: 'rgba(199,208,224,0.12)',
+        unknown: true,
+        desc: 'This role was added after this app version — update to read it.'
+      };
+    },
+    conPartyRoleOptions() {
+      return D.contractPartyRoles.map(r => ({
+        value: r.key,
+        label: r.label,
+        icon: r.icon,
+        iconColor: r.color,
+        sub: r.desc
+      }));
+    },
+    // Short date for the tile caption: 'YYYY-MM-DD' → "Feb 1 2026".
+    conDateShort(iso) {
+      if (!iso) return '';
+      const d = new Date(String(iso).slice(0, 10) + 'T00:00:00');
+      return isNaN(d) ? String(iso) : d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).replace(',', '');
+    },
+    /* The party's TERM IN THE ROLE, as a caption — null when it is the DEFAULT
+       term (both dates null = the contract's own extent), which needs no
+       caption. Kept short: it sits on one line above a fixed-height tile. */
+    conPartyTermText(party) {
+      const f = party.fromDate,
+        t = party.toDate;
+      if (f && t) return `${H.conDateShort(f)} – ${H.conDateShort(t)}`;
+      if (f) return `from ${H.conDateShort(f)}`;
+      if (t) return `to ${H.conDateShort(t)}`;
+      return null;
+    },
+    // A party whose term has closed before today — still a party of record,
+    // drawn quieter than one currently in its role.
+    conPartyPast(party, today) {
+      const t = H.conDateOnly(party.toDate);
+      return !!t && t < (today || H.conToday());
+    },
     conResolveParty(party) {
       if (party.accountId) {
         const a = D.accountById[party.accountId];
@@ -54991,6 +55307,19 @@ try { (() => {
         soft: undefined,
         target: null
       };
+    },
+    /* The duplicate rule, as the picker reads it: uniqueness is
+       (contract, target, ROLE), so a record already linked in one role is
+       still offerable in another. `exceptId` excludes the party being edited
+       from its own check (the PUT's edit-row exclusion). */
+    conPartyTaken(parties, field, role, exceptId) {
+      const taken = new Set();
+      (parties || []).forEach(p => {
+        if (exceptId && p.id === exceptId) return;
+        if ((p.role || 'Unspecified') !== role) return;
+        if (p[field]) taken.add(p[field]);
+      });
+      return taken;
     },
     // The two selectable party-kind option sets (pre-loaded for the picker).
     conAccountOptions() {
