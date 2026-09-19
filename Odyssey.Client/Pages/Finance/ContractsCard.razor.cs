@@ -325,6 +325,17 @@ public partial class ContractsCard
                 .Select(c => Dated(c, "Starting soon", PageHeaderSeverity.Information,
                     $"Term starts {OdsRelativeDay.Ahead(DaysUntil(c.StartDate!.Value))}.")));
 
+            // Paused agreements: not a cliff, but the one group here that cannot be seen by looking
+            // at a date — a contract that stopped costing money because someone froze it, and which
+            // nothing will un-freeze on its own. Information, not a warning: a deliberate state is
+            // not a fault, and raising it would cry wolf on every contract someone meant to suspend.
+            problems.AddRange(live
+                .Where(c => c.Status == ContractStatus.Paused && c.Paused is not null)
+                .OrderByDescending(c => c.Paused)
+                .Take(MaxDatedSignalRows)
+                .Select(c => Dated(c, "Paused", PageHeaderSeverity.Information,
+                    $"Paused {OdsRelativeDay.Ago(DaysSince(c.Paused!.Value))} — not counted in the run rate.")));
+
             // Intersected against the list for the reason stated above: the summary is unfiltered, so
             // without this a charge row could name a contract the active filter has excluded, and its
             // jump would scroll to an element that is not on the page — silently, since JumpTo's
@@ -479,11 +490,49 @@ public partial class ContractsCard
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,
             IsArchived = archiving,
+            // PUT is a full replacement, so an omitted flag RESUMES: archiving without carrying the
+            // pause stamp forward would silently clear it. The two stamps are orthogonal in storage
+            // and only ordered in presentation — archiving a paused contract keeps both.
+            IsPaused = d.Paused is not null,
         };
 
         if ((await Contracts.UpdateAsync(c.ContractId, update)).Toast(Snackbar,
                 archiving ? "Unable to archive contract" : "Unable to restore contract",
                 archiving ? "Contract archived." : "Contract restored."))
+        {
+            await ReloadContract(c.ContractId);
+        }
+    }
+
+
+    // ── Pause / resume (PUT with IsPaused; a paused contract stays listed at full brightness, stays
+    //    fully editable and keeps its price history — it only leaves the money: the run rate, its
+    //    by-type split and the next charges) ──────────────────────────────────────────────────────
+    private async Task TogglePause(ContractListItem c)
+    {
+        if (!_canUpdate) return;
+        await EnsureDetail(c.ContractId);
+        if (!_details.TryGetValue(c.ContractId, out var d))
+            return;
+
+        var pausing = d.Paused is null;
+        var update = new UpdateContract
+        {
+            Name = d.Name,
+            Type = d.Type,
+            Description = d.Description,
+            StartDate = d.StartDate,
+            EndDate = d.EndDate,
+            CompletionDate = d.CompletionDate,
+            // Carried forward for the same reason archiving carries the pause stamp: a full
+            // replacement that omitted this would restore a contract the reader only meant to resume.
+            IsArchived = d.Archived is not null,
+            IsPaused = pausing,
+        };
+
+        if ((await Contracts.UpdateAsync(c.ContractId, update)).Toast(Snackbar,
+                pausing ? "Unable to pause contract" : "Unable to resume contract",
+                pausing ? "Contract paused." : "Contract resumed."))
         {
             await ReloadContract(c.ContractId);
         }
@@ -606,12 +655,12 @@ public partial class ContractsCard
     // ── Record-card presentation ──────────────────────────────────────────────────
 
     /// <summary>The headline figure's colour role. A lapsed term reads expense, one ending inside the
-    /// window reads pending; everything else keeps the neutral ink, archived included — a retired
-    /// record is not a problem.</summary>
+    /// window or one suspended reads pending; everything else keeps the neutral ink, archived
+    /// included — a retired record is not a problem.</summary>
     private static OdsRecordFigureTone HeadlineTone(string cls) => cls switch
     {
         "expired" => OdsRecordFigureTone.Expense,
-        "soon" => OdsRecordFigureTone.Pending,
+        "soon" or "paused" => OdsRecordFigureTone.Pending,
         _ => OdsRecordFigureTone.Neutral,
     };
 
@@ -622,6 +671,7 @@ public partial class ContractsCard
         "income" => OdsInfoTileTone.Income,
         "info" => OdsInfoTileTone.Info,
         "expense" => OdsInfoTileTone.Expense,
+        "pending" => OdsInfoTileTone.Pending,
         _ => OdsInfoTileTone.Muted,
     };
 
@@ -630,6 +680,7 @@ public partial class ContractsCard
     private static string? StatusFoot(ExistingContract c, bool oneOff) => c.Status switch
     {
         ContractStatus.Archived => c.Archived is { } a ? $"since {LongDate(a)}" : null,
+        ContractStatus.Paused => c.Paused is { } p ? $"since {LongDate(p)}" : null,
         ContractStatus.Expired => c.EndDate is { } e ? $"since {LongDate(e)}" : null,
         ContractStatus.Upcoming => c.StartDate is { } s ? $"starts {LongDate(s)}" : null,
         _ when oneOff => c.CompletionDate is { } d ? $"completed {LongDate(d)}" : null,
@@ -663,6 +714,31 @@ public partial class ContractsCard
                 Label = "Edit contract",
                 OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)),
             });
+
+            // Pause is enterable from Active ALONE, so the action is simply ABSENT elsewhere rather
+            // than disabled-with-a-reason like Archive. The difference is whether there is an
+            // instruction to give: Archive's precondition ("the contract has to end first") is a step
+            // the reader can act on, while "this contract is upcoming" is not. Resume is offered
+            // wherever a stamp exists, in any state — clearing a pause is never refused, which is
+            // what stops an archived or expired contract being stranded holding one.
+            if (c.Status == ContractStatus.Active)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "pause_circle",
+                    Label = "Pause",
+                    OnClick = EventCallback.Factory.Create(this, () => TogglePause(c)),
+                });
+            }
+            else if (c.Paused is not null)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "play_circle",
+                    Label = "Resume",
+                    OnClick = EventCallback.Factory.Create(this, () => TogglePause(c)),
+                });
+            }
             // The server refuses a party add on an archived contract (422), so the action is offered
             // with its reason rather than hidden — and Disabled + Description keeps it FOCUSABLE
             // (aria-disabled, no native disabled), so a keyboard or AT user can actually reach the
@@ -758,6 +834,17 @@ public partial class ContractsCard
     // ── Collapsed headline figure (mirrors the design's conHeadline) ──────────────
     private (bool HasValue, string Value, string Word, string Cls) Headline(ContractListItem c)
     {
+        // Paused: a countdown is meaningless while nothing is running, so the headline says when the
+        // pause began instead. Checked HERE, above the one-off branch, for exactly the reason the
+        // server applies Paused to the RESULT of its derivation — the one-off branch returns early,
+        // so a paused settled one-off would otherwise keep counting down to a completion it reached.
+        if (c.Status == ContractStatus.Paused)
+        {
+            return c.Paused is { } pausedAt
+                ? (true, pausedAt.ToString("MMM dd, yyyy"), "paused", "paused")
+                : (false, "Paused", "paused", "paused");
+        }
+
         // One-off contracts headline on their completion date (no ongoing term).
         if (c.CompletionDate is { } completion)
         {

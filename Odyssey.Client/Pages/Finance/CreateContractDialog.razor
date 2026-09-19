@@ -156,8 +156,11 @@
                 StartDate = startDate,
                 EndDate = endDate,
                 CompletionDate = completionDate,
-                // Archive/restore is a separate row action — preserve whatever the record already has.
+                // Archive/restore and pause/resume are separate row actions, and PUT is a full
+                // replacement — so both stamps are carried forward from the record as it stands.
+                // Omitting either would let an ordinary field edit silently restore or resume it.
                 IsArchived = Contract!.Archived is not null,
+                IsPaused = Contract.Paused is not null,
             };
 
             return (await Contracts.UpdateAsync(Contract.ContractId, update)).Toast(Snackbar,
