@@ -53,6 +53,16 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             $"{SystemSettingsDefaults.SubscriptionMaxSummaryRenewals}"),
         (SystemSettingsKeys.SubscriptionMaxSummarySubscriptions,
             $"{SystemSettingsDefaults.SubscriptionMaxSummarySubscriptions}"),
+        // The Contracts windows, spot-checked for the same reason as the Subscriptions trio above: the
+        // ending-soon window replaces a client `const 45` and is SERVED to the page, which interpolates
+        // it into a row label, so a drifting seed would caption one number while the server counted by
+        // another.
+        (SystemSettingsKeys.ContractEndingWindowDays,
+            $"{SystemSettingsDefaults.ContractEndingWindowDays}"),
+        (SystemSettingsKeys.ContractChargeWindowDays,
+            $"{SystemSettingsDefaults.ContractChargeWindowDays}"),
+        (SystemSettingsKeys.ContractMaxSummaryCharges,
+            $"{SystemSettingsDefaults.ContractMaxSummaryCharges}"),
     ];
 
     [SkippableFact]
@@ -71,8 +81,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             var rows = await context.SystemSettings.AsNoTracking().ToDictionaryAsync(row => row.Key, row => row);
 
             // 62 before issue #8, +4 for the mail transport and the public link origin, +1 for the
-            // insurance link cap (issue #27), +1 for the per-contract term cap (issue #135).
-            Assert.Equal(68, rows.Count);
+            // insurance link cap (issue #27), +1 for the per-contract term cap (issue #135), +3 for the
+            // Contracts summary windows and its next-charge row cap.
+            Assert.Equal(71, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)
