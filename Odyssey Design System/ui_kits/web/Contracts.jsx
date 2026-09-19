@@ -94,13 +94,15 @@ const PartyTile = ({ party, today, onEdit, onDetach }) => {
           </React.Fragment>
         )}
         value={r.name} valueVariant="text" className={`wrapvalue${past ? ' tone-muted' : ''}`}
-        foot={[r.kindLabel, r.typeLabel].filter(Boolean).join(' · ') || undefined} />
+        /* The caption is the record's own TYPE only — the same one-word caption a
+           policy party carries. The kind is already said by the tile's icon. */
+        foot={r.typeLabel || r.kindLabel || undefined} />
     </div>
   );
 };
 
 /* ====================== Expanded detail ====================== */
-const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach }) => {
+const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, onNewTerm, onEditTerm, onDeleteTerm }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
   const parties = contract.parties || [];
   const files = contract.files || [];
@@ -176,6 +178,19 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         )}
       </div>
 
+      {/* TERMS — what the agreement COSTS, as a dated history: the same Term
+          rows an account carries, owned by this contract instead. Sits between
+          the parties and the documents: who is in it, what it costs, what
+          evidences it. */}
+      <ContractTerms
+        contract={contract}
+        terms={contract.terms || []}
+        cap={termCap}
+        onNew={onNewTerm}
+        onEdit={onEditTerm}
+        onDelete={onDeleteTerm}
+      />
+
       {/* DOCUMENTS — last section ("Upload document" is in the row menu too). */}
       <div className="con-section">
         <SectionDivider label="Documents" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
@@ -192,9 +207,11 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
 };
 
 /* ====================== One contract list item ====================== */
-const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, highlight, onDelete }) => {
+const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, onToggle, highlight, onDelete }) => {
   const { useState, useRef, useEffect } = React;
-  const [c, setC] = useState(row);
+  // Terms hang off the record like parties and files do — seeded from the
+  // contract-scoped history (GET /api/contracts/{id}/terms).
+  const [c, setC] = useState(() => ({ ...row, terms: row.terms || CON_H.conTermsFor(row.id) }));
   // Open state lives in the list — opening a contract closes its siblings.
   const open = !!openProp;
   const setOpen = (next) => onToggle(typeof next === 'function' ? next(open) : next);
@@ -204,6 +221,8 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
   // The party being edited through the new PUT …/parties/{partyId}. The same
   // dialog serves add and edit; the row id is what keeps it one party.
   const [editParty, setEditParty] = useState(null);
+  // The term being edited (PUT …/terms/{termId}); the same dialog serves create.
+  const [editTerm, setEditTerm] = useState(null);
   const cardRef = useRef(null);
 
   const typeInfo = CON_H.contractTypeInfo(c.type);
@@ -211,6 +230,8 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
   const headline = CON_H.conHeadline(c, today, endingWindow);
   const parties = c.parties || [];
   const files = c.files || [];
+  const terms = c.terms || [];
+  const termBlock = CON_H.conTermWriteBlock(c, terms.length, termCap);
   const contact = parties.map(CON_H.conResolveParty).find(r => r.kind === 'contact');
   const dimmed = !!c.archived;
   // "Ended" is not the same as status 'Expired': a delivered one-off stays Active
@@ -240,6 +261,21 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
   };
   const attachFile = (filesToAdd) => { const arr = Array.isArray(filesToAdd) ? filesToAdd : [filesToAdd]; setC(prev => ({ ...prev, files: [...(prev.files || []), ...arr] })); setModal(null); setOpen(true); setFocusDocs(true); };
   const toggleArchive = () => setC(prev => ({ ...prev, archived: prev.archived ? null : new Date().toISOString() }));
+
+  /* Create and edit are one write path, as they are on the server: the dialog
+     posts a NewTerm and the route (this contract) is the only thing that names
+     the owner — nothing in the body can move a term to another contract or to
+     an account. */
+  const upsertTerm = (dto, id) => {
+    setC(prev => ({
+      ...prev,
+      terms: id
+        ? (prev.terms || []).map(t => (t.id === id ? { ...t, ...dto } : t))
+        : [{ id: `ctm-new-${Date.now()}`, createdAtUtc: new Date().toISOString(), ...dto }, ...(prev.terms || [])],
+    }));
+    setModal(null); setEditTerm(null);
+  };
+  const deleteTerm = (t) => setC(prev => ({ ...prev, terms: (prev.terms || []).filter(x => x.id !== t.id) }));
 
   useEffect(() => {
     if (!highlight || !cardRef.current) return;
@@ -273,6 +309,7 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
         ]}
         counts={[
           { icon: 'diversity_3', value: parties.length, label: 'Parties' },
+          { icon: 'sell', value: terms.length, label: 'Terms' },
           { icon: 'description', value: files.length, label: 'Documents' },
         ]}
         figure={{
@@ -287,6 +324,11 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
         actions={<ActionMenu items={[
           { icon: 'edit', label: 'Edit contract', onClick: () => setShowEdit(true) },
           { icon: 'group_add', label: 'New party', onClick: () => { setOpen(true); setModal('party'); } },
+          // Refused writes are offered with their reason rather than hidden —
+          // the same guard the section notice and the endpoint state.
+          termBlock
+            ? { icon: 'sell', label: 'New term', disabled: true, note: termBlock.reason === 'archived' ? 'The contract has to be restored first.' : termBlock.text }
+            : { icon: 'sell', label: 'New term', onClick: () => { setOpen(true); setModal('term'); } },
           { icon: 'attach_file', label: 'Upload document', onClick: () => { setOpen(true); setModal('file'); } },
           { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
           { divider: true },
@@ -299,13 +341,19 @@ const ContractListItem = ({ row, today, endingWindow, open: openProp, onToggle, 
         ]} />}
       >
         <ContractDetail contract={c} today={today} focusDocs={focusDocs} setContract={setC}
-          onAddParty={() => setModal('party')} onEditParty={(p) => setEditParty(p)} onAttach={() => setModal('file')} />
+          onAddParty={() => setModal('party')} onEditParty={(p) => setEditParty(p)} onAttach={() => setModal('file')}
+          termCap={termCap}
+          onNewTerm={() => setModal('term')} onEditTerm={(t) => setEditTerm(t)} onDeleteTerm={deleteTerm} />
       </RecordCard>
       {showEdit && <AddContractModal contract={c} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
 
       {modal === 'party' && <AddContractPartyModal contract={c} onClose={() => setModal(null)} onAdd={addParty} />}
       {editParty && <AddContractPartyModal contract={c} party={editParty} onClose={() => setEditParty(null)} onSave={saveParty} />}
       {modal === 'file' && <AddContractFileModal contract={c} onClose={() => setModal(null)} onAttach={attachFile} />}
+      {(modal === 'term' || editTerm) && (
+        <AddContractTermModal contract={c} term={editTerm} existing={terms}
+          onClose={() => { setModal(null); setEditTerm(null); }} onSave={upsertTerm} />
+      )}
     </div>
   );
 };
@@ -339,6 +387,8 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
   const [openId, setOpenId] = useState('ct-lease');
   const today = CON_H.conToday();
   const endingWindow = tweaks.endingWindowDays != null ? tweaks.endingWindowDays : CON_D.CONTRACTS_ENDING_WINDOW_DAYS;
+  // ContractMaxTermsPerContract — a system setting, not a per-contract field.
+  const termCap = tweaks.contractTermCap != null ? tweaks.contractTermCap : CON_D.CONTRACT_MAX_TERMS_PER_CONTRACT;
 
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState([]);
@@ -461,7 +511,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
             noun="contracts"
             revealKey={jumpId}
             renderItem={(c) => (
-              <ContractListItem row={c} today={today} endingWindow={endingWindow}
+              <ContractListItem row={c} today={today} endingWindow={endingWindow} termCap={termCap}
                 open={openId === c.id}
                 onToggle={(o) => setOpenId(o ? c.id : null)}
                 highlight={jumpId === c.id}

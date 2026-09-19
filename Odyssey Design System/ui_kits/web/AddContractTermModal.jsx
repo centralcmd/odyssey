@@ -1,77 +1,54 @@
-/* AddTermModal — New / Edit dialog for a Term (interest-rate & fee history).
+/* AddContractTermModal — New / Edit dialog for a term owned by a CONTRACT.
 
-   Opened from the "Terms" section (Accounts → account detail). Built on the
-   shared DS Modal shell, like every other create/edit dialog. Field set mirrors
-   the NewTerm DTO and enforces the spec's validation:
+   The account dialog's twin (AddTermModal), on the same Modal shell and the
+   same NewTerm field set — the body a contract POSTs is byte-identical to the
+   one an account POSTs, and the owner is never in it: it comes from the route.
+   Three rules differ, and they are the whole reason this is its own file:
 
-     • TermKind        — eligibility-gated by the account's AccountType (matrix in
-                         data.js). Three values: InterestRate (interest-bearing
-                         accounts), ExpectedReturn (investment/pension) and Fee
-                         (everywhere). Where only ONE kind is eligible — cash,
-                         property, vehicle, any type with no rate — the picker is
-                         not rendered at all and the form opens on that kind.
-     • Label           — the series name. Refused on rate kinds, REQUIRED on every
-                         fee. Normalized (trim + collapse whitespace) by the
-                         shared rule; ≤ 64 chars.
-     • ValueUnit       — Percentage | Amount. Locked to Percentage for rate kinds.
-     • Value           — Percentage: typed as a percent, stored as a fraction in
-                         [-1, 1] (3.40 → 0.0340; negative allowed). Amount: ≥ 0.
-     • CurrencyCode    — required for Amount (defaults to the account currency);
-                         null for Percentage.
-     • Interval        — optional context for fees; null for rate kinds. The
-                         cadence UNIT only: OneTime / PerOccurrence / PerUnit /
-                         Daily / Weekly / Monthly / Annually. Quarterly is gone —
-                         it is Monthly with a count of 3.
-     • IntervalCount   — the multiplier, 1…1000. Offered, and written, ONLY for a
-                         periodic unit; null in every other case (including a
-                         null interval), never a meaningless 1.
-     • AnchorDate      — optional, fees only: when the term is FIRST BILLED, as
-                         opposed to when its price took effect. No ordering
-                         against EffectiveFrom is imposed — arrears and prepaid
-                         are both legitimate records.
-     • EffectiveFrom   — required; past or future allowed (future = scheduled).
-     • Note            — optional, ≤ 512 chars.
+     • KIND — Fee and InterestRate only, on every ContractType. ExpectedReturn
+       prices invested principal, which a contract does not hold, so it is not
+       offered (and would be a 400 if posted).
+     • CURRENCY — required, and never defaulted. An account lends its own
+       currency to an Amount term; a contract has none to lend, so the field is
+       mandatory and the dialog says why.
+     • ARCHIVED — a contract that is archived refuses every write. The dialog is
+       not reachable from a blocked surface; the guard is restated here so a
+       stale open dialog cannot post through it.
 
-   Rejects a (TermKind, Label, EffectiveFrom) duplicate on the case-folded label
-   key (the server's 409). On confirm, onSave(dto, id?) receives the term-shaped
-   object (id present on edit). */
+   Everything else — label normalization, the [-1, 1] percentage bound, the
+   cadence pair (interval + count, count only for a periodic unit), the anchor
+   date, the (kind, label, effectiveFrom) duplicate guard that is the server's
+   409 — is the shared rule, read from the same helpers the account dialog uses.
 
-const TRM_SYM = window.ATM_CURRENCY_SYMBOL || { USD: '$', EUR: '€', GBP: '£', JPY: '¥', NOK: 'kr', SEK: 'kr', CAD: '$' };
-const TRM_CURRENCIES = (window.OdysseyData.currencies || [])
+   On confirm, onSave(dto, id?) receives the term-shaped object (id on edit). */
+
+const CTM_SYM = window.ATM_CURRENCY_SYMBOL || { USD: '$', EUR: '€', GBP: '£', JPY: '¥', NOK: 'kr', SEK: 'kr', CAD: '$' };
+const CTM_CURRENCIES = (window.OdysseyData.currencies || [])
   .filter(c => !c.archived)
   .map(c => ({ value: c.code, label: c.name }));
 
-/* One default interval for a new fee — there is no longer a fee kind to
-   guess from, and the four kind-specific guesses went away with the kinds. */
-const trmDefaultInterval = () => window.OdysseyData.defaultFeeInterval;
-const TRM_COUNT = window.OdysseyData.termIntervalCount; // { min: 1, max: 1000 }
+const ctmFracToPctStr = (f) => String(Number((f * 100).toFixed(4)));
 
-/* percent fraction → editable percent string ("0.0340" → "3.4") */
-const fracToPctStr = (f) => {
-  const p = f * 100;
-  return String(Number(p.toFixed(4)));
-};
-
-const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSave }) => {
+const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }) => {
   const { useState } = React;
-  const isEdit = !!term;
   const D = window.OdysseyData;
   const H = window.OdysseyHelpers;
+  const isEdit = !!term;
 
-  const eligible = H.eligibleTermKinds(account.type);
+  const eligible = H.conEligibleTermKinds();
   const eligibleKinds = D.termKinds.filter(k => eligible.includes(k.key));
-
-  const initKind = term ? term.kind
-    : (initialKind && eligible.includes(initialKind)) ? initialKind
-    : (eligibleKinds[0] && eligibleKinds[0].key) || 'Fee';
+  const initKind = term ? term.kind : 'Fee';
   const initInfo = H.termKindInfo(initKind);
+  const COUNT = D.termIntervalCount;
 
   const [draft, setDraft] = useState(() => ({
     kind: initKind,
     unit: term ? term.unit : initInfo.defaultUnit,
-    valueStr: term ? (term.unit === 'Percentage' ? fracToPctStr(term.value) : String(term.value)) : '',
-    currency: term ? (term.currency || account.currency || 'USD') : (account.currency || 'USD'),
-    interval: term ? (term.interval || '') : (initInfo.group === 'fee' ? trmDefaultInterval() : ''),
+    valueStr: term ? (term.unit === 'Percentage' ? ctmFracToPctStr(term.value) : String(term.value)) : '',
+    // No account currency to inherit — an Amount term starts UNSET, and stays
+    // a required answer rather than a silently-assigned default.
+    currency: term ? (term.currency || '') : '',
+    interval: term ? (term.interval || '') : (initInfo.group === 'fee' ? D.defaultFeeInterval : ''),
     intervalCount: term && term.intervalCount != null ? String(term.intervalCount) : '',
     anchorDate: term ? (term.anchorDate || '') : '',
     effectiveFrom: term ? term.effectiveFrom : new Date().toISOString().slice(0, 10),
@@ -83,9 +60,7 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
   const info = H.termKindInfo(draft.kind);
   const isRate = info.group === 'rate';
   const isPct = draft.unit === 'Percentage';
-  const labelRule = H.termLabelRule(draft.kind); // hidden | optional | required
-  // The one condition the cadence fields hang off: a count exists only for a
-  // periodic unit, so the field is not merely disabled — it is not there.
+  const labelRule = H.termLabelRule(draft.kind);
   const periodic = H.intervalIsPeriodic(draft.interval);
   const intervalInfo = H.intervalInfo(draft.interval);
 
@@ -100,10 +75,8 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
       ...d,
       kind: k,
       unit: ki.defaultUnit,
-      // A rate kind refuses a label, so a typed one is discarded on the switch.
       label: H.termLabelRule(k) === 'hidden' ? '' : d.label,
-      interval: ki.group === 'fee' ? (d.interval || trmDefaultInterval()) : '',
-      // A rate is not billed, so it carries neither half of a billing description.
+      interval: ki.group === 'fee' ? (d.interval || D.defaultFeeInterval) : '',
       intervalCount: ki.group === 'fee' ? d.intervalCount : '',
       anchorDate: ki.group === 'fee' ? d.anchorDate : '',
     }));
@@ -112,8 +85,8 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
 
   const submit = () => {
     const next = {};
-    if (!draft.kind) next.kind = 'Choose what this term is.';
-    if (!H.isTermKindEligible(draft.kind, account.type)) next.kind = 'Not available for this account type.';
+    if (!eligible.includes(draft.kind)) next.kind = 'Not available on a contract.';
+    if (contract.archived) next.kind = 'This contract is archived — restore it first.';
 
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     if (draft.valueStr === '' || isNaN(raw)) {
@@ -124,28 +97,28 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
       next.value = 'A fee amount can’t be negative.';
     }
 
+    // The contract rule: an amount needs a currency, and nothing supplies one.
+    if (!isPct && !draft.currency) next.currency = 'Pick the currency this amount is in — a contract has no currency of its own.';
+
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
 
-    // IntervalCount range — the same bound as the DTO's [Range], which the
-    // service re-checks for callers that never pass through model binding.
     const countRaw = String(draft.intervalCount).trim();
     let count = null;
     if (!isRate && periodic && countRaw !== '') {
       count = parseInt(countRaw, 10);
-      if (isNaN(count) || count < TRM_COUNT.min || count > TRM_COUNT.max) {
-        next.intervalCount = `Enter a whole number between ${TRM_COUNT.min} and ${TRM_COUNT.max}.`;
+      if (isNaN(count) || count < COUNT.min || count > COUNT.max) {
+        next.intervalCount = `Enter a whole number between ${COUNT.min} and ${COUNT.max}.`;
       }
     }
     if (draft.note.length > 512) next.note = 'Keep the note under 512 characters.';
 
-    // Label rules — refused on rate kinds, required on every fee, ≤ 64 chars.
     const label = labelRule === 'hidden' ? null : H.termLabelNormalize(draft.label);
-    if (labelRule === 'required' && !label) next.label = 'Name this fee so it keeps its own history.';
+    if (labelRule === 'required' && !label) next.label = 'Name this charge so it keeps its own history.';
     if (label && label.length > 64) next.label = 'Keep the name under 64 characters.';
 
-    // Duplicate (kind, label, effectiveFrom) → 409, excluding the row being edited.
-    // Compared on the SAME normalized, case-folded key the server writes, so
-    // "ATM abroad" and "  atm   Abroad " collide here exactly as they would there.
+    // Duplicate (kind, label, effectiveFrom) within THIS contract's series → 409.
+    // An account term with the same kind, label and date is a different series
+    // and never collides with it.
     const key = H.termLabelKey(label);
     const dup = existing.some(t =>
       t.id !== (term && term.id) && t.kind === draft.kind
@@ -153,32 +126,28 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
       && t.effectiveFrom === draft.effectiveFrom);
     if (dup) next.effectiveFrom = label
       ? `“${label}” already has an entry on that date.`
-      : 'This kind already has an entry on that date.';
+      : 'This contract already has an interest rate on that date.';
 
     if (Object.keys(next).length) { setErrors(next); return; }
 
     const value = isPct ? Number((raw / 100).toFixed(6)) : Number(raw.toFixed(2));
     onSave({
+      contractId: contract.id,
+      accountId: null,
       kind: draft.kind,
       unit: draft.unit,
       value,
       currency: isPct ? null : draft.currency,
       interval: isRate ? null : (draft.interval || null),
-      // Stored as 1 when a periodic unit is left without a count (the identity
-      // cadence), and as null — never 1 — in every non-periodic case.
       intervalCount: !isRate && periodic ? (count == null ? 1 : count) : null,
       anchorDate: isRate ? null : (draft.anchorDate || null),
       effectiveFrom: draft.effectiveFrom,
       label,
-      // LabelKey is derived, never posted — this stands in for the server's
-      // write path, which is the only thing allowed to set it.
       labelKey: key,
       note: draft.note.trim() || null,
     }, term && term.id);
   };
 
-  const sym = TRM_SYM[draft.currency] || draft.currency; // eslint-disable-line no-unused-vars
-  // The cadence in words, from the single helper every surface reads.
   const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
   const previewFrac = (() => {
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
@@ -188,7 +157,7 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
   return (
     <Modal
       title={isEdit ? 'Edit term' : 'New term'}
-      subtitle={isEdit ? 'Correct this rate or fee entry.' : `Record a rate or fee on ${account.name}, effective from a date.`}
+      subtitle={isEdit ? 'Correct this entry in the contract’s price history.' : `Record what ${contract.name} costs, effective from a date.`}
       icon={isEdit ? 'edit' : '§'}
       className="trm-dialog"
       onClose={onClose}
@@ -201,11 +170,10 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
         </React.Fragment>
       }>
 
-      {/* Kind — eligibility-gated grid (new) · locked tile (edit) · nothing at all
-         when the account type leaves one eligible kind. Dropping a one-option
-         button grid removes a control, not information: the kind it would have
-         selected is still written out on every tile and history row. */}
-      {(isEdit || eligibleKinds.length > 1) && (
+      {/* Kind — two eligible values on every contract type, so the picker is
+         always a real choice (unlike the account dialog, which drops it when the
+         account type leaves one). Locked on edit: the owner and the series key
+         are what the route already named. */}
       <div className="field">
         <div className="label">Term<span className="odc-field-req" aria-hidden="true">*</span></div>
         {isEdit ? (
@@ -222,29 +190,24 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
           <React.Fragment>
             <CardSelect ariaLabel="Term" value={draft.kind} onChange={pickKind}
               options={eligibleKinds.map(k => ({ value: k.key, label: k.label, icon: k.icon, color: k.color, soft: k.soft }))} />
-            {eligibleKinds.length < D.termKinds.length && (
-              <div className="trm-kind-ineligible">
-                Some kinds don’t apply to a <b>{window.ACCOUNT_TYPE_LABEL[account.type] || account.type}</b> account and are hidden.
-              </div>
-            )}
+            <div className="trm-kind-ineligible">
+              A contract can carry a <b>fee</b> or an <b>interest rate</b>. Expected return prices invested principal, which a contract doesn’t hold.
+            </div>
           </React.Fragment>
         )}
         {errors.kind && <div className="helper aam-err">{errors.kind}</div>}
       </div>
-      )}
 
-      {/* Name — the series label. Not rendered on a rate kind (the headline rate
-         stays unambiguous); required on every fee, since with one fee kind two
-         unnamed fees could not be told apart. */}
+      {/* Name — the series label. Required on every fee; refused on a rate. */}
       {labelRule !== 'hidden' && (
         <Field
           label="Name"
           required={labelRule === 'required'}
           value={draft.label}
           onChange={set('label')}
-          placeholder="e.g. ATM withdrawal · abroad"
+          placeholder="e.g. Monthly rent"
           error={errors.label}
-          help="Names this fee so it keeps its own history, separate from the account's other fees."
+          help="Names this charge so it keeps its own history, separate from the contract's other charges."
         />
       )}
 
@@ -291,25 +254,24 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
             onChange={set('valueStr')}
             currency={draft.currency}
             onCurrencyChange={set('currency')}
-            currencyOptions={TRM_CURRENCIES}
+            currencyOptions={CTM_CURRENCIES}
             currencySearchThreshold={0}
-            error={errors.value}
-            help={<React.Fragment>Flat amount in <b>{draft.currency}</b>{cadence ? <React.Fragment> · {cadence}</React.Fragment> : ''}</React.Fragment>}
+            currencyPlaceholder="Pick"
+            error={[errors.value, errors.currency].filter(Boolean).join(' ') || undefined}
+            help={errors.value || errors.currency ? undefined : (draft.currency
+              ? <React.Fragment>Flat amount in <b>{draft.currency}</b>{cadence ? <React.Fragment> · {cadence}</React.Fragment> : ''}</React.Fragment>
+              : <React.Fragment>A contract has no currency of its own — <b>pick one</b> for this amount.</React.Fragment>)}
           />
         )}
       </div>
 
-      {/* Effective date — currency lives inside the money field (amount mode); a
-         rate has no currency, so nothing about it is shown here. */}
       <FormRow cols={1}>
         <DateField label="Effective from" required value={draft.effectiveFrom} onChange={set('effectiveFrom')}
           helper={errors.effectiveFrom ? undefined : 'When this value takes effect'} />
       </FormRow>
       {errors.effectiveFrom && <div className="helper aam-err" style={{ marginTop: -6 }}>{errors.effectiveFrom}</div>}
 
-{/* Cadence — fees only. The unit picker always; the count only once the unit
-          is periodic, so a "how many" question is never asked about a one-time
-          or per-occurrence charge. */}
+      {/* Cadence — fees only; the count only once the unit is periodic. */}
       {!isRate && (
         <div className="trm-cadence">
           <FormRow cols={periodic ? 2 : 1}>
@@ -321,8 +283,8 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
             {periodic && (
               <NumberField
                 label="Every"
-                min={TRM_COUNT.min}
-                max={TRM_COUNT.max}
+                min={COUNT.min}
+                max={COUNT.max}
                 step={1}
                 unit={intervalInfo ? intervalInfo.many : ''}
                 placeholder="1"
@@ -333,19 +295,18 @@ const AddTermModal = ({ account, term, existing = [], initialKind, onClose, onSa
             )}
           </FormRow>
           {draft.interval === 'PerUnit' && (
-            <div className="helper trm-cadence-echo">Name the unit in the fee’s name — “Custody · per share”.</div>
+            <div className="helper trm-cadence-echo">Name the unit in the charge’s name — “Storage · per pallet”.</div>
           )}
           <DateField label="First billed on" value={draft.anchorDate} onChange={set('anchorDate')}
             helper="When this is first actually charged, if that isn’t the effective date" />
         </div>
       )}
 
-      {/* Note */}
       <NoteField label="Note" maxLength={512} value={draft.note} onChange={set('note')}
-        placeholder="What changed, and why — e.g. “Fed cut pass-through”."
+        placeholder="What changed, and why — e.g. “Indexed to CPI, revised each October”."
         error={errors.note} />
     </Modal>
   );
 };
 
-Object.assign(window, { AddTermModal });
+Object.assign(window, { AddContractTermModal });

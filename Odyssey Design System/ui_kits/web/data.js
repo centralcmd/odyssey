@@ -1166,13 +1166,13 @@ window.OdysseyData.termKindByKey = Object.fromEntries(window.OdysseyData.termKin
    `periodic` is the field the whole UI keys off: IntervalCount is offered, and
    stored, only for a periodic unit. Listed in reading order, not ordinal order. */
 window.OdysseyData.intervals = [
-  { key: 'OneTime',       label: 'One-time',       enumValue: 0, periodic: false, adverb: 'one-time' },
-  { key: 'PerOccurrence', label: 'Per occurrence', enumValue: 1, periodic: false, adverb: 'per occurrence' },
-  { key: 'PerUnit',       label: 'Per unit',       enumValue: 6, periodic: false, adverb: 'per unit' },
-  { key: 'Daily',         label: 'Daily',          enumValue: 2, periodic: true,  adverb: 'daily',     one: 'day',   many: 'days' },
-  { key: 'Weekly',        label: 'Weekly',         enumValue: 7, periodic: true,  adverb: 'weekly',    one: 'week',  many: 'weeks' },
-  { key: 'Monthly',       label: 'Monthly',        enumValue: 3, periodic: true,  adverb: 'monthly',   one: 'month', many: 'months' },
-  { key: 'Annually',      label: 'Annually',       enumValue: 5, periodic: true,  adverb: 'annually',  one: 'year',  many: 'years' },
+  { key: 'OneTime',       label: 'One-time',       enumValue: 0, periodic: false, adverb: 'one-time',       icon: 'looks_one',      color: 'oklch(0.77 0.13 85)',  soft: 'oklch(0.77 0.13 85 / 0.16)' },
+  { key: 'PerOccurrence', label: 'Per occurrence', enumValue: 1, periodic: false, adverb: 'per occurrence', icon: 'bolt',           color: 'oklch(0.75 0.15 330)', soft: 'oklch(0.75 0.15 330 / 0.16)' },
+  { key: 'PerUnit',       label: 'Per unit',       enumValue: 6, periodic: false, adverb: 'per unit',       icon: 'straighten',     color: 'oklch(0.77 0.14 55)',  soft: 'oklch(0.77 0.14 55 / 0.16)' },
+  { key: 'Daily',         label: 'Daily',          enumValue: 2, periodic: true,  adverb: 'daily',     one: 'day',   many: 'days',  icon: 'today',          color: 'oklch(0.79 0.13 205)', soft: 'oklch(0.79 0.13 205 / 0.16)' },
+  { key: 'Weekly',        label: 'Weekly',         enumValue: 7, periodic: true,  adverb: 'weekly',    one: 'week',  many: 'weeks', icon: 'view_week',      color: 'oklch(0.78 0.14 168)', soft: 'oklch(0.78 0.14 168 / 0.16)' },
+  { key: 'Monthly',       label: 'Monthly',        enumValue: 3, periodic: true,  adverb: 'monthly',   one: 'month', many: 'months',icon: 'calendar_month', color: 'oklch(0.72 0.14 255)', soft: 'oklch(0.72 0.14 255 / 0.16)' },
+  { key: 'Annually',      label: 'Annually',       enumValue: 5, periodic: true,  adverb: 'annually',  one: 'year',  many: 'years', icon: 'event_repeat',   color: 'oklch(0.72 0.16 295)', soft: 'oklch(0.72 0.16 295 / 0.16)' },
 ];
 window.OdysseyData.intervalByKey = Object.fromEntries(window.OdysseyData.intervals.map(b => [b.key, b]));
 window.OdysseyData.defaultFeeInterval = 'Monthly';
@@ -1400,9 +1400,13 @@ Object.assign(window.OdysseyHelpers, {
     return window.OdysseyHelpers.termIsCostRate(t, account) ? 'var(--finance-expense)' : null;
   },
   // The label that says what the rate IS: cost framing lives here, not in the sign.
-  termKindLabelFor(t, account) {
+  // `owner` is an account or a contract (the two Term owners). A contract has
+  // no asset/liability side to frame the rate from — the agreement's own wording
+  // does that — so it reads as the plain kind.
+  termKindLabelFor(t, owner) {
     if (t.kind !== 'InterestRate') return window.OdysseyHelpers.termKindInfo(t.kind).label;
-    return window.OdysseyHelpers.accountIsLiability(account) ? 'Interest charged' : 'Interest earned';
+    if (owner && owner.ownerKind === 'contract') return 'Interest rate';
+    return window.OdysseyHelpers.accountIsLiability(owner) ? 'Interest charged' : 'Interest earned';
   },
   // Display string — the stored sign, never a synthesized one: "6.49%" on a
   // loan (coral, labelled "Interest charged"), "3.40%" on savings, "−0.50%"

@@ -417,6 +417,96 @@
     },
   });
 
+  /* ==========================================================================
+     Contract TERMS — the price history of an agreement (backend Draft v2)
+     --------------------------------------------------------------------------
+     The SAME Term rows, table and domain rules as an account's terms: a series
+     is (owner, TermKind, LabelKey), the latest entry on/before a date is the one
+     in force, supersession is implicit. Only the owner differs — a term hangs
+     off exactly one of AccountId / ContractId.
+
+     Two things are contract-specific, and both are visible in the UI:
+       • KIND ELIGIBILITY — Fee and InterestRate on every contract type;
+         ExpectedReturn is refused (it prices invested principal, which a
+         contract does not hold). No per-ContractType matrix.
+       • CURRENCY — a contract has no currency of its own, so an Amount term
+         must name one explicitly. There is nothing to default from.
+     Plus a per-contract cap (ContractMaxTermsPerContract, default 500) and
+     archived contracts being read-only for terms. */
+
+  D.CONTRACT_MAX_TERMS_PER_CONTRACT = 500;
+  D.contractTermKinds = ['InterestRate', 'Fee'];
+
+  /* Seed term history, keyed by contractId. EffectiveFrom ascending here for
+     readability; the helpers sort as needed. Every row carries an explicit
+     currency when its unit is Amount — the contract rule, seeded as it writes. */
+  D.contractTerms = {
+    // Maple St lease — the rent as a dated series (a review, plus a scheduled
+    // increase), beside the charges the tenancy carries.
+    'ct-lease': [
+      { id: 'ctm-lease-1', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 2150.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-09-01', anchorDate: '2025-09-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Due on the 1st.', createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-2', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 2250.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-03-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Indexed to CPI at the mid-term review.', createdAtUtc: '2026-01-28T09:00:00Z' },
+      // Future effective date → reads "Scheduled", not in force yet.
+      { id: 'ctm-lease-3', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 2350.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-10-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Notified 30 May 2026.', createdAtUtc: '2026-05-30T09:00:00Z' },
+      { id: 'ctm-lease-4', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 85.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-09-01', label: 'Parking space', labelKey: 'parking space', note: null, createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-5', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 50.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2025-09-01', label: 'Late payment', labelKey: 'late payment', note: 'Charged after five days in arrears.', createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-6', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 300.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-09-01', label: 'End-of-tenancy cleaning', labelKey: 'end-of-tenancy cleaning', note: null, createdAtUtc: '2025-08-14T10:00:00Z' },
+    ],
+    // Fiber service — a price rise on the monthly charge, plus two one-offs.
+    'ct-fiber': [
+      { id: 'ctm-fiber-1', contractId: 'ct-fiber', kind: 'Fee', unit: 'Amount', value: 79.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-02-01', label: 'Monthly service', labelKey: 'monthly service', note: '1 Gbps symmetric.', createdAtUtc: '2025-01-22T09:00:00Z' },
+      { id: 'ctm-fiber-2', contractId: 'ct-fiber', kind: 'Fee', unit: 'Amount', value: 84.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-02-01', label: 'Monthly service', labelKey: 'monthly service', note: 'Annual CPI + 3.9% uplift.', createdAtUtc: '2026-01-04T09:00:00Z' },
+      { id: 'ctm-fiber-3', contractId: 'ct-fiber', kind: 'Fee', unit: 'Amount', value: 240.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-02-01', label: 'Early termination', labelKey: 'early termination', note: 'Falls away at the end of the 24-month term.', createdAtUtc: '2025-01-22T09:00:00Z' },
+      { id: 'ctm-fiber-4', contractId: 'ct-fiber', kind: 'Fee', unit: 'Amount', value: 99.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-02-01', label: 'Installation', labelKey: 'installation', note: null, createdAtUtc: '2025-01-22T09:00:00Z' },
+    ],
+    // Vendor note on the house purchase — the one seeded InterestRate, which a
+    // contract carries unlabelled exactly as an account does.
+    'ct-house': [
+      { id: 'ctm-house-1', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0425, currency: null, interval: null, intervalCount: null, effectiveFrom: '2021-04-15', label: null, labelKey: null, note: 'Vendor financing on the balance of the purchase price.', createdAtUtc: '2021-04-15T09:00:00Z' },
+      { id: 'ctm-house-2', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0399, currency: null, interval: null, intervalCount: null, effectiveFrom: '2024-05-01', label: null, labelKey: null, note: 'Renegotiated at the three-year review.', createdAtUtc: '2024-05-01T09:00:00Z' },
+    ],
+    'ct-storage': [
+      { id: 'ctm-storage-1', contractId: 'ct-storage', kind: 'Fee', unit: 'Amount', value: 95.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2024-01-01', label: 'Unit rent', labelKey: 'unit rent', note: null, createdAtUtc: '2024-01-03T09:00:00Z' },
+      { id: 'ctm-storage-2', contractId: 'ct-storage', kind: 'Fee', unit: 'Amount', value: 105.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-01-01', label: 'Unit rent', labelKey: 'unit rent', note: 'Second-year rate.', createdAtUtc: '2024-12-02T09:00:00Z' },
+    ],
+    // Archived contract — its history stays readable; every write is refused.
+    'ct-solar': [
+      { id: 'ctm-solar-1', contractId: 'ct-solar', kind: 'Fee', unit: 'Amount', value: 130.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2023-06-01', label: 'Lease payment', labelKey: 'lease payment', note: null, createdAtUtc: '2023-05-28T09:00:00Z' },
+      { id: 'ctm-solar-2', contractId: 'ct-solar', kind: 'Fee', unit: 'Amount', value: 138.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2024-06-01', label: 'Lease payment', labelKey: 'lease payment', note: 'Annual 3% escalator.', createdAtUtc: '2024-06-01T09:00:00Z' },
+    ],
+    'ct-gym': [
+      { id: 'ctm-gym-1', contractId: 'ct-gym', kind: 'Fee', unit: 'Amount', value: 39.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-09-01', label: 'Membership', labelKey: 'membership', note: null, createdAtUtc: '2026-06-10T09:00:00Z' },
+      { id: 'ctm-gym-2', contractId: 'ct-gym', kind: 'Fee', unit: 'Amount', value: 25.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2026-09-01', label: 'Joining fee', labelKey: 'joining fee', note: null, createdAtUtc: '2026-06-10T09:00:00Z' },
+    ],
+    // ct-employment intentionally has no terms — drives the empty state.
+  };
+
+  Object.assign(H, {
+    // All terms on a contract, EffectiveFrom DESC (the history listing order).
+    conTermsFor(contractId) {
+      return (D.contractTerms[contractId] || [])
+        .slice()
+        .sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0));
+    },
+    // TermKinds a CONTRACT may carry, in registry order. Not a per-type matrix:
+    // the same two kinds on every ContractType.
+    conEligibleTermKinds() {
+      return D.termKinds.filter(k => D.contractTermKinds.includes(k.key)).map(k => k.key);
+    },
+    // Why a write is refused, or null when it is allowed. One place, so the
+    // disabled menu item, the section notice and the dialog all say the same.
+    conTermWriteBlock(contract, termCount, cap) {
+      if (contract && contract.archived) {
+        return { reason: 'archived', text: 'This contract is archived. Restore it to record or change a term — its history stays readable either way.' };
+      }
+      const limit = cap != null ? cap : D.CONTRACT_MAX_TERMS_PER_CONTRACT;
+      if (termCount >= limit) {
+        return { reason: 'cap', text: `This contract has reached the limit of ${limit} term${limit === 1 ? '' : 's'}. Delete an entry, or raise ContractMaxTermsPerContract in system settings.` };
+      }
+      return null;
+    },
+  });
+
   // Convenience index used by conResolveParty / policy options.
   D.insurancePolicyById = Object.fromEntries((D.insurancePolicies || []).map(p => [p.id, p]));
 

@@ -77,11 +77,13 @@
 /* The overline stacks role over term, in the space the icon leaves, so the
    type caption below stays one line and a long range never wraps. */
 .con-party-tile .odc-infotile-k { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; padding-right: 26px; }
-.con-role { display: inline-flex; align-items: center; gap: 5px; min-width: 0; color: var(--mud-palette-text-primary); }
+/* The role is the tile's overline, styled by the shared InfoTile rule (no
+   colour or weight of its own) — the same treatment a policy party's role gets. */
+.con-role { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
 .con-role > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Unspecified / unrecognised: an absence, not a category — no colour, quieter
-   than a stated role, and never confusable with the deliberate "Other". */
-.con-role.unset { color: var(--mud-palette-text-secondary); font-style: italic; }
+/* Unspecified / unrecognised: an absence, not a category — quieter than a
+   stated role, and never confusable with the deliberate "Other". */
+.con-role.unset { opacity: 0.65; }
 .con-term {
   font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
   color: var(--mud-palette-text-secondary); white-space: nowrap; max-width: 100%;
@@ -98,6 +100,26 @@
   background: var(--mud-palette-background);
 }
 .con-empty-line .material-icons { font-size: 20px; opacity: 0.7; flex: none; }
+
+/* ---- Terms sections (contract price history) ----
+   Current terms render as the record's own InfoTiles; the history reuses the
+   account-terms table (.trm-tbl). Only the contract-specific chrome is here.
+   A refused write is stated where the writing would happen — warning tone for
+   a reversible state (restore the contract), neutral for the cap. */
+.con-trm-notice {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin: 0 16px; padding: 12px 14px; border-radius: 10px;
+  font: 400 12.5px/1.5 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-background);
+}
+.con-trm-notice .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
+.con-trm-notice.archived { border-color: oklch(0.80 0.13 85 / 0.45); background: oklch(0.80 0.13 85 / 0.08); }
+.con-trm-notice.archived .material-icons { color: oklch(0.80 0.13 85); }
+.con-trm-inline-block { margin-top: 6px; color: var(--mud-palette-text-secondary); font-size: 12px; line-height: 1.5; }
+/* Archived: the history stays fully readable, the per-row writes go away. */
+.con-trm-readonly .trm-rowbtns { display: none; }
 
 /* Documents section wrapper (FilesTable lives inside) */
 .con-files { padding: 4px 4px 8px; }

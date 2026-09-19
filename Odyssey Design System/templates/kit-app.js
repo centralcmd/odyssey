@@ -41,9 +41,10 @@
     onDone: function () {},
     onToggleDark: function () {},
     darkMode: true,
-    // Pages that read tweak values (Contracts' ending-soon window) get the
-    // kit's own defaults; pages that don't read them ignore the key.
-    tweaks: { endingWindowDays: 45 },
+    // Pages that read tweak values (Contracts' ending-soon window and the
+    // per-contract term cap) get the kit's own defaults; pages that don't read
+    // them ignore the key.
+    tweaks: { endingWindowDays: 45, contractTermCap: 500 },
   };
 
   // ---- Stylesheets (mirror ui_kits/web/index.html) ----
@@ -114,7 +115,7 @@
     'Currencies.jsx', 'ExchangeRates.jsx', 'AddBudgetModal.jsx', 'AddBudgetItemModal.jsx',
     'Budgets.jsx', 'AddTaxStatementModal.jsx', 'TaxStatements.jsx',
     'AddInsurancePolicyModal.jsx', 'AddRenewalModal.jsx', 'InsuranceUploadModal.jsx', 'AddPolicyPartyModal.jsx', 'Insurance.jsx',
-    'AddContractModal.jsx', 'AddContractPartyModal.jsx', 'AddContractFileModal.jsx', 'Contracts.jsx',
+    'AddContractModal.jsx', 'AddContractPartyModal.jsx', 'AddContractFileModal.jsx', 'AddContractTermModal.jsx', 'ContractTerms.jsx', 'Contracts.jsx',
     'AddSubscriptionModal.jsx', 'Subscriptions.jsx',
     'ImportJournalEntriesModal.jsx', 'Journal.jsx', 'ImportTasksModal.jsx', 'Tasks.jsx',
     'AddCalendarEventModal.jsx', 'ExportCalendarEventsModal.jsx', 'ManageCalendarsModal.jsx', 'ImportCalendarModal.jsx', 'Calendar.jsx',
