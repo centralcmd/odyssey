@@ -5,9 +5,14 @@
                         completionDate?, archived?, createdAtUtc, parties[], files[] }
                         — a contract is either TERM-based (startDate/endDate, either
                         optional) or ONE-OFF (a single completionDate, no term).
-     • ContractParty  { id, accountId? | contactId? }
+     • ContractParty  { id, accountId? | contactId?, role, fromDate?, toDate? }
                         — exactly one target (the XOR invariant, §6). The party
                         kind label for a contact target is "Contact".
+                        `role` is a ContractPartyRole key ('Unspecified' is the
+                        default and the backfill value); `fromDate`/`toDate` are
+                        the party's TERM IN THE ROLE — both null is the DEFAULT
+                        term (the contract's own extent), not an unset value,
+                        exactly as an insurance party's term reads.
      • ContractFile   { id, fileMetadataId, fileType, attachedByUserId,
                         attachedAtUtc } — a REFERENCE to an existing FileMetadata
                         record (rendered with the FilesTable shape
@@ -47,6 +52,25 @@
     { key: 'Other',          label: 'Other',          enumValue: 3, icon: 'insert_drive_file', color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The enum default — anything outside the categories above.' },
   ];
 
+  /* ---- Canonical ContractPartyRole registry (Draft v4 §4) — what a linked
+     record DOES in the agreement, orthogonal to its kind (an account party may
+     carry any role; no role–type matrix in v1). ORDINALS ARE A WIRE AND
+     PERSISTENCE CONTRACT: later members append, none is renumbered.
+     `Unspecified` (0) and `Other` (6) are deliberately distinct — "nobody has
+     said" versus "somebody looked and none of these fit" — and this kit never
+     conflates them. Colours sit in the same categorical band as the other
+     registries; `Unspecified` stays neutral so an unstated role never reads as
+     a category. */
+  D.contractPartyRoles = [
+    { key: 'Unspecified',     label: 'Unspecified',      enumValue: 0, icon: 'help_outline',         color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.14)', desc: 'No role stated — the default, and what every pre-existing party reads as.' },
+    { key: 'Employee',        label: 'Employee',         enumValue: 1, icon: 'badge',                color: 'oklch(0.76 0.13 265)', soft: 'oklch(0.76 0.13 265 / 0.16)', desc: 'The person employed under this agreement.' },
+    { key: 'Employer',        label: 'Employer',         enumValue: 2, icon: 'corporate_fare',       color: 'oklch(0.75 0.14 300)', soft: 'oklch(0.75 0.14 300 / 0.16)', desc: 'The party that employs.' },
+    { key: 'Buyer',           label: 'Buyer',            enumValue: 3, icon: 'shopping_bag',         color: 'oklch(0.79 0.14 145)', soft: 'oklch(0.79 0.14 145 / 0.16)', desc: 'The party acquiring under this agreement.' },
+    { key: 'Seller',          label: 'Seller',           enumValue: 4, icon: 'sell',                 color: 'oklch(0.80 0.13 90)',  soft: 'oklch(0.80 0.13 90 / 0.16)',  desc: 'The party disposing under this agreement.' },
+    { key: 'ServiceProvider', label: 'Service provider', enumValue: 5, icon: 'home_repair_service',  color: 'oklch(0.78 0.14 195)', soft: 'oklch(0.78 0.14 195 / 0.16)', desc: 'The party delivering the service.' },
+    { key: 'Other',           label: 'Other',            enumValue: 6, icon: 'more_horiz',           color: 'oklch(0.77 0.10 25)',  soft: 'oklch(0.77 0.10 25 / 0.16)',  desc: 'A deliberate role that is none of the above — not the same as Unspecified.' },
+  ];
+
   /* ---- The file library (the user's files.read-visible FileMetadata records).
      The attach picker (§3/B2) is fed these as PRE-LOADED Combobox options; a
      ContractFile references one by id. Shape is FileMetadata-like; rendered
@@ -76,8 +100,10 @@
       description: 'Permanent, full-time. Salary paid monthly into the Chase Checking account. 3-month notice either side.',
       startDate: '2024-03-01', endDate: null, archived: null, createdAtUtc: '2024-02-20T09:00:00Z',
       parties: [
-        { id: 'cp-emp-1', contactId: 'c2' },
-        { id: 'cp-emp-2', accountId: '1' },
+        { id: 'cp-emp-1', contactId: 'c2', role: 'Employer', fromDate: null, toDate: null },
+        // The salary account is a party to the agreement with no role in the
+        // v1 vocabulary — Unspecified, not Other: nobody has stated one.
+        { id: 'cp-emp-2', accountId: '1', role: 'Unspecified', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-emp-1', fileMetadataId: 'fm-emp-offer', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2024-02-20T09:05:00Z' },
@@ -89,8 +115,11 @@
       description: 'Twelve-month assured shorthold tenancy on the Maple St residence. Rent due on the 1st. Pets permitted by amendment.',
       startDate: '2025-09-01', endDate: '2026-08-31', archived: null, createdAtUtc: '2025-08-14T10:00:00Z',
       parties: [
-        { id: 'cp-lease-1', accountId: '7' },
-        { id: 'cp-lease-2', contactId: 'c9' },
+        { id: 'cp-lease-1', accountId: '7', role: 'Unspecified', fromDate: null, toDate: null },
+        // A party that joined partway through the term — the case the term
+        // exists for. Landlord/tenant are not in the v1 vocabulary, so this is
+        // a deliberate Other, not an unstated role.
+        { id: 'cp-lease-2', contactId: 'c9', role: 'Other', fromDate: '2026-02-01', toDate: null },
       ],
       files: [
         { id: 'cf-lease-1', fileMetadataId: 'fm-lease-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-08-14T10:02:00Z' },
@@ -103,8 +132,8 @@
       description: 'Purchase of the Maple St property — a one-off agreement recorded by its completion (closing) date, not a term. Kept as the deed of record for the property.',
       startDate: null, endDate: null, completionDate: '2021-04-15', archived: null, createdAtUtc: '2021-03-02T09:00:00Z',
       parties: [
-        { id: 'cp-house-1', accountId: '7' },
-        { id: 'cp-house-2', contactId: 'c9' },
+        { id: 'cp-house-1', accountId: '7', role: 'Buyer', fromDate: null, toDate: null },
+        { id: 'cp-house-2', contactId: 'c9', role: 'Seller', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-house-1', fileMetadataId: 'fm-house-deed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2021-04-15T12:00:00Z' },
@@ -115,7 +144,7 @@
       description: 'Symmetric 1 Gbps fiber. 24-month term, early-termination fee applies. Auto-renews monthly at term end.',
       startDate: '2025-02-01', endDate: '2027-01-31', archived: null, createdAtUtc: '2025-01-22T09:00:00Z',
       parties: [
-        { id: 'cp-fiber-1', contactId: 'c3' },
+        { id: 'cp-fiber-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-fiber-1', fileMetadataId: 'fm-fiber-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-01-22T09:03:00Z' },
@@ -127,7 +156,7 @@
       description: 'Annual gym membership. Direct debit, monthly. Starts at the new branch opening.',
       startDate: '2026-09-01', endDate: '2027-08-31', archived: null, createdAtUtc: '2026-06-10T09:00:00Z',
       parties: [
-        { id: 'cp-gym-1', contactId: 'c11' },
+        { id: 'cp-gym-1', contactId: 'c11', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-gym-1', fileMetadataId: 'fm-gym-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2026-06-10T09:02:00Z' },
@@ -138,7 +167,9 @@
       description: 'Self-storage unit, 50 sq ft. Twelve-month term, not renewed — kept for record.',
       startDate: '2024-01-01', endDate: '2025-12-31', archived: null, createdAtUtc: '2024-01-03T09:00:00Z',
       parties: [
-        { id: 'cp-storage-1', contactId: 'c8' },
+        // Left the role when the unit was handed back, while the contract row
+        // stays on record — a closed term, rendered as a past party.
+        { id: 'cp-storage-1', contactId: 'c8', role: 'ServiceProvider', fromDate: null, toDate: '2025-12-31' },
       ],
       files: [
         { id: 'cf-storage-1', fileMetadataId: 'fm-storage-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2024-01-03T09:01:00Z' },
@@ -149,7 +180,7 @@
       description: 'Twenty-year rooftop solar lease — transferred to the new owner on sale of the property. Retained for reference.',
       startDate: '2023-06-01', endDate: '2025-10-31', archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z',
       parties: [
-        { id: 'cp-solar-1', accountId: '7' },
+        { id: 'cp-solar-1', accountId: '7', role: 'Other', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-solar-1', fileMetadataId: 'fm-solar-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2023-05-28T09:04:00Z' },
@@ -162,6 +193,7 @@
   D.contractTypeByKey = Object.fromEntries(D.contractTypes.map(t => [t.key, t]));
   D.contractFileTypeByKey = Object.fromEntries(D.contractFileTypes.map(t => [t.key, t]));
   D.contractFileById = Object.fromEntries(D.contractFileLibrary.map(f => [f.id, f]));
+  D.contractPartyRoleByKey = Object.fromEntries(D.contractPartyRoles.map(r => [r.key, r]));
 
   Object.assign(H, {
     contractTypeInfo(key) {
@@ -221,6 +253,45 @@
     // Resolve a party row to the minimal display projection (spec §10 #2) —
     // id + display name + type only, never the fuller cross-claim DTO. Returns
     // { kind, kindLabel, name, typeLabel, icon, color, soft, target }.
+    /* A ContractPartyRole key → its registry row. An UNKNOWN key is a real
+       runtime state, not a bug: ordinals append server-side, so a client older
+       than the deployment can be handed a member it has never heard of. It is
+       rendered honestly (neutral, named as unrecognised) rather than silently
+       collapsed into Unspecified, which would read as "no role stated". */
+    conPartyRoleInfo(key) {
+      if (key == null || key === '') return D.contractPartyRoleByKey.Unspecified;
+      return D.contractPartyRoleByKey[key]
+        || { key, label: 'Unrecognised role', icon: 'help', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)',
+             unknown: true, desc: 'This role was added after this app version — update to read it.' };
+    },
+    conPartyRoleOptions() {
+      return D.contractPartyRoles.map(r => ({ value: r.key, label: r.label, icon: r.icon, iconColor: r.color, sub: r.desc }));
+    },
+
+    // Short date for the tile caption: 'YYYY-MM-DD' → "Feb 1 2026".
+    conDateShort(iso) {
+      if (!iso) return '';
+      const d = new Date(String(iso).slice(0, 10) + 'T00:00:00');
+      return isNaN(d) ? String(iso) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(',', '');
+    },
+
+    /* The party's TERM IN THE ROLE, as a caption — null when it is the DEFAULT
+       term (both dates null = the contract's own extent), which needs no
+       caption. Kept short: it sits on one line above a fixed-height tile. */
+    conPartyTermText(party) {
+      const f = party.fromDate, t = party.toDate;
+      if (f && t) return `${H.conDateShort(f)} – ${H.conDateShort(t)}`;
+      if (f) return `from ${H.conDateShort(f)}`;
+      if (t) return `to ${H.conDateShort(t)}`;
+      return null;
+    },
+    // A party whose term has closed before today — still a party of record,
+    // drawn quieter than one currently in its role.
+    conPartyPast(party, today) {
+      const t = H.conDateOnly(party.toDate);
+      return !!t && t < (today || H.conToday());
+    },
+
     conResolveParty(party) {
       if (party.accountId) {
         const a = D.accountById[party.accountId];
@@ -235,6 +306,20 @@
           typeLabel: m.label || '', icon: m.icon || 'groups', color: m.color, soft: m.soft, target: c };
       }
       return { kind: 'unknown', kindLabel: 'Party', name: '—', typeLabel: '', icon: 'help', color: undefined, soft: undefined, target: null };
+    },
+
+    /* The duplicate rule, as the picker reads it: uniqueness is
+       (contract, target, ROLE), so a record already linked in one role is
+       still offerable in another. `exceptId` excludes the party being edited
+       from its own check (the PUT's edit-row exclusion). */
+    conPartyTaken(parties, field, role, exceptId) {
+      const taken = new Set();
+      (parties || []).forEach(p => {
+        if (exceptId && p.id === exceptId) return;
+        if ((p.role || 'Unspecified') !== role) return;
+        if (p[field]) taken.add(p[field]);
+      });
+      return taken;
     },
 
     // The two selectable party-kind option sets (pre-loaded for the picker).

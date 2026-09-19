@@ -502,6 +502,15 @@ const ContractTypeSelect = ({ helper, types, ...props }) => {
   if (DS.ContractTypeSelect) return <DS.ContractTypeSelect help={helper} types={types} {...props} />;
   return <DS.Select help={helper} options={types ? optsFrom(types) : contractTypeOpts()} {...props} />;
 };
+// ContractPartyRoleSelect — what a linked record DOES in a contract
+// (ContractPartyRole). Registry-backed like the type pickers; the value is the
+// role key, and `Unspecified` is a real, selectable member, not a placeholder.
+const contractPartyRoleOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.contractPartyRoles);
+const ContractPartyRoleSelect = ({ helper, roles, ...props }) => {
+  if (DS.ContractPartyRoleSelect) return <DS.ContractPartyRoleSelect help={helper} roles={roles} {...props} />;
+  return <DS.Select help={helper} options={roles ? optsFrom(roles) : contractPartyRoleOpts()} {...props} />;
+};
+
 // BudgetCategoryTypeSelect — Expense / Income, each with its category glyph + color.
 const BUDGET_CATEGORY_OPTS = [
   { value: 'Expense', label: 'Expense', icon: 'trending_down', iconColor: 'oklch(0.72 0.16 22)' },
@@ -1421,7 +1430,7 @@ Object.assign(window, {
   BillingIntervalSelect, BillingIntervalMultiSelect, BillingIntervalChip, SubscriptionStatusChip,
   SegmentedControl, CardSelect, ContactSelect, TransactionTagPicker,
   ODC_TONE, odcTypeRows, odcStatusRows,
-  ContractTypeSelect,
+  ContractTypeSelect, ContractPartyRoleSelect,
   BudgetCategoryTypeSelect,
   AddRow,
   ActionMenu, SortHeader, MetaTile, InfoTile, RecordCard, RecordBody, InfoTileGrid, SectionDivider, RecordTable, SortSelect, SortHelpers, Collapsible, LineChart, Delta, ProblemAlert,
