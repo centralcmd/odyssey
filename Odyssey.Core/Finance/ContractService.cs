@@ -419,6 +419,9 @@ public class ContractService
         return true;
     }
 
+    /// <summary>What the "after" slot reads when there is no role after the write, i.e. on a detach.</summary>
+    private const string NoRole = "(none)";
+
     /// <summary>
     /// One structured <c>Information</c> line per party write (issue #121 §7.7). <c>ContractParty</c>
     /// deliberately carries no <c>CreatedByUserId</c> column — no v1 role confers or transfers an
@@ -426,20 +429,33 @@ public class ContractService
     /// replacement in which an omitted <c>role</c> silently resets to <c>Unspecified</c>, so without
     /// this line an accidental employment-relationship downgrade would leave no trace anywhere.
     /// </summary>
-    /// <summary>What the "after" slot reads when there is no role after the write, i.e. on a detach.</summary>
-    private const string NoRole = "(none)";
-
+    /// <remarks>
+    /// Every value is an opaque identifier or a closed enum — never a name, an address or any free
+    /// text — so the line identifies the rows a reader would then have to hold <c>contracts.read</c>
+    /// to resolve, and discloses nothing by itself. The target is read back off the persisted
+    /// <paramref name="party"/> rather than from the request, so it records what was actually written.
+    ///
+    /// <para>
+    /// The one-of-two target collapses to a single <c>targetId</c> here because that is what the line
+    /// means: which record this link points at. Which of the two columns held it is already implied by
+    /// the party row, and naming it per-column would make the log shape depend on the target kind.
+    /// </para>
+    /// </remarks>
     private void LogPartyWrite(
         string action, ContractParty party, ContextContractPartyRole? previousRole, string? userId,
         string? roleAfter = null)
     {
+        // A Guid, so it cannot carry the CR/LF a forged log line would need, and an opaque row id
+        // rather than a credential. Both are why this is safe to record verbatim.
+        Guid? targetId = party.AccountId ?? party.ContactId;
+
         logger.LogInformation(
             "Contract party {Action}: contract {ContractId}, party {ContractPartyId}, target {TargetId}, " +
             "role {RoleBefore} -> {RoleAfter}, by user {UserId}.",
             action,
             party.ContractId,
             party.ContractPartyId,
-            party.AccountId ?? party.ContactId,
+            targetId,
             previousRole ?? ContextContractPartyRole.Unspecified,
             roleAfter ?? party.Role.ToString(),
             userId ?? "(unknown)");

@@ -111,15 +111,38 @@ public class ContractPartyTileTests
     }
 
     /// <summary>
-    /// A party whose term closed before today is still a party of record, drawn quieter. The muted
-    /// tile tone carries that too, so the strike-through is not the only cue.
+    /// A party whose term closed before today is still a party of record, drawn quieter — AND says so
+    /// in text.
     /// </summary>
+    /// <remarks>
+    /// The strike-through and the muted tile tone are presentation: the term text reads identically
+    /// whether the party is still in the role or has left it, so on their own a screen-reader user
+    /// hears no difference (WCAG 1.3.1 / 1.4.1, both Level A). The <c>sr-only</c> assertion is the
+    /// half that matters — a regression that drops the span while leaving the <c>past</c> class is
+    /// invisible in a diff and invisible on screen, and a class-only test would pass straight through
+    /// it.
+    /// </remarks>
     [Fact]
-    public void A_closed_past_term_is_marked_as_past()
+    public void A_closed_past_term_is_marked_as_past_and_says_so_in_text()
     {
         var cut = Render(Party(to: Today.AddDays(-1)));
 
         Assert.Contains("past", cut.Find(".con-term").ClassName, StringComparison.Ordinal);
+        Assert.Contains("ended", cut.Find(".con-term .sr-only").TextContent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The negative counterpart: a term still running carries NO past marker and NO screen-reader
+    /// cue. Without it, an implementation that announced "(ended)" on every term would satisfy the
+    /// case above while telling every reader the opposite of the truth.
+    /// </summary>
+    [Fact]
+    public void A_term_still_running_carries_no_past_marker_and_no_screen_reader_cue()
+    {
+        var cut = Render(Party(from: Today.AddDays(-10), to: Today.AddDays(10)));
+
+        Assert.DoesNotContain("past", cut.Find(".con-term").ClassName, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".con-term .sr-only"));
     }
 
     /// <summary>

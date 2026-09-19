@@ -603,6 +603,13 @@ public class ContractServiceTests
         Assert.Contains("detached", detached);
         Assert.Contains(party.ContractPartyId.ToString(), detached);
         Assert.Contains(TestUserId, detached);
+
+        // A detach has NO role after it, and must not borrow Unspecified to say so. Writing
+        // Unspecified there made this line byte-identical to the PUT two assertions above — the
+        // accidental downgrade this whole log exists to make visible — so the two differed only by
+        // the action word and a query for the downgrade matched every detach as well.
+        Assert.Contains("-> (none)", detached);
+        Assert.DoesNotContain("-> Unspecified", detached);
     }
 
     /// <summary>
