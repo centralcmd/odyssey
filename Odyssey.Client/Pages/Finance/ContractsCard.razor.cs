@@ -504,7 +504,6 @@ public partial class ContractsCard
         }
     }
 
-
     // ── Pause / resume (PUT with IsPaused; a paused contract stays listed at full brightness, stays
     //    fully editable and keeps its price history — it only leaves the money: the run rate, its
     //    by-type split and the next charges) ──────────────────────────────────────────────────────
