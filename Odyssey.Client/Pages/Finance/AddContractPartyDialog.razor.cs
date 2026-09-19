@@ -191,8 +191,10 @@ public partial class AddContractPartyDialog
         if (_kind == next) return Task.CompletedTask;
         _kind = next;
         _error = null;
-        // A record is kind-specific, so a kind change always discards the selection — except back on
-        // the edited party's own kind, where that party is still the obvious choice.
+        // A record is kind-specific, so a kind change all but always discards the selection. The one
+        // case it survives is the edited party's own record back on its own kind and role, which the
+        // picker filter already leaves eligible — there is no separate restore path, and nothing
+        // re-selects a record that was already cleared.
         return DiscardSelectionUnlessStillEligible();
     }
 

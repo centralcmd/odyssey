@@ -411,9 +411,11 @@ public class ContractService
         context.ContractParties.Remove(party);
         await context.SaveChangesAsync(cancellationToken);
 
-        // The role BEFORE is the role the row carried; there is no role after a detach, so the "after"
-        // slot reads Unspecified — the line still says which role was dissolved.
-        LogPartyWrite("detached", party, party.Role, userId, roleAfter: ContextContractPartyRole.Unspecified);
+        // A detach has no role AFTER — the row is gone. Writing Unspecified there would make the line
+        // byte-identical to a PUT that downgraded the role to Unspecified, which is precisely the event
+        // this log exists to make visible; the two would then differ only by the action word, so a query
+        // for the downgrade would match every detach as well.
+        LogPartyWrite("detached", party, party.Role, userId, roleAfter: NoRole);
         return true;
     }
 
@@ -424,9 +426,12 @@ public class ContractService
     /// replacement in which an omitted <c>role</c> silently resets to <c>Unspecified</c>, so without
     /// this line an accidental employment-relationship downgrade would leave no trace anywhere.
     /// </summary>
+    /// <summary>What the "after" slot reads when there is no role after the write, i.e. on a detach.</summary>
+    private const string NoRole = "(none)";
+
     private void LogPartyWrite(
         string action, ContractParty party, ContextContractPartyRole? previousRole, string? userId,
-        ContextContractPartyRole? roleAfter = null)
+        string? roleAfter = null)
     {
         logger.LogInformation(
             "Contract party {Action}: contract {ContractId}, party {ContractPartyId}, target {TargetId}, " +
@@ -436,7 +441,7 @@ public class ContractService
             party.ContractPartyId,
             party.AccountId ?? party.ContactId,
             previousRole ?? ContextContractPartyRole.Unspecified,
-            roleAfter ?? party.Role,
+            roleAfter ?? party.Role.ToString(),
             userId ?? "(unknown)");
     }
 
