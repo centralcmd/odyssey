@@ -28,9 +28,9 @@ public class TermSeriesLabelTests
         AccountType = type,
     };
 
-    private static ExistingAccountTerm Term(TermKind kind, string? label = null, string value = "0.0500") => new()
+    private static ExistingTerm Term(TermKind kind, string? label = null, string value = "0.0500") => new()
     {
-        AccountTermId = Guid.NewGuid(),
+        TermId = Guid.NewGuid(),
         AccountId = Guid.NewGuid(),
         TermKind = kind,
         Label = label,
@@ -159,5 +159,5 @@ public class TermSeriesLabelTests
     [Fact]
     public void AFeeOpensOnOneHonestBillingDefault() =>
         // One default, since there is no longer a fee kind to guess from.
-        Assert.Equal(BillingPeriod.Monthly, TermKindVisuals.DefaultFeeBillingPeriod);
+        Assert.Equal(Interval.Monthly, TermKindVisuals.DefaultFeeInterval);
 }

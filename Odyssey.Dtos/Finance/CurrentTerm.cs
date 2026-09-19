@@ -7,7 +7,7 @@ namespace Odyssey.Dtos.Finance;
 /// <c>EffectiveFrom</c> on or before the resolution date within its <c>(TermKind, Label)</c> series.
 /// One kind can therefore contribute several entries, one per label.
 /// </summary>
-public sealed record CurrentAccountTerm
+public sealed record CurrentTerm
 {
     public TermKind TermKind { get; set; }
 
@@ -20,6 +20,13 @@ public sealed record CurrentAccountTerm
     [StringLength(3)]
     public string? CurrencyCode { get; set; }
 
-    public BillingPeriod? BillingPeriod { get; set; }
+    /// <summary>The cadence unit; null for a rate.</summary>
+    public Interval? Interval { get; set; }
+
+    /// <summary>The cadence multiplier — non-null iff <see cref="Interval"/> is periodic.</summary>
+    public int? IntervalCount { get; set; }
+
+    /// <summary>When the term is first actually charged, if that differs from <see cref="EffectiveFrom"/>.</summary>
+    public DateTime? AnchorDate { get; set; }
     public DateTime EffectiveFrom { get; set; }
 }

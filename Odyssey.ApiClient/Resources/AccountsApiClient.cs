@@ -124,11 +124,11 @@ public interface IAccountsApiClient
 
     // ── Terms (rate & fees) ──────────────────────────────────────────────────
 
-    Task<ApiResult<List<ExistingAccountTerm>>> ListTermsAsync(Guid accountId, CancellationToken ct = default);
+    Task<ApiResult<List<ExistingTerm>>> ListTermsAsync(Guid accountId, CancellationToken ct = default);
 
-    Task<ApiResult> AddTermAsync(Guid accountId, NewAccountTerm term, CancellationToken ct = default);
+    Task<ApiResult> AddTermAsync(Guid accountId, NewTerm term, CancellationToken ct = default);
 
-    Task<ApiResult> UpdateTermAsync(Guid accountId, Guid termId, NewAccountTerm term, CancellationToken ct = default);
+    Task<ApiResult> UpdateTermAsync(Guid accountId, Guid termId, NewTerm term, CancellationToken ct = default);
 
     Task<ApiResult> DeleteTermAsync(Guid accountId, Guid termId, CancellationToken ct = default);
 
@@ -276,13 +276,13 @@ public sealed class AccountsApiClient(IOdysseyApi api) : IAccountsApiClient
 
     // ── Terms ────────────────────────────────────────────────────────────────
 
-    public Task<ApiResult<List<ExistingAccountTerm>>> ListTermsAsync(Guid accountId, CancellationToken ct = default) =>
-        api.GetAsync<List<ExistingAccountTerm>>(Terms(accountId), ct);
+    public Task<ApiResult<List<ExistingTerm>>> ListTermsAsync(Guid accountId, CancellationToken ct = default) =>
+        api.GetAsync<List<ExistingTerm>>(Terms(accountId), ct);
 
-    public Task<ApiResult> AddTermAsync(Guid accountId, NewAccountTerm term, CancellationToken ct = default) =>
+    public Task<ApiResult> AddTermAsync(Guid accountId, NewTerm term, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, Terms(accountId), term, ct);
 
-    public Task<ApiResult> UpdateTermAsync(Guid accountId, Guid termId, NewAccountTerm term, CancellationToken ct = default) =>
+    public Task<ApiResult> UpdateTermAsync(Guid accountId, Guid termId, NewTerm term, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Put, $"{Terms(accountId)}/{termId}", term, ct);
 
     public Task<ApiResult> DeleteTermAsync(Guid accountId, Guid termId, CancellationToken ct = default) =>

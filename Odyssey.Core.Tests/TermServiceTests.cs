@@ -6,12 +6,13 @@ using Xunit;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
-using BillingPeriod = Odyssey.Dtos.Finance.BillingPeriod;
+using Interval = Odyssey.Dtos.Finance.Interval;
 using Odyssey.Core.Finance;
+using System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Core.Tests;
 
-public class AccountTermServiceTests
+public class TermServiceTests
 {
     private static async Task<Guid> SeedAccountAsync(
         OdysseyContext context,
@@ -30,7 +31,7 @@ public class AccountTermServiceTests
         return account.AccountId;
     }
 
-    private static NewAccountTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
+    private static NewTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
     {
         TermKind = TermKind.InterestRate,
         ValueUnit = TermValueUnit.Percentage,
@@ -38,7 +39,7 @@ public class AccountTermServiceTests
         EffectiveFrom = effectiveFrom,
     };
 
-    private static NewAccountTerm Fee(string? label, decimal value, DateTime effectiveFrom) => new()
+    private static NewTerm Fee(string? label, decimal value, DateTime effectiveFrom) => new()
     {
         TermKind = TermKind.Fee,
         Label = label,
@@ -52,14 +53,14 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var created = await service.Create(accountId, InterestRate(0.0325m, new DateTime(2026, 1, 1)));
 
         Assert.Equal(TermKind.InterestRate, created.TermKind);
         Assert.Equal(0.0325m, created.Value);
         Assert.Null(created.CurrencyCode);
-        Assert.NotEqual(Guid.Empty, created.AccountTermId);
+        Assert.NotEqual(Guid.Empty, created.TermId);
 
         var history = await service.GetHistory(accountId);
         Assert.NotNull(history);
@@ -71,9 +72,9 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount, "EUR");
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
-        var created = await service.Create(accountId, new NewAccountTerm
+        var created = await service.Create(accountId, new NewTerm
         {
             TermKind = TermKind.Fee,
             Label = "Account fee",
@@ -90,9 +91,9 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewAccountTerm
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
         {
             TermKind = TermKind.Fee,
             Label = "Account fee",
@@ -111,7 +112,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, accountType);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await Assert.ThrowsAsync<DomainValidationException>(
             () => service.Create(accountId, InterestRate(0.05m, new DateTime(2026, 1, 1))));
@@ -122,7 +123,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var created = await service.Create(accountId, InterestRate(0.001m, new DateTime(2026, 1, 1)));
 
@@ -135,9 +136,9 @@ public class AccountTermServiceTests
         await using var context = TestContextFactory.Create();
         var investmentId = await SeedAccountAsync(context, DtoAccountType.InvestmentAccount);
         var checkingId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
-        var created = await service.Create(investmentId, new NewAccountTerm
+        var created = await service.Create(investmentId, new NewTerm
         {
             TermKind = TermKind.ExpectedReturn,
             ValueUnit = TermValueUnit.Percentage,
@@ -146,7 +147,7 @@ public class AccountTermServiceTests
         });
         Assert.Equal(TermKind.ExpectedReturn, created.TermKind);
 
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(checkingId, new NewAccountTerm
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(checkingId, new NewTerm
         {
             TermKind = TermKind.ExpectedReturn,
             ValueUnit = TermValueUnit.Percentage,
@@ -160,7 +161,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await Assert.ThrowsAsync<DomainValidationException>(
             () => service.Create(accountId, InterestRate(1.5m, new DateTime(2026, 1, 1))));
@@ -171,9 +172,9 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewAccountTerm
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
         {
             TermKind = TermKind.Fee,
             Label = "Account fee",
@@ -188,7 +189,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var created = await service.Create(accountId, InterestRate(-0.005m, new DateTime(2026, 1, 1)));
 
@@ -196,18 +197,18 @@ public class AccountTermServiceTests
     }
 
     [Fact]
-    public async Task Create_BillingPeriodOnInterestRate_Throws()
+    public async Task Create_IntervalOnInterestRate_Throws()
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewAccountTerm
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
         {
             TermKind = TermKind.InterestRate,
             ValueUnit = TermValueUnit.Percentage,
             Value = 0.03m,
-            BillingPeriod = BillingPeriod.Monthly,
+            Interval = Interval.Monthly,
             EffectiveFrom = new DateTime(2026, 1, 1),
         }));
     }
@@ -219,9 +220,9 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, accountType);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewAccountTerm
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
         {
             TermKind = kind,
             ValueUnit = TermValueUnit.Amount,
@@ -231,25 +232,25 @@ public class AccountTermServiceTests
     }
 
     [Fact]
-    public async Task Create_FeeWithBillingPeriod_RoundTrips()
+    public async Task Create_FeeWithInterval_RoundTrips()
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
-        await service.Create(accountId, new NewAccountTerm
+        await service.Create(accountId, new NewTerm
         {
             TermKind = TermKind.Fee,
             Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 2m,
-            BillingPeriod = BillingPeriod.Daily,
+            Interval = Interval.Daily,
             EffectiveFrom = new DateTime(2026, 1, 1),
         });
 
         var history = await service.GetHistory(accountId);
         var term = Assert.Single(history!);
-        Assert.Equal(BillingPeriod.Daily, term.BillingPeriod);
+        Assert.Equal(Interval.Daily, term.Interval);
     }
 
     [Fact]
@@ -257,7 +258,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var date = new DateTime(2026, 1, 1);
         await service.Create(accountId, InterestRate(0.03m, date));
@@ -270,7 +271,7 @@ public class AccountTermServiceTests
     public async Task Create_OnMissingAccount_Throws()
     {
         await using var context = TestContextFactory.Create();
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await Assert.ThrowsAsync<DomainNotFoundException>(
             () => service.Create(Guid.NewGuid(), InterestRate(0.03m, new DateTime(2026, 1, 1))));
@@ -281,7 +282,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
         await service.Create(accountId, InterestRate(0.025m, new DateTime(2026, 3, 1)));
@@ -302,7 +303,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
         await service.Create(accountId, InterestRate(0.02m, new DateTime(2026, 6, 1)));
@@ -317,10 +318,10 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
-        await service.Create(accountId, new NewAccountTerm
+        await service.Create(accountId, new NewTerm
         {
             TermKind = TermKind.Fee,
             Label = "Account fee",
@@ -340,10 +341,10 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
-        await service.Create(accountId, new NewAccountTerm
+        await service.Create(accountId, new NewTerm
         {
             TermKind = TermKind.Fee,
             Label = "Account fee",
@@ -361,7 +362,7 @@ public class AccountTermServiceTests
     public async Task GetHistory_OnMissingAccount_ReturnsNull()
     {
         await using var context = TestContextFactory.Create();
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         Assert.Null(await service.GetHistory(Guid.NewGuid()));
         Assert.Null(await service.GetCurrent(Guid.NewGuid()));
@@ -372,7 +373,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var updated = await service.Update(accountId, Guid.NewGuid(), InterestRate(0.01m, new DateTime(2026, 1, 1)));
         Assert.False(updated);
@@ -383,10 +384,10 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var created = await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
-        var updated = await service.Update(accountId, created.AccountTermId, InterestRate(0.04m, new DateTime(2026, 1, 1)));
+        var updated = await service.Update(accountId, created.TermId, InterestRate(0.04m, new DateTime(2026, 1, 1)));
 
         Assert.True(updated);
         var history = await service.GetHistory(accountId);
@@ -398,7 +399,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         Assert.False(await service.Delete(accountId, Guid.NewGuid()));
     }
@@ -408,10 +409,10 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var created = await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
-        Assert.True(await service.Delete(accountId, created.AccountTermId));
+        Assert.True(await service.Delete(accountId, created.TermId));
         Assert.Empty((await service.GetHistory(accountId))!);
     }
 
@@ -420,17 +421,17 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
 
         var account = await context.Accounts
-            .Include(a => a.AccountTerms)
+            .Include(a => a.Terms)
             .FirstAsync(a => a.AccountId == accountId);
         context.Accounts.Remove(account);
         await context.SaveChangesAsync();
 
-        Assert.Empty(await context.AccountTerms.ToListAsync());
+        Assert.Empty(await context.Terms.ToListAsync());
     }
 
     // ── Series labels ────────────────────────────────────────────────────────
@@ -440,7 +441,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var date = new DateTime(2026, 1, 1);
         await service.Create(accountId, Fee("ATM · abroad", 25m, date));
@@ -456,7 +457,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await service.Create(accountId, Fee("ATM · abroad", 25m, new DateTime(2026, 1, 1)));
         await service.Create(accountId, Fee("ATM · domestic", 5m, new DateTime(2026, 1, 1)));
@@ -473,7 +474,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await service.Create(accountId, InterestRate(0.22m, new DateTime(2026, 1, 1)));
         await service.Create(accountId, Fee("Annual card fee", 95m, new DateTime(2026, 1, 1)));
@@ -492,7 +493,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var date = new DateTime(2026, 1, 1);
         await service.Create(accountId, Fee("ATM · abroad", 25m, date));
@@ -509,7 +510,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await Assert.ThrowsAsync<DomainValidationException>(
             () => service.Create(accountId, Fee(label, 25m, new DateTime(2026, 1, 1))));
@@ -535,7 +536,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, accountType);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         // Fee is eligible everywhere, so this can only ever fail on the label rule — which is what
         // makes the assertion about the rule rather than about eligibility.
@@ -553,7 +554,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, accountType);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var created = await service.Create(accountId, Fee("Account fee", 25m, new DateTime(2026, 1, 1)));
 
@@ -567,9 +568,9 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, accountType);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewAccountTerm
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
         {
             TermKind = kind,
             Label = "Headline",
@@ -584,7 +585,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await Assert.ThrowsAsync<DomainValidationException>(
             () => service.Create(accountId, Fee(new string('x', TermLabel.MaxLength + 1), 5m, new DateTime(2026, 1, 1))));
@@ -595,7 +596,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var created = await service.Create(accountId, Fee("  ATM   Abroad  ", 25m, new DateTime(2026, 1, 1)));
 
@@ -611,12 +612,12 @@ public class AccountTermServiceTests
         // service's own derivation from Label.
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var created = await service.Create(accountId, Fee("  ATM   Abroad  ", 25m, new DateTime(2026, 1, 1)));
 
-        var stored = await context.AccountTerms.AsNoTracking()
-            .SingleAsync(t => t.AccountTermId == created.AccountTermId);
+        var stored = await context.Terms.AsNoTracking()
+            .SingleAsync(t => t.TermId == created.TermId);
         Assert.Equal("ATM Abroad", stored.Label);
         Assert.Equal("atm abroad", stored.LabelKey);
     }
@@ -626,7 +627,7 @@ public class AccountTermServiceTests
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         await service.Create(accountId, Fee("ATM", 25m, new DateTime(2026, 1, 1)));
         var second = await service.Create(accountId, Fee("ATM", 30m, new DateTime(2026, 6, 1)));
@@ -634,7 +635,7 @@ public class AccountTermServiceTests
         // One series, so the later entry supersedes: one current entry.
         Assert.Single((await service.GetCurrent(accountId, new DateTime(2026, 12, 1)))!);
 
-        Assert.True(await service.Update(accountId, second.AccountTermId, Fee("ATM · abroad", 30m, new DateTime(2026, 6, 1))));
+        Assert.True(await service.Update(accountId, second.TermId, Fee("ATM · abroad", 30m, new DateTime(2026, 6, 1))));
 
         var current = await service.GetCurrent(accountId, new DateTime(2026, 12, 1));
         Assert.Equal(2, current!.Count);
@@ -647,11 +648,11 @@ public class AccountTermServiceTests
         // A term written before labels existed carries a null label, which IS the unnamed series.
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new AccountTermService(context);
+        var service = new TermService(context);
 
         var account = await context.Accounts.FirstAsync(a => a.AccountId == accountId);
-        context.AccountTerms.AddRange(
-            new AccountTerm
+        context.Terms.AddRange(
+            new Term
             {
                 AccountId = account.AccountId,
                 TermKind = Odyssey.Context.TermKind.InterestRate,
@@ -660,7 +661,7 @@ public class AccountTermServiceTests
                 EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             },
-            new AccountTerm
+            new Term
             {
                 AccountId = account.AccountId,
                 TermKind = Odyssey.Context.TermKind.InterestRate,
@@ -675,5 +676,129 @@ public class AccountTermServiceTests
         var entry = Assert.Single(current!);
         Assert.Equal(0.02m, entry.Value);
         Assert.Null(entry.Label);
+    }
+
+    // ── Defense in depth: the bounds a DIRECT (non-HTTP) caller must still hit ──
+    //
+    // These call TermService itself, with no WebApplicationFactory and no model binding in the path.
+    // An API-level test cannot reach them at all: [ApiController] model validation rejects the same
+    // input first, so the only way to prove the service check exists is to bypass the pipeline
+    // exactly as a background job, a seeder or a future internal caller would (issue #120, AC 41-43).
+
+    [Theory]
+    [InlineData(4)]   // the retired Quarterly ordinal — the value this rule exists for
+    [InlineData(99)]
+    public async Task Create_CalledDirectlyWithAnUndefinedInterval_ThrowsAndPersistsNothing(int ordinal)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new TermService(context);
+
+        var term = Fee("ATM · abroad", 25m, new DateTime(2026, 1, 1));
+        term.Interval = (Interval)ordinal;
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, term));
+
+        // Before this rule the Mapster converter's `_ => OneTime` fallthrough silently PERSISTED the
+        // value as OneTime — a write-path fail-open, not a read-path degradation.
+        Assert.Empty(await context.Terms.AsNoTracking().ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(99)]
+    public async Task Update_CalledDirectlyWithAnUndefinedInterval_ThrowsAndLeavesTheRowUntouched(int ordinal)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new TermService(context);
+
+        var original = Fee("ATM · abroad", 25m, new DateTime(2026, 1, 1));
+        original.Interval = Interval.PerOccurrence;
+        var created = await service.Create(accountId, original);
+
+        var edit = Fee("ATM · abroad", 30m, new DateTime(2026, 1, 1));
+        edit.Interval = (Interval)ordinal;
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(accountId, created.TermId, edit));
+
+        var stored = await context.Terms.AsNoTracking().SingleAsync();
+        Assert.Equal(Odyssey.Context.Interval.PerOccurrence, stored.Interval);
+        Assert.Equal(25m, stored.Value);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(TermIntervalCount.Max + 1)]
+    public async Task Create_CalledDirectlyWithACountOutsideItsBound_ThrowsAndPersistsNothing(int count)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
+        var service = new TermService(context);
+
+        var term = Fee("Account maintenance", 45m, new DateTime(2026, 1, 1));
+        term.Interval = Interval.Monthly;
+        term.IntervalCount = count;
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, term));
+        Assert.Empty(await context.Terms.AsNoTracking().ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(TermIntervalCount.Max + 1)]
+    public async Task Update_CalledDirectlyWithACountOutsideItsBound_ThrowsAndLeavesTheRowUntouched(int count)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
+        var service = new TermService(context);
+
+        var original = Fee("Account maintenance", 45m, new DateTime(2026, 1, 1));
+        original.Interval = Interval.Monthly;
+        original.IntervalCount = 3;
+        var created = await service.Create(accountId, original);
+
+        var edit = Fee("Account maintenance", 45m, new DateTime(2026, 1, 1));
+        edit.Interval = Interval.Monthly;
+        edit.IntervalCount = count;
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(accountId, created.TermId, edit));
+
+        var stored = await context.Terms.AsNoTracking().SingleAsync();
+        Assert.Equal(3, stored.IntervalCount);
+    }
+
+    [Fact]
+    public void TheIntervalCountBound_IsTheOnePairTheRangeAttributeNames()
+    {
+        // Asserted by reflecting the attribute rather than by inspection, so the [Range] on the DTO
+        // and the service check in ApplyAndValidate cannot drift into two different bounds.
+        var range = typeof(NewTerm)
+            .GetProperty(nameof(NewTerm.IntervalCount))!
+            .GetCustomAttributes(typeof(RangeAttribute), inherit: false)
+            .Cast<RangeAttribute>()
+            .Single();
+
+        Assert.Equal(TermIntervalCount.Min, range.Minimum);
+        Assert.Equal(TermIntervalCount.Max, range.Maximum);
+        Assert.Equal(1, TermIntervalCount.Min);
+        Assert.Equal(1000, TermIntervalCount.Max);
+    }
+
+    [Fact]
+    public async Task Create_NonPeriodicInterval_StoresANullCountRatherThanAMeaningless1()
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
+        var service = new TermService(context);
+
+        var term = Fee("Card replacement", 15m, new DateTime(2026, 1, 1));
+        term.Interval = Interval.OneTime;
+        await service.Create(accountId, term);
+
+        var stored = await context.Terms.AsNoTracking().SingleAsync();
+        Assert.Null(stored.IntervalCount);
     }
 }

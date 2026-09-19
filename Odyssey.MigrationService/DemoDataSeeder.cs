@@ -397,7 +397,7 @@ public sealed class DemoDataSeeder(
         await context.ExchangeRates.AddRangeAsync(data.ExchangeRates, cancellationToken);
         await context.Accounts.AddRangeAsync(data.Accounts, cancellationToken);
         await context.AccountEstimates.AddRangeAsync(data.AccountEstimates, cancellationToken);
-        await context.AccountTerms.AddRangeAsync(data.AccountTerms, cancellationToken);
+        await context.Terms.AddRangeAsync(data.Terms, cancellationToken);
         await context.Budgets.AddRangeAsync(data.Budgets, cancellationToken);
         await context.BudgetItems.AddRangeAsync(data.BudgetItems, cancellationToken);
         await context.Transactions.AddRangeAsync(data.Transactions, cancellationToken);

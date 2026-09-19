@@ -128,25 +128,25 @@ public class AccountTermLabelMigrationTests(MariaDbFixture fixture)
             {
                 await MigrationSeam.MigrateToAsync(context, Collapse);
 
-                var terms = await context.AccountTerms.AsNoTracking()
-                    .Where(t => t.AccountId == accountId)
-                    .ToListAsync();
+                var kinds = await KindsByIdAsync(context, accountId);
+                var labels = await LabelsByIdAsync(context, accountId);
+                var labelKeys = await LabelKeysByIdAsync(context, accountId);
 
                 // Every fee ends at Fee (10) — nothing is left on a retired ordinal.
-                Assert.All(terms, term => Assert.Equal(TermKind.Fee, term.TermKind));
+                Assert.All(kinds.Values, kind => Assert.Equal((int)TermKind.Fee, kind));
 
-                Assert.Equal("Management fee", terms.Single(t => t.AccountTermId == management).Label);
-                Assert.Equal("Service fee", terms.Single(t => t.AccountTermId == service).Label);
-                Assert.Equal("Transaction fee", terms.Single(t => t.AccountTermId == transaction).Label);
-                Assert.Equal("Other fee", terms.Single(t => t.AccountTermId == other).Label);
-                Assert.Equal("ATM · abroad", terms.Single(t => t.AccountTermId == named).Label);
+                Assert.Equal("Management fee", labels[management]);
+                Assert.Equal("Service fee", labels[service]);
+                Assert.Equal("Transaction fee", labels[transaction]);
+                Assert.Equal("Other fee", labels[other]);
+                Assert.Equal("ATM · abroad", labels[named]);
 
                 // The folded key is written alongside, since that is what carries the series.
-                Assert.Equal("management fee", terms.Single(t => t.AccountTermId == management).LabelKey);
-                Assert.Equal("atm · abroad", terms.Single(t => t.AccountTermId == named).LabelKey);
+                Assert.Equal("management fee", labelKeys[management]);
+                Assert.Equal("atm · abroad", labelKeys[named]);
 
                 // The backfilled names are distinct, so no two remapped rows collapse into one series.
-                Assert.Equal(terms.Count, terms.Select(t => t.LabelKey).Distinct().Count());
+                Assert.Equal(labelKeys.Count, labelKeys.Values.Distinct().Count());
             }
         }
         finally
@@ -304,24 +304,46 @@ public class AccountTermLabelMigrationTests(MariaDbFixture fixture)
 
     /// <summary>The stored <c>TermKind</c> ordinal per term id, read as the raw int the column holds
     /// (the entity enum no longer names the retired values).</summary>
-    private static async Task<Dictionary<Guid, int>> KindsByIdAsync(OdysseyContext context, Guid accountId)
+    /// <remarks>
+    /// Raw SQL against <c>AccountTerms</c>, not the <c>Terms</c> <c>DbSet</c>, and not by oversight:
+    /// this class stops at migrations that predate the table rename (issue #120), so at every point
+    /// it reads, the table is still called <c>AccountTerms</c> and the id column
+    /// <c>AccountTermId</c>. A typed read would query a <c>Terms</c> table that does not exist yet.
+    /// </remarks>
+    private static Task<Dictionary<Guid, int>> KindsByIdAsync(OdysseyContext context, Guid accountId) =>
+        ReadByIdAsync<int>(context, accountId, "`TermKind`");
+
+    private static Task<Dictionary<Guid, string?>> LabelsByIdAsync(OdysseyContext context, Guid accountId) =>
+        ReadByIdAsync<string?>(context, accountId, "`Label`");
+
+    private static Task<Dictionary<Guid, string?>> LabelKeysByIdAsync(OdysseyContext context, Guid accountId) =>
+        ReadByIdAsync<string?>(context, accountId, "`LabelKey`");
+
+    private static async Task<Dictionary<Guid, TValue>> ReadByIdAsync<TValue>(
+        OdysseyContext context, Guid accountId, string column)
     {
-        var terms = await context.AccountTerms.AsNoTracking()
-            .Where(t => t.AccountId == accountId)
-            .Select(t => new { t.AccountTermId, Kind = (int)t.TermKind })
-            .ToListAsync();
+        var rows = new Dictionary<Guid, TValue>();
 
-        return terms.ToDictionary(t => t.AccountTermId, t => t.Kind);
-    }
+        await context.Database.OpenConnectionAsync();
+        try
+        {
+            await using var command = context.Database.GetDbConnection().CreateCommand();
+            command.CommandText =
+                $"SELECT `AccountTermId`, {column} FROM `AccountTerms` WHERE `AccountId` = '{accountId}'";
 
-    private static async Task<Dictionary<Guid, string?>> LabelsByIdAsync(OdysseyContext context, Guid accountId)
-    {
-        var terms = await context.AccountTerms.AsNoTracking()
-            .Where(t => t.AccountId == accountId)
-            .Select(t => new { t.AccountTermId, t.Label })
-            .ToListAsync();
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var id = reader.GetGuid(0);
+                rows[id] = reader.IsDBNull(1) ? default! : (TValue)reader.GetValue(1);
+            }
+        }
+        finally
+        {
+            await context.Database.CloseConnectionAsync();
+        }
 
-        return terms.ToDictionary(t => t.AccountTermId, t => t.Label);
+        return rows;
     }
 
     private static async Task InsertTermAsync(

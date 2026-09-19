@@ -11,73 +11,73 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/accounts")]
-public class AccountTermsController : ControllerBase
+public class TermsController : ControllerBase
 {
-    private readonly AccountTermService accountTermService;
+    private readonly TermService termService;
 
-    public AccountTermsController(AccountTermService accountTermService)
+    public TermsController(TermService termService)
     {
-        this.accountTermService = accountTermService;
+        this.termService = termService;
     }
 
-    [HttpGet("{accountId}/terms", Name = "GetAccountTerms")]
+    [HttpGet("{accountId}/terms", Name = "GetTerms")]
     [Authorize(Policy = PermissionClaims.AccountsTermsRead)]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingAccountTerm>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingTerm>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Get the term (rate/fee) history for an account.",
         Description = @"Lists the full term history for the account, newest effective date first.
                         Optionally filtered by term kind and/or an as-of date.")]
-    public async Task<IActionResult> GetAccountTerms(
+    public async Task<IActionResult> GetTerms(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromQuery(Name = "kind")] TermKind? kind = null,
         [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
-        var terms = await accountTermService.GetHistory(accountId, kind, asOf, cancellationToken);
+        var terms = await termService.GetHistory(accountId, kind, asOf, cancellationToken);
         if (terms is null)
             return this.NotFoundProblem($"Account ID {accountId} not found.");
 
         return Ok(terms);
     }
 
-    [HttpGet("{accountId}/terms/current", Name = "GetCurrentAccountTerms")]
+    [HttpGet("{accountId}/terms/current", Name = "GetCurrentTerms")]
     [Authorize(Policy = PermissionClaims.AccountsTermsRead)]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<CurrentAccountTerm>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<CurrentTerm>))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Get the currently-effective term for each kind on an account.",
         Description = @"Returns the in-force value of each term kind that has at least one entry, as of
                         now or the supplied as-of date.")]
-    public async Task<IActionResult> GetCurrentAccountTerms(
+    public async Task<IActionResult> GetCurrentTerms(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
-        var terms = await accountTermService.GetCurrent(accountId, asOf, cancellationToken);
+        var terms = await termService.GetCurrent(accountId, asOf, cancellationToken);
         if (terms is null)
             return this.NotFoundProblem($"Account ID {accountId} not found.");
 
         return Ok(terms);
     }
 
-    [HttpPost("{accountId}/terms", Name = "PostAccountTerm")]
+    [HttpPost("{accountId}/terms", Name = "PostTerm")]
     [Authorize(Policy = PermissionClaims.AccountsTermsWrite)]
-    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingAccountTerm))]
+    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingTerm))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Create a new term (rate/fee) entry on an account.")]
-    public async Task<IActionResult> PostAccountTerm(
+    public async Task<IActionResult> PostTerm(
         [FromRoute(Name = "accountId")] Guid accountId,
-        [FromBody] NewAccountTerm newTerm, CancellationToken cancellationToken = default)
+        [FromBody] NewTerm newTerm, CancellationToken cancellationToken = default)
     {
-        var term = await accountTermService.Create(accountId, newTerm, cancellationToken);
-        return CreatedAtRoute("GetAccountTerms", new { accountId }, term);
+        var term = await termService.Create(accountId, newTerm, cancellationToken);
+        return CreatedAtRoute("GetTerms", new { accountId }, term);
     }
 
-    [HttpPut("{accountId}/terms/{termId}", Name = "PutAccountTerm")]
+    [HttpPut("{accountId}/terms/{termId}", Name = "PutTerm")]
     [Authorize(Policy = PermissionClaims.AccountsTermsWrite)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
@@ -85,29 +85,29 @@ public class AccountTermsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Update a term entry on an account.")]
-    public async Task<IActionResult> PutAccountTerm(
+    public async Task<IActionResult> PutTerm(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "termId")] Guid termId,
-        [FromBody] NewAccountTerm putTerm, CancellationToken cancellationToken = default)
+        [FromBody] NewTerm putTerm, CancellationToken cancellationToken = default)
     {
-        var updated = await accountTermService.Update(accountId, termId, putTerm, cancellationToken);
+        var updated = await termService.Update(accountId, termId, putTerm, cancellationToken);
         if (!updated)
             return this.NotFoundProblem($"Term ID {termId} is not attached to account ID {accountId}.");
 
         return NoContent();
     }
 
-    [HttpDelete("{accountId}/terms/{termId}", Name = "DeleteAccountTerm")]
+    [HttpDelete("{accountId}/terms/{termId}", Name = "DeleteTerm")]
     [Authorize(Policy = PermissionClaims.AccountsTermsWrite)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Delete a term entry from an account.")]
-    public async Task<IActionResult> DeleteAccountTerm(
+    public async Task<IActionResult> DeleteTerm(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "termId")] Guid termId, CancellationToken cancellationToken = default)
     {
-        var deleted = await accountTermService.Delete(accountId, termId, cancellationToken);
+        var deleted = await termService.Delete(accountId, termId, cancellationToken);
         if (!deleted)
             return this.NotFoundProblem($"Term ID {termId} is not attached to account ID {accountId}.");
 

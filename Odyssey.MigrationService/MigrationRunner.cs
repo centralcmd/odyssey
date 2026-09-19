@@ -112,13 +112,20 @@ public static class MigrationRunner
     /// which is the only failure this guard is about.
     /// </summary>
     /// <remarks>
-    /// The four kinds here are the ones EF emits as independent DDL statements, so each is a point an
-    /// interruption can land between. Every migration in the repository today bundles its indexes and
-    /// foreign keys into <c>CreateTable</c>, which is why table and column cover the cases seen so far —
-    /// but a later index-only or constraint-only migration would drift exactly the same way, and adding
-    /// it to this switch is the whole change.
+    /// The kinds here are the ones EF emits as independent DDL statements, so each is a point an
+    /// interruption can land between. Most migrations bundle their indexes and foreign keys into
+    /// <c>CreateTable</c>, which is why table and column cover the cases seen longest — but an
+    /// index-only or constraint-only migration drifts exactly the same way, and adding it to this
+    /// switch is the whole change.
+    /// <para>
+    /// A <c>Rename*</c> operation counts as a create for this guard's purpose: it is the object under
+    /// its NEW name that a replay would collide with, and an interrupted rename leaves precisely that
+    /// object present with no history row. There is deliberately no arm for the corresponding drop of
+    /// the old name — replaying a drop cannot collide with something already present, which is the
+    /// only failure this guard is about.
+    /// </para>
     /// </remarks>
-    private static IEnumerable<SchemaObject> CreatedBy(MigrationOperation operation) => operation switch
+    internal static IEnumerable<SchemaObject> CreatedBy(MigrationOperation operation) => operation switch
     {
         CreateTableOperation table =>
             [new SchemaObject(SchemaObjectKind.Table, table.Name, table.Name)],
@@ -128,6 +135,12 @@ public static class MigrationRunner
             [new SchemaObject(SchemaObjectKind.Index, index.Table, index.Name)],
         AddForeignKeyOperation foreignKey =>
             [new SchemaObject(SchemaObjectKind.ForeignKey, foreignKey.Table, foreignKey.Name)],
+        RenameTableOperation table when table.NewName is { } newTableName =>
+            [new SchemaObject(SchemaObjectKind.Table, newTableName, newTableName)],
+        RenameColumnOperation column =>
+            [new SchemaObject(SchemaObjectKind.Column, column.Table, column.NewName)],
+        RenameIndexOperation index when index.Table is { } indexTable =>
+            [new SchemaObject(SchemaObjectKind.Index, indexTable, index.NewName)],
         _ => [],
     };
 

@@ -24,9 +24,9 @@ public class TermRateSignTests
         AccountType = type,
     };
 
-    private static ExistingAccountTerm Rate(string value, TermKind kind = TermKind.InterestRate) => new()
+    private static ExistingTerm Rate(string value, TermKind kind = TermKind.InterestRate) => new()
     {
-        AccountTermId = Guid.NewGuid(),
+        TermId = Guid.NewGuid(),
         AccountId = Guid.NewGuid(),
         TermKind = kind,
         ValueUnit = TermValueUnit.Percentage,

@@ -190,12 +190,12 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<AccountTerm>(entity =>
+        modelBuilder.Entity<Term>(entity =>
         {
             // Cascade-delete a term history along with its parent account: the timeline is
             // meaningless once the account is gone, and terms are only reachable through it.
             entity.HasOne(term => term.Account)
-                .WithMany(account => account.AccountTerms)
+                .WithMany(account => account.Terms)
                 .HasForeignKey(term => term.AccountId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
@@ -1251,7 +1251,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     // ── Finance ───────────────────────────────────────────────────────────────────────────────
     public DbSet<Account> Accounts { get; set; }
-    public DbSet<AccountTerm> AccountTerms { get; set; }
+    public DbSet<Term> Terms { get; set; }
     public DbSet<AccountEstimate> AccountEstimates { get; set; }
     public DbSet<AccountSmartTag> AccountSmartTags { get; set; }
     public DbSet<Transaction> Transactions { get; set; }

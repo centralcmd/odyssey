@@ -1744,7 +1744,18 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-kind-caption.inline { font-size: 11px; }
 .trm-tile-value { font: 400 23px/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; color: var(--mud-palette-text-primary); }
 .trm-tile-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font: 400 11px/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); }
-.trm-bill { font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; padding: 3px 7px; border-radius: 999px; background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary); }
+/* The DS adds `white-space: nowrap` here; this deliberately does NOT carry it across. The pill used
+   to hold a short chip ("Monthly") and now holds a whole cadence phrase ("every 12 months"), and
+   nowrap stops that phrase breaking at all — so at 320px / 200% zoom it overflows its tile rather
+   than wrapping (WCAG 1.4.10 Reflow). The DS prototype renders at a fixed 1100px and never meets
+   that width. The foot already sets `flex-wrap: wrap`, so at ordinary widths the pill drops to its
+   own line and gets the full tile before any intra-phrase break is needed; nowrap bought nothing
+   there and cost the narrow case. */
+.trm-bill { font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; padding: 3px 7px; border-radius: 999px; background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+
+/* ---- Cadence block in the New / Edit term dialog ---- */
+.trm-cadence { display: flex; flex-direction: column; gap: var(--space-2); }
+.trm-cadence-echo { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: -2px; }
 
 /* ---- HISTORY — grouped, as a table ---- */
 .trm-history { display: flex; flex-direction: column; gap: 20px; }

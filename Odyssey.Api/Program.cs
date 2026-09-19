@@ -294,7 +294,7 @@ builder.Services.AddProblemDetails();
 builder.AddOpenApiExplorer();
 
 builder.Services.AddScoped<AccountService>();
-builder.Services.AddScoped<AccountTermService>();
+builder.Services.AddScoped<TermService>();
 builder.Services.AddScoped<AccountEstimateService>();
 builder.Services.AddScoped<AccountSmartTagService>();
 builder.Services.AddScoped<BudgetItemService>();

@@ -8,7 +8,7 @@ namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// Business logic for time-versioned account estimates (user-supplied values for non-transactional
-/// assets such as property or vehicles). Mirrors <see cref="AccountTermService"/>: validates the
+/// assets such as property or vehicles). Mirrors <see cref="TermService"/>: validates the
 /// value and currency, and resolves the currently-effective estimate by implicit supersession (the
 /// latest <c>EffectiveFrom</c> on or before a date). Unlike terms, an estimate is always a single
 /// money amount in the account currency, so there is no kind/unit/billing dimension or eligibility

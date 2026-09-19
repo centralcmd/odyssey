@@ -12,11 +12,11 @@ public partial class AddTermDialog
     [Parameter, EditorRequired] public ExistingAccount Account { get; set; } = default!;
 
     /// <summary>The term being edited, or <c>null</c> to create a new one.</summary>
-    [Parameter] public ExistingAccountTerm? Term { get; set; }
+    [Parameter] public ExistingTerm? Term { get; set; }
 
     /// <summary>The account's existing terms — for the client-side (kind, label, effectiveFrom)
     /// duplicate guard.</summary>
-    [Parameter] public IReadOnlyList<ExistingAccountTerm> Existing { get; set; } = [];
+    [Parameter] public IReadOnlyList<ExistingTerm> Existing { get; set; } = [];
 
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
@@ -38,7 +38,9 @@ public partial class AddTermDialog
     private TermValueUnit _unit;
     private string _valueStr = "";
     private string _currency = "USD";
-    private string _billingPeriod = "";
+    private string _interval = "";
+    private decimal? _intervalCount;
+    private DateTime? _anchorDate;
     private DateTime? _effectiveFrom = DateTime.UtcNow.Date;
     private string? _note = "";
     private bool _isSaving;
@@ -51,17 +53,19 @@ public partial class AddTermDialog
 
     private IReadOnlyList<TermKind> _eligibleKinds = [];
     private List<OdsOption> _currencyOptions = [];
-    private List<OdsOption> _billingOptions = [];
+    private List<OdsOption> _intervalOptions = [];
     private readonly Dictionary<string, string> _errors = new();
 
     protected override void OnInitialized()
     {
         _eligibleKinds = TermKindVisuals.EligibleKinds(Account.AccountType);
 
-        _billingOptions =
+        // Reading order, not ordinal order: the ordinals are deliberately out of sequence
+        // (PerUnit is 6, Weekly is 7, and 4 stays retired), so the registry decides the order.
+        _intervalOptions =
         [
             new OdsOption("", "Not specified"),
-            .. TermKindVisuals.BillingPeriods.Select(b => new OdsOption(b.ToString(), TermKindVisuals.BillingInfo(b)!.Label)),
+            .. TermKindVisuals.AllIntervals.Select(i => new OdsOption(i.ToString(), TermKindVisuals.InfoFor(i)!.Label)),
         ];
 
         if (Term is not null)
@@ -71,7 +75,9 @@ public partial class AddTermDialog
             _unit = Term.ValueUnit;
             _valueStr = Term.ValueUnit == TermValueUnit.Percentage ? FractionToPercentString(Term.Value) : Term.Value.ToString(CultureInfo.InvariantCulture);
             _currency = Term.CurrencyCode ?? Account.CurrencyCode;
-            _billingPeriod = Term.BillingPeriod?.ToString() ?? "";
+            _interval = Term.Interval?.ToString() ?? "";
+            _intervalCount = Term.IntervalCount;
+            _anchorDate = Term.AnchorDate?.Date;
             _effectiveFrom = Term.EffectiveFrom.Date;
             _note = Term.Note ?? "";
         }
@@ -80,7 +86,7 @@ public partial class AddTermDialog
             _kind = _eligibleKinds.Count > 0 ? _eligibleKinds[0] : TermKind.Fee;
             _unit = TermKindVisuals.Info(_kind).DefaultUnit;
             _currency = Account.CurrencyCode;
-            _billingPeriod = DefaultBillingFor(_kind);
+            _interval = DefaultIntervalFor(_kind);
             _effectiveFrom = DateTime.UtcNow.Date;
         }
     }
@@ -110,10 +116,65 @@ public partial class AddTermDialog
     }
 
     // One default for a fee — there is no longer a fee kind to guess from.
-    private static string DefaultBillingFor(TermKind kind) =>
+    private static string DefaultIntervalFor(TermKind kind) =>
         TermKindVisuals.Info(kind).Group == TermGroup.Fee
-            ? TermKindVisuals.DefaultFeeBillingPeriod.ToString()
+            ? TermKindVisuals.DefaultFeeInterval.ToString()
             : "";
+
+    /// <summary>The selected cadence unit, or <c>null</c> when it is left unspecified.</summary>
+    private Interval? SelectedInterval =>
+        Enum.TryParse<Interval>(_interval, out var interval) ? interval : null;
+
+    /// <summary>
+    /// The one condition the cadence fields hang off. A count is offered — and written — only for a
+    /// periodic unit, so for anything else the field is ABSENT rather than disabled: the answer is
+    /// not merely unknown there, it has no meaning, and the request carries null.
+    /// </summary>
+    private bool IsPeriodicInterval => TermKindVisuals.IsPeriodic(SelectedInterval);
+
+    /// <summary>The plural unit noun the count reads in ("every 3 <b>months</b>").</summary>
+    private string IntervalUnitNoun => TermKindVisuals.InfoFor(SelectedInterval)?.Many ?? "";
+
+    /// <summary>The cadence in words, as the request would store it — blank counts as the identity
+    /// cadence, which is exactly what the service writes.</summary>
+    private string? CadenceEcho =>
+        TermKindVisuals.CadenceText(SelectedInterval, EffectiveIntervalCount);
+
+    private string? IntervalCountHelp =>
+        TermKindVisuals.InfoFor(SelectedInterval) is { } info ? $"Leave blank for {info.Adverb}" : null;
+
+    /// <summary>
+    /// The interval picker's own description. The non-periodic units say what they mean here, since
+    /// they have no count field to explain them, and <c>PerUnit</c> adds where the unit itself is
+    /// named — both through the Help slot rather than a loose sibling element, so MudSelect wires
+    /// them into the control's <c>aria-describedby</c>. One-time needs no gloss.
+    /// </summary>
+    private string? IntervalHelp
+    {
+        get
+        {
+            if (IsPeriodicInterval || SelectedInterval is not { } interval || interval == Interval.OneTime)
+                return null;
+
+            var charged = $"Charged {TermKindVisuals.InfoFor(interval)!.Adverb}";
+
+            return interval == Interval.PerUnit
+                ? $"{charged} — name the unit in the fee\u2019s name, e.g. \u201cCustody \u00b7 per share\u201d"
+                : charged;
+        }
+    }
+
+    /// <summary>The id the count field points its <c>aria-describedby</c> at.</summary>
+    private const string CadenceEchoId = "trm-cadence-echo";
+
+    /// <summary>Whether the echo renders — and therefore whether the count field may name it.
+    /// A field describing an element that is not in the DOM is a dangling reference.</summary>
+    private bool ShowsCadenceEcho =>
+        IsPeriodicInterval && !_errors.ContainsKey("intervalCount") && CadenceEcho is not null;
+
+    /// <summary>What a blank count resolves to on a periodic unit: the identity cadence, 1.</summary>
+    private int EffectiveIntervalCount =>
+        _intervalCount is { } count ? (int)count : TermIntervalCount.Min;
 
     // Each kind keeps its registry hue on the card, as it does on every tile and history row.
     private IReadOnlyList<OdsCardSelectOption> KindOptions =>
@@ -136,9 +197,18 @@ public partial class AddTermDialog
         // invisibly into a request the server would reject.
         if (TermLabel.RuleFor(kind) != TermLabelRule.Required)
             _label = "";
-        _billingPeriod = info.Group == TermGroup.Fee
-            ? (string.IsNullOrEmpty(_billingPeriod) ? DefaultBillingFor(kind) : _billingPeriod)
-            : "";
+        // A rate is not billed, so it carries NEITHER half of a billing description, nor an anchor.
+        if (info.Group == TermGroup.Fee)
+        {
+            if (string.IsNullOrEmpty(_interval))
+                _interval = DefaultIntervalFor(kind);
+        }
+        else
+        {
+            _interval = "";
+            _intervalCount = null;
+            _anchorDate = null;
+        }
         _errors.Clear();
     }
 
@@ -162,7 +232,24 @@ public partial class AddTermDialog
     }
 
     private void OnCurrencyChanged(string value) => _currency = value;
-    private void OnBillingChanged(string value) => _billingPeriod = value;
+
+    private void OnIntervalChanged(string value)
+    {
+        _interval = value;
+        // A count that is no longer meaningful is dropped rather than carried invisibly into a
+        // request the server would refuse — the field it belonged to has just gone away.
+        if (!IsPeriodicInterval)
+            _intervalCount = null;
+        _errors.Remove("intervalCount");
+    }
+
+    private void OnIntervalCountChanged(decimal? value)
+    {
+        _intervalCount = value;
+        _errors.Remove("intervalCount");
+    }
+
+    private void OnAnchorDateChanged(DateTime? date) => _anchorDate = date;
     private void OnNoteChanged(string value) => _note = value;
 
     private void OnEffectiveFromChanged(DateTime? date)
@@ -180,15 +267,10 @@ public partial class AddTermDialog
         }
     }
 
-    private string BillingSuffixHint
-    {
-        get
-        {
-            if (string.IsNullOrEmpty(_billingPeriod) || !Enum.TryParse<BillingPeriod>(_billingPeriod, out var b) || b == BillingPeriod.OneTime)
-                return "";
-            return $" · {TermKindVisuals.BillingInfo(b)!.Label}";
-        }
-    }
+    /// <summary>The cadence beside the money field's "Flat amount in USD" helper — the same words
+    /// the echo below the picker uses, since both come from the one helper.</summary>
+    private string CadenceValueHint =>
+        CadenceEcho is { } cadence ? $" · {cadence}" : "";
 
     private decimal? ParseValue() =>
         OdsMoneyText.Parse(_valueStr);
@@ -223,6 +305,18 @@ public partial class AddTermDialog
         if (_effectiveFrom is null)
             _errors["effectiveFrom"] = "Pick the date this takes effect.";
 
+        // The same bound the DTO's [Range] carries and the service re-checks — named from the one
+        // constant pair, so the message cannot quote a number the server would not enforce.
+        if (!IsRate && IsPeriodicInterval && _intervalCount is { } count
+            && (count != Math.Truncate(count) || count < TermIntervalCount.Min || count > TermIntervalCount.Max))
+        {
+            _errors["intervalCount"] =
+                $"Enter a whole number between {TermIntervalCount.Min} and {TermIntervalCount.Max}.";
+        }
+
+        // No ordering is imposed between the anchor and the effective date, in either direction:
+        // billed in arrears and prepaid are both legitimate records, and the server rejects neither.
+
         if ((_note?.Length ?? 0) > 512)
             _errors["note"] = "Keep the note under 512 characters.";
 
@@ -238,7 +332,7 @@ public partial class AddTermDialog
         // "  atm   Abroad " collide here exactly as they would there.
         var labelKey = TermLabel.Key(label);
         if (_effectiveFrom is { } date && Existing.Any(t =>
-                t.AccountTermId != (Term?.AccountTermId ?? Guid.Empty)
+                t.TermId != (Term?.TermId ?? Guid.Empty)
                 && t.TermKind == _kind
                 && TermLabel.Key(t.Label) == labelKey
                 && t.EffectiveFrom.Date == date.Date))
@@ -255,7 +349,7 @@ public partial class AddTermDialog
             ? Math.Round(raw!.Value / 100m, 6)
             : Math.Round(raw!.Value, 2);
 
-        var dto = new NewAccountTerm
+        var dto = new NewTerm
         {
             TermKind = _kind,
             // LabelKey is derived server-side and is on no request DTO — only Label is sent.
@@ -263,9 +357,13 @@ public partial class AddTermDialog
             ValueUnit = _unit,
             Value = value,
             CurrencyCode = IsPercentage ? null : _currency,
-            BillingPeriod = IsRate || string.IsNullOrEmpty(_billingPeriod)
+            Interval = IsRate ? null : SelectedInterval,
+            // The identity cadence when a periodic unit is left blank, and null — never a
+            // meaningless 1 — in every other case, matching what the service persists.
+            IntervalCount = !IsRate && IsPeriodicInterval ? EffectiveIntervalCount : null,
+            AnchorDate = IsRate || _anchorDate is null
                 ? null
-                : Enum.Parse<BillingPeriod>(_billingPeriod),
+                : DateTime.SpecifyKind(_anchorDate.Value.Date, DateTimeKind.Utc),
             EffectiveFrom = DateTime.SpecifyKind(_effectiveFrom!.Value.Date, DateTimeKind.Utc),
             Note = string.IsNullOrWhiteSpace(_note) ? null : _note!.Trim(),
         };
@@ -274,7 +372,7 @@ public partial class AddTermDialog
         try
         {
             var ok = IsEdit
-                ? (await Accounts.UpdateTermAsync(Account.AccountId, Term!.AccountTermId, dto))
+                ? (await Accounts.UpdateTermAsync(Account.AccountId, Term!.TermId, dto))
                     .Toast(Snackbar, "Unable to update term", "Term updated.")
                 : (await Accounts.AddTermAsync(Account.AccountId, dto))
                     .Toast(Snackbar, "Unable to create term", "Term created.");

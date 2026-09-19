@@ -247,7 +247,7 @@ public class DataExportStreamingTests
         // incremented while streaming, so an off-by-one or a reset between tables would be invisible
         // if only the key names were asserted. The fixture seeds three accounts and one of most others.
         Assert.Contains("[Accounts, 3]", message, StringComparison.Ordinal);
-        Assert.Contains("[AccountTerms, 1]", message, StringComparison.Ordinal);
+        Assert.Contains("[Terms, 1]", message, StringComparison.Ordinal);
         Assert.Contains("[Transactions, 1]", message, StringComparison.Ordinal);
         Assert.Contains("[AccountFiles, 1]", message, StringComparison.Ordinal);
         // Nothing seeded for this one — a table that streams zero rows must still report zero.

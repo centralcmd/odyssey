@@ -102,7 +102,7 @@ public sealed class DataExportDatabases
 public sealed class FinanceDatabaseExport
 {
     public IReadOnlyList<AccountExport> Accounts { get; init; } = [];
-    public IReadOnlyList<AccountTermExport> AccountTerms { get; init; } = [];
+    public IReadOnlyList<TermExport> Terms { get; init; } = [];
     public IReadOnlyList<BudgetExport> Budgets { get; init; } = [];
     public IReadOnlyList<BudgetItemExport> BudgetItems { get; init; } = [];
     public IReadOnlyList<ContactExport> Contacts { get; init; } = [];
@@ -154,9 +154,9 @@ public sealed class AccountExport
 /// Time-versioned account terms (interest rate, expected return, or fee price) — issue #172. Scalar
 /// columns and the <see cref="AccountId"/> relationship column only.
 /// </summary>
-public sealed class AccountTermExport
+public sealed class TermExport
 {
-    public Guid AccountTermId { get; init; }
+    public Guid TermId { get; init; }
     public Guid AccountId { get; init; }
     public TermKind TermKind { get; init; }
     public string? Label { get; init; }
@@ -164,7 +164,9 @@ public sealed class AccountTermExport
     public TermValueUnit ValueUnit { get; init; }
     public decimal Value { get; init; }
     public string? CurrencyCode { get; init; }
-    public BillingPeriod? BillingPeriod { get; init; }
+    public Interval? Interval { get; init; }
+    public int? IntervalCount { get; init; }
+    public DateTime? AnchorDate { get; init; }
     public DateTime EffectiveFrom { get; init; }
     public string? Note { get; init; }
     public DateTime CreatedAtUtc { get; init; }
@@ -289,7 +291,7 @@ public sealed class TransactionFileExport
 // ── Issue #33: the tables the export used to omit silently ────────────────────
 
 /// <summary>
-/// Time-versioned account value estimates — the sibling of <see cref="AccountTermExport"/> for
+/// Time-versioned account value estimates — the sibling of <see cref="TermExport"/> for
 /// accounts whose worth is appraised rather than derived from a rate.
 /// </summary>
 public sealed class AccountEstimateExport

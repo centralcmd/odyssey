@@ -2,9 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Dtos.Finance;
 
-public sealed record ExistingAccountTerm
+public sealed record ExistingTerm
 {
-    public required Guid AccountTermId { get; set; }
+    public required Guid TermId { get; set; }
     public required Guid AccountId { get; set; }
     public TermKind TermKind { get; set; }
 
@@ -18,7 +18,14 @@ public sealed record ExistingAccountTerm
     [StringLength(3)]
     public string? CurrencyCode { get; set; }
 
-    public BillingPeriod? BillingPeriod { get; set; }
+    /// <summary>The cadence unit; null for a rate.</summary>
+    public Interval? Interval { get; set; }
+
+    /// <summary>The cadence multiplier — non-null iff <see cref="Interval"/> is periodic.</summary>
+    public int? IntervalCount { get; set; }
+
+    /// <summary>When the term is first actually charged, if that differs from <see cref="EffectiveFrom"/>.</summary>
+    public DateTime? AnchorDate { get; set; }
     public DateTime EffectiveFrom { get; set; }
 
     [StringLength(512)]
