@@ -33,6 +33,24 @@ public partial class ContractDetailView : IAsyncDisposable
     /// <summary>Raised with the line the host's live region should read out.</summary>
     [Parameter] public EventCallback<string> OnAnnounce { get; set; }
 
+    /// <summary>
+    /// Formats a money-valued term in its own currency (issue #135). Supplied by the host because a
+    /// contract has no currency of its own — every term names the one it is priced in, so the
+    /// formatter is per-value rather than per-record.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Func<decimal, string?, string> FormatMoney { get; set; } =
+        (v, _) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private ContractTermsSection? _terms;
+
+    /// <summary>
+    /// Opens the Terms section's create dialog. The sections carry no action slot — every
+    /// section-level action lives in the record's row action menu, which is where a reader looks for
+    /// actions on this record — so the host drives it through here.
+    /// </summary>
+    public void OpenNewTerm() => _terms?.OpenNew();
+
     private IReadOnlyList<ContractFileItem> ContractFiles => [.. Contract.Files.Select(ContractFileItem.From)];
 
     // Focus return across a detach, through the helper the insurance party tiles also call. A

@@ -88,7 +88,7 @@ public partial class ContractsCard
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
-        await Task.WhenAll(LoadContracts(), LoadSummary(), LoadAccounts(), LoadInstitutions());
+        await Task.WhenAll(LoadContracts(), LoadSummary(), LoadAccounts(), LoadInstitutions(), LoadCurrencies());
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -221,6 +221,41 @@ public partial class ContractsCard
         var contacts = await ReferenceData.ContactsAsync();
         _institutionOptions =
             OdsContactOptions.Active(contacts);
+    }
+
+    // ── Money (term values) ──────────────────────────────────────────────────────
+    //
+    // A contract has no currency of its own — every term names the one it is priced in — so the
+    // formatter is resolved PER VALUE rather than once per record. The format itself comes from
+    // DashboardFigures, the one helper that decides a symbol's fallback: a known code with no usable
+    // symbol falls back to the CODE, never to "$", since a wrong sigil misreports the denomination.
+
+    private IReadOnlyDictionary<string, ExistingCurrency> _currenciesByCode =
+        new Dictionary<string, ExistingCurrency>(StringComparer.OrdinalIgnoreCase);
+
+    private readonly Dictionary<string, NumberFormatInfo> _moneyFormatCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task LoadCurrencies()
+    {
+        var currencies = await ReferenceData.CurrenciesAsync();
+        _currenciesByCode = currencies.ToDictionary(c => c.CurrencyCode, c => c, StringComparer.OrdinalIgnoreCase);
+        _moneyFormatCache.Clear();
+    }
+
+    private string FormatMoney(decimal value, string? currencyCode) =>
+        value.ToString("C", MoneyFormat(currencyCode));
+
+    // Cached per code so a list re-render does not clone and configure a fresh format per row.
+    private NumberFormatInfo MoneyFormat(string? currencyCode)
+    {
+        var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
+        if (_moneyFormatCache.TryGetValue(key, out var cached))
+            return cached;
+
+        _currenciesByCode.TryGetValue(key, out var currency);
+        var format = DashboardFigures.MoneyFormat(key.Length == 0 ? null : key, currency);
+        _moneyFormatCache[key] = format;
+        return format;
     }
 
     // ── Header problem rollup (active contracts ending soon) ──────────────────────
@@ -400,6 +435,54 @@ public partial class ContractsCard
 
     private Task AddParty(Guid contractId) => OpenPartyDialog(contractId, party: null);
 
+    /// <summary>
+    /// Opens the Terms section's create dialog on an expanded record. The card is expanded first when
+    /// it is not already: the dialog writes into a section the reader has to be able to see the result
+    /// in, and a create that lands in a collapsed body reads as nothing having happened.
+    /// </summary>
+    /// <remarks>
+    /// On a collapsed card the section does not exist yet — <c>ContractDetailView</c> renders only
+    /// once the detail load has landed — so the open is DEFERRED to the render that brings it into
+    /// existence rather than raced against it with a yield.
+    /// </remarks>
+    private async Task AddTerm(Guid contractId)
+    {
+        if (!IsExpanded(contractId))
+        {
+            await ToggleExpand(contractId);
+        }
+
+        if (IsExpanded(contractId) && _detailView is not null)
+        {
+            _detailView.OpenNewTerm();
+            return;
+        }
+
+        _pendingNewTermFor = contractId;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// The expanded record's detail view. One field rather than a map because one record is expanded
+    /// at a time (<c>_expandedId</c>), and it is what lets a row action drive the Terms section —
+    /// the sections carry no action slot of their own by design.
+    /// </summary>
+    private ContractDetailView? _detailView;
+
+    /// <summary>The record whose Terms dialog should open as soon as its body has rendered.</summary>
+    private Guid? _pendingNewTermFor;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (_pendingNewTermFor is not { } contractId || _detailView is null || !IsExpanded(contractId))
+        {
+            return;
+        }
+
+        _pendingNewTermFor = null;
+        _detailView.OpenNewTerm();
+    }
+
     private Task EditParty(Guid contractId, ExistingContractParty party) => OpenPartyDialog(contractId, party);
 
     private async Task OpenPartyDialog(Guid contractId, ExistingContractParty? party)
@@ -518,6 +601,25 @@ public partial class ContractsCard
                     Icon = "group_add",
                     Label = "New party",
                     OnClick = EventCallback.Factory.Create(this, () => AddParty(c.ContractId)),
+                });
+
+            // The server refuses every term write on an archived contract, so the action is offered
+            // with its reason rather than hidden — the same Disabled + Description treatment New
+            // party gets, which keeps the item FOCUSABLE so a keyboard or AT user reaches the
+            // explanation instead of skipping a silent item (WCAG 2.1.1).
+            items.Add(archived
+                ? new OdsMenuItem
+                {
+                    Icon = "sell",
+                    Label = "New term",
+                    Disabled = true,
+                    Description = "Restore the contract to change its terms.",
+                }
+                : new OdsMenuItem
+                {
+                    Icon = "sell",
+                    Label = "New term",
+                    OnClick = EventCallback.Factory.Create(this, () => AddTerm(c.ContractId)),
                 });
         }
 

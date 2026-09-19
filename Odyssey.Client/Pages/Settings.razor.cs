@@ -676,6 +676,14 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.ContractMaxFilesPerContract),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxFilesPerContract", dto.ContractMaxFilesPerContract),
                 Write: (p, req) => req.ContractMaxFilesPerContract = p.IntRequest("contractMaxFilesPerContract")),
+            new("contractMaxTermsPerContract", "sell", "Max terms per contract",
+                "Upper limit on term (rate/fee) entries recorded against one contract. Higher than the "
+                + "parties and files caps because a term series grows by supersession over the life of "
+                + "the agreement — each price change is a new entry, not an edit.",
+                SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxTermsPerContractMin, Max: SystemSettingsBounds.ContractMaxTermsPerContractMax,
+                Field: nameof(SystemSettingsUpdate.ContractMaxTermsPerContract),
+                Load: (p, dto) => p.SetIntLoaded("contractMaxTermsPerContract", dto.ContractMaxTermsPerContract),
+                Write: (p, req) => req.ContractMaxTermsPerContract = p.IntRequest("contractMaxTermsPerContract")),
             new("contractMaxSummaryContracts", "list_alt", "Max contracts in summary",
                 "Safety ceiling on how many contracts the dashboard summary aggregates over.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxSummaryContractsMin, Max: SystemSettingsBounds.ContractMaxSummaryContractsMax,

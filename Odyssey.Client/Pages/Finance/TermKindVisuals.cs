@@ -152,19 +152,40 @@ public static class TermKindVisuals
     public static IReadOnlyList<TermKind> EligibleKinds(AccountType accountType) =>
         All.Where(k => IsEligible(k, accountType)).ToArray();
 
+    /// <summary>
+    /// The term kinds permitted on a CONTRACT, in registry order — <see cref="TermKind.Fee"/> and
+    /// <see cref="TermKind.InterestRate"/> on every contract type. Mirrors the backend
+    /// (<c>TermService.ContractTermKinds</c>): <see cref="TermKind.ExpectedReturn"/> prices invested
+    /// principal, which a contract does not hold, so it is not offered and would be a 400 if posted.
+    /// There is no per-<c>ContractType</c> matrix — the four values are coarse and none of them is
+    /// financing-specific, so one would be arbitrary rather than informative.
+    /// </summary>
+    public static readonly IReadOnlyList<TermKind> ContractEligibleKinds =
+        All.Where(k => k is TermKind.Fee or TermKind.InterestRate).ToArray();
+
+    /// <summary>Whether a kind may be written on a contract.</summary>
+    public static bool IsEligibleOnContract(TermKind kind) => ContractEligibleKinds.Contains(kind);
+
     public static bool IsLiability(AccountType accountType) =>
         AccountTypeVisuals.Group(accountType) == AccountGroup.Liability;
 
     /// <summary>Interest charged on a liability is a cost, so its rate is expense-colored — but only
     /// its color. The rate itself is never re-signed: a term renders with the sign the user entered,
     /// so a genuinely negative rate stays distinguishable from an ordinary one.</summary>
-    public static bool IsCostRate(ExistingTerm term, ExistingAccount account) =>
-        term.ValueUnit == TermValueUnit.Percentage
+    /// <remarks>
+    /// <paramref name="account"/> is nullable because the same helpers serve a CONTRACT-owned term
+    /// (issue #135), which has no account type and therefore no liability notion: a contract's
+    /// interest rate is never re-worded as a cost. One nullable context rather than a second copy of
+    /// the wording — an unlabelled rate must read identically wherever it is shown.
+    /// </remarks>
+    public static bool IsCostRate(ExistingTerm term, ExistingAccount? account) =>
+        account is not null
+        && term.ValueUnit == TermValueUnit.Percentage
         && term.TermKind == TermKind.InterestRate
         && IsLiability(account.AccountType);
 
     /// <summary>Expense color for a cost-rate, else <c>null</c> (the caller keeps its own color).</summary>
-    public static string? CostColor(ExistingTerm term, ExistingAccount account) =>
+    public static string? CostColor(ExistingTerm term, ExistingAccount? account) =>
         IsCostRate(term, account) ? "var(--finance-expense)" : null;
 
     /// <summary>A term's kind label in the context of its account: a cost-rate reads "Interest
@@ -172,7 +193,7 @@ public static class TermKindVisuals
     /// cue that a liability's interest is money out (WCAG 1.4.1 Use of Color) — the sign used to be
     /// the second cue, so the word carries it now. Pair this with <see cref="CostColor"/> wherever a
     /// value is tinted, the way a balance pairs its color with a signed amount.</summary>
-    public static string LabelFor(ExistingTerm term, ExistingAccount account) =>
+    public static string LabelFor(ExistingTerm term, ExistingAccount? account) =>
         IsCostRate(term, account) ? "Interest charged" : Info(term.TermKind).Label;
 
     /// <summary>What a term is CALLED: its own label where it has one, else its kind wording. The
@@ -180,7 +201,7 @@ public static class TermKindVisuals
     /// rate on a liability still reads "Interest charged" — reaching for <c>Info(kind).Label</c> here
     /// would undo that non-colour cue silently, on a surface that still looks right for every other
     /// term. A rate is refused a label, so a cost rate can only ever take the fallback arm.</summary>
-    public static string DisplayName(ExistingTerm term, ExistingAccount account) =>
+    public static string DisplayName(ExistingTerm term, ExistingAccount? account) =>
         TermLabel.Normalize(term.Label) ?? LabelFor(term, account);
 
     /// <summary>Whether a term carries a label, and so renders its kind wording as a caption beneath

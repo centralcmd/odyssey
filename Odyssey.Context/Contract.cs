@@ -51,4 +51,13 @@ public class Contract
 
     public ICollection<ContractParty> Parties { get; set; } = new List<ContractParty>();
     public ICollection<ContractFile> Files { get; set; } = new List<ContractFile>();
+
+    /// <summary>
+    /// The contract's time-versioned price history (issue #135) — the mirror of <c>Account.Terms</c>.
+    /// Load-bearing in two places, not cosmetic: <c>ContractService.Delete</c> includes it so the
+    /// cascade also happens under the EF InMemory provider the fast test tiers run on, and
+    /// <c>ContractService.ListAsync</c> projects <c>Terms.Count</c> as a correlated subquery in the
+    /// one list query, which is what keeps <c>TermCount</c> free of an extra round trip.
+    /// </summary>
+    public ICollection<Term> Terms { get; set; } = new List<Term>();
 }

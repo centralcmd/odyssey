@@ -7,9 +7,28 @@ using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
 
+/// <summary>
+/// New / Edit dialog for a term, on either of the two owners the Term table serves — an account or a
+/// contract (issue #135).
+/// </summary>
+/// <remarks>
+/// <b>One dialog, two owners</b>, mirroring the server: <c>TermService</c> runs both owners through a
+/// single <c>ApplyAndValidate</c>, with the owner-specific facts supplied as data. A second dialog
+/// would be a second copy of the value bounds, the label rule, the cadence pair and the duplicate
+/// guard — and two copies of a validator diverge, with the copy that has fewer eyes on it being the
+/// one that will. What the owner decides, and all it decides, is: which kinds are eligible, whether
+/// an amount may fall back to an owner currency, and which typed client the write goes to.
+/// </remarks>
 public partial class AddTermDialog
 {
-    [Parameter, EditorRequired] public ExistingAccount Account { get; set; } = default!;
+    /// <summary>
+    /// The owning account. Exactly one of this and <see cref="Contract"/> is supplied — the same
+    /// exactly-one-owner invariant the row itself carries.
+    /// </summary>
+    [Parameter] public ExistingAccount? Account { get; set; }
+
+    /// <summary>The owning contract (issue #135).</summary>
+    [Parameter] public ExistingContract? Contract { get; set; }
 
     /// <summary>The term being edited, or <c>null</c> to create a new one.</summary>
     [Parameter] public ExistingTerm? Term { get; set; }
@@ -28,6 +47,37 @@ public partial class AddTermDialog
     private bool IsRate => TermKindVisuals.Info(_kind).Group == TermGroup.Rate;
     private bool IsPercentage => _unit == TermValueUnit.Percentage;
 
+    /// <summary>Whether this dialog is writing against a contract rather than an account.</summary>
+    private bool IsContractOwner => Contract is not null;
+
+    /// <summary>The owner in prose, for the wording that names it.</summary>
+    private string OwnerNoun => IsContractOwner ? "contract" : "account";
+
+    /// <summary>The owner's display name, for the subtitle.</summary>
+    private string OwnerName => Contract?.Name ?? Account?.Name ?? "";
+
+    /// <summary>
+    /// The currency an amount term falls back to when the field is left blank, or <c>null</c> when
+    /// the owner has none of its own and an explicit answer is therefore required. A contract has no
+    /// currency: the two defaulting alternatives — its first account party's currency, or an
+    /// instance-wide base currency — both silently assign a meaning nobody chose, and the first
+    /// changes retroactively when parties are detached or re-ordered.
+    /// </summary>
+    private string? OwnerCurrency => Account?.CurrencyCode;
+
+    /// <summary>
+    /// Whether the currency is a question rather than a default. True for a contract, and the reason
+    /// the money field opens unset there and refuses to submit without an answer.
+    /// </summary>
+    private bool CurrencyRequired => OwnerCurrency is null;
+
+    /// <summary>
+    /// The archive guard, restated here so a dialog left open while the record is archived elsewhere
+    /// cannot post through it. The surface that opens this dialog already withholds the action; this
+    /// is the second line, not the first.
+    /// </summary>
+    private bool OwnerArchived => Contract?.Archived is not null;
+
     /// <summary>Whether the Name field is rendered: a fee takes a label, a rate is refused one.</summary>
     private bool TakesLabel => TermLabel.RuleFor(_kind) == TermLabelRule.Required;
 
@@ -37,7 +87,7 @@ public partial class AddTermDialog
     private string _label = "";
     private TermValueUnit _unit;
     private string _valueStr = "";
-    private string _currency = "USD";
+    private string _currency = "";
     private string _interval = "";
     private decimal? _intervalCount;
     private DateTime? _anchorDate;
@@ -58,7 +108,9 @@ public partial class AddTermDialog
 
     protected override void OnInitialized()
     {
-        _eligibleKinds = TermKindVisuals.EligibleKinds(Account.AccountType);
+        _eligibleKinds = IsContractOwner
+            ? TermKindVisuals.ContractEligibleKinds
+            : TermKindVisuals.EligibleKinds(Account!.AccountType);
 
         // Reading order, not ordinal order: the ordinals are deliberately out of sequence
         // (PerUnit is 6, Weekly is 7, and 4 stays retired), so the registry decides the order.
@@ -74,7 +126,7 @@ public partial class AddTermDialog
             _label = Term.Label ?? "";
             _unit = Term.ValueUnit;
             _valueStr = Term.ValueUnit == TermValueUnit.Percentage ? FractionToPercentString(Term.Value) : Term.Value.ToString(CultureInfo.InvariantCulture);
-            _currency = Term.CurrencyCode ?? Account.CurrencyCode;
+            _currency = Term.CurrencyCode ?? OwnerCurrency ?? "";
             _interval = Term.Interval?.ToString() ?? "";
             _intervalCount = Term.IntervalCount;
             _anchorDate = Term.AnchorDate?.Date;
@@ -83,9 +135,16 @@ public partial class AddTermDialog
         }
         else
         {
-            _kind = _eligibleKinds.Count > 0 ? _eligibleKinds[0] : TermKind.Fee;
+            // A contract opens on Fee — the overwhelmingly common case, and the one whose extra
+            // required field (the name) is worth showing first. An account keeps its registry-order
+            // default, where the eligible set is what narrows the choice.
+            _kind = IsContractOwner
+                ? TermKind.Fee
+                : _eligibleKinds.Count > 0 ? _eligibleKinds[0] : TermKind.Fee;
             _unit = TermKindVisuals.Info(_kind).DefaultUnit;
-            _currency = Account.CurrencyCode;
+            // Empty on a contract: an unset currency is the honest starting state when nothing can
+            // supply one, and it is what makes the answer required rather than silently assigned.
+            _currency = OwnerCurrency ?? "";
             _interval = DefaultIntervalFor(_kind);
             _effectiveFrom = DateTime.UtcNow.Date;
         }
@@ -108,8 +167,10 @@ public partial class AddTermDialog
                 .ToList();
         }
 
-        // Guarantee the account's own currency is selectable even if the list failed to load.
-        if (!_currencyOptions.Any(o => o.Value == _currency))
+        // Guarantee the owner's own currency stays selectable even if the list failed to load. An
+        // unset currency (a contract's starting state) adds no such entry — there is nothing to
+        // preserve, and an empty option would read as a currency.
+        if (!string.IsNullOrEmpty(_currency) && !_currencyOptions.Any(o => o.Value == _currency))
             _currencyOptions.Insert(0, new OdsOption(_currency, _currency));
 
         StateHasChanged();
@@ -223,6 +284,7 @@ public partial class AddTermDialog
         if (Enum.TryParse<TermValueUnit>(value, out var unit))
             _unit = unit;
         _errors.Remove("value");
+        ClearCurrencyErrorOnUnitSwitch();
     }
 
     private void OnValueChanged(string value)
@@ -231,7 +293,17 @@ public partial class AddTermDialog
         _errors.Remove("value");
     }
 
-    private void OnCurrencyChanged(string value) => _currency = value;
+    /// <summary>
+    /// A unit switch drops a currency complaint: a percentage carries no currency, so the refusal
+    /// that was true a moment ago is no longer about anything on the form.
+    /// </summary>
+    private void ClearCurrencyErrorOnUnitSwitch() => _errors.Remove("currency");
+
+    private void OnCurrencyChanged(string value)
+    {
+        _currency = value;
+        _errors.Remove("currency");
+    }
 
     private void OnIntervalChanged(string value)
     {
@@ -267,6 +339,29 @@ public partial class AddTermDialog
         }
     }
 
+    /// <summary>
+    /// What the money field's currency slot reads before an answer is given. "Pick" where the answer
+    /// is required and nothing can supply it; otherwise the component's own em-dash placeholder,
+    /// which a populated owner currency immediately replaces anyway.
+    /// </summary>
+    private string CurrencyPlaceholder => CurrencyRequired ? "Pick" : "\u2014";
+
+    /// <summary>
+    /// The money field renders ONE error line for the amount and its currency, because they are one
+    /// control. Both are joined rather than one winning, so a submit that is wrong in both ways does
+    /// not fix half and then re-fail.
+    /// </summary>
+    private string? MoneyError
+    {
+        get
+        {
+            _errors.TryGetValue("value", out var value);
+            _errors.TryGetValue("currency", out var currency);
+            var joined = string.Join(" ", new[] { value, currency }.Where(m => !string.IsNullOrEmpty(m)));
+            return string.IsNullOrEmpty(joined) ? null : joined;
+        }
+    }
+
     /// <summary>The cadence beside the money field's "Flat amount in USD" helper — the same words
     /// the echo below the picker uses, since both come from the one helper.</summary>
     private string CadenceValueHint =>
@@ -284,8 +379,27 @@ public partial class AddTermDialog
 
         _errors.Clear();
 
-        if (!TermKindVisuals.IsEligible(_kind, Account.AccountType))
-            _errors["kind"] = "Not available for this account type.";
+        var eligible = IsContractOwner
+            ? TermKindVisuals.IsEligibleOnContract(_kind)
+            : TermKindVisuals.IsEligible(_kind, Account!.AccountType);
+        if (!eligible)
+        {
+            _errors["kind"] = IsContractOwner
+                ? "Not available on a contract."
+                : "Not available for this account type.";
+        }
+
+        // Restated from the opening surface so a dialog left open while the contract is archived
+        // elsewhere cannot post through it.
+        if (OwnerArchived)
+            _errors["kind"] = "This contract is archived — restore it before changing its terms.";
+
+        // The contract rule: an amount needs a currency, and nothing supplies one.
+        if (!IsPercentage && CurrencyRequired && string.IsNullOrWhiteSpace(_currency))
+        {
+            _errors["currency"] =
+                $"Pick the currency this amount is in — a {OwnerNoun} has no currency of its own.";
+        }
 
         var raw = ParseValue();
         if (raw is null)
@@ -323,7 +437,11 @@ public partial class AddTermDialog
         // Label — refused on a rate kind (the field isn't rendered), required on every fee.
         var label = TakesLabel ? TermLabel.Normalize(_label) : null;
         if (TakesLabel && label is null)
-            _errors["label"] = "Name this fee so it keeps its own history.";
+        {
+            _errors["label"] = IsContractOwner
+                ? "Name this charge so it keeps its own history."
+                : "Name this fee so it keeps its own history.";
+        }
         else if (label is { Length: > TermLabel.MaxLength })
             _errors["label"] = $"Keep the name under {TermLabel.MaxLength} characters.";
 
@@ -340,6 +458,9 @@ public partial class AddTermDialog
             _errors["effectiveFrom"] = label is null
                 ? "This kind already has an entry on that date."
                 : $"“{label}” already has an entry on that date.";
+            // An account term with the same kind, label and date is a DIFFERENT series and never
+            // collides with a contract's — which is why the guard runs over `Existing`, the owner's
+            // own rows, rather than over every term the client has seen.
         }
 
         if (_errors.Count > 0)
@@ -371,11 +492,20 @@ public partial class AddTermDialog
         _isSaving = true;
         try
         {
+            // The owner is named by the ROUTE and by nothing else: NewTerm carries no owner id, so a
+            // contracts.update holder cannot write a term onto an account through this dialog, and
+            // re-parenting a term is a delete plus a create.
+            var result = (IsContractOwner, IsEdit) switch
+            {
+                (true, true) => await Contracts.UpdateTermAsync(Contract!.ContractId, Term!.TermId, dto),
+                (true, false) => await Contracts.AddTermAsync(Contract!.ContractId, dto),
+                (false, true) => await Accounts.UpdateTermAsync(Account!.AccountId, Term!.TermId, dto),
+                (false, false) => await Accounts.AddTermAsync(Account!.AccountId, dto),
+            };
+
             var ok = IsEdit
-                ? (await Accounts.UpdateTermAsync(Account.AccountId, Term!.TermId, dto))
-                    .Toast(Snackbar, "Unable to update term", "Term updated.")
-                : (await Accounts.AddTermAsync(Account.AccountId, dto))
-                    .Toast(Snackbar, "Unable to create term", "Term created.");
+                ? result.Toast(Snackbar, "Unable to update term", "Term updated.")
+                : result.Toast(Snackbar, "Unable to create term", "Term created.");
 
             if (!ok)
                 return;

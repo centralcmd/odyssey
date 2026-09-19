@@ -91,14 +91,29 @@ public class TermRenameMigrationTests(MariaDbFixture fixture)
                 Assert.True(await TableExistsAsync(context, "Terms"));
                 Assert.False(await TableExistsAsync(context, "AccountTerms"));
 
-                var terms = await context.Terms.AsNoTracking().ToListAsync();
+                // Projected to the columns that existed AT THIS MIGRATION, not materialised as the
+                // entity. The seam pins the SCHEMA to a point in history while the MODEL stays at
+                // head, so a column added by a later migration — ContractId, since issue #135 —
+                // would be selected by an entity read and not exist in the table. Anything the
+                // assertions below do not name is deliberately absent from this projection.
+                var terms = await context.Terms.AsNoTracking()
+                    .Select(t => new
+                    {
+                        t.TermId,
+                        t.AccountId,
+                        t.Label,
+                        t.Interval,
+                        t.IntervalCount,
+                        t.AnchorDate,
+                    })
+                    .ToListAsync();
 
                 // AC 25 — the row count is identical across the rename.
                 Assert.Equal(6, terms.Count);
 
                 // AC 26 — the primary key travelled with its values, not as a fresh empty column.
                 Assert.Equal(
-                    new[] { accountId }, terms.Select(t => t.AccountId).Distinct().ToArray());
+                    new Guid?[] { accountId }, terms.Select(t => t.AccountId).Distinct().ToArray());
                 Assert.All(terms, term => Assert.NotEqual(Guid.Empty, term.TermId));
                 Assert.Equal("Daily charge", terms.Single(t => t.TermId == daily).Label);
 
@@ -163,6 +178,14 @@ public class TermRenameMigrationTests(MariaDbFixture fixture)
             await using (var context = NewContext())
             {
                 await MigrationSeam.MigrateToAsync(context, Rename);
+
+                // …then on to head. This test exercises the real service, which reads through the
+                // model at head and therefore selects every column the model has — including ones
+                // added after the rename (ContractId, issue #135). Stopping at the rename would make
+                // it fail on a missing column rather than on the backfill it is asserting. Completing
+                // the run is also the truthful shape: a deployed application is always at head, and
+                // the backfill written by the rename is what it reads.
+                await context.Database.MigrateAsync();
 
                 var service = new Odyssey.Core.Finance.TermService(context);
                 var history = await service.GetHistory(accountId);
@@ -326,7 +349,10 @@ public class TermRenameMigrationTests(MariaDbFixture fixture)
                 // Down does NOT restore Quarterly — inventing a back-conversion would fabricate data
                 // on rows a user may have authored as Monthly x 3 deliberately. The row therefore
                 // stays Monthly, and the second Up gives it the identity count rather than 3.
-                var term = await context.Terms.AsNoTracking().SingleAsync();
+                // Projected for the same reason as above: the schema is historical, the model is head.
+                var term = await context.Terms.AsNoTracking()
+                    .Select(t => new { t.Interval, t.IntervalCount })
+                    .SingleAsync();
                 Assert.Equal(Interval.Monthly, term.Interval);
                 Assert.Equal(1, term.IntervalCount);
             }

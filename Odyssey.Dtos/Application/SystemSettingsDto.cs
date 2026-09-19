@@ -138,6 +138,12 @@ public sealed record SystemSettingsDto
 
     public int ContractMaxFilesPerContract { get; set; }
 
+    /// <summary>
+    /// Term (rate/fee) rows allowed on one contract (issue #135). Higher than the parties and files
+    /// caps because a term series grows by supersession over the contract's lifetime.
+    /// </summary>
+    public int ContractMaxTermsPerContract { get; set; }
+
     public int ContractMaxSummaryContracts { get; set; }
 
     public int InsuranceMaxRenewalsPerPolicy { get; set; }

@@ -33,5 +33,12 @@ public sealed record ContractListItem
 
     public int FileCount { get; set; }
 
+    /// <summary>
+    /// The number of term (rate/fee) ROWS on the contract — never the number of in-force series
+    /// (issue #135 §5). Counting rows is the same rule the insurance link counts follow: a display
+    /// count resolved down to in-force values would make a busy price history look empty.
+    /// </summary>
+    public int TermCount { get; set; }
+
     public DateTime? Archived { get; set; }
 }

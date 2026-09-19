@@ -239,9 +239,13 @@ public class AccountService
             .Select(g => new { AccountId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
 
+        // The null filter is a CORRECTNESS requirement, not only what makes this compile now that
+        // Term.AccountId is nullable (issue #135): it is what keeps a contract-owned term out of an
+        // account's count. Projecting through .Value keeps the dictionary keyed on Guid, which is what
+        // the GetValueOrDefault(dto.AccountId) lookup at the consuming end expects.
         var termCounts = await context.Terms
-            .Where(t => accountIds.Contains(t.AccountId))
-            .GroupBy(t => t.AccountId)
+            .Where(t => t.AccountId != null && accountIds.Contains(t.AccountId.Value))
+            .GroupBy(t => t.AccountId!.Value)
             .Select(g => new { AccountId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
 
@@ -427,21 +431,18 @@ public class AccountService
             return [];
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
+        // Same two-part fix as the count above: filter out contract-owned rows, then group through
+        // .Value so the key type stays Guid (issue #135 §3 component 7).
         var terms = await context.Terms
             .AsNoTracking()
-            .Where(t => accountIds.Contains(t.AccountId) && t.EffectiveFrom <= now)
+            .Where(t => t.AccountId != null && accountIds.Contains(t.AccountId.Value) && t.EffectiveFrom <= now)
             .ToListAsync(cancellationToken);
 
         return terms
-            .GroupBy(t => t.AccountId)
+            .GroupBy(t => t.AccountId!.Value)
             .ToDictionary(
                 group => group.Key,
-                group => group
-                    .GroupBy(t => (t.TermKind, t.LabelKey))
-                    .Select(bySeries => bySeries.MostEffective()!)
-                    .OrderBy(t => t.TermKind)
-                    .ThenBy(t => t.LabelKey, StringComparer.Ordinal)
-                    .ToList());
+                group => TermSeries.Current(group));
     }
 
     /// <summary>

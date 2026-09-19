@@ -27,17 +27,20 @@ public class ContractController : ControllerBase
 
     private readonly ILogger<ContractController> logger;
     private readonly ContractService service;
+    private readonly TermService termService;
     private readonly FileService fileService;
     private readonly IUserDisplayNameResolver displayNames;
 
     public ContractController(
         ILogger<ContractController> logger,
         ContractService service,
+        TermService termService,
         FileService fileService,
         IUserDisplayNameResolver displayNames)
     {
         this.logger = logger;
         this.service = service;
+        this.termService = termService;
         this.fileService = fileService;
         this.displayNames = displayNames;
     }
@@ -185,6 +188,114 @@ public class ContractController : ControllerBase
         return await service.DeleteParty(id, partyId, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken)
             ? NoContent()
             : this.NotFoundProblem($"Party ID {partyId} is not part of contract ID {id}.");
+    }
+
+    // ── Terms (rates & fees) ─────────────────────────────────────────────────────
+    //
+    // Gated on the parent contracts.read / contracts.update, NOT on a dedicated claim (issue #135
+    // §7.2). That is this controller's own convention rather than a departure from it: parties and
+    // file attach/download are already gated the same way. The account module's separate
+    // accounts.terms.read/.write is the outlier being compared against. Reusing the parent claims
+    // also means no RolePermissions change and therefore no sign-out/sign-in on deploy.
+    //
+    // Route names are distinct from the five account ones (GetTerms / GetCurrentTerms / PostTerm /
+    // PutTerm / DeleteTerm) by construction — a collision is an ambiguous-route startup failure.
+
+    [HttpGet("{id}/terms", Name = "GetContractTerms")]
+    [Authorize(Policy = PermissionClaims.ContractsRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingTerm>))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Get the term (rate/fee) history for a contract.",
+        Description = @"Lists the full term history for the contract, newest effective date first.
+                        Optionally filtered by term kind and/or an as-of date. An archived contract's
+                        history stays readable.")]
+    public async Task<IActionResult> GetTerms(
+        [FromRoute(Name = "id")] Guid id,
+        [FromQuery(Name = "kind")] TermKind? kind = null,
+        [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
+    {
+        var terms = await termService.GetContractHistory(id, kind, asOf, cancellationToken);
+        return terms is null ? this.NotFoundProblem($"Contract ID {id} not found.") : Ok(terms);
+    }
+
+    [HttpGet("{id}/terms/current", Name = "GetCurrentContractTerms")]
+    [Authorize(Policy = PermissionClaims.ContractsRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<CurrentTerm>))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Get the currently-effective term of each series on a contract.",
+        Description = @"Returns the in-force entry of each (kind, label) series that has at least one
+                        entry, as of now or the supplied as-of date. An empty array is a healthy
+                        response — a contract with no recorded price is not a defect.")]
+    public async Task<IActionResult> GetCurrentTerms(
+        [FromRoute(Name = "id")] Guid id,
+        [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
+    {
+        var terms = await termService.GetContractCurrent(id, asOf, cancellationToken);
+        return terms is null ? this.NotFoundProblem($"Contract ID {id} not found.") : Ok(terms);
+    }
+
+    [HttpPost("{id}/terms", Name = "PostContractTerm")]
+    [Authorize(Policy = PermissionClaims.ContractsUpdate)]
+    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingTerm))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Create a term (rate/fee) entry on a contract.",
+        Description = @"Fee and InterestRate only; ExpectedReturn prices invested principal, which a
+                        contract does not hold. A money-valued term must name its currency — a contract
+                        has none of its own to default from.")]
+    public async Task<IActionResult> PostTerm(
+        [FromRoute(Name = "id")] Guid id,
+        [FromBody] NewTerm newTerm, CancellationToken cancellationToken = default)
+    {
+        var term = await termService.CreateForContract(id, newTerm, cancellationToken);
+        // A term has no standalone GET (it is only ever read through its owner), so the 201 Location
+        // points at the contract's term list — the addressable collection that now contains it.
+        // Mirrors the account term endpoint.
+        return CreatedAtRoute("GetContractTerms", new { id }, term);
+    }
+
+    [HttpPut("{id}/terms/{termId}", Name = "PutContractTerm")]
+    [Authorize(Policy = PermissionClaims.ContractsUpdate)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Replace a term entry on a contract.",
+        Description = @"The owner is not changeable through this endpoint — the route is the only
+                        thing that names it. A term id belonging to an account or to a different
+                        contract is a 404, never a 403 and never a silent success.")]
+    public async Task<IActionResult> PutTerm(
+        [FromRoute(Name = "id")] Guid id,
+        [FromRoute(Name = "termId")] Guid termId,
+        [FromBody] NewTerm putTerm, CancellationToken cancellationToken = default)
+    {
+        var updated = await termService.UpdateForContract(id, termId, putTerm, cancellationToken);
+        return updated
+            ? NoContent()
+            // Deliberately does not reveal which owner DOES hold the id (issue #135 §9).
+            : this.NotFoundProblem($"Term ID {termId} is not attached to contract ID {id}.");
+    }
+
+    [HttpDelete("{id}/terms/{termId}", Name = "DeleteContractTerm")]
+    [Authorize(Policy = PermissionClaims.ContractsUpdate)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Delete a term entry from a contract (the contract itself is untouched).")]
+    public async Task<IActionResult> DeleteTerm(
+        [FromRoute(Name = "id")] Guid id,
+        [FromRoute(Name = "termId")] Guid termId, CancellationToken cancellationToken = default)
+    {
+        return await termService.DeleteForContract(id, termId, cancellationToken)
+            ? NoContent()
+            : this.NotFoundProblem($"Term ID {termId} is not attached to contract ID {id}.");
     }
 
     // ── Files ────────────────────────────────────────────────────────────────────

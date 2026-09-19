@@ -182,6 +182,11 @@ public sealed record SystemSettingsUpdate
         "Files per contract must be between 1 and 100000.")]
     public int? ContractMaxFilesPerContract { get; set; }
 
+    [Range(SystemSettingsBounds.ContractMaxTermsPerContractMin,
+        SystemSettingsBounds.ContractMaxTermsPerContractMax, ErrorMessage =
+        "Terms per contract must be between 1 and 100000.")]
+    public int? ContractMaxTermsPerContract { get; set; }
+
     [Range(SystemSettingsBounds.ContractMaxSummaryContractsMin,
         SystemSettingsBounds.ContractMaxSummaryContractsMax, ErrorMessage =
         "Contracts read for the summary must be between 1 and 100000. Above the cap the roll-up "

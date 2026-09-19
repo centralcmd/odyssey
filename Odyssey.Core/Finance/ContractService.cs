@@ -98,6 +98,9 @@ public class ContractService
                 Contract = c,
                 PartyCount = c.Parties.Count,
                 FileCount = c.Files.Count,
+                // A correlated subquery in the one list query, exactly like the two counts above —
+                // never a second grouped read, so a page of 50 costs the same as a page of 1.
+                TermCount = c.Terms.Count,
                 // Contact id of the first institution party (issue #325); its display name is resolved
                 // after materialisation via the contact lookup (Contact now lives in OdysseyContext).
                 InstitutionContactId = c.Parties
@@ -132,6 +135,7 @@ public class ContractService
                 : null,
             PartyCount = x.PartyCount,
             FileCount = x.FileCount,
+            TermCount = x.TermCount,
             Archived = x.Contract.Archived,
         });
 
@@ -265,13 +269,15 @@ public class ContractService
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        // Hard delete: removes the contract and cascades its party + file link rows. The underlying
-        // accounts/contacts/policies and FileMetadata/blobs are left intact. Children are loaded
-        // so the cascade also applies under the EF InMemory provider (used by tests), which does not
-        // enforce database-level cascade.
+        // Hard delete: removes the contract and cascades its party + file link rows and its term
+        // history (issue #135). The underlying accounts/contacts/policies and FileMetadata/blobs are
+        // left intact. Children are loaded so the cascade also applies under the EF InMemory provider
+        // (used by tests), which does not enforce database-level cascade — without the Terms include
+        // a contract delete would orphan every term row on exactly the tier meant to catch it.
         var contract = await context.Contracts
             .Include(c => c.Parties)
             .Include(c => c.Files)
+            .Include(c => c.Terms)
             .FirstOrDefaultAsync(c => c.ContractId == id, cancellationToken);
         if (contract is null)
         {
@@ -753,6 +759,24 @@ public class ContractService
             .FirstOrDefaultAsync(c => c.ContractId == id, cancellationToken);
     }
 
+    /// <summary>
+    /// The in-force entry of each of the contract's term series (issue #135) — <b>one</b> additional
+    /// indexed read on the detail path, filtered on the contract and the cutoff in SQL and collapsed
+    /// per series in memory by the shared <see cref="TermSeries.Current"/> rule. Deliberately not an
+    /// <c>Include</c> on <see cref="LoadWithDetails"/>: that would materialise the whole history
+    /// (bounded only by the per-contract cap) to return at most one row per series.
+    /// </summary>
+    private async Task<List<AccountCurrentTerm>> LoadCurrentTermsAsync(
+        Guid contractId, DateTime asOf, CancellationToken cancellationToken)
+    {
+        var candidates = await context.Terms
+            .AsNoTracking()
+            .Where(t => t.ContractId == contractId && t.EffectiveFrom <= asOf)
+            .ToListAsync(cancellationToken);
+
+        return TermSeries.Current(candidates).Adapt<List<AccountCurrentTerm>>();
+    }
+
     private async Task<ContractParty?> LoadPartyWithTargets(Guid partyId, CancellationToken cancellationToken = default)
     {
         return await context.ContractParties
@@ -773,6 +797,10 @@ public class ContractService
             ? new Dictionary<Guid, ContactRef>()
             : await contactLookup.ResolveRefsAsync(contactIds, cancellationToken);
 
+        // Resolved against the same "today" the derived status uses, so one request cannot report a
+        // contract as expired while pricing it as in force.
+        var currentTerms = await LoadCurrentTermsAsync(contract.ContractId, today, cancellationToken);
+
         return new ExistingContract
         {
             ContractId = contract.ContractId,
@@ -792,6 +820,7 @@ public class ContractService
                 .OrderBy(f => f.AttachedAtUtc)
                 .Select(ToFileDto)
                 .ToList(),
+            CurrentTerms = currentTerms,
             Archived = contract.Archived,
             CreatedAtUtc = contract.CreatedAtUtc,
         };

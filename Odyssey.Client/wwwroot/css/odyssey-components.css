@@ -2357,6 +2357,24 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .con-empty-line .material-icons { font-size: 20px; opacity: 0.7; flex: none; }
 .con-files { padding: 4px 4px 8px; }
+
+/* ---- Terms sections (contract price history, issue #135) ----
+   The values in force render as the record's own InfoTiles and the history reuses the shared
+   account-terms table (.trm-tbl), so only the contract-specific chrome lives here. A refused write is
+   stated where the writing would happen, in the warning tone a REVERSIBLE state earns — restoring the
+   contract is what allows the write. The icon is decorative: the sentence carries the whole message,
+   so the state never rides on colour or a glyph alone (WCAG 1.4.1). */
+.con-trm-notice {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin: 0 16px 16px; padding: 12px 14px; border-radius: 10px;
+  font: 400 12.5px/1.5 var(--font-sans);
+  color: var(--mud-palette-text-primary);
+  border: 1px solid var(--mud-palette-divider);
+  background: var(--mud-palette-background);
+}
+.con-trm-notice .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
+.con-trm-notice.archived { border-color: oklch(0.80 0.13 85 / 0.45); background: oklch(0.80 0.13 85 / 0.08); }
+.con-trm-notice.archived .material-icons { color: oklch(0.80 0.13 85); }
 /* Section tables read as cards, like the charts and tables on the other record pages. */
 .odc-record-body .con-tbl-frame {
   background: var(--mud-palette-surface);

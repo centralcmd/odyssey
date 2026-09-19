@@ -579,6 +579,10 @@ public class TermSeriesSurfaceTests
         // either breaks the providers the modal renders through.
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
+        // AddTermDialog serves BOTH owners of the Term table since issue #135, so it injects the
+        // contracts client too. These tests drive the account owner; the default mock is never
+        // reached, and a test that did reach it would fail loudly rather than silently pass.
+        ctx.Services.AddSingleton(Mock.Of<IContractsApiClient>());
         return ctx;
     }
 

@@ -49,7 +49,7 @@ public class InsuranceServiceTests
         /// literals are inline rather than referencing SystemSettingsKeys because this project has no
         /// dependency on Odyssey.Context — the reason the interface lives in Odyssey.Core.Finance.
         /// </summary>
-        public FinanceRequestCaps Caps { get; set; } = new(25, 50, 1000, 100, 50, 50);
+        public FinanceRequestCaps Caps { get; set; } = new(25, 50, 500, 1000, 100, 50, 50);
 
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(Caps);
@@ -138,7 +138,7 @@ public class InsuranceServiceTests
         var service = CreateService(context, new FixedSystemSettingsLookup
         {
             Caps = new FinanceRequestCaps(
-                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
+                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxTermsPerContract: 500, MaxSummaryContracts: 1000,
                 MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 50, MaxLinksPerPolicy: 1),
         });
         var first = await SeedInsurer();
@@ -258,7 +258,7 @@ public class InsuranceServiceTests
         var service = CreateService(context, new FixedSystemSettingsLookup
         {
             Caps = new FinanceRequestCaps(
-                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
+                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxTermsPerContract: 500, MaxSummaryContracts: 1000,
                 MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 50, MaxLinksPerPolicy: 2),
         });
         var archived = await SeedInsurer();
@@ -584,7 +584,7 @@ public class InsuranceServiceTests
         var service = CreateService(context, new FixedSystemSettingsLookup
         {
             Caps = new FinanceRequestCaps(
-                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
+                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxTermsPerContract: 500, MaxSummaryContracts: 1000,
                 MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 50, MaxLinksPerPolicy: 1),
         });
         var first = await SeedInsurer();
@@ -1126,7 +1126,7 @@ public class InsuranceServiceTests
         var service = CreateService(context, new FixedSystemSettingsLookup
         {
             Caps = new FinanceRequestCaps(
-                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
+                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxTermsPerContract: 500, MaxSummaryContracts: 1000,
                 MaxRenewalsPerPolicy: 2, MaxFilesPerParent: 50, MaxLinksPerPolicy: 50),
         });
         var insurerId = await SeedInsurer();
@@ -1259,7 +1259,7 @@ public class InsuranceServiceTests
         var service = CreateService(context, new FixedSystemSettingsLookup
         {
             Caps = new FinanceRequestCaps(
-                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxSummaryContracts: 1000,
+                MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxTermsPerContract: 500, MaxSummaryContracts: 1000,
                 MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 1, MaxLinksPerPolicy: 50),
         });
         var insurerId = await SeedInsurer();

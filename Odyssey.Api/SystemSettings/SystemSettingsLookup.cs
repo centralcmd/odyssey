@@ -95,6 +95,7 @@ public sealed class SystemSettingsLookup(
     [
         SystemSettingsKeys.ContractMaxPartiesPerContract,
         SystemSettingsKeys.ContractMaxFilesPerContract,
+        SystemSettingsKeys.ContractMaxTermsPerContract,
         SystemSettingsKeys.ContractMaxSummaryContracts,
         SystemSettingsKeys.InsuranceMaxRenewalsPerPolicy,
         SystemSettingsKeys.InsuranceMaxFilesPerParent,
@@ -165,6 +166,10 @@ public sealed class SystemSettingsLookup(
                 SystemSettingsDefaults.ContractMaxFilesPerContract,
                 SystemSettingsBounds.ContractMaxFilesPerContractMin,
                 SystemSettingsBounds.ContractMaxFilesPerContractMax),
+            Resolve(values, readFailed, SystemSettingsKeys.ContractMaxTermsPerContract,
+                SystemSettingsDefaults.ContractMaxTermsPerContract,
+                SystemSettingsBounds.ContractMaxTermsPerContractMin,
+                SystemSettingsBounds.ContractMaxTermsPerContractMax),
             Resolve(values, readFailed, SystemSettingsKeys.ContractMaxSummaryContracts,
                 SystemSettingsDefaults.ContractMaxSummaryContracts,
                 SystemSettingsBounds.ContractMaxSummaryContractsMin,
