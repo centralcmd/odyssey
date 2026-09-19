@@ -37,7 +37,10 @@
                 <td>
                     <div class="trm-row-kind">
                         <span class="trm-kind-ic sm" style="background:@info.Soft;color:@info.Color;">
-                            <span class="material-icons" style="font-size:15px;">@info.Icon</span>
+                            @* Decorative: the kind is written out beside it, so the glyph carries no
+                               meaning of its own and a screen reader announcing its ligature text
+                               would read as noise (WCAG 1.1.1). *@
+                            <span class="material-icons" style="font-size:15px;" aria-hidden="true">@info.Icon</span>
                         </span>
                         <div>
                             @* A term's NAME: its own label where it has one, with the kind wording as a
@@ -72,7 +75,9 @@
                     }
                     else if (isCurrent)
                     {
-                        <span class="trm-inforce"><span class="material-icons">check_circle</span>In force</span>
+                        @* Same rule: "In force" is the status, the tick is decoration. Without this
+                           a screen reader announces the ligature text on every in-force row. *@
+                        <span class="trm-inforce"><span class="material-icons" aria-hidden="true">check_circle</span>In force</span>
                     }
                     else
                     {

@@ -4,8 +4,9 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// <c>ContractsCard</c>'s row action menu, specifically the archived-contract state of <b>New party</b>
-/// (#122 §3 state 14 / AC 7).
+/// <c>ContractsCard</c>'s row action menu: the archived-contract state of <b>New party</b>
+/// (#122 §3 state 14 / AC 7) and of <b>New term</b> (#135), plus how the latter's request reaches the
+/// section that serves it.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -29,6 +30,7 @@ namespace Odyssey.Client.Tests;
 public class ContractsCardRowActionTests
 {
     private const string ArchivedReason = "Unarchive the contract to change its parties.";
+    private const string ArchivedTermReason = "Restore the contract to change its terms.";
 
     /// <summary>
     /// The source with comments stripped. The file's own doc comments legitimately DISCUSS the reason
@@ -59,6 +61,53 @@ public class ContractsCardRowActionTests
                 RegexOptions.None),
             source);
         Assert.Contains(ArchivedReason, source, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #135 — New term takes the same treatment as its sibling: offered on an archived contract with
+    /// its reason IN TEXT, never hidden and never silently inert. The server refuses every term write
+    /// on an archived contract, so an action that could only fail is explained rather than removed.
+    /// </summary>
+    [Fact]
+    public void New_term_is_disabled_with_its_reason_on_an_archived_contract()
+    {
+        var source = CardSource();
+
+        Assert.Matches(
+            new Regex(@"items\.Add\(\s*archived\s*\?[\s\S]{0,600}?Label\s*=\s*""New term""[\s\S]{0,400}?Disabled\s*=\s*true",
+                RegexOptions.None),
+            source);
+        Assert.Contains(ArchivedTermReason, source, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #135 — the "New term" request is routed BY CONTRACT ID, never through a reference to whichever
+    /// body happens to be mounted.
+    /// </summary>
+    /// <remarks>
+    /// This pins a real defect rather than a style. A <c>ContractDetailView?</c> field is rebound on
+    /// the NEXT render, so immediately after expanding record B it still holds record A's section —
+    /// and when B's detail is already cached, <c>ToggleExpand</c> returns without yielding, so no
+    /// render has happened in between. Opening through that field put the dialog on the wrong contract
+    /// and silently dropped B's click. The token is handed only to the row whose id matches, which
+    /// makes the correct section a matter of construction rather than of render timing. A lint because
+    /// <c>ContractsCard</c> is an <c>@page</c> whose rows arrive through <c>OdsInfiniteList</c>, which
+    /// materialises nothing under bUnit; the receiving half IS covered behaviourally, by
+    /// <c>ContractTermSurfaceTests</c>' token tests.
+    /// </remarks>
+    [Fact]
+    public void The_new_term_request_is_scoped_to_the_contract_that_asked()
+    {
+        var source = CardSource();
+
+        // The request carries the asking contract's id, and the row only receives its own token.
+        Assert.Matches(new Regex(@"\(Guid ContractId, Guid Token\)\?\s+_newTermRequest"), source);
+        Assert.Matches(
+            new Regex(@"NewTermRequestFor\(Guid contractId\)[\s\S]{0,200}?request\.ContractId\s*==\s*contractId"),
+            source);
+
+        // And the card holds no reference to the expanded body for this purpose.
+        Assert.DoesNotContain("ContractDetailView? _detailView", source, StringComparison.Ordinal);
     }
 
     /// <summary>

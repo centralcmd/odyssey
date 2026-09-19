@@ -452,36 +452,29 @@ public partial class ContractsCard
             await ToggleExpand(contractId);
         }
 
-        if (IsExpanded(contractId) && _detailView is not null)
-        {
-            _detailView.OpenNewTerm();
-            return;
-        }
-
-        _pendingNewTermFor = contractId;
+        // A fresh token each time, so clicking "New term" twice on the same record opens the dialog
+        // twice rather than being swallowed as an unchanged parameter.
+        _newTermRequest = (contractId, Guid.NewGuid());
         StateHasChanged();
     }
 
     /// <summary>
-    /// The expanded record's detail view. One field rather than a map because one record is expanded
-    /// at a time (<c>_expandedId</c>), and it is what lets a row action drive the Terms section —
-    /// the sections carry no action slot of their own by design.
+    /// The outstanding "New term" request: which record asked, and a token identifying the ask.
     /// </summary>
-    private ContractDetailView? _detailView;
+    /// <remarks>
+    /// The request travels DOWN as a parameter rather than through an <c>@ref</c> to the expanded
+    /// body. A ref is rebound on the next render, so immediately after expanding record B it still
+    /// points at record A's section — and where B's detail was already cached, <c>ToggleExpand</c>
+    /// returns without yielding at all, so no render has happened in between. Opening through the ref
+    /// there would put the dialog on the wrong contract and silently drop the click. The token is
+    /// handed only to the row whose id matches, so the section that receives it IS that contract's
+    /// section, by construction rather than by timing.
+    /// </remarks>
+    private (Guid ContractId, Guid Token)? _newTermRequest;
 
-    /// <summary>The record whose Terms dialog should open as soon as its body has rendered.</summary>
-    private Guid? _pendingNewTermFor;
-
-    protected override void OnAfterRender(bool firstRender)
-    {
-        if (_pendingNewTermFor is not { } contractId || _detailView is null || !IsExpanded(contractId))
-        {
-            return;
-        }
-
-        _pendingNewTermFor = null;
-        _detailView.OpenNewTerm();
-    }
+    /// <summary>The token for this record, or null when the outstanding request is not its own.</summary>
+    private Guid? NewTermRequestFor(Guid contractId) =>
+        _newTermRequest is { } request && request.ContractId == contractId ? request.Token : null;
 
     private Task EditParty(Guid contractId, ExistingContractParty party) => OpenPartyDialog(contractId, party);
 

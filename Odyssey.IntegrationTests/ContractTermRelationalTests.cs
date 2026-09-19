@@ -4,10 +4,16 @@
 // backstop against exactly such a writer.
 #pragma warning disable EF1002
 
+using System.Data.Common;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using MySqlConnector;
 using Odyssey.Context;
+using Microsoft.Extensions.Logging.Abstractions;
+using Odyssey.Core.Finance;
+using Odyssey.Core.Journal;
+using Odyssey.Dtos.Finance;
 using Xunit;
 using ContextAccountType = Odyssey.Context.AccountType;
 
@@ -189,6 +195,75 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
         Assert.Equal(["ContractId", "TermKind", "LabelKey", "EffectiveFrom"], columns);
     }
 
+    /// <summary>
+    /// AC 16 — <c>termCount</c> costs the list endpoint NOTHING. A page of many contracts issues the
+    /// same number of commands as a page of one, because <c>c.Terms.Count</c> is a correlated
+    /// subquery folded into the one list query rather than a second grouped read.
+    /// </summary>
+    /// <remarks>
+    /// Asserted as a COMMAND COUNT, not inferred from the shape of the result: a per-contract count
+    /// query returns exactly the same numbers, just N times more expensively — the failure is
+    /// invisible in the response. This lives in the relational tier by necessity, not preference: the
+    /// count needs a <see cref="DbCommandInterceptor"/>, which the EF InMemory provider never invokes,
+    /// so a fast-tier version of this test would pass whatever the query did.
+    /// </remarks>
+    [SkippableFact]
+    public async Task The_list_issues_the_same_command_count_for_many_contracts_as_for_one()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigrateAsync();
+
+        const int ContractCount = 25;
+        const int TermsEach = 4;
+
+        await using (var seed = NewContext())
+        {
+            for (var i = 0; i < ContractCount; i++)
+            {
+                var contractId = Guid.NewGuid();
+                await SeedContractAsync(seed, contractId, $"Lease {i:D2}");
+                for (var t = 0; t < TermsEach; t++)
+                {
+                    await InsertTermAsync(seed, Guid.NewGuid(), accountId: null, contractId: contractId);
+                }
+            }
+        }
+
+        int manyCommands;
+        await using (var counted = NewContext(out var counter))
+        {
+            var page = await ListAsync(counted, limit: ContractCount);
+
+            Assert.Equal(ContractCount, page.Items.Count);
+            // The counts are right AND cheap — a per-contract query would satisfy the first alone.
+            Assert.All(page.Items, item => Assert.Equal(TermsEach, item.TermCount));
+            manyCommands = counter.Count;
+        }
+
+        await using (var counted = NewContext(out var counter))
+        {
+            var page = await ListAsync(counted, limit: 1);
+
+            Assert.Single(page.Items);
+            Assert.Equal(TermsEach, page.Items[0].TermCount);
+
+            // The whole criterion in one line: the cost does not move with the number of rows.
+            Assert.Equal(counter.Count, manyCommands);
+        }
+    }
+
+    private static async Task<Odyssey.Dtos.PagedResult<ContractListItem>> ListAsync(OdysseyContext context, int limit) =>
+        await new ContractService(
+                context,
+                // The REAL lookup, not a stub: no contract here links a contact, so it issues no
+                // command at all — and a stub would have to be kept in step with an interface this
+                // test has no stake in.
+                new ContactLookup(context),
+                TimeProvider.System,
+                new ShippedCaps(),
+                NullLogger<ContractService>.Instance)
+            .ListAsync(new ContractsQueryParams { Limit = limit });
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static async Task<List<string>> ReadIndexColumnsAsync(OdysseyContext context, string indexName)
@@ -293,6 +368,66 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
+
+    private OdysseyContext NewContext(out CommandCounter counter)
+    {
+        counter = new CommandCounter();
+        return new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
+            .AddInterceptors(counter)
+            .Options);
+    }
+
+    /// <summary>Counts every command that reaches the server, which is the unit AC 16 is written in.</summary>
+    private sealed class CommandCounter : DbCommandInterceptor
+    {
+        private int count;
+
+        public int Count => count;
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+        {
+            Interlocked.Increment(ref count);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref count);
+            return ValueTask.FromResult(result);
+        }
+
+        public override InterceptionResult<object> ScalarExecuting(
+            DbCommand command, CommandEventData eventData, InterceptionResult<object> result)
+        {
+            Interlocked.Increment(ref count);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<object> result,
+            CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref count);
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    /// <summary>The shipped cap values; the list path reads none of them, so they never vary here.</summary>
+    private sealed class ShippedCaps : ISystemSettingsLookup
+    {
+        public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new InsurancePolicySettings(30, 1000));
+
+        public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new FinanceRequestCaps(25, 50, 500, 1000, 100, 50, 50));
+
+        public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SubscriptionSettings(45, 6, 1000));
+    }
 
     private async Task RecreateAsync()
     {

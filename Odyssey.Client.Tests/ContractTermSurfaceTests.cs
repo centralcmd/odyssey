@@ -174,6 +174,84 @@ public class ContractTermSurfaceTests
         Assert.Empty(reader.FindAll("td.trm-cell-act"));
     }
 
+    /// <summary>
+    /// Every icon in the history table is decorative — the kind and the status are both written out
+    /// beside their glyph — so none of them may be announced. A Material Icons span without
+    /// <c>aria-hidden</c> reads its ligature text aloud, which on the "In force" badge would be once
+    /// per in-force row (WCAG 1.1.1, Level A).
+    /// </summary>
+    [Fact]
+    public void Every_icon_in_the_history_table_is_hidden_from_assistive_technology()
+    {
+        var cut = RenderSection(Lease(),
+        [
+            Fee("Monthly rent", 14000m, Past(700)),
+            Fee("Monthly rent", 14500m, Past(200)),
+            Fee("Service charge", 450m, DateTime.UtcNow.Date.AddDays(90)),
+        ]);
+
+        // All three temporal states are on screen, so the badge icons of each are in scope.
+        var icons = cut.FindAll(".trm-tbl .material-icons");
+        Assert.NotEmpty(icons);
+        Assert.All(icons, icon => Assert.Equal("true", icon.GetAttribute("aria-hidden")));
+    }
+
+    // ── The "New term" request, which arrives as data rather than through a ref ──
+
+    /// <summary>
+    /// The row action menu's "New term" reaches this section as a TOKEN parameter. The mechanism
+    /// matters: an <c>@ref</c> is rebound on the next render, so immediately after expanding another
+    /// record it still points at the previously expanded section — opening through it would put the
+    /// dialog on the wrong contract and drop the click. A token is handed only to the matching row,
+    /// so the section that receives it is that contract's by construction.
+    /// </summary>
+    [Fact]
+    public void A_request_token_opens_the_create_dialog()
+    {
+        var cut = RenderSection(Lease(), [Fee("Monthly rent", 14500m, Past(100))], canWrite: true);
+        Assert.Empty(cut.FindComponents<AddTermDialog>());
+
+        cut.Render(p => p.Add(s => s.NewTermRequestToken, Guid.NewGuid()));
+
+        var dialog = Assert.Single(cut.FindComponents<AddTermDialog>());
+        Assert.True(dialog.Instance.Open);
+        // A CREATE, not an edit — the row menu's action never carries a term.
+        Assert.Null(dialog.Instance.Term);
+    }
+
+    /// <summary>
+    /// One ask, one dialog. A re-render with an unchanged token must not re-open — otherwise any
+    /// unrelated parameter change on the host would reopen a dialog the reader had dismissed.
+    /// </summary>
+    [Fact]
+    public void An_unchanged_token_does_not_reopen_the_dialog()
+    {
+        var cut = RenderSection(Lease(), [Fee("Monthly rent", 14500m, Past(100))], canWrite: true);
+        var token = Guid.NewGuid();
+
+        cut.Render(p => p.Add(s => s.NewTermRequestToken, token));
+        var first = Assert.Single(cut.FindComponents<AddTermDialog>()).Instance;
+
+        cut.Render(p => p.Add(s => s.NewTermRequestToken, token));
+
+        // Same instance: a second OpenNew would mint a new @key and replace it.
+        Assert.Same(first, Assert.Single(cut.FindComponents<AddTermDialog>()).Instance);
+    }
+
+    /// <summary>A second ask is a new token, and opens a fresh dialog.</summary>
+    [Fact]
+    public void A_new_token_opens_the_dialog_again()
+    {
+        var cut = RenderSection(Lease(), [Fee("Monthly rent", 14500m, Past(100))], canWrite: true);
+
+        cut.Render(p => p.Add(s => s.NewTermRequestToken, Guid.NewGuid()));
+        var first = Assert.Single(cut.FindComponents<AddTermDialog>()).Instance;
+
+        cut.Render(p => p.Add(s => s.NewTermRequestToken, Guid.NewGuid()));
+
+        Assert.NotSame(first, Assert.Single(cut.FindComponents<AddTermDialog>()).Instance);
+    }
+
     // ── The dialog's contract-specific rules ─────────────────────────────────
 
     /// <summary>

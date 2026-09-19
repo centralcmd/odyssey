@@ -127,7 +127,7 @@ public class TermService
             ArchivedAtUtc: null,
             // No cap on account terms — the pre-existing gap is not widened here and is left to its
             // own issue (Non-Goal 4).
-            MaxTerms: null);
+            IsTermCapped: false);
     }
 
     /// <summary>
@@ -151,10 +151,10 @@ public class TermService
             // an amount term (issue #135 §8 rule 2) rather than merely recommended.
             DefaultCurrencyCode: null,
             ArchivedAtUtc: contract.Archived,
-            MaxTerms: await ResolveContractTermCap(cancellationToken));
+            IsTermCapped: true);
     }
 
-    private async Task<int> ResolveContractTermCap(CancellationToken cancellationToken)
+    private async Task<int> ResolveTermCap(CancellationToken cancellationToken)
     {
         if (systemSettingsLookup is null)
             return SystemSettingsDefaults.ContractMaxTermsPerContract;
@@ -319,8 +319,11 @@ public class TermService
 
         // Create only: an update replaces a row rather than adding one, so it is row-count-neutral and
         // is never refused by a cap — including on an owner already at or above one lowered later.
-        if (owner.MaxTerms is { } cap)
+        // The cap's VALUE is read here rather than during owner resolution, so the four routes that
+        // never consult it do not pay for a settings lookup.
+        if (owner.IsTermCapped)
         {
+            var cap = await ResolveTermCap(cancellationToken);
             var count = await context.Terms.CountAsync(OwnedBy(owner), cancellationToken);
             if (count >= cap)
                 throw new DomainUnprocessableException(

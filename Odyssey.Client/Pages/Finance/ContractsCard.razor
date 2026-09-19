@@ -219,13 +219,13 @@
                     <Sections>
                         @if (detail is not null)
                         {
-                            @* One record is expanded at a time (_expandedId), so one ref is the whole set. It is what
-                               lets the row action menu drive a section that owns its own write — the
-                               sections carry no action slot of their own by design. *@
-                            <ContractDetailView @ref="_detailView"
-                                                Contract="detail"
+                            @* The "New term" request travels down as DATA, not through an @ref: only the
+                               row whose id matches receives a token, so it can never reach the section
+                               of a record the reader just navigated away from. *@
+                            <ContractDetailView Contract="detail"
                                                 CanWrite="_canUpdate"
                                                 FormatMoney="FormatMoney"
+                                                NewTermRequestToken="@NewTermRequestFor(c.ContractId)"
                                                 CanDownload="_canDownloadFiles"
                                                 Archived="@(c.Archived is not null)"
                                                 OnEditParty="@(p => EditParty(c.ContractId, p))"

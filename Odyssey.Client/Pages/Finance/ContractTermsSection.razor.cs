@@ -45,6 +45,14 @@ public partial class ContractTermsSection
     public Func<decimal, string?, string> FormatMoney { get; set; } = (v, _) => v.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>
+    /// An outstanding "New term" request from the record's row action menu — a token that changes per
+    /// ask. The section carries no action slot of its own, so the request arrives as DATA rather than
+    /// through an <c>@ref</c> the host would have to time correctly; a token only ever reaches the
+    /// section of the contract that asked.
+    /// </summary>
+    [Parameter] public Guid? NewTermRequestToken { get; set; }
+
+    /// <summary>
     /// Raised after a term is created, edited or deleted so the host can refresh the contract — the
     /// header's term count and the nested <c>currentTerms</c> both move with it.
     /// </summary>
@@ -67,9 +75,20 @@ public partial class ContractTermsSection
     /// </summary>
     private bool CanEditRows => CanWrite && !Archived;
 
-    private string CurrentMeta => _current.Count == 0
-        ? "none in force"
-        : $"{_current.Count} {(_current.Count == 1 ? "value" : "values")} in force · {DateTime.UtcNow:MMM dd, yyyy}";
+    /// <summary>
+    /// A contract with no terms at all is a different state from one whose entries are all scheduled,
+    /// and the divider says which: "Terms · none recorded" for the first, "Current terms · none in
+    /// force" for the second.
+    /// </summary>
+    private bool HasNoTerms => !_isLoading && _terms.Count == 0;
+
+    private string CurrentLabel => HasNoTerms ? "Terms" : "Current terms";
+
+    private string CurrentMeta => HasNoTerms
+        ? "none recorded"
+        : _current.Count == 0
+            ? "none in force"
+            : $"{_current.Count} {(_current.Count == 1 ? "value" : "values")} in force · {DateTime.UtcNow:MMM dd, yyyy}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -79,17 +98,23 @@ public partial class ContractTermsSection
         await LoadAsync();
     }
 
-    /// <summary>
-    /// Opens the create dialog. Public because the section carries no action slot of its own — "New
-    /// term" lives in the record's row action menu, where a reader looks for actions on this record,
-    /// and the host reaches this through an <c>@ref</c>.
-    /// </summary>
-    public void OpenNew()
+    /// <summary>The last request token acted on, so one ask opens exactly one dialog.</summary>
+    private Guid? _handledNewTermToken;
+
+    protected override void OnParametersSet()
+    {
+        if (NewTermRequestToken is not { } token || token == _handledNewTermToken)
+            return;
+
+        _handledNewTermToken = token;
+        OpenNew();
+    }
+
+    private void OpenNew()
     {
         _editingTerm = null;
         _dialogKey = Guid.NewGuid();
         _dialogOpen = true;
-        StateHasChanged();
     }
 
     /// <summary>

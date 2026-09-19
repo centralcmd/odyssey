@@ -42,14 +42,12 @@ public partial class ContractDetailView : IAsyncDisposable
     public Func<decimal, string?, string> FormatMoney { get; set; } =
         (v, _) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-    private ContractTermsSection? _terms;
-
     /// <summary>
-    /// Opens the Terms section's create dialog. The sections carry no action slot — every
-    /// section-level action lives in the record's row action menu, which is where a reader looks for
-    /// actions on this record — so the host drives it through here.
+    /// An outstanding "New term" request from the record's row action menu, forwarded to the Terms
+    /// section. The sections carry no action slot of their own — every section-level action lives in
+    /// that menu, which is where a reader looks for actions on this record.
     /// </summary>
-    public void OpenNewTerm() => _terms?.OpenNew();
+    [Parameter] public Guid? NewTermRequestToken { get; set; }
 
     private IReadOnlyList<ContractFileItem> ContractFiles => [.. Contract.Files.Select(ContractFileItem.From)];
 

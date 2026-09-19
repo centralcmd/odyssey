@@ -44,9 +44,11 @@ public enum TermOwnerKind
 /// resolve <see langword="null"/> here: issue #135 introduced the archive guard for contracts and
 /// deliberately did not change the account surface, whose five endpoints are unchanged.
 /// </param>
-/// <param name="MaxTerms">
-/// The per-owner cap a create is refused beyond, or <see langword="null"/> when the owner has none.
-/// Accounts have none — that pre-existing gap is left to its own issue rather than being widened or
+/// <param name="IsTermCapped">
+/// Whether a create is refused beyond a per-owner cap. Only WHETHER, not the number: the cap is a
+/// system setting, and reading it on the four routes that never consult it would be a settings lookup
+/// bought for nothing — so <c>CreateFor</c> resolves the value where it is about to be enforced.
+/// Accounts are uncapped; that pre-existing gap is left to its own issue rather than being widened or
 /// closed here (issue #135 Non-Goal 4).
 /// </param>
 public sealed record TermOwnerFacts(
@@ -57,4 +59,4 @@ public sealed record TermOwnerFacts(
     string EligibilityScope,
     string? DefaultCurrencyCode,
     DateTime? ArchivedAtUtc,
-    int? MaxTerms);
+    bool IsTermCapped);
