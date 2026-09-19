@@ -914,6 +914,114 @@ public class ContractsApiTests
         Assert.False(byType.ContainsKey(ContractType.Other));
     }
 
+    /// <summary>
+    /// The conversion half of the run rate, which the unit tier deliberately leaves alone: a rate row
+    /// is a real table, not a stub. A currency WITH a rate is folded into the total; one without is
+    /// NAMED and excluded, because a silent 1:1 would under-report a strong currency and over-report a
+    /// weak one — and either reads as a real figure rather than a partial one.
+    /// </summary>
+    [Fact]
+    public async Task Summary_RunRate_ConvertsWhatItCan_AndNamesWhatItCannot()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        await SeedRateAsync(factory, "EUR", "USD", 1.10m);
+        using var client = factory.CreateClient();
+
+        var domestic = await CreateTypedAsync(client, ContractType.Rental, start: FixedToday.AddDays(-30));
+        var european = await CreateTypedAsync(client, ContractType.Membership, start: FixedToday.AddDays(-30));
+        var unrated = await CreateTypedAsync(client, ContractType.Service, start: FixedToday.AddDays(-30));
+        await AddMonthlyFeeAsync(client, domestic, 100m, "USD");
+        await AddMonthlyFeeAsync(client, european, 200m, "EUR");
+        await AddMonthlyFeeAsync(client, unrated, 999m, "SEK");
+
+        var summary = (await client.GetFromJsonAsync<ContractSummary>($"{Path}/summary?baseCurrency=USD"))!;
+
+        Assert.Equal("USD", summary.RunRate.BaseCurrency);
+        Assert.Equal(320m, summary.RunRate.Monthly);   // 100 + 200 × 1.10; the SEK fee is left out.
+        Assert.Equal(3840m, summary.RunRate.Yearly);
+        Assert.Equal(["SEK"], summary.RunRate.UnconvertedCurrencies);
+
+        // The excluded currency is excluded from the per-type split too, so the rows still sum.
+        Assert.Equal(summary.RunRate.Monthly, summary.RunRate.ByType.Sum(r => r.Monthly));
+        Assert.DoesNotContain(summary.RunRate.ByType, r => r.Type == ContractType.Service);
+    }
+
+    /// <summary>
+    /// The four types added after the original set carry ordinals 4–7 while <c>Other</c> keeps 3. An
+    /// ordinal is a wire and persistence contract, so a round trip has to preserve the member — a
+    /// renumbering would silently reinterpret every stored row.
+    /// </summary>
+    [Theory]
+    [InlineData(ContractType.Insurance, 4)]
+    [InlineData(ContractType.Subscription, 5)]
+    [InlineData(ContractType.Purchase, 6)]
+    [InlineData(ContractType.Membership, 7)]
+    [InlineData(ContractType.Other, 3)]
+    public async Task Create_RoundTripsTheLaterTypes_AtTheirOwnOrdinals(ContractType type, int ordinal)
+    {
+        Assert.Equal(ordinal, (int)type);
+
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var id = await CreateTypedAsync(client, type);
+
+        var fetched = (await client.GetFromJsonAsync<ExistingContract>($"{Path}/{id}"))!;
+        Assert.Equal(type, fetched.Type);
+
+        var summary = (await client.GetFromJsonAsync<ContractSummary>($"{Path}/summary"))!;
+        Assert.Contains(summary.CountsByType, t => t.Type == type && t.Count == 1);
+    }
+
+    /// <summary>
+    /// The <c>[StringLength(3)]</c> on <c>baseCurrency</c> is model validation, so it runs before the
+    /// service and returns a ProblemDetails rather than reaching the FX lookup with a junk code.
+    /// </summary>
+    [Fact]
+    public async Task Summary_RejectsAnOverlongBaseCurrency()
+    {
+        await using var factory = new ApiFactory(ReadOnly);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"{Path}/summary?baseCurrency=USDD");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private static async Task AddMonthlyFeeAsync(
+        HttpClient client, Guid contractId, decimal value, string currency)
+    {
+        var post = await client.PostAsJsonAsync($"{Path}/{contractId}/terms", new NewTerm
+        {
+            TermKind = Odyssey.Dtos.Finance.TermKind.Fee,
+            Label = $"{currency} fee",
+            ValueUnit = Odyssey.Dtos.Finance.TermValueUnit.Amount,
+            Value = value,
+            CurrencyCode = currency,
+            Interval = Odyssey.Dtos.Finance.Interval.Monthly,
+            IntervalCount = 1,
+            EffectiveFrom = FixedToday.AddDays(-30),
+        });
+        post.EnsureSuccessStatusCode();
+    }
+
+    private static async Task SeedRateAsync(
+        WebApplicationFactory<Program> factory, string from, string to, decimal rate)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        await context.Database.EnsureCreatedAsync();
+        context.ExchangeRates.Add(new ExchangeRate
+        {
+            ExchangeRateId = Guid.NewGuid(),
+            FromCurrencyCode = from,
+            ToCurrencyCode = to,
+            Rate = rate,
+            AsOf = FixedToday.AddDays(-1),
+        });
+        await context.SaveChangesAsync();
+    }
+
     // ── Lean-list projection: InstitutionName ───────────────────────────────────
 
     [Fact]

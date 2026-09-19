@@ -146,7 +146,7 @@ public class SystemSettingsApiTests
     }
 
     [Fact]
-    public async Task MigrationSeed_ProducesExactlySixtyEightKnownKeyRows()
+    public async Task MigrationSeed_ProducesExactlySeventyOneKnownKeyRows()
     {
         await using var factory = new ApiFactory(ReadOnly);
         using var scope = factory.Services.CreateScope();
@@ -156,8 +156,9 @@ public class SystemSettingsApiTests
         var rows = await context.SystemSettings.AsNoTracking().ToListAsync();
         // 59 before issue #437, +3 for the Subscriptions summary limits, +4 for the mail transport
         // and the public link origin (issue #8), +1 for the insurance link cap (issue #27), +1 for
-        // the per-contract term cap (issue #135).
-        Assert.Equal(68, rows.Count);
+        // the per-contract term cap (issue #135), +3 for the Contracts summary windows and its
+        // next-charge row cap.
+        Assert.Equal(71, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

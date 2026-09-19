@@ -14,6 +14,10 @@ using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Microsoft.Extensions.Logging;
 using ContextContractPartyRole = Odyssey.Context.ContractPartyRole;
+using ContextInterval = Odyssey.Context.Interval;
+using ContextTermKind = Odyssey.Context.TermKind;
+using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
+using DtoInterval = Odyssey.Dtos.Finance.Interval;
 using DtoContractPartyRole = Odyssey.Dtos.Finance.ContractPartyRole;
 
 namespace Odyssey.Core.Finance;
@@ -34,19 +38,24 @@ public class ContractService
     private readonly TimeProvider timeProvider;
     private readonly ISystemSettingsLookup systemSettingsLookup;
     private readonly ILogger<ContractService> logger;
+    private readonly CurrencyConversionService conversion;
 
     public ContractService(
         OdysseyContext context,
         IContactLookup contactLookup,
         TimeProvider timeProvider,
         ISystemSettingsLookup systemSettingsLookup,
-        ILogger<ContractService> logger)
+        ILogger<ContractService> logger,
+        CurrencyConversionService? conversion = null)
     {
         this.context = context;
         this.contactLookup = contactLookup;
         this.timeProvider = timeProvider;
         this.systemSettingsLookup = systemSettingsLookup;
         this.logger = logger;
+        // Optional-defaulted like SubscriptionService's: the run rate is the only thing that needs it,
+        // and a direct construction in a unit test should not have to supply one to exercise the rest.
+        this.conversion = conversion ?? new CurrencyConversionService(context);
     }
 
     private DateTime Today => timeProvider.GetUtcNow().UtcDateTime.Date;
@@ -161,19 +170,41 @@ public class ContractService
         return ListQuery.ToPagedResult(ordered, query.Offset, query.Limit);
     }
 
-    public async Task<ContractSummary> GetSummary(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The page-header roll-up: counts by status and by type, what the agreements cost to run, and the
+    /// recurring charges falling due inside the look-ahead window.
+    ///
+    /// <para>
+    /// The run rate and the charges are the SAME read of the same rows — the in-force <c>Fee</c>
+    /// terms of the Active contracts — once summed and once projected forward. Neither schedules
+    /// anything: a term's cadence anchor is read, never advanced or written.
+    /// </para>
+    ///
+    /// <para>
+    /// <paramref name="baseCurrency"/> is the caller's display currency; blank falls back to the most
+    /// common currency among the in-force fees, so a single-currency household never sees a converted
+    /// figure at all.
+    /// </para>
+    /// </summary>
+    public async Task<ContractSummary> GetSummary(
+        string? baseCurrency, CancellationToken cancellationToken = default)
     {
         var today = Today;
         var caps = await systemSettingsLookup.GetRequestCapsAsync(cancellationToken);
+        var windows = await systemSettingsLookup.GetContractSummarySettingsAsync(cancellationToken);
 
         var contracts = await context.Contracts
+            .AsNoTracking()
             .OrderByDescending(c => c.CreatedAtUtc)
+            .ThenBy(c => c.ContractId)
             .Take(caps.MaxSummaryContracts)
-            .Select(c => new { c.Type, c.StartDate, c.EndDate, c.CompletionDate, c.Archived })
+            .Select(c => new SummaryRow(
+                c.ContractId, c.Name, c.Type, c.StartDate, c.EndDate, c.CompletionDate, c.Archived))
             .ToListAsync(cancellationToken);
 
         var counts = new ContractStatusCounts();
         var byType = new Dictionary<DtoContractType, int>();
+        var priceable = new List<SummaryRow>();
 
         foreach (var c in contracts)
         {
@@ -186,6 +217,14 @@ public class ContractService
                 case ContractStatus.Archived: counts.Archived++; break;
             }
 
+            // A SLICE of Active, not a fifth bucket: it is already counted above, so the four still sum
+            // to the total. Only a dated term can run out — an open-ended one never reaches a cliff.
+            if (status == ContractStatus.Active && c.EndDate is { } end
+                && DaysUntil(end, today) is var days && days >= 0 && days <= windows.EndingWindowDays)
+            {
+                counts.EndingSoon++;
+            }
+
             // The by-type breakdown covers only the active (non-archived) set — archived contracts are
             // counted in the status pills but excluded from "By type" (matches the design's summary).
             if (c.Archived is null)
@@ -193,7 +232,18 @@ public class ContractService
                 var dtoType = c.Type.Adapt<DtoContractType>();
                 byType[dtoType] = byType.GetValueOrDefault(dtoType) + 1;
             }
+
+            // Two different sets, and they are deliberately not the same one. The run rate is what the
+            // file costs to run RIGHT NOW, so only Active contracts carry one. A next charge is a
+            // question about the future, so an Upcoming contract belongs there too — one signed today
+            // with a price already in force has a first charge to report, clamped to its start date.
+            if (status is ContractStatus.Active or ContractStatus.Upcoming)
+            {
+                priceable.Add(c with { IsActive = status == ContractStatus.Active });
+            }
         }
+
+        var priced = await LoadInForceFeesAsync(priceable, today, cancellationToken);
 
         return new ContractSummary
         {
@@ -203,8 +253,327 @@ public class ContractService
                 .OrderBy(kv => kv.Key)
                 .Select(kv => new ContractTypeCount { Type = kv.Key, Count = kv.Value })
                 .ToList(),
+            RunRate = await BuildRunRateAsync(priced, baseCurrency, cancellationToken),
+            UpcomingCharges = BuildUpcomingCharges(
+                priced, today, windows.ChargeWindowDays, windows.MaxSummaryCharges),
+            EndingWindowDays = windows.EndingWindowDays,
+            ChargeWindowDays = windows.ChargeWindowDays,
         };
     }
+
+    /// <summary>
+    /// The in-force fee terms of the Active and Upcoming contracts, in one query.
+    ///
+    /// <para>
+    /// Narrowed in SQL to those contracts and to <c>EffectiveFrom &lt;= today</c>, then collapsed per
+    /// series in memory by <see cref="TermSeries"/> — the same winner rule the record card and the
+    /// <c>…/terms/current</c> endpoint use, so "in force" cannot mean three different things.
+    /// </para>
+    /// </summary>
+    private async Task<List<PricedTerm>> LoadInForceFeesAsync(
+        List<SummaryRow> contracts, DateTime today, CancellationToken cancellationToken)
+    {
+        if (contracts.Count == 0)
+        {
+            return [];
+        }
+
+        var byId = contracts.ToDictionary(c => c.ContractId);
+        var ids = byId.Keys.ToList();
+
+        var candidates = await context.Terms
+            .AsNoTracking()
+            .Where(t => t.ContractId != null
+                && ids.Contains(t.ContractId.Value)
+                && t.TermKind == ContextTermKind.Fee
+                && t.ValueUnit == ContextTermValueUnit.Amount
+                && t.EffectiveFrom <= today)
+            .ToListAsync(cancellationToken);
+
+        var priced = new List<PricedTerm>();
+        foreach (var group in candidates.GroupBy(t => t.ContractId!.Value))
+        {
+            foreach (var term in TermSeries.Current(group))
+            {
+                // A fee with no cadence names an occasion (OneTime, PerOccurrence, PerUnit) rather than
+                // a rhythm, so it carries neither a rate to project nor a next occurrence to predict.
+                if (term.Interval is not { } interval || !interval.IsPeriodic())
+                {
+                    continue;
+                }
+
+                priced.Add(new PricedTerm(
+                    byId[group.Key], term.Label, term.Value,
+                    CurrencyValidationService.Normalize(term.CurrencyCode ?? string.Empty),
+                    interval, Math.Max(1, term.IntervalCount ?? 1),
+                    (term.AnchorDate ?? term.EffectiveFrom).Date));
+            }
+        }
+
+        return priced;
+    }
+
+    /// <summary>
+    /// What the file costs to run: each in-force periodic fee projected by its cadence
+    /// (<c>Value ÷ IntervalCount × periods</c>) and converted to base.
+    ///
+    /// <para>
+    /// A currency with no rate to base is NAMED rather than folded in at 1:1 — a silent 1:1 would
+    /// under-report a strong currency and over-report a weak one, and either reads as a real figure.
+    /// The same exclusion applies to the per-type split, so the rows and the totals always cover the
+    /// same set of terms.
+    /// </para>
+    /// </summary>
+    private async Task<ContractRunRate> BuildRunRateAsync(
+        List<PricedTerm> priced, string? baseCurrency, CancellationToken cancellationToken)
+    {
+        // Only the Active rows feed the run rate, so only they name its currencies and vote on its base:
+        // a currency used solely by a contract that has not started could otherwise win a base-currency
+        // vote it then contributes nothing to.
+        var running = priced.Where(p => p.Contract.IsActive).ToList();
+        var currencies = running
+            .Select(p => p.CurrencyCode)
+            .Where(code => code.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        // Blank base → the currency the most in-force fees are priced in; the code tie-break keeps the
+        // pick deterministic. A term with no currency of its own is read as being in base.
+        var baseCode = string.IsNullOrWhiteSpace(baseCurrency)
+            ? running.Where(p => p.CurrencyCode.Length > 0)
+                .GroupBy(p => p.CurrencyCode, StringComparer.Ordinal)
+                .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal)
+                .FirstOrDefault()?.Key ?? "USD"
+            : CurrencyValidationService.Normalize(baseCurrency);
+
+        var rates = await conversion.GetLatestRatesToAsync(baseCode, currencies, cancellationToken: cancellationToken);
+
+        var runRate = new ContractRunRate { BaseCurrency = baseCode };
+        var unconverted = new SortedSet<string>(StringComparer.Ordinal);
+        var byType = new Dictionary<DtoContractType, ContractRunRateTypeRow>();
+        decimal? monthly = null;
+        decimal? yearly = null;
+
+        foreach (var p in priced)
+        {
+            // Narrowed back to Active here rather than at the query: a next charge legitimately looks
+            // ahead to a contract that has not started, but nothing that has not started is costing
+            // anything yet, so it carries no run rate.
+            if (!p.Contract.IsActive)
+            {
+                continue;
+            }
+
+            var code = p.CurrencyCode.Length == 0 ? baseCode : p.CurrencyCode;
+            if (!TryRateToBase(code, baseCode, rates, out var rate))
+            {
+                unconverted.Add(code);
+                continue;
+            }
+
+            var (moFactor, yrFactor) = CadenceFactors(p.Interval);
+            var mo = p.Amount * moFactor / p.IntervalCount * rate;
+            var yr = p.Amount * yrFactor / p.IntervalCount * rate;
+
+            monthly = (monthly ?? 0m) + mo;
+            yearly = (yearly ?? 0m) + yr;
+
+            var dtoType = p.Contract.Type.Adapt<DtoContractType>();
+            if (!byType.TryGetValue(dtoType, out var row))
+            {
+                row = new ContractRunRateTypeRow { Type = dtoType };
+                byType[dtoType] = row;
+            }
+
+            row.Monthly += mo;
+            row.Yearly += yr;
+            row.Count++;
+        }
+
+        // Display-only estimates (the daily/weekly cadence factors are not exact in decimal), so round
+        // to a clean money figure — after summing, never per term. The per-type rows and the totals are
+        // rounded independently, so with enough types their sum can differ from the total by a cent;
+        // what "the rows sum to the totals" guarantees is CURRENCY PARITY — a currency excluded from
+        // the total is excluded from every row too — not post-rounding arithmetic equality.
+        runRate.Monthly = monthly is { } m ? Round2(m) : null;
+        runRate.Yearly = yearly is { } y ? Round2(y) : null;
+        runRate.UnconvertedCurrencies = [.. unconverted];
+        runRate.ByType = byType
+            .OrderBy(kv => kv.Key)
+            .Select(kv =>
+            {
+                kv.Value.Monthly = Round2(kv.Value.Monthly);
+                kv.Value.Yearly = Round2(kv.Value.Yearly);
+                return kv.Value;
+            })
+            .ToList();
+
+        return runRate;
+    }
+
+    /// <summary>
+    /// Each contract's SOONEST next charge inside the window — one row per contract, not one per term,
+    /// so a contract pricing four fees does not crowd out three others.
+    ///
+    /// <para>
+    /// A charge never falls outside the agreement it is priced under, so an occurrence past the
+    /// contract's end date is dropped rather than shown.
+    /// </para>
+    /// </summary>
+    private static List<ContractUpcomingCharge> BuildUpcomingCharges(
+        List<PricedTerm> priced, DateTime today, int windowDays, int maxCharges)
+    {
+        var soonest = new Dictionary<Guid, ContractUpcomingCharge>();
+
+        foreach (var p in priced)
+        {
+            // A term whose contract has not started yet cannot be charged before it does.
+            var from = p.Contract.StartDate is { } start && start.Date > today ? start.Date : today;
+            if (NextOccurrence(p.Anchor, p.Interval, p.IntervalCount, from) is not { } date)
+            {
+                continue;
+            }
+
+            if (p.Contract.EndDate is { } end && date > end.Date)
+            {
+                continue;
+            }
+
+            var days = DaysUntil(date, today);
+            if (days < 0 || days > windowDays)
+            {
+                continue;
+            }
+
+            if (soonest.TryGetValue(p.Contract.ContractId, out var held) && held.ChargeDate <= date)
+            {
+                continue;
+            }
+
+            soonest[p.Contract.ContractId] = new ContractUpcomingCharge
+            {
+                ContractId = p.Contract.ContractId,
+                Name = p.Contract.Name,
+                Type = p.Contract.Type.Adapt<DtoContractType>(),
+                Label = p.Label,
+                Amount = p.Amount,
+                CurrencyCode = p.CurrencyCode,
+                Interval = p.Interval.Adapt<DtoInterval>(),
+                IntervalCount = p.IntervalCount,
+                ChargeDate = date,
+                DaysUntil = days,
+            };
+        }
+
+        return soonest.Values
+            .OrderBy(c => c.ChargeDate)
+            .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(c => c.ContractId)
+            .Take(maxCharges)
+            .ToList();
+    }
+
+    /// <summary>Cadence → (monthly, yearly) multiplier for a single charge (the design's own factors).</summary>
+    private static (decimal Monthly, decimal Yearly) CadenceFactors(ContextInterval interval) => interval switch
+    {
+        ContextInterval.Daily => (365.25m / 12m, 365.25m),
+        ContextInterval.Weekly => (52.1775m / 12m, 52.1775m),
+        ContextInterval.Annually => (1m / 12m, 1m),
+        _ => (1m, 12m), // Monthly
+    };
+
+    /// <summary>
+    /// The first occurrence of a periodic cadence falling on or after <paramref name="from"/>, stepped
+    /// from the anchor.
+    ///
+    /// <para>
+    /// Month and year steps are always measured from the ORIGINAL anchor rather than from a prior
+    /// clamped result, so an anchor on the 31st recovers its day-of-month in longer months instead of
+    /// drifting permanently to the 28th after one short February — the same rule
+    /// <c>SubscriptionService.NextBilling</c> follows.
+    /// </para>
+    /// </summary>
+    private static DateTime? NextOccurrence(DateTime anchor, ContextInterval interval, int intervalCount, DateTime from)
+    {
+        var count = Math.Max(1, intervalCount);
+        var cur = anchor.Date;
+        if (cur >= from)
+        {
+            return cur;
+        }
+
+        switch (interval)
+        {
+            case ContextInterval.Daily:
+            case ContextInterval.Weekly:
+            {
+                var stepDays = (interval == ContextInterval.Weekly ? 7 : 1) * count;
+                var diff = (from - cur).Days;
+                var steps = (diff + stepDays - 1) / stepDays; // ceil to the first occurrence >= from
+                return cur.AddDays((long)steps * stepDays);
+            }
+            case ContextInterval.Annually:
+            case ContextInterval.Monthly:
+            {
+                var months = interval == ContextInterval.Annually ? 12 * count : count;
+                // Bounded rather than a bare while: an anchor far in the past with a huge count must not
+                // spin, and beyond the bound there is no occurrence worth reporting anyway.
+                for (var k = 1; k <= MaxCadenceSteps; k++)
+                {
+                    cur = anchor.Date.AddMonths(months * k);
+                    if (cur >= from)
+                    {
+                        return cur;
+                    }
+                }
+
+                return null;
+            }
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
+    /// The step ceiling on a monthly/annual projection. 6000 monthly steps is 500 years — far past any
+    /// window an administrator can set — so reaching it means the anchor is nonsense, not that a real
+    /// charge was missed.
+    /// </summary>
+    private const int MaxCadenceSteps = 6000;
+
+    private static bool TryRateToBase(
+        string currency, string baseCode, IReadOnlyDictionary<string, decimal> rates, out decimal rate)
+    {
+        if (string.Equals(currency, baseCode, StringComparison.Ordinal))
+        {
+            rate = 1m;
+            return true;
+        }
+
+        return rates.TryGetValue(currency, out rate);
+    }
+
+    private static int DaysUntil(DateTime date, DateTime today) => (date.Date - today).Days;
+
+    private static decimal Round2(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>Slim projection row for the summary computation (all contracts, one batch query).</summary>
+    private sealed record SummaryRow(
+        Guid ContractId, string Name, ContextContractType Type,
+        DateTime? StartDate, DateTime? EndDate, DateTime? CompletionDate, DateTime? Archived)
+    {
+        /// <summary>
+        /// Set once from the single <c>DeriveStatus</c> call per contract, so the run rate and the
+        /// charge projection cannot disagree about which contracts are running.
+        /// </summary>
+        public bool IsActive { get; init; }
+    }
+
+    /// <summary>One in-force periodic fee, resolved against its contract — the run rate's unit of work
+    /// and the next-charge projection's, so both read exactly the same set.</summary>
+    private sealed record PricedTerm(
+        SummaryRow Contract, string? Label, decimal Amount, string CurrencyCode,
+        ContextInterval Interval, int IntervalCount, DateTime Anchor);
 
     public async Task<ExistingContract?> Get(Guid id, CancellationToken cancellationToken = default)
     {

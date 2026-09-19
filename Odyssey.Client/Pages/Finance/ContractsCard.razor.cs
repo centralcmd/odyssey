@@ -9,6 +9,7 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos;
 
 namespace Odyssey.Client.Pages.Finance;
 
@@ -27,8 +28,18 @@ public partial class ContractsCard
     // Card-list windowing (OdsInfiniteList): "Load N at a time" batch size.
     private int _batch = OdsPageSizes.Batch[0];
 
-    /// <summary>Active contracts whose end date falls within this many days read as "ending soon".</summary>
-    private const int EndingWindowDays = 45;
+    /// <summary>
+    /// The effective "ending soon" window, in days — served on the summary, never held as a constant
+    /// here. It is an admin-editable system setting, and a local copy is the client-side duplicate of
+    /// a server value CLAUDE.md forbids: lowered, the page would keep flagging contracts the server no
+    /// longer counts; raised, it would flag fewer than the header claims.
+    ///
+    /// <para>
+    /// The shipped default stands in only until the first summary lands, so the collapsed headline
+    /// never reads "ending soon" against nothing at all during the first paint.
+    /// </para>
+    /// </summary>
+    private int EndingWindowDays => _summary?.EndingWindowDays ?? SystemSettingsDefaults.ContractEndingWindowDays;
 
     // ── UI state ─────────────────────────────────────────────────────────────
     private bool _isLoading = true;
@@ -196,7 +207,9 @@ public partial class ContractsCard
 
     private async Task LoadSummary()
     {
-        _summary = await Contracts.GetSummaryAsync();
+        // The run rate converts into the reader's own display currency, the same source the
+        // Subscriptions summary uses; blank lets the server pick the most common one.
+        _summary = await Contracts.GetSummaryAsync(UserPreferences.DefaultCurrency);
         StateHasChanged();
     }
 
@@ -258,23 +271,96 @@ public partial class ContractsCard
         return format;
     }
 
-    // ── Header problem rollup (active contracts ending soon) ──────────────────────
-    private List<PageHeaderProblem> HeaderProblems =>
-        _contracts
-            .Where(c => c.Archived is null
-                && c.Status == ContractStatus.Active
-                && c.EndDate is { } end
-                && (end.Date - Today).Days <= EndingWindowDays
-                && (end.Date - Today).Days >= 0)
-            .OrderBy(c => c.EndDate)
-            .Select(c => new PageHeaderProblem
-            {
-                Severity = PageHeaderSeverity.Warning,
-                Lead = c.Name,
-                Message = $"Term ends {c.EndDate:MMM dd, yyyy}.",
-                OnView = EventCallback.Factory.Create(this, () => JumpTo(c.ContractId)),
-            })
-            .ToList();
+    // ── Header signal: "Upcoming" ─────────────────────────────────────────────────
+    //
+    // Four groups under one button, one count and one worst-severity reading, because they answer one
+    // question — what is coming? — and a reader checking for a renewal cliff is checking for a charge
+    // in the same breath.
+    //
+    //   Recently expired  a term that ran out and was never archived: the decision still outstanding
+    //   Ending soon       the cliff itself
+    //   Starting soon     its mirror — signed, not yet in force
+    //   Next charges      what falls due, derived from the fee terms in force (server-computed)
+    //
+    // EVERY group is read against the loaded LIST, which is server-filtered: narrowing the search
+    // narrows the panel with it. That is pre-existing behaviour for the ending-soon group and is kept
+    // deliberately — every row carries a jump action, and a row that jumps to a record the list is not
+    // showing would scroll to nothing and look broken. The charge rows are computed server-side from
+    // term data the list projection does not carry, so they arrive on the unfiltered summary and are
+    // intersected back against the list here rather than being exempted from the rule.
+    //
+    // Two of the three dated groups are capped; ENDING SOON deliberately is not. It is the renewal
+    // cliff the whole feature exists to surface, so dropping its seventh row — and under-counting the
+    // badge — would hide exactly what a reader opened the panel for. The design system caps the same
+    // two and leaves this one unbounded for the same reason.
+    private const int MaxDatedSignalRows = 6;
+
+    private List<PageHeaderProblem> HeaderProblems
+    {
+        get
+        {
+            var problems = new List<PageHeaderProblem>();
+            var live = _contracts.Where(c => c.Archived is null).ToList();
+
+            problems.AddRange(live
+                .Where(c => c.Status == ContractStatus.Expired
+                    && c.EndDate is { } end && DaysSince(end) >= 0 && DaysSince(end) <= EndingWindowDays)
+                .OrderByDescending(c => c.EndDate)
+                .Take(MaxDatedSignalRows)
+                .Select(c => Dated(c, "Recently expired", PageHeaderSeverity.Error,
+                    $"Term expired {OdsRelativeDay.Ago(DaysSince(c.EndDate!.Value))}.")));
+
+            problems.AddRange(live
+                .Where(c => c.Status == ContractStatus.Active
+                    && c.EndDate is { } end && DaysUntil(end) >= 0 && DaysUntil(end) <= EndingWindowDays)
+                .OrderBy(c => c.EndDate)
+                .Select(c => Dated(c, "Ending soon", PageHeaderSeverity.Warning,
+                    $"Term ends {c.EndDate:MMM dd, yyyy}.")));
+
+            problems.AddRange(live
+                .Where(c => c.Status == ContractStatus.Upcoming
+                    && c.StartDate is { } start && DaysUntil(start) >= 0 && DaysUntil(start) <= EndingWindowDays)
+                .OrderBy(c => c.StartDate)
+                .Take(MaxDatedSignalRows)
+                .Select(c => Dated(c, "Starting soon", PageHeaderSeverity.Information,
+                    $"Term starts {OdsRelativeDay.Ahead(DaysUntil(c.StartDate!.Value))}.")));
+
+            // Intersected against the list for the reason stated above: the summary is unfiltered, so
+            // without this a charge row could name a contract the active filter has excluded, and its
+            // jump would scroll to an element that is not on the page — silently, since JumpTo's
+            // best-effort scroll swallows the miss.
+            var listed = live.Select(c => c.ContractId).ToHashSet();
+            problems.AddRange((_summary?.UpcomingCharges ?? [])
+                .Where(charge => listed.Contains(charge.ContractId))
+                .Select(charge => new PageHeaderProblem
+                {
+                    Group = "Next charges",
+                    // Information: a charge falling due as agreed is not a problem, and letting one
+                    // raise the button above info would cry wolf on every contract that has a price.
+                    Severity = PageHeaderSeverity.Information,
+                    Message = charge.Name,
+                    Row = ChargeRow(charge),
+                }));
+
+            return problems;
+        }
+    }
+
+    private PageHeaderProblem Dated(
+        ContractListItem contract, string group, PageHeaderSeverity severity, string message) => new()
+    {
+        Group = group,
+        Severity = severity,
+        Lead = contract.Name,
+        Message = message,
+        OnView = EventCallback.Factory.Create(this, () => JumpTo(contract.ContractId)),
+    };
+
+    private int DaysUntil(DateTime date) => (date.Date - Today).Days;
+
+    private int DaysSince(DateTime date) => (Today - date.Date).Days;
+
+
 
     private async Task JumpTo(Guid id)
     {

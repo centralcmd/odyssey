@@ -109,6 +109,13 @@ public sealed class SystemSettingsLookup(
         SystemSettingsKeys.SubscriptionMaxSummarySubscriptions,
     ];
 
+    private static readonly string[] ContractSummaryKeys =
+    [
+        SystemSettingsKeys.ContractEndingWindowDays,
+        SystemSettingsKeys.ContractChargeWindowDays,
+        SystemSettingsKeys.ContractMaxSummaryCharges,
+    ];
+
     public async Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default)
     {
         if (cache.TryGetValue(SystemSettingsService.InsuranceCacheKey, out InsurancePolicySettings? cached)
@@ -189,6 +196,46 @@ public sealed class SystemSettingsLookup(
 
         cache.Set(SystemSettingsService.FinanceCapsCacheKey, caps, CacheTtl);
         return caps;
+    }
+
+    /// <summary>
+    /// The Contracts summary windows, on their own cache key for the same forced reason as
+    /// <see cref="GetSubscriptionSettingsAsync"/>. A degraded result is likewise <strong>not</strong>
+    /// cached: one summary read path, so recovery should be immediate.
+    /// </summary>
+    public async Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default)
+    {
+        if (cache.TryGetValue(SystemSettingsService.ContractSummaryCacheKey, out ContractSummarySettings? cached)
+            && cached is not null)
+        {
+            return cached;
+        }
+
+        var (values, readFailed) = await ReadAsync(ContractSummaryKeys, "contract summary settings", cancellationToken);
+
+        var settings = new ContractSummarySettings(
+            // min on both windows, for the correctness reason SubscriptionRenewalWindowDays records:
+            // neither drives any work — both only decide which already-fetched rows are surfaced — so
+            // the preference is to under-report a cliff or a charge rather than to invent one.
+            Resolve(values, readFailed, SystemSettingsKeys.ContractEndingWindowDays,
+                SystemSettingsDefaults.ContractEndingWindowDays,
+                SystemSettingsBounds.ContractEndingWindowDaysMin,
+                SystemSettingsBounds.ContractEndingWindowDaysMax),
+            Resolve(values, readFailed, SystemSettingsKeys.ContractChargeWindowDays,
+                SystemSettingsDefaults.ContractChargeWindowDays,
+                SystemSettingsBounds.ContractChargeWindowDaysMin,
+                SystemSettingsBounds.ContractChargeWindowDaysMax),
+            Resolve(values, readFailed, SystemSettingsKeys.ContractMaxSummaryCharges,
+                SystemSettingsDefaults.ContractMaxSummaryCharges,
+                SystemSettingsBounds.ContractMaxSummaryChargesMin,
+                SystemSettingsBounds.ContractMaxSummaryChargesMax));
+
+        if (!readFailed)
+        {
+            cache.Set(SystemSettingsService.ContractSummaryCacheKey, settings, CacheTtl);
+        }
+
+        return settings;
     }
 
     /// <summary>

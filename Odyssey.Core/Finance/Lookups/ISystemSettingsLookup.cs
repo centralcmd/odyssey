@@ -35,7 +35,31 @@ public interface ISystemSettingsLookup
     /// entry would make a subscriptions change evict the insurance settings and vice versa.
     /// </summary>
     Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The Contracts page-header windows. A fourth method here rather than folding the two windows
+    /// into <see cref="GetRequestCapsAsync"/>: that record's entry is evicted by a per-request-cap
+    /// change, and <c>SystemSettingDescriptor.CacheKeyToEvict</c> is a single string per descriptor,
+    /// so sharing it would cross-evict.
+    /// </summary>
+    Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// The Contracts page-header roll-up's windows and its next-charge row cap.
+///
+/// <para>
+/// <see cref="EndingWindowDays"/> is returned to the CLIENT on <c>ContractSummary</c>, unlike the
+/// Subscriptions trio, because the client renders it: the "Ending soon · Nd" summary row interpolates
+/// it and the record headline reads "ending soon" against it. A client-side <c>const 45</c> beside an
+/// admin-editable server value is the copy CLAUDE.md forbids, so the number travels rather than being
+/// duplicated.
+/// </para>
+/// </summary>
+public sealed record ContractSummarySettings(
+    int EndingWindowDays,
+    int ChargeWindowDays,
+    int MaxSummaryCharges);
 
 /// <summary>
 /// The Subscriptions page-header roll-up's three limits (issue #437). Two replace <c>private const</c>s

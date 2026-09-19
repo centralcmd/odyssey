@@ -46,15 +46,17 @@ public class SettingsBoundsCatalogueTests
     }
 
     /// <summary>
-    /// Scope, stated rather than implied: 44 of the catalogue's 52 numeric rows (43 of 51 before issue
-    /// #135 added the per-contract term cap, 42 of 50 before issue #27 added the insurance link cap). The eight <c>CapacityLimit?</c> rows are correctly excluded by the
+    /// Scope, stated rather than implied: 47 of the catalogue's 55 numeric rows (44 of 52 before the
+    /// Contracts summary gained its two windows and its next-charge row cap, 43 of 51 before issue
+    /// #135 added the per-contract term cap, 42 of 50 before issue #27 added the insurance link cap).
+    /// The eight <c>CapacityLimit?</c> rows are correctly excluded by the
     /// <c>int?</c> selector — their properties carry no <c>[Range]</c> at all, so their
     /// <c>Min: 1, Max: 1_000_000</c> is a client-only invention with no server end to name.
     /// </summary>
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(44, NumericRows.Count);
+        Assert.Equal(47, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));

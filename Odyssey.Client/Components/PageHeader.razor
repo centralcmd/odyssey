@@ -126,30 +126,55 @@
             {
                 <div class="ph-region">
                     <div class="signal-panel">
+                        @{ string? renderedGroup = null; }
                         @foreach (var problem in Problems!)
                         {
-                            <div class="alert @SeverityClass(problem.Severity) @(problem.HasView ? "signal-row" : null)"
-                                 role="status"
-                                 @onclick="@(() => InvokeView(problem))">
-                                <span class="material-icons alert-icon">@SeverityGlyph(problem.Severity)</span>
-                                <div class="alert-body">
-                                    @if (!string.IsNullOrEmpty(problem.Lead))
+                            @* The heading is emitted on CHANGE, so the page groups rows purely by the
+                               order it supplies them in and a panel with no groups renders unchanged.
+
+                               A real <h3>, not a styled div: the grouping has to be navigable by
+                               heading, or it is a visual-only relationship (WCAG 1.3.1) and a screen
+                               reader cannot tell "Recently expired" from "Next charges". h3 because
+                               the header's own title is an h2. *@
+                            @if (!string.IsNullOrWhiteSpace(problem.Group) && problem.Group != renderedGroup)
+                            {
+                                renderedGroup = problem.Group;
+                                <h3 class="ph-signal-group">@problem.Group</h3>
+                            }
+
+                            @if (problem.Row is { } row)
+                            {
+                                @row
+                            }
+                            else
+                            {
+                                @* No role="status". These are static rows inside a disclosure the user
+                                   has just opened, not status messages: role="status" is an
+                                   aria-live="polite" region, so every row became its own live region
+                                   and opening a multi-group panel announced the lot. The row's text is
+                                   read normally, and its action is the real <button> below. *@
+                                <div class="alert @SeverityClass(problem.Severity) @(problem.HasView ? "signal-row" : null)"
+                                     @onclick="@(() => InvokeView(problem))">
+                                    <span class="material-icons alert-icon">@SeverityGlyph(problem.Severity)</span>
+                                    <div class="alert-body">
+                                        @if (!string.IsNullOrEmpty(problem.Lead))
+                                        {
+                                            <strong>@problem.Lead.</strong>@(" ")
+                                        }
+                                        @problem.Message
+                                        @if (!string.IsNullOrWhiteSpace(problem.Where))
+                                        {
+                                            <span class="signal-where"> @problem.Where</span>
+                                        }
+                                    </div>
+                                    @if (problem.HasView)
                                     {
-                                        <strong>@problem.Lead.</strong>@(" ")
-                                    }
-                                    @problem.Message
-                                    @if (!string.IsNullOrWhiteSpace(problem.Where))
-                                    {
-                                        <span class="signal-where"> @problem.Where</span>
+                                        <button type="button" class="alert-fix"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="@(() => InvokeView(problem))">@problem.ViewLabel →</button>
                                     }
                                 </div>
-                                @if (problem.HasView)
-                                {
-                                    <button type="button" class="alert-fix"
-                                            @onclick:stopPropagation="true"
-                                            @onclick="@(() => InvokeView(problem))">@problem.ViewLabel →</button>
-                                }
-                            </div>
+                            }
                         }
                     </div>
                 </div>

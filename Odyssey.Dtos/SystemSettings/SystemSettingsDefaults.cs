@@ -137,6 +137,29 @@ public static class SystemSettingsDefaults
     /// </summary>
     public const int ContractMaxTermsPerContract = 500;
     public const int ContractMaxSummaryContracts = 1000;
+
+    /// <summary>
+    /// How many days ahead an Active contract's end date reads as "ending soon" — the cliff the
+    /// header signal and the "Ending soon · Nd" summary row are about. It also bounds the mirror
+    /// groups the same window defines: a term about to begin (Starting soon) and one that ran out
+    /// just behind us (Recently expired). A degraded read resolves to <c>min</c>: the window drives
+    /// no work, so under-reporting a cliff is preferable to inventing one.
+    /// </summary>
+    public const int ContractEndingWindowDays = 45;
+
+    /// <summary>
+    /// How many days ahead a contract's next recurring charge is surfaced. Same shape and same
+    /// shipped value as <see cref="SubscriptionRenewalWindowDays"/>, and for the same reason — a
+    /// contract's Fee terms in force are read forward exactly as a subscription's billing interval is.
+    /// </summary>
+    public const int ContractChargeWindowDays = 45;
+
+    /// <summary>
+    /// Next-charge rows the page-header panel lists. Bounded like
+    /// <see cref="SubscriptionMaxSummaryRenewals"/> rather than like the materialised-fetch caps:
+    /// each row is a separate rendered block in an always-open header region.
+    /// </summary>
+    public const int ContractMaxSummaryCharges = 6;
     public const int InsuranceMaxRenewalsPerPolicy = 100;
     public const int InsuranceMaxFilesPerParent = 50;
 

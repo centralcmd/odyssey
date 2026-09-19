@@ -33,6 +33,7 @@ public class SystemSettingsCacheEvictionTests
         (SystemSettingsService.InsuranceCacheKey, KeysOf<SystemSettingsLookup>("InsuranceKeys")),
         (SystemSettingsService.FinanceCapsCacheKey, KeysOf<SystemSettingsLookup>("FinanceCapKeys")),
         (SystemSettingsService.SubscriptionCacheKey, KeysOf<SystemSettingsLookup>("SubscriptionKeys")),
+        (SystemSettingsService.ContractSummaryCacheKey, KeysOf<SystemSettingsLookup>("ContractSummaryKeys")),
         (JournalLimitsLookup.CacheKey, KeysOf<JournalLimitsLookup>("Keys")),
         (ImportExportLimitsLookup.CacheKey, KeysOf<ImportExportLimitsLookup>("Keys")),
         (FileAnalysisSettingsLookup.CacheKey, KeysOf<FileAnalysisSettingsLookup>("Keys")),

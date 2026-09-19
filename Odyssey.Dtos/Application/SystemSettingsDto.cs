@@ -146,6 +146,12 @@ public sealed record SystemSettingsDto
 
     public int ContractMaxSummaryContracts { get; set; }
 
+    public int ContractEndingWindowDays { get; set; }
+
+    public int ContractChargeWindowDays { get; set; }
+
+    public int ContractMaxSummaryCharges { get; set; }
+
     public int InsuranceMaxRenewalsPerPolicy { get; set; }
 
     public int InsuranceMaxFilesPerParent { get; set; }

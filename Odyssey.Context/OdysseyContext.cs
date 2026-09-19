@@ -969,7 +969,13 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             // writer besides an administrator at /settings.
             new SystemSetting { Key = SystemSettingsKeys.SubscriptionRenewalWindowDays, Value = "45", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.SubscriptionMaxSummaryRenewals, Value = "6", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.SubscriptionMaxSummarySubscriptions, Value = "1000", UpdatedAt = seededAt }
+            new SystemSetting { Key = SystemSettingsKeys.SubscriptionMaxSummarySubscriptions, Value = "1000", UpdatedAt = seededAt },
+            // The Contracts summary windows. The ending-soon window seeds the client `const 45` it
+            // replaces exactly, so a default install is behaviourally identical; the other two are new
+            // and seed the design system's own defaults (a 45-day look-ahead, six rendered rows).
+            new SystemSetting { Key = SystemSettingsKeys.ContractEndingWindowDays, Value = "45", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.ContractChargeWindowDays, Value = "45", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.ContractMaxSummaryCharges, Value = "6", UpdatedAt = seededAt }
         );
 
         // Preferences are keyed by user id and share this context, so the link is a real FK: cascade

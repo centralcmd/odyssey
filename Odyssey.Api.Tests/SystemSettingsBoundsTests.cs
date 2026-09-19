@@ -85,20 +85,21 @@ public class SystemSettingsBoundsTests
     /// <summary>
     /// The census, so a wrong denominator cannot scope a future fix to a subset of its own defect class.
     /// 38 int keys before issue #437, 41 after, 42 once issue #8 added the SMTP port, 43 once issue #27
-    /// added the insurance link cap, 44 once issue #135 added the per-contract term cap.
+    /// added the insurance link cap, 44 once issue #135 added the per-contract term cap, 47 once the
+    /// Contracts summary gained its two windows and its next-charge row cap.
     /// </summary>
     [Fact]
-    public void The_int_key_census_is_forty_four()
+    public void The_int_key_census_is_forty_seven()
     {
-        Assert.Equal(44, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
-        Assert.Equal(44, IntProperties.Count);
+        Assert.Equal(47, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
+        Assert.Equal(47, IntProperties.Count);
 
         // …and the whole registry equals the persisted key catalogue, which is the check that the
         // per-kind counts are right rather than merely consistent with each other. Issue #8 added four:
         // one int (the SMTP port), one bool (STARTTLS) and two strings (the host and the link origin).
         // Issue #27 added one more int, InsuranceMaxLinksPerPolicy; issue #135 another,
-        // ContractMaxTermsPerContract.
-        Assert.Equal(68, SystemSettingsRegistry.All.Count);
+        // ContractMaxTermsPerContract; the Contracts summary windows added three more.
+        Assert.Equal(71, SystemSettingsRegistry.All.Count);
         Assert.Equal(5, SystemSettingsRegistry.All.OfType<BoolSetting>().Count());
         Assert.Equal(8, SystemSettingsRegistry.All.OfType<CapacitySetting>().Count());
         Assert.Equal(10, SystemSettingsRegistry.All.OfType<StringSetting>().Count());

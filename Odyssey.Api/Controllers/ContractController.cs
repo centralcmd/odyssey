@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -62,10 +63,14 @@ public class ContractController : ControllerBase
     [HttpGet("summary", Name = "GetContractSummary")]
     [Authorize(Policy = PermissionClaims.ContractsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ContractSummary))]
-    [SwaggerOperation(Summary = "Summary rollup: counts by status and by type.")]
-    public async Task<IActionResult> GetSummary(CancellationToken cancellationToken = default)
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary =
+        "Summary rollup: counts by status and by type, the recurring-cost run rate, and the derived upcoming charges.")]
+    public async Task<IActionResult> GetSummary(
+        [FromQuery(Name = "baseCurrency")][StringLength(3, ErrorMessage = "baseCurrency must be a 3-letter ISO 4217 code.")] string? baseCurrency = null,
+        CancellationToken cancellationToken = default)
     {
-        return Ok(await service.GetSummary(cancellationToken));
+        return Ok(await service.GetSummary(baseCurrency, cancellationToken));
     }
 
     [HttpGet("{id}", Name = "GetContract")]

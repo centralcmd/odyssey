@@ -13,6 +13,7 @@
 @inject Odyssey.Client.Services.IPageStateService PageState
 @inject IReferenceDataCache ReferenceData
 @inject IAccountsApiClient Accounts
+@inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
 
 <PageTitle>Contracts</PageTitle>
 
@@ -21,10 +22,13 @@
 
 <MudStack Spacing="4">
 
+    @* The header signal is labelled "Upcoming" because it carries four groups, not one: a term that
+       ran out, one running out, one about to start, and the charges falling due. They answer a single
+       question, so they share one label, one count and one worst-severity reading on the button. *@
     <PageHeader Title="Contracts"
                 Icon="@Icons.Material.Filled.Handshake"
                 Problems="HeaderProblems"
-                ProblemsLabel="Ending soon"
+                ProblemsLabel="Upcoming"
                 ProblemsOpen="_problemsOpen" ProblemsOpenChanged="OnProblemsToggled"
                 OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
@@ -38,7 +42,7 @@
         <OverviewContent>
             @if (_summary is not null)
             {
-                <ContractsSummaryView Summary="_summary" />
+                <ContractsSummaryView Summary="_summary" FormatMoney="FormatMoney" />
             }
         </OverviewContent>
 
@@ -298,4 +302,9 @@
         @<span class="con-sub-inst">
             <span class="material-icons" aria-hidden="true">groups</span><span>@name</span>
         </span>;
+
+    // A derived next-charge row in the header signal panel. Razor syntax, so it lives here rather than
+    // in the code-behind that builds the rest of the panel.
+    private RenderFragment ChargeRow(ContractUpcomingCharge charge) =>
+        @<ContractChargeRow Charge="charge" Money="FormatMoney" OnView="JumpTo" />;
 }

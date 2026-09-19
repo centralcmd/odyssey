@@ -271,6 +271,41 @@ policy's own **New party** action and its party tiles.
 round now, through the policy's own party collections. `ContractPartyKind` keeps the surviving ordinals
 (`Account = 0`, `Institution = 1`), so no persisted or wire value shifted meaning.
 
+**`ContractType` reads in a different order from the one it is stored in.** The four members added
+after the original set carry ordinals **4–7** (`Insurance`, `Subscription`, `Purchase`, `Membership`)
+while `Other` keeps **3** — an ordinal is a wire and persistence contract and is never renumbered, so
+a stored `3` cannot be made to mean `Insurance`. Only the *reading* order pulls `Other` last, and it
+lives in one place: `OdsTypeRegistries.ContractTypes`. That matters beyond tidiness, because
+`ContractTypeOf`'s documented fallback for an out-of-range value is the **trailing** entry — reorder
+the registry so something other than `Other` ends it and every stale row silently renders as that
+instead. `OdsTypeRegistriesTests` pins both halves.
+
+**The contracts roll-up computes what the file COSTS, and both halves read the same rows.** The
+in-force `Fee`/`Amount` terms of the **Active** contracts are summed into a run rate (monthly and
+yearly, converted to the caller's display currency) and separately projected forward into the "next
+charges" the header panel lists. Four things about it are easy to get backwards:
+
+- **`IntervalCount` is a divisor.** 300 every three months is 100 a month. Reading it as a factor
+  triples every quarterly line.
+- **A fee with no cadence is excluded by construction.** `OneTime`, `PerOccurrence` and `PerUnit` name
+  an occasion rather than a rhythm, so there is no rate to project and no next occurrence to predict —
+  and a percentage fee carries no due amount at all.
+- **An unconvertible currency is NAMED, never folded in at 1:1.** A silent 1:1 under-reports a strong
+  currency and over-reports a weak one, and either reads as a whole figure rather than a partial one.
+  The exclusion applies to the per-type split too, so the rows always sum to the totals.
+- **Nothing is scheduled.** A charge date is a term's cadence anchor (`AnchorDate`, else
+  `EffectiveFrom`) stepped forward at read time and never written back, exactly as
+  `SubscriptionService` projects a billing interval. Month steps are measured from the *original*
+  anchor, so a fee anchored on the 31st recovers its day-of-month after a short February instead of
+  drifting to the 28th forever.
+
+**"Ending soon" is a slice of Active, not a fifth status** — it is already counted in `Active`, so the
+four real buckets still sum to `TotalContracts` and this one deliberately does not. Its window and the
+charge window are admin-editable settings (`ContractEndingWindowDays`, `ContractChargeWindowDays`), and
+**`EndingWindowDays` travels to the client on `ContractSummary`** rather than living as a page
+constant: the page interpolates it into the row label, so a local copy would caption a row with one
+number while the server counted by another — the client-side-copy defect stated above.
+
 `DELETE /api/contacts/{id}?detachInsuranceLinks=true` is the supported release valve: it removes every
 insurance link naming the contact and deletes it **in one transaction**, composing `contacts.delete`
 with `insurance.update` rather than adding a claim. Its `409` counterpart is **claim-conditional**, and

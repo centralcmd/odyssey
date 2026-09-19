@@ -87,7 +87,7 @@ public sealed class DemoDataSet
         var (budgets, budgetItems) = BudgetGenerator.Build();
         var (transactions, tagLinks) = TransactionGenerator.Build(accounts, anchor);
         var insurance = InsurancePolicyGenerator.Build(anchor);
-        var (contracts, contractParties) = ContractGenerator.Build(anchor);
+        var (contracts, contractParties, contractTerms) = ContractGenerator.Build(anchor);
         var (taxStatements, taxStatementTags) = TaxStatementGenerator.Build();
         var (fileBlobs, fileMetadata, taxStatementFiles) = TaxStatementFileGenerator.Build();
         var subscriptions = SubscriptionGenerator.Build(anchor);
@@ -119,7 +119,9 @@ public sealed class DemoDataSet
             ContactAvatarFiles = contactAvatars.Files,
             Accounts = accounts,
             AccountEstimates = AccountEstimateGenerator.Build(),
-            Terms = TermGenerator.Build(),
+            // One table, two owners (issue #135): the account terms and the contracts' fee terms share
+            // the Terms set, and the generators never touch each other's owner column.
+            Terms = [.. TermGenerator.Build(), .. contractTerms],
             Budgets = budgets,
             BudgetItems = budgetItems,
             Transactions = transactions,

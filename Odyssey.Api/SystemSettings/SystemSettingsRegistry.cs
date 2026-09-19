@@ -408,6 +408,54 @@ internal static class SystemSettingsRegistry
             Read = r => r.ContractMaxSummaryContracts,
             Write = (dto, v) => dto.ContractMaxSummaryContracts = v,
         },
+
+        // ── The Contracts summary windows ────────────────────────────────────────────────────────
+        //
+        // The ordinary write claim, matching every other display bound (the Subscriptions trio below
+        // records the full rationale). Their own cache key rather than FinanceCapsCacheKey: one
+        // CacheKeyToEvict per descriptor, so sharing would cross-evict the per-request caps.
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.ContractEndingWindowDays,
+            Min = SystemSettingsBounds.ContractEndingWindowDaysMin,
+            Max = SystemSettingsBounds.ContractEndingWindowDaysMax,
+            FieldName = nameof(SystemSettingsUpdate.ContractEndingWindowDays),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.ContractEndingWindowDays),
+            CacheKeyToEvict = SystemSettingsService.ContractSummaryCacheKey,
+            Read = r => r.ContractEndingWindowDays,
+            Write = (dto, v) => dto.ContractEndingWindowDays = v,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.ContractChargeWindowDays,
+            Min = SystemSettingsBounds.ContractChargeWindowDaysMin,
+            Max = SystemSettingsBounds.ContractChargeWindowDaysMax,
+            FieldName = nameof(SystemSettingsUpdate.ContractChargeWindowDays),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.ContractChargeWindowDays),
+            CacheKeyToEvict = SystemSettingsService.ContractSummaryCacheKey,
+            Read = r => r.ContractChargeWindowDays,
+            Write = (dto, v) => dto.ContractChargeWindowDays = v,
+        },
+        // The one of the three with a cost advisory, matching SubscriptionMaxSummaryRenewals: the
+        // rows are rendered blocks in an always-open header region, so the cost of a raise is payload
+        // and render rather than query time.
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.ContractMaxSummaryCharges,
+            Min = SystemSettingsBounds.ContractMaxSummaryChargesMin,
+            Max = SystemSettingsBounds.ContractMaxSummaryChargesMax,
+            FieldName = nameof(SystemSettingsUpdate.ContractMaxSummaryCharges),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.ContractMaxSummaryCharges),
+            CacheKeyToEvict = SystemSettingsService.ContractSummaryCacheKey,
+            Read = r => r.ContractMaxSummaryCharges,
+            Write = (dto, v) => dto.ContractMaxSummaryCharges = v,
+            Advise = SettingAdvisories.AboveDefault(
+                dto => dto.ContractMaxSummaryCharges, SystemSettingsDefaults.ContractMaxSummaryCharges,
+                "Each charge is rendered as its own row in the page-header panel."),
+        },
         new IntSetting
         {
             Key = SystemSettingsKeys.InsuranceMaxRenewalsPerPolicy,
