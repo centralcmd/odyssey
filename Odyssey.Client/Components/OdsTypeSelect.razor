@@ -12,33 +12,42 @@
     (OdsAccountTypeSelect, OdsContractTypeSelect, …), each of which feeds its canonical
     registry in. This is the shared engine they delegate to. Value is the enum key.
 
-    ── The listbox pattern (issue #51) ───────────────────────────────────────────────────
-    The trigger advertises aria-haspopup="listbox", so the popup has to BE a listbox. The
-    rows are therefore rendered here rather than as MudMenuItems, because a MudMenuItem
-    (MudBlazor 9.9.0) carries no role at all and no selected state — which left the popup a
-    role="listbox" container holding zero role="option" children, so a screen reader
-    announced an empty list and the current choice was conveyed only by the check glyph,
-    which is aria-hidden (WCAG 4.1.2, and 1.1.1 for the glyph).
+    ── The single-choice menu pattern (issue #51) ────────────────────────────────────────
+    The popup is MudMenu's OWN list element and MudMenu decides its role. Up to MudBlazor
+    9.9.0 that element took MudList's default role="listbox", so this was a listbox of
+    role="option" rows; from 9.10.0 MudMenu passes role="menu" explicitly, so the same rows
+    are now role="menuitemradio" — one radio group of choices, exactly one checked. The
+    trigger's aria-haspopup moved with it, from "listbox" to "menu", because the two have to
+    agree: a trigger promising a listbox that opens a menu is the mismatch this whole area
+    exists to avoid. That also makes the trigger agree with the activator wrapper MudMenu
+    puts around it, which says aria-haspopup="menu" whatever we do.
 
-    Three things about that are deliberate and easy to undo by accident:
+    The rows are still rendered here rather than as MudMenuItems. The original reason held
+    against 9.9.0 (a MudMenuItem carried no role and no selected state, leaving the popup a
+    container with zero exposed children — WCAG 4.1.2, and 1.1.1 for the aria-hidden check
+    glyph). 9.10.0 gives MudMenuItem role="menuitem", which fixes the role but still carries
+    no CHECKED state, so a MudMenuItem could not say which type is chosen. Rendering here is
+    what buys aria-checked, the roving-focus keyboard model below, and the DS row layout.
 
-    • The listbox container is MudMenu's OWN list element — MudList sets role="listbox" on
-      it — so the options are direct children of it. Do NOT wrap them in another
-      role="listbox": that nests a second listbox inside the first and leaves the outer one
-      with no options, which is the defect this fixes, one level up. The cost of using
-      MudBlazor's element is that it takes no attributes of ours, so the listbox carries no
-      aria-label and the trigger carries no aria-controls. Note this is a gap against the
-      design system rather than parity with it: TypeSelect.jsx sets BOTH, which it can afford
-      to because it builds its own <ul>. Neither is required for the pattern — the trigger's
-      own accessible name is what names the control — but if MudMenu ever exposes its list id,
-      that is the follow-up.
-    • A group of options is a real role="group" named by aria-labelledby, not a bare heading.
+    Four things about that are deliberate and easy to undo by accident:
+
+    • The container is MudMenu's own list element, so the rows are direct children of it. Do
+      NOT wrap them in a role="listbox" (or any other container role): that leaves the menu
+      owning no menuitems and puts a widget inside it that a menu may not own — the defect
+      this fixes, one level up. The cost of using MudBlazor's element is that it takes no
+      attributes of ours, so the list carries no aria-label. Note this is a gap against the
+      design system rather than parity with it: TypeSelect.jsx sets one, which it can afford
+      to because it builds its own <ul>. It is not required for the pattern — the trigger's
+      own accessible name is what names the control. The trigger needs no aria-controls of
+      ours either: since 9.10.0 MudMenu puts one on its activator wrapper.
+    • A group of rows is a real role="group" named by aria-labelledby, not a bare heading.
       A presentational heading alone drops the section label out of the accessibility tree
       entirely, so a screen-reader user got one flat list where a sighted user sees Assets and
       Liabilities (WCAG 1.3.1). The heading element itself stays presentational — it is the
-      group's NAME, and a stray generic child is not a valid listbox descendant.
-    • Selection is exposed with aria-selected on every option, not only on the chosen one.
-      The check glyph stays aria-hidden: with aria-selected present it is decoration, and
+      group's NAME, and a stray generic child is not a valid menu descendant. role="group" is
+      a valid child of both a listbox and a menu, so this survived the role change unchanged.
+    • Selection is exposed with aria-checked on every row, not only on the chosen one. The
+      check glyph stays aria-hidden: with aria-checked present it is decoration, and
       duplicating the state in text would make every row announce twice.
     • MudMenu contributes no navigation inside the popup: every one of its arrow, activation
       and dismissal handlers returns early while its registered-item collection is empty,
@@ -86,7 +95,7 @@
             <button type="button" id="@FieldId"
                     class="odc-select-trigger @(_open ? "open" : null) @(Selected is null ? "placeholder" : null)"
                     disabled="@Disabled"
-                    aria-haspopup="listbox" aria-expanded="@(_open ? "true" : "false")"
+                    aria-haspopup="menu" aria-expanded="@(_open ? "true" : "false")"
                     aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
                     aria-label="@AriaLabel"
                     aria-describedby="@DescribedBy"
@@ -153,8 +162,8 @@
         <button type="button"
                 id="@OptionId(option.Key)"
                 class="mud-menu-item mud-list-item-clickable odc-typesel-opt"
-                role="option"
-                aria-selected="@(on ? "true" : "false")"
+                role="menuitemradio"
+                aria-checked="@(on ? "true" : "false")"
                 tabindex="-1"
                 @onclick="@(() => PickAsync(option))"
                 @onkeydown="@(e => OnOptionKeyAsync(e, option))">

@@ -57,7 +57,7 @@
                 @if (item.Disabled && HasNote(item))
                 {
                     @* Unavailable WITH a stated reason, rendered directly rather than as a
-                       MudMenuItem. Measured against MudBlazor 9.9.0 (OdsMenuDisabledItemTests pins
+                       MudMenuItem. Measured against MudBlazor 9.10.0 (OdsMenuDisabledItemTests pins
                        all of this):
 
                          • MudMenuItem writes aria-disabled and tabindex AFTER any splatted
@@ -65,15 +65,18 @@
                            from the focus order and hides the reason from exactly the users it was
                            written for — and Disabled=false forces aria-disabled="false". There is no
                            combination of the two that yields a focusable aria-disabled item.
-                         • The list container is role="listbox" and MudBlazor gives its items NO
-                           role. So this shell carries none either: a role="menuitem" child of a
-                           listbox is an invalid pairing, and would make this the only item in the
-                           menu with a role. Parity with its siblings is the correct target, not the
-                           ARIA menu pattern the design system's own vanilla-JS mockup uses.
+                         • The shell carries role="menuitem", matching its siblings: from 9.10.0
+                           MudMenu's list is role="menu" and each MudMenuItem is role="menuitem".
+                           Parity with those siblings is the target, and it is what the role has to
+                           track — up to 9.9.0 the list was role="listbox" and the items carried no
+                           role at all, so this shell carried none either. Without the role it would
+                           now be the one item in the menu that is not a menuitem, which a menu may
+                           not own: the reason would be reachable by Tab and still unannounced.
 
                        Same class and same tabindex as an ENABLED sibling, so it sits in the same tab
                        sequence; no handler, so activating it neither acts nor closes the menu. *@
                     <div class="mud-menu-item odc-menu-item-static"
+                         role="menuitem"
                          tabindex="0"
                          aria-disabled="true"
                          aria-describedby="@noteId">
