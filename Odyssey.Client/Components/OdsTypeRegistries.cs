@@ -245,14 +245,28 @@ public static class OdsTypeRegistries
         new() { Key = "Other",              Label = "Other",              Icon = "insert_drive_file", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
-    /// <summary>ContractType — Employment · Service · Rental · Other (issue #174). Mirrors the DS
-    /// contractTypes registry and the C# ContractType enum.</summary>
+    /// <summary>
+    /// ContractType — Employment · Service · Rental · Insurance · Subscription · Purchase ·
+    /// Membership · Other (issue #174). Mirrors the DS <c>contractTypes</c> registry and the C#
+    /// <c>ContractType</c> enum.
+    /// </summary>
+    /// <remarks>
+    /// In READING order, which is deliberately not ordinal order: the four later members carry
+    /// ordinals 4–7 while <c>Other</c> keeps ordinal 3, because an ordinal is a wire and persistence
+    /// contract and is never renumbered. <c>Other</c> still reads LAST — "none of the above" after the
+    /// categories, not in the middle of them — and <see cref="ContractTypeOf"/>'s documented fallback
+    /// is the trailing entry, so the two facts hold together rather than by coincidence.
+    /// </remarks>
     public static readonly IReadOnlyList<OdsTypeOption> ContractTypes =
     [
-        new() { Key = "Employment", Label = "Employment", Icon = "work",                Color = "oklch(0.76 0.13 225)", Soft = "oklch(0.76 0.13 225 / 0.16)" },
-        new() { Key = "Service",    Label = "Service",    Icon = "home_repair_service", Color = "oklch(0.78 0.14 170)", Soft = "oklch(0.78 0.14 170 / 0.16)" },
-        new() { Key = "Rental",     Label = "Rental",     Icon = "cottage",             Color = "oklch(0.79 0.14 60)",  Soft = "oklch(0.79 0.14 60 / 0.16)" },
-        new() { Key = "Other",      Label = "Other",      Icon = "description",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Employment",   Label = "Employment",   Icon = "work",                Color = "oklch(0.76 0.13 225)", Soft = "oklch(0.76 0.13 225 / 0.16)" },
+        new() { Key = "Service",      Label = "Service",      Icon = "home_repair_service", Color = "oklch(0.78 0.14 170)", Soft = "oklch(0.78 0.14 170 / 0.16)" },
+        new() { Key = "Rental",       Label = "Rental",       Icon = "cottage",             Color = "oklch(0.79 0.14 60)",  Soft = "oklch(0.79 0.14 60 / 0.16)" },
+        new() { Key = "Insurance",    Label = "Insurance",    Icon = "shield",              Color = "oklch(0.75 0.14 290)", Soft = "oklch(0.75 0.14 290 / 0.16)" },
+        new() { Key = "Subscription", Label = "Subscription", Icon = "autorenew",           Color = "oklch(0.76 0.14 320)", Soft = "oklch(0.76 0.14 320 / 0.16)" },
+        new() { Key = "Purchase",     Label = "Purchase",     Icon = "shopping_bag",        Color = "oklch(0.78 0.14 140)", Soft = "oklch(0.78 0.14 140 / 0.16)" },
+        new() { Key = "Membership",   Label = "Membership",   Icon = "card_membership",     Color = "oklch(0.77 0.13 20)",  Soft = "oklch(0.77 0.13 20 / 0.16)" },
+        new() { Key = "Other",        Label = "Other",        Icon = "description",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
     /// <summary>

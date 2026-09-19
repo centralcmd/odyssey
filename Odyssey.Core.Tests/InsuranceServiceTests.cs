@@ -58,6 +58,11 @@ public class InsuranceServiceTests
         // present because the interface is one seam for the whole finance domain.
         public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new SubscriptionSettings(45, 6, 1000));
+
+        // Likewise the contracts summary windows — unused here, present because the interface is one
+        // seam for the whole finance domain.
+        public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ContractSummarySettings(45, 45, 6));
     }
 
     // InsuranceOptions is gone: both of its properties moved into the settings store (issue #421

@@ -23,6 +23,34 @@ public sealed class PageHeaderProblem
     /// <summary>Tint + icon of the alert row and its contribution to the toggle severity.</summary>
     public PageHeaderSeverity Severity { get; set; } = PageHeaderSeverity.Warning;
 
+    /// <summary>
+    /// Optional heading this row sits under. Consecutive rows sharing a group are rendered beneath one
+    /// heading; the heading changes when this value does, so the page controls grouping purely by the
+    /// ORDER it supplies rows in. A panel where every row leaves this null renders exactly as before.
+    ///
+    /// <para>
+    /// A group is a reading aid, not a severity boundary: each row keeps its own tint, and the toggle
+    /// still takes the worst severity in the whole panel. Grouping rows of different meanings under
+    /// one heading — "a term ran out" beside "a charge falls due" — is the point; they belong to one
+    /// question ("what is coming?") and to one count.
+    /// </para>
+    /// </summary>
+    public string? Group { get; set; }
+
+    /// <summary>
+    /// Optional replacement for the standard alert row. When set, the header renders this instead of
+    /// the severity-tinted alert, still inside the panel, still under <see cref="Group"/>, and still
+    /// contributing its <see cref="Severity"/> to the toggle and its 1 to the count.
+    ///
+    /// <para>
+    /// This exists for a row with its own ANATOMY rather than its own wording — a dated,
+    /// money-carrying charge row reads as a small table, not as a sentence — and keeping it in the
+    /// same collection is what keeps one count, one severity and one open/closed state. A row
+    /// supplying this owns its own click handling; <see cref="OnView"/> is not wired for it.
+    /// </para>
+    /// </summary>
+    public RenderFragment? Row { get; set; }
+
     /// <summary>Optional bold lead-in shown before the message (e.g. the record's name).</summary>
     public string? Lead { get; set; }
 

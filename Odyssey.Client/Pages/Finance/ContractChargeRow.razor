@@ -1,0 +1,70 @@
+@using System.Globalization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    ContractChargeRow — one derived "next charge" row in the Contracts page-header panel
+    (Odyssey Design System · contracts.css, .con-charge-row).
+
+    It sits in the same PageHeader.Problems collection as the alert rows above it, so it shares their
+    count, their severity roll-up and their open/closed state — but it has its own ANATOMY rather than
+    its own wording: a date, the contract, the fee series, the amount. That reads as a small table,
+    which is exactly what a sentence-shaped alert row cannot express.
+
+    A real <button> rather than the design's div + role="button" + tabindex + keydown: Enter, Space,
+    focus and the accessible role all come for free, and Space does not scroll the page. Blazor
+    resolves @onkeydown:preventDefault BEFORE the handler runs, so the div form cannot suppress that
+    scroll from the first keystroke without a JS hop.
+
+    Nothing here is scheduled. The date is the contract's in-force fee term read forward from its own
+    cadence anchor, computed server-side and carried on ContractSummary.UpcomingCharges.
+*@
+
+<button type="button" class="con-charge-row" aria-label="@AriaLabel" @onclick="Activate">
+    <span class="con-charge-when">
+        <span class="con-charge-md">@Charge.ChargeDate.ToString("MMM d", Culture)</span>
+        <span class="con-charge-rel">@RelativeDays</span>
+    </span>
+    <span class="con-charge-name">
+        <span class="material-icons" aria-hidden="true" style="@($"color:{TypeInfo.Color}")">@TypeInfo.Icon</span>
+        <span class="con-charge-title">@Charge.Name</span>
+        @if (!string.IsNullOrWhiteSpace(Charge.Label))
+        {
+            @* Hidden below 720px along with the View affordance — the amount and the date are what
+               the row is for, and the series name is the first thing that can go. The aria-label
+               keeps it, so nothing is lost to a screen reader at any width. *@
+            <span class="con-charge-term">@Charge.Label</span>
+        }
+    </span>
+    <span class="con-charge-amt">@Money(Charge.Amount, Charge.CurrencyCode)</span>
+    <span class="con-charge-go" aria-hidden="true">View →</span>
+</button>
+
+@code {
+    [Parameter, EditorRequired] public ContractUpcomingCharge Charge { get; set; } = default!;
+
+    /// <summary>Formats an amount in its own currency — a contract has no currency, each term does.</summary>
+    [Parameter, EditorRequired] public Func<decimal, string?, string> Money { get; set; } = default!;
+
+    [Parameter] public EventCallback<Guid> OnView { get; set; }
+
+    private static CultureInfo Culture => CultureInfo.CurrentCulture;
+
+    private OdsTypeOption TypeInfo => OdsTypeRegistries.ContractTypeOf(Charge.Type);
+
+    private string RelativeDays => Charge.DaysUntil switch
+    {
+        <= 0 => "today",
+        1 => "tomorrow",
+        var d => $"in {d} days",
+    };
+
+    // The visual row is a grid of fragments; a screen reader gets the whole thing as one sentence,
+    // including the series name the narrow layout drops.
+    private string AriaLabel =>
+        $"{Charge.Name}{(string.IsNullOrWhiteSpace(Charge.Label) ? "" : $", {Charge.Label}")}, "
+        + $"{Money(Charge.Amount, Charge.CurrencyCode)} due {RelativeDays} "
+        + $"on {Charge.ChargeDate.ToString("MMMM d, yyyy", Culture)}. View contract.";
+
+    private Task Activate() => OnView.InvokeAsync(Charge.ContractId);
+}

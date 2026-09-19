@@ -30,4 +30,10 @@ internal sealed class FakeSystemSettingsLookup : ISystemSettingsLookup
 
     public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(Subscriptions);
+
+    /// <summary>The shipped Contracts defaults: a 45-day ending window, a 45-day charge window, six rows.</summary>
+    public ContractSummarySettings ContractSummary { get; set; } = new(45, 45, 6);
+
+    public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(ContractSummary);
 }

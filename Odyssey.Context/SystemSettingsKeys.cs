@@ -120,6 +120,13 @@ public static class SystemSettingsKeys
     public const string ContractMaxFilesPerContract = "ContractMaxFilesPerContract";
     public const string ContractMaxTermsPerContract = "ContractMaxTermsPerContract";
     public const string ContractMaxSummaryContracts = "ContractMaxSummaryContracts";
+
+    // The Contracts summary windows (design-system "Upcoming" panel). Two windows rather than one:
+    // the ending-soon window is about a TERM running out and the charge window is about a PRICE
+    // falling due, and an administrator who widens one has no reason to be forced to widen the other.
+    public const string ContractEndingWindowDays = "ContractEndingWindowDays";
+    public const string ContractChargeWindowDays = "ContractChargeWindowDays";
+    public const string ContractMaxSummaryCharges = "ContractMaxSummaryCharges";
     public const string InsuranceMaxRenewalsPerPolicy = "InsuranceMaxRenewalsPerPolicy";
     public const string InsuranceMaxFilesPerParent = "InsuranceMaxFilesPerParent";
 
@@ -245,6 +252,9 @@ public static class SystemSettingsKeys
         ContractMaxFilesPerContract,
         ContractMaxTermsPerContract,
         ContractMaxSummaryContracts,
+        ContractEndingWindowDays,
+        ContractChargeWindowDays,
+        ContractMaxSummaryCharges,
         InsuranceMaxRenewalsPerPolicy,
         InsuranceMaxFilesPerParent,
         InsuranceMaxLinksPerPolicy,

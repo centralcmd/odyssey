@@ -193,6 +193,38 @@ public sealed record SystemSettingsUpdate
         + "covers the most recent contracts only.")]
     public int? ContractMaxSummaryContracts { get; set; }
 
+    /// <summary>
+    /// The "ending soon" window: how many days ahead an Active contract's end date reads as a cliff.
+    /// It also defines the two mirror groups the same window produces — a term starting inside it and
+    /// one that expired inside it — so widening it widens all three at once.
+    /// </summary>
+    [Range(SystemSettingsBounds.ContractEndingWindowDaysMin,
+        SystemSettingsBounds.ContractEndingWindowDaysMax, ErrorMessage =
+        "The ending-soon window must be between 1 and 365 days. A window of 0 would still include "
+        + "terms ending today, so it is rejected as out of range rather than as empty.")]
+    public int? ContractEndingWindowDays { get; set; }
+
+    /// <summary>
+    /// The "next charges" window: how many days ahead a contract's next recurring charge is surfaced.
+    /// Separate from the ending-soon window because it answers a different question — what falls due,
+    /// not what runs out.
+    /// </summary>
+    [Range(SystemSettingsBounds.ContractChargeWindowDaysMin,
+        SystemSettingsBounds.ContractChargeWindowDaysMax, ErrorMessage =
+        "The next-charges window must be between 1 and 365 days. A window of 0 would still include "
+        + "charges falling today, so it is rejected as out of range rather than as empty.")]
+    public int? ContractChargeWindowDays { get; set; }
+
+    /// <summary>
+    /// Next-charge rows the page-header panel lists. Bounded at 50 rather than the 100000 the
+    /// materialised-fetch caps carry: each row is its own rendered block in an always-open region.
+    /// </summary>
+    [Range(SystemSettingsBounds.ContractMaxSummaryChargesMin,
+        SystemSettingsBounds.ContractMaxSummaryChargesMax, ErrorMessage =
+        "Next charges shown in the summary must be between 1 and 50. Each one is a separate rendered "
+        + "block in the page header, so this is deliberately bounded well below the other summary caps.")]
+    public int? ContractMaxSummaryCharges { get; set; }
+
     [Range(SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMin,
         SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMax, ErrorMessage =
         "Renewals per policy must be between 1 and 100000.")]

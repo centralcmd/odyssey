@@ -126,30 +126,46 @@
             {
                 <div class="ph-region">
                     <div class="signal-panel">
+                        @{ string? renderedGroup = null; }
                         @foreach (var problem in Problems!)
                         {
-                            <div class="alert @SeverityClass(problem.Severity) @(problem.HasView ? "signal-row" : null)"
-                                 role="status"
-                                 @onclick="@(() => InvokeView(problem))">
-                                <span class="material-icons alert-icon">@SeverityGlyph(problem.Severity)</span>
-                                <div class="alert-body">
-                                    @if (!string.IsNullOrEmpty(problem.Lead))
+                            @* The heading is emitted on CHANGE, so the page groups rows purely by the
+                               order it supplies them in and a panel with no groups renders unchanged. *@
+                            @if (!string.IsNullOrWhiteSpace(problem.Group) && problem.Group != renderedGroup)
+                            {
+                                renderedGroup = problem.Group;
+                                <div class="ph-signal-group">@problem.Group</div>
+                            }
+
+                            @if (problem.Row is { } row)
+                            {
+                                @row
+                            }
+                            else
+                            {
+                                <div class="alert @SeverityClass(problem.Severity) @(problem.HasView ? "signal-row" : null)"
+                                     role="status"
+                                     @onclick="@(() => InvokeView(problem))">
+                                    <span class="material-icons alert-icon">@SeverityGlyph(problem.Severity)</span>
+                                    <div class="alert-body">
+                                        @if (!string.IsNullOrEmpty(problem.Lead))
+                                        {
+                                            <strong>@problem.Lead.</strong>@(" ")
+                                        }
+                                        @problem.Message
+                                        @if (!string.IsNullOrWhiteSpace(problem.Where))
+                                        {
+                                            <span class="signal-where"> @problem.Where</span>
+                                        }
+                                    </div>
+                                    @if (problem.HasView)
                                     {
-                                        <strong>@problem.Lead.</strong>@(" ")
-                                    }
-                                    @problem.Message
-                                    @if (!string.IsNullOrWhiteSpace(problem.Where))
-                                    {
-                                        <span class="signal-where"> @problem.Where</span>
+                                        <button type="button" class="alert-fix"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="@(() => InvokeView(problem))">@problem.ViewLabel →</button>
                                     }
                                 </div>
-                                @if (problem.HasView)
-                                {
-                                    <button type="button" class="alert-fix"
-                                            @onclick:stopPropagation="true"
-                                            @onclick="@(() => InvokeView(problem))">@problem.ViewLabel →</button>
-                                }
-                            </div>
+                            }
                         }
                     </div>
                 </div>

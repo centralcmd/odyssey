@@ -165,6 +165,21 @@
     gap: 10px;
 }
 
+/* A group heading inside the rollup (Odyssey Design System · contracts.css, .con-signal-group).
+   The heading is the ONLY thing separating one group from the next — no rule, no extra surface — so
+   rows keep their own severity reading and the panel stays one list rather than several panels. */
+.ph-signal-group {
+    font: var(--fw-medium) var(--fs-overline) / 1 var(--font-sans);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    padding: var(--space-1) 2px 0;
+}
+
+/* The panel's own 10px gap already separates rows, so a heading only needs the extra air ABOVE it,
+   and only when something precedes it — the first group sits flush with the region's top. */
+.signal-panel > * + .ph-signal-group { margin-top: var(--space-1); }
+
 /* A clickable rollup row (only when the problem carries a View action). */
 .signal-row {
     align-items: center;

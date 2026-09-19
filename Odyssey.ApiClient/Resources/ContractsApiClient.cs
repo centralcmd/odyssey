@@ -26,8 +26,12 @@ public interface IContractsApiClient
     /// <summary>Loads one contract with parties, files and derived status. Returns null on failure.</summary>
     Task<ExistingContract?> GetAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Loads the summary rollup (counts by status + by type). Returns null on failure.</summary>
-    Task<ContractSummary?> GetSummaryAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Loads the summary rollup — counts by status and by type, the recurring-cost run rate and the
+    /// derived upcoming charges. <paramref name="baseCurrency"/> is the display currency the run rate
+    /// converts into; blank lets the server pick the most common one. Returns null on failure.
+    /// </summary>
+    Task<ContractSummary?> GetSummaryAsync(string? baseCurrency = null, CancellationToken ct = default);
 
     /// <summary>Downloads a contract attachment via the contract-scoped route.</summary>
     Task<ApiResult<ApiFile>> DownloadFileAsync(Guid contractId, Guid fileId, CancellationToken ct = default);
@@ -99,8 +103,13 @@ public sealed class ContractsApiClient(IOdysseyApi api) : IContractsApiClient
     public async Task<ExistingContract?> GetAsync(Guid id, CancellationToken ct = default) =>
         (await api.GetAsync<ExistingContract>($"{Base}/{id}", ct)).Value;
 
-    public async Task<ContractSummary?> GetSummaryAsync(CancellationToken ct = default) =>
-        (await api.GetAsync<ContractSummary>($"{Base}/summary", ct)).Value;
+    public async Task<ContractSummary?> GetSummaryAsync(string? baseCurrency = null, CancellationToken ct = default)
+    {
+        var url = string.IsNullOrWhiteSpace(baseCurrency)
+            ? $"{Base}/summary"
+            : $"{Base}/summary?baseCurrency={Uri.EscapeDataString(baseCurrency)}";
+        return (await api.GetAsync<ContractSummary>(url, ct)).Value;
+    }
 
     public Task<ApiResult<ApiFile>> DownloadFileAsync(Guid contractId, Guid fileId, CancellationToken ct = default) =>
         api.GetFileAsync($"{Base}/{contractId}/files/{fileId}", "contract-file", ct: ct);

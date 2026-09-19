@@ -60,6 +60,14 @@ public sealed class SystemSettingsService(
     internal const string SubscriptionCacheKey = "system-settings:subscription-settings";
 
     /// <summary>
+    /// The Contracts summary windows, on their own entry for the same forced reason as
+    /// <see cref="SubscriptionCacheKey"/> — one <see cref="SystemSettingDescriptor.CacheKeyToEvict"/>
+    /// per descriptor, so sharing <see cref="FinanceCapsCacheKey"/> would make a window change evict
+    /// the per-request caps and vice versa.
+    /// </summary>
+    internal const string ContractSummaryCacheKey = "system-settings:contract-summary-settings";
+
+    /// <summary>
     /// One log line per faulted settings key per window, rather than one per request on an endpoint
     /// with no rate limiter (issue #437 §11, AC 28). Per <em>key</em>, so a corrupt insurance row
     /// cannot consume the subscriptions fault's line.

@@ -2307,6 +2307,49 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-summary { display: flex; flex-direction: column; gap: 14px; }
 .con-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 
+/* Run-rate stat tiles — FLAT, like the sibling breakdown tiles beneath them, so an elevated surface
+   never floats one pair of figures above the rest of the Overview. The figures are recurring spend,
+   so they take the expense colour (never a brand hue — brand encodes no money). */
+.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.con-run-tiles .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
+.con-run-tiles .odc-infotile .odc-infotile-v { color: var(--finance-expense); }
+
+/* ── Header signal: the derived "next charge" row ──────────────────────────────────────────────
+   Four columns — when · what · how much · go. It shares the panel with the alert rows above it but
+   not their anatomy: a dated, money-carrying row reads as a small table rather than a sentence.
+   A real <button>, so the element resets rather than the div the design draws (see
+   ContractChargeRow.razor for why). */
+.con-charge-row {
+  display: grid; grid-template-columns: 132px 1fr auto auto; align-items: center; gap: 14px;
+  width: 100%; padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  background: none; border: 1px solid transparent; text-align: left; font: inherit;
+  transition: background var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard);
+}
+.con-charge-row:hover { background: var(--mud-palette-action-default-hover); border-color: var(--mud-palette-divider); }
+/* The focus-ring token, not the brand text colour: a ring has to clear 3:1 against the surface it
+   sits on (WCAG 2.4.11), which a text-tuned hue does not guarantee. */
+.con-charge-row:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.con-charge-when { display: inline-flex; align-items: baseline; gap: 8px; }
+.con-charge-md { font: var(--fw-medium) var(--fs-body2) / 1 var(--font-mono); color: var(--mud-palette-text-primary); }
+.con-charge-rel { font: var(--fw-regular) var(--fs-caption) / 1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.con-charge-name {
+  display: inline-flex; align-items: center; gap: 8px; min-width: 0;
+  font: var(--fw-regular) var(--fs-body2) / 1.3 var(--font-sans); color: var(--mud-palette-text-primary);
+}
+.con-charge-name .material-icons { font-size: 16px; flex: none; }
+.con-charge-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.con-charge-term { font: var(--fw-regular) var(--fs-caption) / 1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.con-charge-amt { font: var(--fw-medium) var(--fs-body2) / 1 var(--font-mono); color: var(--mud-palette-text-primary); }
+.con-charge-go { font: var(--fw-medium) var(--fs-caption) / 1 var(--font-sans); color: var(--brand-text); white-space: nowrap; }
+
+/* Narrow: the date column collapses into the name column and the two secondary fragments go. The
+   amount stays — it is what the row is for — and the aria-label still carries the full sentence. */
+@media (max-width: 720px) {
+  .con-charge-row { grid-template-columns: 1fr auto; row-gap: 4px; }
+  .con-charge-go, .con-charge-term { display: none; }
+}
+
 /* Collapsed-card headline (period anchor + relative-days word) */
 /* The collapsed headline figure is the record card's own `.odc-record-value` /
    `.odc-record-caption` now, tinted through RecordCard's FigureTone — one figure treatment

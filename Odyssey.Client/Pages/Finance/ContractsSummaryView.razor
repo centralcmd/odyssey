@@ -2,19 +2,40 @@
 @using Odyssey.Dtos.Finance
 
 @*
-    ContractsSummaryView — the header Overview rollup (issue #174 §7): the "By type" and
-    "By status" distribution tiles. Mirrors the design system's ContractsSummary.
+    ContractsSummaryView — the header Overview rollup (issue #174 §7). Mirrors the design system's
+    ContractsSummary: a run-rate pair over the fee terms in force, then four breakdowns — what kinds
+    of agreement are on file, what state they are in, and what each kind costs per month and per year.
+
+    Every figure is server-computed over the WHOLE set (ContractSummary), not the filtered list the
+    page is showing, so narrowing the search never silently changes the numbers above it.
 *@
 
 <div class="con-summary">
+    <div class="con-run-tiles">
+        <OdsInfoTile Icon="calendar_month" Label="Monthly run rate" ValueVariant="OdsInfoTileVariant.Mono">
+            <Value>@RunRate(Summary.RunRate.Monthly)</Value>
+            <Foot>@RunRateFoot</Foot>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="event_repeat" Label="Yearly run rate" ValueVariant="OdsInfoTileVariant.Mono">
+            <Value>@RunRate(Summary.RunRate.Yearly)</Value>
+            <Foot>@RunRateFoot</Foot>
+        </OdsInfoTile>
+    </div>
     <div class="con-stats">
         <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No active contracts." />
         <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No contracts." />
+        <OdsBreakdownTile Label="Monthly run rate by type" Rows="MonthlyRunRateRows"
+                          Empty="No recurring fees in force." />
+        <OdsBreakdownTile Label="Yearly run rate by type" Rows="YearlyRunRateRows"
+                          Empty="No recurring fees in force." />
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired] public ContractSummary Summary { get; set; } = default!;
+
+    /// <summary>Formats a base-currency amount. Supplied by the page, which owns the currency cache.</summary>
+    [Parameter, EditorRequired] public Func<decimal, string?, string> FormatMoney { get; set; } = default!;
 
     private IReadOnlyList<OdsBreakdownRow> TypeRows => Summary.CountsByType
         .Where(r => r.Count > 0)
@@ -25,13 +46,66 @@
         })
         .ToList();
 
-    private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsContractStatus.Order
-        .Select(status =>
+    // The rollup's status rows, with "Ending soon" spliced in directly after Active. It is a SLICE of
+    // Active, not a fifth status — the server counts it that way too, so the four real buckets still
+    // sum to the total and this row deliberately does not. The window is interpolated from the
+    // server's effective value; a literal here would go stale the moment an administrator changed it.
+    private IReadOnlyList<OdsBreakdownRow> StatusRows
+    {
+        get
         {
-            var meta = OdsContractStatus.Meta(status);
-            return new OdsBreakdownRow { Key = status, Icon = meta.Icon, IconColor = meta.DotColor, Label = meta.Label, Count = CountFor(status) };
-        })
-        .ToList();
+            var rows = OdsContractStatus.Order
+                .Select(status =>
+                {
+                    var meta = OdsContractStatus.Meta(status);
+                    return new OdsBreakdownRow { Key = status, Icon = meta.Icon, IconColor = meta.DotColor, Label = meta.Label, Count = CountFor(status) };
+                })
+                .ToList();
+
+            var afterActive = rows.FindIndex(r => Equals(r.Key, ContractStatus.Active)) + 1;
+            rows.Insert(afterActive, new OdsBreakdownRow
+            {
+                Key = "EndingSoon",
+                Icon = "hourglass_bottom",
+                // Pending (amber), not Upcoming's info blue: a cliff is a thing to act on, and the
+                // design system tints this row with the pending tone for exactly that reason.
+                IconColor = "var(--finance-pending)",
+                Label = $"Ending soon · {Summary.EndingWindowDays}d",
+                Count = Summary.CountsByStatus.EndingSoon,
+            });
+
+            return rows;
+        }
+    }
+
+    private IReadOnlyList<OdsBreakdownRow> MonthlyRunRateRows => RunRateRows(r => r.Monthly);
+
+    private IReadOnlyList<OdsBreakdownRow> YearlyRunRateRows => RunRateRows(r => r.Yearly);
+
+    private IReadOnlyList<OdsBreakdownRow> RunRateRows(Func<ContractRunRateTypeRow, decimal> pick) =>
+        [.. Summary.RunRate.ByType.Select(r =>
+        {
+            var info = OdsTypeRegistries.ContractTypeOf(r.Type);
+            return new OdsBreakdownRow
+            {
+                Key = r.Type,
+                Icon = info.Icon,
+                IconColor = info.Color,
+                Label = info.Label,
+                Count = FormatMoney(pick(r), Summary.RunRate.BaseCurrency),
+            };
+        })];
+
+    // Null is "nothing convertible carries a recurring price", which is a legitimate healthy state —
+    // an em dash, never a zero, which would claim the agreements on file are free.
+    private string RunRate(decimal? value) =>
+        value is { } amount ? FormatMoney(amount, Summary.RunRate.BaseCurrency) : "—";
+
+    // An unconvertible currency is NAMED rather than folded in at 1:1, so a partial total always says
+    // so on its own tile instead of reading as the whole picture.
+    private string RunRateFoot => Summary.RunRate.UnconvertedCurrencies.Count > 0
+        ? $"in {Summary.RunRate.BaseCurrency} · {string.Join(", ", Summary.RunRate.UnconvertedCurrencies)} excluded"
+        : $"in {Summary.RunRate.BaseCurrency}";
 
     private int CountFor(ContractStatus status) => status switch
     {

@@ -78,6 +78,12 @@ public class ContractServiceTests
         // present because the interface is one seam for the whole finance domain.
         public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new SubscriptionSettings(45, 6, 1000));
+
+        /// <summary>The summary windows: a 45-day ending window, a 45-day charge window, six rows.</summary>
+        public ContractSummarySettings ContractSummary { get; set; } = new(45, 45, 6);
+
+        public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(ContractSummary);
     }
 
     private static NewContract NewContract(DateTime start, DateTime? end = null) => new()
@@ -399,7 +405,7 @@ public class ContractServiceTests
         await service.Create(OneOffContract(FixedToday.AddDays(5))); // Upcoming
         await service.Create(NewContract(FixedToday.AddDays(-3)));   // Active term
 
-        var summary = await service.GetSummary();
+        var summary = await service.GetSummary(baseCurrency: null);
 
         Assert.Equal(1, summary.CountsByStatus.Upcoming);
         Assert.Equal(1, summary.CountsByStatus.Active);

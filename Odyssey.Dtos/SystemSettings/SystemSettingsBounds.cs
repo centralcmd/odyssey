@@ -118,6 +118,30 @@ public static class SystemSettingsBounds
     public const int ContractMaxSummaryContractsMin = 1;
     public const int ContractMaxSummaryContractsMax = 100000;
 
+    // ── The Contracts summary windows ───────────────────────────────────────────────────────────
+    //
+    // Mirrors the Subscriptions trio above in shape and in bound: the same kind of window, the same
+    // kind of header-rendered row cap.
+
+    public const int ContractEndingWindowDaysMin = 1;
+
+    /// <summary>Matches <see cref="SubscriptionRenewalWindowDaysMax"/> — the same shape of window.</summary>
+    public const int ContractEndingWindowDaysMax = 365;
+
+    public const int ContractChargeWindowDaysMin = 1;
+
+    /// <summary>Matches <see cref="SubscriptionRenewalWindowDaysMax"/> — the same shape of window.</summary>
+    public const int ContractChargeWindowDaysMax = 365;
+
+    public const int ContractMaxSummaryChargesMin = 1;
+
+    /// <summary>
+    /// <strong>50, not 100000</strong> — the same reasoning as
+    /// <see cref="SubscriptionMaxSummaryRenewalsMax"/>: each charge is its own rendered block in the
+    /// page-header panel, which is open by default.
+    /// </summary>
+    public const int ContractMaxSummaryChargesMax = 50;
+
     public const int InsuranceMaxRenewalsPerPolicyMin = 1;
     public const int InsuranceMaxRenewalsPerPolicyMax = 100000;
 

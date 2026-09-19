@@ -690,6 +690,38 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.ContractMaxSummaryContracts),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxSummaryContracts", dto.ContractMaxSummaryContracts),
                 Write: (p, req) => req.ContractMaxSummaryContracts = p.IntRequest("contractMaxSummaryContracts")),
+            // The two windows sit in the Contracts group rather than beside their Subscriptions twins:
+            // an administrator looking for "how far ahead do contracts warn me" looks under Contracts.
+            new("contractEndingWindowDays", "hourglass_bottom", "“Ending soon” window",
+                "How many days ahead an active contract's end date is flagged as ending soon. The same "
+                + "window defines the two groups either side of it — a term about to start, and one "
+                + "that ran out and has not been archived — so widening it widens all three.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.ContractEndingWindowDaysMin,
+                Max: SystemSettingsBounds.ContractEndingWindowDaysMax,
+                Field: nameof(SystemSettingsUpdate.ContractEndingWindowDays),
+                Load: (p, dto) => p.SetIntLoaded("contractEndingWindowDays", dto.ContractEndingWindowDays),
+                Write: (p, req) => req.ContractEndingWindowDays = p.IntRequest("contractEndingWindowDays"),
+                Unit: "days"),
+            new("contractChargeWindowDays", "event_repeat", "“Next charges” window",
+                "How many days ahead a contract's next recurring charge is surfaced. The charge is derived "
+                + "from the fee terms in force — nothing is scheduled or stored.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.ContractChargeWindowDaysMin,
+                Max: SystemSettingsBounds.ContractChargeWindowDaysMax,
+                Field: nameof(SystemSettingsUpdate.ContractChargeWindowDays),
+                Load: (p, dto) => p.SetIntLoaded("contractChargeWindowDays", dto.ContractChargeWindowDays),
+                Write: (p, req) => req.ContractChargeWindowDays = p.IntRequest("contractChargeWindowDays"),
+                Unit: "days"),
+            new("contractMaxSummaryCharges", "format_list_numbered", "Max next charges shown in summary",
+                "Upper limit on the next-charge rows listed in the page-header panel. Each row is a "
+                + "separate rendered block, so this is deliberately bounded well below the other summary caps.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.ContractMaxSummaryChargesMin,
+                Max: SystemSettingsBounds.ContractMaxSummaryChargesMax,
+                Field: nameof(SystemSettingsUpdate.ContractMaxSummaryCharges),
+                Load: (p, dto) => p.SetIntLoaded("contractMaxSummaryCharges", dto.ContractMaxSummaryCharges),
+                Write: (p, req) => req.ContractMaxSummaryCharges = p.IntRequest("contractMaxSummaryCharges")),
         ]),
         // The two photo caps are TIGHTEN-ONLY, and this is the first use of MaxFrom: their ceiling is
         // a compile-time constant that also drives [MaxLength] on the photo request DTOs, so model

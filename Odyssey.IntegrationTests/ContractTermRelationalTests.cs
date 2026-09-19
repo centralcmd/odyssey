@@ -427,6 +427,9 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
 
         public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new SubscriptionSettings(45, 6, 1000));
+
+        public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ContractSummarySettings(45, 45, 6));
     }
 
     private async Task RecreateAsync()
