@@ -609,6 +609,7 @@ public sealed class DataExportService
                 EndDate = contract.EndDate,
                 CompletionDate = contract.CompletionDate,
                 Archived = contract.Archived,
+                Paused = contract.Paused,
                 CreatedAtUtc = contract.CreatedAtUtc,
             });
 

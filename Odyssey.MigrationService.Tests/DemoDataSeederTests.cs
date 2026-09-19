@@ -182,6 +182,51 @@ public class DemoDataSeederTests
         Assert.Equal(5m, inForce.Single(t => t.LabelKey == "atm withdrawal · domestic").Value);
     }
 
+
+    /// <summary>
+    /// AC 22 (issue #140) — the demo set contains a contract deriving as <c>Paused</c>, and it
+    /// carries an in-force periodic fee so the exclusion it demonstrates is visible rather than
+    /// merely asserted: seeded with no price on file, a paused contract would leave the run rate and
+    /// the next-charges list looking identical either way.
+    /// </summary>
+    [Fact]
+    public async Task Seeds_a_paused_contract_carrying_an_in_force_periodic_fee()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+        // Idempotent: a second run must not duplicate the row or move its stamp.
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var paused = await context.Contracts.AsNoTracking().Where(c => c.Paused != null).ToListAsync();
+        var contract = Assert.Single(paused);
+
+        // Active-shaped on its dates and not archived, so Paused is what the derivation reports
+        // rather than a terminal status masking it.
+        Assert.Null(contract.Archived);
+        Assert.Null(contract.CompletionDate);
+        Assert.True(contract.StartDate <= DateTime.UtcNow, "the paused contract has started");
+        Assert.True(contract.EndDate is null || contract.EndDate > DateTime.UtcNow,
+            "the paused contract has not ended, or it would derive as Expired");
+
+        var fee = Assert.Single(await context.Terms.AsNoTracking()
+            .Where(t => t.ContractId == contract.ContractId
+                && t.TermKind == TermKind.Fee
+                && t.ValueUnit == TermValueUnit.Amount
+                && t.EffectiveFrom <= DateTime.UtcNow)
+            .ToListAsync());
+        Assert.NotNull(fee.Interval);
+        Assert.True(fee.Interval!.Value.IsPeriodic(), "the fee has a cadence, so it has a rate to exclude");
+
+        // Deterministic: the freshly built set carries the same stamp the database holds.
+        var expected = Assert.Single(DemoDataSet.Build().Contracts, c => c.Paused != null);
+        Assert.Equal(expected.ContractId, contract.ContractId);
+        Assert.Equal(expected.Paused, contract.Paused);
+    }
+
     [Fact]
     public async Task Seeds_journal_module_dataset()
     {

@@ -34,5 +34,12 @@ public sealed record ExistingContract
 
     public DateTime? Archived { get; set; }
 
+    /// <summary>
+    /// When the contract was paused, or null when it is not (issue #140). Retained across an archive
+    /// and across an expiry — the derived <see cref="Status"/> reports the terminal fact, the stamp
+    /// stays on file so resuming is one write.
+    /// </summary>
+    public DateTime? Paused { get; set; }
+
     public required DateTime CreatedAtUtc { get; set; }
 }
