@@ -5,6 +5,46 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0](https://github.com/centralcmd/odyssey/compare/v0.31.0...v0.32.0) (2026-09-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename AccountTerm to Term and rework the cadence into interval + count ([#123](https://github.com/centralcmd/odyssey/issues/123))
+
+### Features
+
+* contract party roles and terms ([#134](https://github.com/centralcmd/odyssey/issues/134)) ([a7ca7ea](https://github.com/centralcmd/odyssey/commit/a7ca7eabd0bab7d849233b9b5b7483fa76bf488d))
+* contract terms — what an agreement costs, as a dated history ([#137](https://github.com/centralcmd/odyssey/issues/137)) ([0f6a010](https://github.com/centralcmd/odyssey/commit/0f6a010560e6ab12b207bdefcaf99535385e0207))
+* contracts run rate, next charges and four more contract types ([#139](https://github.com/centralcmd/odyssey/issues/139)) ([9da4b6d](https://github.com/centralcmd/odyssey/commit/9da4b6d6dc731c180fe51f8963d4cc56558d12f5))
+* pause a contract ([#142](https://github.com/centralcmd/odyssey/issues/142)) ([70e189e](https://github.com/centralcmd/odyssey/commit/70e189e2453530671ccca956d99f47a19eb14846))
+* rename AccountTerm to Term and rework the cadence into interval + count ([#123](https://github.com/centralcmd/odyssey/issues/123)) ([330dffa](https://github.com/centralcmd/odyssey/commit/330dffadce0bfae16760899257c91e4887a33d2c))
+
+
+### Bug Fixes
+
+* **client:** follow MudBlazor 9.10.0's menu roles in OdsTypeSelect and OdsMenu ([#133](https://github.com/centralcmd/odyssey/issues/133)) ([78b23e0](https://github.com/centralcmd/odyssey/commit/78b23e017ce24d261705c0d14e9019ef038d0ae7))
+
+
+### Documentation
+
+* **client:** order the design-system sync and require a completeness pass ([a558aec](https://github.com/centralcmd/odyssey/commit/a558aec77a8b6e6ed81323354b7b13acf5ab0267))
+* deduplicate the Claude skills onto shared rules files ([#116](https://github.com/centralcmd/odyssey/issues/116)) ([da718ec](https://github.com/centralcmd/odyssey/commit/da718ec27a8161fb7cb75ada5c03fc08147adbfa))
+* **infra:** split the spec writer into backend and frontend skills ([f952011](https://github.com/centralcmd/odyssey/commit/f952011559547eb8561b20b7532be6d90f011fa1))
+* require a milestone decision when filing an issue ([dfc8ce7](https://github.com/centralcmd/odyssey/commit/dfc8ce785aae9f29ee88a2ecec3eb406ac57af59))
+* update design system ([9762e8c](https://github.com/centralcmd/odyssey/commit/9762e8c3f6a3df6e08c3ef7682f3e088f28b6614))
+* update design system ([05ce3a3](https://github.com/centralcmd/odyssey/commit/05ce3a3224c7e06a4feb94c7764bd8f846142289))
+* update design system ([2c5eabb](https://github.com/centralcmd/odyssey/commit/2c5eabbb0fa57156b067d11ca129cdd12705ca07))
+* update design system ([c6a4a23](https://github.com/centralcmd/odyssey/commit/c6a4a23471cacc928d94394390bcbbd500042b50))
+* update design system ([2391b99](https://github.com/centralcmd/odyssey/commit/2391b99dca29253d151929a4f99436993e60e9b5))
+
+
+### CI/CD
+
+* Bump the actions group with 3 updates ([102ecd4](https://github.com/centralcmd/odyssey/commit/102ecd4be87e2349a9fe2e0bc8e23a403fd61acd))
+* Bump the docker group across 3 directories with 3 updates ([487f49a](https://github.com/centralcmd/odyssey/commit/487f49ab87c5840c7f8c2b111e00b4a9b20e31f7))
+* stop Microsoft.NET.Test.Sdk landing in two dependabot groups ([18f04c5](https://github.com/centralcmd/odyssey/commit/18f04c57761eeb5cfd7b65efa1b74f071e76b933))
+
 ## [0.31.0](https://github.com/centralcmd/odyssey/compare/v0.30.0...v0.31.0) (2026-09-18)
 
 
