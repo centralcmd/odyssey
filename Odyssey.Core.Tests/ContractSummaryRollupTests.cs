@@ -280,6 +280,51 @@ public class ContractSummaryRollupTests
         Assert.Equal(900m, summary.RunRate.Yearly);
     }
 
+    /// <summary>
+    /// The two halves read DIFFERENT sets, deliberately. A contract that has not started is not
+    /// costing anything yet, so it carries no run rate — but if its price is already in force it has a
+    /// first charge to report, and that charge cannot fall before the agreement begins.
+    /// </summary>
+    [Fact]
+    public async Task UpcomingContract_HasAChargeButNoRunRate()
+    {
+        await using var context = TestContextFactory.Create();
+        var id = SeedContract(context, "Fixed tariff", FixedToday.AddDays(20), FixedToday.AddYears(1));
+        // Priced on signing, a month before the switch completes.
+        SeedFee(context, id, 28.50m, FixedToday.AddMonths(-1), label: "Standing charge",
+            anchor: FixedToday.AddMonths(-1));
+
+        var summary = await Summarise(context);
+
+        Assert.Null(summary.RunRate.Monthly);
+        Assert.Empty(summary.RunRate.ByType);
+
+        var charge = Assert.Single(summary.UpcomingCharges);
+        Assert.True(charge.ChargeDate >= FixedToday.AddDays(20),
+            "A charge cannot fall before the agreement it is priced under begins.");
+    }
+
+    /// <summary>
+    /// The other side of that split: an Upcoming contract's currency must not win the base-currency
+    /// vote, since it contributes nothing to the total it would then denominate.
+    /// </summary>
+    [Fact]
+    public async Task BaseCurrency_IsVotedOnByTheRunningContractsOnly()
+    {
+        await using var context = TestContextFactory.Create();
+        var running = SeedContract(context, "Lease", FixedToday.AddMonths(-6));
+        var notYet = SeedContract(context, "Tariff", FixedToday.AddDays(20));
+        SeedFee(context, running, 1000m, FixedToday.AddMonths(-6), currency: "USD");
+        SeedFee(context, notYet, 30m, FixedToday.AddMonths(-1), currency: "EUR", label: "Standing charge");
+        SeedFee(context, notYet, 30m, FixedToday.AddMonths(-1), currency: "EUR", label: "Unit rate");
+
+        // Blank base: the pick is the most common currency among the RUNNING fees, so the two EUR
+        // rows on the not-yet-started contract must not outvote the single USD one.
+        var summary = await CreateService(context).GetSummary(baseCurrency: null);
+
+        Assert.Equal("USD", summary.RunRate.BaseCurrency);
+    }
+
     // ── Ending soon ──────────────────────────────────────────────────────────
 
     /// <summary>

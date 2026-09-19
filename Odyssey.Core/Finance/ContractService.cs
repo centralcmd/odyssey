@@ -204,7 +204,7 @@ public class ContractService
 
         var counts = new ContractStatusCounts();
         var byType = new Dictionary<DtoContractType, int>();
-        var active = new List<SummaryRow>();
+        var priceable = new List<SummaryRow>();
 
         foreach (var c in contracts)
         {
@@ -233,13 +233,17 @@ public class ContractService
                 byType[dtoType] = byType.GetValueOrDefault(dtoType) + 1;
             }
 
-            if (status == ContractStatus.Active)
+            // Two different sets, and they are deliberately not the same one. The run rate is what the
+            // file costs to run RIGHT NOW, so only Active contracts carry one. A next charge is a
+            // question about the future, so an Upcoming contract belongs there too — one signed today
+            // with a price already in force has a first charge to report, clamped to its start date.
+            if (status is ContractStatus.Active or ContractStatus.Upcoming)
             {
-                active.Add(c);
+                priceable.Add(c with { IsActive = status == ContractStatus.Active });
             }
         }
 
-        var priced = await LoadInForceFeesAsync(active, today, cancellationToken);
+        var priced = await LoadInForceFeesAsync(priceable, today, cancellationToken);
 
         return new ContractSummary
         {
@@ -258,7 +262,7 @@ public class ContractService
     }
 
     /// <summary>
-    /// The in-force fee terms of the Active contracts, in one query.
+    /// The in-force fee terms of the Active and Upcoming contracts, in one query.
     ///
     /// <para>
     /// Narrowed in SQL to those contracts and to <c>EffectiveFrom &lt;= today</c>, then collapsed per
@@ -267,14 +271,14 @@ public class ContractService
     /// </para>
     /// </summary>
     private async Task<List<PricedTerm>> LoadInForceFeesAsync(
-        List<SummaryRow> active, DateTime today, CancellationToken cancellationToken)
+        List<SummaryRow> contracts, DateTime today, CancellationToken cancellationToken)
     {
-        if (active.Count == 0)
+        if (contracts.Count == 0)
         {
             return [];
         }
 
-        var byId = active.ToDictionary(c => c.ContractId);
+        var byId = contracts.ToDictionary(c => c.ContractId);
         var ids = byId.Keys.ToList();
 
         var candidates = await context.Terms
@@ -322,7 +326,11 @@ public class ContractService
     private async Task<ContractRunRate> BuildRunRateAsync(
         List<PricedTerm> priced, string? baseCurrency, CancellationToken cancellationToken)
     {
-        var currencies = priced
+        // Only the Active rows feed the run rate, so only they name its currencies and vote on its base:
+        // a currency used solely by a contract that has not started could otherwise win a base-currency
+        // vote it then contributes nothing to.
+        var running = priced.Where(p => p.Contract.IsActive).ToList();
+        var currencies = running
             .Select(p => p.CurrencyCode)
             .Where(code => code.Length > 0)
             .Distinct(StringComparer.Ordinal)
@@ -331,7 +339,7 @@ public class ContractService
         // Blank base → the currency the most in-force fees are priced in; the code tie-break keeps the
         // pick deterministic. A term with no currency of its own is read as being in base.
         var baseCode = string.IsNullOrWhiteSpace(baseCurrency)
-            ? priced.Where(p => p.CurrencyCode.Length > 0)
+            ? running.Where(p => p.CurrencyCode.Length > 0)
                 .GroupBy(p => p.CurrencyCode, StringComparer.Ordinal)
                 .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal)
                 .FirstOrDefault()?.Key ?? "USD"
@@ -347,6 +355,14 @@ public class ContractService
 
         foreach (var p in priced)
         {
+            // Narrowed back to Active here rather than at the query: a next charge legitimately looks
+            // ahead to a contract that has not started, but nothing that has not started is costing
+            // anything yet, so it carries no run rate.
+            if (!p.Contract.IsActive)
+            {
+                continue;
+            }
+
             var code = p.CurrencyCode.Length == 0 ? baseCode : p.CurrencyCode;
             if (!TryRateToBase(code, baseCode, rates, out var rate))
             {
@@ -540,7 +556,14 @@ public class ContractService
     /// <summary>Slim projection row for the summary computation (all contracts, one batch query).</summary>
     private sealed record SummaryRow(
         Guid ContractId, string Name, ContextContractType Type,
-        DateTime? StartDate, DateTime? EndDate, DateTime? CompletionDate, DateTime? Archived);
+        DateTime? StartDate, DateTime? EndDate, DateTime? CompletionDate, DateTime? Archived)
+    {
+        /// <summary>
+        /// Set once from the single <c>DeriveStatus</c> call per contract, so the run rate and the
+        /// charge projection cannot disagree about which contracts are running.
+        /// </summary>
+        public bool IsActive { get; init; }
+    }
 
     /// <summary>One in-force periodic fee, resolved against its contract — the run rate's unit of work
     /// and the next-charge projection's, so both read exactly the same set.</summary>
