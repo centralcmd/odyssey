@@ -1,0 +1,54 @@
+@*
+    OdsContractPartyRoleSelect — a single-select pre-wired to the ContractPartyRole vocabulary
+    (Odyssey Design System · components/ContractPartyRoleSelect, issue #121): what a linked record
+    DOES in the agreement, each member rendered with its Material icon in its category color.
+
+    A thin, domain-typed wrapper over the shared OdsTypeSelect — every prop passes straight through
+    and this adds no behaviour, markup or state of its own, which is what lets the role field inherit
+    OdsTypeSelect's accessible name, listbox semantics, keyboard model and error association rather
+    than re-implementing any of them (#122 §6.1). Value is the enum key. Bind via @bind-Value.
+
+    A plain list rather than a card grid: seven members and growing is a list, and the role is the one
+    field a reader scans for. `Unspecified` is a real, selectable member — "nobody has said" — and is
+    NOT the same statement as `Other`, which is the deliberate none-of-these.
+*@
+
+<OdsTypeSelect Value="@Value"
+               ValueChanged="ValueChanged"
+               Types="OdsTypeRegistries.ContractPartyRoles"
+               Id="@Id"
+               Label="@Label"
+               Placeholder="@Placeholder"
+               Help="@Help"
+               Error="@Error"
+               Required="@Required"
+               Disabled="@Disabled"
+               Class="@Class"
+               @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Selected enum key. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Element id for the control, so a label or a describedby can point at it.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Role";
+
+    [Parameter] public string? Placeholder { get; set; } = "Select role…";
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

@@ -33,6 +33,7 @@ public class OdsTypeRegistriesTests
         { nameof(OdsTypeRegistries.PolicyFileTypes), typeof(PolicyFileType) },
         { nameof(OdsTypeRegistries.ContractTypes), typeof(ContractType) },
         { nameof(OdsTypeRegistries.ContractFileTypes), typeof(ContractFileType) },
+        { nameof(OdsTypeRegistries.ContractPartyRoles), typeof(ContractPartyRole) },
         { nameof(OdsTypeRegistries.BillingIntervals), typeof(BillingInterval) },
         { nameof(OdsTypeRegistries.BudgetCategoryTypes), typeof(BudgetCategoryType) },
     };
@@ -215,6 +216,7 @@ public class OdsTypeRegistriesTests
         { "PolicyFileOptions", OdsTypeRegistries.PolicyFileOptions, OdsTypeRegistries.PolicyFileTypes },
         { "ContractOptions", OdsTypeRegistries.ContractOptions, OdsTypeRegistries.ContractTypes },
         { "ContractFileOptions", OdsTypeRegistries.ContractFileOptions, OdsTypeRegistries.ContractFileTypes },
+        { "ContractPartyRoleOptions", OdsTypeRegistries.ContractPartyRoleOptions, OdsTypeRegistries.ContractPartyRoles },
         { "BillingIntervalOptions", OdsTypeRegistries.BillingIntervalOptions, OdsTypeRegistries.BillingIntervals },
     };
 

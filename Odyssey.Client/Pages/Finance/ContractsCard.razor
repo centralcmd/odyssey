@@ -218,6 +218,9 @@
                             <ContractDetailView Contract="detail"
                                                 CanWrite="_canUpdate"
                                                 CanDownload="_canDownloadFiles"
+                                                Archived="@(c.Archived is not null)"
+                                                OnEditParty="@(p => EditParty(c.ContractId, p))"
+                                                OnAnnounce="@(m => Announce(m))"
                                                 OnChanged="@(() => ReloadContract(c.ContractId))" />
                         }
                     </Sections>
@@ -258,11 +261,15 @@
 
 @if (_partyContract is not null)
 {
+    @* One dialog serves add and edit; _editingParty is what switches it. The @key is a fresh Guid per
+       opening, so the dialog's OnInitializedAsync re-seeds from whichever party (or none) it now has. *@
     <AddContractPartyDialog @key="_partyKey"
                             @bind-Open="_partyOpen"
                             Contract="_partyContract"
+                            Party="_editingParty"
                             Accounts="_accountOptions"
                             Institutions="_institutionOptions"
+                            OnAnnounce="@(m => Announce(m))"
                             OnSaved="@(() => ReloadContract(_partyContract.ContractId))" />
 }
 

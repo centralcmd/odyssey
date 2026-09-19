@@ -255,6 +255,26 @@ public static class OdsTypeRegistries
         new() { Key = "Other",      Label = "Other",      Icon = "description",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
+    /// <summary>
+    /// ContractPartyRole — what a linked record DOES in the agreement (issue #121). Mirrors the DS
+    /// <c>contractPartyRoles</c> registry and the C# <c>ContractPartyRole</c> enum, in ORDINAL order.
+    /// </summary>
+    /// <remarks>
+    /// <c>Unspecified</c> stays neutral so an unstated role never reads as a category, and it is a
+    /// real, selectable member rather than a placeholder: "nobody has said" is a different statement
+    /// from <c>Other</c>'s "somebody looked and none of these fit".
+    /// </remarks>
+    public static readonly IReadOnlyList<OdsTypeOption> ContractPartyRoles =
+    [
+        new() { Key = "Unspecified",     Label = "Unspecified",      Icon = "help_outline",        Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Employee",        Label = "Employee",         Icon = "badge",               Color = "oklch(0.76 0.13 265)", Soft = "oklch(0.76 0.13 265 / 0.16)" },
+        new() { Key = "Employer",        Label = "Employer",         Icon = "corporate_fare",      Color = "oklch(0.75 0.14 300)", Soft = "oklch(0.75 0.14 300 / 0.16)" },
+        new() { Key = "Buyer",           Label = "Buyer",            Icon = "shopping_bag",        Color = "oklch(0.79 0.14 145)", Soft = "oklch(0.79 0.14 145 / 0.16)" },
+        new() { Key = "Seller",          Label = "Seller",           Icon = "sell",                Color = "oklch(0.80 0.13 90)",  Soft = "oklch(0.80 0.13 90 / 0.16)" },
+        new() { Key = "ServiceProvider", Label = "Service provider", Icon = "home_repair_service", Color = "oklch(0.78 0.14 195)", Soft = "oklch(0.78 0.14 195 / 0.16)" },
+        new() { Key = "Other",           Label = "Other",            Icon = "more_horiz",          Color = "oklch(0.77 0.10 25)",  Soft = "oklch(0.77 0.10 25 / 0.16)" },
+    ];
+
     /// <summary>ContractFileType — the kind of document attached to a contract (issue #174). Mirrors
     /// the DS contractFileTypes registry and the C# ContractFileType enum.</summary>
     public static readonly IReadOnlyList<OdsTypeOption> ContractFileTypes =
@@ -300,6 +320,21 @@ public static class OdsTypeRegistries
     /// <summary>The ContractType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption ContractTypeOf(ContractType type) =>
         ContractTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? ContractTypes[^1];
+
+    /// <summary>
+    /// The ContractPartyRole descriptor for an enum value, or <see langword="null"/> when this build's
+    /// registry does not contain that ordinal (issue #121 appends members; only the initial seven are
+    /// fixed, so a client older than the deployment is a real version-skew state).
+    /// </summary>
+    /// <remarks>
+    /// Deliberately NOT the <c>?? Types[^1]</c> fallback the rest of this file uses. Falling through
+    /// to the last member would render an unrecognised role as the deliberate <c>Other</c> — "somebody
+    /// looked and none of these fit" — which is a <i>wrong</i> answer rather than a missing one.
+    /// <c>PartyRoleLabel</c> owns the fallback instead, once, so every channel that turns a role into
+    /// words says the same thing.
+    /// </remarks>
+    public static OdsTypeOption? ContractPartyRoleOf(ContractPartyRole role) =>
+        ContractPartyRoles.FirstOrDefault(t => t.Key == role.ToString());
 
     /// <summary>The ContractFileType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption ContractFileTypeOf(ContractFileType type) =>
@@ -445,5 +480,6 @@ public static class OdsTypeRegistries
     public static readonly IReadOnlyList<OdsOption> PolicyFileOptions = ToOptions(PolicyFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractOptions = ToOptions(ContractTypes);
     public static readonly IReadOnlyList<OdsOption> ContractFileOptions = ToOptions(ContractFileTypes);
+    public static readonly IReadOnlyList<OdsOption> ContractPartyRoleOptions = ToOptions(ContractPartyRoles);
     public static readonly IReadOnlyList<OdsOption> BillingIntervalOptions = ToOptions(BillingIntervals);
 }

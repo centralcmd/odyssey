@@ -390,20 +390,39 @@ public partial class ContractsCard
 
     private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Contract ID copied.");
 
-    // ── Add-party dialog ─────────────────────────────────────────────────────────
+    // ── Add/edit-party dialog ────────────────────────────────────────────────────
+    // One dialog serves both (issue #121's new PUT): _editingParty is what switches it between
+    // "New party" and "Edit party".
     private ExistingContract? _partyContract;
+    private ExistingContractParty? _editingParty;
     private Guid _partyKey;
     private bool _partyOpen;
 
-    private async Task AddParty(Guid contractId)
+    private Task AddParty(Guid contractId) => OpenPartyDialog(contractId, party: null);
+
+    private Task EditParty(Guid contractId, ExistingContractParty party) => OpenPartyDialog(contractId, party);
+
+    private async Task OpenPartyDialog(Guid contractId, ExistingContractParty? party)
     {
         if (!_canUpdate) return;
         await EnsureDetail(contractId);
         if (!_details.TryGetValue(contractId, out var d)) return;
         _expandedId = contractId;
         _partyContract = d;
+        _editingParty = party;
         _partyKey = Guid.NewGuid();
         _partyOpen = true;
+    }
+
+    /// <summary>
+    /// Routes a child's line into the page's own <c>OdsLiveAnnouncer</c>. The announcer is mounted
+    /// once, on this page, so the party tiles and the dialog raise their text rather than each owning
+    /// a live region — two regions on one page race each other.
+    /// </summary>
+    private void Announce(string message)
+    {
+        _announce = message;
+        StateHasChanged();
     }
 
     // ── Upload / attach dialog ───────────────────────────────────────────────────
@@ -482,12 +501,24 @@ public partial class ContractsCard
                 Label = "Edit contract",
                 OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)),
             });
-            items.Add(new OdsMenuItem
-            {
-                Icon = "group_add",
-                Label = "New party",
-                OnClick = EventCallback.Factory.Create(this, () => AddParty(c.ContractId)),
-            });
+            // The server refuses a party add on an archived contract (422), so the action is offered
+            // with its reason rather than hidden — and Disabled + Description keeps it FOCUSABLE
+            // (aria-disabled, no native disabled), so a keyboard or AT user can actually reach the
+            // explanation instead of skipping a silent item (WCAG 2.1.1).
+            items.Add(archived
+                ? new OdsMenuItem
+                {
+                    Icon = "group_add",
+                    Label = "New party",
+                    Disabled = true,
+                    Description = "Unarchive the contract to change its parties.",
+                }
+                : new OdsMenuItem
+                {
+                    Icon = "group_add",
+                    Label = "New party",
+                    OnClick = EventCallback.Factory.Create(this, () => AddParty(c.ContractId)),
+                });
         }
 
         if (_canUploadFiles)
