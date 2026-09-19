@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"752cf8d5994d","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0a872c64aad8","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"caa6e940b80e","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"eabd6ff65b3b","ui_kits/web/AddContractTermModal.jsx":"68b86ac073e1","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"042affcbe38d","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"1a11e3e044be","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/ContractTerms.jsx":"8f7f425324a2","ui_kits/web/Contracts.jsx":"91ca4d787d54","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"33971cdb04ee","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"ee9e202c4e4c","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"e3f4d3a1aec3","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"1d838ba0857b","ui_kits/web/data.js":"2070fc32dd1a","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractTypeSelect.jsx":"6c5fbd0f20c2","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0a872c64aad8","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"caa6e940b80e","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"eabd6ff65b3b","ui_kits/web/AddContractTermModal.jsx":"68b86ac073e1","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"042affcbe38d","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"1a11e3e044be","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/ContractTerms.jsx":"8f7f425324a2","ui_kits/web/Contracts.jsx":"f95b8158e49c","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"33971cdb04ee","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"ee9e202c4e4c","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"e3f4d3a1aec3","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contracts-data.js":"28e9ef7d2e28","ui_kits/web/data.js":"2070fc32dd1a","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -4382,6 +4382,34 @@ const CONTRACT_TYPES = [{
   icon: 'cottage',
   color: 'oklch(0.79 0.14 60)',
   soft: 'oklch(0.79 0.14 60 / 0.16)'
+}, {
+  key: 'Insurance',
+  label: 'Insurance',
+  enumValue: 4,
+  icon: 'shield',
+  color: 'oklch(0.75 0.14 290)',
+  soft: 'oklch(0.75 0.14 290 / 0.16)'
+}, {
+  key: 'Subscription',
+  label: 'Subscription',
+  enumValue: 5,
+  icon: 'autorenew',
+  color: 'oklch(0.76 0.14 320)',
+  soft: 'oklch(0.76 0.14 320 / 0.16)'
+}, {
+  key: 'Purchase',
+  label: 'Purchase',
+  enumValue: 6,
+  icon: 'shopping_bag',
+  color: 'oklch(0.78 0.14 140)',
+  soft: 'oklch(0.78 0.14 140 / 0.16)'
+}, {
+  key: 'Membership',
+  label: 'Membership',
+  enumValue: 7,
+  icon: 'card_membership',
+  color: 'oklch(0.77 0.13 20)',
+  soft: 'oklch(0.77 0.13 20 / 0.16)'
 }, {
   key: 'Other',
   label: 'Other',
@@ -37646,7 +37674,8 @@ const ContractListItem = ({
 /* ====================== Summary (header Overview) ====================== */
 const ContractsSummary = ({
   contracts,
-  today
+  today,
+  endingWindow
 }) => {
   const s = CON_H.conSummary(contracts, today);
   const order = ['Active', 'Upcoming', 'Expired', 'Archived'];
@@ -37676,9 +37705,53 @@ const ContractsSummary = ({
       count: s.countsByStatus[k] || 0
     };
   });
+  /* Ending soon is not a fifth status — it is a slice of Active, and it reads
+     here for the same reason the header signal exists: the cliff is the thing
+     you act on. Listed straight after Active, never counted as its own status. */
+  const endingSoon = (contracts || []).filter(c => !c.archived && c.endDate && CON_H.conStatus(c, today) === 'Active' && CON_H.conDaysUntil(c.endDate, today) <= endingWindow).length;
+  statusRows.splice(1, 0, {
+    key: 'EndingSoon',
+    icon: 'hourglass_bottom',
+    iconColor: TONE_COLOR.pending,
+    label: `Ending soon · ${endingWindow}d`,
+    count: endingSoon
+  });
+
+  /* What the file costs to run. Only the Active contracts' in-force periodic
+     fees carry a rate, so the totals and the per-type rows are the same read
+     twice — once summed, once split. */
+  const rr = CON_H.conRunRate(contracts, today);
+  const rrMoney = v => v == null ? '—' : CON_H.money(v, rr.baseCurrency);
+  const rrFoot = rr.unconvertedCurrencies.length ? `in ${rr.baseCurrency} · ${rr.unconvertedCurrencies.join(', ')} excluded` : `in ${rr.baseCurrency}`;
+  const rrMonthlyRows = rr.typeRows.map(r => ({
+    key: r.key,
+    icon: r.icon,
+    iconColor: r.color,
+    label: r.label,
+    count: rrMoney(r.monthly)
+  }));
+  const rrYearlyRows = rr.typeRows.map(r => ({
+    key: r.key,
+    icon: r.icon,
+    iconColor: r.color,
+    label: r.label,
+    count: rrMoney(r.yearly)
+  }));
   return /*#__PURE__*/React.createElement("div", {
     className: "con-summary"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "con-run-tiles"
+  }, /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "calendar_month",
+    label: "Monthly run rate",
+    value: rrMoney(rr.monthly),
+    foot: rrFoot
+  }), /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "event_repeat",
+    label: "Yearly run rate",
+    value: rrMoney(rr.yearly),
+    foot: rrFoot
+  })), /*#__PURE__*/React.createElement("div", {
     className: "con-stats"
   }, /*#__PURE__*/React.createElement(BreakdownTile, {
     label: "By type",
@@ -37688,6 +37761,14 @@ const ContractsSummary = ({
     label: "By status",
     rows: statusRows,
     empty: "No contracts."
+  }), /*#__PURE__*/React.createElement(BreakdownTile, {
+    label: "Monthly run rate by type",
+    rows: rrMonthlyRows,
+    empty: "No recurring fees in force."
+  }), /*#__PURE__*/React.createElement(BreakdownTile, {
+    label: "Yearly run rate by type",
+    rows: rrYearlyRows,
+    empty: "No recurring fees in force."
   })));
 };
 
@@ -37703,6 +37784,7 @@ const Contracts = ({
   const [openId, setOpenId] = useState('ct-lease');
   const today = CON_H.conToday();
   const endingWindow = tweaks.endingWindowDays != null ? tweaks.endingWindowDays : CON_D.CONTRACTS_ENDING_WINDOW_DAYS;
+  const chargeWindow = tweaks.chargeWindowDays != null ? tweaks.chargeWindowDays : CON_D.CONTRACTS_CHARGE_WINDOW_DAYS;
   // ContractMaxTermsPerContract — a system setting, not a per-contract field.
   const termCap = tweaks.contractTermCap != null ? tweaks.contractTermCap : CON_D.CONTRACT_MAX_TERMS_PER_CONTRACT;
   const [q, setQ] = useState('');
@@ -37787,13 +37869,60 @@ const Contracts = ({
     ...x,
     sev: 'warning'
   }));
-  const signal = flagged.length ? {
-    severity: 'warning',
-    count: flagged.length,
-    label: 'Ending soon',
+  /* The other half of the panel: the next recurring charge each contract
+     carries, derived from the Fee terms in force. Nothing here is scheduled —
+     it is the term history read forward, the way Subscriptions reads its
+     billing interval forward into upcoming renewals. */
+  const upcomingCharges = CON_H.conUpcomingCharges(active, today, {
+    windowDays: chargeWindow,
+    limit: 6
+  });
+  /* And the other side of the cliff: terms that ran out in the window just
+     past and were never archived — the ones still waiting on a decision. */
+  const recentlyExpired = active.filter(c => c.endDate && CON_H.conStatus(c, today) === 'Expired' && -CON_H.conDaysUntil(c.endDate, today) <= endingWindow).sort((a, b) => a.endDate < b.endDate ? 1 : -1).slice(0, 6);
+  /* Signed but not yet begun — the mirror of the ending cliff, and the other
+     thing a dated window surfaces: a term about to come into force. */
+  const startingSoon = active.filter(c => c.startDate && CON_H.conStatus(c, today) === 'Upcoming' && CON_H.conDaysUntil(c.startDate, today) <= endingWindow).sort((a, b) => a.startDate < b.startDate ? -1 : 1).slice(0, 6);
+  const signal = flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length ? {
+    // The panel's worst severity wins the button: an expired term reads error,
+    // a term running out reads warning, and next charges alone read info.
+    severity: recentlyExpired.length ? 'error' : flagged.length ? 'warning' : 'info',
+    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length,
+    label: 'Upcoming',
     region: /*#__PURE__*/React.createElement("div", {
       className: "signal-panel"
-    }, flagged.map(({
+    }, recentlyExpired.length ? /*#__PURE__*/React.createElement("div", {
+      className: "con-signal-group"
+    }, "Recently expired") : null, recentlyExpired.map(c => {
+      const ago = -CON_H.conDaysUntil(c.endDate, today);
+      return /*#__PURE__*/React.createElement("div", {
+        key: c.id,
+        className: "alert error compact signal-row",
+        role: "button",
+        tabIndex: 0,
+        onClick: () => jumpTo(c.id),
+        onKeyDown: e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            jumpTo(c.id);
+          }
+        }
+      }, /*#__PURE__*/React.createElement(SeverityIcon, {
+        severity: "error",
+        size: 18,
+        className: "alert-icon"
+      }), /*#__PURE__*/React.createElement("div", {
+        className: "alert-body"
+      }, /*#__PURE__*/React.createElement("strong", null, c.name, "."), " Term expired ", ago <= 0 ? 'today' : `${ago} day${ago === 1 ? '' : 's'} ago`, "."), /*#__PURE__*/React.createElement("button", {
+        className: "alert-fix",
+        onClick: e => {
+          e.stopPropagation();
+          jumpTo(c.id);
+        }
+      }, "View \u2192"));
+    }), flagged.length ? /*#__PURE__*/React.createElement("div", {
+      className: "con-signal-group"
+    }, "Ending soon") : null, flagged.map(({
       c
     }) => {
       const hl = CON_H.conHeadline(c, today, endingWindow);
@@ -37822,6 +37951,79 @@ const Contracts = ({
           jumpTo(c.id);
         }
       }, "View \u2192"));
+    }), startingSoon.length ? /*#__PURE__*/React.createElement("div", {
+      className: "con-signal-group"
+    }, "Starting soon") : null, startingSoon.map(c => {
+      const days = CON_H.conDaysUntil(c.startDate, today);
+      return /*#__PURE__*/React.createElement("div", {
+        key: c.id,
+        className: "alert info compact signal-row",
+        role: "button",
+        tabIndex: 0,
+        onClick: () => jumpTo(c.id),
+        onKeyDown: e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            jumpTo(c.id);
+          }
+        }
+      }, /*#__PURE__*/React.createElement(SeverityIcon, {
+        severity: "info",
+        size: 18,
+        className: "alert-icon"
+      }), /*#__PURE__*/React.createElement("div", {
+        className: "alert-body"
+      }, /*#__PURE__*/React.createElement("strong", null, c.name, "."), " Term starts ", days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`, "."), /*#__PURE__*/React.createElement("button", {
+        className: "alert-fix",
+        onClick: e => {
+          e.stopPropagation();
+          jumpTo(c.id);
+        }
+      }, "View \u2192"));
+    }), upcomingCharges.length ? /*#__PURE__*/React.createElement("div", {
+      className: "con-signal-group"
+    }, "Next charges") : null, upcomingCharges.map(({
+      contract: c,
+      term,
+      date,
+      days
+    }) => {
+      const ti = CON_H.contractTypeInfo(c.type);
+      return /*#__PURE__*/React.createElement("div", {
+        key: c.id,
+        className: "con-charge-row",
+        role: "button",
+        tabIndex: 0,
+        onClick: () => jumpTo(c.id),
+        onKeyDown: e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            jumpTo(c.id);
+          }
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-when"
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-md mono"
+      }, CON_H.conDateMd(date)), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-rel"
+      }, CON_H.conRelDays(days))), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-name"
+      }, /*#__PURE__*/React.createElement(MIcon, {
+        name: ti.icon,
+        size: 16,
+        style: {
+          color: ti.color
+        }
+      }), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-title"
+      }, c.name), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-term"
+      }, CON_H.termDisplayName(term, null))), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-amt mono"
+      }, CON_H.money(term.value, term.currency || 'USD')), /*#__PURE__*/React.createElement("span", {
+        className: "con-charge-go"
+      }, "View \u2192"));
     }))
   } : undefined;
   return /*#__PURE__*/React.createElement("div", {
@@ -37833,7 +38035,8 @@ const Contracts = ({
     signal: signal,
     overview: /*#__PURE__*/React.createElement(ContractsSummary, {
       contracts: contracts,
-      today: today
+      today: today,
+      endingWindow: endingWindow
     }),
     overviewDefaultOpen: true,
     searchDefaultOpen: true,
@@ -55299,6 +55502,38 @@ try { (() => {
     soft: 'oklch(0.79 0.14 60 / 0.16)',
     desc: 'A tenancy or lease — residential, parking, or storage.'
   }, {
+    key: 'Insurance',
+    label: 'Insurance',
+    enumValue: 4,
+    icon: 'shield',
+    color: 'oklch(0.75 0.14 290)',
+    soft: 'oklch(0.75 0.14 290 / 0.16)',
+    desc: 'A policy held as an agreement — the contract of insurance itself.'
+  }, {
+    key: 'Subscription',
+    label: 'Subscription',
+    enumValue: 5,
+    icon: 'autorenew',
+    color: 'oklch(0.76 0.14 320)',
+    soft: 'oklch(0.76 0.14 320 / 0.16)',
+    desc: 'A recurring supply agreement — software, media, delivery.'
+  }, {
+    key: 'Purchase',
+    label: 'Purchase',
+    enumValue: 6,
+    icon: 'shopping_bag',
+    color: 'oklch(0.78 0.14 140)',
+    soft: 'oklch(0.78 0.14 140 / 0.16)',
+    desc: 'A one-off acquisition recorded by its completion date.'
+  }, {
+    key: 'Membership',
+    label: 'Membership',
+    enumValue: 7,
+    icon: 'card_membership',
+    color: 'oklch(0.77 0.13 20)',
+    soft: 'oklch(0.77 0.13 20 / 0.16)',
+    desc: 'A club, gym, union, or association membership.'
+  }, {
     key: 'Other',
     label: 'Other',
     enumValue: 3,
@@ -55487,6 +55722,18 @@ try { (() => {
     contentType: 'image/jpeg',
     size: '1.1 MB',
     uploaded: '2025-08-14'
+  }, {
+    id: 'fm-parking-signed',
+    name: 'harbor_point_parking_licence.pdf',
+    contentType: 'application/pdf',
+    size: '88 KB',
+    uploaded: '2025-10-20'
+  }, {
+    id: 'fm-energy-signed',
+    name: 'northwind_fixed_tariff_2026.pdf',
+    contentType: 'application/pdf',
+    size: '210 KB',
+    uploaded: '2026-09-02'
   }];
 
   /* ---- Seed contracts. Dates anchored around mid-2026 so the derived statuses
@@ -55579,7 +55826,7 @@ try { (() => {
   }, {
     id: 'ct-house',
     name: 'Maple St Residence — Purchase',
-    type: 'Other',
+    type: 'Purchase',
     description: 'Purchase of the Maple St property — a one-off agreement recorded by its completion (closing) date, not a term. Kept as the deed of record for the property.',
     startDate: null,
     endDate: null,
@@ -55638,7 +55885,7 @@ try { (() => {
   }, {
     id: 'ct-gym',
     name: 'FitZone — Membership',
-    type: 'Service',
+    type: 'Membership',
     description: 'Annual gym membership. Direct debit, monthly. Starts at the new branch opening.',
     startDate: '2026-09-01',
     endDate: '2027-08-31',
@@ -55657,6 +55904,56 @@ try { (() => {
       kind: 'Signed',
       attachedByUserId: 'u-owner',
       attachedAtUtc: '2026-06-10T09:02:00Z'
+    }]
+  }, {
+    // The ending-soon case: Active today, term inside the 45-day window, so it
+    // populates the header signal's warning group beside the next charges.
+    id: 'ct-parking',
+    name: 'Harbor Point Parking — Space 14',
+    type: 'Rental',
+    description: 'Twelve-month parking licence on space 14. Renews only by a fresh agreement — give notice 30 days before the end date.',
+    startDate: '2025-11-01',
+    endDate: '2026-10-31',
+    archived: null,
+    createdAtUtc: '2025-10-20T09:00:00Z',
+    parties: [{
+      id: 'cp-parking-1',
+      contactId: 'c8',
+      role: 'ServiceProvider',
+      fromDate: null,
+      toDate: null
+    }],
+    files: [{
+      id: 'cf-parking-1',
+      fileMetadataId: 'fm-parking-signed',
+      kind: 'Signed',
+      attachedByUserId: 'u-owner',
+      attachedAtUtc: '2025-10-20T09:02:00Z'
+    }]
+  }, {
+    // Signed but not yet begun — the Upcoming case, inside the window, so it
+    // populates the header signal's "Starting soon" group.
+    id: 'ct-energy',
+    name: 'Northwind Energy — Fixed Tariff',
+    type: 'Service',
+    description: 'Twelve-month fixed electricity tariff. Switch completes on the start date; the standing charge and unit rate are fixed for the term.',
+    startDate: '2026-10-15',
+    endDate: '2027-10-14',
+    archived: null,
+    createdAtUtc: '2026-09-02T09:00:00Z',
+    parties: [{
+      id: 'cp-energy-1',
+      contactId: 'c3',
+      role: 'ServiceProvider',
+      fromDate: null,
+      toDate: null
+    }],
+    files: [{
+      id: 'cf-energy-1',
+      fileMetadataId: 'fm-energy-signed',
+      kind: 'Signed',
+      attachedByUserId: 'u-owner',
+      attachedAtUtc: '2026-09-02T09:04:00Z'
     }]
   }, {
     id: 'ct-storage',
@@ -56089,6 +56386,9 @@ try { (() => {
      Plus a per-contract cap (ContractMaxTermsPerContract, default 500) and
      archived contracts being read-only for terms. */
 
+  // The look-ahead for the header's "Next charges" group — the same 45 days
+  // Subscriptions uses for its upcoming renewals.
+  D.CONTRACTS_CHARGE_WINDOW_DAYS = 45;
   D.CONTRACT_MAX_TERMS_PER_CONTRACT = 500;
   D.contractTermKinds = ['InterestRate', 'Fee'];
 
@@ -56275,6 +56575,50 @@ try { (() => {
       note: 'Renegotiated at the three-year review.',
       createdAtUtc: '2024-05-01T09:00:00Z'
     }],
+    'ct-parking': [{
+      id: 'ctm-parking-1',
+      contractId: 'ct-parking',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 165.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      effectiveFrom: '2025-11-01',
+      label: 'Space licence',
+      labelKey: 'space licence',
+      note: 'Due on the 1st.',
+      createdAtUtc: '2025-10-20T09:00:00Z'
+    }, {
+      id: 'ctm-parking-2',
+      contractId: 'ct-parking',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 40.00,
+      currency: 'USD',
+      interval: 'OneTime',
+      intervalCount: null,
+      effectiveFrom: '2025-11-01',
+      label: 'Access fob',
+      labelKey: 'access fob',
+      note: null,
+      createdAtUtc: '2025-10-20T09:00:00Z'
+    }],
+    'ct-energy': [{
+      id: 'ctm-energy-1',
+      contractId: 'ct-energy',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 28.50,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      effectiveFrom: '2026-10-15',
+      label: 'Standing charge',
+      labelKey: 'standing charge',
+      note: 'Fixed for the term.',
+      createdAtUtc: '2026-09-02T09:00:00Z'
+    }],
     'ct-storage': [{
       id: 'ctm-storage-1',
       contractId: 'ct-storage',
@@ -56377,6 +56721,192 @@ try { (() => {
     },
     // Why a write is refused, or null when it is allowed. One place, so the
     // disabled menu item, the section notice and the dialog all say the same.
+    /* ---- Next recurring charge, derived from the terms in force ------------
+       A contract has no billing schedule of its own. What it has is a term
+       history, and a term in force with a PERIODIC interval (Daily / Weekly /
+       Monthly / Annually, times IntervalCount) describes a recurring charge.
+       The next occurrence is projected from the term's cadence anchor —
+       AnchorDate when set, otherwise EffectiveFrom — exactly as a subscription
+       projects from its first billing date. Nothing is scheduled or stored;
+       this is a read. */
+
+    // The k-th occurrence of a periodic term, as 'YYYY-MM-DD'. Month and year
+    // steps are calendar steps (clamped into short months), never 30/365 days.
+    conOccurrence(term, k) {
+      const iv = D.intervalByKey[term.interval];
+      if (!iv || !iv.periodic) return null;
+      const anchor = H.conDateOnly(term.anchorDate || term.effectiveFrom);
+      if (!anchor) return null;
+      const [ay, am, ad] = anchor.split('-').map(Number);
+      const n = Math.max(1, term.intervalCount || 1) * k;
+      const pad = x => String(x).padStart(2, '0');
+      const dim = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+      if (iv.key === 'Daily' || iv.key === 'Weekly') {
+        const d = new Date(Date.UTC(ay, am - 1, ad + n * (iv.key === 'Weekly' ? 7 : 1)));
+        return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+      }
+      const months = iv.key === 'Annually' ? n * 12 : n;
+      const total = am - 1 + months;
+      const y = ay + Math.floor(total / 12);
+      const m = total % 12 + 1;
+      return `${y}-${pad(m)}-${pad(Math.min(ad, dim(y, m)))}`;
+    },
+    // The first occurrence of a periodic term falling on or after `today`.
+    conNextOccurrence(term, today) {
+      const t = today || H.conToday();
+      for (let k = 0; k < 6000; k++) {
+        const iso = H.conOccurrence(term, k);
+        if (!iso) return null;
+        if (iso >= t) return iso;
+      }
+      return null;
+    },
+    /* The contract's soonest recurring charge: over the FEE terms in force
+       (amounts only — a percentage fee has no due amount to show), the
+       earliest next occurrence that still falls inside the contract's term.
+       Returns { date, days, term } or null. */
+    conNextCharge(contract, today) {
+      const t = today || H.conToday();
+      if (!contract || contract.archived) return null;
+      const status = H.conStatus(contract, t);
+      if (status === 'Expired') return null;
+      const inForce = window.trmCurrentFromList ? window.trmCurrentFromList(H.conTermsFor(contract.id)) : [];
+      const end = H.conDateOnly(contract.endDate);
+      const start = H.conDateOnly(contract.startDate);
+      let best = null;
+      for (const term of inForce || []) {
+        if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+        const iv = D.intervalByKey[term.interval];
+        if (!iv || !iv.periodic) continue;
+        const date = H.conNextOccurrence(term, start && start > t ? start : t);
+        if (!date) continue;
+        // A charge never falls outside the agreement it is priced under.
+        if (end && date > end) continue;
+        if (!best || date < best.date) best = {
+          date,
+          term
+        };
+      }
+      return best ? {
+        ...best,
+        days: H.conDaysUntil(best.date, t)
+      } : null;
+    },
+    // The soonest next charges within `windowDays` (default 45), one row per
+    // contract, ascending and capped — the Subscriptions renewal list's shape.
+    conUpcomingCharges(contracts, today, opts) {
+      const t = today || H.conToday();
+      const windowDays = opts && opts.windowDays != null ? opts.windowDays : D.CONTRACTS_CHARGE_WINDOW_DAYS;
+      const limit = opts && opts.limit != null ? opts.limit : 6;
+      const out = [];
+      for (const c of contracts || D.contracts) {
+        const next = H.conNextCharge(c, t);
+        if (!next || next.days == null || next.days > windowDays) continue;
+        out.push({
+          contract: c,
+          ...next
+        });
+      }
+      out.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+      return out.slice(0, limit);
+    },
+    // 'Oct 1' — the compact charge date, parsed as UTC so it never drifts.
+    conDateMd(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+      const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${MON[m - 1]} ${d}`;
+    },
+    // 'today' / 'tomorrow' / 'in 12 days' — the relative word beside it.
+    conRelDays(days) {
+      if (days == null) return '';
+      if (days <= 0) return 'today';
+      if (days === 1) return 'tomorrow';
+      return `in ${days} days`;
+    },
+    /* ---- Run rate ----------------------------------------------------------
+       What the agreements on file cost per month and per year, read off the
+       FEE terms in force exactly as the next-charge rows are. Each amount is
+       projected by its cadence (Amount ÷ IntervalCount × periods), then
+       converted to the workspace base via the shared FX helper — a currency
+       with no rate is listed as unconverted, never silently zeroed. Only
+       contracts currently running count: Upcoming, Expired and Archived
+       records carry no run rate.
+       One-time and per-occurrence fees are excluded by construction — they
+       have no cadence, so there is no rate to project. */
+    conRunRate(contracts, today, baseCurrency) {
+      const t = today || H.conToday();
+      const base = baseCurrency || (D.currencies.find(c => c.base) || {}).code || 'USD';
+      const F = {
+        Daily: {
+          mo: 365.25 / 12,
+          yr: 365.25
+        },
+        Weekly: {
+          mo: 52.1775 / 12,
+          yr: 52.1775
+        },
+        Monthly: {
+          mo: 1,
+          yr: 12
+        },
+        Annually: {
+          mo: 1 / 12,
+          yr: 1
+        }
+      };
+      const convert = H.insConvert || ((amt, from, to) => from === to ? amt : null);
+      const unconverted = new Set();
+      const byType = {};
+      let monthly = 0,
+        yearly = 0,
+        any = false;
+      for (const c of contracts || D.contracts) {
+        if (c.archived) continue;
+        if (H.conStatus(c, t) !== 'Active') continue;
+        const inForce = window.trmCurrentFromList ? window.trmCurrentFromList(H.conTermsFor(c.id)) : [];
+        for (const term of inForce || []) {
+          if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+          const iv = D.intervalByKey[term.interval];
+          if (!iv || !iv.periodic || !F[iv.key]) continue;
+          const every = Math.max(1, term.intervalCount || 1);
+          const cur = term.currency || base;
+          const mo = convert(term.value * F[iv.key].mo / every, cur, base);
+          const yr = convert(term.value * F[iv.key].yr / every, cur, base);
+          if (mo == null || yr == null) {
+            unconverted.add(cur);
+            continue;
+          }
+          monthly += mo;
+          yearly += yr;
+          any = true;
+          if (!byType[c.type]) byType[c.type] = {
+            monthly: 0,
+            yearly: 0,
+            count: 0
+          };
+          byType[c.type].monthly += mo;
+          byType[c.type].yearly += yr;
+          byType[c.type].count += 1;
+        }
+      }
+      return {
+        baseCurrency: base,
+        monthly: any ? monthly : null,
+        yearly: any ? yearly : null,
+        unconvertedCurrencies: [...unconverted].sort(),
+        // Registry order, only the types that actually carry a rate.
+        typeRows: D.contractTypes.filter(ty => byType[ty.key]).map(ty => ({
+          key: ty.key,
+          label: ty.label,
+          icon: ty.icon,
+          color: ty.color,
+          monthly: byType[ty.key].monthly,
+          yearly: byType[ty.key].yearly,
+          count: byType[ty.key].count
+        }))
+      };
+    },
     conTermWriteBlock(contract, termCount, cap) {
       if (contract && contract.archived) {
         return {

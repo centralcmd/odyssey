@@ -7,6 +7,35 @@
    — distinct from brand tide, Insurance's indigo, and Tax's magenta; it evokes
    a signed, sealed agreement and never encodes money. */
 
+/* Header signal panel — two groups: the ending-soon alerts (kit .alert rows)
+   and the derived next-charge rows below them. The group heading is the only
+   thing that separates them; the rows keep their own severity reading. */
+.con-signal-group {
+  font: var(--fw-medium) 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--mud-palette-text-secondary); padding: 6px 2px 2px;
+}
+.con-signal-group + .con-signal-group, .signal-panel > * + .con-signal-group { margin-top: 6px; }
+.con-charge-row {
+  display: grid; grid-template-columns: 132px 1fr auto auto; align-items: center; gap: 14px;
+  padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid transparent; transition: background 0.12s ease, border-color 0.12s ease;
+}
+.con-charge-row:hover { background: var(--mud-palette-action-default-hover); border-color: var(--mud-palette-divider); }
+.con-charge-row:focus-visible { outline: 2px solid var(--brand-text); outline-offset: 1px; }
+.con-charge-when { display: inline-flex; align-items: baseline; gap: 8px; }
+.con-charge-md { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); color: var(--mud-palette-text-primary); }
+.con-charge-rel { font: var(--fw-regular) 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.con-charge-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.con-charge-name .material-icons { font-size: 16px; flex: none; }
+.con-charge-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.con-charge-term { font: var(--fw-regular) 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.con-charge-amt { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); color: var(--mud-palette-text-primary); }
+.con-charge-go { font: var(--fw-medium) 12px/1 var(--font-sans); color: var(--brand-text); white-space: nowrap; }
+@media (max-width: 720px) {
+  .con-charge-row { grid-template-columns: 1fr auto; row-gap: 4px; }
+  .con-charge-go, .con-charge-term { display: none; }
+}
+
 :root, [data-theme] {
   --con-accent: oklch(0.70 0.13 42);
   --con-accent-soft: oklch(0.70 0.13 42 / 0.16);
@@ -27,6 +56,11 @@
    ============================================================ */
 .con-summary { display: flex; flex-direction: column; gap: 14px; }
 .con-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+/* Run-rate stat tiles — flat, like the sibling BreakdownTiles, so an elevated
+   surface tile never floats above them. The figures are recurring spend. */
+.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.con-run-tiles .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
+.con-run-tiles .odc-infotile .odc-infotile-v { color: var(--finance-expense); }
 
 /* ============================================================
    Collapsed-card headline (period anchor + relative-days word)

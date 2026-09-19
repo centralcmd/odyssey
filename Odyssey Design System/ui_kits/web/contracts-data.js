@@ -40,6 +40,10 @@
     { key: 'Employment', label: 'Employment', enumValue: 0, icon: 'work',                color: 'oklch(0.76 0.13 225)', soft: 'oklch(0.76 0.13 225 / 0.16)', desc: 'An employment agreement — offer letter, contract of employment.' },
     { key: 'Service',    label: 'Service',    enumValue: 1, icon: 'home_repair_service', color: 'oklch(0.78 0.14 170)', soft: 'oklch(0.78 0.14 170 / 0.16)', desc: 'A service or subscription agreement — utilities, telecoms, memberships.' },
     { key: 'Rental',     label: 'Rental',     enumValue: 2, icon: 'cottage',             color: 'oklch(0.79 0.14 60)',  soft: 'oklch(0.79 0.14 60 / 0.16)',  desc: 'A tenancy or lease — residential, parking, or storage.' },
+    { key: 'Insurance',  label: 'Insurance',  enumValue: 4, icon: 'shield',              color: 'oklch(0.75 0.14 290)', soft: 'oklch(0.75 0.14 290 / 0.16)', desc: 'A policy held as an agreement — the contract of insurance itself.' },
+    { key: 'Subscription', label: 'Subscription', enumValue: 5, icon: 'autorenew',       color: 'oklch(0.76 0.14 320)', soft: 'oklch(0.76 0.14 320 / 0.16)', desc: 'A recurring supply agreement — software, media, delivery.' },
+    { key: 'Purchase',   label: 'Purchase',   enumValue: 6, icon: 'shopping_bag',        color: 'oklch(0.78 0.14 140)', soft: 'oklch(0.78 0.14 140 / 0.16)', desc: 'A one-off acquisition recorded by its completion date.' },
+    { key: 'Membership', label: 'Membership', enumValue: 7, icon: 'card_membership',     color: 'oklch(0.77 0.13 20)',  soft: 'oklch(0.77 0.13 20 / 0.16)',  desc: 'A club, gym, union, or association membership.' },
     { key: 'Other',      label: 'Other',      enumValue: 3, icon: 'description',         color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The entity default — anything outside the categories above.' },
   ];
 
@@ -88,6 +92,8 @@
     { id: 'fm-solar-corr',   name: 'solar_transfer_correspondence.pdf',contentType: 'application/pdf', size: '70 KB',  uploaded: '2025-11-02' },
     { id: 'fm-misc-1',       name: 'broadband_speed_report.pdf',       contentType: 'application/pdf', size: '38 KB',  uploaded: '2026-03-15' },
     { id: 'fm-misc-2',       name: 'id_verification_scan.jpg',         contentType: 'image/jpeg',      size: '1.1 MB', uploaded: '2025-08-14' },
+    { id: 'fm-parking-signed', name: 'harbor_point_parking_licence.pdf', contentType: 'application/pdf', size: '88 KB', uploaded: '2025-10-20' },
+    { id: 'fm-energy-signed', name: 'northwind_fixed_tariff_2026.pdf', contentType: 'application/pdf', size: '210 KB', uploaded: '2026-09-02' },
   ];
 
   /* ---- Seed contracts. Dates anchored around mid-2026 so the derived statuses
@@ -128,7 +134,7 @@
       ],
     },
     {
-      id: 'ct-house', name: 'Maple St Residence — Purchase', type: 'Other',
+      id: 'ct-house', name: 'Maple St Residence — Purchase', type: 'Purchase',
       description: 'Purchase of the Maple St property — a one-off agreement recorded by its completion (closing) date, not a term. Kept as the deed of record for the property.',
       startDate: null, endDate: null, completionDate: '2021-04-15', archived: null, createdAtUtc: '2021-03-02T09:00:00Z',
       parties: [
@@ -152,7 +158,7 @@
       ],
     },
     {
-      id: 'ct-gym', name: 'FitZone — Membership', type: 'Service',
+      id: 'ct-gym', name: 'FitZone — Membership', type: 'Membership',
       description: 'Annual gym membership. Direct debit, monthly. Starts at the new branch opening.',
       startDate: '2026-09-01', endDate: '2027-08-31', archived: null, createdAtUtc: '2026-06-10T09:00:00Z',
       parties: [
@@ -160,6 +166,32 @@
       ],
       files: [
         { id: 'cf-gym-1', fileMetadataId: 'fm-gym-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2026-06-10T09:02:00Z' },
+      ],
+    },
+    {
+      // The ending-soon case: Active today, term inside the 45-day window, so it
+      // populates the header signal's warning group beside the next charges.
+      id: 'ct-parking', name: 'Harbor Point Parking — Space 14', type: 'Rental',
+      description: 'Twelve-month parking licence on space 14. Renews only by a fresh agreement — give notice 30 days before the end date.',
+      startDate: '2025-11-01', endDate: '2026-10-31', archived: null, createdAtUtc: '2025-10-20T09:00:00Z',
+      parties: [
+        { id: 'cp-parking-1', contactId: 'c8', role: 'ServiceProvider', fromDate: null, toDate: null },
+      ],
+      files: [
+        { id: 'cf-parking-1', fileMetadataId: 'fm-parking-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-10-20T09:02:00Z' },
+      ],
+    },
+    {
+      // Signed but not yet begun — the Upcoming case, inside the window, so it
+      // populates the header signal's "Starting soon" group.
+      id: 'ct-energy', name: 'Northwind Energy — Fixed Tariff', type: 'Service',
+      description: 'Twelve-month fixed electricity tariff. Switch completes on the start date; the standing charge and unit rate are fixed for the term.',
+      startDate: '2026-10-15', endDate: '2027-10-14', archived: null, createdAtUtc: '2026-09-02T09:00:00Z',
+      parties: [
+        { id: 'cp-energy-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
+      ],
+      files: [
+        { id: 'cf-energy-1', fileMetadataId: 'fm-energy-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2026-09-02T09:04:00Z' },
       ],
     },
     {
@@ -434,6 +466,10 @@
      Plus a per-contract cap (ContractMaxTermsPerContract, default 500) and
      archived contracts being read-only for terms. */
 
+  // The look-ahead for the header's "Next charges" group — the same 45 days
+  // Subscriptions uses for its upcoming renewals.
+  D.CONTRACTS_CHARGE_WINDOW_DAYS = 45;
+
   D.CONTRACT_MAX_TERMS_PER_CONTRACT = 500;
   D.contractTermKinds = ['InterestRate', 'Fee'];
 
@@ -465,6 +501,13 @@
       { id: 'ctm-house-1', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0425, currency: null, interval: null, intervalCount: null, effectiveFrom: '2021-04-15', label: null, labelKey: null, note: 'Vendor financing on the balance of the purchase price.', createdAtUtc: '2021-04-15T09:00:00Z' },
       { id: 'ctm-house-2', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0399, currency: null, interval: null, intervalCount: null, effectiveFrom: '2024-05-01', label: null, labelKey: null, note: 'Renegotiated at the three-year review.', createdAtUtc: '2024-05-01T09:00:00Z' },
     ],
+    'ct-parking': [
+      { id: 'ctm-parking-1', contractId: 'ct-parking', kind: 'Fee', unit: 'Amount', value: 165.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-11-01', label: 'Space licence', labelKey: 'space licence', note: 'Due on the 1st.', createdAtUtc: '2025-10-20T09:00:00Z' },
+      { id: 'ctm-parking-2', contractId: 'ct-parking', kind: 'Fee', unit: 'Amount', value: 40.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-11-01', label: 'Access fob', labelKey: 'access fob', note: null, createdAtUtc: '2025-10-20T09:00:00Z' },
+    ],
+    'ct-energy': [
+      { id: 'ctm-energy-1', contractId: 'ct-energy', kind: 'Fee', unit: 'Amount', value: 28.50, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-10-15', label: 'Standing charge', labelKey: 'standing charge', note: 'Fixed for the term.', createdAtUtc: '2026-09-02T09:00:00Z' },
+    ],
     'ct-storage': [
       { id: 'ctm-storage-1', contractId: 'ct-storage', kind: 'Fee', unit: 'Amount', value: 95.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2024-01-01', label: 'Unit rent', labelKey: 'unit rent', note: null, createdAtUtc: '2024-01-03T09:00:00Z' },
       { id: 'ctm-storage-2', contractId: 'ct-storage', kind: 'Fee', unit: 'Amount', value: 105.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-01-01', label: 'Unit rent', labelKey: 'unit rent', note: 'Second-year rate.', createdAtUtc: '2024-12-02T09:00:00Z' },
@@ -495,6 +538,163 @@
     },
     // Why a write is refused, or null when it is allowed. One place, so the
     // disabled menu item, the section notice and the dialog all say the same.
+    /* ---- Next recurring charge, derived from the terms in force ------------
+       A contract has no billing schedule of its own. What it has is a term
+       history, and a term in force with a PERIODIC interval (Daily / Weekly /
+       Monthly / Annually, times IntervalCount) describes a recurring charge.
+       The next occurrence is projected from the term's cadence anchor —
+       AnchorDate when set, otherwise EffectiveFrom — exactly as a subscription
+       projects from its first billing date. Nothing is scheduled or stored;
+       this is a read. */
+
+    // The k-th occurrence of a periodic term, as 'YYYY-MM-DD'. Month and year
+    // steps are calendar steps (clamped into short months), never 30/365 days.
+    conOccurrence(term, k) {
+      const iv = D.intervalByKey[term.interval];
+      if (!iv || !iv.periodic) return null;
+      const anchor = H.conDateOnly(term.anchorDate || term.effectiveFrom);
+      if (!anchor) return null;
+      const [ay, am, ad] = anchor.split('-').map(Number);
+      const n = Math.max(1, term.intervalCount || 1) * k;
+      const pad = (x) => String(x).padStart(2, '0');
+      const dim = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+      if (iv.key === 'Daily' || iv.key === 'Weekly') {
+        const d = new Date(Date.UTC(ay, am - 1, ad + n * (iv.key === 'Weekly' ? 7 : 1)));
+        return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+      }
+      const months = iv.key === 'Annually' ? n * 12 : n;
+      const total = (am - 1) + months;
+      const y = ay + Math.floor(total / 12);
+      const m = (total % 12) + 1;
+      return `${y}-${pad(m)}-${pad(Math.min(ad, dim(y, m)))}`;
+    },
+
+    // The first occurrence of a periodic term falling on or after `today`.
+    conNextOccurrence(term, today) {
+      const t = today || H.conToday();
+      for (let k = 0; k < 6000; k++) {
+        const iso = H.conOccurrence(term, k);
+        if (!iso) return null;
+        if (iso >= t) return iso;
+      }
+      return null;
+    },
+
+    /* The contract's soonest recurring charge: over the FEE terms in force
+       (amounts only — a percentage fee has no due amount to show), the
+       earliest next occurrence that still falls inside the contract's term.
+       Returns { date, days, term } or null. */
+    conNextCharge(contract, today) {
+      const t = today || H.conToday();
+      if (!contract || contract.archived) return null;
+      const status = H.conStatus(contract, t);
+      if (status === 'Expired') return null;
+      const inForce = window.trmCurrentFromList
+        ? window.trmCurrentFromList(H.conTermsFor(contract.id))
+        : [];
+      const end = H.conDateOnly(contract.endDate);
+      const start = H.conDateOnly(contract.startDate);
+      let best = null;
+      for (const term of (inForce || [])) {
+        if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+        const iv = D.intervalByKey[term.interval];
+        if (!iv || !iv.periodic) continue;
+        const date = H.conNextOccurrence(term, start && start > t ? start : t);
+        if (!date) continue;
+        // A charge never falls outside the agreement it is priced under.
+        if (end && date > end) continue;
+        if (!best || date < best.date) best = { date, term };
+      }
+      return best ? { ...best, days: H.conDaysUntil(best.date, t) } : null;
+    },
+
+    // The soonest next charges within `windowDays` (default 45), one row per
+    // contract, ascending and capped — the Subscriptions renewal list's shape.
+    conUpcomingCharges(contracts, today, opts) {
+      const t = today || H.conToday();
+      const windowDays = (opts && opts.windowDays != null) ? opts.windowDays : D.CONTRACTS_CHARGE_WINDOW_DAYS;
+      const limit = (opts && opts.limit != null) ? opts.limit : 6;
+      const out = [];
+      for (const c of (contracts || D.contracts)) {
+        const next = H.conNextCharge(c, t);
+        if (!next || next.days == null || next.days > windowDays) continue;
+        out.push({ contract: c, ...next });
+      }
+      out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+      return out.slice(0, limit);
+    },
+
+    // 'Oct 1' — the compact charge date, parsed as UTC so it never drifts.
+    conDateMd(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+      const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${MON[m - 1]} ${d}`;
+    },
+    // 'today' / 'tomorrow' / 'in 12 days' — the relative word beside it.
+    conRelDays(days) {
+      if (days == null) return '';
+      if (days <= 0) return 'today';
+      if (days === 1) return 'tomorrow';
+      return `in ${days} days`;
+    },
+
+    /* ---- Run rate ----------------------------------------------------------
+       What the agreements on file cost per month and per year, read off the
+       FEE terms in force exactly as the next-charge rows are. Each amount is
+       projected by its cadence (Amount ÷ IntervalCount × periods), then
+       converted to the workspace base via the shared FX helper — a currency
+       with no rate is listed as unconverted, never silently zeroed. Only
+       contracts currently running count: Upcoming, Expired and Archived
+       records carry no run rate.
+       One-time and per-occurrence fees are excluded by construction — they
+       have no cadence, so there is no rate to project. */
+    conRunRate(contracts, today, baseCurrency) {
+      const t = today || H.conToday();
+      const base = baseCurrency || (D.currencies.find(c => c.base) || {}).code || 'USD';
+      const F = {
+        Daily:    { mo: 365.25 / 12, yr: 365.25 },
+        Weekly:   { mo: 52.1775 / 12, yr: 52.1775 },
+        Monthly:  { mo: 1, yr: 12 },
+        Annually: { mo: 1 / 12, yr: 1 },
+      };
+      const convert = H.insConvert || ((amt, from, to) => (from === to ? amt : null));
+      const unconverted = new Set();
+      const byType = {};
+      let monthly = 0, yearly = 0, any = false;
+      for (const c of (contracts || D.contracts)) {
+        if (c.archived) continue;
+        if (H.conStatus(c, t) !== 'Active') continue;
+        const inForce = window.trmCurrentFromList ? window.trmCurrentFromList(H.conTermsFor(c.id)) : [];
+        for (const term of (inForce || [])) {
+          if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+          const iv = D.intervalByKey[term.interval];
+          if (!iv || !iv.periodic || !F[iv.key]) continue;
+          const every = Math.max(1, term.intervalCount || 1);
+          const cur = term.currency || base;
+          const mo = convert((term.value * F[iv.key].mo) / every, cur, base);
+          const yr = convert((term.value * F[iv.key].yr) / every, cur, base);
+          if (mo == null || yr == null) { unconverted.add(cur); continue; }
+          monthly += mo; yearly += yr; any = true;
+          if (!byType[c.type]) byType[c.type] = { monthly: 0, yearly: 0, count: 0 };
+          byType[c.type].monthly += mo;
+          byType[c.type].yearly += yr;
+          byType[c.type].count += 1;
+        }
+      }
+      return {
+        baseCurrency: base,
+        monthly: any ? monthly : null,
+        yearly: any ? yearly : null,
+        unconvertedCurrencies: [...unconverted].sort(),
+        // Registry order, only the types that actually carry a rate.
+        typeRows: D.contractTypes
+          .filter(ty => byType[ty.key])
+          .map(ty => ({ key: ty.key, label: ty.label, icon: ty.icon, color: ty.color,
+            monthly: byType[ty.key].monthly, yearly: byType[ty.key].yearly, count: byType[ty.key].count })),
+      };
+    },
+
     conTermWriteBlock(contract, termCount, cap) {
       if (contract && contract.archived) {
         return { reason: 'archived', text: 'This contract is archived. Restore it to record or change a term — its history stays readable either way.' };

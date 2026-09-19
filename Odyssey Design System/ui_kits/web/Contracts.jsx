@@ -359,7 +359,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
 };
 
 /* ====================== Summary (header Overview) ====================== */
-const ContractsSummary = ({ contracts, today }) => {
+const ContractsSummary = ({ contracts, today, endingWindow }) => {
   const s = CON_H.conSummary(contracts, today);
   const order = ['Active', 'Upcoming', 'Expired', 'Archived'];
   // Distribution rows for the two BreakdownTile instances. Status tones map to
@@ -370,11 +370,36 @@ const ContractsSummary = ({ contracts, today }) => {
     const m = CON_H.conStatusMeta(k);
     return { key: k, icon: m.icon, iconColor: TONE_COLOR[m.tone] || TONE_COLOR.outline, label: m.label, count: s.countsByStatus[k] || 0 };
   });
+  /* Ending soon is not a fifth status — it is a slice of Active, and it reads
+     here for the same reason the header signal exists: the cliff is the thing
+     you act on. Listed straight after Active, never counted as its own status. */
+  const endingSoon = (contracts || []).filter(c => !c.archived && c.endDate
+    && CON_H.conStatus(c, today) === 'Active'
+    && CON_H.conDaysUntil(c.endDate, today) <= endingWindow).length;
+  statusRows.splice(1, 0, { key: 'EndingSoon', icon: 'hourglass_bottom', iconColor: TONE_COLOR.pending,
+    label: `Ending soon · ${endingWindow}d`, count: endingSoon });
+
+  /* What the file costs to run. Only the Active contracts' in-force periodic
+     fees carry a rate, so the totals and the per-type rows are the same read
+     twice — once summed, once split. */
+  const rr = CON_H.conRunRate(contracts, today);
+  const rrMoney = (v) => (v == null ? '—' : CON_H.money(v, rr.baseCurrency));
+  const rrFoot = rr.unconvertedCurrencies.length
+    ? `in ${rr.baseCurrency} · ${rr.unconvertedCurrencies.join(', ')} excluded`
+    : `in ${rr.baseCurrency}`;
+  const rrMonthlyRows = rr.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: r.color, label: r.label, count: rrMoney(r.monthly) }));
+  const rrYearlyRows = rr.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: r.color, label: r.label, count: rrMoney(r.yearly) }));
   return (
     <div className="con-summary">
+      <div className="con-run-tiles">
+        <InfoTile icon="calendar_month" label="Monthly run rate" value={rrMoney(rr.monthly)} foot={rrFoot} />
+        <InfoTile icon="event_repeat" label="Yearly run rate" value={rrMoney(rr.yearly)} foot={rrFoot} />
+      </div>
       <div className="con-stats">
         <BreakdownTile label="By type" rows={typeRows} empty="No active contracts." />
         <BreakdownTile label="By status" rows={statusRows} empty="No contracts." />
+        <BreakdownTile label="Monthly run rate by type" rows={rrMonthlyRows} empty="No recurring fees in force." />
+        <BreakdownTile label="Yearly run rate by type" rows={rrYearlyRows} empty="No recurring fees in force." />
       </div>
     </div>
   );
@@ -387,6 +412,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
   const [openId, setOpenId] = useState('ct-lease');
   const today = CON_H.conToday();
   const endingWindow = tweaks.endingWindowDays != null ? tweaks.endingWindowDays : CON_D.CONTRACTS_ENDING_WINDOW_DAYS;
+  const chargeWindow = tweaks.chargeWindowDays != null ? tweaks.chargeWindowDays : CON_D.CONTRACTS_CHARGE_WINDOW_DAYS;
   // ContractMaxTermsPerContract — a system setting, not a per-contract field.
   const termCap = tweaks.contractTermCap != null ? tweaks.contractTermCap : CON_D.CONTRACT_MAX_TERMS_PER_CONTRACT;
 
@@ -442,12 +468,47 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
     .map(c => ({ c, st: CON_H.conStatus(c, today) }))
     .filter(x => x.st === 'Active' && x.c.endDate && CON_H.conDaysUntil(x.c.endDate, today) <= endingWindow)
     .map(x => ({ ...x, sev: 'warning' }));
-  const signal = flagged.length ? {
-    severity: 'warning',
-    count: flagged.length,
-    label: 'Ending soon',
+  /* The other half of the panel: the next recurring charge each contract
+     carries, derived from the Fee terms in force. Nothing here is scheduled —
+     it is the term history read forward, the way Subscriptions reads its
+     billing interval forward into upcoming renewals. */
+  const upcomingCharges = CON_H.conUpcomingCharges(active, today, { windowDays: chargeWindow, limit: 6 });
+  /* And the other side of the cliff: terms that ran out in the window just
+     past and were never archived — the ones still waiting on a decision. */
+  const recentlyExpired = active
+    .filter(c => c.endDate && CON_H.conStatus(c, today) === 'Expired'
+      && -CON_H.conDaysUntil(c.endDate, today) <= endingWindow)
+    .sort((a, b) => (a.endDate < b.endDate ? 1 : -1))
+    .slice(0, 6);
+  /* Signed but not yet begun — the mirror of the ending cliff, and the other
+     thing a dated window surfaces: a term about to come into force. */
+  const startingSoon = active
+    .filter(c => c.startDate && CON_H.conStatus(c, today) === 'Upcoming'
+      && CON_H.conDaysUntil(c.startDate, today) <= endingWindow)
+    .sort((a, b) => (a.startDate < b.startDate ? -1 : 1))
+    .slice(0, 6);
+  const signal = (flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length) ? {
+    // The panel's worst severity wins the button: an expired term reads error,
+    // a term running out reads warning, and next charges alone read info.
+    severity: recentlyExpired.length ? 'error' : flagged.length ? 'warning' : 'info',
+    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length,
+    label: 'Upcoming',
     region: (
       <div className="signal-panel">
+        {recentlyExpired.length ? <div className="con-signal-group">Recently expired</div> : null}
+        {recentlyExpired.map((c) => {
+          const ago = -CON_H.conDaysUntil(c.endDate, today);
+          return (
+            <div key={c.id} className="alert error compact signal-row" role="button" tabIndex={0}
+              onClick={() => jumpTo(c.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
+              <SeverityIcon severity="error" size={18} className="alert-icon" />
+              <div className="alert-body"><strong>{c.name}.</strong> Term expired {ago <= 0 ? 'today' : `${ago} day${ago === 1 ? '' : 's'} ago`}.</div>
+              <button className="alert-fix" onClick={(e) => { e.stopPropagation(); jumpTo(c.id); }}>View →</button>
+            </div>
+          );
+        })}
+        {flagged.length ? <div className="con-signal-group">Ending soon</div> : null}
         {flagged.map(({ c }) => {
           const hl = CON_H.conHeadline(c, today, endingWindow);
           return (
@@ -457,6 +518,40 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
               <SeverityIcon severity="warning" size={18} className="alert-icon" />
               <div className="alert-body"><strong>{c.name}.</strong> Term {hl.word}.</div>
               <button className="alert-fix" onClick={(e) => { e.stopPropagation(); jumpTo(c.id); }}>View →</button>
+            </div>
+          );
+        })}
+        {startingSoon.length ? <div className="con-signal-group">Starting soon</div> : null}
+        {startingSoon.map((c) => {
+          const days = CON_H.conDaysUntil(c.startDate, today);
+          return (
+            <div key={c.id} className="alert info compact signal-row" role="button" tabIndex={0}
+              onClick={() => jumpTo(c.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
+              <SeverityIcon severity="info" size={18} className="alert-icon" />
+              <div className="alert-body"><strong>{c.name}.</strong> Term starts {days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`}.</div>
+              <button className="alert-fix" onClick={(e) => { e.stopPropagation(); jumpTo(c.id); }}>View →</button>
+            </div>
+          );
+        })}
+        {upcomingCharges.length ? <div className="con-signal-group">Next charges</div> : null}
+        {upcomingCharges.map(({ contract: c, term, date, days }) => {
+          const ti = CON_H.contractTypeInfo(c.type);
+          return (
+            <div key={c.id} className="con-charge-row" role="button" tabIndex={0}
+              onClick={() => jumpTo(c.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
+              <span className="con-charge-when">
+                <span className="con-charge-md mono">{CON_H.conDateMd(date)}</span>
+                <span className="con-charge-rel">{CON_H.conRelDays(days)}</span>
+              </span>
+              <span className="con-charge-name">
+                <MIcon name={ti.icon} size={16} style={{ color: ti.color }} />
+                <span className="con-charge-title">{c.name}</span>
+                <span className="con-charge-term">{CON_H.termDisplayName(term, null)}</span>
+              </span>
+              <span className="con-charge-amt mono">{CON_H.money(term.value, term.currency || 'USD')}</span>
+              <span className="con-charge-go">View →</span>
             </div>
           );
         })}
@@ -471,7 +566,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
         icon="handshake"
         sub={`${active.length} contract${active.length === 1 ? '' : 's'} on file`}
         signal={signal}
-        overview={<ContractsSummary contracts={contracts} today={today} />}
+        overview={<ContractsSummary contracts={contracts} today={today} endingWindow={endingWindow} />}
         overviewDefaultOpen
         searchDefaultOpen
         search={

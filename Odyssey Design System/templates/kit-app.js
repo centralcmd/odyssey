@@ -44,7 +44,7 @@
     // Pages that read tweak values (Contracts' ending-soon window and the
     // per-contract term cap) get the kit's own defaults; pages that don't read
     // them ignore the key.
-    tweaks: { endingWindowDays: 45, contractTermCap: 500 },
+    tweaks: { endingWindowDays: 45, chargeWindowDays: 45, contractTermCap: 500 },
   };
 
   // ---- Stylesheets (mirror ui_kits/web/index.html) ----
