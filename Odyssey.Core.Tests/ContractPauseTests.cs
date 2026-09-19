@@ -235,6 +235,54 @@ public class ContractPauseTests
         Assert.Equal(ContractStatus.Archived, cleared.Status);
     }
 
+
+    /// <summary>
+    /// §8's "Interaction with archive", from a contract that carries NEITHER stamp — the case every
+    /// other combined-flag test here misses, because they all start from an already-paused contract
+    /// and <see cref="ContractService"/>'s early return makes the pause half a no-op there.
+    ///
+    /// <para>
+    /// Both guards run before either stamp is written, and the two directions are refused by
+    /// <b>different</b> guards: a body asserting both on a contract that has ended is refused by the
+    /// pause guard (it derives <c>Expired</c>, not <c>Active</c>), and one on a contract that has not
+    /// is refused by the archive guard (archiving implies ended). There is no shape in which both
+    /// stamps are set in a single write, and neither guard can be reached with the other's stamp
+    /// already applied.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ArchiveAndPause_InOneWrite_IsRefused_FromEitherDirection_AndWritesNeitherStamp()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+
+        // Direction 1 — the contract has ended in this same request. The archive guard is satisfied,
+        // so the PAUSE guard is the one that refuses: an ended contract does not derive as Active.
+        var ended = await service.Create(Term(FixedToday.AddDays(-30)));
+        var byPause = await Assert.ThrowsAsync<DomainValidationException>(
+            () => service.Update(
+                ended.ContractId,
+                Write(ended, isPaused: true, isArchived: true, endDate: FixedToday.AddDays(-1))));
+        Assert.Equal("contract_pause_requires_active", byPause.Code);
+
+        // Direction 2 — the contract is still running. Now the ARCHIVE guard refuses first, so the
+        // pause guard is never reached and the refusal carries no pause code.
+        var running = await service.Create(Term(FixedToday.AddDays(-30), FixedToday.AddDays(30)));
+        var byArchive = await Assert.ThrowsAsync<DomainValidationException>(
+            () => service.Update(running.ContractId, Write(running, isPaused: true, isArchived: true)));
+        Assert.NotEqual("contract_pause_requires_active", byArchive.Code);
+        Assert.Contains("only be archived once it has ended", byArchive.Message, StringComparison.Ordinal);
+
+        // Neither refusal wrote either stamp: the guards run before any mutation, so a rejected
+        // compound write cannot leave one half applied.
+        foreach (var id in new[] { ended.ContractId, running.ContractId })
+        {
+            var reread = await service.Get(id);
+            Assert.Null(reread!.Paused);
+            Assert.Null(reread.Archived);
+        }
+    }
+
     // ── Precedence: Archived > Upcoming > Expired > Paused > Active (AC 7–8) ──
 
     [Fact]

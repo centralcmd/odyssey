@@ -1215,6 +1215,57 @@ public class ContractsApiTests
         Assert.Null((await cleared.Content.ReadFromJsonAsync<ExistingContract>())!.Paused);
     }
 
+
+    /// <summary>
+    /// §8's "Interaction with archive", over HTTP and from a contract carrying NEITHER stamp. Every
+    /// other combined-flag test starts from an already-paused contract, where the pause guard's early
+    /// return makes that half a no-op — so this is the only one that actually exercises both guards
+    /// against a fresh record.
+    ///
+    /// <para>
+    /// At the API tier rather than only in the service, because the "nothing persisted" half is the
+    /// point and each request here gets its own <c>DbContext</c>: a re-read through a shared,
+    /// still-tracking context could report a rejected write as absent whether or not it committed.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Put_ArchiveAndPause_Together_IsRefused_AndPersistsNeitherStamp()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        // The contract ends in this same request, so the archive guard is satisfied and the PAUSE
+        // guard is the one that refuses — an ended contract does not derive as Active.
+        var ended = await CreateAsync(client);
+        var byPause = await client.PutAsJsonAsync($"{Path}/{ended}",
+            UpdateContract(isPaused: true, isArchived: true, endDate: Lapsed));
+        Assert.Equal(HttpStatusCode.BadRequest, byPause.StatusCode);
+        using (var problem = JsonDocument.Parse(await byPause.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("contract_pause_requires_active", problem.RootElement.GetProperty("code").GetString());
+        }
+
+        // Still running, so the ARCHIVE guard refuses first and the pause guard is never reached.
+        var running = await CreateAsync(client);
+        var byArchive = await client.PutAsJsonAsync($"{Path}/{running}",
+            UpdateContract(isPaused: true, isArchived: true, endDate: FixedToday.AddDays(30)));
+        Assert.Equal(HttpStatusCode.BadRequest, byArchive.StatusCode);
+        using (var problem = JsonDocument.Parse(await byArchive.Content.ReadAsStringAsync()))
+        {
+            Assert.NotEqual("contract_pause_requires_active",
+                problem.RootElement.TryGetProperty("code", out var code) ? code.GetString() : null);
+        }
+
+        // Neither refusal left half of the compound write applied: both guards run before any
+        // mutation, so a rejected body persists no stamp at all.
+        foreach (var id in new[] { ended, running })
+        {
+            var reread = await GetAsync(client, id);
+            Assert.Null(reread.Paused);
+            Assert.Null(reread.Archived);
+        }
+    }
+
     /// <summary>
     /// AC 9–10: the new member is bindable on the status filter, an unfiltered list still includes
     /// paused rows, and sorting by status places Paused (ordinal 4) after Archived (3).
