@@ -11,15 +11,24 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// OdsTypeSelect's listbox semantics and keyboard contract (issue #51).
+/// OdsTypeSelect's popup semantics and keyboard contract (issue #51).
 ///
 /// <para>
-/// The defect these pin was announced rather than visible: the trigger promised
-/// <c>aria-haspopup="listbox"</c> and the popup delivered a <c>role="listbox"</c> container — that
-/// part MudBlazor gets right — holding <em>no options at all</em>, because a MudMenuItem carries no
-/// role and no selected state. A screen-reader user opened a named control and was read an empty
-/// list, with the current choice carried only by a check glyph that is <c>aria-hidden</c>
-/// (WCAG 4.1.2 Name, Role, Value; 1.1.1 for the glyph).
+/// The defect these pin was announced rather than visible: the trigger promised a popup and the
+/// popup delivered a container — that part MudBlazor gets right — holding <em>no exposed rows at
+/// all</em>, because a MudMenuItem carried no role and no selected state. A screen-reader user
+/// opened a named control and was read an empty list, with the current choice carried only by a
+/// check glyph that is <c>aria-hidden</c> (WCAG 4.1.2 Name, Role, Value; 1.1.1 for the glyph).
+/// </para>
+///
+/// <para>
+/// MudBlazor owns the container's role and changed it: up to 9.9.0 its menu list took MudList's
+/// default <c>role="listbox"</c>, so the rows were <c>role="option"</c> with <c>aria-selected</c>;
+/// from 9.10.0 MudMenu passes <c>role="menu"</c>, so the same rows are <c>role="menuitemradio"</c>
+/// with <c>aria-checked</c> and the trigger's <c>aria-haspopup</c> reads <c>menu</c>. What these
+/// assert is unchanged in substance — every row exposed, exactly one carrying the chosen state —
+/// and that is the level to keep them at. MudMenuItem gained a role in 9.10.0 but still has no
+/// checked state, so the rows stay hand-rendered.
 /// </para>
 ///
 /// <para>
@@ -104,7 +113,7 @@ public class OdsTypeSelectListboxTests
     private static IReadOnlyList<string> OptionIds(IRenderedComponent<SelectHost> cut)
     {
         cut.Render();
-        return [.. cut.FindAll("[role='option']").Select(option => option.Id!)];
+        return [.. cut.FindAll("[role='menuitemradio']").Select(option => option.Id!)];
     }
 
     private static void Press(IRenderedComponent<SelectHost> cut, string id, string key, bool ctrl = false)
@@ -125,44 +134,47 @@ public class OdsTypeSelectListboxTests
             .LastOrDefault();
 
     [Fact]
-    public void The_popup_is_a_listbox_of_options_and_exactly_one_is_selected()
+    public void The_popup_is_a_menu_of_radio_rows_and_exactly_one_is_checked()
     {
         var ctx = NewContext();
         var cut = RenderOpen(ctx);
 
-        var listbox = cut.Find(".mud-menu-list");
-        Assert.Equal("listbox", listbox.GetAttribute("role"));
+        // MudBlazor owns this role; the trigger below has to agree with whatever it is.
+        var list = cut.Find(".mud-menu-list");
+        Assert.Equal("menu", list.GetAttribute("role"));
+        Assert.Equal("menu", cut.Find("button.odc-select-trigger").GetAttribute("aria-haspopup"));
 
-        var options = cut.FindAll("[role='option']");
+        var options = cut.FindAll("[role='menuitemradio']");
         Assert.Equal(Types.Count, options.Count);
 
-        // Every option carries the state, not only the chosen one: aria-selected="false" is what
+        // Every row carries the state, not only the chosen one: aria-checked="false" is what
         // tells a screen reader the others are selectable and currently are not.
         Assert.All(options, option =>
-            Assert.Contains(option.GetAttribute("aria-selected"), new[] { "true", "false" }));
+            Assert.Contains(option.GetAttribute("aria-checked"), new[] { "true", "false" }));
 
-        var selected = options.Where(o => o.GetAttribute("aria-selected") == "true").ToList();
+        var selected = options.Where(o => o.GetAttribute("aria-checked") == "true").ToList();
         Assert.Single(selected);
         Assert.Contains("Work", selected[0].TextContent);
     }
 
     /// <summary>
-    /// The options must be children of the listbox MudBlazor already renders. Wrapping them in a
-    /// second <c>role="listbox"</c> would reproduce the original defect one level up: an outer
-    /// listbox owning no options.
+    /// The rows must be children of the one container MudBlazor already renders. Wrapping them in a
+    /// container role of our own would reproduce the original defect one level up: an outer widget
+    /// owning no rows.
     /// </summary>
     [Fact]
-    public void The_options_are_children_of_the_one_listbox()
+    public void The_options_are_children_of_the_one_menu()
     {
         var ctx = NewContext();
         var cut = RenderOpen(ctx);
 
-        Assert.Single(cut.FindAll("[role='listbox']"));
+        Assert.Single(cut.FindAll("[role='menu']"));
+        Assert.Empty(cut.FindAll("[role='listbox']"));
 
         // Compared by role rather than by instance: bUnit hands out a wrapper for Find results, so
         // the same DOM node is not the same object twice.
-        Assert.All(cut.FindAll("[role='option']"),
-            option => Assert.Equal("listbox", option.ParentElement!.GetAttribute("role")));
+        Assert.All(cut.FindAll("[role='menuitemradio']"),
+            option => Assert.Equal("menu", option.ParentElement!.GetAttribute("role")));
     }
 
     /// <summary>
@@ -177,7 +189,7 @@ public class OdsTypeSelectListboxTests
 
         var check = cut.Find(".odc-typesel-check");
         Assert.Equal("true", check.GetAttribute("aria-hidden"));
-        Assert.Equal("true", check.Closest("[role='option']")!.GetAttribute("aria-selected"));
+        Assert.Equal("true", check.Closest("[role='menuitemradio']")!.GetAttribute("aria-checked"));
     }
 
     [Fact]
@@ -186,8 +198,8 @@ public class OdsTypeSelectListboxTests
         var ctx = NewContext();
         var cut = RenderOpen(ctx, value: "Gone");
 
-        Assert.All(cut.FindAll("[role='option']"),
-            option => Assert.Equal("false", option.GetAttribute("aria-selected")));
+        Assert.All(cut.FindAll("[role='menuitemradio']"),
+            option => Assert.Equal("false", option.GetAttribute("aria-checked")));
     }
 
     [Fact]
@@ -202,8 +214,8 @@ public class OdsTypeSelectListboxTests
 
         var cut = RenderOpen(ctx, value: "Switchboard", groups: groups);
 
-        Assert.Equal(3, cut.FindAll("[role='option']").Count);
-        Assert.Single(cut.FindAll("[role='option'][aria-selected='true']"));
+        Assert.Equal(3, cut.FindAll("[role='menuitemradio']").Count);
+        Assert.Single(cut.FindAll("[role='menuitemradio'][aria-checked='true']"));
 
         // A heading is not a selectable thing; it stays out of the accessibility tree so the list
         // length a screen reader announces matches the number of choices.
@@ -222,18 +234,18 @@ public class OdsTypeSelectListboxTests
         Assert.Equal(new[] { "Personal", "Shared" }, names);
 
         // Each group owns its own options, so the grouping is real rather than decorative.
-        Assert.Equal(2, sections[0].QuerySelectorAll("[role='option']").Length);
-        Assert.Single(sections[1].QuerySelectorAll("[role='option']"));
+        Assert.Equal(2, sections[0].QuerySelectorAll("[role='menuitemradio']").Length);
+        Assert.Single(sections[1].QuerySelectorAll("[role='menuitemradio']"));
     }
 
     [Fact]
-    public void The_trigger_reports_the_listbox_and_whether_it_is_open()
+    public void The_trigger_reports_the_popup_and_whether_it_is_open()
     {
         var ctx = NewContext();
         var cut = ctx.Render<SelectHost>(p => p.Add(h => h.Value, "Work").Add(h => h.Types, Types));
 
         var trigger = cut.Find("button.odc-select-trigger");
-        Assert.Equal("listbox", trigger.GetAttribute("aria-haspopup"));
+        Assert.Equal("menu", trigger.GetAttribute("aria-haspopup"));
         Assert.Equal("false", trigger.GetAttribute("aria-expanded"));
 
         trigger.Click();
@@ -246,7 +258,7 @@ public class OdsTypeSelectListboxTests
         var ctx = NewContext();
         var cut = RenderOpen(ctx, value: "Switchboard");
 
-        var id = cut.Find("[role='option'][aria-selected='true']").Id;
+        var id = cut.Find("[role='menuitemradio'][aria-checked='true']").Id;
         Assert.Equal(id, LastFocusTarget(ctx));
     }
 
@@ -256,7 +268,7 @@ public class OdsTypeSelectListboxTests
         var ctx = NewContext();
         var cut = RenderOpen(ctx, value: null);
 
-        Assert.Equal(cut.FindAll("[role='option']")[0].Id, LastFocusTarget(ctx));
+        Assert.Equal(cut.FindAll("[role='menuitemradio']")[0].Id, LastFocusTarget(ctx));
     }
 
     [Theory]
@@ -381,7 +393,7 @@ public class OdsTypeSelectListboxTests
         var cut = RenderOpen(ctx, onChanged: EventCallback.Factory.Create<string>(
             new object(), _ => changes++));
 
-        Choose(cut, cut.Find("[role='option'][aria-selected='true']").Id!);
+        Choose(cut, cut.Find("[role='menuitemradio'][aria-checked='true']").Id!);
 
         Assert.Equal(0, changes);
         Assert.Empty(OptionIds(cut));
@@ -399,7 +411,7 @@ public class OdsTypeSelectListboxTests
         var ctx = NewContext();
         var cut = ctx.Render<SelectHost>(p => p.Add(h => h.Value, "Work").Add(h => h.Types, Types));
 
-        Assert.Empty(cut.FindAll("[role='option']"));
+        Assert.Empty(cut.FindAll("[role='menuitemradio']"));
 
         cut.Find("button.odc-select-trigger").KeyDown(new KeyboardEventArgs { Key = key });
 

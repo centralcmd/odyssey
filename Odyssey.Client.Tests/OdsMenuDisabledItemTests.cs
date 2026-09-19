@@ -112,9 +112,11 @@ public class OdsMenuDisabledItemTests
     /// <para>
     /// MudBlazor's menu is not a roving-tabindex ARIA menu: every enabled item carries
     /// <c>tabindex="0"</c>, so Tab is how a keyboard user moves through it. The shell matches that
-    /// exactly. It also matches on <c>role</c> — MudBlazor gives its items none, and the list
-    /// container is <c>role="listbox"</c>, so a <c>role="menuitem"</c> here would be both an invalid
-    /// listbox child and the only role in the menu.
+    /// exactly. It also matches on <c>role</c>, and that is asserted as parity rather than as a
+    /// literal — up to MudBlazor 9.9.0 the list was <c>role="listbox"</c> and its items carried no
+    /// role at all, so the shell carried none either; from 9.10.0 the list is <c>role="menu"</c> and
+    /// each item is <c>role="menuitem"</c>, so the shell is too. Either way the reason is reachable
+    /// by a user who is told what they have reached.
     /// </para>
     ///
     /// <para>
@@ -137,13 +139,14 @@ public class OdsMenuDisabledItemTests
         Assert.Equal(enabled.GetAttribute("tabindex"), noted.GetAttribute("tabindex"));
         Assert.Equal("0", noted.GetAttribute("tabindex"));
 
-        // Same role as its siblings — which is none, because MudBlazor assigns none.
+        // Same role as its siblings, whatever MudBlazor assigns them — parity is the contract, so
+        // this reads the sibling rather than hardcoding the role a given MudBlazor version emits.
         Assert.Equal(enabled.GetAttribute("role"), noted.GetAttribute("role"));
-        Assert.Null(noted.GetAttribute("role"));
+        Assert.Equal("menuitem", noted.GetAttribute("role"));
 
-        // And the container is a listbox, which is why "no role" is parity rather than an omission:
-        // a menuitem child here would be invalid, not more correct.
-        Assert.Equal("listbox", cut.Find(".mud-menu-list").GetAttribute("role"));
+        // And the container is the menu those menuitems belong to, which is what makes the shared
+        // role parity rather than a guess.
+        Assert.Equal("menu", cut.Find(".mud-menu-list").GetAttribute("role"));
     }
 
     [Fact]
