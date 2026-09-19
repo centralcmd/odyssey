@@ -469,6 +469,12 @@ public sealed class ContractExport
     public DateTime? EndDate { get; init; }
     public DateTime? CompletionDate { get; init; }
     public DateTime? Archived { get; init; }
+
+    /// <summary>
+    /// When the contract was paused, or null when it is not (issue #140). A stored fact about the
+    /// contract that the export silently omitted would be an incomplete subject-access response.
+    /// </summary>
+    public DateTime? Paused { get; init; }
     public DateTime CreatedAtUtc { get; init; }
 }
 

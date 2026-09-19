@@ -46,6 +46,22 @@ public class Contract
     /// </summary>
     public DateTime? Archived { get; set; }
 
+    /// <summary>
+    /// Pause timestamp (issue #140) — non-null means the contract is temporarily suspended, and the
+    /// value records <b>when</b> it entered that state. Null is the default and the healthy steady
+    /// state. The same shape as <see cref="Archived"/> and as <c>Subscription.Paused</c>, but the
+    /// opposite intent: a paused contract stays listed, stays fully editable, and only stops
+    /// contributing to what the file costs to run.
+    ///
+    /// <para>
+    /// <b>Orthogonal in storage, ordered in presentation.</b> A row may legitimately hold both stamps;
+    /// nothing clears one when the other is set, and the derived <c>ContractStatus</c> decides which
+    /// is reported. No index: the derived status is computed in memory after projection, so this is
+    /// never a SQL predicate.
+    /// </para>
+    /// </summary>
+    public DateTime? Paused { get; set; }
+
     [Required]
     public required DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

@@ -29,4 +29,19 @@ public sealed record UpdateContract
     /// archive state is toggled here as part of the regular update (issue #174 §6/§7).
     /// </summary>
     public bool IsArchived { get; set; }
+
+    /// <summary>
+    /// Pause (temporarily suspend) the contract when true, or resume when false (issue #140). A pause
+    /// suspends what the agreement costs — it leaves the run rate and the upcoming charges — without
+    /// ending it, hiding it, locking it or touching its price history. Like <see cref="IsArchived"/>
+    /// it rides the regular update; there is no dedicated pause endpoint.
+    ///
+    /// <para>
+    /// Only a contract deriving as <c>Active</c> may be paused; anything else is refused with a
+    /// <c>400</c> carrying <c>contract_pause_requires_active</c>. Clearing is never refused. Because
+    /// <c>PUT</c> is a full replacement, an omitted <c>isPaused</c> reads as false and therefore
+    /// <b>resumes</b> a paused contract — the same semantics <see cref="IsArchived"/> already has.
+    /// </para>
+    /// </summary>
+    public bool IsPaused { get; set; }
 }

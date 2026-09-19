@@ -7,15 +7,20 @@ namespace Odyssey.Client.Components;
 /// pills and the status filter (issue #174). Mirrors the design-system contract status vocabulary: the
 /// status meaning lives in the visible <see cref="Label"/>, never in colour or glyph alone (the
 /// dot/icon is decorative). Tone follows the finance vocabulary — Active = income (mint),
-/// Upcoming = info (sea), Expired = expense (coral), Archived = neutral outline.
+/// Upcoming = info (sea), Expired = expense (coral), Paused = pending (amber, the tone Subscriptions
+/// already gives a pause), Archived = neutral outline.
 /// </summary>
 /// <param name="Label">Visible status word.</param>
-/// <param name="Tone">Chip tone class — income · info · expense · outline.</param>
+/// <param name="Tone">Chip tone class — income · info · expense · pending · outline.</param>
 /// <param name="Dot">Lead with a status dot (when not showing the icon).</param>
 /// <param name="Icon">Status glyph (used when an icon lead is requested).</param>
 /// <param name="DotColor">CSS variable for the summary status-pill dot.</param>
+/// <param name="Unknown">
+/// True when the member is not in this client's vocabulary — a newer server enum. Callers that
+/// enumerate the registry never see it; only <see cref="OdsContractStatus.Meta"/> produces one.
+/// </param>
 public sealed record OdsContractStatusMeta(
-    string Label, string Tone, bool Dot, string Icon, string DotColor);
+    string Label, string Tone, bool Dot, string Icon, string DotColor, bool Unknown = false);
 
 /// <summary>The canonical contract-status registry, in display order (Active first).</summary>
 public static class OdsContractStatus
@@ -24,15 +29,41 @@ public static class OdsContractStatus
         new Dictionary<ContractStatus, OdsContractStatusMeta>
         {
             [ContractStatus.Active]   = new("Active",   "income",  true,  "task_alt",     "var(--finance-income)"),
+            [ContractStatus.Paused]   = new("Paused",   "pending", true,  "pause_circle", "var(--finance-pending)"),
             [ContractStatus.Upcoming] = new("Upcoming", "info",    true,  "schedule",     "var(--sea-400)"),
             [ContractStatus.Expired]  = new("Expired",  "expense", false, "event_busy",   "var(--finance-expense)"),
             [ContractStatus.Archived] = new("Archived", "outline", true,  "inventory_2",  "var(--mud-palette-text-secondary)"),
         };
 
-    /// <summary>Statuses in display order — Active · Upcoming · Expired · Archived.</summary>
+    /// <summary>
+    /// Statuses in display order — Active · Paused · Upcoming · Expired · Archived.
+    ///
+    /// <para>
+    /// A READING order, not the persisted one: <see cref="ContractStatus"/>'s ordinals are a wire and
+    /// persistence contract, so <c>Paused</c> is appended at 4 and is never renumbered to sit beside
+    /// <c>Active</c> here. Sorting the list by status still follows the ordinal, exactly as
+    /// <c>ContractType</c> already splits the two.
+    /// </para>
+    /// </summary>
     public static readonly IReadOnlyList<ContractStatus> Order =
-        [ContractStatus.Active, ContractStatus.Upcoming, ContractStatus.Expired, ContractStatus.Archived];
+        [ContractStatus.Active, ContractStatus.Paused, ContractStatus.Upcoming,
+         ContractStatus.Expired, ContractStatus.Archived];
 
+    /// <summary>
+    /// The display row for a status. An <b>unrecognised</b> member fails NEUTRALLY, under its own
+    /// name — never resolved into <see cref="ContractStatus.Active"/>.
+    ///
+    /// <para>
+    /// This is not defensive tidiness: <see cref="ContractStatus"/> lives in <c>Odyssey.Dtos</c> and
+    /// appends server-side, so a client running behind the deployment can be handed a member it has
+    /// never heard of. Falling back to the Active row would render a green "Active" pill on a
+    /// contract the server has just excluded from the run rate — a <i>wrong</i> state rather than a
+    /// degraded one, and precisely the state the reader is looking for.
+    /// </para>
+    /// </summary>
     public static OdsContractStatusMeta Meta(ContractStatus status) =>
-        Registry.TryGetValue(status, out var m) ? m : Registry[ContractStatus.Active];
+        Registry.TryGetValue(status, out var m)
+            ? m
+            : new(status.ToString(), "outline", true, "help",
+                "var(--mud-palette-text-secondary)", Unknown: true);
 }

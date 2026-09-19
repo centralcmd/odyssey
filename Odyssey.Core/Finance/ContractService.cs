@@ -146,6 +146,7 @@ public class ContractService
             FileCount = x.FileCount,
             TermCount = x.TermCount,
             Archived = x.Contract.Archived,
+            Paused = x.Contract.Paused,
         });
 
         if (statusFilter.Length > 0)
@@ -199,7 +200,8 @@ public class ContractService
             .ThenBy(c => c.ContractId)
             .Take(caps.MaxSummaryContracts)
             .Select(c => new SummaryRow(
-                c.ContractId, c.Name, c.Type, c.StartDate, c.EndDate, c.CompletionDate, c.Archived))
+                c.ContractId, c.Name, c.Type, c.StartDate, c.EndDate, c.CompletionDate,
+                c.Archived, c.Paused))
             .ToListAsync(cancellationToken);
 
         var counts = new ContractStatusCounts();
@@ -208,17 +210,19 @@ public class ContractService
 
         foreach (var c in contracts)
         {
-            var status = DeriveStatus(c.StartDate, c.EndDate, c.CompletionDate, c.Archived, today);
+            var status = DeriveStatus(c.StartDate, c.EndDate, c.CompletionDate, c.Archived, c.Paused, today);
             switch (status)
             {
                 case ContractStatus.Active: counts.Active++; break;
                 case ContractStatus.Upcoming: counts.Upcoming++; break;
                 case ContractStatus.Expired: counts.Expired++; break;
                 case ContractStatus.Archived: counts.Archived++; break;
+                case ContractStatus.Paused: counts.Paused++; break;
             }
 
-            // A SLICE of Active, not a fifth bucket: it is already counted above, so the four still sum
+            // A SLICE of Active, not a sixth bucket: it is already counted above, so the five still sum
             // to the total. Only a dated term can run out — an open-ended one never reaches a cliff.
+            // A paused contract derives as Paused, so it drops out of this slice with no extra test.
             if (status == ContractStatus.Active && c.EndDate is { } end
                 && DaysUntil(end, today) is var days && days >= 0 && days <= windows.EndingWindowDays)
             {
@@ -227,6 +231,10 @@ public class ContractService
 
             // The by-type breakdown covers only the active (non-archived) set — archived contracts are
             // counted in the status pills but excluded from "By type" (matches the design's summary).
+            // Deliberately PAUSE-AGNOSTIC (issue #140 §5.4): this is a headcount of the contracts on
+            // file, not a cost split, and a paused agreement is still a contract of its type. The cost
+            // split is RunRate.ByType, which excludes it — the two by-type reads answer different
+            // questions and this is the one place they are answered differently.
             if (c.Archived is null)
             {
                 var dtoType = c.Type.Adapt<DtoContractType>();
@@ -237,6 +245,11 @@ public class ContractService
             // file costs to run RIGHT NOW, so only Active contracts carry one. A next charge is a
             // question about the future, so an Upcoming contract belongs there too — one signed today
             // with a price already in force has a first charge to report, clamped to its start date.
+            //
+            // A paused contract is excluded from the run rate, its by-type split AND the charges by
+            // this one gate, because it no longer derives as Active — never by a parallel
+            // "Paused is not null" test, which is how the "counts one set, prices another" defect
+            // class gets in (issue #140 §3).
             if (status is ContractStatus.Active or ContractStatus.Upcoming)
             {
                 priceable.Add(c with { IsActive = status == ContractStatus.Active });
@@ -560,7 +573,8 @@ public class ContractService
     /// <summary>Slim projection row for the summary computation (all contracts, one batch query).</summary>
     private sealed record SummaryRow(
         Guid ContractId, string Name, ContextContractType Type,
-        DateTime? StartDate, DateTime? EndDate, DateTime? CompletionDate, DateTime? Archived)
+        DateTime? StartDate, DateTime? EndDate, DateTime? CompletionDate,
+        DateTime? Archived, DateTime? Paused)
     {
         /// <summary>
         /// Set once from the single <c>DeriveStatus</c> call per contract, so the run rate and the
@@ -594,6 +608,7 @@ public class ContractService
             EndDate = endDate,
             CompletionDate = completionDate,
             Archived = null,
+            Paused = null,
             CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
         };
 
@@ -624,10 +639,21 @@ public class ContractService
         // over, so only an ended one can be archived. Validated against the request's dates, not the
         // stored ones, so a single PUT may end and archive in one go.
         EnsureArchivable(contract, request.IsArchived, endDate, completionDate);
+        // Then the pause guard, against the same request dates plus the STORED archive stamp — so a
+        // body asserting both on a contract that has ended is refused here, and one on a contract that
+        // has not is refused above.
+        EnsurePausable(contract, request.IsPaused, startDate, endDate, completionDate);
 
         // Archive (preserving the original archive stamp) or unarchive per the request.
         contract.Archived = request.IsArchived
             ? contract.Archived ?? timeProvider.GetUtcNow().UtcDateTime
+            : null;
+
+        // Pause or resume, same idempotence rule: a repeated or replayed PUT keeps the ORIGINAL stamp,
+        // so "paused since" never resets. Neither stamp is auto-cleared by the other — archiving a
+        // paused contract retains the pause, losslessly, and the derivation simply reports Archived.
+        contract.Paused = request.IsPaused
+            ? contract.Paused ?? timeProvider.GetUtcNow().UtcDateTime
             : null;
 
         await context.SaveChangesAsync(cancellationToken);
@@ -1016,12 +1042,80 @@ public class ContractService
         }
     }
 
+    /// <summary>
+    /// The mirror of <see cref="EnsureArchivable"/> for the pause stamp (issue #140 §8): a
+    /// <b>transition into</b> paused is permitted only from <c>Active</c>.
+    ///
+    /// <para>
+    /// Evaluated against the <b>request's</b> dates and the <b>stored</b> archive stamp, exactly as the
+    /// archive guard is, so one PUT may move a start date into the past and pause in the same write.
+    /// </para>
+    ///
+    /// <para>
+    /// Only the transition is checked. A contract already paused is never re-validated, so one that
+    /// later expires or is archived is never stranded in a state it cannot be written out of — and
+    /// <b>clearing a pause is never refused</b>, on any contract in any state. A guard on the way out
+    /// is how a row gets stranded.
+    /// </para>
+    /// </summary>
+    private void EnsurePausable(
+        Contract contract, bool isPaused, DateTime? startDate, DateTime? endDate, DateTime? completionDate)
+    {
+        if (!isPaused || contract.Paused is not null)
+        {
+            return;
+        }
+
+        // The base status, not the full one: the contract is not paused yet, so there is nothing for
+        // the Paused member to replace, and asking for it back would be circular.
+        var status = DeriveBaseStatus(startDate, endDate, completionDate, contract.Archived, Today);
+        if (status != ContractStatus.Active)
+        {
+            throw new DomainValidationException(
+                $"Only an active contract can be paused. This contract is {status} — clear its archive, or move its dates so it is running today, first.",
+                "contract_pause_requires_active",
+                nameof(UpdateContract.IsPaused));
+        }
+    }
+
     // ── Derived status (deterministic, ordered — §6) ──────────────────────────────
 
     private static ContractStatus DeriveStatus(Contract contract, DateTime today) =>
-        DeriveStatus(contract.StartDate, contract.EndDate, contract.CompletionDate, contract.Archived, today);
+        DeriveStatus(
+            contract.StartDate, contract.EndDate, contract.CompletionDate,
+            contract.Archived, contract.Paused, today);
 
+    /// <summary>
+    /// The full derivation: the pause-blind base status, then <c>Paused</c> applied <b>once, to its
+    /// result</b> (issue #140 §8).
+    ///
+    /// <para>
+    /// <b>Paused replaces Active and nothing else</b> — it is deliberately not a sixth step in the
+    /// chain below. <see cref="DeriveBaseStatus"/> contains an early return for one-off contracts that
+    /// resolves <i>both</i> of its outcomes before any later branch runs, so a pause check written
+    /// inside that chain would be unreachable for a settled one-off: the stamp would be stored and
+    /// every read would keep reporting <c>Active</c> while the contract kept contributing to the run
+    /// rate. Applying it to the result closes that by construction rather than by careful placement.
+    /// </para>
+    ///
+    /// <para>
+    /// Read as precedence: <c>Archived &gt; Upcoming &gt; Expired &gt; Paused &gt; Active</c>. A
+    /// terminal fact outranks a temporary one, so a paused contract whose term has since run out reads
+    /// <c>Expired</c> — its stamp is retained, so resuming it after fixing its dates is one write.
+    /// </para>
+    /// </summary>
     private static ContractStatus DeriveStatus(
+        DateTime? startDate, DateTime? endDate, DateTime? completionDate,
+        DateTime? archived, DateTime? paused, DateTime today)
+    {
+        var status = DeriveBaseStatus(startDate, endDate, completionDate, archived, today);
+        return status == ContractStatus.Active && paused is not null
+            ? ContractStatus.Paused
+            : status;
+    }
+
+    /// <summary>The pre-pause derivation, unchanged (issue #174 §6).</summary>
+    private static ContractStatus DeriveBaseStatus(
         DateTime? startDate, DateTime? endDate, DateTime? completionDate, DateTime? archived, DateTime today)
     {
         if (archived is not null)
@@ -1191,6 +1285,7 @@ public class ContractService
                 .ToList(),
             CurrentTerms = currentTerms,
             Archived = contract.Archived,
+            Paused = contract.Paused,
             CreatedAtUtc = contract.CreatedAtUtc,
         };
     }

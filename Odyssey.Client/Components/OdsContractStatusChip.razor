@@ -2,7 +2,11 @@
 @*
     OdsContractStatusChip — the read display of a contract's DERIVED status (issue #174 §6).
     Sibling of OdsCoverageStatusChip. Status is computed server-side, never
-    stored: Active · Upcoming · Expired · Archived.
+    stored: Active · Paused · Upcoming · Expired · Archived.
+
+    The vocabulary and its neutral fallback for an unrecognised member both live in
+    OdsContractStatus.Meta, which this reads — so a member appended server-side reaches this chip
+    under its own name rather than wearing another status's colour.
 
     Accessibility: the status meaning lives in the visible text label, never in colour or the glyph
     alone — the leading dot/icon is aria-hidden. ShowIcon leads with the status glyph instead of the dot.

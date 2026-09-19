@@ -6,6 +6,10 @@
     ContractsSummary: a run-rate pair over the fee terms in force, then four breakdowns — what kinds
     of agreement are on file, what state they are in, and what each kind costs per month and per year.
 
+    The two by-type breakdowns answer DIFFERENT questions and a paused contract is why: "By type" is
+    a headcount and keeps counting it, while the run-rate splits are a cost read and do not. That
+    divergence is the server's, not this view's — both figures are read straight off ContractSummary.
+
     Every figure is server-computed over the WHOLE set (ContractSummary), not the filtered list the
     page is showing, so narrowing the search never silently changes the numbers above it.
 *@
@@ -47,9 +51,10 @@
         .ToList();
 
     // The rollup's status rows, with "Ending soon" spliced in directly after Active. It is a SLICE of
-    // Active, not a fifth status — the server counts it that way too, so the four real buckets still
-    // sum to the total and this row deliberately does not. The window is interpolated from the
-    // server's effective value; a literal here would go stale the moment an administrator changed it.
+    // Active, not a sixth status — the server counts it that way too, so the five real buckets still
+    // sum to the total and this row deliberately does not. Paused, by contrast, IS one of the five.
+    // The window is interpolated from the server's effective value; a literal here would go stale the
+    // moment an administrator changed it.
     private IReadOnlyList<OdsBreakdownRow> StatusRows
     {
         get
@@ -102,16 +107,27 @@
         value is { } amount ? FormatMoney(amount, Summary.RunRate.BaseCurrency) : "—";
 
     // An unconvertible currency is NAMED rather than folded in at 1:1, so a partial total always says
-    // so on its own tile instead of reading as the whole picture.
-    private string RunRateFoot => Summary.RunRate.UnconvertedCurrencies.Count > 0
-        ? $"in {Summary.RunRate.BaseCurrency} · {string.Join(", ", Summary.RunRate.UnconvertedCurrencies)} excluded"
-        : $"in {Summary.RunRate.BaseCurrency}";
+    // so on its own tile instead of reading as the whole picture. A paused contract keeps its price
+    // on file and contributes nothing here, so it is named for the same reason — a run rate that
+    // quietly dropped between two visits would otherwise read as a pricing error.
+    private string RunRateFoot
+    {
+        get
+        {
+            var basis = Summary.RunRate.UnconvertedCurrencies.Count > 0
+                ? $"in {Summary.RunRate.BaseCurrency} · {string.Join(", ", Summary.RunRate.UnconvertedCurrencies)} excluded"
+                : $"in {Summary.RunRate.BaseCurrency}";
+            var paused = Summary.CountsByStatus.Paused;
+            return paused > 0 ? $"{basis} · {paused} paused excluded" : basis;
+        }
+    }
 
     private int CountFor(ContractStatus status) => status switch
     {
         ContractStatus.Active => Summary.CountsByStatus.Active,
         ContractStatus.Upcoming => Summary.CountsByStatus.Upcoming,
         ContractStatus.Expired => Summary.CountsByStatus.Expired,
+        ContractStatus.Paused => Summary.CountsByStatus.Paused,
         _ => Summary.CountsByStatus.Archived,
     };
 }

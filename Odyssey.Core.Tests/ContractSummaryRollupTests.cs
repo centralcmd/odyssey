@@ -43,16 +43,20 @@ public class ContractSummaryRollupTests
         DateTime? start,
         DateTime? end = null,
         DtoContractType type = DtoContractType.Service,
-        bool archived = false)
+        bool archived = false,
+        bool paused = false,
+        DateTime? completion = null)
     {
         var contract = new Contract
         {
             ContractId = Guid.NewGuid(),
             Name = name,
             Type = (Odyssey.Context.ContractType)(int)type,
-            StartDate = start,
-            EndDate = end,
+            StartDate = completion is null ? start : null,
+            EndDate = completion is null ? end : null,
+            CompletionDate = completion,
             Archived = archived ? FixedToday.AddDays(-1) : null,
+            Paused = paused ? FixedToday.AddDays(-2) : null,
             CreatedAtUtc = FixedToday.AddYears(-1),
         };
         context.Contracts.Add(contract);
@@ -433,24 +437,159 @@ public class ContractSummaryRollupTests
     // ── Ending soon ──────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Ending soon is a SLICE of Active, so the four real buckets still sum to the total. Counting it
-    /// as a fifth status would double-count every contract approaching its end date.
+    /// Ending soon is a SLICE of Active, so the five real buckets still sum to the total. Counting it
+    /// as a sixth status would double-count every contract approaching its end date. Paused, by
+    /// contrast, IS a real bucket — the five are mutually exclusive derived statuses (issue #140).
     /// </summary>
     [Fact]
-    public async Task EndingSoon_IsASliceOfActive_NotAFifthBucket()
+    public async Task EndingSoon_IsASliceOfActive_NotASixthBucket()
     {
         await using var context = TestContextFactory.Create();
         SeedContract(context, "Ending", FixedToday.AddYears(-1), FixedToday.AddDays(10));
         SeedContract(context, "Running on", FixedToday.AddYears(-1), FixedToday.AddDays(200));
+        SeedContract(context, "Frozen", FixedToday.AddYears(-1), paused: true);
+        SeedContract(context, "Not yet", FixedToday.AddDays(20));
+        SeedContract(context, "Lapsed", FixedToday.AddYears(-2), FixedToday.AddDays(-1));
+        SeedContract(context, "Retired", FixedToday.AddYears(-3), FixedToday.AddYears(-1), archived: true);
 
         var summary = await Summarise(context);
         var counts = summary.CountsByStatus;
 
         Assert.Equal(2, counts.Active);
+        Assert.Equal(1, counts.Paused);
         Assert.Equal(1, counts.EndingSoon);
         Assert.Equal(
             summary.TotalContracts,
-            counts.Active + counts.Upcoming + counts.Expired + counts.Archived);
+            counts.Active + counts.Upcoming + counts.Expired + counts.Archived + counts.Paused);
+    }
+
+    // ── Paused (issue #140) ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// A paused contract contributes nothing to the run rate or its by-type split, and its type row
+    /// disappears entirely when it was the only contributor. The exclusion is not a second predicate:
+    /// the contract simply stops deriving as Active, which is the one gate the priceable set uses.
+    /// </summary>
+    [Fact]
+    public async Task Paused_LeavesTheRunRateAndItsByTypeRow()
+    {
+        await using var context = TestContextFactory.Create();
+        var lease = SeedContract(context, "Lease", FixedToday.AddMonths(-6), type: DtoContractType.Rental);
+        var gym = SeedContract(context, "Gym", FixedToday.AddMonths(-3), type: DtoContractType.Membership);
+        SeedFee(context, lease, 1000m, FixedToday.AddMonths(-6));
+        SeedFee(context, gym, 60m, FixedToday.AddMonths(-3), label: "Membership");
+
+        var before = await Summarise(context);
+        Assert.Equal(1060m, before.RunRate.Monthly);
+        Assert.Contains(before.RunRate.ByType, r => r.Type == DtoContractType.Membership);
+
+        context.Contracts.Single(c => c.ContractId == gym).Paused = FixedToday;
+        await context.SaveChangesAsync();
+
+        var after = await Summarise(context);
+
+        // Down by exactly the paused contract's monthly equivalent…
+        Assert.Equal(1000m, after.RunRate.Monthly);
+        Assert.Equal(12000m, after.RunRate.Yearly);
+        // …and its type row is gone, because it was the only contributor.
+        Assert.DoesNotContain(after.RunRate.ByType, r => r.Type == DtoContractType.Membership);
+    }
+
+    [Fact]
+    public async Task Paused_LeavesTheUpcomingCharges()
+    {
+        await using var context = TestContextFactory.Create();
+        var id = SeedContract(context, "Parking", FixedToday.AddYears(-1));
+        SeedFee(context, id, 165m, FixedToday.AddYears(-1), anchor: FixedToday.AddDays(3));
+
+        Assert.Single((await Summarise(context)).UpcomingCharges);
+
+        context.Contracts.Single(c => c.ContractId == id).Paused = FixedToday;
+        await context.SaveChangesAsync();
+
+        Assert.Empty((await Summarise(context)).UpcomingCharges);
+    }
+
+    /// <summary>
+    /// "Ending soon" is a slice of Active, so a paused contract inside the window falls out of it as
+    /// well — counted in neither, and in Paused instead. The cliff is real but nothing is being
+    /// billed against it, so reporting it as an imminent cost would be wrong.
+    /// </summary>
+    [Fact]
+    public async Task Paused_IsCountedInNeitherEndingSoonNorActive()
+    {
+        await using var context = TestContextFactory.Create();
+        var id = SeedContract(context, "Ending", FixedToday.AddYears(-1), FixedToday.AddDays(10));
+
+        var before = await Summarise(context);
+        Assert.Equal(1, before.CountsByStatus.Active);
+        Assert.Equal(1, before.CountsByStatus.EndingSoon);
+
+        context.Contracts.Single(c => c.ContractId == id).Paused = FixedToday;
+        await context.SaveChangesAsync();
+
+        var after = await Summarise(context);
+        Assert.Equal(0, after.CountsByStatus.Active);
+        Assert.Equal(0, after.CountsByStatus.EndingSoon);
+        Assert.Equal(1, after.CountsByStatus.Paused);
+    }
+
+    /// <summary>
+    /// The by-type HEADCOUNT is pause-agnostic while the cost split is not — the two by-type reads
+    /// answer different questions. A paused agreement is still a contract of its type; it simply is
+    /// not costing anything.
+    /// </summary>
+    [Fact]
+    public async Task CountsByType_CountsAPausedContract_UnlikeTheCostSplit()
+    {
+        await using var context = TestContextFactory.Create();
+        var id = SeedContract(context, "Gym", FixedToday.AddMonths(-3), type: DtoContractType.Membership);
+        SeedFee(context, id, 60m, FixedToday.AddMonths(-3), label: "Membership");
+
+        Assert.Equal(1, Assert.Single((await Summarise(context)).CountsByType).Count);
+
+        context.Contracts.Single(c => c.ContractId == id).Paused = FixedToday;
+        await context.SaveChangesAsync();
+
+        var after = await Summarise(context);
+        var row = Assert.Single(after.CountsByType);
+        Assert.Equal(DtoContractType.Membership, row.Type);
+        Assert.Equal(1, row.Count);
+        // …while the cost split, which asks a different question, has dropped it.
+        Assert.Empty(after.RunRate.ByType);
+    }
+
+    /// <summary>
+    /// The shape the derivation is easiest to get wrong on (issue #140 AC 24). A settled one-off can
+    /// carry a periodic fee like any other contract — <c>Term.ContractId</c> does not discriminate by
+    /// contract shape — so if the pause check is unreachable from the one-off branch, this contract
+    /// keeps its run rate and its next charge while the stamp sits stored and ignored.
+    /// </summary>
+    [Fact]
+    public async Task PausedSettledOneOff_WithAnInForcePeriodicFee_ContributesNothing()
+    {
+        await using var context = TestContextFactory.Create();
+        var id = SeedContract(context, "Maple St purchase", start: null,
+            type: DtoContractType.Purchase, completion: FixedToday.AddDays(-30));
+        SeedFee(context, id, 420m, FixedToday.AddMonths(-6), label: "Servicing", anchor: FixedToday.AddDays(4));
+
+        // Before: a settled one-off derives as Active, so it is priced like any other running contract.
+        var before = await Summarise(context);
+        Assert.Equal(420m, before.RunRate.Monthly);
+        Assert.Contains(before.RunRate.ByType, r => r.Type == DtoContractType.Purchase);
+        Assert.Single(before.UpcomingCharges);
+        Assert.Equal(1, before.CountsByStatus.Active);
+
+        context.Contracts.Single(c => c.ContractId == id).Paused = FixedToday;
+        await context.SaveChangesAsync();
+
+        var after = await Summarise(context);
+        Assert.Null(after.RunRate.Monthly);
+        Assert.Null(after.RunRate.Yearly);
+        Assert.Empty(after.RunRate.ByType);
+        Assert.Empty(after.UpcomingCharges);
+        Assert.Equal(0, after.CountsByStatus.Active);
+        Assert.Equal(1, after.CountsByStatus.Paused);
     }
 
     /// <summary>An open-ended agreement never reaches a cliff, so it is never ending soon.</summary>

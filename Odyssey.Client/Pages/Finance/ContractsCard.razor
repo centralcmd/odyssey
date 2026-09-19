@@ -97,7 +97,11 @@
                     };
                 }
                 @* One accent per record, taken from the contract's TYPE — the header mark, every tile
-                   icon chip in the body and the party rows' own marks all resolve from it. *@
+                   icon chip in the body and the party rows' own marks all resolve from it.
+
+                   Dimmed follows ARCHIVE alone: a paused contract stays at full brightness, which is
+                   most of what distinguishes the two states. Pausing suspends what an agreement
+                   costs; archiving retires the record. *@
                 <OdsRecordCard Id="@($"con-{c.ContractId}")"
                                Icon="@typeInfo.Icon"
                                Accent="@typeInfo.Color"
@@ -195,6 +199,20 @@
                                              Foot="@OdsInfoTile.Caption(StatusFoot(detail, oneOff))">
                                     <Value>@statusMeta.Label</Value>
                                 </OdsInfoTile>
+
+                                @* ONE TILE PER STORED STAMP, so nothing is lost when the derived
+                                   status can only show one of them: an archived contract that is
+                                   also paused still says when each began. The tiles are independent
+                                   of each other rather than suppressed per case — correctness beats
+                                   the small overlap with the Status tile above. *@
+                                @if (detail.Paused is { } pausedAt)
+                                {
+                                    <OdsInfoTile Icon="pause_circle" Label="Paused"
+                                                 ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Pending"
+                                                 Foot="@OdsInfoTile.Caption("still listed and editable, not costing")">
+                                        <Value>@LongDate(pausedAt)</Value>
+                                    </OdsInfoTile>
+                                }
 
                                 @if (detail.Archived is { } archivedAt)
                                 {

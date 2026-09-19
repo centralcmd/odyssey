@@ -41,4 +41,11 @@ public sealed record ContractListItem
     public int TermCount { get; set; }
 
     public DateTime? Archived { get; set; }
+
+    /// <summary>
+    /// When the contract was paused, or null when it is not (issue #140). Orthogonal in storage to
+    /// <see cref="Archived"/> and ordered only in presentation: a row may hold both, and
+    /// <see cref="Status"/> decides which one is reported.
+    /// </summary>
+    public DateTime? Paused { get; set; }
 }

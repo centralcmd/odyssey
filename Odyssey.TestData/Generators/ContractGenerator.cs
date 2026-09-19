@@ -14,6 +14,14 @@ namespace Odyssey.TestData.Generators;
 /// contact/"institution" and an insurance policy).
 ///
 /// <para>
+/// Since issue #140 the set also covers the fifth derived status,
+/// <b>Paused</b>: one contract carries a pause stamp <i>and</i> an in-force periodic fee, so the demo
+/// shows both halves of the feature at once — the amber status, and the run rate and next-charges
+/// list it is absent from. Seeding a paused contract with no price on file would leave the exclusion
+/// invisible.
+/// </para>
+///
+/// <para>
 /// It also seeds the contract <b>fee terms</b> the page-header roll-up is computed from: the monthly
 /// and yearly run rate and the derived "next charges". Without at least one in-force periodic fee on
 /// an Active contract both read empty, so the demo would show a working feature as an absent one. One
@@ -52,7 +60,9 @@ public static class ContractGenerator
         DateTime StartDate,
         DateTime? EndDate,
         bool Archived,
-        IReadOnlyList<PartySpec> Parties);
+        IReadOnlyList<PartySpec> Parties,
+        /// <summary>Offset in months from the anchor at which this contract was paused; null is not paused.</summary>
+        int? PausedMonths = null);
 
     /// <summary>
     /// One priced series on a contract. <paramref name="Interval"/> null is a fee with no cadence —
@@ -190,6 +200,19 @@ public static class ContractGenerator
                     new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.ServiceProvider),
                 ]),
 
+            // Paused (issue #140) — a live subscription frozen for the season. Active-shaped on its
+            // dates (started, not yet ended, not archived) so the pause is what the derivation
+            // reports, and it carries an in-force monthly fee so the run rate and the next-charges
+            // list have something to visibly NOT count. Resuming it is one write.
+            new(
+                "Meal Kit Delivery — Weekly Box", ContractType.Subscription,
+                "Weekly recipe-box subscription, frozen over the summer. The price stays on file and comes back in force on resume.",
+                anchor.AddMonths(-9), anchor.AddMonths(15), false,
+                [
+                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.ServiceProvider),
+                ],
+                PausedMonths: -1),
+
             // Archived — an expired prior service contract, retained for reference (hidden by default).
             new(
                 "Previous Broadband Contract", ContractType.Service,
@@ -218,6 +241,9 @@ public static class ContractGenerator
                 StartDate = spec.StartDate,
                 EndDate = spec.EndDate,
                 Archived = spec.Archived ? createdAt.AddYears(1) : null,
+                // Derived from the anchor, never from the wall clock, so the seed stays deterministic
+                // and re-running it stays idempotent.
+                Paused = spec.PausedMonths is { } months ? anchor.AddMonths(months) : null,
                 CreatedAtUtc = createdAt,
             });
 
@@ -293,6 +319,12 @@ public static class ContractGenerator
             // The lease's rent — the household's other large monthly line.
             new("Apartment Lease", "Monthly rent", 1850.00m, Currencies.Usd,
                 Interval.Monthly, 1, -6, Note: "Due on the 1st."),
+
+            // The paused subscription's fee. In force, periodic and on an Active-shaped contract — so
+            // the ONLY reason it is absent from the run rate and the charges is the pause stamp, which
+            // is what makes the exclusion legible in the demo rather than merely asserted.
+            new("Meal Kit Delivery — Weekly Box", "Weekly box", 78.00m, Currencies.Usd,
+                Interval.Monthly, 1, -9, Note: "Suspended while the subscription is paused."),
 
             // An archived contract still carries its history; it must contribute to neither figure.
             new("Previous Broadband Contract", "Line rental", 45.00m, Currencies.Usd,

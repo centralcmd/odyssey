@@ -910,6 +910,49 @@ public class DataExportApiTests
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+
+    /// <summary>
+    /// AC 18 — the pause stamp is exported for every contract: a stored fact the export silently
+    /// omitted would be an incomplete subject-access response. Two rows, because covering only the
+    /// paused one would let a projection that hardcodes a value pass.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesTheContractPauseStamp_ForEveryContract()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        var pausedAt = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            await context.Database.EnsureCreatedAsync();
+            context.Contracts.AddRange(
+                new Contract
+                {
+                    ContractId = Guid.NewGuid(), Name = "Frozen membership",
+                    Type = ContractType.Membership, StartDate = DateTime.UtcNow.AddYears(-1),
+                    Paused = pausedAt, CreatedAtUtc = DateTime.UtcNow,
+                },
+                new Contract
+                {
+                    ContractId = Guid.NewGuid(), Name = "Running lease",
+                    Type = ContractType.Rental, StartDate = DateTime.UtcNow.AddYears(-1),
+                    CreatedAtUtc = DateTime.UtcNow,
+                });
+            await context.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        using var document = await GetExportDocumentAsync(client);
+        var contracts = document.RootElement.GetProperty("databases").GetProperty("finance")
+            .GetProperty("contracts").EnumerateArray().ToList();
+
+        Assert.Equal(2, contracts.Count);
+        var frozen = Assert.Single(contracts, c => c.GetProperty("name").GetString() == "Frozen membership");
+        Assert.Equal(pausedAt, frozen.GetProperty("paused").GetDateTime());
+        var running = Assert.Single(contracts, c => c.GetProperty("name").GetString() == "Running lease");
+        Assert.Equal(JsonValueKind.Null, running.GetProperty("paused").ValueKind);
+    }
+
     private static async Task<JsonDocument> GetExportDocumentAsync(HttpClient client)
     {
         var response = await client.GetAsync(ExportPath);

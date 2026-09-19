@@ -1110,6 +1110,312 @@ public class ContractsApiTests
             && errors.EnumerateObject().Any();
     }
 
+
+    // ── Pause (issue #140) ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// AC 1–3: the flag rides the regular PUT, the stamp round-trips through a fresh GET, a repeat
+    /// keeps the original value and clearing returns the contract to Active.
+    /// </summary>
+    [Fact]
+    public async Task Put_PauseThenResume_RoundTripsTheStampAndTheStatus()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var id = await CreateAsync(client);
+
+        var pause = await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false));
+        Assert.Equal(HttpStatusCode.OK, pause.StatusCode);
+        var paused = (await pause.Content.ReadFromJsonAsync<ExistingContract>())!;
+        Assert.NotNull(paused.Paused);
+        Assert.Equal(ContractStatus.Paused, paused.Status);
+
+        var fetched = await GetAsync(client, id);
+        Assert.Equal(paused.Paused, fetched.Paused);
+        Assert.Equal(ContractStatus.Paused, fetched.Status);
+
+        // A repeated pause preserves the original stamp — never "paused since now".
+        var again = await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false));
+        Assert.Equal(paused.Paused, (await again.Content.ReadFromJsonAsync<ExistingContract>())!.Paused);
+
+        var resume = await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: false, isArchived: false));
+        Assert.Equal(HttpStatusCode.OK, resume.StatusCode);
+        var resumed = (await resume.Content.ReadFromJsonAsync<ExistingContract>())!;
+        Assert.Null(resumed.Paused);
+        Assert.Equal(ContractStatus.Active, resumed.Status);
+    }
+
+    /// <summary>
+    /// AC 4–5: the transition is refused from every non-Active status with a stable code and a
+    /// field-keyed errors entry, and the contract is left untouched.
+    /// </summary>
+    [Theory]
+    [InlineData(ContractStatus.Upcoming)]
+    [InlineData(ContractStatus.Expired)]
+    [InlineData(ContractStatus.Archived)]
+    public async Task Put_Pause_FromANonActiveStatus_ReturnsBadRequest(ContractStatus from)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var id = await CreateAsync(client);
+
+        var (start, end) = from == ContractStatus.Upcoming
+            ? ((DateTime?)FixedToday.AddDays(10), (DateTime?)null)
+            : (FixedToday.AddDays(-30), Lapsed);
+        var archive = from == ContractStatus.Archived;
+        (await client.PutAsJsonAsync($"{Path}/{id}",
+            UpdateContract(isPaused: false, isArchived: archive, startDate: start, endDate: end)))
+            .EnsureSuccessStatusCode();
+        Assert.Equal(from, (await GetAsync(client, id)).Status);
+
+        var refused = await client.PutAsJsonAsync($"{Path}/{id}",
+            UpdateContract(isPaused: true, isArchived: archive, startDate: start, endDate: end));
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        using var problem = JsonDocument.Parse(await refused.Content.ReadAsStringAsync());
+        // The stable code AND the field key: the code is what a client branches on, the errors entry
+        // is what lets a form render the message on the control rather than only in a toast.
+        Assert.Equal("contract_pause_requires_active", problem.RootElement.GetProperty("code").GetString());
+        Assert.Contains(
+            problem.RootElement.GetProperty("errors").EnumerateObject().Select(e => e.Name),
+            name => string.Equals(name, nameof(Odyssey.Dtos.Finance.UpdateContract.IsPaused),
+                StringComparison.OrdinalIgnoreCase));
+        // The message names the contract's own derived status and no other record.
+        Assert.Contains(from.ToString(),
+            problem.RootElement.GetProperty("detail").GetString() ?? string.Empty, StringComparison.Ordinal);
+
+        // A re-read shows the contract unchanged and still not paused.
+        var unchanged = await GetAsync(client, id);
+        Assert.Null(unchanged.Paused);
+        Assert.Equal(from, unchanged.Status);
+    }
+
+    /// <summary>AC 6: clearing is never refused, even on an archived contract still carrying a stamp.</summary>
+    [Fact]
+    public async Task Put_Resume_OnAnArchivedContract_ClearsTheStamp()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var id = await CreateAsync(client);
+
+        (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false)))
+            .EnsureSuccessStatusCode();
+        // End it and archive it in one write, keeping the pause stamp: nothing clears one stamp when
+        // the other is set, and the derivation simply reports the terminal fact.
+        var archived = (await (await client.PutAsJsonAsync($"{Path}/{id}",
+            UpdateContract(isPaused: true, isArchived: true, endDate: Lapsed)))
+            .Content.ReadFromJsonAsync<ExistingContract>())!;
+        Assert.Equal(ContractStatus.Archived, archived.Status);
+        Assert.NotNull(archived.Paused);
+
+        var cleared = await client.PutAsJsonAsync($"{Path}/{id}",
+            UpdateContract(isPaused: false, isArchived: true, endDate: Lapsed));
+
+        Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+        Assert.Null((await cleared.Content.ReadFromJsonAsync<ExistingContract>())!.Paused);
+    }
+
+
+    /// <summary>
+    /// §8's "Interaction with archive", over HTTP and from a contract carrying NEITHER stamp. Every
+    /// other combined-flag test starts from an already-paused contract, where the pause guard's early
+    /// return makes that half a no-op — so this is the only one that actually exercises both guards
+    /// against a fresh record.
+    ///
+    /// <para>
+    /// At the API tier rather than only in the service, because the "nothing persisted" half is the
+    /// point and each request here gets its own <c>DbContext</c>: a re-read through a shared,
+    /// still-tracking context could report a rejected write as absent whether or not it committed.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Put_ArchiveAndPause_Together_IsRefused_AndPersistsNeitherStamp()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        // The contract ends in this same request, so the archive guard is satisfied and the PAUSE
+        // guard is the one that refuses — an ended contract does not derive as Active.
+        var ended = await CreateAsync(client);
+        var byPause = await client.PutAsJsonAsync($"{Path}/{ended}",
+            UpdateContract(isPaused: true, isArchived: true, endDate: Lapsed));
+        Assert.Equal(HttpStatusCode.BadRequest, byPause.StatusCode);
+        using (var problem = JsonDocument.Parse(await byPause.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("contract_pause_requires_active", problem.RootElement.GetProperty("code").GetString());
+        }
+
+        // Still running, so the ARCHIVE guard refuses first and the pause guard is never reached.
+        var running = await CreateAsync(client);
+        var byArchive = await client.PutAsJsonAsync($"{Path}/{running}",
+            UpdateContract(isPaused: true, isArchived: true, endDate: FixedToday.AddDays(30)));
+        Assert.Equal(HttpStatusCode.BadRequest, byArchive.StatusCode);
+        using (var problem = JsonDocument.Parse(await byArchive.Content.ReadAsStringAsync()))
+        {
+            Assert.NotEqual("contract_pause_requires_active",
+                problem.RootElement.TryGetProperty("code", out var code) ? code.GetString() : null);
+        }
+
+        // Neither refusal left half of the compound write applied: both guards run before any
+        // mutation, so a rejected body persists no stamp at all.
+        foreach (var id in new[] { ended, running })
+        {
+            var reread = await GetAsync(client, id);
+            Assert.Null(reread.Paused);
+            Assert.Null(reread.Archived);
+        }
+    }
+
+    /// <summary>
+    /// AC 9–10: the new member is bindable on the status filter, an unfiltered list still includes
+    /// paused rows, and sorting by status places Paused (ordinal 4) after Archived (3).
+    /// </summary>
+    [Fact]
+    public async Task List_FiltersAndSortsByThePausedStatus()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var paused = await CreateAsync(client);
+        (await client.PutAsJsonAsync($"{Path}/{paused}", UpdateContract(isPaused: true, isArchived: false)))
+            .EnsureSuccessStatusCode();
+        var archived = await CreateAsync(client);
+        (await client.PutAsJsonAsync($"{Path}/{archived}",
+            UpdateContract(isPaused: false, isArchived: true, endDate: Lapsed))).EnsureSuccessStatusCode();
+        var active = await CreateAsync(client);
+
+        var filtered = await client.GetPagedItemsAsync<ContractListItem>($"{Path}?statuses=Paused");
+        var only = Assert.Single(filtered!);
+        Assert.Equal(paused, only.ContractId);
+        Assert.NotNull(only.Paused);
+
+        // An unfiltered list still includes it.
+        var all = await client.GetPagedItemsAsync<ContractListItem>(Path);
+        Assert.Contains(all!, c => c.ContractId == paused && c.Status == ContractStatus.Paused);
+
+        // Two members bind together.
+        var pair = await client.GetPagedItemsAsync<ContractListItem>($"{Path}?statuses=Paused&statuses=Active");
+        Assert.Equal(2, pair!.Count);
+
+        // Enum-ordinal order: Active (0) · Archived (3) · Paused (4).
+        var sorted = await client.GetPagedItemsAsync<ContractListItem>($"{Path}?sortBy=status&sortDir=asc");
+        Assert.Equal([active, archived, paused], sorted!.Select(c => c.ContractId).ToArray());
+    }
+
+    /// <summary>
+    /// AC 19: pause is not a lock. A paused contract still accepts a party, a term and a file, where
+    /// an archived one refuses the first two.
+    /// </summary>
+    [Fact]
+    public async Task PausedContract_StillAcceptsPartyTermAndFileWrites()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var fileId = await SeedFileAsync(factory, "contract.pdf", "application/pdf");
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client);
+        (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false)))
+            .EnsureSuccessStatusCode();
+        Assert.Equal(ContractStatus.Paused, (await GetAsync(client, id)).Status);
+
+        Assert.Equal(HttpStatusCode.Created,
+            (await client.PostAsJsonAsync($"{Path}/{id}/parties",
+                new ContractPartyRequest { AccountId = accountId })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created,
+            (await client.PostAsJsonAsync($"{Path}/{id}/files", AttachRequest(fileId))).StatusCode);
+        await AddMonthlyFeeAsync(client, id, 100m, "USD");
+
+        // The contrast: the same party write on an archived contract is still refused.
+        var archived = await CreateAsync(client);
+        (await client.PutAsJsonAsync($"{Path}/{archived}",
+            UpdateContract(isPaused: false, isArchived: true, endDate: Lapsed))).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.UnprocessableEntity,
+            (await client.PostAsJsonAsync($"{Path}/{archived}/parties",
+                new ContractPartyRequest { AccountId = accountId })).StatusCode);
+    }
+
+    /// <summary>
+    /// AC 20 — mass assignment: a body carrying nested collections alongside the pause flag creates
+    /// and mutates none of them. <c>UpdateContract</c> has no such members, so the unrecognised
+    /// properties are simply dropped by model binding; this pins that rather than assuming it.
+    /// </summary>
+    [Fact]
+    public async Task Put_WithNestedCollectionsAlongsideIsPaused_MutatesNone()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var (accountId, contactId, _) = await SeedTargetsAsync(factory);
+        using var client = factory.CreateClient();
+        var id = await CreateAsync(client);
+
+        var response = await client.PutAsJsonAsync($"{Path}/{id}", new
+        {
+            name = "Employment agreement",
+            type = ContractType.Employment,
+            startDate = FixedToday.AddDays(-30),
+            isArchived = false,
+            isPaused = true,
+            parties = new[] { new { accountId, role = ContractPartyRole.Employee } },
+            files = new[] { new { fileMetadataId = Guid.NewGuid() } },
+            currentTerms = new[] { new { value = 999m, currencyCode = "USD" } },
+            contactId,
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = (await response.Content.ReadFromJsonAsync<ExistingContract>())!;
+        Assert.Equal(ContractStatus.Paused, updated.Status);
+        Assert.Empty(updated.Parties);
+        Assert.Empty(updated.Files);
+        Assert.Empty(updated.CurrentTerms);
+    }
+
+    /// <summary>
+    /// AC 21 — a DECISION, not a side effect: <c>PUT</c> is a full replacement, so a body that omits
+    /// <c>isPaused</c> reads it as false and therefore RESUMES a paused contract. This is the
+    /// existing behaviour of <c>isArchived</c> and is pinned here so a client that hand-builds a
+    /// partial body finds it documented rather than surprising.
+    /// </summary>
+    [Fact]
+    public async Task Put_OmittingIsPaused_ResumesAPausedContract()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var id = await CreateAsync(client);
+        (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false)))
+            .EnsureSuccessStatusCode();
+
+        var response = await client.PutAsJsonAsync($"{Path}/{id}", new
+        {
+            name = "Employment agreement",
+            type = ContractType.Employment,
+            startDate = FixedToday.AddDays(-30),
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = (await response.Content.ReadFromJsonAsync<ExistingContract>())!;
+        Assert.Null(updated.Paused);
+        Assert.Equal(ContractStatus.Active, updated.Status);
+    }
+
+    /// <summary>
+    /// AC 16: the write is gated on <c>contracts.update</c> alone — no new claim — and a read-only
+    /// caller neither pauses nor leaves a trace.
+    /// </summary>
+    [Fact]
+    public async Task Put_Pause_WithoutUpdateClaim_ReturnsForbidden_AndWritesNothing()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var id = await CreateAsync(client);
+
+        await using var readOnlyFactory = new ApiFactory(ReadOnly);
+        using var readOnly = readOnlyFactory.CreateClient();
+        var refused = await readOnly.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isPaused: true, isArchived: false));
+
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.Null((await GetAsync(client, id)).Paused);
+    }
+
     private static NewContract NewContractRequest(DateTime? start = null, DateTime? end = null) => new()
     {
         Name = "Employment agreement",
@@ -1131,6 +1437,24 @@ public class ContractsApiTests
         StartDate = FixedToday.AddDays(-30),
         EndDate = endDate,
         IsArchived = isArchived,
+    };
+
+    /// <summary>
+    /// The same shape for the pause flag (issue #140). Pause is enterable only from Active, so the
+    /// default dates leave the contract running.
+    /// </summary>
+    private static UpdateContract UpdateContract(
+        bool isPaused, bool isArchived, DateTime? startDate = null, DateTime? endDate = null,
+        DateTime? completionDate = null) => new()
+    {
+        Name = "Employment agreement",
+        Type = ContractType.Employment,
+        Description = "Full-time role",
+        StartDate = completionDate is null ? startDate ?? FixedToday.AddDays(-30) : null,
+        EndDate = completionDate is null ? endDate : null,
+        CompletionDate = completionDate,
+        IsArchived = isArchived,
+        IsPaused = isPaused,
     };
 
     /// <summary>An end date already lapsed against the fixed clock — the shorthand for "archivable".</summary>

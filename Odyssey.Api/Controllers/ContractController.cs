@@ -109,7 +109,7 @@ public class ContractController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingContract))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a contract's fields, including its archive state (no dedicated archive endpoint).")]
+    [SwaggerOperation(Summary = "Update a contract's fields, including its archive and pause state (no dedicated archive or pause endpoint).")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateContract request, CancellationToken cancellationToken = default)

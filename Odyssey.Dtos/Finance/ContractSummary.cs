@@ -12,10 +12,16 @@ public sealed record ContractStatusCounts
     public int Archived { get; set; }
 
     /// <summary>
-    /// A SLICE of <see cref="Active"/>, never a fifth status: the Active contracts whose end date
-    /// falls inside <see cref="ContractSummary.EndingWindowDays"/>. It is reported beside the four
+    /// A real fifth bucket (issue #140), unlike <see cref="EndingSoon"/>: the five are mutually
+    /// exclusive derived statuses and still sum to <see cref="ContractSummary.TotalContracts"/>.
+    /// </summary>
+    public int Paused { get; set; }
+
+    /// <summary>
+    /// A SLICE of <see cref="Active"/>, never a sixth status: the Active contracts whose end date
+    /// falls inside <see cref="ContractSummary.EndingWindowDays"/>. It is reported beside the five
     /// because the cliff is the thing a reader acts on, but it is already counted in
-    /// <see cref="Active"/> — adding it to the four would double-count the set.
+    /// <see cref="Active"/> — adding it to the five would double-count the set.
     /// </summary>
     public int EndingSoon { get; set; }
 }
@@ -114,6 +120,13 @@ public sealed record ContractUpcomingCharge
 /// type, the recurring-cost run rate, and the derived upcoming charges. Archived contracts are counted
 /// in <see cref="CountsByStatus"/> but excluded from the active totals, the by-type breakdown, the run
 /// rate and the charges.
+///
+/// <para>
+/// A <b>paused</b> contract (issue #140) is excluded from the run rate, its by-type split and the
+/// charges — it is not costing anything while suspended — but stays in <see cref="CountsByType"/>,
+/// which is a headcount of the agreements on file rather than a cost split. The two by-type reads
+/// answer different questions and this is the one place they are answered differently.
+/// </para>
 /// </summary>
 public sealed record ContractSummary
 {
