@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Odyssey.TestData;
 using Xunit;
 using AccountType = Odyssey.Context.AccountType;
+using ContractPartyRole = Odyssey.Context.ContractPartyRole;
 
 namespace Odyssey.Core.Tests;
 
@@ -122,6 +123,60 @@ public class DemoDataSetTests
             {
                 transaction.TimeStamp.Should().BeOnOrBefore(account.Closed.Value);
             }
+        }
+    }
+
+    /// <summary>
+    /// AC 21 (issue #121) — the seeded parties cover all five NAMED v1 roles, leave at least one
+    /// party <c>Unspecified</c> and give at least one a non-default term.
+    /// </summary>
+    /// <remarks>
+    /// <c>Unspecified</c> is asserted separately from the named five on purpose: it is the state the
+    /// migration backfills every pre-#121 row to, and the one whose tile falls back to the kind word
+    /// rather than rendering a sentinel. A fixture that roled every party would leave that rendering
+    /// path unexercised by the demo stack, which is where it is actually looked at.
+    /// </remarks>
+    [Fact]
+    public void ContractParties_CoverEveryNamedRole_PlusUnspecifiedAndANonDefaultTerm()
+    {
+        var parties = DemoDataSet.Build().ContractParties;
+
+        var roles = parties.Select(party => party.Role).ToHashSet();
+        roles.Should().Contain(
+        [
+            ContractPartyRole.Employee,
+            ContractPartyRole.Employer,
+            ContractPartyRole.Buyer,
+            ContractPartyRole.Seller,
+            ContractPartyRole.ServiceProvider,
+        ]);
+        roles.Should().Contain(ContractPartyRole.Unspecified);
+
+        parties.Should().Contain(party => party.FromDate != null || party.ToDate != null);
+    }
+
+    /// <summary>
+    /// The seeded terms respect the one rule the server enforces on a party write: a term cannot begin
+    /// before the contract did. Seeding a row the API would refuse would make the demo stack an
+    /// unreliable oracle for exactly the validation this feature adds.
+    /// </summary>
+    [Fact]
+    public void ContractPartyTerms_NeverBeginBeforeTheirContract()
+    {
+        var data = DemoDataSet.Build();
+        var startDates = data.Contracts.ToDictionary(c => c.ContractId, c => c.StartDate);
+
+        foreach (var party in data.ContractParties.Where(p => p.FromDate is not null))
+        {
+            if (startDates[party.ContractId] is { } start)
+            {
+                party.FromDate!.Value.Date.Should().BeOnOrAfter(start.Date);
+            }
+        }
+
+        foreach (var party in data.ContractParties.Where(p => p is { FromDate: not null, ToDate: not null }))
+        {
+            party.ToDate!.Value.Date.Should().BeOnOrAfter(party.FromDate!.Value.Date);
         }
     }
 }

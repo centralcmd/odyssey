@@ -12,6 +12,9 @@ using DtoInsurancePolicyType = Odyssey.Dtos.Finance.InsurancePolicyType;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
+using Microsoft.Extensions.Logging;
+using ContextContractPartyRole = Odyssey.Context.ContractPartyRole;
+using DtoContractPartyRole = Odyssey.Dtos.Finance.ContractPartyRole;
 
 namespace Odyssey.Core.Finance;
 
@@ -30,17 +33,20 @@ public class ContractService
     private readonly IContactLookup contactLookup;
     private readonly TimeProvider timeProvider;
     private readonly ISystemSettingsLookup systemSettingsLookup;
+    private readonly ILogger<ContractService> logger;
 
     public ContractService(
         OdysseyContext context,
         IContactLookup contactLookup,
         TimeProvider timeProvider,
-        ISystemSettingsLookup systemSettingsLookup)
+        ISystemSettingsLookup systemSettingsLookup,
+        ILogger<ContractService> logger)
     {
         this.context = context;
         this.contactLookup = contactLookup;
         this.timeProvider = timeProvider;
         this.systemSettingsLookup = systemSettingsLookup;
+        this.logger = logger;
     }
 
     private DateTime Today => timeProvider.GetUtcNow().UtcDateTime.Date;
@@ -282,7 +288,12 @@ public class ContractService
 
     // ── Parties ──────────────────────────────────────────────────────────────────
 
-    public async Task<ExistingContractParty?> AddParty(Guid contractId, AddContractPartyRequest request, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Links one account or contact to a contract, in a role, optionally for a term (issue #121 §5).
+    /// Returns <see langword="null"/> when the contract does not exist.
+    /// </summary>
+    public async Task<ExistingContractParty?> AddParty(
+        Guid contractId, ContractPartyRequest request, string? userId, CancellationToken cancellationToken = default)
     {
         var contract = await context.Contracts.FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken);
         if (contract is null)
@@ -290,31 +301,21 @@ public class ContractService
             return null;
         }
 
-        if (contract.Archived is not null)
-        {
-            throw new DomainValidationException(
-                $"Contract {contractId} is archived; unarchive it before adding parties.");
-        }
-
-        // One-of-two (XOR): exactly one target id must be set.
-        var setCount =
-            (request.AccountId is not null ? 1 : 0) +
-            (request.ContactId is not null ? 1 : 0);
-        if (setCount != 1)
-        {
-            throw new DomainValidationException(
-                "Exactly one of accountId or contactId must be set.");
-        }
+        EnsureNotArchived(contract, "adding parties");
+        EnsurePartyTargetXor(request);
 
         await EnsureTargetExists(request, cancellationToken);
-        await EnsureNotDuplicateParty(contractId, request, cancellationToken);
+        var role = request.Role.Adapt<ContextContractPartyRole>();
+        var (fromDate, toDate) = NormalizePartyTerm(contract, request);
+        await EnsureNotDuplicateParty(contractId, request, role, excludingPartyId: null, cancellationToken);
 
         var caps = await systemSettingsLookup.GetRequestCapsAsync(cancellationToken);
         var count = await context.ContractParties.CountAsync(p => p.ContractId == contractId, cancellationToken);
         if (count >= caps.MaxPartiesPerContract)
         {
             throw new DomainUnprocessableException(
-                $"Contract {contractId} already has the maximum of {caps.MaxPartiesPerContract} parties.");
+                $"Contract {contractId} already has the maximum of {caps.MaxPartiesPerContract} parties.",
+                PartyTargetField(request));
         }
 
         var party = new ContractParty
@@ -322,19 +323,83 @@ public class ContractService
             ContractId = contractId,
             AccountId = request.AccountId,
             ContactId = request.ContactId,
+            Role = role,
+            FromDate = fromDate,
+            ToDate = toDate,
         };
 
         context.ContractParties.Add(party);
         await context.SaveChangesAsync(cancellationToken);
 
-        var loaded = await LoadPartyWithTargets(party.ContractPartyId, cancellationToken);
-        IReadOnlyDictionary<Guid, ContactRef> contacts = loaded!.ContactId is { } contactId
-            ? await contactLookup.ResolveRefsAsync([contactId], cancellationToken)
-            : new Dictionary<Guid, ContactRef>();
-        return ToPartyDto(loaded, contacts);
+        LogPartyWrite("added", party, previousRole: null, userId);
+        return await ProjectPartyAsync(party.ContractPartyId, cancellationToken);
     }
 
-    public async Task<bool> DeleteParty(Guid contractId, Guid partyId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Re-writes one party: its role, its target, its dates, or any combination (issue #121 §5). The
+    /// row is updated <b>in place</b>, so <c>ContractPartyId</c> is stable across a role or target
+    /// change and the party stays one party. Returns <see langword="null"/> when the party is not on
+    /// <i>this</i> contract; throws <see cref="DomainNotFoundException"/> when the contract itself is
+    /// gone.
+    /// </summary>
+    /// <remarks>
+    /// The body is a <b>full replacement</b>, not a patch: an omitted <c>role</c> resets the role to
+    /// <c>Unspecified</c> and an omitted date clears it. That is why every write is logged (§7.7).
+    /// The party cap is deliberately not re-checked — an in-place update is row-count-neutral, so it is
+    /// never refused by a cap, including on a contract already at or above one a later edit lowered.
+    /// </remarks>
+    public async Task<ExistingContractParty?> UpdateParty(
+        Guid contractId, Guid partyId, ContractPartyRequest request, string? userId,
+        CancellationToken cancellationToken = default)
+    {
+        var contract = await context.Contracts.FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken);
+        if (contract is null)
+        {
+            // ContractNotFound and PartyNotOnContract are distinct failure classes (§9) that happen to
+            // share a status: this one names only the contract, the null return below names both ids.
+            // Neither carries a field key, which is what tells them apart from the inline target 404.
+            throw new DomainNotFoundException($"Contract ID {contractId} not found.");
+        }
+
+        EnsureNotArchived(contract, "changing its parties");
+
+        // Scoped by BOTH ids, exactly as DeleteParty is: a valid party id from another contract is a
+        // 404, never a silent cross-contract edit (§7.5).
+        var party = await context.ContractParties
+            .FirstOrDefaultAsync(p => p.ContractPartyId == partyId && p.ContractId == contractId, cancellationToken);
+        if (party is null)
+        {
+            return null;
+        }
+
+        EnsurePartyTargetXor(request);
+
+        // Only a NEW target is validated for existence, so re-dating a party whose contact was deleted
+        // meanwhile does not fail — the same rule the insurance party edit applies.
+        if (party.AccountId != request.AccountId || party.ContactId != request.ContactId)
+        {
+            await EnsureTargetExists(request, cancellationToken);
+        }
+
+        var role = request.Role.Adapt<ContextContractPartyRole>();
+        var (fromDate, toDate) = NormalizePartyTerm(contract, request);
+        await EnsureNotDuplicateParty(contractId, request, role, excludingPartyId: partyId, cancellationToken);
+
+        var previousRole = party.Role;
+        party.AccountId = request.AccountId;
+        party.ContactId = request.ContactId;
+        party.Role = role;
+        party.FromDate = fromDate;
+        party.ToDate = toDate;
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        LogPartyWrite("updated", party, previousRole, userId);
+        return await ProjectPartyAsync(party.ContractPartyId, cancellationToken);
+    }
+
+    public async Task<bool> DeleteParty(
+        Guid contractId, Guid partyId, string? userId, CancellationToken cancellationToken = default)
     {
         var party = await context.ContractParties
             .FirstOrDefaultAsync(p => p.ContractPartyId == partyId && p.ContractId == contractId, cancellationToken);
@@ -345,7 +410,134 @@ public class ContractService
 
         context.ContractParties.Remove(party);
         await context.SaveChangesAsync(cancellationToken);
+
+        // A detach has no role AFTER — the row is gone. Writing Unspecified there would make the line
+        // byte-identical to a PUT that downgraded the role to Unspecified, which is precisely the event
+        // this log exists to make visible; the two would then differ only by the action word, so a query
+        // for the downgrade would match every detach as well.
+        LogPartyWrite("detached", party, party.Role, userId, roleAfter: NoRole);
         return true;
+    }
+
+    /// <summary>What the "after" slot reads when there is no role after the write, i.e. on a detach.</summary>
+    private const string NoRole = "(none)";
+
+    /// <summary>
+    /// One structured <c>Information</c> line per party write (issue #121 §7.7). <c>ContractParty</c>
+    /// deliberately carries no <c>CreatedByUserId</c> column — no v1 role confers or transfers an
+    /// entitlement the way an insurance beneficiary designation does — but the <c>PUT</c> is a full
+    /// replacement in which an omitted <c>role</c> silently resets to <c>Unspecified</c>, so without
+    /// this line an accidental employment-relationship downgrade would leave no trace anywhere.
+    /// </summary>
+    /// <remarks>
+    /// Every value is an opaque identifier or a closed enum — never a name, an address or any free
+    /// text — so the line identifies the rows a reader would then have to hold <c>contracts.read</c>
+    /// to resolve, and discloses nothing by itself. The target is read back off the persisted
+    /// <paramref name="party"/> rather than from the request, so it records what was actually written.
+    ///
+    /// <para>
+    /// The one-of-two target collapses to a single <c>targetId</c> here because that is what the line
+    /// means: which record this link points at. Which of the two columns held it is already implied by
+    /// the party row, and naming it per-column would make the log shape depend on the target kind.
+    /// </para>
+    /// </remarks>
+    private void LogPartyWrite(
+        string action, ContractParty party, ContextContractPartyRole? previousRole, string? userId,
+        string? roleAfter = null)
+    {
+        // A Guid, so it cannot carry the CR/LF a forged log line would need, and an opaque row id
+        // rather than a credential. Both are why this is safe to record verbatim.
+        Guid? targetId = party.AccountId ?? party.ContactId;
+
+        logger.LogInformation(
+            "Contract party {Action}: contract {ContractId}, party {ContractPartyId}, target {TargetId}, " +
+            "role {RoleBefore} -> {RoleAfter}, by user {UserId}.",
+            action,
+            party.ContractId,
+            party.ContractPartyId,
+            targetId,
+            previousRole ?? ContextContractPartyRole.Unspecified,
+            roleAfter ?? party.Role.ToString(),
+            userId ?? "(unknown)");
+    }
+
+    private async Task<ExistingContractParty> ProjectPartyAsync(Guid partyId, CancellationToken cancellationToken)
+    {
+        var loaded = await LoadPartyWithTargets(partyId, cancellationToken);
+        IReadOnlyDictionary<Guid, ContactRef> contacts = loaded!.ContactId is { } contactId
+            ? await contactLookup.ResolveRefsAsync([contactId], cancellationToken)
+            : new Dictionary<Guid, ContactRef>();
+        return ToPartyDto(loaded, contacts);
+    }
+
+    private static void EnsureNotArchived(Contract contract, string what)
+    {
+        if (contract.Archived is not null)
+        {
+            throw new DomainUnprocessableException(
+                $"Contract {contract.ContractId} is archived; unarchive it before {what}.");
+        }
+    }
+
+    // One-of-two (XOR): exactly one target id must be set.
+    private static void EnsurePartyTargetXor(ContractPartyRequest request)
+    {
+        var setCount =
+            (request.AccountId is not null ? 1 : 0) +
+            (request.ContactId is not null ? 1 : 0);
+        if (setCount != 1)
+        {
+            throw new DomainValidationException(
+                "Exactly one of accountId or contactId must be set.");
+        }
+    }
+
+    /// <summary>
+    /// The field key the inline-rendered party failures are attributed to: whichever of the two target
+    /// ids the caller actually sent, since that is the control the client rendered.
+    /// </summary>
+    private static string PartyTargetField(ContractPartyRequest request) =>
+        request.AccountId is not null
+            ? nameof(ContractPartyRequest.AccountId)
+            : nameof(ContractPartyRequest.ContactId);
+
+    /// <summary>
+    /// A party's term is the party's own fact, with one tie to the contract: it cannot begin before the
+    /// contract did. Both dates are optional and null is the <b>default term</b> — the contract's own
+    /// extent — not an unset value. Only the lower bound is tied, and only when the contract has a
+    /// <c>StartDate</c>: an open-started term contract and a one-off (completion date only) have no
+    /// anchor. <c>ToDate</c> is deliberately <b>not</b> bounded by the contract's <c>EndDate</c>, since
+    /// a term contract's end moves when it is extended and bounding here would make an existing party's
+    /// validity depend on the order two edits happened in.
+    /// </summary>
+    /// <remarks>
+    /// The anchor is checked at party-write time only: editing the contract's <c>StartDate</c> later
+    /// neither re-validates nor re-dates its parties, mirroring insurance, where a renewal never
+    /// re-dates a party.
+    /// </remarks>
+    private static (DateTime? FromDate, DateTime? ToDate) NormalizePartyTerm(
+        Contract contract, ContractPartyRequest request)
+    {
+        var fromDate = request.FromDate is { } from ? DateTimeNormalization.NormalizeToUtc(from) : (DateTime?)null;
+        var toDate = request.ToDate is { } to ? DateTimeNormalization.NormalizeToUtc(to) : (DateTime?)null;
+
+        if (fromDate is { } start && toDate is { } end && end.Date < start.Date)
+        {
+            throw new DomainValidationException(
+                "ToDate must be on or after FromDate.",
+                code: null,
+                field: nameof(ContractPartyRequest.ToDate));
+        }
+
+        if (fromDate is { } began && contract.StartDate is { } contractStart && began.Date < contractStart.Date)
+        {
+            throw new DomainValidationException(
+                $"This contract began {contractStart:yyyy-MM-dd} — a party cannot be in the role before that.",
+                code: null,
+                field: nameof(ContractPartyRequest.FromDate));
+        }
+
+        return (fromDate, toDate);
     }
 
     // ── Files ────────────────────────────────────────────────────────────────────
@@ -497,34 +689,57 @@ public class ContractService
         return (startDate, endDate, null);
     }
 
-    private async Task EnsureTargetExists(AddContractPartyRequest request, CancellationToken cancellationToken = default)
+    // The two target 404s carry the field key of the id that was sent; the whole-request 404s (contract
+    // gone, party not on this contract) deliberately carry none, which is how a client tells the three
+    // apart without matching on message text (§9).
+    private async Task EnsureTargetExists(ContractPartyRequest request, CancellationToken cancellationToken = default)
     {
         if (request.AccountId is { } accountId)
         {
             if (!await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken))
             {
-                throw new DomainNotFoundException($"Account ID {accountId} not found.");
+                throw new DomainNotFoundException(
+                    $"Account ID {accountId} not found.", nameof(ContractPartyRequest.AccountId));
             }
         }
         else if (request.ContactId is { } contactId)
         {
             if (!(await contactLookup.ExistingIdsAsync([contactId], cancellationToken)).Contains(contactId))
             {
-                throw new DomainNotFoundException($"Contact ID {contactId} not found.");
+                throw new DomainNotFoundException(
+                    $"Contact ID {contactId} not found.", nameof(ContractPartyRequest.ContactId));
             }
         }
     }
 
-    private async Task EnsureNotDuplicateParty(Guid contractId, AddContractPartyRequest request, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The <i>(contract, target, role)</i> uniqueness pre-check (issue #121 §8 rule 6). Widened from
+    /// <i>(contract, target)</i>: the same record may be named twice in two genuinely different
+    /// capacities. <paramref name="excludingPartyId"/> takes the row being edited out of its own check,
+    /// so a date-only edit is not a self-conflict.
+    /// </summary>
+    /// <remarks>
+    /// This is a check-then-act with no transaction around it, so it is not what makes the rule
+    /// <i>true</i> — the two unique indexes are, and a race surfaces through
+    /// <c>GlobalExceptionHandler</c> as a generic 409. The pre-check is kept for the explaining message
+    /// and because it is the only implementation the EF InMemory tiers see: that provider enforces no
+    /// indexes at all.
+    /// </remarks>
+    private async Task EnsureNotDuplicateParty(
+        Guid contractId, ContractPartyRequest request, ContextContractPartyRole role, Guid? excludingPartyId,
+        CancellationToken cancellationToken = default)
     {
         var duplicate = await context.ContractParties.AnyAsync(p =>
             p.ContractId == contractId &&
+            p.Role == role &&
+            (excludingPartyId == null || p.ContractPartyId != excludingPartyId) &&
             ((request.AccountId != null && p.AccountId == request.AccountId) ||
              (request.ContactId != null && p.ContactId == request.ContactId)), cancellationToken);
         if (duplicate)
         {
             throw new DomainConflictException(
-                "That party is already linked to the contract.");
+                "That party is already linked to the contract in that role.",
+                PartyTargetField(request));
         }
     }
 
@@ -599,6 +814,9 @@ public class ContractService
                     Name = party.Account.Name,
                     Type = party.Account.AccountType.Adapt<DtoAccountType>(),
                 },
+                Role = party.Role.Adapt<DtoContractPartyRole>(),
+                FromDate = party.FromDate,
+                ToDate = party.ToDate,
             };
         }
 
@@ -620,6 +838,10 @@ public class ContractService
                     // ContactType, so this is a same-type assignment.
                     Type = contact.Type,
                 },
+                // A top-level field on the party, so it survives an unresolved target reference.
+                Role = party.Role.Adapt<DtoContractPartyRole>(),
+                FromDate = party.FromDate,
+                ToDate = party.ToDate,
             };
         }
     }

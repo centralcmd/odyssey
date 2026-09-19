@@ -1,10 +1,15 @@
 using Odyssey.Core;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Dtos;
 using Microsoft.Extensions.Options;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
 using Xunit;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
+// Both halves of the aligned pair are in scope (Odyssey.Context for the seed, Odyssey.Dtos.Finance for
+// the request), so the wire one is named explicitly.
+using ContractPartyRole = Odyssey.Dtos.Finance.ContractPartyRole;
 using Odyssey.Core.Finance;
 using Context = Odyssey.Context;
 
@@ -32,9 +37,31 @@ public class ContractServiceTests
     /// The contract caps moved into the settings store (issue #421 Wave 3), so the service takes a
     /// lookup rather than <c>IOptions&lt;ContractOptions&gt;</c> — that class is gone.
     /// </summary>
-    private ContractService CreateService(OdysseyContext context, ISystemSettingsLookup? caps = null) =>
+    private ContractService CreateService(
+        OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            caps ?? new StubFinanceCaps());
+            caps ?? new StubFinanceCaps(), logger ?? NullLogger<ContractService>.Instance);
+
+    /// <summary>
+    /// Captures the formatted message of every line the service logs. Issue #121 §7.7's line is the
+    /// Contracts module's only audit trail for a party write — there is no <c>CreatedByUserId</c>
+    /// column — so its content is behaviour, not diagnostics.
+    /// </summary>
+    private sealed class RecordingLogger : ILogger<ContractService>
+    {
+        public List<string> Lines { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
+    }
+
+    /// <summary>The acting user every party write is attributed to in its log line (issue #121 §7.7).</summary>
+    private const string TestUserId = "test-user";
 
     /// <summary>Shipped cap values; literals because this project cannot reference the key catalogue.</summary>
     private sealed class StubFinanceCaps : ISystemSettingsLookup
@@ -403,7 +430,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday));
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AddParty(contract.ContractId, new AddContractPartyRequest()));
+            service.AddParty(contract.ContractId, new ContractPartyRequest(), TestUserId));
     }
 
     [Fact]
@@ -416,7 +443,7 @@ public class ContractServiceTests
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.AddParty(contract.ContractId,
-                new AddContractPartyRequest { AccountId = accountId, ContactId = contactId }));
+                new ContractPartyRequest { AccountId = accountId, ContactId = contactId }, TestUserId));
     }
 
     [Fact]
@@ -428,7 +455,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday));
 
         var party = await service.AddParty(contract.ContractId,
-            new AddContractPartyRequest { AccountId = accountId });
+            new ContractPartyRequest { AccountId = accountId }, TestUserId);
 
         Assert.NotNull(party);
         Assert.Equal(ContractPartyKind.Account, party!.Kind);
@@ -445,7 +472,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday));
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AddParty(contract.ContractId, new AddContractPartyRequest { AccountId = Guid.NewGuid() }));
+            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = Guid.NewGuid() }, TestUserId));
     }
 
     [Fact]
@@ -456,7 +483,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday));
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AddParty(contract.ContractId, new AddContractPartyRequest { ContactId = Guid.NewGuid() }));
+            service.AddParty(contract.ContractId, new ContractPartyRequest { ContactId = Guid.NewGuid() }, TestUserId));
     }
 
     [Fact]
@@ -467,10 +494,10 @@ public class ContractServiceTests
         var (accountId, _, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday));
 
-        await service.AddParty(contract.ContractId, new AddContractPartyRequest { AccountId = accountId });
+        await service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId);
 
         await Assert.ThrowsAsync<DomainConflictException>(() =>
-            service.AddParty(contract.ContractId, new AddContractPartyRequest { AccountId = accountId }));
+            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId));
     }
 
     [Fact]
@@ -489,8 +516,10 @@ public class ContractServiceTests
             IsArchived = true,
         });
 
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AddParty(contract.ContractId, new AddContractPartyRequest { AccountId = accountId }));
+        // 422, not 400: an archived contract is a well-formed request that cannot be processed
+        // (issue #121 §9), the same class the party cap uses.
+        await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
+            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId));
     }
 
     private async Task<(Guid AccountId, Guid ContactId, Guid PolicyId)> SeedTargets(OdysseyContext context)
@@ -527,5 +556,161 @@ public class ContractServiceTests
         await context.SaveChangesAsync();
 
         return (account.AccountId, contact.ContactId, policy.InsurancePolicyId);
+    }
+
+    // ── Party write logging (issue #121 §7.7, AC 18) ────────────────────────────
+
+    /// <summary>
+    /// AC 18 — every party write emits exactly ONE line carrying the contract id, the party id, the
+    /// target id, the role before and after, and the acting user. The PUT that omits <c>role</c> and
+    /// thereby RESETS it is the case the line exists for: without it an accidental
+    /// employment-relationship downgrade would leave no trace anywhere.
+    /// </summary>
+    [Fact]
+    public async Task PartyWrites_EachEmitExactlyOneLine_NamingTheRoleBeforeAndAfter()
+    {
+        await using var context = TestContextFactory.Create();
+        var log = new RecordingLogger();
+        var service = CreateService(context, logger: log);
+        var (accountId, _, _) = await SeedTargets(context);
+        var contract = await service.Create(NewContract(FixedToday));
+
+        var party = await service.AddParty(contract.ContractId,
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer }, TestUserId);
+
+        var added = Assert.Single(log.Lines);
+        Assert.Contains(contract.ContractId.ToString(), added);
+        Assert.Contains(party!.ContractPartyId.ToString(), added);
+        Assert.Contains(accountId.ToString(), added);
+        Assert.Contains(TestUserId, added);
+        Assert.Contains("Unspecified -> Employer", added);
+
+        log.Lines.Clear();
+
+        // A full replacement that omits the role: Employer -> Unspecified, visible in the line.
+        await service.UpdateParty(contract.ContractId, party.ContractPartyId,
+            new ContractPartyRequest { AccountId = accountId }, TestUserId);
+
+        var updated = Assert.Single(log.Lines);
+        Assert.Contains("Employer -> Unspecified", updated);
+        Assert.Contains(party.ContractPartyId.ToString(), updated);
+
+        log.Lines.Clear();
+
+        await service.DeleteParty(contract.ContractId, party.ContractPartyId, TestUserId);
+
+        var detached = Assert.Single(log.Lines);
+        Assert.Contains("detached", detached);
+        Assert.Contains(party.ContractPartyId.ToString(), detached);
+        Assert.Contains(TestUserId, detached);
+
+        // A detach has NO role after it, and must not borrow Unspecified to say so. Writing
+        // Unspecified there made this line byte-identical to the PUT two assertions above — the
+        // accidental downgrade this whole log exists to make visible — so the two differed only by
+        // the action word and a query for the downgrade matched every detach as well.
+        Assert.Contains("-> (none)", detached);
+        Assert.DoesNotContain("-> Unspecified", detached);
+    }
+
+    /// <summary>
+    /// A refused write logs NOTHING: the line records what happened to the row, and a rejection
+    /// changed no row. A line emitted before the save would make the trail claim a role change that
+    /// the 409 prevented.
+    /// </summary>
+    [Fact]
+    public async Task RefusedPartyWrite_LogsNothing()
+    {
+        await using var context = TestContextFactory.Create();
+        var log = new RecordingLogger();
+        var service = CreateService(context, logger: log);
+        var (accountId, _, _) = await SeedTargets(context);
+        var contract = await service.Create(NewContract(FixedToday));
+
+        await service.AddParty(contract.ContractId,
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
+        log.Lines.Clear();
+
+        await Assert.ThrowsAsync<DomainConflictException>(() =>
+            service.AddParty(contract.ContractId,
+                new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId));
+
+        Assert.Empty(log.Lines);
+    }
+
+    // ── Roles and terms (issue #121 §8) ─────────────────────────────────────────
+
+    /// <summary>
+    /// The duplicate pre-check is widened to <i>(contract, target, role)</i>. This is the ONLY
+    /// implementation the EF InMemory tiers see — that provider enforces no indexes — so the rule's
+    /// fast-tier coverage lives here; the real index is proved in <c>Odyssey.IntegrationTests</c>.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_SameTargetDifferentRoles_IsNotADuplicate()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var (accountId, _, _) = await SeedTargets(context);
+        var contract = await service.Create(NewContract(FixedToday));
+
+        await service.AddParty(contract.ContractId,
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer }, TestUserId);
+        var second = await service.AddParty(contract.ContractId,
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
+
+        Assert.Equal(ContractPartyRole.Seller, second!.Role);
+        await Assert.ThrowsAsync<DomainConflictException>(() =>
+            service.AddParty(contract.ContractId,
+                new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer }, TestUserId));
+    }
+
+    /// <summary>
+    /// A client-supplied date arrives with <c>Unspecified</c> or <c>Local</c> kind; every service that
+    /// writes one funnels through <c>DateTimeNormalization</c>, so the stored term is UTC.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_NormalizesTermDatesToUtc()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var (accountId, _, _) = await SeedTargets(context);
+        var contract = await service.Create(NewContract(FixedToday));
+
+        var party = await service.AddParty(contract.ContractId, new ContractPartyRequest
+        {
+            AccountId = accountId,
+            FromDate = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Unspecified),
+        }, TestUserId);
+
+        Assert.Equal(DateTimeKind.Utc, party!.FromDate!.Value.Kind);
+    }
+
+    /// <summary>
+    /// Editing the contract's own <c>StartDate</c> later neither re-validates nor re-dates its
+    /// parties: a party's term is the party's own fact, checked at party-write time only. This mirrors
+    /// insurance, where a renewal never re-dates a party.
+    /// </summary>
+    [Fact]
+    public async Task MovingTheContractStartLater_LeavesExistingPartyTermsAlone()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+        var (accountId, _, _) = await SeedTargets(context);
+        var contract = await service.Create(NewContract(FixedToday.AddDays(-60)));
+
+        var from = FixedToday.AddDays(-50);
+        var party = await service.AddParty(contract.ContractId,
+            new ContractPartyRequest { AccountId = accountId, FromDate = from }, TestUserId);
+
+        await service.Update(contract.ContractId, new UpdateContract
+        {
+            Name = contract.Name,
+            Type = contract.Type,
+            StartDate = FixedToday.AddDays(-10),
+        });
+
+        var reloaded = await service.Get(contract.ContractId);
+        var stored = Assert.Single(reloaded!.Parties);
+        Assert.Equal(party!.ContractPartyId, stored.ContractPartyId);
+        Assert.Equal(from.Date, stored.FromDate!.Value.Date);
     }
 }

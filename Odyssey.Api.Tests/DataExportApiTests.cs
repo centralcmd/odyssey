@@ -440,8 +440,11 @@ public class DataExportApiTests
         Assert.All(parties, party =>
         {
             Assert.Equal(contract.GetProperty("contractId").GetGuid(), party.GetProperty("contractId").GetGuid());
+            // Role and the term ride along since issue #121: they are columns on the link row, not a
+            // resolved name, so exporting them discloses nothing the two target ids did not already.
             Assert.Equal(
-                new[] { "contractPartyId", "contractId", "accountId", "contactId" }.Order(StringComparer.Ordinal),
+                new[] { "contractPartyId", "contractId", "accountId", "contactId", "role", "fromDate", "toDate" }
+                    .Order(StringComparer.Ordinal),
                 party.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
         });
 

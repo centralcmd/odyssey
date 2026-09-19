@@ -339,7 +339,7 @@ public partial class InsuranceCard
                 IconSoft = meta?.Soft,
                 // The term survives an unnamed link: it is the link row's own fact, not the
                 // contact's, so the name rule never covered it.
-                Term = InsurancePartyTerm.Format(reference.FromDate, reference.ToDate),
+                Term = PartyTerm.Format(reference.FromDate, reference.ToDate),
                 State = reference.Availability,
             };
         })
@@ -356,7 +356,7 @@ public partial class InsuranceCard
             Icon = AccountTypeVisuals.MaterialIcon(reference.Type),
             IconColor = AccountTypeVisuals.FgColor(reference.Type),
             IconSoft = AccountTypeVisuals.BgColor(reference.Type),
-            Term = InsurancePartyTerm.Format(reference.FromDate, reference.ToDate),
+            Term = PartyTerm.Format(reference.FromDate, reference.ToDate),
         })
     ];
 

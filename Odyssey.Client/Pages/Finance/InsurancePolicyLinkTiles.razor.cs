@@ -53,69 +53,30 @@ public partial class InsurancePolicyLinkTiles : IAsyncDisposable
 
     private bool _expanded;
 
-    // Focus return across a removal. The tile that had focus is gone by the time the new Members
-    // arrive, so the neighbour to land on is computed BEFORE the write and applied after the list
-    // actually shrinks. A removal that fails leaves this armed, which is harmless: the only thing
-    // that disarms it is the member disappearing, and that is a removal too.
-    private Guid? _awaitingRemovalOf;
-    private string? _focusAfterRemoval;
-    private bool _pendingFocus;
-    private IJSObjectReference? _focusJs;
+    // Focus return across a removal, through the shared helper the contract party tiles also call
+    // (issue #122 §4). Extracted rather than duplicated: this component cannot be dropped into the
+    // contract surface — it takes a required role and is instantiated once per collection — so the
+    // alternative was a second copy of a mechanism whose drift is invisible until a keyboard user
+    // hits it.
+    private TileRemovalFocus? _focus;
+
+    private TileRemovalFocus Focus => _focus ??= new TileRemovalFocus(JS);
 
     internal string PartyMenuId(LinkTileMember member) => PartyMenuIdFor(member.Key);
 
     private string PartyMenuIdFor(string key) => $"ins-party-{Role}-{key}";
 
-    protected override void OnParametersSet()
-    {
-        if (_awaitingRemovalOf is not { } removed)
-        {
-            return;
-        }
+    protected override void OnParametersSet() =>
+        Focus.OnKeysChanged([.. Members.Select(member => member.Key)]);
 
-        // Wait for the round trip: until the host re-fetches, Members still holds the removed member.
-        if (Members.Any(member => member.Key == removed.ToString()))
-        {
-            return;
-        }
-
-        _awaitingRemovalOf = null;
-        _pendingFocus = true;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!_pendingFocus)
-        {
-            return;
-        }
-
-        _pendingFocus = false;
-        var neighbour = _focusAfterRemoval;
-        _focusAfterRemoval = null;
-
-        try
-        {
-            _focusJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
-            string?[] candidates =
-            [
-                neighbour is null ? null : $"#{PartyMenuIdFor(neighbour)} button",
-                .. FallbackFocusSelectors ?? [],
-            ];
-            await _focusJs.InvokeVoidAsync("focusFirst", candidates);
-        }
-        catch (Exception)
-        {
-            // Best-effort: the removal is already announced through the page's live region, so a
-            // failed focus return degrades rather than losing the outcome.
-        }
-    }
+    protected override Task OnAfterRenderAsync(bool firstRender) =>
+        Focus.ApplyAsync(key => $"#{PartyMenuIdFor(key)} button", FallbackFocusSelectors);
 
     public async ValueTask DisposeAsync()
     {
-        if (_focusJs is not null)
+        if (_focus is not null)
         {
-            try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+            await _focus.DisposeAsync();
         }
     }
 
@@ -125,22 +86,8 @@ public partial class InsurancePolicyLinkTiles : IAsyncDisposable
     /// </summary>
     private Task RemovePartyAsync(InsurancePartyRole role, Guid targetId)
     {
-        _awaitingRemovalOf = targetId;
-        _focusAfterRemoval = NeighbourKeyOf(targetId.ToString());
+        Focus.Arm(targetId.ToString(), [.. Members.Select(member => member.Key)]);
         return OnRemoveParty.InvokeAsync((role, targetId));
-    }
-
-    private string? NeighbourKeyOf(string key)
-    {
-        var index = -1;
-        for (var i = 0; i < Members.Count; i++)
-        {
-            if (Members[i].Key == key) { index = i; break; }
-        }
-
-        if (index < 0) return null;
-        if (index + 1 < Members.Count) return Members[index + 1].Key;
-        return index > 0 ? Members[index - 1].Key : null;
     }
 
     private static string UnnamedIcon(LinkTileMember member) =>

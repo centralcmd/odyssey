@@ -88,6 +88,24 @@ public sealed class DomainNotFoundException : DomainException
     public DomainNotFoundException(string message) : base(message)
     {
     }
+
+    /// <summary>
+    /// As above, plus the <paramref name="field"/> this rejection belongs to, surfaced in the
+    /// problem-details <c>errors</c> dictionary so a form can render the message on the offending
+    /// control rather than only in a toast (issue #121 §9). Mirrors the <c>field</c> overloads its
+    /// three siblings already carry.
+    ///
+    /// <para>
+    /// The field key — never the message text — is what lets a client tell same-status rejections
+    /// apart. A contract party write can 404 three ways (contract gone, party not on this contract,
+    /// target gone) and only the last is rendered inline on a form control, so the first two
+    /// deliberately carry no field and substring-matching a curated message is never the discriminator.
+    /// </para>
+    /// </summary>
+    public DomainNotFoundException(string message, string field) : base(message)
+    {
+        Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { [field] = [message] };
+    }
 }
 
 /// <summary>

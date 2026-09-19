@@ -2279,11 +2279,15 @@ tr:focus-within > .odc-rowactions.reveal,
    currency symbol sitting on the digits' baseline via a small downward nudge. */
 /* New-renewal dialog: the two-up date/money rows must shrink to the 520px modal.
    MudBlazor's select carries an intrinsic min-width, so without min-width:0 the grid
-   columns overflow the modal's right edge instead of fitting. */
-.ins-dialog .odc-form-row { min-width: 0; }
+   columns overflow the modal's right edge instead of fitting. The contract party
+   dialog carries the same two-up "In the role" date row and needs the same. */
+.ins-dialog .odc-form-row,
+.con-dialog .odc-form-row { min-width: 0; }
 .ins-dialog .odc-form-row > *,
 .ins-dialog .trm-field,
-.ins-dialog .odc-form-row .mud-input-control { min-width: 0; }
+.ins-dialog .odc-form-row .mud-input-control,
+.con-dialog .odc-form-row > *,
+.con-dialog .odc-form-row .mud-input-control { min-width: 0; }
 
 /* ============================================================
    Contracts — feature styles (issue #174). Ported from the design system's
@@ -2316,23 +2320,33 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* Parties — one InfoTile per typed link (Account / Contact), the same tile design a policy's
    Parties section uses. Each tile is drawn in the referenced record's own icon + colour; the
-   detach action sits top-right, revealed on hover / focus-within. */
+   overline carries the ROLE, the term (when it is not the contract's own extent) sits under it,
+   and the ⋯ menu sits top-right — the same tile vocabulary the policy parties use.
+
+   The hover-revealed detach icon this replaced was an accessibility defect: an affordance that
+   appears only on hover is invisible to a touch user and unreliable for anyone reading the grid
+   without a pointer, and the tile now needs two actions rather than one. */
 .con-party-tile { position: relative; display: flex; min-width: 0; }
 .con-party-tile > .odc-infotile { flex: 1; min-width: 0; }
-/* Detach control — a destructive ACTION, not a "broken link" status. Hidden at
-   rest so the tile stays quiet; revealed on tile hover (or keyboard focus within
-   it, for a11y), where it reads as an interactive destructive control
-   (coral on hover) so link_off isn't mistaken for a status glyph. */
-.con-party-detach {
-  position: absolute; top: 6px; right: 6px; z-index: 1;
-  opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard);
+/* The overline stacks role over term, in the space the icon leaves, so the type caption below
+   stays one line and a long range never wraps it. The right padding keeps the text clear of the
+   menu trigger. */
+.con-party-tile .odc-infotile-k { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; padding-right: 26px; }
+.con-role { display: inline-flex; align-items: center; gap: 5px; min-width: 0; color: var(--mud-palette-text-primary); }
+.con-role > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Unspecified / unrecognised: an ABSENCE, not a category — quieter than a stated role, and never
+   confusable with the deliberate "Other". Still text, never colour alone: the word itself says
+   which state this is. The secondary token is AA-contrast, not the 0.38 disabled alpha. */
+.con-role.unset { color: var(--mud-palette-text-secondary); font-style: italic; }
+.con-term {
+  font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
+  color: var(--mud-palette-text-secondary); white-space: nowrap; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis;
 }
-.con-party-tile:hover .con-party-detach,
-.con-party-tile:focus-within .con-party-detach { opacity: 1; }
-.con-party-detach .mud-icon-button { color: var(--mud-palette-text-secondary); transition: color var(--duration-fast) var(--ease-standard), background-color 0s; }
-.con-party-tile:hover .con-party-detach .mud-icon-button { color: var(--mud-palette-text-primary); }
-.con-party-detach .mud-icon-button:hover,
-.con-party-detach .mud-icon-button:focus-visible { color: var(--finance-expense); }
+/* A closed term in the past — the party is on record but no longer in the role. The tile's own
+   muted tone carries that too, so the strike-through is not the only cue. */
+.con-term.past { text-decoration: line-through; }
+.con-tile-menu { position: absolute; top: 6px; right: 6px; z-index: 1; }
 
 /* Empty-state for parties / documents inside a section */
 .con-empty-line {

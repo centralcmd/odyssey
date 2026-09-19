@@ -11,182 +11,116 @@
 @inject IContactQuickCreate ContactCreator
 
 @*
-    AddContractPartyDialog — add a party to a contract (issue #174 §3 step 3, §7 POST …/parties).
-    The accessible two-step picker the spec mandates (frontend B2):
-      1. choose the party KIND — Account / Contact
-      2. pick the specific record. The Contact kind uses the canonical OdsContactSelect, create rows
-         and all; the Account kind keeps the plain OdsCombobox over accounts. Either way the options
-         are PRE-LOADED for the chosen kind (no in-widget async fetch).
-    On save the party is created from a SCALAR ID only (accountId xor contactId — the XOR +
-    anti-over-posting invariant, §6/§10). Already-linked targets are filtered out so the same record
-    can't be attached twice (the §9 duplicate guard, pre-empted).
+    AddContractPartyDialog — add OR edit ONE party on a contract (issue #121 §5: POST …/parties and
+    PUT …/parties/{partyId}). Mirrors the design system's AddContractPartyModal.
 
-    Wording follows the design system's create rule: the trigger reads "New party", so does this
-    dialog's title, and the confirm is "Create party" — the one place the create actually happens.
+    The accessible picker, now three decisions deep:
+      1. the party KIND — Account / Contact (the XOR target)
+      2. the ROLE the record plays in the agreement (ContractPartyRole; `Unspecified` is a real,
+         selectable member and the default)
+      3. the specific record. The Contact kind uses the canonical OdsContactSelect, create rows and
+         all; the Account kind keeps the plain OdsCombobox over accounts. Either way the options are
+         PRE-LOADED for the chosen kind (no in-widget async fetch).
+    …plus the optional TERM — From / To — with the insurance-party semantics: both empty is the
+    DEFAULT term, the contract's own extent, not an unset value.
+
+    The save carries SCALAR IDS ONLY (accountId xor contactId) — never a nested Account or Contact
+    object (§4 write-path invariant), so a party write can never create or rename the linked record.
+
+    Duplicate guard (§8 rule 6): uniqueness is (contract, target, ROLE), so the picker hides only
+    records already linked IN THE SELECTED ROLE, and the party being edited is excluded from its own
+    check. The same contact can therefore be Seller and Service provider on one contract. Note the
+    filter is on (kind, role), NOT on role alone as AddPolicyPartyDialog does: there the role IMPLIES
+    the target type (four collections, each of one type), while a contract role implies nothing about
+    the kind.
+
+    In edit mode the PUT is a FULL REPLACEMENT of the link, not a patch: an omitted role resets to
+    Unspecified and a cleared date clears. The dialog states that where the decision is made rather
+    than after the fact.
 *@
 
-<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
-               Icon="group_add" Title="New party"
-               Subtitle="Link the account or contact this contract relates to."
-               SubmitLabel="Create party" OnSubmit="SaveAsync">
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="group_add" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="con-dialog">
+    <ChildContent>
+        <div class="ods-modal-body">
+            @* The two kinds sit two-up and centred, so the pair balances the dialog rather than stretching. *@
+            <OdsFieldShell Label="Party kind" Required="true" LabelId="con-party-kind-label">
+                <OdsCardSelect AriaLabelledBy="con-party-kind-label" Required="true" Value="@_kind.ToString()" ValueChanged="PickKind"
+                               Accent="var(--con-accent)" AccentLine="var(--con-accent-line)" AccentSoft="var(--con-accent-soft)"
+                               Columns="2" MaxItemWidth="180" Center="true" Options="KindOptions" />
+            </OdsFieldShell>
 
-    @* The two kinds sit two-up and centred, so the pair balances the dialog rather than stretching. *@
-    <OdsFieldShell Label="Party kind" Required="true" LabelId="con-party-kind-label">
-        <OdsCardSelect AriaLabelledBy="con-party-kind-label" Required="true" Value="@_kind.ToString()" ValueChanged="PickKind"
-                       Accent="var(--con-accent)" AccentLine="var(--con-accent-line)" AccentSoft="var(--con-accent-soft)"
-                       Columns="2" MaxItemWidth="180" Center="true" Options="KindOptions" />
-    </OdsFieldShell>
+            @* A plain registry select, not a card grid: seven members and growing is a list, and the
+               role is the one field a reader scans for. It is first in the tab order after the kind,
+               and OdsModal's own autofocus lands here. *@
+            <OdsContractPartyRoleSelect Id="con-party-role" Label="Role" Value="@_role.ToString()" ValueChanged="PickRole"
+                                        Help="@RoleHelp" />
 
-    @if (IsContactKind)
-    {
-        <OdsContactSelect Id="con-party-pick" Label="@Current.Label" Required="true"
-                          Value="@_value" ValueChanged="OnValueChanged"
-                          Options="Available" Placeholder="Search contacts…"
-                          Help="@(_error is null ? PickerHelp : null)" Error="@_error"
-                          AllowCreate="@_canCreateContact" OnCreate="CreateContactOption" />
-    }
-    else
-    {
-        @* OdsFieldShell owns the label association AND the helper/error ids; the hand-rolled
-           .odc-field markup this replaced had neither, so a screen-reader user never heard the
-           available-count hint or the reason a save was refused. Help and Error are mutually
-           exclusive here, so the error reuses HelpId and one AriaDescribedBy covers both states. *@
-        <OdsFieldShell Label="@Current.Label" HtmlFor="con-party-pick" Required="true"
-                       Help="@(_error is null ? PickerHelp : null)" Error="@_error">
-            <OdsCombobox InputId="con-party-pick" Value="@_value" ValueChanged="OnValueChanged"
-                         Options="Available" Placeholder="@($"Search {Current.Label.ToLowerInvariant()}s…")"
-                         AriaDescribedBy="con-party-pick-help" Error="@(_error is not null)" />
-        </OdsFieldShell>
-    }
-</OdsFormDialog>
+            @* OdsFieldShell owns the label association AND the helper/error ids; the hand-rolled
+               .odc-field markup this replaced had neither, so a screen-reader user never heard the
+               available-count hint or the reason a save was refused. Help and Error are mutually
+               exclusive here, so the error reuses HelpId and one AriaDescribedBy covers both states. *@
+            @if (IsContactKind)
+            {
+                <OdsContactSelect Id="con-party-pick" Label="@Current.Label" Required="true"
+                                  Value="@_value" ValueChanged="OnValueChanged"
+                                  Options="Available" Placeholder="Search contacts…"
+                                  Help="@(_error is null ? PickerHelp : null)" Error="@_error"
+                                  AllowCreate="@_canCreateContact" OnCreate="CreateContactOption" />
+            }
+            else
+            {
+                <OdsFieldShell Label="@Current.Label" HtmlFor="con-party-pick" Required="true"
+                               Help="@(_error is null ? PickerHelp : null)" Error="@_error">
+                    <OdsCombobox InputId="con-party-pick" Value="@_value" ValueChanged="OnValueChanged"
+                                 Options="Available" Placeholder="@($"Search {Current.Label.ToLowerInvariant()}s…")"
+                                 AriaDescribedBy="con-party-pick-help" Error="@(_error is not null)" />
+                </OdsFieldShell>
+            }
+
+            @* The term is the party's own fact, not the contract's: left as it lands, the party is on
+               the contract for its whole extent, and editing the contract's dates later never
+               re-dates it. *@
+            <OdsSectionDivider Label="In the role" />
+            <OdsFormRow>
+                <OdsDatePicker Value="_fromDate" ValueChanged="OnFromChanged" Clearable="true"
+                               Label="From"
+                               Error="@_errors.ContainsKey("fromDate")"
+                               ErrorText="@_errors.GetValueOrDefault("fromDate")"
+                               HelperText="@FromHelp" />
+                <OdsDatePicker Value="_toDate" ValueChanged="OnToChanged" Clearable="true"
+                               Label="To"
+                               Error="@_errors.ContainsKey("toDate")"
+                               ErrorText="@_errors.GetValueOrDefault("toDate")"
+                               HelperText="Leave empty while the party is still in the role." />
+            </OdsFormRow>
+
+            @if (IsEdit)
+            {
+                <OdsAlert Severity="Severity.Info">
+                    Saving replaces the whole party — role, record and both dates. Clearing a date clears it on
+                    the contract; the party keeps its id, so this stays one party.
+                </OdsAlert>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        @* Detaching a party lives on the party TILE's ⋯ menu, not here: this dialog edits ONE link and
+           its footer carries that edit's own actions. A destructive action in a footer beside Save
+           also reads as the opposite of Save, which is exactly where a mis-click hurts. *@
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")"
+                   Loading="_isSaving" OnClick="SubmitAsync">
+            @(IsEdit ? "Save changes" : "Create party")
+        </OdsButton>
+    </Footer>
+</OdsModal>
 
 @code {
-    [Parameter] public bool Open { get; set; }
-    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
-
-    [Parameter, EditorRequired] public ExistingContract Contract { get; set; } = default!;
-
-    /// <summary>Pre-loaded, active account options.</summary>
-    [Parameter] public IReadOnlyList<OdsOption> Accounts { get; set; } = [];
-
-    /// <summary>Pre-loaded, active contact options (the Institution party kind).</summary>
-    [Parameter] public IReadOnlyList<OdsOption> Institutions { get; set; } = [];
-
-    /// <summary>Raised after a successful add so the host re-fetches the contract.</summary>
-    [Parameter] public EventCallback OnSaved { get; set; }
-
-    private ContractPartyKind _kind = ContractPartyKind.Account;
-    private string? _value;
-    private string? _error;
-
-    private sealed record KindDef(ContractPartyKind Kind, string Label, string Icon);
-
-    private static readonly IReadOnlyList<KindDef> Kinds =
-    [
-        new(ContractPartyKind.Account, "Account", "account_balance_wallet"),
-        // The enum member keeps its name — it is a serialized wire value. Only the label and
-        // glyph the reader sees were renamed.
-        new(ContractPartyKind.Institution, "Contact", "groups"),
-    ];
-
-    private static readonly IReadOnlyList<OdsCardSelectOption> KindOptions =
-        [.. Kinds.Select(k => new OdsCardSelectOption { Value = k.Kind.ToString(), Label = k.Label, Icon = k.Icon })];
-
-    private KindDef Current => Kinds.First(k => k.Kind == _kind);
-
-    /// <summary>The Contact kind links a CONTACT — the one that gets the canonical picker.</summary>
-    private bool IsContactKind => _kind == ContractPartyKind.Institution;
-
-    private bool _canCreateContact;
-
-    // Contacts created inline, ahead of the host's option-cache refresh, so the picker can still
-    // resolve the value it was just handed.
-    private readonly List<OdsOption> _createdContacts = [];
-
-    private IReadOnlyList<OdsOption> AllForKind => _kind switch
-    {
-        ContractPartyKind.Account => Accounts,
-        _ => _createdContacts.Count == 0
-            ? Institutions
-            : [.. _createdContacts.Where(c => Institutions.All(o => o.Value != c.Value)), .. Institutions],
-    };
-
-    /// <summary>The picker's helper line: how many records are still linkable, so "nothing to choose"
-    /// reads as a stated fact rather than as an empty list.</summary>
-    private string PickerHelp => Available.Count > 0
-        ? $"{Available.Count} {Current.Label.ToLowerInvariant()}{(Available.Count == 1 ? "" : "s")} available to link."
-        : $"Every {Current.Label.ToLowerInvariant()} is already linked to this contract"
-          + (IsContactKind && _canCreateContact ? " — or add a new one below." : ".");
-
-    protected override async Task OnInitializedAsync()
-    {
-        ContactCreator.OnCreateFailed = OnContactCreateFailed;
-        if (!OperatingSystem.IsBrowser())
-            return;
-        var user = await AuthenticationStateProvider.GetUserAsync();
-        _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
-    }
-
-    // The picker hands its option back synchronously; the shared creator POSTs behind it and the temp
-    // id is mapped at save. A failed create drops the option and the selection with it.
-    private OdsOption? CreateContactOption(string text, string kind)
-    {
-        var option = ContactCreator.Begin(text, kind);
-        if (option is not null)
-            _createdContacts.Add(option);
-        return option;
-    }
-
-    private void OnContactCreateFailed(string tempId)
-    {
-        _createdContacts.RemoveAll(o => o.Value == tempId);
-        if (_value == tempId)
-            _value = null;
-        StateHasChanged();
-    }
-
-    // Ids already linked to this contract for the chosen kind, so the picker offers only not-yet-linked.
-    private HashSet<string> LinkedForKind => _kind switch
-    {
-        ContractPartyKind.Account => [.. Contract.Parties.Where(p => p.Account is not null).Select(p => p.Account!.AccountId.ToString())],
-        _ => [.. Contract.Parties.Where(p => p.Institution is not null).Select(p => p.Institution!.ContactId.ToString())],
-    };
-
-    private IReadOnlyList<OdsOption> Available => [.. AllForKind.Where(o => !LinkedForKind.Contains(o.Value))];
-
-    private void PickKind(string kind)
-    {
-        _kind = Enum.Parse<ContractPartyKind>(kind);
-        _value = null;
-        _error = null;
-    }
-
-    private void OnValueChanged(string? value)
-    {
-        _value = value;
-        _error = null;
-    }
-
-    private async Task<bool> SaveAsync()
-    {
-        // Let any in-flight inline contact create land, then map the staged id to the real one; a
-        // create that failed resolves to null and reads as "nothing selected" rather than posting an
-        // id no server issued.
-        if (IsContactKind)
-            await ContactCreator.WhenSettledAsync();
-
-        if (!Guid.TryParse(IsContactKind ? ContactCreator.Resolve(_value) : _value, out var id))
-        {
-            _error = $"Select {(Current.Label[0] is 'I' or 'A' or 'E' or 'O' or 'U' ? "an" : "a")} {Current.Label.ToLowerInvariant()} to link.";
-            return false;
-        }
-
-        var request = new AddContractPartyRequest
-        {
-            AccountId = _kind == ContractPartyKind.Account ? id : null,
-            ContactId = _kind == ContractPartyKind.Institution ? id : null,
-        };
-
-        return (await Contracts.AddPartyAsync(Contract.ContractId, request)).Toast(Snackbar, "Unable to add party", "Party added.");
-    }
+    // The title and subtitle are inline render fragments — Razor syntax, so they cannot live in the
+    // code-behind. Everything else does.
+    private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit party" : "New party")</text>;
+    private RenderFragment SubtitleFragment => IsEdit
+        ? @<text>Change the role, the linked record, or the dates this party is in the role.</text>
+        : @<text>Link the account or contact this contract relates to, and say what it does in the agreement.</text>;
 }

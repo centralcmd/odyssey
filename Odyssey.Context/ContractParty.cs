@@ -18,9 +18,21 @@ namespace Odyssey.Context;
 /// one-of-two. A contract naming a policy is expressed the other way round now — through the policy's
 /// own party collections — so the column was dropped rather than left unused.
 /// </remarks>
+/// <remarks>
+/// The two composite indexes are the real arbiter of the <i>(contract, target, role)</i> uniqueness
+/// rule (issue #121 §8 rule 6); <c>ContractService.EnsureNotDuplicateParty</c> keeps its pre-check for
+/// the explaining message and because the EF InMemory tiers enforce no indexes at all. MariaDB treats
+/// <c>NULL</c> as distinct in a unique index, so the account-side index does not constrain contact
+/// parties (whose <c>AccountId</c> is null) and vice versa — which is what lets one table carry two
+/// uniqueness rules without a discriminator column. The three single-column indexes are all kept: the
+/// composites lead with <c>ContractId</c>, so a lookup by target alone (the contact-deletion blockers)
+/// still needs its own.
+/// </remarks>
 [Index(nameof(ContractId))]
 [Index(nameof(AccountId))]
 [Index(nameof(ContactId))]
+[Index(nameof(ContractId), nameof(AccountId), nameof(Role), IsUnique = true)]
+[Index(nameof(ContractId), nameof(ContactId), nameof(Role), IsUnique = true)]
 public class ContractParty
 {
     [Key]
@@ -43,4 +55,22 @@ public class ContractParty
     // A real FK to Contact with ON DELETE CASCADE, declared in OdysseyContext — a party row is its link
     // to the counterparty, so it dies with the contact. Validated on write via IContactLookup.
     public Guid? ContactId { get; set; }
+
+    /// <summary>
+    /// What the linked record does in the agreement (issue #121). Required, with
+    /// <see cref="ContractPartyRole.Unspecified"/> as the value every pre-#121 row was backfilled to
+    /// and every role-less write resolves to. Orthogonal to which target column is set.
+    /// </summary>
+    [Required]
+    public ContractPartyRole Role { get; set; }
+
+    /// <summary>
+    /// When the party entered the role. <see langword="null"/> is the <b>default term</b> — the
+    /// contract's own extent — not an unset value, so a party added with the defaults follows the
+    /// contract for its whole lifetime and a later extension never re-dates it.
+    /// </summary>
+    public DateTime? FromDate { get; set; }
+
+    /// <summary>When the party left the role. <see langword="null"/> means it is still in the role.</summary>
+    public DateTime? ToDate { get; set; }
 }

@@ -620,6 +620,9 @@ public sealed class DataExportService
                 ContractId = party.ContractId,
                 AccountId = party.AccountId,
                 ContactId = party.ContactId,
+                Role = (FinanceDtos.ContractPartyRole)party.Role,
+                FromDate = party.FromDate,
+                ToDate = party.ToDate,
             });
 
     private IQueryable<ContractFileExport> ContractFilesQuery() =>
