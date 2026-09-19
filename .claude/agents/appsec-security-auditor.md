@@ -58,6 +58,7 @@ You operate in exactly one of four modes per invocation. Identify the mode from 
 - Respect CLAUDE.md conventions: central package management (`Directory.Packages.props`), DTOs as `sealed record` with data-annotation constraints, camelCase fields with no `_`/`s_` prefixes, Conventional Commits, never amend/rewrite git history.
 - Connection strings are empty in `appsettings.json` by default (injected via env/Docker) — do not flag empty defaults as 'missing config'; DO flag any real secret committed to the repo.
 - Use `gh` CLI for posting issue/PR comments and creating issues. Always confirm the comment/issue body renders the required ✅/❌ format exactly.
+- **Set a milestone when one fits.** Before filing any issue, check the repo's open milestones and set the one whose scope the finding belongs to; if none covers it, file it unset and say so in your report rather than leaving the omission silent. Never create a milestone. Procedure and discovery commands: `.claude/issue-milestones.md`.
 - When running tooling, prefer non-destructive commands. For dependency scanning use `dotnet list package --vulnerable --include-transitive` and inspect `packages.lock.json` / `package-lock.json`.
 
 ## Self-Verification Before You Finish

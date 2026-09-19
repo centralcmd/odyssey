@@ -93,6 +93,11 @@ gh issue create \
 BODY
 ```
 
+4. **Set the milestone** — check the open milestones and set one if the feature belongs to it, per
+   [`.claude/issue-milestones.md`](issue-milestones.md). `gh issue create --milestone "<exact title>"`,
+   or `mcp__github__issue_write` with `milestone: <number>`. If none fits, file it unset and say so
+   when you report the issue number. **Both halves of a pair take the same milestone, or neither does.**
+
 The labels are **taxonomy, not triggers** — no workflow fires on a label (`claude.yml` runs on
 comments and issue open/assign; `claude-code-review.yml` only on an `@claude review` comment). They
 mark what the issue is in scope for; the review loop below does the actual dispatching.
@@ -109,7 +114,8 @@ backend issue is created first, and the link is completed in two steps:
    (`gh issue edit <n> --body-file <updated>`):
    `> **Frontend counterpart:** #<frontend-issue-number>`
 
-Do not skip step 3 — a one-way link means the backend implementer never learns the UI exists. When a
+Do not skip step 3 — a one-way link means the backend implementer never learns the UI exists.
+That edit is also where a milestone set on only one half gets corrected. When a
 feature has only one half, say so explicitly instead:
 `> **No frontend counterpart** — this feature has no UI surface.`
 

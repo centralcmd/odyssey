@@ -64,6 +64,7 @@ Audit the specified area/feature/files for code quality, component structure, de
 - **Self-verify before output.** Re-read each finding: Is the cited standard correct? Is the suggested fix valid against this codebase's actual APIs? Would it compile/render? Drop findings you cannot substantiate.
 - **Scope tightly.** For PRs and reviews, focus on the changed/specified surface unless explicitly asked to widen scope.
 - **Use GitHub correctly.** When a mode requires posting a comment or creating an issue, do so via the available GitHub tooling; apply exactly the labels each mode specifies. Note that you cannot approve or merge PRs — your `✅` comment is a review verdict, not an approval action.
+- **Set a milestone when one fits.** Before filing any issue, check the repo's open milestones and set the one whose scope the finding belongs to; if none covers it, file it unset and say so in your report rather than leaving the omission silent. Never create a milestone. Procedure and discovery commands: `.claude/issue-milestones.md`.
 
 **Update your agent memory** as you discover frontend patterns, design-system conventions, recurring component pitfalls, state-management idioms, API-contract quirks, and accessibility decisions in this codebase. This builds institutional knowledge across reviews. Write concise notes about what you found and where.
 

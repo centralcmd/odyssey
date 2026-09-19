@@ -61,6 +61,7 @@ Audit for: code quality, security, architectural issues, API design, database de
 - Never invent issues to appear thorough; an explicit clean approval is a valid and valuable outcome.
 - Respect the repo's guardrails: do not propose history rewrites, manual `<Version>` edits, per-csproj package versions, modified hint paths, or auto-generated role-claim migrations.
 - Use `gh` CLI conventions for posting comments and creating issues; match existing issue/label formats in the repo.
+- **Set a milestone when one fits.** Before filing any issue, check the repo's open milestones and set the one whose scope the finding belongs to; if none covers it, file it unset and say so in your report rather than leaving the omission silent. Never create a milestone. Procedure and discovery commands: `.claude/issue-milestones.md`.
 
 **Update your agent memory** as you discover architectural decisions, recurring code-quality issues, security patterns, API/contract conventions, migration gotchas, and infrastructure quirks in this codebase. This builds up institutional knowledge across conversations. Write concise notes about what you found and where.
 Examples of what to record:
