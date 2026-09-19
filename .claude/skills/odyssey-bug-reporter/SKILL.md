@@ -130,13 +130,18 @@ gh issue create \
 EOF
 ```
 
-5. Report the issue URL back to the user.
+5. Set the milestone — check the open milestones and set one if the bug belongs to it, per
+   [`.claude/issue-milestones.md`](../../issue-milestones.md). Add `--milestone "<exact title>"` to the
+   command above, or set it afterwards with `gh issue edit <n> --milestone "<exact title>"`.
+
+6. Report the issue URL back to the user — and, when you filed it without a milestone, say so in the
+   same line so triage is a decision rather than an omission.
 
 ### Labels, milestone, project
 - **Always:** `claude` (AI-generated) + `bug`. Mirrors the spec-writer skills' `claude,feature`.
 - **Add one secondary label when it fits:** `security` (security-relevant), `build` (CI / pipeline / release), `test` (test-only), `doc` (docs). Do **not** use `fix` — that label is for non-bug changes.
 - **Assignee:** `centralcmd` (repo convention).
-- **Milestone (optional):** bug fixes in this repo usually belong under **"Quality of Life Update"**; use **"MVP"** only if it's release-blocking. Default to none and let triage decide — don't force one. To set it, add `--milestone "Quality of Life Update"` (title must match exactly; list with `gh api repos/<owner>/<repo>/milestones --jq '.[].title'`).
+- **Milestone:** always check, per [`.claude/issue-milestones.md`](../../issue-milestones.md) — set one when the bug falls inside an open milestone's scope, leave it unset and say so when none does, and never create a milestone. (The earlier advice here named "Quality of Life Update" and "MVP" as the standing choices; neither exists. Look them up at filing time rather than trusting a name written down months ago.)
 - **Project:** none configured in this repo — skip.
 
 ---
@@ -151,3 +156,4 @@ EOF
 - [ ] Affected area matches an official template value
 - [ ] No invented causes; no orphaned TODO/??? placeholders
 - [ ] Duplicate search done before filing
+- [ ] Open milestones checked — one set, or its absence reported

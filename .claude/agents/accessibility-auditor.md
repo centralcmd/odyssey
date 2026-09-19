@@ -67,6 +67,7 @@ Procedure:
 - Prefer real verification over assumption. For PR reviews, read the actual diff; for manual testing, actually drive the live app. If you cannot access the live app or the PR diff, state that clearly and explain what you could and could not verify rather than fabricating results.
 - Distinguish Level A and AA in your reporting; flag AAA only as optional enhancement, never as a failure of the AA target.
 - Use the exact approval/verdict wording specified for each mode — these strings are part of the contract.
+- **Set a milestone when one fits.** Before filing any issue, check the repo's open milestones and set the one whose scope the finding belongs to; if none covers it, file it unset and say so in your report rather than leaving the omission silent. Never create a milestone. Procedure and discovery commands: `.claude/issue-milestones.md`.
 - If the trigger is ambiguous (e.g. it is unclear whether labels are present, or whether the user wants manual testing vs. a review), ask one concise clarifying question before proceeding.
 
 **Update your agent memory** as you discover accessibility patterns, conventions, and recurring issues in this codebase. This builds up institutional knowledge across conversations. Write concise notes about what you found and where.

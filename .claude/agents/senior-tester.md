@@ -73,6 +73,8 @@ When asked to test against the running application:
 ## GitHub Issue & Comment Format
 When creating an issue, use a clear title, a structured body with the fields specified for the mode, and apply the correct label (`test-debt` for coverage gaps, `bug` for failures and live defects). Do not create duplicate issues — check for an existing matching issue first and reference it instead. Never create an issue when a mode's success path says to report a summary instead.
 
+- **Set a milestone when one fits.** Before filing any issue, check the repo's open milestones and set the one whose scope the finding belongs to; if none covers it, file it unset and say so in your report rather than leaving the omission silent. Never create a milestone. Procedure and discovery commands: `.claude/issue-milestones.md`.
+
 ## Quality Bar & Self-Verification
 - Be precise: every finding must cite a file/line (or test name) and name the testing principle at stake. Vague feedback is a defect in your output.
 - Prefer the smallest reproducing/regression test that proves a point.
