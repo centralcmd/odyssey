@@ -386,6 +386,18 @@ internal static class SystemSettingsRegistry
         },
         new IntSetting
         {
+            Key = SystemSettingsKeys.ContractMaxTermsPerContract,
+            Min = SystemSettingsBounds.ContractMaxTermsPerContractMin,
+            Max = SystemSettingsBounds.ContractMaxTermsPerContractMax,
+            FieldName = nameof(SystemSettingsUpdate.ContractMaxTermsPerContract),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.ContractMaxTermsPerContract),
+            CacheKeyToEvict = SystemSettingsService.FinanceCapsCacheKey,
+            Read = r => r.ContractMaxTermsPerContract,
+            Write = (dto, v) => dto.ContractMaxTermsPerContract = v,
+        },
+        new IntSetting
+        {
             Key = SystemSettingsKeys.ContractMaxSummaryContracts,
             Min = SystemSettingsBounds.ContractMaxSummaryContractsMin,
             Max = SystemSettingsBounds.ContractMaxSummaryContractsMax,

@@ -333,6 +333,74 @@ public class DataExportApiTests
         await context.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// AC 19 (issue #135) — the <c>Terms</c> table carries BOTH owner columns, with exactly one
+    /// populated per row. Without the contract column the export would attribute every contract term
+    /// to no owner at all: the row would be present, complete in every other respect, and silently
+    /// unattached to the agreement whose price it records.
+    /// </summary>
+    [Fact]
+    public async Task Export_Terms_CarryBothOwnerIdsWithExactlyOnePopulated()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        var contractId = await AddContractTermAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+        var terms = finance.GetProperty("terms").EnumerateArray().ToList();
+
+        // Both owners are represented, so neither column is merely present-and-always-null.
+        Assert.Equal(2, terms.Count);
+
+        var contractTerm = terms.Single(t => t.GetProperty("contractId").ValueKind != JsonValueKind.Null);
+        Assert.Equal(contractId, contractTerm.GetProperty("contractId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, contractTerm.GetProperty("accountId").ValueKind);
+        Assert.Equal("Monthly rent", contractTerm.GetProperty("label").GetString());
+
+        var accountTerm = terms.Single(t => t.GetProperty("accountId").ValueKind != JsonValueKind.Null);
+        Assert.Equal(JsonValueKind.Null, accountTerm.GetProperty("contractId").ValueKind);
+
+        // The invariant itself, asserted over every row rather than over the two named above.
+        Assert.All(terms, term => Assert.True(
+            (term.GetProperty("accountId").ValueKind != JsonValueKind.Null)
+            ^ (term.GetProperty("contractId").ValueKind != JsonValueKind.Null),
+            "every exported term names exactly one owner"));
+    }
+
+    private static async Task<Guid> AddContractTermAsync(WebApplicationFactory<Program> factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var contract = new Contract
+        {
+            Name = "Maple St lease",
+            Type = Odyssey.Context.ContractType.Rental,
+            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        context.Terms.Add(new Term
+        {
+            TermId = Guid.NewGuid(),
+            ContractId = contract.ContractId,
+            TermKind = TermKind.Fee,
+            Label = "Monthly rent",
+            LabelKey = "monthly rent",
+            ValueUnit = TermValueUnit.Amount,
+            Value = 14500m,
+            CurrencyCode = "USD",
+            EffectiveFrom = DateTime.UtcNow,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        await context.SaveChangesAsync();
+        return contract.ContractId;
+    }
+
     // ── Issue #33: the previously-omitted tables ──────────────────────────────
 
     /// <summary>

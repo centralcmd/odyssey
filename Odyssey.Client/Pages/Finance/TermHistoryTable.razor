@@ -1,0 +1,102 @@
+@using Odyssey.Dtos.Finance
+
+@*
+    TermHistoryTable — ONE table of term rows, shared by both owners of the Term table: an account's
+    rate & fee history and a contract's price history (issue #135).
+
+    It is a component rather than a render fragment duplicated in two sections because a term row is
+    the surface where the three temporal states are read — In force / Scheduled / Superseded — and
+    those must never be worded or coloured differently depending on who owns the row. Every piece of
+    wording and formatting comes from TermKindVisuals, the one registry both surfaces read.
+
+    Account is NULLABLE: it supplies the cost-rate context ("Interest charged" on a liability), which
+    a contract has no equivalent of. Passing null is what a contract owner does, not an omission.
+*@
+
+<table class="trm-tbl">
+    <thead>
+        <tr>
+            <th scope="col">Term</th>
+            <th scope="col">Effective from</th>
+            <th scope="col" class="num">Value</th>
+            <th scope="col">Status</th>
+            @if (CanWrite)
+            {
+                <th scope="col" class="act" aria-label="Actions"></th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var t in Terms)
+        {
+            var term = t;
+            var info = TermKindVisuals.Info(term.TermKind);
+            var isCurrent = CurrentIds.Contains(term.TermId);
+            var cadence = TermKindVisuals.CadenceText(term);
+            <tr class="@(isCurrent ? "current" : "")" @key="term.TermId">
+                <td>
+                    <div class="trm-row-kind">
+                        <span class="trm-kind-ic sm" style="background:@info.Soft;color:@info.Color;">
+                            @* Decorative: the kind is written out beside it, so the glyph carries no
+                               meaning of its own and a screen reader announcing its ligature text
+                               would read as noise (WCAG 1.1.1). *@
+                            <span class="material-icons" style="font-size:15px;" aria-hidden="true">@info.Icon</span>
+                        </span>
+                        <div>
+                            @* A term's NAME: its own label where it has one, with the kind wording as a
+                               caption beneath; otherwise the kind wording IS the name. Both are plain
+                               text, so nothing is carried by the glyph or its hue alone (WCAG 1.1.1 /
+                               1.4.1). *@
+                            <span class="trm-name">
+                                <span class="trm-row-kind-name">@TermKindVisuals.DisplayName(term, Account)</span>
+                                @if (TermKindVisuals.IsLabelled(term))
+                                {
+                                    <span class="trm-kind-caption">@TermKindVisuals.LabelFor(term, Account)</span>
+                                }
+                            </span>
+                            @if (!string.IsNullOrWhiteSpace(term.Note))
+                            {
+                                <div class="trm-row-note">@term.Note</div>
+                            }
+                        </div>
+                    </div>
+                </td>
+                <td class="trm-cell-date">@term.EffectiveFrom.ToString("MMM dd, yyyy")</td>
+                <td class="trm-cell-value" style="@(isCurrent ? $"color:{TermKindVisuals.CostColor(term, Account) ?? info.Color};" : "")">
+                    @TermKindVisuals.FormatValue(term, FormatMoney)@if (cadence is not null)
+                    {@* The separator is an explicit string: Razor trims leading whitespace inside an
+                         element, which glued "$45.00" to "every 3 months". *@
+                        <span style="color:var(--mud-palette-text-secondary);font-weight:400;">@($" {cadence}")</span>}
+                </td>
+                <td>
+                    @if (term.EffectiveFrom.Date > DateTime.UtcNow.Date)
+                    {
+                        <span class="trm-scheduled">Scheduled</span>
+                    }
+                    else if (isCurrent)
+                    {
+                        @* Same rule: "In force" is the status, the tick is decoration. Without this
+                           a screen reader announces the ligature text on every in-force row. *@
+                        <span class="trm-inforce"><span class="material-icons" aria-hidden="true">check_circle</span>In force</span>
+                    }
+                    else
+                    {
+                        <span class="trm-superseded">Superseded</span>
+                    }
+                </td>
+                @if (CanWrite)
+                {
+                    <td class="trm-cell-act">
+                        <OdsRowActions Actions="@(new OdsRowAction[]
+                                       {
+                                           new() { Icon = Icons.Material.Filled.Edit, Label = "Edit term",
+                                                   OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, () => OnEdit.InvokeAsync(term)) },
+                                           new() { Icon = Icons.Material.Filled.Delete, Label = "Delete term", Danger = true,
+                                                   OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, () => OnDelete.InvokeAsync(term)) },
+                                       })" />
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>

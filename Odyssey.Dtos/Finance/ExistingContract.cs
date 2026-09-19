@@ -24,6 +24,14 @@ public sealed record ExistingContract
 
     public List<ExistingContractFile> Files { get; set; } = new();
 
+    /// <summary>
+    /// The in-force entry of each of the contract's term series, as of today (issue #135). At most one
+    /// per <c>(TermKind, Label)</c>. An empty list is a healthy state — a contract with no recorded
+    /// price is not a defect. Reuses <see cref="AccountCurrentTerm"/> verbatim: that projection
+    /// carries no owner id, so it is already owner-agnostic.
+    /// </summary>
+    public List<AccountCurrentTerm> CurrentTerms { get; set; } = new();
+
     public DateTime? Archived { get; set; }
 
     public required DateTime CreatedAtUtc { get; set; }

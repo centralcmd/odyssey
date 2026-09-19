@@ -67,6 +67,16 @@
     }
 </div>
 
+@* Terms — what the agreement COSTS, as a dated history (issue #135). Between Parties and
+   Documents, matching the header counts' order. The section renders two dividers of its own
+   (what it costs today, and how it got there), so it is placed here rather than wrapped. *@
+<ContractTermsSection Contract="Contract"
+                      CanWrite="CanWrite"
+                      Archived="Archived"
+                      FormatMoney="FormatMoney"
+                      NewTermRequestToken="NewTermRequestToken"
+                      OnChanged="OnChanged" />
+
 <div class="con-section">
     <OdsSectionDivider Label="Documents" Meta="@($"{Contract.Files.Count} file{(Contract.Files.Count == 1 ? "" : "s")}")" />
     <div class="con-files con-tbl-frame">

@@ -112,6 +112,9 @@ public static class SystemSettingsBounds
     public const int ContractMaxFilesPerContractMin = 1;
     public const int ContractMaxFilesPerContractMax = 100000;
 
+    public const int ContractMaxTermsPerContractMin = 1;
+    public const int ContractMaxTermsPerContractMax = 100000;
+
     public const int ContractMaxSummaryContractsMin = 1;
     public const int ContractMaxSummaryContractsMax = 100000;
 

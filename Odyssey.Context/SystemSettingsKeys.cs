@@ -118,6 +118,7 @@ public static class SystemSettingsKeys
 
     public const string ContractMaxPartiesPerContract = "ContractMaxPartiesPerContract";
     public const string ContractMaxFilesPerContract = "ContractMaxFilesPerContract";
+    public const string ContractMaxTermsPerContract = "ContractMaxTermsPerContract";
     public const string ContractMaxSummaryContracts = "ContractMaxSummaryContracts";
     public const string InsuranceMaxRenewalsPerPolicy = "InsuranceMaxRenewalsPerPolicy";
     public const string InsuranceMaxFilesPerParent = "InsuranceMaxFilesPerParent";
@@ -242,6 +243,7 @@ public static class SystemSettingsKeys
         EmailPerRecipientWindowMinutes,
         ContractMaxPartiesPerContract,
         ContractMaxFilesPerContract,
+        ContractMaxTermsPerContract,
         ContractMaxSummaryContracts,
         InsuranceMaxRenewalsPerPolicy,
         InsuranceMaxFilesPerParent,

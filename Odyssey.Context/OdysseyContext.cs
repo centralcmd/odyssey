@@ -192,11 +192,29 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         modelBuilder.Entity<Term>(entity =>
         {
+            // Exactly-one-owner invariant (issue #135): a term prices an account OR a contract, never
+            // both and never neither. The domain service is the real guard — the owner is taken from
+            // the route and is on no request DTO, so a caller cannot forge it — and returns 400; this
+            // CHECK is the database backstop against a direct writer, declared on the model so it
+            // lands in the snapshot. It mirrors CK_ContractParties_ExactlyOneTarget. The EF InMemory
+            // provider honours neither this nor the two foreign keys, so the fast tiers see only the
+            // service guard; the constraint itself is covered in Odyssey.IntegrationTests.
+            entity.ToTable(tb => tb.HasCheckConstraint(
+                "CK_Terms_ExactlyOneOwner",
+                "((`AccountId` IS NOT NULL) + (`ContractId` IS NOT NULL)) = 1"));
+
             // Cascade-delete a term history along with its parent account: the timeline is
             // meaningless once the account is gone, and terms are only reachable through it.
             entity.HasOne(term => term.Account)
                 .WithMany(account => account.Terms)
                 .HasForeignKey(term => term.AccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // The same reasoning for the contract owner: a contract's price history is meaningless
+            // once the contract is gone and is only reachable through it.
+            entity.HasOne(term => term.Contract)
+                .WithMany(contract => contract.Terms)
+                .HasForeignKey(term => term.ContractId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -897,6 +915,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             // config-adoption entry is needed: there was never a configured value to carry over.
             new SystemSetting { Key = SystemSettingsKeys.ContractMaxPartiesPerContract, Value = "25", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.ContractMaxFilesPerContract, Value = "50", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.ContractMaxTermsPerContract, Value = "500", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.ContractMaxSummaryContracts, Value = "1000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.InsuranceMaxRenewalsPerPolicy, Value = "100", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.InsuranceMaxFilesPerParent, Value = "50", UpdatedAt = seededAt },

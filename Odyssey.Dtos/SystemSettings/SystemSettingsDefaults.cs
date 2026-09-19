@@ -128,6 +128,14 @@ public static class SystemSettingsDefaults
 
     public const int ContractMaxPartiesPerContract = 25;
     public const int ContractMaxFilesPerContract = 50;
+
+    /// <summary>
+    /// Term rows on one contract (issue #135). Deliberately an order of magnitude above the parties
+    /// and files caps: a term series grows by <em>supersession</em>, so a contract revising one
+    /// monthly fee quarterly accumulates rows for the lifetime of the agreement. The cap has to
+    /// bound abuse without bounding legitimate longevity.
+    /// </summary>
+    public const int ContractMaxTermsPerContract = 500;
     public const int ContractMaxSummaryContracts = 1000;
     public const int InsuranceMaxRenewalsPerPolicy = 100;
     public const int InsuranceMaxFilesPerParent = 50;

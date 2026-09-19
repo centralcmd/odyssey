@@ -173,7 +173,10 @@
         </span>
     };
 
-    // ── History group + row ───────────────────────────────────────────────────
+    // ── History group ─────────────────────────────────────────────────────────
+    // The group heading is this surface's own (a rate history and a fee list are different
+    // questions on an account); the rows themselves come from TermHistoryTable, shared with the
+    // contract surface, so a term row can never be worded or coloured differently by owner.
     private RenderFragment RenderGroup(string icon, string label, List<ExistingTerm> rows) => __builder =>
     {
         if (rows.Count == 0) return;
@@ -184,79 +187,14 @@
                 @label
                 <span class="trm-group-count">@rows.Count</span>
             </div>
-            <table class="trm-tbl">
-                <thead>
-                    <tr>
-                        <th scope="col">Term</th>
-                        <th scope="col">Effective from</th>
-                        <th scope="col" class="num">Value</th>
-                        <th scope="col">Status</th>
-                        <th scope="col" class="act" aria-label="Actions"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var t in rows)
-                    {
-                        var info = TermKindVisuals.Info(t.TermKind);
-                        var isCurrent = _currentIds.Contains(t.TermId);
-                        var cadence = TermKindVisuals.CadenceText(t);
-                        <tr class="@(isCurrent ? "current" : "")">
-                            <td>
-                                <div class="trm-row-kind">
-                                    <span class="trm-kind-ic sm" style="background:@info.Soft;color:@info.Color;">
-                                        <span class="material-icons" style="font-size:15px;">@info.Icon</span>
-                                    </span>
-                                    <div>
-                                        @RenderTermName(t, "trm-row-kind-name")
-                                        @if (!string.IsNullOrWhiteSpace(t.Note))
-                                        {
-                                            <div class="trm-row-note">@t.Note</div>
-                                        }
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="trm-cell-date">@t.EffectiveFrom.ToString("MMM dd, yyyy")</td>
-                            <td class="trm-cell-value" style="@(isCurrent ? $"color:{TermKindVisuals.CostColor(t, Account) ?? info.Color};" : "")">
-                                @TermKindVisuals.FormatValue(t, FormatMoney)@if (cadence is not null)
-                                {@* The separator is an explicit string: Razor trims leading
-                                     whitespace inside an element, which glued "$45.00" to
-                                     "every 3 months". It read tolerably when the cadence was a
-                                     "/mo" suffix; it does not now. *@
-                                    <span style="color:var(--mud-palette-text-secondary);font-weight:400;">@($" {cadence}")</span>}
-                            </td>
-                            <td>@RenderStatus(t, isCurrent)</td>
-                            <td class="trm-cell-act">
-                                @if (CanWrite)
-                                {
-                                    <OdsRowActions Actions="@(new OdsRowAction[]
-                                                   {
-                                                       new() { Icon = Icons.Material.Filled.Edit, Label = "Edit term",
-                                                               OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, () => OpenEdit(t)) },
-                                                       new() { Icon = Icons.Material.Filled.Delete, Label = "Delete term", Danger = true,
-                                                               OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, () => DeleteAsync(t)) },
-                                                   })" />
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <TermHistoryTable Terms="rows"
+                              CurrentIds="_currentIds"
+                              Account="Account"
+                              FormatMoney="FormatMoney"
+                              CanWrite="CanWrite"
+                              OnEdit="OpenEdit"
+                              OnDelete="DeleteAsync" />
         </div>
     };
 
-    private RenderFragment RenderStatus(ExistingTerm t, bool isCurrent) => __builder =>
-    {
-        if (t.EffectiveFrom.Date > DateTime.UtcNow.Date)
-        {
-            <span class="trm-scheduled">Scheduled</span>
-        }
-        else if (isCurrent)
-        {
-            <span class="trm-inforce"><span class="material-icons">check_circle</span>In force</span>
-        }
-        else
-        {
-            <span class="trm-superseded">Superseded</span>
-        }
-    };
 }

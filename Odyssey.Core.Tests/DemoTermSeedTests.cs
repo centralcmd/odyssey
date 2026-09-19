@@ -41,7 +41,7 @@ public class DemoTermSeedTests
             // Throws DomainValidationException / DomainConflictException if the seed ever drifts from
             // what the service permits — eligibility, unit, currency, the label rules, or the series
             // duplicate guard.
-            await service.Create(term.AccountId, ToRequest(term));
+            await service.Create(term.AccountId!.Value, ToRequest(term));
         }
     }
 
@@ -59,7 +59,7 @@ public class DemoTermSeedTests
 
         foreach (var fee in percentageFees)
         {
-            var created = await service.Create(fee.AccountId, ToRequest(fee));
+            var created = await service.Create(fee.AccountId!.Value, ToRequest(fee));
 
             // A percentage carries no currency, and a fee always carries its name.
             Assert.Null(created.CurrencyCode);

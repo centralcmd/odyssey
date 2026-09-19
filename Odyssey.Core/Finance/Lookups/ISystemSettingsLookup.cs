@@ -63,6 +63,7 @@ public sealed record SubscriptionSettings(
 public sealed record FinanceRequestCaps(
     int MaxPartiesPerContract,
     int MaxFilesPerContract,
+    int MaxTermsPerContract,
     int MaxSummaryContracts,
     int MaxRenewalsPerPolicy,
     int MaxFilesPerParent,

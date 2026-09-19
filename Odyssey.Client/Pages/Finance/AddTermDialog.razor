@@ -3,14 +3,17 @@
 @inject IReferenceDataCache ReferenceData
 @inject ISnackbar Snackbar
 @inject IAccountsApiClient Accounts
+@inject IContractsApiClient Contracts
 
 @*
-    AddTermDialog — New / Edit dialog for an account term (interest-rate & fee history),
-    built on the shared OdsModal shell like every other create/edit dialog. The field set
-    mirrors the NewTerm DTO and the TermService validation: eligibility-gated kind, the
+    AddTermDialog — New / Edit dialog for a term on either of the two owners the Term table
+    serves: an ACCOUNT (interest-rate & fee history) or a CONTRACT (its price history, issue
+    #135). Built on the shared OdsModal shell like every other create/edit dialog. The field
+    set mirrors the NewTerm DTO and the TermService validation: eligibility-gated kind, the
     series name (required on a fee, refused on a rate), percentage-or-amount value,
     currency (amount only), effective date, the two-part cadence and the anchor date
-    (fees only), and a note.
+    (fees only), and a note. The body a contract POSTs is byte-identical to the one an
+    account POSTs — the owner is never in it, it comes from the route.
     Rejects a (kind, label, effectiveFrom) duplicate client-side on the SAME normalized,
     case-folded key the server writes — the shared TermLabel delegate, not a second
     implementation. The API still has the final say (400 / 409 surfaced as a toast).
@@ -47,10 +50,16 @@
                 {
                     <OdsCardSelect AriaLabelledBy="trm-kind-label" Required="true" Value="@_kind.ToString()" ValueChanged="OnKindPicked"
                                    Options="KindOptions" />
-                    @if (_eligibleKinds.Count < TermKindVisuals.All.Count)
+                    @if (IsContractOwner)
                     {
                         <div class="trm-kind-ineligible">
-                            Some kinds don’t apply to a <b>@AccountTypeVisuals.Label(Account.AccountType)</b> account and are hidden.
+                            A contract can carry a <b>fee</b> or an <b>interest rate</b>. Expected return prices invested principal, which a contract doesn’t hold.
+                        </div>
+                    }
+                    else if (_eligibleKinds.Count < TermKindVisuals.All.Count)
+                    {
+                        <div class="trm-kind-ineligible">
+                            Some kinds don’t apply to a <b>@AccountTypeVisuals.Label(Account!.AccountType)</b> account and are hidden.
                         </div>
                     }
                 }
@@ -70,8 +79,10 @@
             {
                 <OdsField Label="Name" Required="true" MaxLength="TermLabelMaxLength"
                           Value="@_label" ValueChanged="OnLabelChanged"
-                          Placeholder="e.g. ATM withdrawal · abroad"
-                          Help="Names this fee so it keeps its own history, separate from the account’s other fees."
+                          Placeholder="@(IsContractOwner ? "e.g. Monthly rent" : "e.g. ATM withdrawal · abroad")"
+                          Help="@(IsContractOwner
+                                    ? "Names this charge so it keeps its own history, separate from the contract’s other charges."
+                                    : "Names this fee so it keeps its own history, separate from the account’s other fees.")"
                           Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
             }
 
@@ -110,14 +121,26 @@
                        −/+ toggle would offer a state the form always refuses. The DS kit carries the
                        same contradiction — its own submit() rejects a negative fee. The rate branch
                        above keeps its sign, where a negative genuinely means something. *@
+                    @* An owner with a currency of its own lends it; a contract has none, so the
+                       picker opens unset with a placeholder, the helper says WHY, and submitting
+                       without an answer is refused inline. A silently-assigned currency would be
+                       indistinguishable from a chosen one on the next read. *@
                     <OdsMoneyField Size="lg" Required="true" AllowNegative="false"
                                    Value="@_valueStr" ValueChanged="OnValueChanged"
                                    Currency="@_currency" CurrencyChanged="OnCurrencyChanged"
                                    CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
+                                   CurrencyPlaceholder="@CurrencyPlaceholder"
                                    AriaLabel="Value"
-                                   Error="@(_errors.TryGetValue("value", out var valErr) ? valErr : null)">
+                                   Error="@MoneyError">
                         <HelpContent>
-                            <text>Flat amount in <b>@_currency</b>@CadenceValueHint</text>
+                            @if (string.IsNullOrEmpty(_currency))
+                            {
+                                <text>A @OwnerNoun has no currency of its own — <b>pick one</b> for this amount.</text>
+                            }
+                            else
+                            {
+                                <text>Flat amount in <b>@_currency</b>@CadenceValueHint</text>
+                            }
                         </HelpContent>
                     </OdsMoneyField>
                 }
@@ -198,6 +221,10 @@
     private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit term" : "New term")</text>;
 
     private RenderFragment SubtitleFragment => IsEdit
-        ? @<text>Correct this rate or fee entry.</text>
-        : @<text>Record a rate or fee on @Account.Name, effective from a date.</text>;
+        ? (IsContractOwner
+            ? @<text>Correct this entry in the contract’s price history.</text>
+            : @<text>Correct this rate or fee entry.</text>)
+        : (IsContractOwner
+            ? @<text>Record what @OwnerName costs, effective from a date.</text>
+            : @<text>Record a rate or fee on @OwnerName, effective from a date.</text>);
 }

@@ -66,7 +66,7 @@ public class ContractServiceTests
     /// <summary>Shipped cap values; literals because this project cannot reference the key catalogue.</summary>
     private sealed class StubFinanceCaps : ISystemSettingsLookup
     {
-        public FinanceRequestCaps Caps { get; set; } = new(25, 50, 1000, 100, 50, 50);
+        public FinanceRequestCaps Caps { get; set; } = new(25, 50, 500, 1000, 100, 50, 50);
 
         public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new InsurancePolicySettings(30, 1000));
