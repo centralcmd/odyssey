@@ -18,6 +18,14 @@ updates:
           - "Microsoft.AspNetCore.*"
           - "Microsoft.NET.*"
           - "Microsoft.Extensions.*"
+        # "Microsoft.NET.*" matches exactly two packages, and they belong to different groups:
+        # Microsoft.NET.Sdk.WebAssembly.Pack (client, stays here) and Microsoft.NET.Test.Sdk
+        # (declared under `test` below). A dependency matching two groups is opened in BOTH, so
+        # that one bump arrived twice — once inside this group and once on its own. Excluding it
+        # here rather than dropping it from `test` keeps the tooling bump with the rest of the
+        # test stack, where a runner change is reviewed against the suites it runs.
+        exclude-patterns:
+          - "Microsoft.NET.Test.Sdk"
       swashbuckle:
         patterns:
           - "Swashbuckle.*"
