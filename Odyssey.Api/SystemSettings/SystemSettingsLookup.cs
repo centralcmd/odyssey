@@ -199,17 +199,6 @@ public sealed class SystemSettingsLookup(
     }
 
     /// <summary>
-    /// The Subscriptions summary limits (issue #437). A third method on this interface rather than a
-    /// fourth Finance lookup — the precedent is <see cref="GetRequestCapsAsync"/> — but on its own
-    /// cache key, which is forced: <c>CacheKeyToEvict</c> is a single string per descriptor.
-    ///
-    /// <para>
-    /// <strong>A degraded result is deliberately not cached here.</strong> This is the one read path
-    /// of the three, so recovery should be immediate rather than lingering for the TTL, and the extra
-    /// query while degraded is well under 1x of the request's existing cost.
-    /// </para>
-    /// </summary>
-    /// <summary>
     /// The Contracts summary windows, on their own cache key for the same forced reason as
     /// <see cref="GetSubscriptionSettingsAsync"/>. A degraded result is likewise <strong>not</strong>
     /// cached: one summary read path, so recovery should be immediate.
@@ -249,6 +238,17 @@ public sealed class SystemSettingsLookup(
         return settings;
     }
 
+    /// <summary>
+    /// The Subscriptions summary limits (issue #437). A third method on this interface rather than a
+    /// fourth Finance lookup — the precedent is <see cref="GetRequestCapsAsync"/> — but on its own
+    /// cache key, which is forced: <c>CacheKeyToEvict</c> is a single string per descriptor.
+    ///
+    /// <para>
+    /// <strong>A degraded result is deliberately not cached here.</strong> This is the one read path
+    /// of the three, so recovery should be immediate rather than lingering for the TTL, and the extra
+    /// query while degraded is well under 1x of the request's existing cost.
+    /// </para>
+    /// </summary>
     public async Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default)
     {
         if (cache.TryGetValue(SystemSettingsService.SubscriptionCacheKey, out SubscriptionSettings? cached)

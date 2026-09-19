@@ -169,6 +169,8 @@
    The heading is the ONLY thing separating one group from the next — no rule, no extra surface — so
    rows keep their own severity reading and the panel stays one list rather than several panels. */
 .ph-signal-group {
+    /* A real h3, so the UA margins have to go — the panel's own gap does the spacing. */
+    margin: 0;
     font: var(--fw-medium) var(--fs-overline) / 1 var(--font-sans);
     letter-spacing: 0.06em;
     text-transform: uppercase;

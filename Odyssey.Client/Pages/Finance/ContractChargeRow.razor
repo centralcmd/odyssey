@@ -52,12 +52,9 @@
 
     private OdsTypeOption TypeInfo => OdsTypeRegistries.ContractTypeOf(Charge.Type);
 
-    private string RelativeDays => Charge.DaysUntil switch
-    {
-        <= 0 => "today",
-        1 => "tomorrow",
-        var d => $"in {d} days",
-    };
+    // The shared wording, so this caption and the "Starting soon" alert beside it in the same panel
+    // cannot phrase the same fact two ways.
+    private string RelativeDays => OdsRelativeDay.Ahead(Charge.DaysUntil);
 
     // The visual row is a grid of fragments; a screen reader gets the whole thing as one sentence,
     // including the series name the narrow layout drops.

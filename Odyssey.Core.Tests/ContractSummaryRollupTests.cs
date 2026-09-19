@@ -190,7 +190,11 @@ public class ContractSummaryRollupTests
         Assert.Null(summary.RunRate.Monthly);
     }
 
-    /// <summary>The per-type rows are the same read split, so they must sum to the totals.</summary>
+    /// <summary>
+    /// The per-type rows are the same read split. What is pinned is that they cover the same terms as
+    /// the totals — the rounding is applied independently to each, so exact equality is a property of
+    /// these figures rather than a guarantee the code makes.
+    /// </summary>
     [Fact]
     public async Task RunRate_ByTypeRowsSumToTheTotals()
     {
@@ -323,6 +327,107 @@ public class ContractSummaryRollupTests
         var summary = await CreateService(context).GetSummary(baseCurrency: null);
 
         Assert.Equal("USD", summary.RunRate.BaseCurrency);
+    }
+
+    /// <summary>
+    /// The daily and weekly factors, which no seeded fee exercises: a week is 52.1775/12 months, not
+    /// 4, and a day is 365.25/12 — the leap-year-aware figures the design system uses. A "close
+    /// enough" 30/7 here would misreport a weekly fee by about 4% a year.
+    /// </summary>
+    [Theory]
+    [InlineData(ContextInterval.Daily, 10, 304.38, 3652.50)]  // 304.375 rounds away from zero
+    [InlineData(ContextInterval.Weekly, 100, 434.81, 5217.75)]
+    public async Task RunRate_UsesTheLeapAwareDailyAndWeeklyFactors(
+        ContextInterval interval, decimal value, decimal monthly, decimal yearly)
+    {
+        await using var context = TestContextFactory.Create();
+        var id = SeedContract(context, "Cadence", FixedToday.AddMonths(-6));
+        SeedFee(context, id, value, FixedToday.AddMonths(-6), interval: interval);
+
+        var summary = await Summarise(context);
+
+        Assert.Equal(monthly, summary.RunRate.Monthly);
+        Assert.Equal(yearly, summary.RunRate.Yearly);
+    }
+
+    /// <summary>
+    /// A percentage fee carries no due amount, so it can be neither projected nor charged. The filter
+    /// is on the unit, not the kind, and dropping it would put a bare <c>2.5</c> in the run rate as
+    /// though it were money.
+    /// </summary>
+    [Fact]
+    public async Task PercentageFee_ContributesToNeitherHalf()
+    {
+        await using var context = TestContextFactory.Create();
+        var id = SeedContract(context, "Commission", FixedToday.AddMonths(-6));
+        context.Terms.Add(new Term
+        {
+            TermId = Guid.NewGuid(),
+            ContractId = id,
+            TermKind = ContextTermKind.Fee,
+            Label = "Commission",
+            LabelKey = "commission",
+            ValueUnit = ContextTermValueUnit.Percentage,
+            Value = 0.025m,
+            Interval = ContextInterval.Monthly,
+            IntervalCount = 1,
+            EffectiveFrom = FixedToday.AddMonths(-6),
+            CreatedAtUtc = FixedToday.AddMonths(-6),
+        });
+        context.SaveChanges();
+
+        var summary = await Summarise(context);
+
+        Assert.Null(summary.RunRate.Monthly);
+        Assert.Empty(summary.UpcomingCharges);
+    }
+
+    /// <summary>
+    /// The whole point of <c>ContractMaxSummaryCharges</c>: above the cap the panel lists the SOONEST
+    /// charges, not an arbitrary subset. Truncating before sorting would drop the imminent ones.
+    /// </summary>
+    [Fact]
+    public async Task UpcomingCharges_TruncateToTheCap_KeepingTheSoonest()
+    {
+        await using var context = TestContextFactory.Create();
+        for (var i = 0; i < 5; i++)
+        {
+            var id = SeedContract(context, $"Contract {i}", FixedToday.AddYears(-1));
+            // Anchored i days out, so the expected survivors are unambiguous.
+            SeedFee(context, id, 10m + i, FixedToday.AddYears(-1), anchor: FixedToday.AddDays(i));
+        }
+
+        var lookup = new FakeSystemSettingsLookup { ContractSummary = new ContractSummarySettings(45, 45, 2) };
+        var service = new ContractService(context, TestContextFactory.ContactLookup(journal),
+            new FixedTimeProvider(FixedToday), lookup, NullLogger<ContractService>.Instance);
+
+        var summary = await service.GetSummary("USD");
+
+        Assert.Equal(2, summary.UpcomingCharges.Count);
+        Assert.Equal([0, 1], summary.UpcomingCharges.Select(c => c.DaysUntil));
+    }
+
+    /// <summary>
+    /// Both windows are inclusive, and the edge is where an off-by-one lives: a term ending on the
+    /// last day of the window is ending soon, and one a day later is not.
+    /// </summary>
+    [Fact]
+    public async Task Windows_AreInclusiveAtTheirLastDay()
+    {
+        await using var context = TestContextFactory.Create();
+        SeedContract(context, "On the edge", FixedToday.AddYears(-1), FixedToday.AddDays(45));
+        SeedContract(context, "One day past", FixedToday.AddYears(-1), FixedToday.AddDays(46));
+
+        var onEdge = SeedContract(context, "Charge on the edge", FixedToday.AddYears(-1));
+        var past = SeedContract(context, "Charge one day past", FixedToday.AddYears(-1));
+        SeedFee(context, onEdge, 10m, FixedToday.AddYears(-1), anchor: FixedToday.AddDays(45));
+        SeedFee(context, past, 10m, FixedToday.AddYears(-1), anchor: FixedToday.AddDays(46));
+
+        var summary = await Summarise(context);
+
+        Assert.Equal(1, summary.CountsByStatus.EndingSoon);
+        var charge = Assert.Single(summary.UpcomingCharges);
+        Assert.Equal(45, charge.DaysUntil);
     }
 
     // ── Ending soon ──────────────────────────────────────────────────────────

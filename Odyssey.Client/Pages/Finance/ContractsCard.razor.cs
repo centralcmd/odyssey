@@ -282,11 +282,17 @@ public partial class ContractsCard
     //   Starting soon     its mirror — signed, not yet in force
     //   Next charges      what falls due, derived from the fee terms in force (server-computed)
     //
-    // The first three are read off the loaded LIST, which is server-filtered: narrowing the search
-    // narrows them. That is pre-existing behaviour for the ending-soon group and is kept deliberately
-    // — the rows carry a jump action, and a row that jumps to a record the list is not showing would
-    // scroll to nothing. The charge rows come off the unfiltered summary instead, because they are
-    // computed from term data the list projection does not carry.
+    // EVERY group is read against the loaded LIST, which is server-filtered: narrowing the search
+    // narrows the panel with it. That is pre-existing behaviour for the ending-soon group and is kept
+    // deliberately — every row carries a jump action, and a row that jumps to a record the list is not
+    // showing would scroll to nothing and look broken. The charge rows are computed server-side from
+    // term data the list projection does not carry, so they arrive on the unfiltered summary and are
+    // intersected back against the list here rather than being exempted from the rule.
+    //
+    // Two of the three dated groups are capped; ENDING SOON deliberately is not. It is the renewal
+    // cliff the whole feature exists to surface, so dropping its seventh row — and under-counting the
+    // badge — would hide exactly what a reader opened the panel for. The design system caps the same
+    // two and leaves this one unbounded for the same reason.
     private const int MaxDatedSignalRows = 6;
 
     private List<PageHeaderProblem> HeaderProblems
@@ -302,13 +308,12 @@ public partial class ContractsCard
                 .OrderByDescending(c => c.EndDate)
                 .Take(MaxDatedSignalRows)
                 .Select(c => Dated(c, "Recently expired", PageHeaderSeverity.Error,
-                    $"Term expired {Ago(DaysSince(c.EndDate!.Value))}.")));
+                    $"Term expired {OdsRelativeDay.Ago(DaysSince(c.EndDate!.Value))}.")));
 
             problems.AddRange(live
                 .Where(c => c.Status == ContractStatus.Active
                     && c.EndDate is { } end && DaysUntil(end) >= 0 && DaysUntil(end) <= EndingWindowDays)
                 .OrderBy(c => c.EndDate)
-                .Take(MaxDatedSignalRows)
                 .Select(c => Dated(c, "Ending soon", PageHeaderSeverity.Warning,
                     $"Term ends {c.EndDate:MMM dd, yyyy}.")));
 
@@ -318,17 +323,24 @@ public partial class ContractsCard
                 .OrderBy(c => c.StartDate)
                 .Take(MaxDatedSignalRows)
                 .Select(c => Dated(c, "Starting soon", PageHeaderSeverity.Information,
-                    $"Term starts {Ahead(DaysUntil(c.StartDate!.Value))}.")));
+                    $"Term starts {OdsRelativeDay.Ahead(DaysUntil(c.StartDate!.Value))}.")));
 
-            problems.AddRange((_summary?.UpcomingCharges ?? []).Select(charge => new PageHeaderProblem
-            {
-                Group = "Next charges",
-                // Information: a charge falling due as agreed is not a problem, and letting one raise
-                // the button above info would cry wolf on every contract that simply has a price.
-                Severity = PageHeaderSeverity.Information,
-                Message = charge.Name,
-                Row = ChargeRow(charge),
-            }));
+            // Intersected against the list for the reason stated above: the summary is unfiltered, so
+            // without this a charge row could name a contract the active filter has excluded, and its
+            // jump would scroll to an element that is not on the page — silently, since JumpTo's
+            // best-effort scroll swallows the miss.
+            var listed = live.Select(c => c.ContractId).ToHashSet();
+            problems.AddRange((_summary?.UpcomingCharges ?? [])
+                .Where(charge => listed.Contains(charge.ContractId))
+                .Select(charge => new PageHeaderProblem
+                {
+                    Group = "Next charges",
+                    // Information: a charge falling due as agreed is not a problem, and letting one
+                    // raise the button above info would cry wolf on every contract that has a price.
+                    Severity = PageHeaderSeverity.Information,
+                    Message = charge.Name,
+                    Row = ChargeRow(charge),
+                }));
 
             return problems;
         }
@@ -348,19 +360,7 @@ public partial class ContractsCard
 
     private int DaysSince(DateTime date) => (Today - date.Date).Days;
 
-    private static string Ago(int days) => days switch
-    {
-        <= 0 => "today",
-        1 => "1 day ago",
-        var d => $"{d} days ago",
-    };
 
-    private static string Ahead(int days) => days switch
-    {
-        <= 0 => "today",
-        1 => "tomorrow",
-        var d => $"in {d} days",
-    };
 
     private async Task JumpTo(Guid id)
     {

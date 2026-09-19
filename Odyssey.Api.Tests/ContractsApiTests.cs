@@ -973,6 +973,21 @@ public class ContractsApiTests
         Assert.Contains(summary.CountsByType, t => t.Type == type && t.Count == 1);
     }
 
+    /// <summary>
+    /// The <c>[StringLength(3)]</c> on <c>baseCurrency</c> is model validation, so it runs before the
+    /// service and returns a ProblemDetails rather than reaching the FX lookup with a junk code.
+    /// </summary>
+    [Fact]
+    public async Task Summary_RejectsAnOverlongBaseCurrency()
+    {
+        await using var factory = new ApiFactory(ReadOnly);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"{Path}/summary?baseCurrency=USDD");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private static async Task AddMonthlyFeeAsync(
         HttpClient client, Guid contractId, decimal value, string currency)
     {

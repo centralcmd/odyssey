@@ -320,7 +320,8 @@ public class ContractService
     /// <para>
     /// A currency with no rate to base is NAMED rather than folded in at 1:1 — a silent 1:1 would
     /// under-report a strong currency and over-report a weak one, and either reads as a real figure.
-    /// The same exclusion applies to the per-type split, so the rows always sum to the totals.
+    /// The same exclusion applies to the per-type split, so the rows and the totals always cover the
+    /// same set of terms.
     /// </para>
     /// </summary>
     private async Task<ContractRunRate> BuildRunRateAsync(
@@ -390,7 +391,10 @@ public class ContractService
         }
 
         // Display-only estimates (the daily/weekly cadence factors are not exact in decimal), so round
-        // to a clean money figure — after summing, never per term, so the rows still sum to the totals.
+        // to a clean money figure — after summing, never per term. The per-type rows and the totals are
+        // rounded independently, so with enough types their sum can differ from the total by a cent;
+        // what "the rows sum to the totals" guarantees is CURRENCY PARITY — a currency excluded from
+        // the total is excluded from every row too — not post-rounding arithmetic equality.
         runRate.Monthly = monthly is { } m ? Round2(m) : null;
         runRate.Yearly = yearly is { } y ? Round2(y) : null;
         runRate.UnconvertedCurrencies = [.. unconverted];
