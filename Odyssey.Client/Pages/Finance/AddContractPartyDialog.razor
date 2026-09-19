@@ -181,7 +181,7 @@
             return false;
         }
 
-        var request = new AddContractPartyRequest
+        var request = new ContractPartyRequest
         {
             AccountId = _kind == ContractPartyKind.Account ? id : null,
             ContactId = _kind == ContractPartyKind.Institution ? id : null,

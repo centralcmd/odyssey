@@ -136,18 +136,41 @@ public class ContractController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Add a party (exactly one of accountId/contactId/insurancePolicyId).")]
+    [SwaggerOperation(Summary = "Add a party in a role, optionally for a term (exactly one of accountId/contactId).")]
     public async Task<IActionResult> AddParty(
         [FromRoute(Name = "id")] Guid id,
-        [FromBody] AddContractPartyRequest request, CancellationToken cancellationToken = default)
+        [FromBody] ContractPartyRequest request, CancellationToken cancellationToken = default)
     {
-        var created = await service.AddParty(id, request, cancellationToken);
+        var created = await service.AddParty(id, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         // A party has no standalone GET (it is only ever read through its contract), so the 201
         // Location points at the contract — the addressable resource that now contains the new
         // party — while the body is the created party. Mirrors the insurance renewal/file endpoints.
         return created is null
             ? this.NotFoundProblem($"Contract ID {id} not found.")
             : CreatedAtRoute("GetContract", new { id }, created);
+    }
+
+    [HttpPut("{id}/parties/{partyId}", Name = "UpdateContractParty")]
+    [Authorize(Policy = PermissionClaims.ContractsUpdate)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingContractParty))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Re-write one party: its role, its target, its dates, or any combination (full replacement).")]
+    public async Task<IActionResult> UpdateParty(
+        [FromRoute(Name = "id")] Guid id,
+        [FromRoute(Name = "partyId")] Guid partyId,
+        [FromBody] ContractPartyRequest request, CancellationToken cancellationToken = default)
+    {
+        // A missing contract throws its own 404 from the service; a null here is the narrower
+        // PartyNotOnContract class. Neither carries a field key, which is what distinguishes both from
+        // the inline PartyTargetNotFound the record picker renders (issue #121 §9).
+        var updated = await service.UpdateParty(
+            id, partyId, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+        return updated is null
+            ? this.NotFoundProblem($"Party ID {partyId} is not part of contract ID {id}.")
+            : Ok(updated);
     }
 
     [HttpDelete("{id}/parties/{partyId}", Name = "DeleteContractParty")]
@@ -159,7 +182,7 @@ public class ContractController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "partyId")] Guid partyId, CancellationToken cancellationToken = default)
     {
-        return await service.DeleteParty(id, partyId, cancellationToken)
+        return await service.DeleteParty(id, partyId, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken)
             ? NoContent()
             : this.NotFoundProblem($"Party ID {partyId} is not part of contract ID {id}.");
     }

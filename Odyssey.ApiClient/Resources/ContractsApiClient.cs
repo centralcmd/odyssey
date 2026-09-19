@@ -38,8 +38,16 @@ public interface IContractsApiClient
 
     Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Adds a party (a contact in a given role) to the contract.</summary>
-    Task<ApiResult> AddPartyAsync(Guid contractId, AddContractPartyRequest request, CancellationToken ct = default);
+    /// <summary>Adds a party (an account or contact, in a role, optionally for a term) to the contract.</summary>
+    Task<ApiResult> AddPartyAsync(Guid contractId, ContractPartyRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Re-writes one party in place (issue #121). The body is a <b>full replacement</b> of the link —
+    /// role, target and both dates — so a caller that omits a date clears it and one that omits the
+    /// role resets it to <c>Unspecified</c>.
+    /// </summary>
+    Task<ApiResult> UpdatePartyAsync(
+        Guid contractId, Guid partyId, ContractPartyRequest request, CancellationToken ct = default);
 
     Task<ApiResult> RemovePartyAsync(Guid contractId, Guid partyId, CancellationToken ct = default);
 
@@ -89,8 +97,12 @@ public sealed class ContractsApiClient(IOdysseyApi api) : IContractsApiClient
     public Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Base}/{id}", null, ct);
 
-    public Task<ApiResult> AddPartyAsync(Guid contractId, AddContractPartyRequest request, CancellationToken ct = default) =>
+    public Task<ApiResult> AddPartyAsync(Guid contractId, ContractPartyRequest request, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, $"{Base}/{contractId}/parties", request, ct);
+
+    public Task<ApiResult> UpdatePartyAsync(
+        Guid contractId, Guid partyId, ContractPartyRequest request, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Put, $"{Base}/{contractId}/parties/{partyId}", request, ct);
 
     public Task<ApiResult> RemovePartyAsync(Guid contractId, Guid partyId, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Base}/{contractId}/parties/{partyId}", null, ct);

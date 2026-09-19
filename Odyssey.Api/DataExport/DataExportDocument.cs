@@ -481,6 +481,13 @@ public sealed class ContractPartyExport
     public Guid ContractId { get; init; }
     public Guid? AccountId { get; init; }
     public Guid? ContactId { get; init; }
+
+    /// <summary>What the linked record does in the agreement (issue #121). Orthogonal to which column is set.</summary>
+    public ContractPartyRole Role { get; init; }
+
+    /// <summary>The party's own term; both null is the contract's extent, not an unset value.</summary>
+    public DateTime? FromDate { get; init; }
+    public DateTime? ToDate { get; init; }
 }
 
 public sealed class ContractFileExport

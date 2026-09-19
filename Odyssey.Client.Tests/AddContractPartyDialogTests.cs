@@ -53,7 +53,7 @@ public class AddContractPartyDialogTests
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
         var contracts = new Mock<IContractsApiClient>();
-        contracts.Setup(c => c.AddPartyAsync(ContractId, It.IsAny<AddContractPartyRequest>(), It.IsAny<CancellationToken>()))
+        contracts.Setup(c => c.AddPartyAsync(ContractId, It.IsAny<ContractPartyRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created));
         ctx.Services.AddSingleton(contracts.Object);
         ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());
@@ -104,7 +104,7 @@ public class AddContractPartyDialogTests
         cut.FindAll("button").Single(b => b.TextContent.Contains("Create party", StringComparison.Ordinal)).Click();
 
         cut.WaitForAssertion(() => contracts.Verify(c => c.AddPartyAsync(ContractId,
-            It.Is<AddContractPartyRequest>(r => r.AccountId == FreeAccountId && r.ContactId == null),
+            It.Is<ContractPartyRequest>(r => r.AccountId == FreeAccountId && r.ContactId == null),
             It.IsAny<CancellationToken>()), Times.Once));
     }
 
