@@ -2,7 +2,8 @@
    ----------------------------------------------------------------------------
    Shapes mirror the spec's Odyssey.Finance.Context entities (Draft v4):
      • Contract       { name, type, description?, startDate?, endDate?,
-                        completionDate?, archived?, createdAtUtc, parties[], files[] }
+                        completionDate?, paused?, archived?, createdAtUtc,
+                        parties[], files[] }
                         — a contract is either TERM-based (startDate/endDate, either
                         optional) or ONE-OFF (a single completionDate, no term).
      • ContractParty  { id, accountId? | contactId?, role, fromDate?, toDate? }
@@ -19,9 +20,13 @@
                         { id, name, kind, size, uploaded }, `kind` = a
                         ContractFileType key).
 
-   Status (Upcoming | Active | Expired | Archived) is DERIVED, never stored —
-   computed here per spec §6 from StartDate / EndDate / Archived against one
-   request "today". The registries (contractTypes / contractFileTypes) live
+   Status (Upcoming | Active | Expired | Paused | Archived) is DERIVED, never
+   stored — computed here per spec §6 from StartDate / EndDate / Archived /
+   Paused against one request "today". Paused is a nullable UTC stamp recording
+   WHEN the suspension began; it REPLACES Active in the derivation and nothing
+   else, so a terminal status always wins over it. A paused contract stays
+   visible, editable and fully priced on file — it simply stops counting toward
+   the run rate and the upcoming charges. The registries (contractTypes / contractFileTypes) live
    here alongside Insurance's; the page reads everything off OdysseyData /
    OdysseyHelpers like every other feature. */
 
@@ -104,7 +109,7 @@
     {
       id: 'ct-employment', name: 'ACME Co — Employment', type: 'Employment',
       description: 'Permanent, full-time. Salary paid monthly into the Chase Checking account. 3-month notice either side.',
-      startDate: '2024-03-01', endDate: null, archived: null, createdAtUtc: '2024-02-20T09:00:00Z',
+      startDate: '2024-03-01', endDate: null, paused: null, archived: null, createdAtUtc: '2024-02-20T09:00:00Z',
       parties: [
         { id: 'cp-emp-1', contactId: 'c2', role: 'Employer', fromDate: null, toDate: null },
         // The salary account is a party to the agreement with no role in the
@@ -119,7 +124,7 @@
     {
       id: 'ct-lease', name: 'Maple St Residence — Lease', type: 'Rental',
       description: 'Twelve-month assured shorthold tenancy on the Maple St residence. Rent due on the 1st. Pets permitted by amendment.',
-      startDate: '2025-09-01', endDate: '2026-08-31', archived: null, createdAtUtc: '2025-08-14T10:00:00Z',
+      startDate: '2025-09-01', endDate: '2026-08-31', paused: null, archived: null, createdAtUtc: '2025-08-14T10:00:00Z',
       parties: [
         { id: 'cp-lease-1', accountId: '7', role: 'Unspecified', fromDate: null, toDate: null },
         // A party that joined partway through the term — the case the term
@@ -136,7 +141,7 @@
     {
       id: 'ct-house', name: 'Maple St Residence — Purchase', type: 'Purchase',
       description: 'Purchase of the Maple St property — a one-off agreement recorded by its completion (closing) date, not a term. Kept as the deed of record for the property.',
-      startDate: null, endDate: null, completionDate: '2021-04-15', archived: null, createdAtUtc: '2021-03-02T09:00:00Z',
+      startDate: null, endDate: null, completionDate: '2021-04-15', paused: null, archived: null, createdAtUtc: '2021-03-02T09:00:00Z',
       parties: [
         { id: 'cp-house-1', accountId: '7', role: 'Buyer', fromDate: null, toDate: null },
         { id: 'cp-house-2', contactId: 'c9', role: 'Seller', fromDate: null, toDate: null },
@@ -148,7 +153,7 @@
     {
       id: 'ct-fiber', name: 'Fiber Internet — 24 Month', type: 'Service',
       description: 'Symmetric 1 Gbps fiber. 24-month term, early-termination fee applies. Auto-renews monthly at term end.',
-      startDate: '2025-02-01', endDate: '2027-01-31', archived: null, createdAtUtc: '2025-01-22T09:00:00Z',
+      startDate: '2025-02-01', endDate: '2027-01-31', paused: null, archived: null, createdAtUtc: '2025-01-22T09:00:00Z',
       parties: [
         { id: 'cp-fiber-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -159,8 +164,8 @@
     },
     {
       id: 'ct-gym', name: 'FitZone — Membership', type: 'Membership',
-      description: 'Annual gym membership. Direct debit, monthly. Starts at the new branch opening.',
-      startDate: '2026-09-01', endDate: '2027-08-31', archived: null, createdAtUtc: '2026-06-10T09:00:00Z',
+      description: 'Annual gym membership. Direct debit, monthly. Frozen over the winter — resuming in the spring.',
+      startDate: '2026-09-01', endDate: '2027-08-31', paused: '2026-09-14T10:30:00Z', archived: null, createdAtUtc: '2026-06-10T09:00:00Z',
       parties: [
         { id: 'cp-gym-1', contactId: 'c11', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -173,7 +178,7 @@
       // populates the header signal's warning group beside the next charges.
       id: 'ct-parking', name: 'Harbor Point Parking — Space 14', type: 'Rental',
       description: 'Twelve-month parking licence on space 14. Renews only by a fresh agreement — give notice 30 days before the end date.',
-      startDate: '2025-11-01', endDate: '2026-10-31', archived: null, createdAtUtc: '2025-10-20T09:00:00Z',
+      startDate: '2025-11-01', endDate: '2026-10-31', paused: null, archived: null, createdAtUtc: '2025-10-20T09:00:00Z',
       parties: [
         { id: 'cp-parking-1', contactId: 'c8', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -186,7 +191,7 @@
       // populates the header signal's "Starting soon" group.
       id: 'ct-energy', name: 'Northwind Energy — Fixed Tariff', type: 'Service',
       description: 'Twelve-month fixed electricity tariff. Switch completes on the start date; the standing charge and unit rate are fixed for the term.',
-      startDate: '2026-10-15', endDate: '2027-10-14', archived: null, createdAtUtc: '2026-09-02T09:00:00Z',
+      startDate: '2026-10-15', endDate: '2027-10-14', paused: null, archived: null, createdAtUtc: '2026-09-02T09:00:00Z',
       parties: [
         { id: 'cp-energy-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -197,7 +202,7 @@
     {
       id: 'ct-storage', name: 'Storage Unit B12 — Rental', type: 'Rental',
       description: 'Self-storage unit, 50 sq ft. Twelve-month term, not renewed — kept for record.',
-      startDate: '2024-01-01', endDate: '2025-12-31', archived: null, createdAtUtc: '2024-01-03T09:00:00Z',
+      startDate: '2024-01-01', endDate: '2025-12-31', paused: null, archived: null, createdAtUtc: '2024-01-03T09:00:00Z',
       parties: [
         // Left the role when the unit was handed back, while the contract row
         // stays on record — a closed term, rendered as a past party.
@@ -210,7 +215,7 @@
     {
       id: 'ct-solar', name: 'Solar Panel Lease', type: 'Other',
       description: 'Twenty-year rooftop solar lease — transferred to the new owner on sale of the property. Retained for reference.',
-      startDate: '2023-06-01', endDate: '2025-10-31', archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z',
+      startDate: '2023-06-01', endDate: '2025-10-31', paused: null, archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z',
       parties: [
         { id: 'cp-solar-1', accountId: '7', role: 'Other', fromDate: null, toDate: null },
       ],
@@ -249,10 +254,10 @@
       return Math.round((a - b) / 86400000);
     },
 
-    // Derived status (spec §6), evaluated in the fixed order:
+    // The base derivation (pause-blind), evaluated in the fixed order:
     //   Archived → one-off completion (Upcoming before / Active on-or-after) →
     //   Upcoming (start in future) → Expired (end in past) → Active.
-    conStatus(contract, today) {
+    conBaseStatus(contract, today) {
       const t = today || H.conToday();
       if (contract.archived) return 'Archived';
       // One-off (point-in-time) contract — a single completion date, no term:
@@ -268,18 +273,37 @@
       return 'Active';
     },
 
-    // Status display vocabulary: label, chip tone, status dot, and a glyph.
-    // Active=mint/income · Upcoming=sea/info · Expired=coral/expense ·
-    // Archived=muted/outline. Tones map to the same finance accents Insurance /
-    // Accounts use — no new status hue enters.
+    /* Derived status. Paused REPLACES Active and nothing else — it is applied
+       ONCE to the RESULT of the base derivation, never inserted as a step in
+       its chain. The one-off branch above returns early for BOTH its outcomes,
+       so a pause check written late in that chain would be unreachable for a
+       settled one-off: the stamp would be stored and every read would keep
+       saying Active while the contract kept costing money.
+       Read as precedence: Archived > Upcoming > Expired > Paused > Active —
+       a terminal fact outranks a temporary one. */
+    conStatus(contract, today) {
+      const status = H.conBaseStatus(contract, today);
+      return status === 'Active' && contract.paused ? 'Paused' : status;
+    },
+
+    /* Status display vocabulary: label, chip tone, status dot, and a glyph.
+       Active=mint/income · Upcoming=sea/info · Expired=coral/expense ·
+       Paused=amber/pending (the tone Subscriptions already gives a pause) ·
+       Archived=muted/outline. Tones map to the same finance accents Insurance /
+       Accounts use — no new status hue enters.
+       An UNKNOWN member falls back NEUTRAL, under its own name. ContractStatus
+       appends server-side, so a client older than the deployment can be handed
+       a member it has never heard of; resolving that to Active would report a
+       WRONG state (a green pill on a paused contract), not a degraded one. */
     conStatusMeta(key) {
       const map = {
         Active:   { key: 'Active',   label: 'Active',   tone: 'income',  dot: true,  icon: 'task_alt' },
         Upcoming: { key: 'Upcoming', label: 'Upcoming', tone: 'info',    dot: true,  icon: 'schedule' },
         Expired:  { key: 'Expired',  label: 'Expired',  tone: 'expense', dot: true,  icon: 'event_busy' },
         Archived: { key: 'Archived', label: 'Archived', tone: 'outline', dot: true,  icon: 'inventory_2' },
+        Paused:   { key: 'Paused',   label: 'Paused',   tone: 'pending', dot: true,  icon: 'pause_circle' },
       };
-      return map[key] || map.Active;
+      return map[key] || { key: String(key), label: String(key), tone: 'outline', dot: true, icon: 'help', unknown: true };
     },
 
     // Resolve a party row to the minimal display projection (spec §10 #2) —
@@ -398,6 +422,14 @@
         const d = contract.completionDate || contract.endDate || contract.startDate;
         return { value: d ? H.conDate(d) : '—', word: 'archived', cls: 'archived' };
       }
+      /* Paused: the countdown is meaningless while nothing is running, so the
+         headline says when the pause began instead. Checked HERE, above the
+         one-off branch, for the same reason the status derivation applies the
+         member to the result: the one-off branch returns early, so a paused
+         settled one-off would otherwise keep counting down. */
+      if (status === 'Paused') {
+        return { value: H.conDate(contract.paused), word: 'paused', cls: 'paused' };
+      }
       // One-off (point-in-time): pending completion, or completed.
       if (contract.completionDate) {
         const days = H.conDaysUntil(contract.completionDate, t);
@@ -432,7 +464,9 @@
     conSummary(contracts, today) {
       const t = today || H.conToday();
       const all = contracts || D.contracts;
-      const counts = { Active: 0, Upcoming: 0, Expired: 0, Archived: 0 };
+      // Five mutually exclusive buckets that partition the set and sum to
+      // total. EndingSoon stays a slice of Active and is not one of them.
+      const counts = { Active: 0, Upcoming: 0, Expired: 0, Archived: 0, Paused: 0 };
       const byType = {};
       for (const c of all) {
         counts[H.conStatus(c, t)] = (counts[H.conStatus(c, t)] || 0) + 1;
@@ -589,6 +623,8 @@
       if (!contract || contract.archived) return null;
       const status = H.conStatus(contract, t);
       if (status === 'Expired') return null;
+      // A paused contract is not charging — no next charge, no run rate.
+      if (status === 'Paused') return null;
       const inForce = window.trmCurrentFromList
         ? window.trmCurrentFromList(H.conTermsFor(contract.id))
         : [];

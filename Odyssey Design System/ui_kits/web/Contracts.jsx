@@ -7,11 +7,20 @@
    account or a contact),
    and the DOCUMENTS that evidence it (references to existing library files).
 
-   Status (Upcoming / Active / Expired / Archived) is DERIVED, never stored —
-   computed per request (spec §6) from StartDate / EndDate / Archived. Navigation
+   Status (Upcoming / Active / Paused / Expired / Archived) is DERIVED, never
+   stored — computed per request (spec §6) from StartDate / EndDate / Paused /
+   Archived. Navigation
    is expand-in-place (no /{id} deep-link, per frontend B1). Archive is a
    reversible field on the edit form (a normal update — there is no dedicated
    archive action), distinct from the irreversible hard delete.
+
+   PAUSE is the temporary counterpart of archive, and reads as its opposite in
+   every way that matters: a paused contract stays at full brightness, stays
+   fully editable, keeps its terms and its price history, and is only absent
+   from the money — the run rate, the by-type cost split and the next-charges
+   list. It is offered as a one-click toggle in the row menu (the Subscriptions
+   pattern), only where it is permitted: pause is enterable from Active alone,
+   while Resume is offered wherever a stamp exists.
 
    Helpers + seed come from contracts-data.js; atoms from the DS bundle via
    Components.jsx. FilesTable comes from the DS bundle. */
@@ -20,8 +29,13 @@ const CON_H = window.OdysseyHelpers;
 const CON_D = window.OdysseyData;
 const CON_SEV_RANK = { info: 0, warning: 1, error: 2 };
 
-/* ====================== Derived-status chip ====================== */
+/* ====================== Derived-status chip ======================
+   The DS ContractStatusChip owns the vocabulary (and the neutral fallback an
+   unknown server member gets). Resolved lazily so it appears as soon as
+   _ds_bundle.js carries it; the local Chip is the bundle-lag fallback. */
 const ContractStatusChip = ({ status }) => {
+  const C = (window.OdysseyDesignSystem_d5aa51 || {}).ContractStatusChip;
+  if (C) return <C status={status} size="sm" />;
   const meta = CON_H.conStatusMeta(status);
   return <Chip tone={meta.tone} dot={meta.dot}>{meta.label}</Chip>;
 };
@@ -119,12 +133,13 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
   const status = CON_H.conStatus(contract, today);
   const statusMeta = CON_H.conStatusMeta(status);
   const statusFoot = status === 'Archived' ? `since ${CON_H.conDate(contract.archived)}`
+    : status === 'Paused' ? `since ${CON_H.conDate(contract.paused)}`
     : status === 'Expired' ? (contract.endDate ? `since ${CON_H.conDate(contract.endDate)}` : null)
     : status === 'Upcoming' ? (contract.startDate ? `starts ${CON_H.conDate(contract.startDate)}` : null)
     : oneOff ? `completed ${CON_H.conDate(contract.completionDate)}`
     : (contract.startDate ? `since ${CON_H.conDate(contract.startDate)}` : null);
   const statusToneClass = statusMeta.tone === 'income' ? 'income' : statusMeta.tone === 'expense' ? 'expense'
-    : statusMeta.tone === 'info' ? 'info' : 'muted';
+    : statusMeta.tone === 'info' ? 'info' : statusMeta.tone === 'pending' ? 'pending' : 'muted';
   return (
     <React.Fragment>
       {/* DETAILS — the contract's full field set. A one-off has a completion date
@@ -156,6 +171,10 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         <InfoTile icon={statusMeta.icon} label="Status" valueVariant="text"
           className={`con-status-tile ${statusToneClass}`}
           value={statusMeta.label} foot={statusFoot} />
+        {/* One tile per STORED stamp, so nothing is lost when the derived
+            status shows only one of them: an archived contract that is also
+            paused still says when each began. */}
+        {contract.paused ? <InfoTile icon="pause_circle" label="Paused" value={CON_H.conDate(contract.paused)} valueVariant="sm" className="con-status-tile pending" foot="still listed and editable, not costing" /> : null}
         {contract.archived ? <InfoTile icon="inventory_2" label="Archived" value={CON_H.conDate(contract.archived)} valueVariant="sm" foot="hidden from the default list" /> : null}
       </InfoTileGrid>
 
@@ -261,6 +280,9 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
   };
   const attachFile = (filesToAdd) => { const arr = Array.isArray(filesToAdd) ? filesToAdd : [filesToAdd]; setC(prev => ({ ...prev, files: [...(prev.files || []), ...arr] })); setModal(null); setOpen(true); setFocusDocs(true); };
   const toggleArchive = () => setC(prev => ({ ...prev, archived: prev.archived ? null : new Date().toISOString() }));
+  /* Pause rides the same PUT as archive, and is idempotent the same way: a
+     repeated pause keeps the ORIGINAL stamp, so "paused since" never resets. */
+  const togglePause = () => setC(prev => ({ ...prev, paused: prev.paused ? null : (prev.paused || new Date().toISOString()) }));
 
   /* Create and edit are one write path, as they are on the server: the dialog
      posts a NewTerm and the route (this contract) is the only thing that names
@@ -315,7 +337,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
         figure={{
           value: headline.value,
           caption: headline.word,
-          tone: headline.cls === 'lapsed' || headline.cls === 'expired' ? 'expense' : headline.cls === 'soon' ? 'pending' : undefined,
+          tone: headline.cls === 'lapsed' || headline.cls === 'expired' ? 'expense' : (headline.cls === 'soon' || headline.cls === 'paused') ? 'pending' : undefined,
         }}
         dimmed={dimmed}
         highlight={highlight}
@@ -323,6 +345,13 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
         onToggle={setOpen}
         actions={<ActionMenu items={[
           { icon: 'edit', label: 'Edit contract', onClick: () => setShowEdit(true) },
+          /* Pause is enterable only from Active, so the action is simply absent
+             elsewhere — unlike Archive, whose precondition (the contract has to
+             end) is a step the user can act on, this one has no instruction to
+             give. Resume is offered whenever a stamp exists, in any state:
+             clearing a pause is never refused. */
+          ...(status === 'Active' ? [{ icon: 'pause_circle', label: 'Pause', onClick: togglePause }]
+            : c.paused ? [{ icon: 'play_circle', label: 'Resume', onClick: togglePause }] : []),
           { icon: 'group_add', label: 'New party', onClick: () => { setOpen(true); setModal('party'); } },
           // Refused writes are offered with their reason rather than hidden —
           // the same guard the section notice and the endpoint state.
@@ -361,7 +390,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
 /* ====================== Summary (header Overview) ====================== */
 const ContractsSummary = ({ contracts, today, endingWindow }) => {
   const s = CON_H.conSummary(contracts, today);
-  const order = ['Active', 'Upcoming', 'Expired', 'Archived'];
+  const order = ['Active', 'Paused', 'Upcoming', 'Expired', 'Archived'];
   // Distribution rows for the two BreakdownTile instances. Status tones map to
   // the same finance accents the pills / chips use — no new hue enters.
   const TONE_COLOR = { income: 'var(--finance-income)', info: 'var(--sea-400)', expense: 'var(--finance-expense)', outline: 'var(--mud-palette-text-secondary)', pending: 'var(--finance-pending)' };
@@ -384,9 +413,14 @@ const ContractsSummary = ({ contracts, today, endingWindow }) => {
      twice — once summed, once split. */
   const rr = CON_H.conRunRate(contracts, today);
   const rrMoney = (v) => (v == null ? '—' : CON_H.money(v, rr.baseCurrency));
-  const rrFoot = rr.unconvertedCurrencies.length
+  /* A paused contract keeps its price on file and contributes nothing here.
+     The tiles say so, because a run rate that quietly dropped would otherwise
+     read as a pricing error. */
+  const pausedCount = s.countsByStatus.Paused || 0;
+  const rrFoot = (rr.unconvertedCurrencies.length
     ? `in ${rr.baseCurrency} · ${rr.unconvertedCurrencies.join(', ')} excluded`
-    : `in ${rr.baseCurrency}`;
+    : `in ${rr.baseCurrency}`)
+    + (pausedCount ? ` · ${pausedCount} paused excluded` : '');
   const rrMonthlyRows = rr.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: r.color, label: r.label, count: rrMoney(r.monthly) }));
   const rrYearlyRows = rr.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: r.color, label: r.label, count: rrMoney(r.yearly) }));
   return (
@@ -429,7 +463,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
   // §6.8 curated fields — one list feeds the SortSelect AND the ordering.
   // Type/Status sort by the registry / lifecycle declared order, not label.
-  const CON_STATUS_ORDER = ['Upcoming', 'Active', 'Expired', 'Archived'];
+  const CON_STATUS_ORDER = ['Upcoming', 'Active', 'Expired', 'Archived', 'Paused'];
   const sortFields = [
     { key: 'name',      label: 'Name',       type: 'text',   sortValue: (c) => (c.name || '').toLowerCase() },
     { key: 'startDate', label: 'Start date', type: 'date',   sortValue: (c) => c.startDate || null },
@@ -487,11 +521,18 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
       && CON_H.conDaysUntil(c.startDate, today) <= endingWindow)
     .sort((a, b) => (a.startDate < b.startDate ? -1 : 1))
     .slice(0, 6);
-  const signal = (flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length) ? {
+  /* Paused agreements: not a cliff, but the one group here you cannot see by
+     looking at a date — a contract that stopped costing money because someone
+     froze it, and which nothing will un-freeze on its own. */
+  const pausedRows = active
+    .filter(c => CON_H.conStatus(c, today) === 'Paused')
+    .sort((a, b) => (a.paused < b.paused ? 1 : -1))
+    .slice(0, 6);
+  const signal = (flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length || pausedRows.length) ? {
     // The panel's worst severity wins the button: an expired term reads error,
     // a term running out reads warning, and next charges alone read info.
     severity: recentlyExpired.length ? 'error' : flagged.length ? 'warning' : 'info',
-    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length,
+    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length + pausedRows.length,
     label: 'Upcoming',
     region: (
       <div className="signal-panel">
@@ -530,6 +571,19 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
               <SeverityIcon severity="info" size={18} className="alert-icon" />
               <div className="alert-body"><strong>{c.name}.</strong> Term starts {days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`}.</div>
+              <button className="alert-fix" onClick={(e) => { e.stopPropagation(); jumpTo(c.id); }}>View →</button>
+            </div>
+          );
+        })}
+        {pausedRows.length ? <div className="con-signal-group">Paused</div> : null}
+        {pausedRows.map((c) => {
+          const days = -CON_H.conDaysUntil(c.paused, today);
+          return (
+            <div key={c.id} className="alert info compact signal-row" role="button" tabIndex={0}
+              onClick={() => jumpTo(c.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
+              <SeverityIcon severity="info" size={18} className="alert-icon" />
+              <div className="alert-body"><strong>{c.name}.</strong> Paused {days <= 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`} — not counted in the run rate.</div>
               <button className="alert-fix" onClick={(e) => { e.stopPropagation(); jumpTo(c.id); }}>View →</button>
             </div>
           );
@@ -580,7 +634,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
             </div>
             <div style={{ minWidth: 170 }}>
               <MultiSelect allLabel="Any status" value={statusFilter} onChange={setStatusFilter}
-                options={['Active', 'Upcoming', 'Expired', 'Archived'].map(k => ({ value: k, label: CON_H.conStatusMeta(k).label }))} />
+                options={['Active', 'Paused', 'Upcoming', 'Expired', 'Archived'].map(k => ({ value: k, label: CON_H.conStatusMeta(k).label }))} />
             </div>
             <SortSelect sort={sort} onSort={setSort} fields={sortFields} />
             <PageSizeSelect prefix="Load" suffix="at a time" label="Contracts per batch"

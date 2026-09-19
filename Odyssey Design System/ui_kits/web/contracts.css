@@ -194,3 +194,4 @@
 .con-status-tile.info .odc-infotile-v { color: var(--mud-palette-info); }
 .con-status-tile.expense .odc-infotile-v { color: var(--finance-expense); }
 .con-status-tile.muted .odc-infotile-v { color: var(--mud-palette-text-secondary); }
+.con-status-tile.pending .odc-infotile-v { color: var(--finance-pending); }

@@ -263,6 +263,14 @@
         "message": "<ContactType> doesn't accept that prop. Declared props: key, label, icon, color, soft."
       },
       {
+        "selector": "JSXOpeningElement[name.name='ContractStateMeta'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|tone|dot|icon|unknown|key|ref|className|style|children)$/]",
+        "message": "<ContractStateMeta> doesn't accept that prop. Declared props: key, label, tone, dot, icon, unknown."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ContractStateMeta'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:income|info|expense|pending|outline)$/]",
+        "message": "<ContractStateMeta> tone must be one of 'income' | 'info' | 'expense' | 'pending' | 'outline'."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='ContractTypeEntry'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
         "message": "<ContractTypeEntry> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
       },
@@ -894,6 +902,9 @@
         "replaces": []
       },
       "ContactType": {
+        "replaces": []
+      },
+      "ContractStateMeta": {
         "replaces": []
       },
       "ContractTypeEntry": {
