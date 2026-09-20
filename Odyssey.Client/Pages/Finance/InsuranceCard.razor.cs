@@ -831,14 +831,15 @@ public partial class InsuranceCard
             // disable the action on every collapsed row. ReloadPolicy refreshes the list too, so the
             // enable transition after the first period is saved comes free.
             var hasPeriod = p.RenewalCount > 0;
+            // A document belongs to a period, so with no period there is nothing to attach to and
+            // the item is absent rather than dimmed with a reason (design system · components/Menu).
+            // The Renewals section is where a reader learns a period is needed — the empty state
+            // there says so, without a menu having to be opened to find out.
             items.Add(new OdsMenuItem
             {
                 Icon = "upload_file",
                 Label = "Attach document",
                 Disabled = !hasPeriod,
-                // A document belongs to a period, so with no period there is nothing to attach to.
-                // The reason is TEXT, associated as a description — never the dimmed styling alone.
-                Description = hasPeriod ? null : "Add a renewal period first.",
                 OnClick = EventCallback.Factory.Create(this, () => AttachDocument(p.InsurancePolicyId)),
             });
         }

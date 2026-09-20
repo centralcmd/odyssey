@@ -39,11 +39,6 @@ public enum TermOwnerKind
 /// currency) both assign a meaning nobody chose, and the first changes retroactively when parties are
 /// detached or re-ordered.
 /// </param>
-/// <param name="ArchivedAtUtc">
-/// When the owner was archived, or <see langword="null"/> when it is in the active set. Accounts always
-/// resolve <see langword="null"/> here: issue #135 introduced the archive guard for contracts and
-/// deliberately did not change the account surface, whose five endpoints are unchanged.
-/// </param>
 /// <param name="IsTermCapped">
 /// Whether a create is refused beyond a per-owner cap. Only WHETHER, not the number: the cap is a
 /// system setting, and reading it on the four routes that never consult it would be a settings lookup
@@ -58,5 +53,4 @@ public sealed record TermOwnerFacts(
     IReadOnlySet<TermKind> PermittedKinds,
     string EligibilityScope,
     string? DefaultCurrencyCode,
-    DateTime? ArchivedAtUtc,
     bool IsTermCapped);

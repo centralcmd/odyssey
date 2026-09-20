@@ -545,8 +545,13 @@ public class ContractServiceTests
             service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId));
     }
 
+    /// <summary>
+    /// <b>Archiving does not lock a contract.</b> Parties are added and changed on an archived
+    /// contract exactly as on a live one — archival hides it from the default list, it does not
+    /// freeze it, and recording who the agreement was with is as valid after it ended as before.
+    /// </summary>
     [Fact]
-    public async Task AddParty_OnArchivedContract_Throws()
+    public async Task AddParty_OnArchivedContract_Succeeds()
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
@@ -562,10 +567,12 @@ public class ContractServiceTests
             Ready = contract.Ready, Signed = contract.Signed,
         }, userId: null);
 
-        // 422, not 400: an archived contract is a well-formed request that cannot be processed
-        // (issue #121 §9), the same class the party cap uses.
-        await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
-            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId));
+        var party = await service.AddParty(
+            contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId);
+
+        Assert.NotNull(party);
+        Assert.Equal(accountId, party.Account?.AccountId);
+        Assert.NotNull((await service.Get(contract.ContractId))!.Archived);
     }
 
     private async Task<(Guid AccountId, Guid ContactId, Guid PolicyId)> SeedTargets(OdysseyContext context)

@@ -6,13 +6,16 @@
     Danger for a destructive (error-colored) action. Defaults to a more_vert
     icon-button trigger; pass Trigger to anchor it to your own element.
 
-    A disabled item may carry a Description — one line saying WHY it is
-    unavailable. Following the design system's Menu (`disabled={it.disabled &&
-    !it.note}`), such an item does NOT get MudBlazor's disabled treatment: it
-    stays in the focus order and its reason is a SIBLING note wired via
-    aria-describedby, so a keyboard or screen-reader user reaches the explanation
-    instead of a silently skipped item. A disabled item with no Description keeps
-    the ordinary disabled treatment — there is nothing there to reach.
+    An item marked Disabled is NOT rendered. An action a record cannot take is absent from its menu
+    rather than dimmed with an explanation, and any divider or header the omission orphans is
+    dropped with it, so a menu never opens onto a stray rule or a group label heading nothing.
+
+    That replaced the earlier treatment, where such an item stayed in the focus order carrying a
+    sibling note that said why it was unavailable. The note was the right answer to the wrong
+    question: the reason belongs to the RECORD, not to one row of one menu that has to be opened to
+    find it. Where the user needs to know why a capability is missing, the surface says so in its
+    own copy — an OdsRecordSection notice or a helper line — which is reachable without opening
+    anything and is announced where the writing would happen.
 *@
 
 <MudMenu AnchorOrigin="@Anchor"
@@ -35,11 +38,8 @@
         }
     </ActivatorContent>
     <ChildContent>
-        @for (var i = 0; i < Items.Count; i++)
+        @foreach (var item in VisibleItems)
         {
-            var item = Items[i];
-            var noteId = $"{_noteIdPrefix}-{i}";
-
             @if (item.Divider)
             {
                 <MudDivider />
@@ -54,44 +54,9 @@
                    not a MudBlazor SVG constant — render it via the icon font in
                    the item content rather than MudMenuItem's Icon (which would
                    leave an empty icon gutter). See ItemContent. *@
-                @if (item.Disabled && HasNote(item))
-                {
-                    @* Unavailable WITH a stated reason, rendered directly rather than as a
-                       MudMenuItem. Measured against MudBlazor 9.10.0 (OdsMenuDisabledItemTests pins
-                       all of this):
-
-                         • MudMenuItem writes aria-disabled and tabindex AFTER any splatted
-                           attribute, so Disabled=true forces tabindex="-1" — which removes the item
-                           from the focus order and hides the reason from exactly the users it was
-                           written for — and Disabled=false forces aria-disabled="false". There is no
-                           combination of the two that yields a focusable aria-disabled item.
-                         • The shell carries role="menuitem", matching its siblings: from 9.10.0
-                           MudMenu's list is role="menu" and each MudMenuItem is role="menuitem".
-                           Parity with those siblings is the target, and it is what the role has to
-                           track — up to 9.9.0 the list was role="listbox" and the items carried no
-                           role at all, so this shell carried none either. Without the role it would
-                           now be the one item in the menu that is not a menuitem, which a menu may
-                           not own: the reason would be reachable by Tab and still unannounced.
-
-                       Same class and same tabindex as an ENABLED sibling, so it sits in the same tab
-                       sequence; no handler, so activating it neither acts nor closes the menu. *@
-                    <div class="mud-menu-item odc-menu-item-static"
-                         role="menuitem"
-                         tabindex="0"
-                         aria-disabled="true"
-                         aria-describedby="@noteId">
-                        @ItemContent(item)
-                    </div>
-                    @* A SIBLING of the item, never inside it: inside, the reason would be folded into
-                       the item's accessible NAME instead of read as its description. *@
-                    <p class="odc-menu-note" id="@noteId">@item.Description</p>
-                }
-                else
-                {
-                    <MudMenuItem Disabled="@item.Disabled" OnClick="item.OnClick">
-                        @ItemContent(item)
-                    </MudMenuItem>
-                }
+                <MudMenuItem OnClick="item.OnClick">
+                    @ItemContent(item)
+                </MudMenuItem>
             }
         }
     </ChildContent>
@@ -139,10 +104,47 @@
             }
         </span>;
 
-    private static bool HasNote(OdsMenuItem item) => !string.IsNullOrEmpty(item.Description);
-
-    /// <summary>Instance-unique id stem for the notes, so two menus on one page cannot collide.</summary>
-    private readonly string _noteIdPrefix = $"odc-menu-note-{Guid.NewGuid():N}";
+    /// <summary>
+    /// The items actually drawn: every unavailable action removed, then every divider and header the
+    /// removal orphaned.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A divider is orphaned when it would lead the menu, trail it, or follow another divider, or
+    /// when the next item is a header (which brings its own separation). A header is orphaned when
+    /// no real item follows it <b>before the next header</b> — a group label with nothing under it.
+    /// Both passes run over the list that REMAINS, not the original, so two adjacent removals
+    /// collapse the divider between them rather than each looking past the other.
+    /// </para>
+    /// <para>
+    /// The header lookahead is bounded by <c>TakeWhile</c> rather than scanning to the end of the
+    /// list, and that bound is load-bearing: with two adjacent groups whose FIRST is emptied by the
+    /// removal, an unbounded scan finds a surviving item under the SECOND group and keeps the first
+    /// header — leaving exactly the "group label heading nothing" this pass exists to remove. The
+    /// design system's own reference implementation (<c>components/Menu.jsx</c>) scans unbounded and
+    /// has the same gap; this is a deliberate divergence toward what its prose specifies, not a
+    /// transcription error to be "corrected" back.
+    /// </para>
+    /// </remarks>
+    private IReadOnlyList<OdsMenuItem> VisibleItems
+    {
+        get
+        {
+            var shown = Items.Where(i => !i.Disabled).ToList();
+            return shown
+                .Where((item, i) =>
+                    item.Divider
+                        ? i > 0 && i < shown.Count - 1
+                          && !shown[i - 1].Divider
+                          && string.IsNullOrEmpty(shown[i + 1].Header)
+                        : !string.IsNullOrEmpty(item.Header)
+                            ? shown.Skip(i + 1)
+                                   .TakeWhile(n => string.IsNullOrEmpty(n.Header))
+                                   .Any(n => !n.Divider)
+                            : true)
+                .ToList();
+        }
+    }
 
     /// <summary>A Material Icons ligature is all-lowercase ASCII letters, digits and underscores
     /// (e.g. "attach_file"); anything else (e.g. "§") renders as a literal glyph.</summary>

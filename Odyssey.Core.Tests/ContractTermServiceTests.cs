@@ -265,22 +265,29 @@ public class ContractTermServiceTests
         Assert.Null(created.CurrencyCode);
     }
 
-    // ── The archive guard ────────────────────────────────────────────────────
+    // ── The archive state refuses nothing ────────────────────────────────────
 
+    /// <summary>
+    /// <b>Archiving never blocks a term write.</b> A lease that has ended still gains its final rent
+    /// entry, and a closing fee is recorded after the agreement is filed away — which is precisely
+    /// when an archived contract is the one being written to. The per-contract cap is the only thing
+    /// that refuses a term write.
+    /// </summary>
     [Fact]
-    public async Task Create_OnAnArchivedContract_IsRefusedNamingUnarchiving()
+    public async Task Create_OnAnArchivedContract_IsAllowed()
     {
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context, archived: true);
 
-        var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
-            Terms(context).CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1))));
+        var created = await Terms(context).CreateForContract(
+            contractId, Rent(14500m, new DateTime(2026, 10, 1)));
 
-        Assert.Contains("unarchive", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(14500m, created.Value);
+        Assert.NotNull((await context.Contracts.FirstAsync(c => c.ContractId == contractId)).Archived);
     }
 
     [Fact]
-    public async Task UpdateAndDelete_OnAnArchivedContract_AreRefusedToo()
+    public async Task UpdateAndDelete_OnAnArchivedContract_AreAllowedToo()
     {
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
@@ -291,12 +298,12 @@ public class ContractTermServiceTests
         contract.Archived = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
         await context.SaveChangesAsync();
 
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.UpdateForContract(contractId, term.TermId, Rent(15000m, new DateTime(2026, 11, 1))));
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.DeleteForContract(contractId, term.TermId));
+        Assert.True(await service.UpdateForContract(
+            contractId, term.TermId, Rent(15000m, new DateTime(2026, 11, 1))));
+        Assert.Equal(15000m, (await context.Terms.SingleAsync()).Value);
 
-        Assert.Equal(14500m, (await context.Terms.SingleAsync()).Value);
+        Assert.True(await service.DeleteForContract(contractId, term.TermId));
+        Assert.Empty(await context.Terms.ToListAsync());
     }
 
     [Fact]

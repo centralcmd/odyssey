@@ -180,13 +180,15 @@ public class ContractPauseSurfaceTests
         // Resume is never offered disabled: there would be nothing to instruct.
         Assert.DoesNotMatch(new Regex(@"Label\s*=\s*""Resume""[\s\S]{0,200}?Disabled\s*=\s*true"), source);
 
-        // The ONE exception, added by issue #145: an unsigned contract is the single non-Active case
-        // that DOES have an instruction to give — sign it — so Pause is offered disabled-with-a-reason
-        // there rather than silently absent, which also keeps the item focusable for a keyboard or AT
-        // user (WCAG 2.1.1).
+        // An unsigned contract cannot be paused, and since the design system's menu rule the item is
+        // ABSENT there rather than dimmed with a reason under it (Odyssey Design System ·
+        // components/Menu). The branch stays keyed on `unsigned`, so the item is withheld for the
+        // right reason and not by an accident of the Active test above; what it must not carry is an
+        // explanation only an opened menu could deliver.
         Assert.Matches(
-            new Regex(@"else if\s*\(\s*unsigned && c\.Paused is null\s*\)[\s\S]{0,400}?Label\s*=\s*""Pause""[\s\S]{0,300}?Disabled\s*=\s*true[\s\S]{0,300}?Description\s*=\s*""Only a signed contract in force can be paused\."""),
+            new Regex(@"else if\s*\(\s*unsigned && c\.Paused is null\s*\)[\s\S]{0,400}?Label\s*=\s*""Pause""[\s\S]{0,300}?Disabled\s*=\s*true"),
             source);
+        Assert.DoesNotContain("Only a signed contract in force can be paused", source, StringComparison.Ordinal);
     }
 
     /// <summary>

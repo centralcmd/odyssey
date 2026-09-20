@@ -168,3 +168,27 @@ public enum OdsEventRailTone
     /// <summary>A solid dot — a closed end, such as the day the record was added.</summary>
     Filled,
 }
+
+/// <summary>
+/// Which shape of "nothing here yet" an <see cref="OdsEmptyState"/> draws (mirrors the DS
+/// <c>EmptyStateProps.variant</c>): the centered icon-and-CTA panel, or the thin muted sentence
+/// that stands in for an empty table frame or record section.
+/// </summary>
+public enum OdsEmptyStateVariant
+{
+    /// <summary>Centered icon tile, one-sentence title, optional description and a single CTA.</summary>
+    Panel,
+
+    /// <summary>The thin muted sentence — no icon, no action. Reachable directly as <c>OdsEmptyLine</c>.</summary>
+    Line,
+}
+
+/// <summary>Text alignment of the empty sentence — leading inside a frame, centered for a whole list.</summary>
+public enum OdsEmptyLineAlign { Start, Center }
+
+/// <summary>
+/// Tone of an <see cref="OdsRecordSection"/> notice band — Warning for a REVERSIBLE state the
+/// reader can undo, Default for a cap or another standing limit (mirrors the DS
+/// <c>RecordSectionProps.notice.tone</c>).
+/// </summary>
+public enum OdsRecordSectionTone { Default, Warning }

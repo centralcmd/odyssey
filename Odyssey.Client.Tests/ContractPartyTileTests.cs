@@ -69,7 +69,7 @@ public class ContractPartyTileTests
         };
 
     private static IRenderedComponent<DetailHost> Render(
-        ExistingContractParty party, bool canWrite = true, bool archived = false)
+        ExistingContractParty party, bool canWrite = true)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -85,8 +85,7 @@ public class ContractPartyTileTests
 
         return ctx.Render<DetailHost>(p => p
             .Add(h => h.Party, party)
-            .Add(h => h.CanWrite, canWrite)
-            .Add(h => h.Archived, archived));
+            .Add(h => h.CanWrite, canWrite));
     }
 
     /// <summary>AC 1 — a stated role is the overline; the record's own TYPE is the caption.</summary>
@@ -236,24 +235,26 @@ public class ContractPartyTileTests
     }
 
     /// <summary>
-    /// AC 7/14 — on an archived contract Edit party is disabled WITH ITS REASON and stays reachable
-    /// (aria-disabled, not the native attribute, which a roving-tabindex menu would skip), while
-    /// Detach stays enabled because the server still permits it.
+    /// <b>Archiving does not lock a party.</b> The server refuses no party write on an archived
+    /// contract — archival hides it from the default list, it does not freeze it — so Edit and
+    /// Detach are both live, and neither carries a disabled state or a reason for one.
+    ///
+    /// <para>
+    /// The detail view no longer takes an archive flag at all, so the archived case is the same
+    /// render as any other; what this pins is that nothing re-introduces a gate under a different
+    /// name.
+    /// </para>
     /// </summary>
     [Fact]
-    public void On_an_archived_contract_edit_is_disabled_with_its_reason_and_detach_stays()
+    public void Party_writes_are_live_whatever_the_contracts_archive_state()
     {
-        var cut = Render(Party(), archived: true);
+        var cut = Render(Party());
         var labels = MenuLabels(cut);
 
         Assert.Contains("Edit party", labels);
         Assert.Contains("Detach party", labels);
-        Assert.Contains("Unarchive the contract to change its parties.", cut.Markup, StringComparison.Ordinal);
-
-        var item = cut.FindAll("div.mud-menu-item")
-            .First(node => node.TextContent.Contains("Edit party", StringComparison.Ordinal));
-        Assert.Equal("true", item.GetAttribute("aria-disabled"));
-        Assert.False(item.HasAttribute("disabled"));
+        Assert.DoesNotContain("Unarchive", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll("[aria-disabled='true']"));
     }
 
     /// <summary>
@@ -335,8 +336,6 @@ public class ContractPartyTileTests
 
         [Parameter] public bool CanWrite { get; set; }
 
-        [Parameter] public bool Archived { get; set; }
-
         public List<ExistingContractParty> Edited { get; } = [];
 
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
@@ -352,10 +351,9 @@ public class ContractPartyTileTests
                 Parties = [Party],
             });
             builder.AddComponentParameter(3, nameof(ContractDetailView.CanWrite), CanWrite);
-            builder.AddComponentParameter(4, nameof(ContractDetailView.Archived), Archived);
             if (CanWrite)
             {
-                builder.AddComponentParameter(5, nameof(ContractDetailView.OnEditParty),
+                builder.AddComponentParameter(4, nameof(ContractDetailView.OnEditParty),
                     EventCallback.Factory.Create<ExistingContractParty>(this, Edited.Add));
             }
             builder.CloseComponent();

@@ -210,6 +210,18 @@ public sealed class OdsMenuItem
     /// <summary>Destructive action — renders in the error color.</summary>
     public bool Danger { get; set; }
 
+    /// <summary>
+    /// The action cannot be taken on this record — so the item is <b>not rendered at all</b>
+    /// (Odyssey Design System · components/Menu), and any divider or header the omission orphans
+    /// is dropped with it.
+    ///
+    /// <para>
+    /// An item that dims with a reason under it was the earlier treatment; the reason belongs to
+    /// the record rather than to a menu row that has to be opened to find it, so where the user
+    /// needs to know WHY a capability is missing the surface says so in its own copy — an
+    /// <c>OdsRecordSection</c> notice or a helper line.
+    /// </para>
+    /// </summary>
     public bool Disabled { get; set; }
 
     /// <summary>Renders a hairline separator instead of an item.</summary>
@@ -218,24 +230,6 @@ public sealed class OdsMenuItem
     /// <summary>Renders an uppercase group label instead of an item.</summary>
     public string? Header { get; set; }
 
-    /// <summary>
-    /// One line saying WHY an item is unavailable, rendered under <see cref="Label"/> (issue #439).
-    ///
-    /// <para>
-    /// A disabled item that only greys out conveys its meaning by colour alone, so the reason is
-    /// stated in text. Since issue #26 that text is a <b>sibling</b> note wired to the item through
-    /// <c>aria-describedby</c>, matching the design system's Menu — not content inside the item,
-    /// which folded the reason into the item's accessible <em>name</em>.
-    /// </para>
-    ///
-    /// <para>
-    /// Setting this alongside <see cref="Disabled"/> also changes how the item is disabled: it keeps
-    /// <c>aria-disabled</c> but drops MudBlazor's <c>disabled</c> treatment, so it stays reachable by
-    /// keyboard and a screen-reader user can actually get to the explanation rather than skipping a
-    /// silent item. <see cref="OdsMenu"/> suppresses the action and the menu-close itself.
-    /// </para>
-    /// </summary>
-    public string? Description { get; set; }
 }
 
 /// <summary>

@@ -63,7 +63,9 @@
 
     @if (_pts.Count == 0)
     {
-        <div class="odc-lc-empty">@EmptyLabel</div>
+        @* The chart's own empty is the shared muted sentence, centered under the head where the
+           plot would have been (Odyssey Design System · TaxStatements chart card). *@
+        <OdsEmptyLine Align="OdsEmptyLineAlign.Center" Text="@EmptyLabel" />
     }
     else
     {

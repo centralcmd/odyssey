@@ -24,9 +24,11 @@ namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// CRUD for contracts plus party- and file-link management, derived-status computation and the summary
-/// rollup (issue #174). Owns all business validation — the one-of-two (XOR) party invariant, the
-/// archive guard, defensive caps and the data-minimised read projections; the controller owns claim
-/// authorization and the file content-type allow-list.
+/// rollup (issue #174). Owns all business validation — the one-of-two (XOR) party invariant,
+/// defensive caps and the data-minimised read projections; the controller owns claim authorization
+/// and the file content-type allow-list. Note there is no archive guard on the write paths: archival
+/// hides a contract from the default list, it does not lock it, and only <see cref="EnsureArchivable"/>
+/// (the transition INTO archived) still refuses anything on that account.
 ///
 /// All time-relative computation uses a single UTC "today" captured once per request from the injected
 /// <see cref="TimeProvider"/>, so a contract cannot evaluate to different statuses within one request.
@@ -765,7 +767,6 @@ public class ContractService
             return null;
         }
 
-        EnsureNotArchived(contract, "adding parties");
         EnsurePartyTargetXor(request);
 
         await EnsureTargetExists(request, cancellationToken);
@@ -824,8 +825,6 @@ public class ContractService
             // Neither carries a field key, which is what tells them apart from the inline target 404.
             throw new DomainNotFoundException($"Contract ID {contractId} not found.");
         }
-
-        EnsureNotArchived(contract, "changing its parties");
 
         // Scoped by BOTH ids, exactly as DeleteParty is: a valid party id from another contract is a
         // 404, never a silent cross-contract edit (§7.5).
@@ -934,15 +933,6 @@ public class ContractService
         return ToPartyDto(loaded, contacts);
     }
 
-    private static void EnsureNotArchived(Contract contract, string what)
-    {
-        if (contract.Archived is not null)
-        {
-            throw new DomainUnprocessableException(
-                $"Contract {contract.ContractId} is archived; unarchive it before {what}.");
-        }
-    }
-
     // One-of-two (XOR): exactly one target id must be set.
     private static void EnsurePartyTargetXor(ContractPartyRequest request)
     {
@@ -1020,12 +1010,6 @@ public class ContractService
             return null;
         }
 
-        if (contract.Archived is not null)
-        {
-            throw new DomainValidationException(
-                $"Contract {contractId} is archived; unarchive it before attaching files.");
-        }
-
         var (validFrom, validTo, issuedAt) = DocumentValidity.Normalize(
             request.ValidFrom, request.ValidTo, request.IssuedAt);
         await EnsureIssuerExists(request.IssuedBy, cancellationToken);
@@ -1085,12 +1069,6 @@ public class ContractService
         if (contract is null)
         {
             throw new DomainNotFoundException($"Contract ID {contractId} not found.");
-        }
-
-        if (contract.Archived is not null)
-        {
-            throw new DomainValidationException(
-                $"Contract {contractId} is archived; unarchive it before editing its documents.");
         }
 
         var link = await context.ContractFiles

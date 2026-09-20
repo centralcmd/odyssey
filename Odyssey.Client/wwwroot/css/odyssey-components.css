@@ -234,6 +234,40 @@
 .odc-empty-desc { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 42ch; }
 .odc-empty-actions { margin-top: var(--space-2); }
 
+/* Line variant — the thin muted sentence that stands in for an empty table frame or an empty
+   record section, where the panel above would overpower the rows it replaces. No icon, no action:
+   it states the absence and nothing else. A section that needs a CTA has outgrown the line and
+   takes the panel instead (Odyssey Design System · components/EmptyLine). */
+.odc-empty.line {
+    display: block; align-items: initial; text-align: left; gap: 0;
+    padding: var(--space-4);
+    font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}
+.odc-empty.line.center { text-align: center; }
+.odc-empty.line.pad-sm { padding: var(--space-3) var(--space-4); }
+.odc-empty.line.pad-lg { padding: var(--space-12) var(--space-6); }
+
+/* ---------- Record section (divider + notice + view) ---------- */
+.odc-recordsection { display: block; }
+/* The refused-write band: stated where the writing would happen rather than left to a dialog that
+   saves and then fails. Warning tone for a REVERSIBLE state, neutral for a cap. The icon is
+   decorative — the sentence carries the whole message, so the state never rides on colour or a
+   glyph alone (WCAG 1.4.1). */
+.odc-recordsection-notice {
+    display: flex; align-items: flex-start; gap: var(--space-3);
+    margin: 0 var(--space-4) var(--space-3); padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+    background: var(--mud-palette-background);
+    font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}
+.odc-recordsection-notice .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
+/* Mirrors the design system's own literal (components.css) for the warning tint, the same
+   deliberate oklch exception the pickers carry — these are not tokenized upstream either. */
+.odc-recordsection-notice.warning { border-color: oklch(0.80 0.13 85 / 0.45); background: oklch(0.80 0.13 85 / 0.08); }
+.odc-recordsection-notice.warning .material-icons { color: oklch(0.80 0.13 85); }
+
 /* ---------- Progress bar (determinate) ---------- */
 .odc-progress {
     width: 100%; height: 6px; border-radius: var(--radius-pill);
@@ -411,7 +445,7 @@
 .odc-lc-delta { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); margin-top: 5px; white-space: nowrap; }
 .odc-lc-delta.income  { color: var(--finance-income); }
 .odc-lc-delta.expense { color: var(--finance-expense); }
-.odc-lc-empty { padding: 28px 4px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+/* .odc-lc-empty retired — an empty series renders the shared <OdsEmptyLine> (.odc-empty.line). */
 .odc-line-svg { width: 100%; height: auto; display: block; }
 .odc-lc-axis { font: var(--fw-regular) 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
 /* Zero baseline — drawn only when the value domain straddles zero, so it is
@@ -1471,39 +1505,12 @@
 .mud-menu-item:hover .odc-menu-item-trail,
 .mud-menu-item:focus-visible .odc-menu-item-trail { opacity: 1; }
 .odc-menu-item-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-/* The shell OdsMenu renders itself for an item that is unavailable but carries a reason — MudMenuItem
-   cannot be made to keep such an item reachable. It mirrors what MudBlazor emits for an item, minus
-   the interaction affordances it must not have. */
-.mud-menu-item.odc-menu-item-static { cursor: not-allowed; }
-.mud-menu-item.odc-menu-item-static:hover { background: none; }
-.mud-menu-item.odc-menu-item-static:focus-visible {
-    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
-    outline-offset: -2px;
-}
-/* The reason a disabled item is unavailable (OdsMenuItem.Description), as a SIBLING note wired via
-   aria-describedby — Odyssey Design System · components.css `.odc-menu-note`. It sits under the item
-   it explains, indented past the icon gutter so the two read as one block. */
-.odc-menu-note {
-    margin: 0; padding: 0 10px 8px 38px; max-width: 268px;
-    font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans);
-    color: var(--mud-palette-text-secondary);
-}
-/* Unavailability is conveyed by a muted COLOUR, which is contrast-checkable, never by opacity.
-   MudBlazor disables an item with `.mud-disabled { opacity: .5 }`, and opacity applies AFTER the
-   child's own colour — so it compounds, and no colour choice recovers it: even pure black caps under
-   4:1 on white at 50%. That is why the static shell (which never carries `.mud-disabled`) and the
-   plain disabled item are both muted here rather than dimmed, and why the opacity is overridden for
-   the latter. The requirement is the outcome — label and icon at >= 4.5:1 — not the survival of any
-   particular rule. */
-.mud-menu-item.odc-menu-item-static .odc-menu-item,
-.mud-menu-item.odc-menu-item-static .odc-menu-item-ic {
-    color: var(--mud-palette-text-secondary);
-}
-.mud-menu-item.mud-disabled:has(.odc-menu-item) { opacity: 1; }
-.mud-menu-item.mud-disabled:has(.odc-menu-item) .odc-menu-item,
-.mud-menu-item.mud-disabled:has(.odc-menu-item) .odc-menu-item-ic {
-    color: var(--mud-palette-text-secondary) !important;
-}
+/* An action a record cannot take is ABSENT from its menu rather than dimmed with an explanation
+   (Odyssey Design System · components/Menu), so there is no disabled-item treatment to style: the
+   static shell, its sibling note and the muted-colour overrides that carried the reason all went
+   with the rule that rendered them. Where the user needs to know WHY a capability is missing, the
+   surface says so in its own copy — a section notice (.odc-recordsection-notice) or a helper line,
+   never a menu row. */
 
 /* ---------- Record table (sortable · expandable · editable) ---------- */
 .odc-rec {
@@ -2507,14 +2514,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-term.past { text-decoration: line-through; }
 .con-tile-menu { position: absolute; top: 6px; right: 6px; z-index: 1; }
 
-/* Empty-state for parties / documents inside a section */
-.con-empty-line {
-  display: flex; align-items: center; gap: 10px; padding: 18px 16px; margin: 0 16px 16px;
-  border: 1px dashed var(--mud-palette-divider); border-radius: 10px;
-  color: var(--mud-palette-text-secondary); font: 400 13px/1.45 var(--font-sans);
-  background: var(--mud-palette-background);
-}
-.con-empty-line .material-icons { font-size: 20px; opacity: 0.7; flex: none; }
+/* Empty sections use the DS EmptyLine (.odc-empty.line) — the same treatment an empty table frame
+   gets on the account record, so a "nothing here yet" sentence reads identically everywhere. */
 /* Documents section wrapper (OdsFilesTable lives inside). NO overflow-x here: with the four
    validity columns the table is wider than a narrow record body, but OdsFilesTable already wraps
    itself in .odc-ft-scroll, which owns that overflow AND is focusable so the off-screen cells are
@@ -2525,21 +2526,9 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ---- Terms sections (contract price history, issue #135) ----
    The values in force render as the record's own InfoTiles and the history reuses the shared
-   account-terms table (.trm-tbl), so only the contract-specific chrome lives here. A refused write is
-   stated where the writing would happen, in the warning tone a REVERSIBLE state earns — restoring the
-   contract is what allows the write. The icon is decorative: the sentence carries the whole message,
-   so the state never rides on colour or a glyph alone (WCAG 1.4.1). */
-.con-trm-notice {
-  display: flex; align-items: flex-start; gap: 10px;
-  margin: 0 16px 16px; padding: 12px 14px; border-radius: 10px;
-  font: 400 12.5px/1.5 var(--font-sans);
-  color: var(--mud-palette-text-primary);
-  border: 1px solid var(--mud-palette-divider);
-  background: var(--mud-palette-background);
-}
-.con-trm-notice .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
-.con-trm-notice.archived { border-color: oklch(0.80 0.13 85 / 0.45); background: oklch(0.80 0.13 85 / 0.08); }
-.con-trm-notice.archived .material-icons { color: oklch(0.80 0.13 85); }
+   account-terms table (.trm-tbl), so only the contract-specific chrome lives here. The refused-write
+   band is now the shared .odc-recordsection-notice, and archiving no longer refuses anything: the
+   per-contract cap is the only thing that blocks a term write. */
 /* Section tables read as cards, like the charts and tables on the other record pages. */
 .odc-record-body .con-tbl-frame {
   background: var(--mud-palette-surface);

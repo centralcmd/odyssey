@@ -290,8 +290,13 @@ public class ContractsApiTests
         Assert.Equal(HttpStatusCode.UnprocessableEntity, overCap.StatusCode);
     }
 
+    /// <summary>
+    /// <b>Archiving does not lock a contract.</b> A party is added to an archived contract exactly as
+    /// to a live one — archival hides it from the default list, it does not freeze it — and the
+    /// archive stamp survives the write.
+    /// </summary>
     [Fact]
-    public async Task AddParty_OnArchivedContract_ReturnsUnprocessable()
+    public async Task AddParty_OnArchivedContract_Succeeds()
     {
         await using var factory = new ApiFactory(ReadWrite);
         var (accountId, _, _) = await SeedTargetsAsync(factory);
@@ -301,11 +306,12 @@ public class ContractsApiTests
         (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isArchived: true, endDate: Lapsed)))
             .EnsureSuccessStatusCode();
 
-        // 422, not 400 (issue #121 §5/§9): the request is well-formed, it is the contract's state
-        // that cannot process it — the same class as the party cap, and the class the client renders
-        // as a toast carrying the server's message rather than as a field error.
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId });
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, add.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, add.StatusCode);
+
+        var contract = await GetAsync(client, id);
+        Assert.Single(contract.Parties);
+        Assert.NotNull(contract.Archived);
     }
 
     // ── Roles and terms (issue #121) ──────────────────────────────────────────
@@ -547,9 +553,13 @@ public class ContractsApiTests
         Assert.Empty((await GetAsync(client, id)).Parties);
     }
 
-    /// <summary>AC 13 — both the add and the edit are refused on an archived contract, with 422.</summary>
+    /// <summary>
+    /// Editing and detaching a party both work on an archived contract, the same as adding one. The
+    /// three used to split — add and edit refused with a 422 while detach was permitted — and that
+    /// asymmetry is gone rather than harmonised in the refusing direction.
+    /// </summary>
     [Fact]
-    public async Task UpdateParty_OnArchivedContract_ReturnsUnprocessable()
+    public async Task UpdateAndDetachParty_OnArchivedContract_BothSucceed()
     {
         await using var factory = new ApiFactory(ReadWrite);
         var (accountId, _, _) = await SeedTargetsAsync(factory);
@@ -565,10 +575,9 @@ public class ContractsApiTests
 
         var put = await client.PutAsJsonAsync($"{Path}/{id}/parties/{party!.ContractPartyId}",
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer });
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, put.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        Assert.Equal(ContractPartyRole.Buyer, Assert.Single((await GetAsync(client, id)).Parties).Role);
 
-        // Detach stays permitted on an archived contract — pre-existing behaviour, deliberately
-        // unchanged (§5.3), and the asymmetry with add/edit is out of this issue's scope.
         Assert.Equal(HttpStatusCode.NoContent,
             (await client.DeleteAsync($"{Path}/{id}/parties/{party.ContractPartyId}")).StatusCode);
     }
@@ -1310,11 +1319,12 @@ public class ContractsApiTests
     }
 
     /// <summary>
-    /// AC 19: pause is not a lock. A paused contract still accepts a party, a term and a file, where
-    /// an archived one refuses the first two.
+    /// AC 19: pause is not a lock — a paused contract still accepts a party, a term and a file. Nor,
+    /// since the design system's archive rule, is archiving: the same three writes are exercised on
+    /// an archived contract below, where two of them used to be refused.
     /// </summary>
     [Fact]
-    public async Task PausedContract_StillAcceptsPartyTermAndFileWrites()
+    public async Task NeitherPauseNorArchive_BlocksPartyTermOrFileWrites()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
         var (accountId, _, _) = await SeedTargetsAsync(factory);
@@ -1333,13 +1343,21 @@ public class ContractsApiTests
             (await client.PostAsJsonAsync($"{Path}/{id}/files", AttachRequest(fileId))).StatusCode);
         await AddMonthlyFeeAsync(client, id, 100m, "USD");
 
-        // The contrast: the same party write on an archived contract is still refused.
+        // And an archived contract takes all three too — archival hides a contract from the default
+        // list, it does not freeze it, so the closing rent and the handover document still land.
         var archived = await CreateAsync(client);
         (await client.PutAsJsonAsync($"{Path}/{archived}",
             UpdateContract(isPaused: false, isArchived: true, endDate: Lapsed))).EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.UnprocessableEntity,
+
+        var archivedFileId = await SeedFileAsync(factory, "closing.pdf", "application/pdf");
+        Assert.Equal(HttpStatusCode.Created,
             (await client.PostAsJsonAsync($"{Path}/{archived}/parties",
                 new ContractPartyRequest { AccountId = accountId })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created,
+            (await client.PostAsJsonAsync($"{Path}/{archived}/files", AttachRequest(archivedFileId))).StatusCode);
+        await AddMonthlyFeeAsync(client, archived, 100m, "USD");
+
+        Assert.Equal(ContractStatus.Archived, (await GetAsync(client, archived)).Status);
     }
 
     /// <summary>

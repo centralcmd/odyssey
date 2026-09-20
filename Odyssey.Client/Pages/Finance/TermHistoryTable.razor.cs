@@ -27,9 +27,9 @@ public partial class TermHistoryTable
     public Func<decimal, string?, string> FormatMoney { get; set; } = (v, _) => v.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Gates the per-row edit / delete actions. False drops the actions column entirely rather than
-    /// disabling it: on an archived contract every write is refused, so an affordance that could only
-    /// fail is not offered.
+    /// Gates the per-row edit / delete actions on PERMISSION. False drops the actions column entirely
+    /// rather than disabling it: an affordance that could only fail is not offered. The owner's
+    /// archive state is not a gate — an archived contract edits its terms exactly as a live one does.
     /// </summary>
     [Parameter] public bool CanWrite { get; set; }
 

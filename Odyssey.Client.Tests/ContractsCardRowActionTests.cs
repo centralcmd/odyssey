@@ -4,16 +4,17 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// <c>ContractsCard</c>'s row action menu: the archived-contract state of <b>New party</b>
-/// (#122 §3 state 14 / AC 7) and of <b>New term</b> (#135), plus how the latter's request reaches the
-/// section that serves it.
+/// <c>ContractsCard</c>'s row action menu: that none of the record's write actions is gated on the
+/// archive state, and how the New term / New event requests reach the sections that serve them.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This file exists because that branch lives in a DIFFERENT file from the party tiles
-/// (<c>ContractsCard.razor.cs</c>, not <c>ContractDetailView.razor.cs</c>) and had no automated cover
-/// at all — #122 §4 calls it out as easy to miss for exactly that reason. The tile's half of the same
-/// rule IS covered behaviourally, by <see cref="ContractPartyTileTests"/>, which renders the menu.
+/// <b>Archiving never locks a contract.</b> New party, New term, New event and Upload document are
+/// all offered on an archived contract, because the server refuses none of them — archival hides a
+/// contract from the default list, it does not freeze it, and the closing rent, the final invoice
+/// and the handover note are exactly what get recorded after an agreement has ended. This file used
+/// to pin the opposite for three of the four; what it pins now is that no "consistency" pass
+/// re-introduces a gate the API does not have.
 /// </para>
 /// <para>
 /// A source lint rather than a render, deliberately and with a cost. <c>ContractsCard</c> is an
@@ -21,19 +22,12 @@ namespace Odyssey.Client.Tests;
 /// the JS observer bUnit has no real implementation of — a render test here asserts against an empty
 /// list and passes whatever the branch says. <see cref="ContactAvatarSurfaceTests"/> pins the
 /// equivalent rule on the sibling contacts page the same way. The lint's limit is honest: it proves
-/// the branch is present and correctly shaped, not that it fires. What makes that worth having is that
-/// the defect it guards IS a literal in source — the reason text deleted, or <c>Disabled</c> set
-/// without <c>Description</c>, which is what silently turns the item natively disabled and drops it
-/// out of the roving tab order (WCAG 2.1.1).
+/// the branch is present and correctly shaped, not that it fires. The tile's half of the party rule
+/// IS covered behaviourally, by <see cref="ContractPartyTileTests"/>, which renders the menu.
 /// </para>
 /// </remarks>
 public class ContractsCardRowActionTests
 {
-    private const string ArchivedReason = "Unarchive the contract to change its parties.";
-    // The design system's own copy for the archived case (ContractTerms.jsx's termBlock note), matched
-    // verbatim: a reason the reader can act on is the whole point of offering the item disabled.
-    private const string ArchivedTermReason = "The contract has to be restored first.";
-
     /// <summary>
     /// The source with comments stripped. The file's own doc comments legitimately DISCUSS the reason
     /// string and the disabled branch, and a lint a comment can satisfy is a lint that proves nothing.
@@ -48,38 +42,50 @@ public class ContractsCardRowActionTests
     }
 
     /// <summary>
-    /// AC 7 — New party is offered on an archived contract with its reason IN TEXT, not hidden and not
-    /// silently inert. Both halves are asserted: the branch keys on <c>archived</c>, and the disabled
-    /// item carries a <c>Description</c>.
+    /// None of the four record write actions is gated on the archive state. Each is declared exactly
+    /// once and as a plain live item, which is what says there is no <c>archived ?</c> ternary in
+    /// front of it — a gated action declares its label twice, once per branch.
     /// </summary>
-    [Fact]
-    public void New_party_is_disabled_with_its_reason_on_an_archived_contract()
+    /// <remarks>
+    /// The single-occurrence assertion is the load-bearing one. A regex that merely finds a live
+    /// <c>items.Add(new OdsMenuItem { … OnClick … })</c> would still match if a disabled branch were
+    /// added beside it, because the live branch of a ternary looks exactly like an ungated item.
+    /// </remarks>
+    [Theory]
+    [InlineData("New party")]
+    [InlineData("New term")]
+    [InlineData("New event")]
+    [InlineData("Upload document")]
+    public void No_record_write_action_is_archive_gated(string label)
     {
         var source = CardSource();
 
-        // One ternary on `archived`, producing a Disabled item with the reason, or a live one.
         Assert.Matches(
-            new Regex(@"items\.Add\(\s*archived\s*\?[\s\S]{0,600}?Label\s*=\s*""New party""[\s\S]{0,400}?Disabled\s*=\s*true",
-                RegexOptions.None),
+            new Regex(@"items\.Add\(new OdsMenuItem\s*\{[^}]*Label\s*=\s*""" + Regex.Escape(label) + @"""[^}]*OnClick"),
             source);
-        Assert.Contains(ArchivedReason, source, StringComparison.Ordinal);
+        Assert.Single(Regex.Matches(source, @"Label\s*=\s*""" + Regex.Escape(label) + @""""));
     }
 
     /// <summary>
-    /// #135 — New term takes the same treatment as its sibling: offered on an archived contract with
-    /// its reason IN TEXT, never hidden and never silently inert. The server refuses every term write
-    /// on an archived contract, so an action that could only fail is explained rather than removed.
+    /// The reason an unavailable action cannot be taken is never carried as a menu row. The four
+    /// write actions above are ungated outright; the two lifecycle items that CAN be unavailable
+    /// (Pause on an unsigned contract, Archive before it has ended) are simply absent when they are,
+    /// and must not acquire an explanation that only an opened menu could deliver.
     /// </summary>
     [Fact]
-    public void New_term_is_disabled_with_its_reason_on_an_archived_contract()
+    public void An_unavailable_row_action_carries_no_explanatory_note()
     {
         var source = CardSource();
 
-        Assert.Matches(
-            new Regex(@"items\.Add\(\s*archived\s*\?[\s\S]{0,600}?Label\s*=\s*""New term""[\s\S]{0,400}?Disabled\s*=\s*true",
-                RegexOptions.None),
-            source);
-        Assert.Contains(ArchivedTermReason, source, StringComparison.Ordinal);
+        // Scoped to the menu items: `Description` is an ordinary field name elsewhere in this file
+        // (a contract document carries one), so an unscoped match would fail for the wrong reason.
+        var items = Regex.Matches(source, @"new OdsMenuItem\s*\{[^}]*\}");
+        Assert.NotEmpty(items);
+        Assert.All(items, match =>
+            Assert.DoesNotContain("Description", match.Value, StringComparison.Ordinal));
+
+        Assert.DoesNotContain("Unarchive the contract", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("has to be restored", source, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -113,32 +119,6 @@ public class ContractsCardRowActionTests
     }
 
     /// <summary>
-    /// #138 — <b>New event</b> is the ONE row action that is not archive-gated, and this pins the
-    /// asymmetry rather than letting a later "consistency" pass remove it. The server accepts every
-    /// event write on an archived contract (§8.6): archival hides a contract, it does not lock its
-    /// history. Disabling the item to match its two neighbours would refuse something the API allows,
-    /// and would do it silently — the log would simply become unwritable on exactly the records whose
-    /// history is most likely to be looked back at.
-    /// </summary>
-    [Fact]
-    public void New_event_is_offered_unconditionally_and_is_never_archive_gated()
-    {
-        var source = CardSource();
-
-        // The item exists and is a plain, live entry — no `archived ?` ternary in front of it.
-        Assert.Matches(
-            new Regex(@"items\.Add\(new OdsMenuItem\s*\{[^}]*Label\s*=\s*""New event""[^}]*OnClick"),
-            source);
-
-        // And it is declared ONCE. Its two archive-gated neighbours each declare the label twice —
-        // once on the disabled branch and once on the live one — so a single occurrence is what says
-        // there is no ternary here, and it says it without a window a neighbouring ternary can
-        // reach across.
-        Assert.Single(Regex.Matches(source, @"Label\s*=\s*""New event"""));
-        Assert.Equal(2, Regex.Matches(source, @"Label\s*=\s*""New term""").Count);
-    }
-
-    /// <summary>
     /// #138 — the "New event" request is routed BY CONTRACT ID, for the same reason the term one is
     /// (see above): a field holding the expanded body is rebound a render too late, so it can still
     /// point at the previously expanded record when the click is handled.
@@ -155,27 +135,9 @@ public class ContractsCardRowActionTests
     }
 
     /// <summary>
-    /// The load-bearing half: <c>Disabled</c> is paired with <c>Description</c>. That pairing is what
-    /// makes <c>OdsMenu</c> render <c>aria-disabled</c> and keep the item focusable instead of applying
-    /// MudBlazor's native <c>disabled</c>, which a roving-tabindex menu SKIPS — putting the very reason
-    /// text this rule requires out of reach of a keyboard or AT user. Dropping the Description is
-    /// therefore not a cosmetic regression but an accessibility one, and it is invisible in a diff.
-    /// </summary>
-    [Fact]
-    public void Every_disabled_row_action_states_a_reason()
-    {
-        var source = CardSource();
-
-        var disabled = Regex.Matches(source, @"new OdsMenuItem\s*\{[^}]*Disabled\s*=\s*true[^}]*\}");
-        Assert.NotEmpty(disabled);
-        Assert.All(disabled, match =>
-            Assert.Contains("Description", match.Value, StringComparison.Ordinal));
-    }
-
-    /// <summary>
-    /// The page must never reach for the native attribute directly. <c>OdsMenuItem.Disabled</c> +
-    /// <c>Description</c> is the one supported way to express this, and it is what
-    /// <c>OdsMenuDisabledItemTests</c> pins on the component side.
+    /// The page must never reach for the native attribute directly. <c>OdsMenuItem.Disabled</c> is
+    /// the one supported way to express this, and <c>OdsMenuUnavailableItemTests</c> pins what it
+    /// does on the component side — the item is not rendered at all.
     /// </summary>
     [Fact]
     public void The_page_never_hand_rolls_a_native_disabled_menu_item()

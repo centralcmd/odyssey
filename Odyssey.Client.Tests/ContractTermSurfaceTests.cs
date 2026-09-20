@@ -149,19 +149,33 @@ public class ContractTermSurfaceTests
         Assert.Contains("monthly", cut.Markup, StringComparison.OrdinalIgnoreCase);
     }
 
-    // ── The archive guard, drawn ─────────────────────────────────────────────
+    // ── The archive state changes nothing here ───────────────────────────────
 
+    /// <summary>
+    /// <b>Archiving does not lock a contract's terms.</b> The section keeps its rows, its per-row
+    /// Edit and Delete, and states no refusal — archival hides a contract from the default list, and
+    /// the final rent or the closing fee is exactly what gets recorded after an agreement has ended.
+    ///
+    /// <para>
+    /// The section no longer takes an archive flag at all, so this renders an archived contract and
+    /// asserts it is indistinguishable from a live one. The per-contract cap is the only thing that
+    /// refuses a term write, and it is enforced server-side.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void An_archived_contract_states_the_refusal_and_keeps_its_history_readable()
+    public void An_archived_contract_still_records_and_edits_its_terms()
     {
         var cut = RenderSection(Lease(archived: Past(5)), [Fee("Monthly rent", 14500m, Past(100))], canWrite: true);
 
-        var notice = cut.Find(".con-trm-notice.archived");
-        Assert.Contains("restoring", notice.TextContent, StringComparison.OrdinalIgnoreCase);
-
-        // The rows stay; only the per-row write affordances go.
         Assert.Contains("Monthly rent", cut.Markup, StringComparison.Ordinal);
-        Assert.Empty(cut.FindAll("td.trm-cell-act"));
+        Assert.NotEmpty(cut.FindAll("td.trm-cell-act"));
+        Assert.DoesNotContain("restoring", cut.Markup, StringComparison.OrdinalIgnoreCase);
+
+        // No notice band of ANY kind. Selected by role rather than by class: the retired
+        // `.con-trm-notice` and the shared `.odc-recordsection-notice` both carry role="note", so a
+        // reintroduced refusal is caught whichever of the two shapes it comes back in — naming one
+        // class would pass vacuously against the other.
+        Assert.Empty(cut.FindAll("[role='note']"));
     }
 
     [Fact]
@@ -308,6 +322,55 @@ public class ContractTermSurfaceTests
             Times.Never);
     }
 
+    /// <summary>
+    /// <b>The dialog posts on an ARCHIVED contract.</b> This is the half the section-level tests
+    /// cannot reach: they assert the section renders writable and the row menu offers <b>New term</b>,
+    /// but neither would catch a dialog that opens, fills and then refuses on submit.
+    ///
+    /// <para>
+    /// That is exactly what happened — <c>AddTermDialog</c> carried its own restated archive guard,
+    /// written when the server had one, whose own comment called itself "the second line, not the
+    /// first". Removing the server guard and the row-menu gate left it as the only refusal on the
+    /// path: the menu offered the write and the dialog dead-ended it. A guard restated in a second
+    /// place is a guard that outlives the first, so this pins the submit itself.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void The_dialog_posts_a_term_on_an_archived_contract()
+    {
+        var (cut, client) = RenderDialogWithClient(Lease(archived: Past(5)));
+
+        // A PERCENTAGE term, so the contract's own "an amount must name a currency" rule — which is
+        // a separate refusal with its own test above — cannot be what decides this one.
+        cut.FindAll("button")
+            .Single(b => b.TextContent.Contains("Percentage", StringComparison.Ordinal))
+            .Click();
+
+        // A fee is NAMED, so its series keeps its own history; the rule has its own coverage and is
+        // satisfied here rather than left to decide this test. OdsField labels its input through a
+        // <label for>, so the field is reached the way a user reaches it rather than by position.
+        var nameFor = cut.FindAll("label")
+            .First(l => l.TextContent.Contains("Name", StringComparison.Ordinal))
+            .GetAttribute("for");
+        cut.Find($"#{nameFor}").Input("Late-payment interest");
+
+        var value = cut.FindAll("input")
+            .First(i => i.GetAttribute("aria-label")?.Contains("Value", StringComparison.Ordinal) == true);
+        value.Input("3.25");
+
+        cut.FindAll("button")
+            .Single(b => b.TextContent.Contains("Create term", StringComparison.Ordinal))
+            .Click();
+
+        var errors = cut.FindAll(".odc-field-error, .mud-input-error, [aria-invalid='true']");
+        Assert.DoesNotContain("archived", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("restore", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(errors);
+        client.Verify(
+            c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewTerm>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
     // ── Harness ──────────────────────────────────────────────────────────────
 
     private static int CountOccurrences(string haystack, string needle)
@@ -336,7 +399,6 @@ public class ContractTermSurfaceTests
         var cut = ctx.Render<ContractTermsSection>(p => p
             .Add(s => s.Contract, contract)
             .Add(s => s.CanWrite, canWrite)
-            .Add(s => s.Archived, contract.Archived is not null)
             .Add(s => s.FormatMoney, (decimal value, string? currency) =>
                 value.ToString("#,##0.##", CultureInfo.InvariantCulture) + " " + (currency ?? "NOK")));
 

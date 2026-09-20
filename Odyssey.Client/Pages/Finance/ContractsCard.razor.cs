@@ -915,16 +915,13 @@ public partial class ContractsCard
                 });
             }
 
-            // Pause is enterable from Active ALONE, so the action is simply ABSENT elsewhere rather
-            // than disabled-with-a-reason like Archive. The difference is whether there is an
-            // instruction to give: Archive's precondition ("the contract has to end first") is a step
-            // the reader can act on, while "this contract is upcoming" is not. Resume is offered
+            // Pause is enterable from Active ALONE, so the action is ABSENT everywhere else — as
+            // every unavailable action now is (design system · components/Menu). The unsigned case
+            // used to be the exception, offered dimmed with "sign it first" as an instruction the
+            // reader could act on; that whole treatment is retired, and where a precondition still
+            // needs stating the RECORD states it, not a menu row nobody has opened. Resume is offered
             // wherever a stamp exists, in any state — clearing a pause is never refused, which is
             // what stops an archived or expired contract being stranded holding one.
-            //
-            // An UNSIGNED contract is the one non-Active case that DOES have an instruction to give —
-            // sign it — so it gets the disabled-with-a-reason treatment instead of the silent
-            // absence, which also keeps the item focusable for a keyboard or AT user (WCAG 2.1.1).
             if (c.Status == ContractStatus.Active)
             {
                 items.Add(new OdsMenuItem
@@ -936,12 +933,14 @@ public partial class ContractsCard
             }
             else if (unsigned && c.Paused is null)
             {
+                // Only a signed contract in force can be paused, so the item is absent rather than
+                // dimmed with a reason (design system · components/Menu). The status chip on the
+                // record head already says the contract is unsigned.
                 items.Add(new OdsMenuItem
                 {
                     Icon = "pause_circle",
                     Label = "Pause",
                     Disabled = true,
-                    Description = "Only a signed contract in force can be paused.",
                 });
             }
             else if (c.Paused is not null)
@@ -953,47 +952,24 @@ public partial class ContractsCard
                     OnClick = EventCallback.Factory.Create(this, () => TogglePause(c)),
                 });
             }
-            // The server refuses a party add on an archived contract (422), so the action is offered
-            // with its reason rather than hidden — and Disabled + Description keeps it FOCUSABLE
-            // (aria-disabled, no native disabled), so a keyboard or AT user can actually reach the
-            // explanation instead of skipping a silent item (WCAG 2.1.1).
-            items.Add(archived
-                ? new OdsMenuItem
-                {
-                    Icon = "group_add",
-                    Label = "New party",
-                    Disabled = true,
-                    Description = "Unarchive the contract to change its parties.",
-                }
-                : new OdsMenuItem
-                {
-                    Icon = "group_add",
-                    Label = "New party",
-                    OnClick = EventCallback.Factory.Create(this, () => AddParty(c.ContractId)),
-                });
+            // None of the three is gated on the archive state. Archiving hides a contract from the
+            // default list; it does not lock it, and the closing rent, the final invoice and the
+            // handover note are exactly what get recorded after an agreement has ended. The server
+            // refuses none of these writes on an archived contract either.
+            items.Add(new OdsMenuItem
+            {
+                Icon = "group_add",
+                Label = "New party",
+                OnClick = EventCallback.Factory.Create(this, () => AddParty(c.ContractId)),
+            });
 
-            // The server refuses every term write on an archived contract, so the action is offered
-            // with its reason rather than hidden — the same Disabled + Description treatment New
-            // party gets, which keeps the item FOCUSABLE so a keyboard or AT user reaches the
-            // explanation instead of skipping a silent item (WCAG 2.1.1).
-            items.Add(archived
-                ? new OdsMenuItem
-                {
-                    Icon = "sell",
-                    Label = "New term",
-                    Disabled = true,
-                    Description = "The contract has to be restored first.",
-                }
-                : new OdsMenuItem
-                {
-                    Icon = "sell",
-                    Label = "New term",
-                    OnClick = EventCallback.Factory.Create(this, () => AddTerm(c.ContractId)),
-                });
+            items.Add(new OdsMenuItem
+            {
+                Icon = "sell",
+                Label = "New term",
+                OnClick = EventCallback.Factory.Create(this, () => AddTerm(c.ContractId)),
+            });
 
-            // NOT gated on the archive state, unlike the two above (issue #138 §8.6). The server
-            // accepts an event write on an archived contract, so a disabled item here would refuse
-            // something the API allows — archival hides a contract, it does not lock its history.
             items.Add(new OdsMenuItem
             {
                 Icon = "history",
@@ -1004,25 +980,14 @@ public partial class ContractsCard
 
         if (_canUploadFiles)
         {
-            // Gated like New party and New term, and for the same reason: ContractService.AttachFile
-            // refuses an archived contract with a 400, so an ungated item lets a user fill out the
-            // whole upload dialog and receive a per-file failure toast on submit. Disabled with its
-            // reason rather than hidden, which keeps the item focusable so the explanation is
-            // reachable (WCAG 2.1.1). Detach is NOT gated — see ContractFilesTable.
-            items.Add(archived
-                ? new OdsMenuItem
-                {
-                    Icon = "upload_file",
-                    Label = "Upload document",
-                    Disabled = true,
-                    Description = "Restore the contract to attach documents.",
-                }
-                : new OdsMenuItem
-                {
-                    Icon = "upload_file",
-                    Label = "Upload document",
-                    OnClick = EventCallback.Factory.Create(this, () => AttachDocument(c.ContractId)),
-                });
+            // Ungated like New party, New term and New event: ContractService.AttachFile carries no
+            // archive guard, so an archived contract takes a document exactly as any other does.
+            items.Add(new OdsMenuItem
+            {
+                Icon = "upload_file",
+                Label = "Upload document",
+                OnClick = EventCallback.Factory.Create(this, () => AttachDocument(c.ContractId)),
+            });
         }
 
         items.Add(new OdsMenuItem
@@ -1047,12 +1012,13 @@ public partial class ContractsCard
                     Label = archived ? "Restore" : "Archive",
                     OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(c)),
                 }
+                // A contract that is neither ended, archived nor unsigned cannot be archived, so
+                // the item is absent rather than dimmed with a reason.
                 : new OdsMenuItem
                 {
                     Icon = "inventory_2",
                     Label = "Archive",
                     Disabled = true,
-                    Description = "The contract has to end first.",
                 });
         }
 

@@ -168,7 +168,7 @@ else
     private Guid? _openDocsId;
 
     private readonly RenderFragment _emptyRenewalDocs =
-        @<div class="empty-line" style="padding:16px;">No documents on this period yet — attach the invoice, schedule of cover, or a claim document.</div>;
+        @<OdsEmptyLine Text="No documents on this period yet — attach the invoice, schedule of cover, or a claim document." />;
 
     protected override void OnParametersSet()
     {

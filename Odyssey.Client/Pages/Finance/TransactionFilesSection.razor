@@ -50,7 +50,7 @@
         }
         else if (!VisibleItems.Any())
         {
-            <div class="empty-line">No files attached to this transaction yet.</div>
+            <OdsEmptyLine Text="No files attached to this transaction yet." />
         }
         else
         {
@@ -158,14 +158,13 @@
     // the file-specific items (Preview / Download).
     private IReadOnlyList<OdsMenuItem> BuildMenu(ExistingTransactionFile file)
     {
-        var id = file.FileMetadata.Id;
         var menu = new List<OdsMenuItem>();
 
         if (CanDownload && IsPreviewable(file.FileMetadata.ContentType))
-            menu.Add(new OdsMenuItem { Icon = "visibility", Label = "Preview", Disabled = previewingFiles.Contains(id), OnClick = EventCallback.Factory.Create(this, () => PreviewFileAsync(file)) });
+            menu.Add(new OdsMenuItem { Icon = "visibility", Label = "Preview", OnClick = EventCallback.Factory.Create(this, () => PreviewFileAsync(file)) });
 
         if (CanDownload)
-            menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", Disabled = downloadingFiles.Contains(id), OnClick = EventCallback.Factory.Create(this, () => DownloadFileAsync(file)) });
+            menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadFileAsync(file)) });
 
         return menu;
     }

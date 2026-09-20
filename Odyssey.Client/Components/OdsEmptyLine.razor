@@ -1,0 +1,59 @@
+@*
+    OdsEmptyLine — the thin muted sentence that stands in for an empty table frame or an empty
+    record section (Odyssey Design System · components/EmptyLine).
+
+    The line shape of OdsEmptyState's Line variant, reachable directly because that is how a
+    section reads at the call site: plain text, no icon, no action. A section that needs a CTA has
+    outgrown the line and takes the panel (OdsEmptyState) instead — inside a frame the panel's
+    56px icon tile and centered stack overpower the rows it is standing in for.
+
+    Align="Center" Pad="Lg" is the whole-list form (the centered sentence a filtered list shows
+    where its rows would be); the default leading, medium-padded form sits inside a frame.
+*@
+
+<div class="@RootClass" id="@Id" tabindex="@TabIndex" role="@Role">
+    @if (Text is not null)
+    {
+        @Text
+    }
+    else
+    {
+        @ChildContent
+    }
+</div>
+
+@code {
+    /// <summary>The sentence, when it is plain text. Takes precedence over <see cref="ChildContent"/>.</summary>
+    [Parameter] public string? Text { get; set; }
+
+    /// <summary>The sentence, when it carries markup.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Leading (inside a frame) or centered (standing in for a whole list).</summary>
+    [Parameter] public OdsEmptyLineAlign Align { get; set; } = OdsEmptyLineAlign.Start;
+
+    /// <summary>Padding step — Md inside a frame, Lg for a whole list, Sm where the frame is tight.</summary>
+    [Parameter] public OdsSize Pad { get; set; } = OdsSize.Md;
+
+    /// <summary>DOM id — a focus or jump target for a link that lands on the empty section.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Tab index, for a line that is a programmatic focus target (<c>-1</c>).</summary>
+    [Parameter] public int? TabIndex { get; set; }
+
+    /// <summary>
+    /// ARIA role for the line. Pass <c>alert</c> for a failure state that appears after load, so it
+    /// is announced rather than silently replacing the rows (WCAG 4.1.3). Absent by default: an
+    /// ordinary "nothing here yet" sentence is not a status message and must not interrupt.
+    /// </summary>
+    [Parameter] public string? Role { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    private string RootClass => string.Concat(
+        "odc-empty line",
+        Align == OdsEmptyLineAlign.Center ? " center" : null,
+        Pad switch { OdsSize.Sm => " pad-sm", OdsSize.Lg => " pad-lg", _ => null },
+        Class is null ? null : " " + Class);
+}

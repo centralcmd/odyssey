@@ -1,13 +1,28 @@
 @*
-    OdsEmptyState — the centered "nothing here yet" surface
+    OdsEmptyState — the "nothing here yet" state, in two shapes
     (Odyssey Design System · components/EmptyState).
 
-    Icon, a one-sentence Title stating the absence, an optional Description, and
-    an optional single CTA (pass an OdsButton via Action). Voice: state the
-    absence, offer one action.
+    Variant="Panel" (the default) is the centered surface: icon, a one-sentence Title stating the
+    absence, an optional Description, and an optional single CTA (pass an OdsButton via Action).
+    Voice: state the absence, offer one action.
+
+    Variant="Line" is the thin muted sentence for an empty table frame or record section, where the
+    panel would overpower the rows it replaces — no icon, no action, the Title rendered as the
+    sentence (falling back to Description). Call sites that only ever want that shape should use
+    <OdsEmptyLine> instead; this variant exists so a surface that CHOOSES between the two does not
+    have to switch components to do it.
 *@
 
-<div class="odc-empty @(MutedIcon ? "muted-ic" : null)" role="@(Alert ? "alert" : null)">
+@if (Variant == OdsEmptyStateVariant.Line)
+{
+    @* Alert is forwarded, not dropped: a failure state rendered as the line shape is still a status
+       message and must still be announced (WCAG 4.1.3). Silently losing it here would ship an
+       unannounced error the moment a surface switched variants. *@
+    <OdsEmptyLine Align="Align" Pad="Pad" Class="@Class" Role="@(Alert ? "alert" : null)">@(Title ?? Description)</OdsEmptyLine>
+}
+else
+{
+<div class="@PanelClass" role="@(Alert ? "alert" : null)">
     <div class="odc-empty-ic">
         <span class="material-icons" aria-hidden="true">@Icon</span>
     </div>
@@ -24,6 +39,7 @@
         <div class="odc-empty-actions">@Action</div>
     }
 </div>
+}
 
 @code {
     /// <summary>Material Icons ligature for the centered glyph.</summary>
@@ -38,9 +54,29 @@
     /// <summary>A single CTA — pass an OdsButton.</summary>
     [Parameter] public RenderFragment? Action { get; set; }
 
-    /// <summary>Render as an assertive <c>role="alert"</c> region — for error/failure variants (WCAG 4.1.3).</summary>
+    /// <summary>
+    /// Render as an assertive <c>role="alert"</c> region — for error/failure variants (WCAG 4.1.3).
+    /// Honoured by <b>both</b> variants.
+    /// </summary>
     [Parameter] public bool Alert { get; set; }
 
-    /// <summary>Dim the icon tile — for a "no results match your search" state.</summary>
+    /// <summary>Dim the icon tile — for a "no results match your search" state. Panel only.</summary>
     [Parameter] public bool MutedIcon { get; set; }
+
+    /// <summary>Panel (the centered surface) or Line (the thin muted sentence).</summary>
+    [Parameter] public OdsEmptyStateVariant Variant { get; set; } = OdsEmptyStateVariant.Panel;
+
+    /// <summary>Line variant only — leading or centered text.</summary>
+    [Parameter] public OdsEmptyLineAlign Align { get; set; } = OdsEmptyLineAlign.Start;
+
+    /// <summary>Line variant only — padding step.</summary>
+    [Parameter] public OdsSize Pad { get; set; } = OdsSize.Md;
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    private string PanelClass => string.Concat(
+        "odc-empty",
+        MutedIcon ? " muted-ic" : null,
+        Class is null ? null : " " + Class);
 }

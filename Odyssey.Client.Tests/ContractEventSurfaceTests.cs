@@ -24,7 +24,7 @@ namespace Odyssey.Client.Tests;
 /// The properties under test are the ones a reviewer cannot confirm by reading the markup, and every
 /// one of them is a spec rule rather than a styling choice: that the rail shows the title and the
 /// description but <b>not</b> the notes (§4.1, a presentation rule and never an access one); that the
-/// section stays fully writable on an <b>archived</b> contract (§8.6), unlike Terms; that both ends of
+/// section stays fully writable on an <b>archived</b> contract (§8.6), as every section does; that both ends of
 /// the rail are anchored to real dates and to the right ones; and that a <c>PUT</c> is a full
 /// replacement whose cleared fields go as <c>null</c> (§5.3).
 /// </para>
@@ -313,7 +313,8 @@ public class ContractEventSurfaceTests
     /// <summary>
     /// The section takes no Archived parameter at all, and this is why: the server accepts every event
     /// write on an archived contract, so withdrawing the affordance would refuse something the API
-    /// allows. The contrast with <c>ContractTermsSection</c>, which DOES go read-only, is deliberate.
+    /// allows. <c>ContractTermsSection</c> used to be the contrast — it went read-only — and no longer
+    /// is; every section of a contract record now behaves like this one.
     /// </summary>
     [Fact]
     public void An_archived_contract_keeps_its_per_entry_actions()

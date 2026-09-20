@@ -172,7 +172,6 @@ public class ContractController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Re-write one party: its role, its target, its dates, or any combination (full replacement).")]
     public async Task<IActionResult> UpdateParty(
         [FromRoute(Name = "id")] Guid id,

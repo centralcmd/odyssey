@@ -256,46 +256,38 @@ public class ContractDocumentValidityTests
         Assert.Contains("can’t be before", harness.Markup, StringComparison.Ordinal);
     }
 
-    // ── The archive state (§9.3 — and what it does NOT cover) ────────────────
+    // ── The archive state ────────────────────────────────────────────────────
 
     /// <summary>
-    /// An archived contract refuses <c>POST …/files</c> and <c>PUT …/files/{fileId}</c> with a
-    /// <c>400</c>, so <b>Edit</b> is withheld rather than offered and then failed.
+    /// <b>Archiving is not a gate on this table.</b> The server refuses no document write on an
+    /// archived contract — archival hides it from the default list, it does not lock it — so both
+    /// Edit and Detach are offered on one exactly as they are on any other contract.
+    ///
+    /// <para>
+    /// The table no longer takes an archive flag at all, which is what makes this structural rather
+    /// than a check that could be re-introduced: there is nothing here left to gate on. The
+    /// assertion is that the ordinary menu is complete, and the permission flags are what decide it.
+    /// </para>
     /// </summary>
     [Fact]
-    public async Task ArchivedContract_WithholdsEdit()
+    public async Task DocumentWrites_AreOfferedWhateverTheContractsArchiveState()
     {
         await using var ctx = NewTableContext();
-        var labels = OpenRowMenu(ctx, RenderTable(ctx, archived: true));
-
-        Assert.DoesNotContain("Edit", labels);
-    }
-
-    /// <summary>
-    /// <b>Detach stays live on an archived contract.</b> <c>ContractService.DetachFile</c> carries no
-    /// archive guard — the same asymmetry <c>DeleteParty</c> has, on the same reasoning: detaching a
-    /// link needs only the link. Withholding it would refuse something the API allows, and it is the
-    /// easiest thing to get wrong here, because the design system's own contract table bundles Edit
-    /// and Delete behind one read-only flag.
-    /// </summary>
-    [Fact]
-    public async Task ArchivedContract_KeepsDetach()
-    {
-        await using var ctx = NewTableContext();
-        var labels = OpenRowMenu(ctx, RenderTable(ctx, archived: true));
-
-        Assert.Contains("Delete", labels);
-    }
-
-    /// <summary>Both are offered on a live contract — so the assertions above fail for the right reason.</summary>
-    [Fact]
-    public async Task LiveContract_OffersBothEditAndDetach()
-    {
-        await using var ctx = NewTableContext();
-        var labels = OpenRowMenu(ctx, RenderTable(ctx, archived: false));
+        var labels = OpenRowMenu(ctx, RenderTable(ctx));
 
         Assert.Contains("Edit", labels);
         Assert.Contains("Delete", labels);
+    }
+
+    /// <summary>Permission, not the archive state, is what withholds a document write.</summary>
+    [Fact]
+    public async Task DocumentWrites_AreWithheldWithoutThePermission()
+    {
+        await using var ctx = NewTableContext();
+        var labels = OpenRowMenu(ctx, RenderTable(ctx, canUpdate: false, canDelete: false));
+
+        Assert.DoesNotContain("Edit", labels);
+        Assert.DoesNotContain("Delete", labels);
     }
 
     private static readonly ContractFileItem Attachment = new(
@@ -323,14 +315,14 @@ public class ContractDocumentValidityTests
             Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
     }
 
-    private static IRenderedComponent<ContractFilesTable> RenderTable(BunitContext ctx, bool archived) =>
+    private static IRenderedComponent<ContractFilesTable> RenderTable(
+        BunitContext ctx, bool canUpdate = true, bool canDelete = true) =>
         ctx.Render<ContractFilesTable>(p => p
             .Add(t => t.ContractId, Guid.Parse("33333333-3333-3333-3333-333333333333"))
             .Add(t => t.Files, new[] { Attachment })
             .Add(t => t.CanDownload, true)
-            .Add(t => t.CanUpdate, true)
-            .Add(t => t.CanDelete, true)
-            .Add(t => t.Archived, archived));
+            .Add(t => t.CanUpdate, canUpdate)
+            .Add(t => t.CanDelete, canDelete));
 
     /// <summary>
     /// The labels on the row's open overflow menu. An item's TextContent also carries its leading

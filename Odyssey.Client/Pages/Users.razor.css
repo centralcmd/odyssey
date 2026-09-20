@@ -1,7 +1,7 @@
 /* ── Users administration page (Odyssey Design System · admin.css) ──────────
    Ported from the design system's kit.css table primitive + admin.css user
    surface. Layout-only classes authored here; interactive controls are
-   MudBlazor and the .alert / .nomatch / .empty-line / .mono / .meta-grid /
+   MudBlazor and the .alert / .nomatch / .mono / .meta-grid /
    .acct-detail primitives come from the page-shared scopes + app.css. All tints
    use semantic palette tokens so the page reads correctly in light and dark. */
 

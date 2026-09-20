@@ -199,8 +199,8 @@ public partial class AccountFilesSection
     /// Whether AI document analysis is switched on instance-wide (issue #439).
     ///
     /// <para>
-    /// Fetched so the Analyze affordance can render <em>disabled with a reason</em> rather than letting
-    /// a user pick a document, read the consent gate, affirm it and only then receive a <c>503</c>.
+    /// Fetched so the Analyze affordance can be <em>withheld</em> rather than letting a user pick a
+    /// document, read the consent gate, affirm it and only then receive a <c>503</c>.
     /// That was always a poor sequence for a consent interaction and became reachable at runtime once
     /// the switch became admin-editable.
     /// </para>
@@ -237,14 +237,13 @@ public partial class AccountFilesSection
     // the host supplies only the file-specific items.
     private IReadOnlyList<OdsMenuItem> BuildMenu(ExistingAccountFile file)
     {
-        var id = file.FileMetadata.Id;
         var menu = new List<OdsMenuItem>();
 
         if (CanDownload && IsPreviewable(file.FileMetadata.ContentType))
-            menu.Add(new OdsMenuItem { Icon = "visibility", Label = "Preview", Disabled = previewingFiles.Contains(id), OnClick = EventCallback.Factory.Create(this, () => PreviewFileAsync(file)) });
+            menu.Add(new OdsMenuItem { Icon = "visibility", Label = "Preview", OnClick = EventCallback.Factory.Create(this, () => PreviewFileAsync(file)) });
 
         if (CanDownload)
-            menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", Disabled = downloadingFiles.Contains(id), OnClick = EventCallback.Factory.Create(this, () => DownloadFileAsync(file)) });
+            menu.Add(new OdsMenuItem { Icon = "download", Label = "Download", OnClick = EventCallback.Factory.Create(this, () => DownloadFileAsync(file)) });
 
         if (CanAnalyze && file.FileType == AccountFileType.Statement)
         {
@@ -257,17 +256,18 @@ public partial class AccountFilesSection
             // Analyze distinguishes resume-vs-reanalyze instead of silently creating a duplicate: a
             // resumable job present → the confirm fork; otherwise the normal consent gate.
             //
-            // With analysis switched off instance-wide the item renders DISABLED with the reason in
-            // text (issue #439) — never greyed out and left to be inferred, and never opening a consent
-            // gate for a transfer that cannot happen. The Resume item above needs no equivalent: with
-            // the switch off the resumable-map read 503s and yields an empty map, so no Resume
-            // affordance renders in the first place.
+            // With analysis switched off instance-wide the item is NOT RENDERED (issue #439, design
+            // system · components/Menu): an action that cannot be taken is absent from the menu
+            // rather than dimmed with an explanation, so a consent gate is never opened for a
+            // transfer that cannot happen. Where an operator needs to know that analysis is off,
+            // the settings surface says so — a menu row is not the place for it. The Resume item
+            // above needs no equivalent: with the switch off the resumable-map read 503s and yields
+            // an empty map, so no Resume affordance renders in the first place.
             menu.Add(new OdsMenuItem
             {
                 Icon = "auto_fix_high",
                 Label = "Analyze",
                 Disabled = !_analysisEnabled,
-                Description = _analysisEnabled ? null : "AI document analysis is turned off for this instance.",
                 OnClick = EventCallback.Factory.Create(this, () => OpenAnalysis(file, resumable is not null ? FileAnalysisDialog.StartMode.ReanalyzeConfirm : FileAnalysisDialog.StartMode.Consent, resumable)),
             });
         }

@@ -60,10 +60,7 @@
     }
     else
     {
-        <div class="con-empty-line" id="con-parties-empty" tabindex="-1">
-            <span class="material-icons" aria-hidden="true">diversity_3</span>
-            <div style="flex:1;">No parties yet — link the account or contact this contract relates to, and say what it does in the agreement.</div>
-        </div>
+        <OdsEmptyLine Id="con-parties-empty" TabIndex="-1">No parties yet — link the account or contact this contract relates to, and say what it does in the agreement.</OdsEmptyLine>
     }
 </div>
 
@@ -72,7 +69,6 @@
    (what it costs today, and how it got there), so it is placed here rather than wrapped. *@
 <ContractTermsSection Contract="Contract"
                       CanWrite="CanWrite"
-                      Archived="Archived"
                       FormatMoney="FormatMoney"
                       NewTermRequestToken="NewTermRequestToken"
                       OnChanged="OnChanged" />
@@ -86,10 +82,7 @@
        there is nothing to sort. *@
     @if (Contract.Files.Count == 0)
     {
-        <div class="con-empty-line">
-            <span class="material-icons" aria-hidden="true">folder_open</span>
-            <div style="flex:1;">No documents yet — upload the signed agreement, an amendment, or correspondence.</div>
-        </div>
+        <OdsEmptyLine>No documents yet — upload the signed agreement, an amendment, or correspondence.</OdsEmptyLine>
     }
     else
     {
@@ -97,29 +90,16 @@
             <ContractFilesTable ContractId="Contract.ContractId"
                                 Files="@ContractFiles"
                                 CanDownload="CanDownload" CanUpdate="CanWrite" CanDelete="CanWrite"
-                                Archived="Archived"
                                 OnChanged="OnChanged"
                                 OnFilesRefreshed="OnFilesRefreshed" />
-        </div>
-    }
-    @* An archived contract refuses attaching and editing a document with a 400, so the reason is
-       stated once here rather than left to a dialog that saves and then fails. Detaching is NOT
-       refused — the line says exactly what is unavailable, so it cannot describe a restriction the
-       server does not apply. *@
-    @if (Archived && Contract.Files.Count > 0)
-    {
-        <div class="con-empty-line">
-            <span class="material-icons" aria-hidden="true">lock</span>
-            <div style="flex:1;">This contract is archived. Restore it to attach or edit its documents.</div>
         </div>
     }
 </div>
 
 @* Events — what has HAPPENED to the agreement, as a log (issue #138). LAST, and deliberately so:
    every section above describes what the contract IS — who is in it, what it costs, what evidences
-   it — and this one is its history. It is also the only section that stays writable when the
-   contract is archived, so it takes no Archived parameter: archival hides a contract, it does not
-   lock its history. *@
+   it — and this one is its history. Like every section above it, it stays writable when the
+   contract is archived: archival hides a contract, it does not lock it. *@
 <ContractEventsSection Contract="Contract"
                        CanUpdate="CanWrite"
                        NewEventRequestToken="NewEventRequestToken" />

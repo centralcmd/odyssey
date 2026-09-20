@@ -17,13 +17,6 @@ public partial class ContractDetailView : IAsyncDisposable
     [Parameter] public bool CanWrite { get; set; }
     [Parameter] public bool CanDownload { get; set; }
 
-    /// <summary>
-    /// True when the contract is archived. The server refuses an add or an edit on one (422) but still
-    /// permits a detach, so <b>Edit party</b> is disabled with its reason while <b>Detach</b> stays
-    /// live — the asymmetry is the server's, not a UI choice (issue #121 §5.3).
-    /// </summary>
-    [Parameter] public bool Archived { get; set; }
-
     /// <summary>Raised with the party to edit; unset means no edit affordance is offered.</summary>
     [Parameter] public EventCallback<ExistingContractParty> OnEditParty { get; set; }
 
@@ -167,20 +160,14 @@ public partial class ContractDetailView : IAsyncDisposable
 
         if (OnEditParty.HasDelegate && resolved && !PartyRoleLabel.IsUnknown(party.Role))
         {
-            items.Add(Archived
-                ? new OdsMenuItem
-                {
-                    Icon = "edit",
-                    Label = "Edit party",
-                    Disabled = true,
-                    Description = "Unarchive the contract to change its parties.",
-                }
-                : new OdsMenuItem
-                {
-                    Icon = "edit",
-                    Label = "Edit party",
-                    OnClick = EventCallback.Factory.Create(this, () => OnEditParty.InvokeAsync(party)),
-                });
+            // Not gated on the archive state: the server refuses no party write on an archived
+            // contract, so an archived party edits exactly as any other does.
+            items.Add(new OdsMenuItem
+            {
+                Icon = "edit",
+                Label = "Edit party",
+                OnClick = EventCallback.Factory.Create(this, () => OnEditParty.InvokeAsync(party)),
+            });
         }
 
         if (resolved)

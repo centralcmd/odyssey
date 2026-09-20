@@ -23,10 +23,9 @@
       • RequireType — the update is a full replacement and ContractFileType.Signed is the enum's
         zero member, so an unsent type is refused rather than defaulted into a claim that the
         document is the signed agreement.
-      • Archived — the server refuses ATTACH and UPDATE on an archived contract with a 400, so the
-        table drops Edit rather than offering a doomed dialog and the host states why in text.
-        DETACH is not refused (ContractService.DetachFile carries no archive guard, matching
-        DeleteParty), so it stays live — withholding it would refuse what the API allows.
+      • The archive state is NOT a gate — the server refuses no document write on an archived
+        contract, so Edit and Detach are offered on one exactly as they are on any other. Archival
+        hides a contract from the default list; it does not lock it.
 
     After a successful metadata save the table re-reads GET …/files — this contract's documents
     alone — and hands them up through OnFilesRefreshed, rather than firing OnChanged and pulling the

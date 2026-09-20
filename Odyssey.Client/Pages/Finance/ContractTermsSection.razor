@@ -22,24 +22,16 @@
     Three things are contract-specific, and each is drawn rather than assumed:
       • Kind eligibility — Fee and InterestRate on every ContractType; ExpectedReturn is refused.
         Handled in the dialog.
-      • An archived contract is READ-ONLY for terms: the history stays fully readable and every write
-        affordance goes away, with restoring named as the route that works.
-      • A per-contract cap (ContractMaxTermsPerContract). It is a system setting the client
-        deliberately does not hold a copy of — see the note on the cap in the code-behind.
+      • Archiving changes NOTHING here: an archived contract still records and edits terms, and keeps
+        its per-row controls. Archival hides a contract from the default list; the final rent or the
+        closing fee is exactly what gets recorded after an agreement has ended.
+      • A per-contract cap (ContractMaxTermsPerContract) — the only thing that refuses a term write.
+        It is a system setting the client deliberately does not hold a copy of — see the note on the
+        cap in the code-behind.
 *@
 
 <div class="con-section">
     <OdsSectionDivider Label="@CurrentLabel" Meta="@CurrentMeta" />
-
-    @if (Archived)
-    {
-        @* The refusal is stated where the writing would happen, and it is a fact about the record
-           rather than about this attempt — so it renders whether or not the reader can write. *@
-        <div class="con-trm-notice archived" role="note">
-            <span class="material-icons" aria-hidden="true">inventory_2</span>
-            <div style="flex:1;">This contract is archived — its price history stays readable, but restoring it is what allows a term to be added, changed or removed.</div>
-        </div>
-    }
 
     @if (_isLoading)
     {
@@ -50,18 +42,12 @@
     }
     else if (_terms.Count == 0)
     {
-        <div class="con-empty-line">
-            <span class="material-icons" aria-hidden="true">sell</span>
-            <div style="flex:1;">No terms yet — record what this agreement costs: a rent, a service fee, an interest rate. Each keeps its own dated history.</div>
-        </div>
+        <OdsEmptyLine>No terms yet — record what this agreement costs: a rent, a service fee, an interest rate. Each keeps its own dated history.</OdsEmptyLine>
     }
     else if (_current.Count == 0)
     {
         @* Every entry is dated ahead: a real state, and not the same one as "nothing recorded". *@
-        <div class="con-empty-line">
-            <span class="material-icons" aria-hidden="true">schedule</span>
-            <div style="flex:1;">Nothing in force today — every entry on this contract is scheduled for a later date.</div>
-        </div>
+        <OdsEmptyLine>Nothing in force today — every entry on this contract is scheduled for a later date.</OdsEmptyLine>
     }
     else
     {
@@ -93,13 +79,11 @@
     <div class="con-section">
         <OdsSectionDivider Label="Term history" Meta="@($"{_terms.Count} {(_terms.Count == 1 ? "entry" : "entries")}")" />
         <div class="con-tbl-frame">
-            @* An archived contract refuses PUT and DELETE as well as POST, so the per-row actions go
-               with them — the rows stay, fully readable. *@
             <TermHistoryTable Terms="_terms"
                               CurrentIds="_currentIds"
                               Account="null"
                               FormatMoney="FormatMoney"
-                              CanWrite="CanEditRows"
+                              CanWrite="CanWrite"
                               OnEdit="OpenEdit"
                               OnDelete="DeleteAsync" />
         </div>
