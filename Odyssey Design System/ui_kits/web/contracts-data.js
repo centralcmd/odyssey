@@ -109,7 +109,7 @@
     {
       id: 'ct-employment', name: 'ACME Co — Employment', type: 'Employment',
       description: 'Permanent, full-time. Salary paid monthly into the Chase Checking account. 3-month notice either side.',
-      startDate: '2024-03-01', endDate: null, paused: null, archived: null, createdAtUtc: '2024-02-20T09:00:00Z',
+      startDate: '2024-03-01', endDate: null, paused: null, archived: null, createdAtUtc: '2024-02-20T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-emp-1', contactId: 'c2', role: 'Employer', fromDate: null, toDate: null },
         // The salary account is a party to the agreement with no role in the
@@ -124,7 +124,7 @@
     {
       id: 'ct-lease', name: 'Maple St Residence — Lease', type: 'Rental',
       description: 'Twelve-month assured shorthold tenancy on the Maple St residence. Rent due on the 1st. Pets permitted by amendment.',
-      startDate: '2025-09-01', endDate: '2026-08-31', paused: null, archived: null, createdAtUtc: '2025-08-14T10:00:00Z',
+      startDate: '2025-09-01', endDate: '2026-08-31', paused: null, archived: null, createdAtUtc: '2025-08-14T10:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-lease-1', accountId: '7', role: 'Unspecified', fromDate: null, toDate: null },
         // A party that joined partway through the term — the case the term
@@ -141,7 +141,7 @@
     {
       id: 'ct-house', name: 'Maple St Residence — Purchase', type: 'Purchase',
       description: 'Purchase of the Maple St property — a one-off agreement recorded by its completion (closing) date, not a term. Kept as the deed of record for the property.',
-      startDate: null, endDate: null, completionDate: '2021-04-15', paused: null, archived: null, createdAtUtc: '2021-03-02T09:00:00Z',
+      startDate: null, endDate: null, completionDate: '2021-04-15', paused: null, archived: null, createdAtUtc: '2021-03-02T09:00:00Z', createdByUserId: null,
       parties: [
         { id: 'cp-house-1', accountId: '7', role: 'Buyer', fromDate: null, toDate: null },
         { id: 'cp-house-2', contactId: 'c9', role: 'Seller', fromDate: null, toDate: null },
@@ -153,7 +153,7 @@
     {
       id: 'ct-fiber', name: 'Fiber Internet — 24 Month', type: 'Service',
       description: 'Symmetric 1 Gbps fiber. 24-month term, early-termination fee applies. Auto-renews monthly at term end.',
-      startDate: '2025-02-01', endDate: '2027-01-31', paused: null, archived: null, createdAtUtc: '2025-01-22T09:00:00Z',
+      startDate: '2025-02-01', endDate: '2027-01-31', paused: null, archived: null, createdAtUtc: '2025-01-22T09:00:00Z', createdByUserId: 'u-sam',
       parties: [
         { id: 'cp-fiber-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -165,7 +165,7 @@
     {
       id: 'ct-gym', name: 'FitZone — Membership', type: 'Membership',
       description: 'Annual gym membership. Direct debit, monthly. Frozen over the winter — resuming in the spring.',
-      startDate: '2026-09-01', endDate: '2027-08-31', paused: '2026-09-14T10:30:00Z', archived: null, createdAtUtc: '2026-06-10T09:00:00Z',
+      startDate: '2026-09-01', endDate: '2027-08-31', paused: '2026-09-14T10:30:00Z', archived: null, createdAtUtc: '2026-06-10T09:00:00Z', createdByUserId: 'u-mira',
       parties: [
         { id: 'cp-gym-1', contactId: 'c11', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -178,7 +178,7 @@
       // populates the header signal's warning group beside the next charges.
       id: 'ct-parking', name: 'Harbor Point Parking — Space 14', type: 'Rental',
       description: 'Twelve-month parking licence on space 14. Renews only by a fresh agreement — give notice 30 days before the end date.',
-      startDate: '2025-11-01', endDate: '2026-10-31', paused: null, archived: null, createdAtUtc: '2025-10-20T09:00:00Z',
+      startDate: '2025-11-01', endDate: '2026-10-31', paused: null, archived: null, createdAtUtc: '2025-10-20T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-parking-1', contactId: 'c8', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -191,7 +191,7 @@
       // populates the header signal's "Starting soon" group.
       id: 'ct-energy', name: 'Northwind Energy — Fixed Tariff', type: 'Service',
       description: 'Twelve-month fixed electricity tariff. Switch completes on the start date; the standing charge and unit rate are fixed for the term.',
-      startDate: '2026-10-15', endDate: '2027-10-14', paused: null, archived: null, createdAtUtc: '2026-09-02T09:00:00Z',
+      startDate: '2026-10-15', endDate: '2027-10-14', paused: null, archived: null, createdAtUtc: '2026-09-02T09:00:00Z', createdByUserId: 'u-sam',
       parties: [
         { id: 'cp-energy-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -202,7 +202,7 @@
     {
       id: 'ct-storage', name: 'Storage Unit B12 — Rental', type: 'Rental',
       description: 'Self-storage unit, 50 sq ft. Twelve-month term, not renewed — kept for record.',
-      startDate: '2024-01-01', endDate: '2025-12-31', paused: null, archived: null, createdAtUtc: '2024-01-03T09:00:00Z',
+      startDate: '2024-01-01', endDate: '2025-12-31', paused: null, archived: null, createdAtUtc: '2024-01-03T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         // Left the role when the unit was handed back, while the contract row
         // stays on record — a closed term, rendered as a past party.
@@ -215,7 +215,7 @@
     {
       id: 'ct-solar', name: 'Solar Panel Lease', type: 'Other',
       description: 'Twenty-year rooftop solar lease — transferred to the new owner on sale of the property. Retained for reference.',
-      startDate: '2023-06-01', endDate: '2025-10-31', paused: null, archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z',
+      startDate: '2023-06-01', endDate: '2025-10-31', paused: null, archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-solar-1', accountId: '7', role: 'Other', fromDate: null, toDate: null },
       ],

@@ -347,6 +347,10 @@
         "message": "<ErrorSummaryProblem> doesn't accept that prop. Declared props: label, section, targetId."
       },
       {
+        "selector": "JSXOpeningElement[name.name='EventRail'] > JSXAttribute > JSXIdentifier[name!=/^(?:capTop|capEnd|className|children|key|ref|className|style|children)$/]",
+        "message": "<EventRail> doesn't accept that prop. Declared props: capTop, capEnd, className, children."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='Field'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|onChange|placeholder|type|multiline|rows|icon|help|error|required|optional|disabled|clearable|className|id|key|ref|className|style|children)$/]",
         "message": "<Field> doesn't accept that prop. Declared props: label, value, onChange, placeholder, type, multiline, rows, icon, help, error, required, optional, disabled, clearable, className, id."
       },
@@ -947,6 +951,9 @@
         "replaces": []
       },
       "ErrorSummaryProblem": {
+        "replaces": []
+      },
+      "EventRail": {
         "replaces": []
       },
       "Field": {

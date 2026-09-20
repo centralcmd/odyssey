@@ -1,0 +1,38 @@
+/* contract-events.css — the Events section inside a contract detail.
+   The rail itself is the DS EventRail (.odc-er-*, components.css); everything
+   here is what is specific to CONTRACT events: the section's insets, the
+   attribution wording, the empty state and the horizontal spine. */
+
+/* No inset of its own: the divider, the rail and the pager sit flush inside
+   .con-section, so the Events heading lines up with Parties, Terms and
+   Documents above it. There is no toolbar and no create button either — v1
+   ships the log newest-first, and creating an event is an action on the
+   contract, not on the section. */
+.cev-rail { padding-top: 2px; }
+
+/* Attribution — a display label, never a user id. */
+.cev-by-who { color: var(--mud-palette-text-primary); }
+.cev-by-unknown .cev-by-who { font-style: italic; color: inherit; }
+
+/* ---- Spine — the horizontal overview above the rail ---- */
+.cev-spine { margin: 2px 0; padding: 20px 14px 10px; border: 1px solid var(--mud-palette-divider); border-radius: 10px; background: var(--mud-palette-background); }
+.cev-spine-axis { position: relative; height: 34px; }
+.cev-spine-axis::before { content: ''; position: absolute; left: 0; right: 0; top: 16px; height: 2px; background: var(--mud-palette-divider); border-radius: 2px; }
+.cev-spine-tick { position: absolute; top: 22px; transform: translateX(-50%); font: 500 10px/1 var(--font-mono); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.cev-spine-tick i { position: absolute; left: 50%; top: -9px; width: 1px; height: 7px; background: var(--mud-palette-divider); }
+.cev-spine-node { position: absolute; top: 10px; transform: translateX(-50%); width: 14px; height: 14px; padding: 0; border-radius: 50%; cursor: pointer; border: 2px solid var(--mud-palette-surface); background: var(--cev-node, var(--tide-400)); }
+.cev-spine-node:hover { transform: translateX(-50%) scale(1.25); }
+.cev-spine-node.on { box-shadow: 0 0 0 3px color-mix(in oklch, var(--cev-node) 35%, transparent); }
+.cev-spine-ends { display: flex; justify-content: space-between; margin-top: 4px; font: 400 10.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+
+/* Dense spine — one bar per month, height by count, colour by dominant type. */
+.cev-spine.dense { padding: 14px 14px 10px; }
+.cev-spine-bins { display: grid; align-items: end; gap: 2px; height: 44px; }
+.cev-bin { display: flex; align-items: flex-end; justify-content: center; height: 100%; }
+.cev-bin i { display: block; width: 100%; max-width: 14px; border-radius: 2px 2px 0 0; opacity: 0.85; }
+.cev-bin:hover i { opacity: 1; }
+.cev-spine.dense .cev-spine-ends { margin-top: 7px; border-top: 1px solid var(--mud-palette-divider); padding-top: 5px; }
+.cev-spine.dense .cev-spine-ends span:nth-child(2) { color: var(--mud-palette-text-secondary); opacity: 0.8; }
+
+/* ---- Dialog: the "when" pair ---- */
+.cev-when { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }

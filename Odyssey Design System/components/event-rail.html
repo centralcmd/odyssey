@@ -1,0 +1,61 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Event rail" subtitle="Continuous-rail event log — ONE unbroken line with icon nodes and markers (years, endpoints) sitting on it, for a history of things that happened. The counterpart to Timeline, whose rail restarts per item and which carries a figures column instead. Caps say whether this page holds the real end of the log; an uncapped end fades rather than cutting." viewport="900x600" -->
+<html lang="en" data-theme="dark">
+<head>
+<title>Odyssey · Event rail</title>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+<style>
+html,body{margin:0;background:var(--mud-palette-background)}
+body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:26px 30px}
+h1{font:var(--fw-bold) var(--fs-h6)/1 var(--font-sans);margin:0 0 4px}
+p.lead{font:var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0 0 18px;max-width:72ch}
+#root{max-width:640px;background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-lg);padding:14px 18px}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+</head>
+<body>
+<h1>Event rail</h1>
+<p class="lead">Nodes are neutral by default — the glyph names the kind, and holding the hue back keeps a column of colours from competing with status. Row actions sit inline after the date; the provenance line (<code>.odc-er-meta</code>) reveals on the same hover — on an <b>item</b>, and on a <b>marker</b> given <code>meta</code>, as the closing endpoint here is.</p>
+<div id="root"></div>
+<script>
+(function(){
+  var e = React.createElement;
+  var NS = window.OdysseyDesignSystem_d5aa51 || {};
+  var EventRail = NS.EventRail, EventRailItem = NS.EventRailItem, EventRailMarker = NS.EventRailMarker, RowActions = NS.RowActions;
+  var noop = function(){};
+  var acts = e(RowActions, { actions: [
+    { icon:'edit', label:'Edit entry', onClick:noop },
+    { icon:'delete', label:'Delete entry', danger:true, onClick:noop }
+  ]});
+  var rows = [
+    { icon:'campaign', kind:'Notice given', title:'Two months notice served', date:'28 Jun 2026 · 16:10',
+      desc:'Hand-delivered and emailed the same afternoon. The tenancy ends on 31 August.', by:'Jane Doe' },
+    { icon:'outgoing_mail', kind:'Email sent', title:'Emailed landlord about the rent increase', date:'14 Jun 2026 · 09:31',
+      desc:'Asked for the CPI basis in writing and for the index date they are using.', by:'Jane Doe' },
+    { icon:'price_change', kind:'Price changed', title:'Rent renegotiated to $2,250', date:'19 Feb 2026 · 11:00',
+      desc:'Agreed by phone, then confirmed in writing. A CPI basis was requested and refused; settled at 4.7%.', by:'Sam Okafor' },
+    { year:2025 },
+    { icon:'history_edu', kind:'Signed', title:'Tenancy agreement signed', date:'27 Aug 2025 · 14:05',
+      desc:'Both counterparts signed at the letting office.', by:'Unknown user' }
+  ];
+
+  var kids = [ e(EventRailMarker,{key:'now',tone:'open'},'Today · 20 Sept 2026') ];
+  rows.forEach(function(r,i){
+    if (r.year) { kids.push(e(EventRailMarker,{key:'y'+r.year}, String(r.year))); return; }
+    kids.push(e(EventRailItem,{
+      key:i, icon:r.icon, iconLabel:r.kind, title:r.title, date:r.date, desc:r.desc, actions:acts
+    }, e('div',{className:'odc-er-meta'},'Recorded by ' + r.by + ' at ' + r.date)));
+  });
+  kids.push(e(EventRailMarker,{key:'origin',tone:'filled',meta:'Added by Jane Doe at 14 Aug 2025 · 10:00'},'Contract added 14 Aug 2025'));
+
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    e(EventRail, { capTop:true, capEnd:true }, kids)
+  );
+})();
+</script>
+</body>
+</html>

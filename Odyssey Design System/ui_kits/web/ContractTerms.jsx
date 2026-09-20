@@ -49,14 +49,13 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
   if (terms.length === 0) {
     return (
       <div className="con-section">
-        <SectionDivider label="Terms" meta="none recorded" />
+        <SectionDivider label="Terms" meta="0 entries" />
         <div className="con-empty-line">
           <MIcon name="sell" size={20} />
           <div style={{ flex: 1 }}>
             No terms yet — record what this agreement costs: a rent, a service fee, an interest rate. Each keeps its own dated history.
             {block ? <div className="con-trm-inline-block">{block.text}</div> : null}
           </div>
-          {!block && <Button variant="text" color="primary" icon="add" onClick={onNew}>New term</Button>}
         </div>
       </div>
     );

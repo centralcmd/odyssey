@@ -116,7 +116,7 @@ const PartyTile = ({ party, today, onEdit, onDetach }) => {
 };
 
 /* ====================== Expanded detail ====================== */
-const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, onNewTerm, onEditTerm, onDeleteTerm }) => {
+const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
   const parties = contract.parties || [];
   const files = contract.files || [];
@@ -210,17 +210,32 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         onDelete={onDeleteTerm}
       />
 
-      {/* DOCUMENTS — last section ("Upload document" is in the row menu too). */}
+      {/* DOCUMENTS — last section ("Upload document" is in the row menu too).
+          With no files there is no table to head: the empty line stands on its
+          own, as it does in Parties, Terms and Events. */}
       <div className="con-section">
         <SectionDivider label="Documents" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
-        <div className="con-files con-tbl-frame">
-          <ContractFilesTable
-            files={fileRows}
-            onDelete={removeFile}
-            empty={<div className="con-empty-line"><MIcon name="folder_open" size={20} /><div style={{ flex: 1 }}>No documents yet — upload the signed agreement, an amendment, or correspondence.</div></div>}
-          />
-        </div>
+        {fileRows.length === 0 ? (
+          <div className="con-empty-line"><MIcon name="folder_open" size={20} /><div style={{ flex: 1 }}>No documents yet — upload the signed agreement, an amendment, or correspondence.</div></div>
+        ) : (
+          <div className="con-files con-tbl-frame">
+            <ContractFilesTable files={fileRows} onDelete={removeFile} />
+          </div>
+        )}
       </div>
+
+      {/* EVENTS — what has HAPPENED to the agreement, as a log. Last, and
+          deliberately so: the sections above describe what the contract IS
+          (details, who is in it, what it costs, what evidences it), and this
+          one is its history. It is also the only section that stays writable
+          when the contract is archived — archival hides a contract, it does
+          not lock its history. */}
+      <ContractEvents
+        contract={contract}
+        events={events || []}
+        onEdit={onEditEvent}
+        onDelete={onDeleteEvent}
+      />
     </React.Fragment>
   );
 };
@@ -231,6 +246,10 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
   // Terms hang off the record like parties and files do — seeded from the
   // contract-scoped history (GET /api/contracts/{id}/terms).
   const [c, setC] = useState(() => ({ ...row, terms: row.terms || CON_H.conTermsFor(row.id) }));
+  /* Events are NOT nested on the contract record: GET /api/contracts/{id}
+     deliberately does not inline them (an event log grows without bound), so
+     they are their own paged read and their own piece of state. */
+  const [events, setEvents] = useState(() => CON_H.cevFor(row.id));
   // Open state lives in the list — opening a contract closes its siblings.
   const open = !!openProp;
   const setOpen = (next) => onToggle(typeof next === 'function' ? next(open) : next);
@@ -242,6 +261,8 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
   const [editParty, setEditParty] = useState(null);
   // The term being edited (PUT …/terms/{termId}); the same dialog serves create.
   const [editTerm, setEditTerm] = useState(null);
+  // The event being edited (PUT …/events/{eventId}); same dialog serves create.
+  const [editEvent, setEditEvent] = useState(null);
   const cardRef = useRef(null);
 
   const typeInfo = CON_H.contractTypeInfo(c.type);
@@ -298,6 +319,14 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
     setModal(null); setEditTerm(null);
   };
   const deleteTerm = (t) => setC(prev => ({ ...prev, terms: (prev.terms || []).filter(x => x.id !== t.id) }));
+  /* A PUT is a full replacement of the event, so the saved DTO REPLACES the
+     row rather than merging into it — an omitted description or note is
+     cleared, exactly as the endpoint does. */
+  const saveEvent = (dto) => {
+    setEvents(prev => prev.some(e => e.id === dto.id) ? prev.map(e => (e.id === dto.id ? dto : e)) : [dto, ...prev]);
+    setModal(null); setEditEvent(null);
+  };
+  const deleteEvent = (ev) => setEvents(prev => prev.filter(x => x.id !== ev.id));
 
   useEffect(() => {
     if (!highlight || !cardRef.current) return;
@@ -333,6 +362,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
           { icon: 'diversity_3', value: parties.length, label: 'Parties' },
           { icon: 'sell', value: terms.length, label: 'Terms' },
           { icon: 'description', value: files.length, label: 'Documents' },
+          { icon: 'history', value: events.length, label: 'Events' },
         ]}
         figure={{
           value: headline.value,
@@ -359,6 +389,10 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
             ? { icon: 'sell', label: 'New term', disabled: true, note: termBlock.reason === 'archived' ? 'The contract has to be restored first.' : termBlock.text }
             : { icon: 'sell', label: 'New term', onClick: () => { setOpen(true); setModal('term'); } },
           { icon: 'attach_file', label: 'Upload document', onClick: () => { setOpen(true); setModal('file'); } },
+          /* Creating an event lives HERE rather than in the section: it is one
+             of the things you do to a contract, and the log below stays a
+             read surface. Offered on an archived contract too — §8.6. */
+          { icon: 'history', label: 'New event', onClick: () => { setOpen(true); setModal('event'); } },
           { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
           { divider: true },
           // Only an ended contract can be archived — the lifecycle is ordered, so
@@ -372,7 +406,8 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
         <ContractDetail contract={c} today={today} focusDocs={focusDocs} setContract={setC}
           onAddParty={() => setModal('party')} onEditParty={(p) => setEditParty(p)} onAttach={() => setModal('file')}
           termCap={termCap}
-          onNewTerm={() => setModal('term')} onEditTerm={(t) => setEditTerm(t)} onDeleteTerm={deleteTerm} />
+          onNewTerm={() => setModal('term')} onEditTerm={(t) => setEditTerm(t)} onDeleteTerm={deleteTerm}
+          events={events} onEditEvent={(ev) => setEditEvent(ev)} onDeleteEvent={deleteEvent} />
       </RecordCard>
       {showEdit && <AddContractModal contract={c} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
 
@@ -382,6 +417,10 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
       {(modal === 'term' || editTerm) && (
         <AddContractTermModal contract={c} term={editTerm} existing={terms}
           onClose={() => { setModal(null); setEditTerm(null); }} onSave={upsertTerm} />
+      )}
+      {(modal === 'event' || editEvent) && (
+        <AddContractEventModal contract={c} event={editEvent}
+          onClose={() => { setModal(null); setEditEvent(null); }} onSave={saveEvent} />
       )}
     </div>
   );

@@ -1,0 +1,244 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Contract events" subtitle="The Events section in a contract detail — the user-maintained log of what has HAPPENED to an agreement, on the DS EventRail: one continuous line, neutral icon nodes, year markers, and both ends anchored to a real date (Today at the top, the day the record was added at the foot). Title and description on the rail, notes in the dialog only. Nothing is auto-generated. Live render of ContractEvents.jsx" viewport="1200x1800" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Contract events</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../ui_kits/web/kit.css" />
+<link rel="stylesheet" href="../ui_kits/web/admin.css" />
+<link rel="stylesheet" href="../ui_kits/web/account.css" />
+<link rel="stylesheet" href="../ui_kits/web/contacts.css" />
+<link rel="stylesheet" href="../ui_kits/web/contracts.css" />
+<link rel="stylesheet" href="../ui_kits/web/contract-events.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<script src="../ui_kits/web/data.js"></script>
+<script src="../ui_kits/web/insurance-data.js"></script>
+<script src="../ui_kits/web/contracts-data.js"></script>
+<script src="../ui_kits/web/contract-events-data.js"></script>
+<style>
+html, body { min-height: 0; background: var(--mud-palette-background); }
+body { width: 1200px; padding: 24px; box-sizing: border-box; }
+.spec-doc { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+.spec-doc h2 { font: 600 15px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); margin: 0 0 6px; }
+.spec-lead { font: 400 13px/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); margin: 0 0 14px; max-width: 96ch; }
+.spec-lead b { color: var(--tide-400); font-weight: 500; }
+/* Same fixed-ramp problem as .cev-name: the accent teal needs darkening on the
+   light surface to stay readable. */
+[data-theme="light"] .spec-lead b, [data-theme="light"] .spec-src .pill b,
+[data-theme="light"] table.spec-tbl td.f, [data-theme="light"] .spec-notes li .material-icons { color: #0B7368; }
+.spec-src { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+.spec-src .pill { font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: rgba(255,255,255,0.05); border: 1px solid var(--mud-palette-divider); border-radius: 999px; padding: 5px 10px; }
+.spec-src .pill b { color: var(--tide-400); font-weight: 600; }
+table.spec-tbl { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+table.spec-tbl th { text-align: left; font: 600 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 0 12px 8px; border-bottom: 1px solid var(--mud-palette-divider); }
+table.spec-tbl td { font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); padding: 9px 12px; border-bottom: 1px solid var(--mud-palette-divider-light); vertical-align: top; }
+table.spec-tbl td.f { font-family: var(--font-mono); color: var(--tide-400); white-space: nowrap; }
+table.spec-tbl td.t { font-family: var(--font-mono); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+table.spec-tbl tr:last-child td { border-bottom: none; }
+.spec-notes { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+.spec-notes li { position: relative; padding-left: 20px; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.spec-notes li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.spec-notes li .material-icons { position: absolute; left: 0; top: 1px; font-size: 15px; color: var(--tide-400); }
+.spec-open { border: 1px solid var(--mud-palette-warning); border-radius: 10px; padding: 13px 15px; margin: 16px 0 0; background: color-mix(in oklch, var(--mud-palette-warning) 8%, transparent); }
+.spec-open h3 { font: 600 12px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-warning); margin: 0 0 9px; }
+.spec-open ol { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
+.spec-open li { font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.spec-open li b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.twk { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 18px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 10px; padding: 11px 16px; margin-bottom: 18px; }
+.twk-grp { display: flex; align-items: center; gap: 9px; }
+.twk-lab { font: 600 10px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.twk-seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 9px; background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider); }
+.twk-seg button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 13px; border: none; border-radius: 7px; background: transparent; cursor: pointer; font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.twk-seg button .material-icons { font-size: 16px; }
+.twk-seg button.on { background: var(--tide-400); color: var(--ink-950); }
+.twk-spacer { flex: 1; }
+.detail-stage { display: flex; flex-direction: column; gap: 18px; }
+.stage-label { font: 500 11px/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); margin: 2px 0 -4px 2px; display: flex; align-items: center; gap: 8px; }
+.stage-label .material-icons { font-size: 15px; color: var(--tide-400); }
+.dcard { background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); border-radius: 12px; overflow: hidden; padding-bottom: 14px; }
+.dcard .con-section { padding: 0 18px; }
+.dcard-head { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--mud-palette-divider-light); margin-bottom: 8px; }
+.dcard-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dcard-name-row { display: flex; align-items: center; gap: 10px; }
+.dcard-name { font: 500 16px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.dcard-tags { display: flex; align-items: center; gap: 8px; font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.dcard-dot { opacity: 0.5; }
+.dcard-count { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font: 400 12px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.dcard-count .material-icons { font-size: 16px; }
+</style>
+</head>
+<body>
+<div class="spec-doc">
+  <h2>Contract events · <span style="color:var(--mud-palette-text-secondary);font-weight:400;">contracts/{id} → Events</span></h2>
+  <p class="spec-lead">A contract records what an agreement <i>is</i>. An <b>event</b> records what has <b>happened</b> to it — signed in August, rent renegotiated in February, notice served in June, and the two emails in between. The backend half is specified; this is a proposal for the front. It sits as a <b>collapsible section under Parties and Documents</b>, the same level as Terms, and renders as a <b>vertical rail</b>, newest first, with an optional <b>horizontal spine</b> above it for skimming a long life at a glance. The section is a <b>read surface</b>: creating an event is an action on the contract’s ⋯ menu, and search, filtering and sorting are not in v1. Events are <b>written by hand and only by hand</b>: pausing, archiving or renewing a contract writes nothing here.</p>
+  <div class="spec-src">
+    <span class="pill">DTO <b>NewContractEvent</b> · <b>UpdateContractEvent</b> · <b>ExistingContractEvent</b></span>
+    <span class="pill">Enum <b>ContractEventType</b> (9)</span>
+    <span class="pill">API <b>ContractController</b> /events</span>
+    <span class="pill">Claims <b>contracts.{read,update}</b></span>
+    <span class="pill">Draft <b>v6</b> · purely additive, no existing endpoint changes</span>
+  </div>
+
+  <table class="spec-tbl">
+    <thead><tr><th>Zone</th><th>DTO field</th><th>Type</th><th>What the surface does with it</th></tr></thead>
+    <tbody>
+      <tr><td>Rail node</td><td class="f">Type</td><td class="t">enum</td><td>The node is a circle carrying the type's own glyph — neutral in v1, and the only thing on the rail that names the type, so it is labelled rather than decorative. Nine members; <b>Other</b> is the default and a legitimate choice, not a fallback.</td></tr>
+      <tr><td>Entry title</td><td class="f">Title</td><td class="t">string (256)</td><td><b>Required on every type</b> — the type classifies, the title is what the reader reads. No derived label; a type the enum does not name is <code>Other</code> plus whatever is written here.</td></tr>
+      <tr><td>Second line</td><td class="f">Description</td><td class="t">string? (1024)</td><td>The longer account of what happened. On the rail under the title, <b>clamped to two lines</b>; full text in the dialog.</td></tr>
+      <tr><td>Dialog only</td><td class="f">Notes</td><td class="t">string? (1024)</td><td>The user's own working notes. <b>Never on the rail</b> — a presentation rule, not an access one: same claim, same search, same export. Cleared by a <code>PUT</code> that omits it.</td></tr>
+      <tr><td>Date line</td><td class="f">OccurredAt</td><td class="t">DateTime</td><td>Date <b>and</b> time, UTC, never in the future (60s tolerance). Orders the rail newest first, places the year markers on its one unbroken line, and positions the node on the spine.</td></tr>
+      <tr><td>Links</td><td class="f">Primary/Secondary ContactId · AccountId</td><td class="t">Guid?</td><td>Up to two contacts and two accounts on the entity. <b>Not surfaced anywhere in v1</b> — not on the rail, not in the dialog. Stored ids are round-tripped on save so a <code>PUT</code> does not clear them.</td></tr>
+      <tr><td>Attribution</td><td class="f">CreatedBy</td><td class="t">string</td><td>A display <b>label</b> from the claim-aware resolver, never the raw user id. A deleted author reads <i>Unknown user</i>.</td></tr>
+      <tr><td>Paging</td><td class="f">Offset · Limit</td><td class="t">query</td><td>Its own paged list endpoint — <code>GET /contracts/{id}</code> does not inline events. Newest first, 25 a page. <b>Search, the <code>Types</code> filter, <code>From</code>/<code>To</code> and <code>SortBy</code> are on the endpoint but not on the surface in v1.</b></td></tr>
+      <tr><td>Row actions</td><td class="f">ContractEventId</td><td class="t">Guid</td><td>Edit / Delete on every row, for any <code>contracts.update</code> holder — including entries someone else recorded.</td></tr>
+      <tr><td>Create</td><td class="f">POST …/events</td><td class="t">action</td><td><b>Not a button on the section.</b> “New event” lives in the contract record’s ⋯ menu, beside Add party and Attach document — recording an event is an action on the contract.</td></tr>
+    </tbody>
+  </table>
+
+  <ul class="spec-notes">
+    <li><span class="material-icons">edit_note</span><b>Nothing is auto-generated, so nothing is locked.</b> The spec is explicit that no event is system-written (§7.6, Non-Goal 4), and the surface follows: no “system” badge, no read-only rows, no two-tier list. Every entry is the user’s own and every entry is editable. The empty state says as much, so the first impression is “a log you keep”, not “a log that fills itself”.</li>
+    <li><span class="material-icons">playlist_add</span><b>The section carries no create button.</b> “New event” sits in the contract’s ⋯ menu with the other things you do to a contract, so the log reads as a record rather than a form. The empty state says where to find it rather than growing a button of its own.</li>
+    <li><span class="material-icons">vertical_align_center</span><b>Both ends of the rail are anchored to a real date.</b> Newest-first means the top is the present, so page one opens on <b>Today</b> — the log is live, and the next entry lands there. The foot is <b>when the contract record was added</b> — deliberately not its start date, since a contract can start in 2026 and still carry a “signed” event from 2025, which would put an event below its own origin. It is placed chronologically rather than pinned, because an event can legitimately be backdated before the record existed; usually it is older than everything and lands at the foot anyway. Mid-pages get neither cap and the line fades instead: it genuinely does continue, and a hard stop there would say otherwise.</li>
+    <li><span class="material-icons">timeline</span><b>The rail is the log; the spine is the overview.</b> A horizontal axis has nowhere to put a title or a description, so the spine carries only position and type colour — the whole life of the contract in one strip — and clicking a node highlights that entry in the rail below. On a two-event contract it does not render at all.</li>
+    <li><span class="material-icons">inventory_2</span><b>An archived contract is still writable here</b> (§8.6) — unlike Terms, which goes read-only. Archival hides a contract from the default list; it does not lock its history. This is a deliberate divergence from the section directly above it, so it is drawn rather than assumed.</li>
+    <li><span class="material-icons">segment</span><b>Three free-text fields, three jobs.</b> The <b>title</b> labels the entry, the <b>description</b> is the account of what happened and sits under it on the rail, and <b>notes</b> are the user's own working notes, which the rail never shows. That last one is a presentation rule only — notes sit behind the same claim, are searched by the same term and are exported with the rest.</li>
+    <li><span class="material-icons">groups</span><b>The notes field says who can read it.</b> <code>contracts.read</code> is held by Admin, Owner and User, so in a household install “not on the timeline” still means everyone but Guest can read it. The helper text says so outright, and the label is never “Private note” — a user who mistakes the field for private storage will put things in it the label promised to protect (§4.1).</li>
+    <li><span class="material-icons">link_off</span><b>No links, so nothing to guard.</b> v5 removed the four contact and account columns (Non-Goal 5), and with them the <code>RESTRICT</code> keys, the <code>409</code> blocker payloads and both detach valves. <code>DELETE /api/contacts/{id}</code> and <code>DELETE /api/accounts/{id}</code> are untouched by this feature, so the composite-refusal dialog earlier drafts needed is gone from this page too. There is no <code>409</code> anywhere in the feature.</li>
+    <li><span class="material-icons">toggle_off</span><b>A <code>Terminated</code> event does not expire the contract</b> (§4.2). Status is derived from the contract's own dates and archive flag, never from the log — so nothing in this section touches the status chip, and the rail must not imply that logging a termination changes what the contract is.</li>
+  </ul>
+
+
+</div>
+
+<div id="root"></div>
+
+<script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+<script type="text/babel" src="../ui_kits/web/ContractEvents.jsx"></script>
+<script type="text/babel" src="../ui_kits/web/AddContractEventModal.jsx"></script>
+<script type="text/babel" data-presets="env,react">
+const { useState } = React;
+const D = window.OdysseyData;
+const H = window.OdysseyHelpers;
+const byId = Object.fromEntries(D.contracts.map(c => [c.id, c]));
+
+const Seg = ({ value, onChange, options }) => (
+  <div className="twk-seg" role="tablist">
+    {options.map(o => (
+      <button key={String(o.value)} role="tab" aria-selected={value === o.value}
+        className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
+        {o.icon && <span className="material-icons">{o.icon}</span>}{o.label}
+      </button>
+    ))}
+  </div>
+);
+
+/* A contract-detail stand-in: the record head, then the live section. State
+   lives here, as it does on the real card, so create / edit / delete apply. */
+const DetailCard = ({ contract, seed, view, canUpdate }) => {
+  const [events, setEvents] = useState(() => seed || H.cevFor(contract.id));
+  const [dialog, setDialog] = useState(null);
+  const ti = H.contractTypeInfo(contract.type);
+  const meta = H.conStatusMeta(H.conStatus(contract));
+  const save = (dto) => {
+    setEvents(prev => prev.some(e => e.id === dto.id)
+      ? prev.map(e => (e.id === dto.id ? dto : e))
+      : [dto, ...prev]);
+    setDialog(null);
+  };
+  return (
+    <div className="dcard">
+      <div className="dcard-head">
+        <Avatar icon={ti.icon} tone={{ bg: ti.soft, fg: ti.color }} square size="lg" />
+        <div className="dcard-id">
+          <div className="dcard-name-row">
+            <span className="dcard-name">{contract.name}</span>
+            <Chip tone={meta.tone} dot={meta.dot}>{meta.label}</Chip>
+          </div>
+          <div className="dcard-tags">
+            <span>{ti.label}</span>
+            <span className="dcard-dot">·</span>
+            <span className="mono">{(contract.parties || []).length} parties</span>
+          </div>
+        </div>
+        <span className="dcard-count"><span className="material-icons">history</span>{events.length}</span>
+        {/* Where creating an event actually lives: the contract's own action
+            menu, beside Add party and Attach document. */}
+        <ActionMenu ariaLabel={`Actions for ${contract.name}`} items={[
+          { icon: 'add', label: 'New event', onClick: () => setDialog({}) },
+          { icon: 'group_add', label: 'Add party' },
+          { icon: 'attach_file', label: 'Attach document' },
+        ]} />
+      </div>
+      <ContractEvents contract={contract} events={events} view={view} canUpdate={canUpdate}
+        onEdit={(ev) => setDialog({ event: ev })}
+        onDelete={(ev) => setEvents(prev => prev.filter(x => x.id !== ev.id))} />
+      {dialog && (
+        <AddContractEventModal contract={contract} event={dialog.event}
+          onClose={() => setDialog(null)} onSave={save} />
+      )}
+    </div>
+  );
+};
+
+function Explore() {
+  const [view, setView] = useState('rail');
+  const [canUpdate, setCanUpdate] = useState(true);
+  const [theme, setTheme] = useState('dark');
+  React.useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+  const longLog = React.useMemo(() => H.cevLongLog('ct-storage', 220), []);
+
+  return (
+    <React.Fragment>
+      <div className="twk">
+        <div className="twk-grp">
+          <span className="twk-lab">History view</span>
+          <Seg value={view} onChange={setView} options={[
+            { value: 'rail', label: 'Rail only', icon: 'view_list' },
+            { value: 'spine', label: 'Spine + rail', icon: 'linear_scale' },
+          ]} />
+        </div>
+        <div className="twk-grp">
+          <span className="twk-lab">Claims</span>
+          <Seg value={canUpdate} onChange={setCanUpdate} options={[
+            { value: true, label: 'contracts.update', icon: 'edit' },
+            { value: false, label: 'read only', icon: 'visibility' },
+          ]} />
+        </div>
+        <div className="twk-spacer" />
+        <div className="twk-grp">
+          <span className="twk-lab">Theme</span>
+          <Seg value={theme} onChange={setTheme} options={[
+            { value: 'dark', label: 'Dark', icon: 'dark_mode' },
+            { value: 'light', label: 'Light', icon: 'light_mode' },
+          ]} />
+        </div>
+      </div>
+
+      <div className="detail-stage">
+        <div className="stage-label"><span className="material-icons">cottage</span>Lease · the case the feature exists for — a renegotiation, a notice, two emails and an author who has left</div>
+        <DetailCard contract={byId['ct-lease']} view={view} canUpdate={canUpdate} />
+
+        <div className="stage-label"><span className="material-icons">router</span>Service · a short log, unchanged in shape — v1 has one ordering and no filters, at any length</div>
+        <DetailCard contract={byId['ct-fiber']} view={view} canUpdate={canUpdate} />
+
+        <div className="stage-label"><span className="material-icons">inbox</span>Empty · a contract with no events, saying what the log is for and that nothing fills it automatically</div>
+        <DetailCard contract={byId['ct-employment']} view={view} canUpdate={canUpdate} />
+
+        <div className="stage-label"><span className="material-icons">inventory_2</span>Archived · still writable, unlike Terms directly above it</div>
+        <DetailCard contract={byId['ct-solar']} view={view} canUpdate={canUpdate} />
+
+        <div className="stage-label"><span className="material-icons">density_small</span>220 entries · newest first, 25 a page, grouped by year — the case search and filtering would serve, deferred past v1</div>
+        <DetailCard contract={byId['ct-storage']} seed={longLog} view={view} canUpdate={canUpdate} />
+      </div>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Explore />);
+</script>
+</body>
+</html>

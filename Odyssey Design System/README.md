@@ -1112,6 +1112,38 @@ The **Terms** section (`ContractTerms.jsx`) is a zone inside the expanded contra
 
 ---
 
+## Components — Contract events
+
+The **Events** section (`ContractEvents.jsx`) is the **last** zone in the expanded contract record, after Documents. The sections above it describe what the contract *is* — details, who is in it, what it costs, what evidences it. This one is its **history**: a user-maintained, chronological log of what has *happened* to the agreement. It renders on the DS **`EventRail`** primitive (below), reading `GET /api/contracts/{id}/events`, with `AddContractEventModal` for create and edit.
+
+**Nothing writes an event automatically**, and so nothing is locked. Pausing, archiving, renewing or editing a contract writes no event — the backend spec is explicit that no event is system-generated — so there is no "system" badge, no read-only row and no two-tier list. Every entry is the user's own and every entry is editable and deletable by any `contracts.update` holder, including entries someone else recorded. The empty state says as much, so the first impression is "a log you keep", not "a log that fills itself".
+
+**Creating an event is an action on the contract, not on the section.** *New event* lives in the record's action menu beside *New party* and *Upload document*; the section itself is a **read surface**, newest first, 25 a page. The endpoint's `Search`, `Types`, `From`/`To` and `SortBy` are deliberately **not** surfaced in v1 — a long log is reached by paging.
+
+**Three free-text fields, three jobs.** `Title` (≤ 256, **required on every type**, including `Other` — the type classifies, the title is what the reader reads) is the rail's headline; `Description` (≤ 1024) is the account of what happened and sits under it, **clamped to two lines**; `Notes` (≤ 1024) are the user's own working notes and are the one field the rail never shows. That last rule is **presentation only** — notes sit behind the same `contracts.read` claim, are searched by the same term and are exported with everything else. Because `contracts.read` is held by Admin, Owner and User, the dialog's helper text states the audience outright ("anyone who can see this contract can read them") and the field is **never** labelled "Private note".
+
+**Both ends of the rail are anchored to a real date.** Newest-first means the top is the present, so page one opens on a **Today** marker — the log is live and the next entry lands there. The foot is **when the contract record was added**, deliberately not its start date: a contract can start in 2026 and still carry a *Signed* event from 2025, which would otherwise put an event below its own origin. It is placed chronologically rather than pinned, so a backdated entry sorts above it. Hovering that marker reveals who added the record, matching an event's own "Recorded by…" line. On a middle page neither cap is drawn and the line fades instead — it genuinely does continue.
+
+> **Pending backend field.** The foot marker's author reads `Contract.CreatedByUserId`, which **does not exist yet** — it has been requested of the backend alongside this feature. It is expected to behave exactly as `ContractEvent.CreatedByUserId` does: `SET NULL` when the user is deleted, resolved to a display label at the API edge, never exposed as a raw id. Until it ships the marker reads *"Added by Unknown user"*, which is also precisely how a `SET NULL` row will read, so nothing needs re-designing when it lands.
+
+**An archived contract stays writable here**, unlike Terms directly above it, which goes read-only. Archival hides a contract from the default list; it does not lock its history. **On the collapsed card**, the counts strip gains an **Events** count beside Parties, Terms and Documents. An event of type `Terminated` does **not** expire the contract — status stays derived from the contract's own dates and archive flag, so nothing in this section touches the status chip.
+
+**`ContractEventType`** (`OdysseyData.contractEventTypes`, helper `cevTypeInfo`) — nine members in the enum's fixed ordinal order, which is a wire contract: **Signed** · **Amended** · **Renewed** · **Extended** · **Notice given** · **Terminated** · **Price changed** · **Email sent** · **Other** (the default, and the catch-all a custom event is expressed as). Each carries a glyph; the **hue is held back in v1** — a column of nine colours would compete with the status vocabulary the record head already uses.
+
+> **Stack reality check.** Mirrors the *Contract Events* backend (Draft v6): one new `ContractEvents` table (FK to `Contract` **CASCADE**, `CreatedByUserId` **SET NULL**, one `(ContractId, OccurredAt)` index), four contract-scoped routes on `ContractController`, and one new entry in the personal-data export — gated on the **existing** `contracts.read` / `contracts.update`. Purely additive: **no existing endpoint changes behaviour**. `GET /api/contracts/{id}` deliberately does not inline events, because a log grows without bound. `OccurredAt` must not be in the future (60-second forward tolerance, checked against the server clock). A `PUT` is a **full replacement** — an omitted description or note clears it, an omitted type resets to `Other` — the opposite of `UpdateContract`, and the dialog says so when editing. v5 removed the four optional contact/account link columns (Non-Goal 5), and with them the `RESTRICT` keys, the `409` blocker payloads and both detach valves: there is **no `409`** anywhere in this feature, and `DELETE /api/contacts/{id}` and `DELETE /api/accounts/{id}` are untouched.
+
+---
+
+## Components — Event rail
+
+**`EventRail` / `EventRailItem` / `EventRailMarker`** is the **continuous-rail** history list: one unbroken line running the full height of the track, with 32px icon nodes sitting on it and markers — years, endpoints — on the same line *between* rows.
+
+**It exists alongside `Timeline`, not instead of it.** `Timeline` draws a rail segment per item with a plain dot node and a right-hand figures column: right for an effective-dated record table (terms, estimates), where each row is a value to compare. `EventRail` is for a **log of things that happened**, where the reader follows the line. A `Timeline` cannot do the job with a flag, because its rail restarts per item — a marker between two rows would break the line.
+
+Nodes are **opaque and haloed in the surface colour**, so the line stops at each circle rather than striking through it, and neutral by default (`color` is available where the kind's hue is genuinely the fastest read). `capTop` / `capEnd` say whether this page holds the real newest / oldest end of the log; an **uncapped end fades** rather than cutting, because a paged middle genuinely continues. Row `actions` sit inline after the date rather than pinned to the card edge — they belong to the entry being read — and anything given the `.odc-er-meta` class (a provenance line, say) reveals on the same hover or keyboard focus. A **marker** takes the same provenance through its `meta` prop, for an endpoint with an author worth naming.
+
+---
+
 ## Reference data — Billing interval
 
 The **Subscriptions** feature adds one enum with a canonical registry in `OdysseyData` (icon + color + label, same categorical band as the others) and typed pickers in `/components`.
