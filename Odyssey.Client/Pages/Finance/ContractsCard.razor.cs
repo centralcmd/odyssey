@@ -915,16 +915,13 @@ public partial class ContractsCard
                 });
             }
 
-            // Pause is enterable from Active ALONE, so the action is simply ABSENT elsewhere rather
-            // than disabled-with-a-reason like Archive. The difference is whether there is an
-            // instruction to give: Archive's precondition ("the contract has to end first") is a step
-            // the reader can act on, while "this contract is upcoming" is not. Resume is offered
+            // Pause is enterable from Active ALONE, so the action is ABSENT everywhere else — as
+            // every unavailable action now is (design system · components/Menu). The unsigned case
+            // used to be the exception, offered dimmed with "sign it first" as an instruction the
+            // reader could act on; that whole treatment is retired, and where a precondition still
+            // needs stating the RECORD states it, not a menu row nobody has opened. Resume is offered
             // wherever a stamp exists, in any state — clearing a pause is never refused, which is
             // what stops an archived or expired contract being stranded holding one.
-            //
-            // An UNSIGNED contract is the one non-Active case that DOES have an instruction to give —
-            // sign it — so it gets the disabled-with-a-reason treatment instead of the silent
-            // absence, which also keeps the item focusable for a keyboard or AT user (WCAG 2.1.1).
             if (c.Status == ContractStatus.Active)
             {
                 items.Add(new OdsMenuItem

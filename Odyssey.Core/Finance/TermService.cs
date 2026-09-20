@@ -289,7 +289,7 @@ public class TermService
     /// holder cannot write a term onto an account.
     /// </summary>
     /// <exception cref="DomainNotFoundException">The contract does not exist.</exception>
-    /// <exception cref="DomainValidationException">Validation, eligibility, or the archive guard failed.</exception>
+    /// <exception cref="DomainValidationException">Validation or eligibility failed.</exception>
     /// <exception cref="DomainConflictException">A term in the same series with that effective date exists.</exception>
     /// <exception cref="DomainUnprocessableException">The per-contract term cap is reached.</exception>
     public async Task<ExistingTerm> CreateForContract(Guid contractId, NewTerm newTerm, CancellationToken cancellationToken = default)
@@ -302,7 +302,6 @@ public class TermService
 
     private async Task<ExistingTerm> CreateFor(TermOwnerFacts owner, NewTerm newTerm, CancellationToken cancellationToken)
     {
-
         var term = new Term
         {
             AccountId = owner.Kind == TermOwnerKind.Account ? owner.Id : null,
@@ -355,7 +354,6 @@ public class TermService
 
     private async Task<bool> UpdateFor(TermOwnerFacts owner, Guid termId, NewTerm putTerm, CancellationToken cancellationToken)
     {
-
         var term = await context.Terms
             .Where(OwnedBy(owner))
             .FirstOrDefaultAsync(t => t.TermId == termId, cancellationToken);
@@ -388,7 +386,6 @@ public class TermService
 
     private async Task<bool> DeleteFor(TermOwnerFacts owner, Guid termId, CancellationToken cancellationToken)
     {
-
         var term = await context.Terms
             .Where(OwnedBy(owner))
             .FirstOrDefaultAsync(t => t.TermId == termId, cancellationToken);

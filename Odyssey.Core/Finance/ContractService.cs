@@ -24,9 +24,11 @@ namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// CRUD for contracts plus party- and file-link management, derived-status computation and the summary
-/// rollup (issue #174). Owns all business validation — the one-of-two (XOR) party invariant, the
-/// archive guard, defensive caps and the data-minimised read projections; the controller owns claim
-/// authorization and the file content-type allow-list.
+/// rollup (issue #174). Owns all business validation — the one-of-two (XOR) party invariant,
+/// defensive caps and the data-minimised read projections; the controller owns claim authorization
+/// and the file content-type allow-list. Note there is no archive guard on the write paths: archival
+/// hides a contract from the default list, it does not lock it, and only <see cref="EnsureArchivable"/>
+/// (the transition INTO archived) still refuses anything on that account.
 ///
 /// All time-relative computation uses a single UTC "today" captured once per request from the injected
 /// <see cref="TimeProvider"/>, so a contract cannot evaluate to different statuses within one request.

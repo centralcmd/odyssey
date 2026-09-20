@@ -109,11 +109,22 @@
     /// removal orphaned.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A divider is orphaned when it would lead the menu, trail it, or follow another divider, or
     /// when the next item is a header (which brings its own separation). A header is orphaned when
-    /// no real item follows it before the menu ends — a group label with nothing under it.
+    /// no real item follows it <b>before the next header</b> — a group label with nothing under it.
     /// Both passes run over the list that REMAINS, not the original, so two adjacent removals
     /// collapse the divider between them rather than each looking past the other.
+    /// </para>
+    /// <para>
+    /// The header lookahead is bounded by <c>TakeWhile</c> rather than scanning to the end of the
+    /// list, and that bound is load-bearing: with two adjacent groups whose FIRST is emptied by the
+    /// removal, an unbounded scan finds a surviving item under the SECOND group and keeps the first
+    /// header — leaving exactly the "group label heading nothing" this pass exists to remove. The
+    /// design system's own reference implementation (<c>components/Menu.jsx</c>) scans unbounded and
+    /// has the same gap; this is a deliberate divergence toward what its prose specifies, not a
+    /// transcription error to be "corrected" back.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<OdsMenuItem> VisibleItems
     {
@@ -127,7 +138,9 @@
                           && !shown[i - 1].Divider
                           && string.IsNullOrEmpty(shown[i + 1].Header)
                         : !string.IsNullOrEmpty(item.Header)
-                            ? shown.Skip(i + 1).Any(n => !n.Divider && string.IsNullOrEmpty(n.Header))
+                            ? shown.Skip(i + 1)
+                                   .TakeWhile(n => string.IsNullOrEmpty(n.Header))
+                                   .Any(n => !n.Divider)
                             : true)
                 .ToList();
         }

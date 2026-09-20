@@ -63,12 +63,6 @@ public partial class ContractTermsSection
     private ExistingTerm? _editingTerm;
 
     /// <summary>
-    /// The per-row edit / delete actions: the caller's claim AND the record's state. An archived
-    /// contract refuses <c>PUT</c> and <c>DELETE</c> as surely as it refuses <c>POST</c>, so an
-    /// affordance that could only fail is not rendered.
-    /// </summary>
-
-    /// <summary>
     /// A contract with no terms at all is a different state from one whose entries are all scheduled,
     /// and the divider says which: "Terms · 0 entries" for the first, "Current terms · none in
     /// force" for the second.

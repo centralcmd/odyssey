@@ -71,13 +71,6 @@ public partial class AddTermDialog
     /// </summary>
     private bool CurrencyRequired => OwnerCurrency is null;
 
-    /// <summary>
-    /// The archive guard, restated here so a dialog left open while the record is archived elsewhere
-    /// cannot post through it. The surface that opens this dialog already withholds the action; this
-    /// is the second line, not the first.
-    /// </summary>
-    private bool OwnerArchived => Contract?.Archived is not null;
-
     /// <summary>Whether the Name field is rendered: a fee takes a label, a rate is refused one.</summary>
     private bool TakesLabel => TermLabel.RuleFor(_kind) == TermLabelRule.Required;
 
@@ -388,11 +381,6 @@ public partial class AddTermDialog
                 ? "Not available on a contract."
                 : "Not available for this account type.";
         }
-
-        // Restated from the opening surface so a dialog left open while the contract is archived
-        // elsewhere cannot post through it.
-        if (OwnerArchived)
-            _errors["kind"] = "This contract is archived — restore it before changing its terms.";
 
         // The contract rule: an amount needs a currency, and nothing supplies one.
         if (!IsPercentage && CurrencyRequired && string.IsNullOrWhiteSpace(_currency))

@@ -180,6 +180,53 @@ public class OdsMenuUnavailableItemTests
     }
 
     /// <summary>
+    /// <b>The case an unbounded lookahead gets wrong.</b> With two adjacent groups whose FIRST is
+    /// emptied by the removal, a header check that scans to the end of the list finds the surviving
+    /// item under the SECOND group and keeps the first header — leaving exactly the "group label
+    /// heading nothing" the orphan pass exists to remove.
+    ///
+    /// <para>
+    /// The design system's own reference implementation (<c>components/Menu.jsx</c>) scans unbounded
+    /// and has this gap; <c>OdsMenu</c> bounds the lookahead at the next header instead. That is a
+    /// deliberate divergence toward what the design system's prose specifies, so this test is also
+    /// the note explaining why the two implementations differ.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void An_emptied_header_group_is_dropped_even_when_a_later_group_survives()
+    {
+        var cut = RenderMenu(
+            Header("Lifecycle"),
+            Unavailable("Archive"),
+            Header("Record"),
+            Enabled("Delete"));
+
+        Assert.Equal(["Delete"], Labels(cut));
+        Assert.DoesNotContain("Lifecycle", cut.Markup);
+        Assert.Contains("Record", cut.Markup);
+    }
+
+    /// <summary>
+    /// The mirror of the above: when the first group still has an item, BOTH headers survive. Without
+    /// this, the bounded lookahead could be "fixed" by dropping every header but the last and the
+    /// test above would still pass.
+    /// </summary>
+    [Fact]
+    public void Two_header_groups_that_both_keep_an_item_both_survive()
+    {
+        var cut = RenderMenu(
+            Header("Lifecycle"),
+            Enabled("Archive"),
+            Unavailable("Pause"),
+            Header("Record"),
+            Enabled("Delete"));
+
+        Assert.Equal(["Archive", "Delete"], Labels(cut));
+        Assert.Contains("Lifecycle", cut.Markup);
+        Assert.Contains("Record", cut.Markup);
+    }
+
+    /// <summary>
     /// Every item unavailable is a real state — a read-only reader on a record whose every action is
     /// a write — and it must render an empty menu rather than a stack of separators.
     /// </summary>

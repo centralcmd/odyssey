@@ -135,8 +135,8 @@ public class ContractsCardRowActionTests
     }
 
     /// <summary>
-    /// The page must never reach for the native attribute directly. <c>OdsMenuItem.Disabled</c> +
-    /// is the one supported way to express this, and <c>OdsMenuUnavailableItemTests</c> pins what it
+    /// The page must never reach for the native attribute directly. <c>OdsMenuItem.Disabled</c> is
+    /// the one supported way to express this, and <c>OdsMenuUnavailableItemTests</c> pins what it
     /// does on the component side — the item is not rendered at all.
     /// </summary>
     [Fact]

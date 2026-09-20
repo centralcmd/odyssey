@@ -15,7 +15,10 @@
 
 @if (Variant == OdsEmptyStateVariant.Line)
 {
-    <OdsEmptyLine Align="Align" Pad="Pad" Class="@Class">@(Title ?? Description)</OdsEmptyLine>
+    @* Alert is forwarded, not dropped: a failure state rendered as the line shape is still a status
+       message and must still be announced (WCAG 4.1.3). Silently losing it here would ship an
+       unannounced error the moment a surface switched variants. *@
+    <OdsEmptyLine Align="Align" Pad="Pad" Class="@Class" Role="@(Alert ? "alert" : null)">@(Title ?? Description)</OdsEmptyLine>
 }
 else
 {
@@ -51,7 +54,10 @@ else
     /// <summary>A single CTA — pass an OdsButton.</summary>
     [Parameter] public RenderFragment? Action { get; set; }
 
-    /// <summary>Render as an assertive <c>role="alert"</c> region — for error/failure variants (WCAG 4.1.3).</summary>
+    /// <summary>
+    /// Render as an assertive <c>role="alert"</c> region — for error/failure variants (WCAG 4.1.3).
+    /// Honoured by <b>both</b> variants.
+    /// </summary>
     [Parameter] public bool Alert { get; set; }
 
     /// <summary>Dim the icon tile — for a "no results match your search" state. Panel only.</summary>
