@@ -82,10 +82,21 @@
     <div class="con-files con-tbl-frame">
         <ContractFilesTable ContractId="Contract.ContractId"
                             Files="@ContractFiles"
-                            CanDownload="CanDownload" CanDelete="CanWrite"
+                            CanDownload="CanDownload" CanUpdate="CanWrite" CanDelete="CanWrite"
+                            Archived="Archived"
                             OnChanged="OnChanged"
+                            OnFilesRefreshed="OnFilesRefreshed"
                             Empty="_emptyDocs" />
     </div>
+    @* An archived contract refuses every document write with a 400, so the reason is stated once
+       here rather than left to a dialog that saves and then fails. *@
+    @if (Archived && Contract.Files.Count > 0)
+    {
+        <div class="con-empty-line">
+            <span class="material-icons" aria-hidden="true">lock</span>
+            <div style="flex:1;">This contract is archived. Restore it to edit or remove its documents.</div>
+        </div>
+    }
 </div>
 
 @* Events — what has HAPPENED to the agreement, as a log (issue #138). LAST, and deliberately so:

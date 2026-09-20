@@ -30,6 +30,14 @@ public partial class ContractDetailView : IAsyncDisposable
     /// <summary>Raised after a party detach or file detach so the host re-fetches the contract.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
+    /// <summary>
+    /// Raised with this contract's documents, freshly read, after a document METADATA edit
+    /// (issue #146). Such an edit creates and removes no row, so nothing outside the documents
+    /// collection can have changed — the host patches it in place instead of pulling the contract,
+    /// the contracts list and the summary back down.
+    /// </summary>
+    [Parameter] public EventCallback<List<ExistingContractFile>> OnFilesRefreshed { get; set; }
+
     /// <summary>Raised with the line the host's live region should read out.</summary>
     [Parameter] public EventCallback<string> OnAnnounce { get; set; }
 

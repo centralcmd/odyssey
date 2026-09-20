@@ -2515,7 +2515,10 @@ tr:focus-within > .odc-rowactions.reveal,
   background: var(--mud-palette-background);
 }
 .con-empty-line .material-icons { font-size: 20px; opacity: 0.7; flex: none; }
-.con-files { padding: 4px 4px 8px; }
+/* Documents section wrapper (OdsFilesTable lives inside). With the four validity columns the
+   table is wider than a narrow record body, so the documents frame scrolls sideways rather than
+   clipping "Issued by" and the row menu. */
+.con-files { padding: 4px 4px 8px; overflow-x: auto; }
 
 /* ---- Terms sections (contract price history, issue #135) ----
    The values in force render as the record's own InfoTiles and the history reuses the shared

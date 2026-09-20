@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MudBlazor.Services;
@@ -68,6 +70,11 @@ public class ContractPartyTileTests
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IContractsApiClient>());
         ctx.Services.AddSingleton<TimeProvider>(new FixedTime(Today));
+        // The Documents section renders in the same detail view, and its files table resolves the
+        // issuer options and the contacts.create claim for its Edit dialog (issue #146).
+        ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
+        ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());
+        ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedOut());
 
         return ctx.Render<DetailHost>(p => p
             .Add(h => h.Party, party)
@@ -289,6 +296,12 @@ public class ContractPartyTileTests
     /// provider, so without one in the same tree the items render nowhere and every menu assertion
     /// would pass vacuously against an empty popover.
     /// </summary>
+    private sealed class SignedOut : AuthenticationStateProvider
+    {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
+    }
+
     public sealed class DetailHost : ComponentBase
     {
         [Parameter] public ExistingContractParty Party { get; set; } = default!;

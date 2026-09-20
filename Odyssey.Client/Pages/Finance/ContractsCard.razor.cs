@@ -442,6 +442,19 @@ public partial class ContractsCard
         StateHasChanged();
     }
 
+    /// <summary>
+    /// Patches one contract's documents in place after a document METADATA edit (issue #146). Such an
+    /// edit creates and removes no row, so the list row's file count and every summary figure are
+    /// unchanged — pulling the contract, the list and the summary back down for it would be three
+    /// requests to observe a one-row change the list endpoint already returned.
+    /// </summary>
+    private void ApplyContractFiles(Guid id, List<ExistingContractFile> files)
+    {
+        if (_details.TryGetValue(id, out var contract))
+            contract.Files = files;
+        StateHasChanged();
+    }
+
     private async Task ReloadContract(Guid id)
     {
         var contract = await Contracts.GetAsync(id);
