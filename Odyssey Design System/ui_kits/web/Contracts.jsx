@@ -7,9 +7,20 @@
    account or a contact),
    and the DOCUMENTS that evidence it (references to existing library files).
 
-   Status (Upcoming / Active / Paused / Expired / Archived) is DERIVED, never
-   stored — computed per request (spec §6) from StartDate / EndDate / Paused /
-   Archived. Navigation
+   Status (Draft / Ready / Upcoming / Active / Paused / Expired / Archived) is
+   DERIVED, never stored — computed per request from StartDate / EndDate /
+   Ready / Signed / Paused / Archived, at the precedence
+   Archived > Draft/Ready > Upcoming > Expired > Paused > Active.
+
+   THE SIGNATURE STAMPS. Ready and Signed are two nullable timestamps in the
+   same shape as Paused and Archived. A contract with no Signed stamp is
+   unsigned, and reads Draft or Ready WHATEVER its dates say — it is recorded
+   on file without pretending to be in force, and it contributes nothing to
+   the run rate or the upcoming charges. They are written two ways, both
+   landing on the same PUT: the row menu's one-click Mark ready / Mark signed
+   / Unsign for the common path, and real date fields in the create + edit
+   dialog for backdating a paper contract signed last month.
+   Navigation
    is expand-in-place (no /{id} deep-link, per frontend B1). Archive is a
    reversible field on the edit form (a normal update — there is no dedicated
    archive action), distinct from the irreversible hard delete.
@@ -133,6 +144,8 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
   const status = CON_H.conStatus(contract, today);
   const statusMeta = CON_H.conStatusMeta(status);
   const statusFoot = status === 'Archived' ? `since ${CON_H.conDate(contract.archived)}`
+    : status === 'Draft' ? 'not yet marked ready for signature'
+    : status === 'Ready' ? `ready since ${CON_H.conDate(contract.ready)} — waiting on a signature`
     : status === 'Paused' ? `since ${CON_H.conDate(contract.paused)}`
     : status === 'Expired' ? (contract.endDate ? `since ${CON_H.conDate(contract.endDate)}` : null)
     : status === 'Upcoming' ? (contract.startDate ? `starts ${CON_H.conDate(contract.startDate)}` : null)
@@ -174,6 +187,12 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         {/* One tile per STORED stamp, so nothing is lost when the derived
             status shows only one of them: an archived contract that is also
             paused still says when each began. */}
+        {/* The two signature stamps, in lifecycle order and ahead of the
+            suspension stamps: they are the earliest facts about the contract.
+            A tile appears only once its stamp exists, so a plain Draft adds
+            nothing to the grid — the Status tile has already said so. */}
+        {contract.ready ? <InfoTile icon="draw" label="Ready for signature" value={CON_H.conDate(contract.ready)} valueVariant="sm" className={contract.signed ? undefined : 'con-status-tile pending'} foot={contract.signed ? 'sent out on this date' : 'waiting on a signature'} /> : null}
+        {contract.signed ? <InfoTile icon="history_edu" label="Signed" value={CON_H.conDate(contract.signed)} valueVariant="sm" className="con-status-tile income" foot="signed by all parties" /> : null}
         {contract.paused ? <InfoTile icon="pause_circle" label="Paused" value={CON_H.conDate(contract.paused)} valueVariant="sm" className="con-status-tile pending" foot="still listed and editable, not costing" /> : null}
         {contract.archived ? <InfoTile icon="inventory_2" label="Archived" value={CON_H.conDate(contract.archived)} valueVariant="sm" foot="hidden from the default list" /> : null}
       </InfoTileGrid>
@@ -274,6 +293,10 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
   const termBlock = CON_H.conTermWriteBlock(c, terms.length, termCap);
   const contact = parties.map(CON_H.conResolveParty).find(r => r.kind === 'contact');
   const dimmed = !!c.archived;
+  /* An unsigned contract stays at FULL brightness — it is the row most likely
+     to need attention — and is marked instead by a dashed card edge: nothing
+     about it is settled yet. Dimming is reserved for archived. */
+  const unsigned = CON_H.conIsUnsigned(status);
   // "Ended" is not the same as status 'Expired': a delivered one-off stays Active
   // in the status derivation, so completion counts too.
   const hasEnded = status === 'Expired' || (!!c.completionDate && c.completionDate <= today);
@@ -287,6 +310,12 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
       startDate: draft.mode === 'oneoff' ? null : (draft.startDate || null),
       endDate: draft.mode === 'oneoff' ? null : (draft.endDate || null),
       completionDate: draft.mode === 'oneoff' ? draft.completionDate : null,
+      /* The dialog is a FULL REPLACEMENT, and that includes the two signature
+         stamps: a value sets them, a cleared field clears them. Carried
+         explicitly here — an omitted stamp on this write would flip a signed
+         contract back to Draft and drop it out of the run rate. */
+      ready: draft.ready || null,
+      signed: draft.signed || null,
     }));
     setShowEdit(false);
   };
@@ -300,10 +329,28 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
     setEditParty(null);
   };
   const attachFile = (filesToAdd) => { const arr = Array.isArray(filesToAdd) ? filesToAdd : [filesToAdd]; setC(prev => ({ ...prev, files: [...(prev.files || []), ...arr] })); setModal(null); setOpen(true); setFocusDocs(true); };
-  const toggleArchive = () => setC(prev => ({ ...prev, archived: prev.archived ? null : new Date().toISOString() }));
+  /* Every write below rebuilds the whole record, so each one carries BOTH
+     signature stamps forward explicitly. Omitting them here is the regression
+     the backend spec calls out: clicking Archive or Pause on a signed
+     contract would clear them, flip it to Draft and empty it out of the run
+     rate. Keep them on every write that touches this record. */
+  const toggleArchive = () => setC(prev => ({ ...prev, ready: prev.ready, signed: prev.signed, archived: prev.archived ? null : new Date().toISOString() }));
   /* Pause rides the same PUT as archive, and is idempotent the same way: a
      repeated pause keeps the ORIGINAL stamp, so "paused since" never resets. */
-  const togglePause = () => setC(prev => ({ ...prev, paused: prev.paused ? null : (prev.paused || new Date().toISOString()) }));
+  const togglePause = () => setC(prev => ({ ...prev, ready: prev.ready, signed: prev.signed, paused: prev.paused ? null : (prev.paused || new Date().toISOString()) }));
+
+  /* The one-click signature path. Marking ready is idempotent the same way a
+     pause is — a repeated mark keeps the ORIGINAL stamp, so "ready since"
+     never resets. Signing stamps Ready too when it is missing, because the
+     server refuses a Signed without one (contract_signed_requires_ready) and
+     a one-click action must not be able to compose an invalid write.
+     Unsign clears BOTH, which is never refused in any state. */
+  const markReady = () => setC(prev => ({ ...prev, ready: prev.ready || new Date().toISOString() }));
+  const markSigned = () => setC(prev => {
+    const now = new Date().toISOString();
+    return { ...prev, ready: prev.ready || now, signed: prev.signed || now };
+  });
+  const unsign = () => setC(prev => ({ ...prev, ready: null, signed: null }));
 
   /* Create and edit are one write path, as they are on the server: the dialog
      posts a NewTerm and the route (this contract) is the only thing that names
@@ -347,7 +394,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
   }, [highlight]);
 
   return (
-    <div ref={cardRef}>
+    <div ref={cardRef} className={unsigned ? 'con-unsigned' : undefined}>
       <RecordCard
         icon={typeInfo.icon}
         accent={typeInfo.color}
@@ -380,7 +427,16 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
              end) is a step the user can act on, this one has no instruction to
              give. Resume is offered whenever a stamp exists, in any state:
              clearing a pause is never refused. */
+          /* The signature path, first in the menu while it is the thing the
+             contract is waiting on. Offered in lifecycle order, one step at a
+             time: there is no "Mark ready" on a contract already signed. */
+          ...(!c.signed && !c.ready ? [{ icon: 'draw', label: 'Mark ready for signature', onClick: markReady }] : []),
+          ...(!c.signed && c.ready ? [{ icon: 'history_edu', label: 'Mark signed', onClick: markSigned }] : []),
+          ...(c.signed || c.ready ? [{ icon: 'undo', label: c.signed ? 'Unsign' : 'Clear ready date', onClick: unsign }] : []),
           ...(status === 'Active' ? [{ icon: 'pause_circle', label: 'Pause', onClick: togglePause }]
+            /* Pausing is refused for anything that is not Active, the unsigned
+               two included — a stamp with nothing to suspend. */
+            : CON_H.conIsUnsigned(status) ? [{ icon: 'pause_circle', label: 'Pause', disabled: true, note: 'Only a signed contract in force can be paused.' }]
             : c.paused ? [{ icon: 'play_circle', label: 'Resume', onClick: togglePause }] : []),
           { icon: 'group_add', label: 'New party', onClick: () => { setOpen(true); setModal('party'); } },
           // Refused writes are offered with their reason rather than hidden —
@@ -395,9 +451,12 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
           { icon: 'history', label: 'New event', onClick: () => { setOpen(true); setModal('event'); } },
           { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
           { divider: true },
-          // Only an ended contract can be archived — the lifecycle is ordered, so
-          // the action is offered with its reason rather than hidden.
-          (hasEnded || c.archived)
+          /* An ENDED or an UNSIGNED contract can be archived — the lifecycle is
+             ordered, so the action is offered with its reason rather than
+             hidden. Unsigned is in the rule because abandoning a negotiation
+             is the likeliest reason to archive a draft, and a draft usually
+             has no end date to wait for. */
+          (hasEnded || c.archived || !c.signed)
             ? { icon: c.archived ? 'unarchive' : 'inventory_2', label: c.archived ? 'Restore' : 'Archive', onClick: toggleArchive }
             : { icon: 'inventory_2', label: 'Archive', disabled: true, note: 'The contract has to end first.' },
           { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete && onDelete(c.id) },
@@ -429,7 +488,8 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
 /* ====================== Summary (header Overview) ====================== */
 const ContractsSummary = ({ contracts, today, endingWindow }) => {
   const s = CON_H.conSummary(contracts, today);
-  const order = ['Active', 'Paused', 'Upcoming', 'Expired', 'Archived'];
+  // Lifecycle reading order — the shared rank, not the enum ordinal.
+  const order = CON_H.CON_STATUS_RANK;
   // Distribution rows for the two BreakdownTile instances. Status tones map to
   // the same finance accents the pills / chips use — no new hue enters.
   const TONE_COLOR = { income: 'var(--finance-income)', info: 'var(--sea-400)', expense: 'var(--finance-expense)', outline: 'var(--mud-palette-text-secondary)', pending: 'var(--finance-pending)' };
@@ -444,7 +504,7 @@ const ContractsSummary = ({ contracts, today, endingWindow }) => {
   const endingSoon = (contracts || []).filter(c => !c.archived && c.endDate
     && CON_H.conStatus(c, today) === 'Active'
     && CON_H.conDaysUntil(c.endDate, today) <= endingWindow).length;
-  statusRows.splice(1, 0, { key: 'EndingSoon', icon: 'hourglass_bottom', iconColor: TONE_COLOR.pending,
+  statusRows.splice(order.indexOf('Active') + 1, 0, { key: 'EndingSoon', icon: 'hourglass_bottom', iconColor: TONE_COLOR.pending,
     label: `Ending soon · ${endingWindow}d`, count: endingSoon });
 
   /* What the file costs to run. Only the Active contracts' in-force periodic
@@ -452,14 +512,20 @@ const ContractsSummary = ({ contracts, today, endingWindow }) => {
      twice — once summed, once split. */
   const rr = CON_H.conRunRate(contracts, today);
   const rrMoney = (v) => (v == null ? '—' : CON_H.money(v, rr.baseCurrency));
-  /* A paused contract keeps its price on file and contributes nothing here.
-     The tiles say so, because a run rate that quietly dropped would otherwise
-     read as a pricing error. */
+  /* A paused contract keeps its price on file and contributes nothing here;
+     so does an unsigned one, which may be fully priced and is still only a
+     quote. The tiles name both, because a run rate that quietly dropped would
+     otherwise read as a pricing error. */
   const pausedCount = s.countsByStatus.Paused || 0;
+  const unsignedCount = (s.countsByStatus.Draft || 0) + (s.countsByStatus.Ready || 0);
+  const excluded = [
+    pausedCount ? `${pausedCount} paused` : null,
+    unsignedCount ? `${unsignedCount} unsigned` : null,
+  ].filter(Boolean);
   const rrFoot = (rr.unconvertedCurrencies.length
     ? `in ${rr.baseCurrency} · ${rr.unconvertedCurrencies.join(', ')} excluded`
     : `in ${rr.baseCurrency}`)
-    + (pausedCount ? ` · ${pausedCount} paused excluded` : '');
+    + (excluded.length ? ` · ${excluded.join(', ')} excluded` : '');
   const rrMonthlyRows = rr.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: r.color, label: r.label, count: rrMoney(r.monthly) }));
   const rrYearlyRows = rr.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: r.color, label: r.label, count: rrMoney(r.yearly) }));
   return (
@@ -502,7 +568,10 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
   // §6.8 curated fields — one list feeds the SortSelect AND the ordering.
   // Type/Status sort by the registry / lifecycle declared order, not label.
-  const CON_STATUS_ORDER = ['Upcoming', 'Active', 'Expired', 'Archived', 'Paused'];
+  /* The shared LIFECYCLE rank, not the wire ordinal: Draft = 5 and Ready = 6
+     are appended enum members, so sorting on the ordinal would put the two
+     earliest states last, behind Archived. */
+  const CON_STATUS_ORDER = CON_H.CON_STATUS_RANK;
   const sortFields = [
     { key: 'name',      label: 'Name',       type: 'text',   sortValue: (c) => (c.name || '').toLowerCase() },
     { key: 'startDate', label: 'Start date', type: 'date',   sortValue: (c) => c.startDate || null },
@@ -560,6 +629,15 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
       && CON_H.conDaysUntil(c.startDate, today) <= endingWindow)
     .sort((a, b) => (a.startDate < b.startDate ? -1 : 1))
     .slice(0, 6);
+  /* Awaiting signature: sent out, never returned. Not a dated cliff — the
+     thing that makes it actionable is that nothing will move it on its own,
+     and every day it sits there is a day an agreement everyone believes is in
+     force is not. Drafts are deliberately NOT here: a draft is work in
+     progress, and the status filter is where you go looking for it. */
+  const awaitingSignature = active
+    .filter(c => CON_H.conStatus(c, today) === 'Ready')
+    .sort((a, b) => (a.ready < b.ready ? -1 : 1))
+    .slice(0, 6);
   /* Paused agreements: not a cliff, but the one group here you cannot see by
      looking at a date — a contract that stopped costing money because someone
      froze it, and which nothing will un-freeze on its own. */
@@ -567,11 +645,11 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
     .filter(c => CON_H.conStatus(c, today) === 'Paused')
     .sort((a, b) => (a.paused < b.paused ? 1 : -1))
     .slice(0, 6);
-  const signal = (flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length || pausedRows.length) ? {
+  const signal = (flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length || pausedRows.length || awaitingSignature.length) ? {
     // The panel's worst severity wins the button: an expired term reads error,
     // a term running out reads warning, and next charges alone read info.
-    severity: recentlyExpired.length ? 'error' : flagged.length ? 'warning' : 'info',
-    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length + pausedRows.length,
+    severity: recentlyExpired.length ? 'error' : (flagged.length || awaitingSignature.length) ? 'warning' : 'info',
+    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length + pausedRows.length + awaitingSignature.length,
     label: 'Upcoming',
     region: (
       <div className="signal-panel">
@@ -597,6 +675,19 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
               <SeverityIcon severity="warning" size={18} className="alert-icon" />
               <div className="alert-body"><strong>{c.name}.</strong> Term {hl.word}.</div>
+              <button className="alert-fix" onClick={(e) => { e.stopPropagation(); jumpTo(c.id); }}>View →</button>
+            </div>
+          );
+        })}
+        {awaitingSignature.length ? <div className="con-signal-group">Awaiting signature</div> : null}
+        {awaitingSignature.map((c) => {
+          const days = -CON_H.conDaysUntil(c.ready, today);
+          return (
+            <div key={c.id} className="alert warning compact signal-row" role="button" tabIndex={0}
+              onClick={() => jumpTo(c.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
+              <SeverityIcon severity="warning" size={18} className="alert-icon" />
+              <div className="alert-body"><strong>{c.name}.</strong> Ready for signature {days <= 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`} — not signed, not counted in the run rate.</div>
               <button className="alert-fix" onClick={(e) => { e.stopPropagation(); jumpTo(c.id); }}>View →</button>
             </div>
           );
@@ -673,7 +764,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
             </div>
             <div style={{ minWidth: 170 }}>
               <MultiSelect allLabel="Any status" value={statusFilter} onChange={setStatusFilter}
-                options={['Active', 'Paused', 'Upcoming', 'Expired', 'Archived'].map(k => ({ value: k, label: CON_H.conStatusMeta(k).label }))} />
+                options={CON_H.CON_STATUS_RANK.map(k => ({ value: k, label: CON_H.conStatusMeta(k).label }))} />
             </div>
             <SortSelect sort={sort} onSort={setSort} fields={sortFields} />
             <PageSizeSelect prefix="Load" suffix="at a time" label="Contracts per batch"

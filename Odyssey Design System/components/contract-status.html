@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="Components · Contract status chip" subtitle="ContractStatusChip — the derived ContractStatus (Archived · Upcoming · Expired · Paused · Active) as one text-labelled chip, with the neutral fallback an unknown server member gets. Live off the DS namespace." viewport="1120x560" -->
+<!-- @dsCard group="Components" name="Components · Contract status chip" subtitle="ContractStatusChip — the derived ContractStatus (Archived · Draft · Ready · Upcoming · Expired · Paused · Active) as one text-labelled chip, the lifecycle sort rank, and the neutral fallback an unknown server member gets. Live off the DS namespace." viewport="1120x660" -->
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8" />
@@ -31,14 +31,19 @@ body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:
 <div id="root"></div>
 <script type="text/babel" data-presets="env,react">
 function Demo() {
-  const { ContractStatusChip } = window.OdysseyDesignSystem_d5aa51;
+  const NS = window.OdysseyDesignSystem_d5aa51;
+  const { ContractStatusChip, CONTRACT_STATUS_RANK } = NS;
   return (
     <div className="grid">
       <div className="panel">
         <h3>The vocabulary</h3>
-        <p className="sub">One derived status per contract. Precedence: Archived → Upcoming → Expired → Paused → Active.</p>
+        <p className="sub">One derived status per contract. Precedence: Archived → Draft/Ready → Upcoming → Expired → Paused → Active.</p>
         <div className="row">
-          <span className="lbl">Active</span>
+          <span className="lbl">Draft</span>
+          <span className="cell"><ContractStatusChip status="Draft" /></span>
+          <span className="lbl cell">Ready</span>
+          <span className="cell"><ContractStatusChip status="Ready" /></span>
+          <span className="lbl cell">Active</span>
           <span className="cell"><ContractStatusChip status="Active" /></span>
           <span className="lbl cell">Paused</span>
           <span className="cell"><ContractStatusChip status="Paused" /></span>
@@ -60,6 +65,10 @@ function Demo() {
           <span className="cell"><ContractStatusChip status="Paused" showIcon /></span>
           <span className="lbl cell">Unknown member</span>
           <span className="cell"><ContractStatusChip status="Superseded" /></span>
+          <span className="lbl cell">Sort rank</span>
+          <span className="cell" style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            {(CONTRACT_STATUS_RANK || []).map((k) => <ContractStatusChip key={k} status={k} size="sm" />)}
+          </span>
         </div>
       </div>
     </div>
@@ -79,6 +88,6 @@ function Root() {
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
 </script>
-<p class="note"><b>ContractStatusChip</b> is the read display of <code>ContractStatus</code>, the status the server derives per request from the contract's dates and its two stamps. <b>Paused</b> replaces <i>Active</i> and nothing else: a terminal fact outranks a temporary one, so a paused contract whose term has run out reads <b>Expired</b> while keeping its pause stamp. Meaning is always carried by the text label — the dot and glyph are <code>aria-hidden</code>. The resolver <code>contractStatusMeta()</code> returns a <i>neutral</i> row for an unrecognised member so a client running behind the API reports a degraded state rather than a wrong one.</p>
+<p class="note"><b>ContractStatusChip</b> is the read display of <code>ContractStatus</code>, the status the server derives per request from the contract's dates and its four stamps. <b>Draft</b> (recorded, not yet marked ready) and <b>Ready</b> (ready for signature, unsigned) sit <i>above</i> the whole date chain: an unsigned contract reads Draft or Ready whatever its dates say, because a term nobody has agreed to is not <i>Upcoming</i>, and a negotiation that stalled is abandoned rather than <i>Expired</i>. Both are excluded from the run rate and the upcoming charges — <code>contractStatusIsUnsigned()</code> is that gate. <b>Paused</b> replaces <i>Active</i> and nothing else: a terminal fact outranks a temporary one, so a paused contract whose term has run out reads <b>Expired</b> while keeping its pause stamp. Meaning is always carried by the text label — the dot and glyph are <code>aria-hidden</code>. The resolver <code>contractStatusMeta()</code> returns a <i>neutral</i> row for an unrecognised member so a client running behind the API reports a degraded state rather than a wrong one. Sort a status column on <code>CONTRACT_STATUS_RANK</code> (Draft → Ready → Upcoming → Active → Paused → Expired → Archived), never on the enum ordinal: <code>Draft = 5</code> and <code>Ready = 6</code> are appended members and would otherwise sort behind Archived.</p>
 </body>
 </html>

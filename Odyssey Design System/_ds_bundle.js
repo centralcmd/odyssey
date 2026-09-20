@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractStatusChip.jsx":"ab40a6a2fc2b","components/ContractTypeSelect.jsx":"6c5fbd0f20c2","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"9400d3e9a309","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0a872c64aad8","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"caa6e940b80e","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"357f2b93d9e5","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"1dda7d2f633f","ui_kits/web/AddContractPartyModal.jsx":"eabd6ff65b3b","ui_kits/web/AddContractTermModal.jsx":"68b86ac073e1","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"042affcbe38d","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"1a11e3e044be","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/ContractEvents.jsx":"496126585936","ui_kits/web/ContractTerms.jsx":"75c83bbef791","ui_kits/web/Contracts.jsx":"9ef7786a36df","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"33971cdb04ee","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"ee9e202c4e4c","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"e3f4d3a1aec3","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"df7fa72614df","ui_kits/web/contracts-data.js":"7299ad80fb13","ui_kits/web/data.js":"2070fc32dd1a","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"582f90b16296","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"6c5fbd0f20c2","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyState.jsx":"0935b00b6cae","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"9400d3e9a309","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"ab7992d26a9b","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"85a42916c7c3","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordTable.jsx":"7151e2153cab","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0a872c64aad8","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"caa6e940b80e","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"357f2b93d9e5","ui_kits/web/AddContractFileModal.jsx":"465c6f8b554e","ui_kits/web/AddContractModal.jsx":"f2580fa9b825","ui_kits/web/AddContractPartyModal.jsx":"eabd6ff65b3b","ui_kits/web/AddContractTermModal.jsx":"68b86ac073e1","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"042affcbe38d","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"662530beffc0","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"1a11e3e044be","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/ContractEvents.jsx":"496126585936","ui_kits/web/ContractTerms.jsx":"75c83bbef791","ui_kits/web/Contracts.jsx":"04975ce2ad9c","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"725795e3689f","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"33971cdb04ee","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"80bc28a18998","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"ee9e202c4e4c","ui_kits/web/TaxStatements.jsx":"cba0439f0911","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"e3f4d3a1aec3","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"df7fa72614df","ui_kits/web/contracts-data.js":"e77a5716a307","ui_kits/web/data.js":"2070fc32dd1a","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -4344,17 +4344,31 @@ try { (() => {
 /**
  * Odyssey DS — ContractStatusChip
  * A contract's DERIVED lifecycle status as ONE chip: **Archived** (retired,
- * hidden from the default list), **Upcoming** (its term has not begun),
- * **Expired** (its term has run out), **Paused** (temporarily suspended —
- * still listed, still editable, not costing anything), or **Active**.
+ * hidden from the default list), **Draft** (recorded but not yet marked ready
+ * for signature), **Ready** (ready for signature, nobody has signed yet),
+ * **Upcoming** (its term has not begun), **Expired** (its term has run out),
+ * **Paused** (temporarily suspended — still listed, still editable, not
+ * costing anything), or **Active**.
  *
  * A contract has exactly one status, computed server-side per request from the
- * dates and the two stamps; precedence is
- * **Archived → Upcoming → Expired → Paused → Active**. Paused *replaces*
- * Active and nothing else: a terminal fact outranks a temporary one, so a
- * paused contract whose term has since run out reads Expired. The superseded
- * stamp is never lost — the record body carries a tile per stored stamp
- * (paused / archived), which is where the full history lives.
+ * dates and the four stamps; precedence is
+ * **Archived → Draft/Ready → Upcoming → Expired → Paused → Active**. Paused
+ * *replaces* Active and nothing else: a terminal fact outranks a temporary
+ * one, so a paused contract whose term has since run out reads Expired. The
+ * superseded stamp is never lost — the record body carries a tile per stored
+ * stamp (ready / signed / paused / archived), which is where the full history
+ * lives.
+ *
+ * The signature layer sits ABOVE the date chain, so an unsigned contract reads
+ * Draft/Ready whatever its dates say: a term nobody has agreed to is not
+ * Upcoming, and a negotiation that stalled is abandoned, not Expired. Draft
+ * and Ready contracts are excluded from the run rate and the upcoming charges
+ * for the same reason — see `contractStatusIsUnsigned`.
+ *
+ * **Display order is NOT the wire ordinal.** `ContractStatus` appends
+ * (`Draft = 5`, `Ready = 6`), so sorting on the ordinal would put the two
+ * earliest states last. Sort on `CONTRACT_STATUS_RANK` instead —
+ * **Draft → Ready → Upcoming → Active → Paused → Expired → Archived**.
  *
  * Mirrors SubscriptionStatusChip's contract: the state **meaning lives in the
  * visible text label**, never colour or glyph alone (the leading dot/icon is
@@ -4375,6 +4389,18 @@ const CONTRACT_STATES = [{
   tone: 'outline',
   dot: true,
   icon: 'inventory_2'
+}, {
+  key: 'Draft',
+  label: 'Draft',
+  tone: 'outline',
+  dot: true,
+  icon: 'edit_note'
+}, {
+  key: 'Ready',
+  label: 'Ready',
+  tone: 'pending',
+  dot: true,
+  icon: 'draw'
 }, {
   key: 'Upcoming',
   label: 'Upcoming',
@@ -4400,6 +4426,20 @@ const CONTRACT_STATES = [{
   dot: true,
   icon: 'task_alt'
 }];
+
+/** Lifecycle reading order — what a Status sort uses. NOT the wire ordinal. */
+const CONTRACT_STATUS_RANK = ['Draft', 'Ready', 'Upcoming', 'Active', 'Paused', 'Expired', 'Archived'];
+
+/** Rank for a member; an unknown member sorts last rather than first. */
+function contractStatusRank(key) {
+  const i = CONTRACT_STATUS_RANK.indexOf(key);
+  return i < 0 ? CONTRACT_STATUS_RANK.length : i;
+}
+
+/** The two states that are on file but not in force — excluded from the money. */
+function contractStatusIsUnsigned(key) {
+  return key === 'Draft' || key === 'Ready';
+}
 const BY_KEY = Object.fromEntries(CONTRACT_STATES.map(s => [s.key, s]));
 
 /** Resolve a ContractStatus member to its display row. Unknown ⇒ neutral. */
@@ -4441,7 +4481,7 @@ function ContractStatusChip({
     "aria-hidden": "true"
   }) : null, meta.label));
 }
-Object.assign(__ds_scope, { CONTRACT_STATES, contractStatusMeta, ContractStatusChip });
+Object.assign(__ds_scope, { CONTRACT_STATES, CONTRACT_STATUS_RANK, contractStatusRank, contractStatusIsUnsigned, contractStatusMeta, ContractStatusChip });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/ContractStatusChip.jsx", error: String((e && e.message) || e) }); }
 
 // components/ContractTypeSelect.jsx
@@ -23921,6 +23961,16 @@ try { (() => {
          – Term:    startDate (optional) + endDate (optional; ≥ startDate)
          – One-off: completionDate (required) — a point-in-time agreement
                     (a purchase / closing), no ongoing term
+     • ready        (optional) — marked ready for signature on this date
+     • signed       (optional) — signed by all parties on this date
+   The two SIGNATURE stamps are here as ordinary dates so a paper contract
+   signed last month can be entered in one go; the common path is the row
+   menu's one-click Mark ready / Mark signed. Both omitted creates a Draft,
+   which is the normal case. The three guards below are the client half of the
+   server's — a signed date needs a ready date, cannot precede it, and neither
+   can be in the future. Nothing constrains them against the TERM dates:
+   signing after cover has begun is ordinary, and signing before it starts is
+   the normal case.
    A new contract starts with no parties and no documents — both are added from
    the contract's detail, by scalar id only (the §6/§10 mass-assignment rule). */
 
@@ -23942,7 +23992,9 @@ const AddContractModal = ({
     description: contract?.description || '',
     startDate: contract ? H.conDateOnly(contract.startDate) || '' : H.conToday(),
     endDate: contract ? H.conDateOnly(contract.endDate) || '' : '',
-    completionDate: contract ? H.conDateOnly(contract.completionDate) || '' : ''
+    completionDate: contract ? H.conDateOnly(contract.completionDate) || '' : '',
+    ready: contract ? H.conDateOnly(contract.ready) || '' : '',
+    signed: contract ? H.conDateOnly(contract.signed) || '' : ''
   });
   const [errors, setErrors] = useState({});
   const set = k => v => {
@@ -23964,6 +24016,11 @@ const AddContractModal = ({
     } else if (draft.endDate && draft.startDate && draft.endDate < draft.startDate) {
       next.endDate = '“Ends” can’t be before “Starts”.';
     }
+    /* The shared signature guards, run identically on create and edit — one
+       helper, the way the server shares one between POST and PUT. Clearing a
+       stamp is never refused. */
+    const sig = H.conSignatureError(draft);
+    if (sig) next[sig.field] = sig.message.replace(/^Unable to save\. /, '');
     if (Object.keys(next).length) {
       setErrors(next);
       return;
@@ -23984,6 +24041,10 @@ const AddContractModal = ({
         startDate: mode === 'oneoff' ? null : draft.startDate || null,
         endDate: mode === 'oneoff' ? null : draft.endDate || null,
         completionDate: mode === 'oneoff' ? draft.completionDate : null,
+        // Both omitted is the normal path — a new contract starts as a Draft.
+        ready: draft.ready || null,
+        signed: draft.signed || null,
+        paused: null,
         archived: null,
         createdAtUtc: new Date().toISOString(),
         parties: [],
@@ -23993,7 +24054,7 @@ const AddContractModal = ({
   };
   return /*#__PURE__*/React.createElement(Modal, {
     title: editing ? 'Edit contract' : 'New contract',
-    subtitle: editing ? 'Update the agreement’s name, type and dates — a term or a one-off. Parties and documents are managed from the contract.' : 'Record the agreement’s name, type and dates — a term or a one-off — then add the parties and documents from the contract.',
+    subtitle: editing ? 'Update the agreement’s name, type, term and signature dates. Parties and documents are managed from the contract.' : 'Record the agreement’s name, type and dates — a term or a one-off. Leave the signature dates blank to record it as a draft.',
     icon: "handshake",
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -24065,7 +24126,31 @@ const AddContractModal = ({
     className: "helper aam-err"
   }, errors.completionDate) : /*#__PURE__*/React.createElement("div", {
     className: "helper"
-  }, "The one-off closing / delivery date \u2014 no ongoing term.")), /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement(NoteField, {
+  }, "The one-off closing / delivery date \u2014 no ongoing term.")), /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement(Field, {
+    type: "date",
+    label: "Ready for signature",
+    value: draft.ready,
+    onChange: set('ready'),
+    placeholder: "Not yet ready"
+  }), errors.ready ? /*#__PURE__*/React.createElement("div", {
+    className: "helper aam-err"
+  }, errors.ready) : /*#__PURE__*/React.createElement("div", {
+    className: "helper"
+  }, "Leave blank while it is still being drafted.")), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement(Field, {
+    type: "date",
+    label: "Signed",
+    value: draft.signed,
+    onChange: set('signed'),
+    placeholder: "Not signed"
+  }), errors.signed ? /*#__PURE__*/React.createElement("div", {
+    className: "helper aam-err"
+  }, errors.signed) : /*#__PURE__*/React.createElement("div", {
+    className: "helper"
+  }, "Signed by all parties. Until this is set, the contract stays out of the run rate."))), /*#__PURE__*/React.createElement(NoteField, {
     label: "Description",
     optional: true,
     maxLength: 1024,
@@ -37852,9 +37937,20 @@ try { (() => {
    account or a contact),
    and the DOCUMENTS that evidence it (references to existing library files).
 
-   Status (Upcoming / Active / Paused / Expired / Archived) is DERIVED, never
-   stored — computed per request (spec §6) from StartDate / EndDate / Paused /
-   Archived. Navigation
+   Status (Draft / Ready / Upcoming / Active / Paused / Expired / Archived) is
+   DERIVED, never stored — computed per request from StartDate / EndDate /
+   Ready / Signed / Paused / Archived, at the precedence
+   Archived > Draft/Ready > Upcoming > Expired > Paused > Active.
+
+   THE SIGNATURE STAMPS. Ready and Signed are two nullable timestamps in the
+   same shape as Paused and Archived. A contract with no Signed stamp is
+   unsigned, and reads Draft or Ready WHATEVER its dates say — it is recorded
+   on file without pretending to be in force, and it contributes nothing to
+   the run rate or the upcoming charges. They are written two ways, both
+   landing on the same PUT: the row menu's one-click Mark ready / Mark signed
+   / Unsign for the common path, and real date fields in the create + edit
+   dialog for backdating a paper contract signed last month.
+   Navigation
    is expand-in-place (no /{id} deep-link, per frontend B1). Archive is a
    reversible field on the edit form (a normal update — there is no dedicated
    archive action), distinct from the irreversible hard delete.
@@ -38052,7 +38148,7 @@ const ContractDetail = ({
   const completionPast = !!contract.completionDate && contract.completionDate <= nowDate;
   const status = CON_H.conStatus(contract, today);
   const statusMeta = CON_H.conStatusMeta(status);
-  const statusFoot = status === 'Archived' ? `since ${CON_H.conDate(contract.archived)}` : status === 'Paused' ? `since ${CON_H.conDate(contract.paused)}` : status === 'Expired' ? contract.endDate ? `since ${CON_H.conDate(contract.endDate)}` : null : status === 'Upcoming' ? contract.startDate ? `starts ${CON_H.conDate(contract.startDate)}` : null : oneOff ? `completed ${CON_H.conDate(contract.completionDate)}` : contract.startDate ? `since ${CON_H.conDate(contract.startDate)}` : null;
+  const statusFoot = status === 'Archived' ? `since ${CON_H.conDate(contract.archived)}` : status === 'Draft' ? 'not yet marked ready for signature' : status === 'Ready' ? `ready since ${CON_H.conDate(contract.ready)} — waiting on a signature` : status === 'Paused' ? `since ${CON_H.conDate(contract.paused)}` : status === 'Expired' ? contract.endDate ? `since ${CON_H.conDate(contract.endDate)}` : null : status === 'Upcoming' ? contract.startDate ? `starts ${CON_H.conDate(contract.startDate)}` : null : oneOff ? `completed ${CON_H.conDate(contract.completionDate)}` : contract.startDate ? `since ${CON_H.conDate(contract.startDate)}` : null;
   const statusToneClass = statusMeta.tone === 'income' ? 'income' : statusMeta.tone === 'expense' ? 'expense' : statusMeta.tone === 'info' ? 'info' : statusMeta.tone === 'pending' ? 'pending' : 'muted';
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
     icon: "handshake",
@@ -38094,7 +38190,21 @@ const ContractDetail = ({
     className: `con-status-tile ${statusToneClass}`,
     value: statusMeta.label,
     foot: statusFoot
-  }), contract.paused ? /*#__PURE__*/React.createElement(InfoTile, {
+  }), contract.ready ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "draw",
+    label: "Ready for signature",
+    value: CON_H.conDate(contract.ready),
+    valueVariant: "sm",
+    className: contract.signed ? undefined : 'con-status-tile pending',
+    foot: contract.signed ? 'sent out on this date' : 'waiting on a signature'
+  }) : null, contract.signed ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "history_edu",
+    label: "Signed",
+    value: CON_H.conDate(contract.signed),
+    valueVariant: "sm",
+    className: "con-status-tile income",
+    foot: "signed by all parties"
+  }) : null, contract.paused ? /*#__PURE__*/React.createElement(InfoTile, {
     icon: "pause_circle",
     label: "Paused",
     value: CON_H.conDate(contract.paused),
@@ -38215,6 +38325,10 @@ const ContractListItem = ({
   const termBlock = CON_H.conTermWriteBlock(c, terms.length, termCap);
   const contact = parties.map(CON_H.conResolveParty).find(r => r.kind === 'contact');
   const dimmed = !!c.archived;
+  /* An unsigned contract stays at FULL brightness — it is the row most likely
+     to need attention — and is marked instead by a dashed card edge: nothing
+     about it is settled yet. Dimming is reserved for archived. */
+  const unsigned = CON_H.conIsUnsigned(status);
   // "Ended" is not the same as status 'Expired': a delivered one-off stays Active
   // in the status derivation, so completion counts too.
   const hasEnded = status === 'Expired' || !!c.completionDate && c.completionDate <= today;
@@ -38226,7 +38340,13 @@ const ContractListItem = ({
       description: draft.description.trim() || null,
       startDate: draft.mode === 'oneoff' ? null : draft.startDate || null,
       endDate: draft.mode === 'oneoff' ? null : draft.endDate || null,
-      completionDate: draft.mode === 'oneoff' ? draft.completionDate : null
+      completionDate: draft.mode === 'oneoff' ? draft.completionDate : null,
+      /* The dialog is a FULL REPLACEMENT, and that includes the two signature
+         stamps: a value sets them, a cleared field clears them. Carried
+         explicitly here — an omitted stamp on this write would flip a signed
+         contract back to Draft and drop it out of the run rate. */
+      ready: draft.ready || null,
+      signed: draft.signed || null
     }));
     setShowEdit(false);
   };
@@ -38261,15 +38381,48 @@ const ContractListItem = ({
     setOpen(true);
     setFocusDocs(true);
   };
+  /* Every write below rebuilds the whole record, so each one carries BOTH
+     signature stamps forward explicitly. Omitting them here is the regression
+     the backend spec calls out: clicking Archive or Pause on a signed
+     contract would clear them, flip it to Draft and empty it out of the run
+     rate. Keep them on every write that touches this record. */
   const toggleArchive = () => setC(prev => ({
     ...prev,
+    ready: prev.ready,
+    signed: prev.signed,
     archived: prev.archived ? null : new Date().toISOString()
   }));
   /* Pause rides the same PUT as archive, and is idempotent the same way: a
      repeated pause keeps the ORIGINAL stamp, so "paused since" never resets. */
   const togglePause = () => setC(prev => ({
     ...prev,
+    ready: prev.ready,
+    signed: prev.signed,
     paused: prev.paused ? null : prev.paused || new Date().toISOString()
+  }));
+
+  /* The one-click signature path. Marking ready is idempotent the same way a
+     pause is — a repeated mark keeps the ORIGINAL stamp, so "ready since"
+     never resets. Signing stamps Ready too when it is missing, because the
+     server refuses a Signed without one (contract_signed_requires_ready) and
+     a one-click action must not be able to compose an invalid write.
+     Unsign clears BOTH, which is never refused in any state. */
+  const markReady = () => setC(prev => ({
+    ...prev,
+    ready: prev.ready || new Date().toISOString()
+  }));
+  const markSigned = () => setC(prev => {
+    const now = new Date().toISOString();
+    return {
+      ...prev,
+      ready: prev.ready || now,
+      signed: prev.signed || now
+    };
+  });
+  const unsign = () => setC(prev => ({
+    ...prev,
+    ready: null,
+    signed: null
   }));
 
   /* Create and edit are one write path, as they are on the server: the dialog
@@ -38325,7 +38478,8 @@ const ContractListItem = ({
     });
   }, [highlight]);
   return /*#__PURE__*/React.createElement("div", {
-    ref: cardRef
+    ref: cardRef,
+    className: unsigned ? 'con-unsigned' : undefined
   }, /*#__PURE__*/React.createElement(RecordCard, {
     icon: typeInfo.icon,
     accent: typeInfo.color,
@@ -38377,10 +38531,32 @@ const ContractListItem = ({
          end) is a step the user can act on, this one has no instruction to
          give. Resume is offered whenever a stamp exists, in any state:
          clearing a pause is never refused. */
-      ...(status === 'Active' ? [{
+      /* The signature path, first in the menu while it is the thing the
+         contract is waiting on. Offered in lifecycle order, one step at a
+         time: there is no "Mark ready" on a contract already signed. */
+      ...(!c.signed && !c.ready ? [{
+        icon: 'draw',
+        label: 'Mark ready for signature',
+        onClick: markReady
+      }] : []), ...(!c.signed && c.ready ? [{
+        icon: 'history_edu',
+        label: 'Mark signed',
+        onClick: markSigned
+      }] : []), ...(c.signed || c.ready ? [{
+        icon: 'undo',
+        label: c.signed ? 'Unsign' : 'Clear ready date',
+        onClick: unsign
+      }] : []), ...(status === 'Active' ? [{
         icon: 'pause_circle',
         label: 'Pause',
         onClick: togglePause
+      }]
+      /* Pausing is refused for anything that is not Active, the unsigned
+         two included — a stamp with nothing to suspend. */ : CON_H.conIsUnsigned(status) ? [{
+        icon: 'pause_circle',
+        label: 'Pause',
+        disabled: true,
+        note: 'Only a signed contract in force can be paused.'
       }] : c.paused ? [{
         icon: 'play_circle',
         label: 'Resume',
@@ -38435,9 +38611,12 @@ const ContractListItem = ({
       }, {
         divider: true
       },
-      // Only an ended contract can be archived — the lifecycle is ordered, so
-      // the action is offered with its reason rather than hidden.
-      hasEnded || c.archived ? {
+      /* An ENDED or an UNSIGNED contract can be archived — the lifecycle is
+         ordered, so the action is offered with its reason rather than
+         hidden. Unsigned is in the rule because abandoning a negotiation
+         is the likeliest reason to archive a draft, and a draft usually
+         has no end date to wait for. */
+      hasEnded || c.archived || !c.signed ? {
         icon: c.archived ? 'unarchive' : 'inventory_2',
         label: c.archived ? 'Restore' : 'Archive',
         onClick: toggleArchive
@@ -38512,7 +38691,8 @@ const ContractsSummary = ({
   endingWindow
 }) => {
   const s = CON_H.conSummary(contracts, today);
-  const order = ['Active', 'Paused', 'Upcoming', 'Expired', 'Archived'];
+  // Lifecycle reading order — the shared rank, not the enum ordinal.
+  const order = CON_H.CON_STATUS_RANK;
   // Distribution rows for the two BreakdownTile instances. Status tones map to
   // the same finance accents the pills / chips use — no new hue enters.
   const TONE_COLOR = {
@@ -38543,7 +38723,7 @@ const ContractsSummary = ({
      here for the same reason the header signal exists: the cliff is the thing
      you act on. Listed straight after Active, never counted as its own status. */
   const endingSoon = (contracts || []).filter(c => !c.archived && c.endDate && CON_H.conStatus(c, today) === 'Active' && CON_H.conDaysUntil(c.endDate, today) <= endingWindow).length;
-  statusRows.splice(1, 0, {
+  statusRows.splice(order.indexOf('Active') + 1, 0, {
     key: 'EndingSoon',
     icon: 'hourglass_bottom',
     iconColor: TONE_COLOR.pending,
@@ -38556,11 +38736,14 @@ const ContractsSummary = ({
      twice — once summed, once split. */
   const rr = CON_H.conRunRate(contracts, today);
   const rrMoney = v => v == null ? '—' : CON_H.money(v, rr.baseCurrency);
-  /* A paused contract keeps its price on file and contributes nothing here.
-     The tiles say so, because a run rate that quietly dropped would otherwise
-     read as a pricing error. */
+  /* A paused contract keeps its price on file and contributes nothing here;
+     so does an unsigned one, which may be fully priced and is still only a
+     quote. The tiles name both, because a run rate that quietly dropped would
+     otherwise read as a pricing error. */
   const pausedCount = s.countsByStatus.Paused || 0;
-  const rrFoot = (rr.unconvertedCurrencies.length ? `in ${rr.baseCurrency} · ${rr.unconvertedCurrencies.join(', ')} excluded` : `in ${rr.baseCurrency}`) + (pausedCount ? ` · ${pausedCount} paused excluded` : '');
+  const unsignedCount = (s.countsByStatus.Draft || 0) + (s.countsByStatus.Ready || 0);
+  const excluded = [pausedCount ? `${pausedCount} paused` : null, unsignedCount ? `${unsignedCount} unsigned` : null].filter(Boolean);
+  const rrFoot = (rr.unconvertedCurrencies.length ? `in ${rr.baseCurrency} · ${rr.unconvertedCurrencies.join(', ')} excluded` : `in ${rr.baseCurrency}`) + (excluded.length ? ` · ${excluded.join(', ')} excluded` : '');
   const rrMonthlyRows = rr.typeRows.map(r => ({
     key: r.key,
     icon: r.icon,
@@ -38641,7 +38824,10 @@ const Contracts = ({
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
   // §6.8 curated fields — one list feeds the SortSelect AND the ordering.
   // Type/Status sort by the registry / lifecycle declared order, not label.
-  const CON_STATUS_ORDER = ['Upcoming', 'Active', 'Expired', 'Archived', 'Paused'];
+  /* The shared LIFECYCLE rank, not the wire ordinal: Draft = 5 and Ready = 6
+     are appended enum members, so sorting on the ordinal would put the two
+     earliest states last, behind Archived. */
+  const CON_STATUS_ORDER = CON_H.CON_STATUS_RANK;
   const sortFields = [{
     key: 'name',
     label: 'Name',
@@ -38721,15 +38907,21 @@ const Contracts = ({
   /* Signed but not yet begun — the mirror of the ending cliff, and the other
      thing a dated window surfaces: a term about to come into force. */
   const startingSoon = active.filter(c => c.startDate && CON_H.conStatus(c, today) === 'Upcoming' && CON_H.conDaysUntil(c.startDate, today) <= endingWindow).sort((a, b) => a.startDate < b.startDate ? -1 : 1).slice(0, 6);
+  /* Awaiting signature: sent out, never returned. Not a dated cliff — the
+     thing that makes it actionable is that nothing will move it on its own,
+     and every day it sits there is a day an agreement everyone believes is in
+     force is not. Drafts are deliberately NOT here: a draft is work in
+     progress, and the status filter is where you go looking for it. */
+  const awaitingSignature = active.filter(c => CON_H.conStatus(c, today) === 'Ready').sort((a, b) => a.ready < b.ready ? -1 : 1).slice(0, 6);
   /* Paused agreements: not a cliff, but the one group here you cannot see by
      looking at a date — a contract that stopped costing money because someone
      froze it, and which nothing will un-freeze on its own. */
   const pausedRows = active.filter(c => CON_H.conStatus(c, today) === 'Paused').sort((a, b) => a.paused < b.paused ? 1 : -1).slice(0, 6);
-  const signal = flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length || pausedRows.length ? {
+  const signal = flagged.length || upcomingCharges.length || recentlyExpired.length || startingSoon.length || pausedRows.length || awaitingSignature.length ? {
     // The panel's worst severity wins the button: an expired term reads error,
     // a term running out reads warning, and next charges alone read info.
-    severity: recentlyExpired.length ? 'error' : flagged.length ? 'warning' : 'info',
-    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length + pausedRows.length,
+    severity: recentlyExpired.length ? 'error' : flagged.length || awaitingSignature.length ? 'warning' : 'info',
+    count: flagged.length + upcomingCharges.length + recentlyExpired.length + startingSoon.length + pausedRows.length + awaitingSignature.length,
     label: 'Upcoming',
     region: /*#__PURE__*/React.createElement("div", {
       className: "signal-panel"
@@ -38787,6 +38979,35 @@ const Contracts = ({
       }), /*#__PURE__*/React.createElement("div", {
         className: "alert-body"
       }, /*#__PURE__*/React.createElement("strong", null, c.name, "."), " Term ", hl.word, "."), /*#__PURE__*/React.createElement("button", {
+        className: "alert-fix",
+        onClick: e => {
+          e.stopPropagation();
+          jumpTo(c.id);
+        }
+      }, "View \u2192"));
+    }), awaitingSignature.length ? /*#__PURE__*/React.createElement("div", {
+      className: "con-signal-group"
+    }, "Awaiting signature") : null, awaitingSignature.map(c => {
+      const days = -CON_H.conDaysUntil(c.ready, today);
+      return /*#__PURE__*/React.createElement("div", {
+        key: c.id,
+        className: "alert warning compact signal-row",
+        role: "button",
+        tabIndex: 0,
+        onClick: () => jumpTo(c.id),
+        onKeyDown: e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            jumpTo(c.id);
+          }
+        }
+      }, /*#__PURE__*/React.createElement(SeverityIcon, {
+        severity: "warning",
+        size: 18,
+        className: "alert-icon"
+      }), /*#__PURE__*/React.createElement("div", {
+        className: "alert-body"
+      }, /*#__PURE__*/React.createElement("strong", null, c.name, "."), " Ready for signature ", days <= 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`, " \u2014 not signed, not counted in the run rate."), /*#__PURE__*/React.createElement("button", {
         className: "alert-fix",
         onClick: e => {
           e.stopPropagation();
@@ -38945,7 +39166,7 @@ const Contracts = ({
       allLabel: "Any status",
       value: statusFilter,
       onChange: setStatusFilter,
-      options: ['Active', 'Paused', 'Upcoming', 'Expired', 'Archived'].map(k => ({
+      options: CON_H.CON_STATUS_RANK.map(k => ({
         value: k,
         label: CON_H.conStatusMeta(k).label
       }))
@@ -56648,9 +56869,17 @@ try { (() => {
                         { id, name, kind, size, uploaded }, `kind` = a
                         ContractFileType key).
 
-   Status (Upcoming | Active | Expired | Paused | Archived) is DERIVED, never
-   stored — computed here per spec §6 from StartDate / EndDate / Archived /
-   Paused against one request "today". Paused is a nullable UTC stamp recording
+   Status (Draft | Ready | Upcoming | Active | Expired | Paused | Archived) is
+   DERIVED, never stored — computed here from StartDate / EndDate / Archived /
+   Paused / Ready / Signed against one request "today".
+   READY and SIGNED are the signature stamps: nullable UTC timestamps in the
+   same shape as Paused and Archived, whose PRESENCE is the state and whose
+   value is the moment. An unsigned contract (Signed null) reads Ready when the
+   Ready stamp is present and Draft otherwise, and that layer sits ABOVE the
+   whole date chain — a term nobody has agreed to is not Upcoming, and a
+   negotiation that stalled is abandoned, not Expired. Draft and Ready
+   contracts are on file but not in force: they are counted by type, and
+   excluded from the run rate and the upcoming charges. Paused is a nullable UTC stamp recording
    WHEN the suspension began; it REPLACES Active in the derivation and nothing
    else, so a terminal status always wins over it. A paused contract stays
    visible, editable and fully priced on file — it simply stops counting toward
@@ -56939,6 +57168,8 @@ try { (() => {
     description: 'Permanent, full-time. Salary paid monthly into the Chase Checking account. 3-month notice either side.',
     startDate: '2024-03-01',
     endDate: null,
+    ready: '2024-02-20T09:00:00Z',
+    signed: '2024-02-24T09:00:00Z',
     paused: null,
     archived: null,
     createdAtUtc: '2024-02-20T09:00:00Z',
@@ -56979,6 +57210,8 @@ try { (() => {
     description: 'Twelve-month assured shorthold tenancy on the Maple St residence. Rent due on the 1st. Pets permitted by amendment.',
     startDate: '2025-09-01',
     endDate: '2026-08-31',
+    ready: '2025-08-14T09:00:00Z',
+    signed: '2025-08-20T09:00:00Z',
     paused: null,
     archived: null,
     createdAtUtc: '2025-08-14T10:00:00Z',
@@ -57027,6 +57260,8 @@ try { (() => {
     startDate: null,
     endDate: null,
     completionDate: '2021-04-15',
+    ready: '2021-03-02T09:00:00Z',
+    signed: '2021-03-30T09:00:00Z',
     paused: null,
     archived: null,
     createdAtUtc: '2021-03-02T09:00:00Z',
@@ -57058,6 +57293,8 @@ try { (() => {
     description: 'Symmetric 1 Gbps fiber. 24-month term, early-termination fee applies. Auto-renews monthly at term end.',
     startDate: '2025-02-01',
     endDate: '2027-01-31',
+    ready: '2025-01-22T09:00:00Z',
+    signed: '2025-01-24T09:00:00Z',
     paused: null,
     archived: null,
     createdAtUtc: '2025-01-22T09:00:00Z',
@@ -57089,6 +57326,8 @@ try { (() => {
     description: 'Annual gym membership. Direct debit, monthly. Frozen over the winter — resuming in the spring.',
     startDate: '2026-09-01',
     endDate: '2027-08-31',
+    ready: '2026-06-10T09:00:00Z',
+    signed: '2026-06-12T09:00:00Z',
     paused: '2026-09-14T10:30:00Z',
     archived: null,
     createdAtUtc: '2026-06-10T09:00:00Z',
@@ -57116,6 +57355,8 @@ try { (() => {
     description: 'Twelve-month parking licence on space 14. Renews only by a fresh agreement — give notice 30 days before the end date.',
     startDate: '2025-11-01',
     endDate: '2026-10-31',
+    ready: '2025-10-20T09:00:00Z',
+    signed: '2025-10-22T09:00:00Z',
     paused: null,
     archived: null,
     createdAtUtc: '2025-10-20T09:00:00Z',
@@ -57143,6 +57384,8 @@ try { (() => {
     description: 'Twelve-month fixed electricity tariff. Switch completes on the start date; the standing charge and unit rate are fixed for the term.',
     startDate: '2026-10-15',
     endDate: '2027-10-14',
+    ready: '2026-09-02T09:00:00Z',
+    signed: '2026-09-04T09:00:00Z',
     paused: null,
     archived: null,
     createdAtUtc: '2026-09-02T09:00:00Z',
@@ -57168,6 +57411,8 @@ try { (() => {
     description: 'Self-storage unit, 50 sq ft. Twelve-month term, not renewed — kept for record.',
     startDate: '2024-01-01',
     endDate: '2025-12-31',
+    ready: '2024-01-03T09:00:00Z',
+    signed: '2024-01-03T09:00:00Z',
     paused: null,
     archived: null,
     createdAtUtc: '2024-01-03T09:00:00Z',
@@ -57196,6 +57441,8 @@ try { (() => {
     description: 'Twenty-year rooftop solar lease — transferred to the new owner on sale of the property. Retained for reference.',
     startDate: '2023-06-01',
     endDate: '2025-10-31',
+    ready: '2023-05-28T09:00:00Z',
+    signed: '2023-05-30T09:00:00Z',
     paused: null,
     archived: '2025-11-05T12:00:00Z',
     createdAtUtc: '2023-05-28T09:00:00Z',
@@ -57220,6 +57467,58 @@ try { (() => {
       attachedByUserId: 'u-owner',
       attachedAtUtc: '2025-11-02T16:00:00Z'
     }]
+  },
+  /* DRAFT — recorded while it is still being negotiated. Note the start date
+     is in the future and the status is still Draft, not Upcoming: the dates
+     describe a term nobody has agreed to. It carries a priced Fee term and
+     contributes nothing to the run rate or the upcoming charges. */
+  {
+    id: 'ct-cleaning',
+    name: 'Beacon Home Services — Cleaning',
+    type: 'Service',
+    description: 'Fortnightly whole-house clean. Quote received; terms still under discussion — nothing has been marked ready for signature yet.',
+    startDate: '2026-11-01',
+    endDate: '2027-10-31',
+    ready: null,
+    signed: null,
+    paused: null,
+    archived: null,
+    createdAtUtc: '2026-09-12T11:00:00Z',
+    createdByUserId: 'u-jane',
+    parties: [{
+      id: 'cp-cleaning-1',
+      contactId: 'c3',
+      role: 'ServiceProvider',
+      fromDate: null,
+      toDate: null
+    }],
+    files: []
+  },
+  /* READY — marked ready for signature and never signed, with a term that
+     has since run out. It reads Ready, NOT Expired: a term cannot lapse
+     before it begins, and the thing to act on is an abandoned negotiation,
+     not a retired agreement. Archivable under the widened rule. */
+  {
+    id: 'ct-tutoring',
+    name: 'Westbrook Tutoring — Weekly Sessions',
+    type: 'Service',
+    description: 'Weekly maths tuition over the school year. Sent for signature in August 2025 and never returned — the term it describes has since run out.',
+    startDate: '2025-09-01',
+    endDate: '2026-06-30',
+    ready: '2025-08-20T15:30:00Z',
+    signed: null,
+    paused: null,
+    archived: null,
+    createdAtUtc: '2025-08-18T09:00:00Z',
+    createdByUserId: 'u-mira',
+    parties: [{
+      id: 'cp-tutoring-1',
+      contactId: 'c8',
+      role: 'ServiceProvider',
+      fromDate: null,
+      toDate: null
+    }],
+    files: []
   }];
 
   // ---- Lookups + helpers -----------------------------------------------------
@@ -57278,19 +57577,89 @@ try { (() => {
       if (end && end < t) return 'Expired';
       return 'Active';
     },
+    /* The SIGNATURE layer, between the archive check and the date chain.
+       Signed present ⇒ null (the date chain runs). Signed null ⇒ Ready when
+       the Ready stamp is present, Draft otherwise — and it short-circuits the
+       date chain entirely, which is the whole point: an unsigned contract
+       whose start date is in the future is not Upcoming (that would assert a
+       commitment nobody has made), and one whose end date has passed is not
+       Expired (a term cannot lapse before it begins). */
+    conSignatureStatus(contract) {
+      if (contract.signed) return null;
+      return contract.ready ? 'Ready' : 'Draft';
+    },
+    /* True for the two states that are on file but not in force. The SINGLE
+       gate the money roll-ups read — never a re-test of the stamps. */
+    conIsUnsigned(status) {
+      return status === 'Draft' || status === 'Ready';
+    },
     /* Derived status. Paused REPLACES Active and nothing else — it is applied
        ONCE to the RESULT of the base derivation, never inserted as a step in
        its chain. The one-off branch above returns early for BOTH its outcomes,
        so a pause check written late in that chain would be unreachable for a
        settled one-off: the stamp would be stored and every read would keep
        saying Active while the contract kept costing money.
-       Read as precedence: Archived > Upcoming > Expired > Paused > Active —
-       a terminal fact outranks a temporary one. */
+       Read as precedence:
+       Archived > Draft/Ready > Upcoming > Expired > Paused > Active —
+       a terminal fact outranks a temporary one, and an agreement nobody has
+       signed outranks everything its dates would otherwise say. */
     conStatus(contract, today) {
+      if (contract.archived) return 'Archived';
+      const sig = H.conSignatureStatus(contract);
+      if (sig) return sig;
       const status = H.conBaseStatus(contract, today);
       return status === 'Active' && contract.paused ? 'Paused' : status;
     },
+    /* Lifecycle READING order — what a Status sort uses, and the order every
+       status list on the page is written in. NOT the wire ordinal: Draft and
+       Ready are appended enum members (5, 6), so sorting on the ordinal would
+       put the two earliest states last, behind Archived. */
+    CON_STATUS_RANK: ['Draft', 'Ready', 'Upcoming', 'Active', 'Paused', 'Expired', 'Archived'],
+    conStatusRank(key) {
+      const i = H.CON_STATUS_RANK.indexOf(key);
+      return i < 0 ? H.CON_STATUS_RANK.length : i;
+    },
+    /* The three signature guards, shared by create and edit exactly as the
+       server shares them between POST and PUT. Returns { field, code, message }
+       or null. Clearing a stamp is NEVER refused — a guard on the way out is
+       how a row gets stranded. */
+    conSignatureError(draft, today) {
+      const t = today || H.conToday();
+      const ready = H.conDateOnly(draft.ready);
+      const signed = H.conDateOnly(draft.signed);
+      if (ready && ready > t) {
+        return {
+          field: 'ready',
+          code: 'contract_signature_date_in_future',
+          message: 'Unable to save. A ready date records something that has happened — it cannot be in the future.'
+        };
+      }
+      if (signed && signed > t) {
+        return {
+          field: 'signed',
+          code: 'contract_signature_date_in_future',
+          message: 'Unable to save. A signed date records something that has happened — it cannot be in the future.'
+        };
+      }
+      if (signed && !ready) {
+        return {
+          field: 'signed',
+          code: 'contract_signed_requires_ready',
+          message: 'Unable to save. A signed contract needs a ready date too — set when it was ready for signature, or clear the signed date.'
+        };
+      }
+      if (signed && ready && String(draft.signed) < String(draft.ready)) {
+        return {
+          field: 'signed',
+          code: 'contract_signed_before_ready',
+          message: 'Unable to save. A contract cannot be signed before it was ready for signature.'
+        };
+      }
+      return null;
+    },
     /* Status display vocabulary: label, chip tone, status dot, and a glyph.
+       Draft=muted/outline (on file, nothing agreed) · Ready=amber/pending
+       (waiting on a signature, the same tone a pause gets) ·
        Active=mint/income · Upcoming=sea/info · Expired=coral/expense ·
        Paused=amber/pending (the tone Subscriptions already gives a pause) ·
        Archived=muted/outline. Tones map to the same finance accents Insurance /
@@ -57301,6 +57670,20 @@ try { (() => {
        WRONG state (a green pill on a paused contract), not a degraded one. */
     conStatusMeta(key) {
       const map = {
+        Draft: {
+          key: 'Draft',
+          label: 'Draft',
+          tone: 'outline',
+          dot: true,
+          icon: 'edit_note'
+        },
+        Ready: {
+          key: 'Ready',
+          label: 'Ready',
+          tone: 'pending',
+          dot: true,
+          icon: 'draw'
+        },
         Active: {
           key: 'Active',
           label: 'Active',
@@ -57524,6 +57907,23 @@ try { (() => {
           cls: 'archived'
         };
       }
+      /* Unsigned: the term's dates describe something nobody has agreed to,
+         so counting down to them would assert a commitment that does not
+         exist. The headline says where the signature got to instead. */
+      if (status === 'Draft') {
+        return {
+          value: H.conDate(contract.createdAtUtc),
+          word: 'drafted',
+          cls: 'archived'
+        };
+      }
+      if (status === 'Ready') {
+        return {
+          value: H.conDate(contract.ready),
+          word: 'ready',
+          cls: 'soon'
+        };
+      }
       /* Paused: the countdown is meaningless while nothing is running, so the
          headline says when the pause began instead. Checked HERE, above the
          one-off branch, for the same reason the status derivation applies the
@@ -57596,9 +57996,11 @@ try { (() => {
     conSummary(contracts, today) {
       const t = today || H.conToday();
       const all = contracts || D.contracts;
-      // Five mutually exclusive buckets that partition the set and sum to
+      // Seven mutually exclusive buckets that partition the set and sum to
       // total. EndingSoon stays a slice of Active and is not one of them.
       const counts = {
+        Draft: 0,
+        Ready: 0,
         Active: 0,
         Upcoming: 0,
         Expired: 0,
@@ -57608,6 +58010,9 @@ try { (() => {
       const byType = {};
       for (const c of all) {
         counts[H.conStatus(c, t)] = (counts[H.conStatus(c, t)] || 0) + 1;
+        // By type is a HEADCOUNT of the agreements on file, not a cost split:
+        // a draft is still a contract of its type, so it is counted here even
+        // though it contributes nothing to the run rate.
         if (!c.archived) byType[c.type] = (byType[c.type] || 0) + 1;
       }
       return {
@@ -57962,6 +58367,25 @@ try { (() => {
       labelKey: 'joining fee',
       note: null,
       createdAtUtc: '2026-06-10T09:00:00Z'
+    }],
+    /* A DRAFT with a fully priced fee — the demonstration that the money
+       roll-ups gate on STATUS, not on whether a price exists. This 180/month
+       appears in the term history and in nothing else: not the run rate, not
+       the by-type cost split, not the upcoming charges. */
+    'ct-cleaning': [{
+      id: 'ctm-cleaning-1',
+      contractId: 'ct-cleaning',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 180.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      effectiveFrom: '2026-11-01',
+      label: 'Cleaning',
+      labelKey: 'cleaning',
+      note: 'Quoted rate — not agreed until the contract is signed.',
+      createdAtUtc: '2026-09-12T11:00:00Z'
     }]
     // ct-employment intentionally has no terms — drives the empty state.
   };
@@ -58028,6 +58452,10 @@ try { (() => {
       if (status === 'Expired') return null;
       // A paused contract is not charging — no next charge, no run rate.
       if (status === 'Paused') return null;
+      // Nor is an unsigned one: a draft may be fully priced, but nothing has
+      // been agreed, so there is no charge to expect. Same single gate the
+      // run rate uses (status !== 'Active').
+      if (H.conIsUnsigned(status)) return null;
       const inForce = window.trmCurrentFromList ? window.trmCurrentFromList(H.conTermsFor(contract.id)) : [];
       const end = H.conDateOnly(contract.endDate);
       const start = H.conDateOnly(contract.startDate);
@@ -58088,8 +58516,11 @@ try { (() => {
        projected by its cadence (Amount ÷ IntervalCount × periods), then
        converted to the workspace base via the shared FX helper — a currency
        with no rate is listed as unconverted, never silently zeroed. Only
-       contracts currently running count: Upcoming, Expired and Archived
-       records carry no run rate.
+       contracts currently running count: Draft, Ready, Upcoming, Expired and
+       Archived records carry no run rate. The unsigned two are excluded by the
+       same single status gate as the rest — a priced draft is a quote, not a
+       commitment, and inflating the run rate with it is the defect this
+       feature exists to close.
        One-time and per-occurrence fees are excluded by construction — they
        have no cadence, so there is no rate to project. */
     conRunRate(contracts, today, baseCurrency) {
@@ -58164,6 +58595,19 @@ try { (() => {
           count: byType[ty.key].count
         }))
       };
+    },
+    /* Archivability, widened. A contract may be archived once it has ENDED,
+       or while it is still UNSIGNED — abandoning a negotiation is the single
+       most likely reason to archive a draft, and a draft typically has no end
+       date at all, so the ended-only rule would strand it forever.
+       Unarchiving is never refused. */
+    conArchivable(contract, today) {
+      if (!contract) return false;
+      if (contract.archived) return true;
+      if (!contract.signed) return true;
+      const t = today || H.conToday();
+      const status = H.conStatus(contract, t);
+      return status === 'Expired' || !!contract.completionDate && H.conDateOnly(contract.completionDate) <= t;
     },
     conTermWriteBlock(contract, termCount, cap) {
       if (contract && contract.archived) {
@@ -67048,6 +67492,8 @@ __ds_ns.CONTACT_TYPES = __ds_scope.CONTACT_TYPES;
 __ds_ns.ContactTypeSelect = __ds_scope.ContactTypeSelect;
 
 __ds_ns.CONTRACT_STATES = __ds_scope.CONTRACT_STATES;
+
+__ds_ns.CONTRACT_STATUS_RANK = __ds_scope.CONTRACT_STATUS_RANK;
 
 __ds_ns.ContractStatusChip = __ds_scope.ContractStatusChip;
 

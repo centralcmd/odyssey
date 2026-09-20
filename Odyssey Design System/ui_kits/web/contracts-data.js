@@ -20,9 +20,17 @@
                         { id, name, kind, size, uploaded }, `kind` = a
                         ContractFileType key).
 
-   Status (Upcoming | Active | Expired | Paused | Archived) is DERIVED, never
-   stored — computed here per spec §6 from StartDate / EndDate / Archived /
-   Paused against one request "today". Paused is a nullable UTC stamp recording
+   Status (Draft | Ready | Upcoming | Active | Expired | Paused | Archived) is
+   DERIVED, never stored — computed here from StartDate / EndDate / Archived /
+   Paused / Ready / Signed against one request "today".
+   READY and SIGNED are the signature stamps: nullable UTC timestamps in the
+   same shape as Paused and Archived, whose PRESENCE is the state and whose
+   value is the moment. An unsigned contract (Signed null) reads Ready when the
+   Ready stamp is present and Draft otherwise, and that layer sits ABOVE the
+   whole date chain — a term nobody has agreed to is not Upcoming, and a
+   negotiation that stalled is abandoned, not Expired. Draft and Ready
+   contracts are on file but not in force: they are counted by type, and
+   excluded from the run rate and the upcoming charges. Paused is a nullable UTC stamp recording
    WHEN the suspension began; it REPLACES Active in the derivation and nothing
    else, so a terminal status always wins over it. A paused contract stays
    visible, editable and fully priced on file — it simply stops counting toward
@@ -109,7 +117,7 @@
     {
       id: 'ct-employment', name: 'ACME Co — Employment', type: 'Employment',
       description: 'Permanent, full-time. Salary paid monthly into the Chase Checking account. 3-month notice either side.',
-      startDate: '2024-03-01', endDate: null, paused: null, archived: null, createdAtUtc: '2024-02-20T09:00:00Z', createdByUserId: 'u-jane',
+      startDate: '2024-03-01', endDate: null, ready: '2024-02-20T09:00:00Z', signed: '2024-02-24T09:00:00Z', paused: null, archived: null, createdAtUtc: '2024-02-20T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-emp-1', contactId: 'c2', role: 'Employer', fromDate: null, toDate: null },
         // The salary account is a party to the agreement with no role in the
@@ -124,7 +132,7 @@
     {
       id: 'ct-lease', name: 'Maple St Residence — Lease', type: 'Rental',
       description: 'Twelve-month assured shorthold tenancy on the Maple St residence. Rent due on the 1st. Pets permitted by amendment.',
-      startDate: '2025-09-01', endDate: '2026-08-31', paused: null, archived: null, createdAtUtc: '2025-08-14T10:00:00Z', createdByUserId: 'u-jane',
+      startDate: '2025-09-01', endDate: '2026-08-31', ready: '2025-08-14T09:00:00Z', signed: '2025-08-20T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-08-14T10:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-lease-1', accountId: '7', role: 'Unspecified', fromDate: null, toDate: null },
         // A party that joined partway through the term — the case the term
@@ -141,7 +149,7 @@
     {
       id: 'ct-house', name: 'Maple St Residence — Purchase', type: 'Purchase',
       description: 'Purchase of the Maple St property — a one-off agreement recorded by its completion (closing) date, not a term. Kept as the deed of record for the property.',
-      startDate: null, endDate: null, completionDate: '2021-04-15', paused: null, archived: null, createdAtUtc: '2021-03-02T09:00:00Z', createdByUserId: null,
+      startDate: null, endDate: null, completionDate: '2021-04-15', ready: '2021-03-02T09:00:00Z', signed: '2021-03-30T09:00:00Z', paused: null, archived: null, createdAtUtc: '2021-03-02T09:00:00Z', createdByUserId: null,
       parties: [
         { id: 'cp-house-1', accountId: '7', role: 'Buyer', fromDate: null, toDate: null },
         { id: 'cp-house-2', contactId: 'c9', role: 'Seller', fromDate: null, toDate: null },
@@ -153,7 +161,7 @@
     {
       id: 'ct-fiber', name: 'Fiber Internet — 24 Month', type: 'Service',
       description: 'Symmetric 1 Gbps fiber. 24-month term, early-termination fee applies. Auto-renews monthly at term end.',
-      startDate: '2025-02-01', endDate: '2027-01-31', paused: null, archived: null, createdAtUtc: '2025-01-22T09:00:00Z', createdByUserId: 'u-sam',
+      startDate: '2025-02-01', endDate: '2027-01-31', ready: '2025-01-22T09:00:00Z', signed: '2025-01-24T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-01-22T09:00:00Z', createdByUserId: 'u-sam',
       parties: [
         { id: 'cp-fiber-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -165,7 +173,7 @@
     {
       id: 'ct-gym', name: 'FitZone — Membership', type: 'Membership',
       description: 'Annual gym membership. Direct debit, monthly. Frozen over the winter — resuming in the spring.',
-      startDate: '2026-09-01', endDate: '2027-08-31', paused: '2026-09-14T10:30:00Z', archived: null, createdAtUtc: '2026-06-10T09:00:00Z', createdByUserId: 'u-mira',
+      startDate: '2026-09-01', endDate: '2027-08-31', ready: '2026-06-10T09:00:00Z', signed: '2026-06-12T09:00:00Z', paused: '2026-09-14T10:30:00Z', archived: null, createdAtUtc: '2026-06-10T09:00:00Z', createdByUserId: 'u-mira',
       parties: [
         { id: 'cp-gym-1', contactId: 'c11', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -178,7 +186,7 @@
       // populates the header signal's warning group beside the next charges.
       id: 'ct-parking', name: 'Harbor Point Parking — Space 14', type: 'Rental',
       description: 'Twelve-month parking licence on space 14. Renews only by a fresh agreement — give notice 30 days before the end date.',
-      startDate: '2025-11-01', endDate: '2026-10-31', paused: null, archived: null, createdAtUtc: '2025-10-20T09:00:00Z', createdByUserId: 'u-jane',
+      startDate: '2025-11-01', endDate: '2026-10-31', ready: '2025-10-20T09:00:00Z', signed: '2025-10-22T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-10-20T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-parking-1', contactId: 'c8', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -191,7 +199,7 @@
       // populates the header signal's "Starting soon" group.
       id: 'ct-energy', name: 'Northwind Energy — Fixed Tariff', type: 'Service',
       description: 'Twelve-month fixed electricity tariff. Switch completes on the start date; the standing charge and unit rate are fixed for the term.',
-      startDate: '2026-10-15', endDate: '2027-10-14', paused: null, archived: null, createdAtUtc: '2026-09-02T09:00:00Z', createdByUserId: 'u-sam',
+      startDate: '2026-10-15', endDate: '2027-10-14', ready: '2026-09-02T09:00:00Z', signed: '2026-09-04T09:00:00Z', paused: null, archived: null, createdAtUtc: '2026-09-02T09:00:00Z', createdByUserId: 'u-sam',
       parties: [
         { id: 'cp-energy-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
@@ -202,7 +210,7 @@
     {
       id: 'ct-storage', name: 'Storage Unit B12 — Rental', type: 'Rental',
       description: 'Self-storage unit, 50 sq ft. Twelve-month term, not renewed — kept for record.',
-      startDate: '2024-01-01', endDate: '2025-12-31', paused: null, archived: null, createdAtUtc: '2024-01-03T09:00:00Z', createdByUserId: 'u-jane',
+      startDate: '2024-01-01', endDate: '2025-12-31', ready: '2024-01-03T09:00:00Z', signed: '2024-01-03T09:00:00Z', paused: null, archived: null, createdAtUtc: '2024-01-03T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         // Left the role when the unit was handed back, while the contract row
         // stays on record — a closed term, rendered as a past party.
@@ -215,7 +223,7 @@
     {
       id: 'ct-solar', name: 'Solar Panel Lease', type: 'Other',
       description: 'Twenty-year rooftop solar lease — transferred to the new owner on sale of the property. Retained for reference.',
-      startDate: '2023-06-01', endDate: '2025-10-31', paused: null, archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z', createdByUserId: 'u-jane',
+      startDate: '2023-06-01', endDate: '2025-10-31', ready: '2023-05-28T09:00:00Z', signed: '2023-05-30T09:00:00Z', paused: null, archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-solar-1', accountId: '7', role: 'Other', fromDate: null, toDate: null },
       ],
@@ -223,6 +231,32 @@
         { id: 'cf-solar-1', fileMetadataId: 'fm-solar-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2023-05-28T09:04:00Z' },
         { id: 'cf-solar-2', fileMetadataId: 'fm-solar-corr', kind: 'Correspondence', attachedByUserId: 'u-owner', attachedAtUtc: '2025-11-02T16:00:00Z' },
       ],
+    },
+    /* DRAFT — recorded while it is still being negotiated. Note the start date
+       is in the future and the status is still Draft, not Upcoming: the dates
+       describe a term nobody has agreed to. It carries a priced Fee term and
+       contributes nothing to the run rate or the upcoming charges. */
+    {
+      id: 'ct-cleaning', name: 'Beacon Home Services — Cleaning', type: 'Service',
+      description: 'Fortnightly whole-house clean. Quote received; terms still under discussion — nothing has been marked ready for signature yet.',
+      startDate: '2026-11-01', endDate: '2027-10-31', ready: null, signed: null, paused: null, archived: null, createdAtUtc: '2026-09-12T11:00:00Z', createdByUserId: 'u-jane',
+      parties: [
+        { id: 'cp-cleaning-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
+      ],
+      files: [],
+    },
+    /* READY — marked ready for signature and never signed, with a term that
+       has since run out. It reads Ready, NOT Expired: a term cannot lapse
+       before it begins, and the thing to act on is an abandoned negotiation,
+       not a retired agreement. Archivable under the widened rule. */
+    {
+      id: 'ct-tutoring', name: 'Westbrook Tutoring — Weekly Sessions', type: 'Service',
+      description: 'Weekly maths tuition over the school year. Sent for signature in August 2025 and never returned — the term it describes has since run out.',
+      startDate: '2025-09-01', endDate: '2026-06-30', ready: '2025-08-20T15:30:00Z', signed: null, paused: null, archived: null, createdAtUtc: '2025-08-18T09:00:00Z', createdByUserId: 'u-mira',
+      parties: [
+        { id: 'cp-tutoring-1', contactId: 'c8', role: 'ServiceProvider', fromDate: null, toDate: null },
+      ],
+      files: [],
     },
   ];
 
@@ -273,20 +307,80 @@
       return 'Active';
     },
 
+    /* The SIGNATURE layer, between the archive check and the date chain.
+       Signed present ⇒ null (the date chain runs). Signed null ⇒ Ready when
+       the Ready stamp is present, Draft otherwise — and it short-circuits the
+       date chain entirely, which is the whole point: an unsigned contract
+       whose start date is in the future is not Upcoming (that would assert a
+       commitment nobody has made), and one whose end date has passed is not
+       Expired (a term cannot lapse before it begins). */
+    conSignatureStatus(contract) {
+      if (contract.signed) return null;
+      return contract.ready ? 'Ready' : 'Draft';
+    },
+
+    /* True for the two states that are on file but not in force. The SINGLE
+       gate the money roll-ups read — never a re-test of the stamps. */
+    conIsUnsigned(status) { return status === 'Draft' || status === 'Ready'; },
+
     /* Derived status. Paused REPLACES Active and nothing else — it is applied
        ONCE to the RESULT of the base derivation, never inserted as a step in
        its chain. The one-off branch above returns early for BOTH its outcomes,
        so a pause check written late in that chain would be unreachable for a
        settled one-off: the stamp would be stored and every read would keep
        saying Active while the contract kept costing money.
-       Read as precedence: Archived > Upcoming > Expired > Paused > Active —
-       a terminal fact outranks a temporary one. */
+       Read as precedence:
+       Archived > Draft/Ready > Upcoming > Expired > Paused > Active —
+       a terminal fact outranks a temporary one, and an agreement nobody has
+       signed outranks everything its dates would otherwise say. */
     conStatus(contract, today) {
+      if (contract.archived) return 'Archived';
+      const sig = H.conSignatureStatus(contract);
+      if (sig) return sig;
       const status = H.conBaseStatus(contract, today);
       return status === 'Active' && contract.paused ? 'Paused' : status;
     },
 
+    /* Lifecycle READING order — what a Status sort uses, and the order every
+       status list on the page is written in. NOT the wire ordinal: Draft and
+       Ready are appended enum members (5, 6), so sorting on the ordinal would
+       put the two earliest states last, behind Archived. */
+    CON_STATUS_RANK: ['Draft', 'Ready', 'Upcoming', 'Active', 'Paused', 'Expired', 'Archived'],
+    conStatusRank(key) {
+      const i = H.CON_STATUS_RANK.indexOf(key);
+      return i < 0 ? H.CON_STATUS_RANK.length : i;
+    },
+
+    /* The three signature guards, shared by create and edit exactly as the
+       server shares them between POST and PUT. Returns { field, code, message }
+       or null. Clearing a stamp is NEVER refused — a guard on the way out is
+       how a row gets stranded. */
+    conSignatureError(draft, today) {
+      const t = today || H.conToday();
+      const ready = H.conDateOnly(draft.ready);
+      const signed = H.conDateOnly(draft.signed);
+      if (ready && ready > t) {
+        return { field: 'ready', code: 'contract_signature_date_in_future',
+          message: 'Unable to save. A ready date records something that has happened — it cannot be in the future.' };
+      }
+      if (signed && signed > t) {
+        return { field: 'signed', code: 'contract_signature_date_in_future',
+          message: 'Unable to save. A signed date records something that has happened — it cannot be in the future.' };
+      }
+      if (signed && !ready) {
+        return { field: 'signed', code: 'contract_signed_requires_ready',
+          message: 'Unable to save. A signed contract needs a ready date too — set when it was ready for signature, or clear the signed date.' };
+      }
+      if (signed && ready && String(draft.signed) < String(draft.ready)) {
+        return { field: 'signed', code: 'contract_signed_before_ready',
+          message: 'Unable to save. A contract cannot be signed before it was ready for signature.' };
+      }
+      return null;
+    },
+
     /* Status display vocabulary: label, chip tone, status dot, and a glyph.
+       Draft=muted/outline (on file, nothing agreed) · Ready=amber/pending
+       (waiting on a signature, the same tone a pause gets) ·
        Active=mint/income · Upcoming=sea/info · Expired=coral/expense ·
        Paused=amber/pending (the tone Subscriptions already gives a pause) ·
        Archived=muted/outline. Tones map to the same finance accents Insurance /
@@ -297,6 +391,8 @@
        WRONG state (a green pill on a paused contract), not a degraded one. */
     conStatusMeta(key) {
       const map = {
+        Draft:    { key: 'Draft',    label: 'Draft',    tone: 'outline', dot: true,  icon: 'edit_note' },
+        Ready:    { key: 'Ready',    label: 'Ready',    tone: 'pending', dot: true,  icon: 'draw' },
         Active:   { key: 'Active',   label: 'Active',   tone: 'income',  dot: true,  icon: 'task_alt' },
         Upcoming: { key: 'Upcoming', label: 'Upcoming', tone: 'info',    dot: true,  icon: 'schedule' },
         Expired:  { key: 'Expired',  label: 'Expired',  tone: 'expense', dot: true,  icon: 'event_busy' },
@@ -422,6 +518,15 @@
         const d = contract.completionDate || contract.endDate || contract.startDate;
         return { value: d ? H.conDate(d) : '—', word: 'archived', cls: 'archived' };
       }
+      /* Unsigned: the term's dates describe something nobody has agreed to,
+         so counting down to them would assert a commitment that does not
+         exist. The headline says where the signature got to instead. */
+      if (status === 'Draft') {
+        return { value: H.conDate(contract.createdAtUtc), word: 'drafted', cls: 'archived' };
+      }
+      if (status === 'Ready') {
+        return { value: H.conDate(contract.ready), word: 'ready', cls: 'soon' };
+      }
       /* Paused: the countdown is meaningless while nothing is running, so the
          headline says when the pause began instead. Checked HERE, above the
          one-off branch, for the same reason the status derivation applies the
@@ -464,12 +569,15 @@
     conSummary(contracts, today) {
       const t = today || H.conToday();
       const all = contracts || D.contracts;
-      // Five mutually exclusive buckets that partition the set and sum to
+      // Seven mutually exclusive buckets that partition the set and sum to
       // total. EndingSoon stays a slice of Active and is not one of them.
-      const counts = { Active: 0, Upcoming: 0, Expired: 0, Archived: 0, Paused: 0 };
+      const counts = { Draft: 0, Ready: 0, Active: 0, Upcoming: 0, Expired: 0, Archived: 0, Paused: 0 };
       const byType = {};
       for (const c of all) {
         counts[H.conStatus(c, t)] = (counts[H.conStatus(c, t)] || 0) + 1;
+        // By type is a HEADCOUNT of the agreements on file, not a cost split:
+        // a draft is still a contract of its type, so it is counted here even
+        // though it contributes nothing to the run rate.
         if (!c.archived) byType[c.type] = (byType[c.type] || 0) + 1;
       }
       return {
@@ -555,6 +663,13 @@
       { id: 'ctm-gym-1', contractId: 'ct-gym', kind: 'Fee', unit: 'Amount', value: 39.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-09-01', label: 'Membership', labelKey: 'membership', note: null, createdAtUtc: '2026-06-10T09:00:00Z' },
       { id: 'ctm-gym-2', contractId: 'ct-gym', kind: 'Fee', unit: 'Amount', value: 25.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2026-09-01', label: 'Joining fee', labelKey: 'joining fee', note: null, createdAtUtc: '2026-06-10T09:00:00Z' },
     ],
+    /* A DRAFT with a fully priced fee — the demonstration that the money
+       roll-ups gate on STATUS, not on whether a price exists. This 180/month
+       appears in the term history and in nothing else: not the run rate, not
+       the by-type cost split, not the upcoming charges. */
+    'ct-cleaning': [
+      { id: 'ctm-cleaning-1', contractId: 'ct-cleaning', kind: 'Fee', unit: 'Amount', value: 180.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-11-01', label: 'Cleaning', labelKey: 'cleaning', note: 'Quoted rate — not agreed until the contract is signed.', createdAtUtc: '2026-09-12T11:00:00Z' },
+    ],
     // ct-employment intentionally has no terms — drives the empty state.
   };
 
@@ -625,6 +740,10 @@
       if (status === 'Expired') return null;
       // A paused contract is not charging — no next charge, no run rate.
       if (status === 'Paused') return null;
+      // Nor is an unsigned one: a draft may be fully priced, but nothing has
+      // been agreed, so there is no charge to expect. Same single gate the
+      // run rate uses (status !== 'Active').
+      if (H.conIsUnsigned(status)) return null;
       const inForce = window.trmCurrentFromList
         ? window.trmCurrentFromList(H.conTermsFor(contract.id))
         : [];
@@ -681,8 +800,11 @@
        projected by its cadence (Amount ÷ IntervalCount × periods), then
        converted to the workspace base via the shared FX helper — a currency
        with no rate is listed as unconverted, never silently zeroed. Only
-       contracts currently running count: Upcoming, Expired and Archived
-       records carry no run rate.
+       contracts currently running count: Draft, Ready, Upcoming, Expired and
+       Archived records carry no run rate. The unsigned two are excluded by the
+       same single status gate as the rest — a priced draft is a quote, not a
+       commitment, and inflating the run rate with it is the defect this
+       feature exists to close.
        One-time and per-occurrence fees are excluded by construction — they
        have no cadence, so there is no rate to project. */
     conRunRate(contracts, today, baseCurrency) {
@@ -729,6 +851,20 @@
           .map(ty => ({ key: ty.key, label: ty.label, icon: ty.icon, color: ty.color,
             monthly: byType[ty.key].monthly, yearly: byType[ty.key].yearly, count: byType[ty.key].count })),
       };
+    },
+
+    /* Archivability, widened. A contract may be archived once it has ENDED,
+       or while it is still UNSIGNED — abandoning a negotiation is the single
+       most likely reason to archive a draft, and a draft typically has no end
+       date at all, so the ended-only rule would strand it forever.
+       Unarchiving is never refused. */
+    conArchivable(contract, today) {
+      if (!contract) return false;
+      if (contract.archived) return true;
+      if (!contract.signed) return true;
+      const t = today || H.conToday();
+      const status = H.conStatus(contract, t);
+      return status === 'Expired' || (!!contract.completionDate && H.conDateOnly(contract.completionDate) <= t);
     },
 
     conTermWriteBlock(contract, termCount, cap) {

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-export type ContractStatusKey = 'Active' | 'Upcoming' | 'Expired' | 'Archived' | 'Paused';
+export type ContractStatusKey = 'Active' | 'Upcoming' | 'Expired' | 'Archived' | 'Paused' | 'Draft' | 'Ready';
 
 export interface ContractStateMeta {
   key: string;
@@ -13,8 +13,21 @@ export interface ContractStateMeta {
   unknown?: boolean;
 }
 
-/** Canonical contract-status vocabulary, in precedence order (Archived → Upcoming → Expired → Paused → Active). */
+/** Canonical contract-status vocabulary, in precedence order (Archived → Draft/Ready → Upcoming → Expired → Paused → Active). */
 export declare const CONTRACT_STATES: ContractStateMeta[];
+
+/**
+ * Lifecycle reading order — Draft → Ready → Upcoming → Active → Paused →
+ * Expired → Archived. Sort a status column on THIS, never on the enum ordinal:
+ * Draft and Ready are appended members (5, 6) and would otherwise sort last.
+ */
+export declare const CONTRACT_STATUS_RANK: ContractStatusKey[];
+
+/** Lifecycle rank of a member. An unrecognised member sorts last. */
+export declare function contractStatusRank(status: string): number;
+
+/** True for Draft and Ready — on file, not in force, excluded from every money roll-up. */
+export declare function contractStatusIsUnsigned(status: string): boolean;
 
 /**
  * Resolve a ContractStatus member to its display row. An unrecognised member
@@ -36,6 +49,7 @@ export interface ContractStatusChipProps {
 /**
  * A contract's derived lifecycle status as ONE chip, meaning conveyed as
  * visible text. Contracts' sibling of SubscriptionStatusChip. Paused replaces
- * Active only — a terminal status (Archived / Upcoming / Expired) always wins.
+ * Active only — a terminal status (Archived / Upcoming / Expired) always wins,
+ * and the signature states (Draft / Ready) outrank the whole date chain.
  */
 export declare function ContractStatusChip(props: ContractStatusChipProps): JSX.Element;

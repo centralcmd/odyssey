@@ -195,3 +195,10 @@
 .con-status-tile.expense .odc-infotile-v { color: var(--finance-expense); }
 .con-status-tile.muted .odc-infotile-v { color: var(--mud-palette-text-secondary); }
 .con-status-tile.pending .odc-infotile-v { color: var(--finance-pending); }
+
+/* UNSIGNED (Draft / Ready) — full brightness, because these are the rows most
+   likely to need attention, and a dashed edge instead: nothing about the
+   agreement is settled yet. The opposite reading to archived, which is dimmed
+   because it is finished. Only the outer edge changes — density, type and
+   every control inside stay identical, so the row is marked, not decorated. */
+.con-unsigned > .odc-record { border-style: dashed; border-color: color-mix(in srgb, var(--mud-palette-text-secondary) 40%, transparent); }

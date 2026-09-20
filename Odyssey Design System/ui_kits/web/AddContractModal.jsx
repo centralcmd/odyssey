@@ -7,6 +7,16 @@
          – Term:    startDate (optional) + endDate (optional; ≥ startDate)
          – One-off: completionDate (required) — a point-in-time agreement
                     (a purchase / closing), no ongoing term
+     • ready        (optional) — marked ready for signature on this date
+     • signed       (optional) — signed by all parties on this date
+   The two SIGNATURE stamps are here as ordinary dates so a paper contract
+   signed last month can be entered in one go; the common path is the row
+   menu's one-click Mark ready / Mark signed. Both omitted creates a Draft,
+   which is the normal case. The three guards below are the client half of the
+   server's — a signed date needs a ready date, cannot precede it, and neither
+   can be in the future. Nothing constrains them against the TERM dates:
+   signing after cover has begun is ordinary, and signing before it starts is
+   the normal case.
    A new contract starts with no parties and no documents — both are added from
    the contract's detail, by scalar id only (the §6/§10 mass-assignment rule). */
 
@@ -21,6 +31,8 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
     startDate: contract ? (H.conDateOnly(contract.startDate) || '') : H.conToday(),
     endDate: contract ? (H.conDateOnly(contract.endDate) || '') : '',
     completionDate: contract ? (H.conDateOnly(contract.completionDate) || '') : '',
+    ready: contract ? (H.conDateOnly(contract.ready) || '') : '',
+    signed: contract ? (H.conDateOnly(contract.signed) || '') : '',
   });
   const [errors, setErrors] = useState({});
   const set = (k) => (v) => { setDraft(d => ({ ...d, [k]: v })); if (errors[k]) setErrors(e => ({ ...e, [k]: undefined })); };
@@ -34,6 +46,11 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
     } else if (draft.endDate && draft.startDate && draft.endDate < draft.startDate) {
       next.endDate = '“Ends” can’t be before “Starts”.';
     }
+    /* The shared signature guards, run identically on create and edit — one
+       helper, the way the server shares one between POST and PUT. Clearing a
+       stamp is never refused. */
+    const sig = H.conSignatureError(draft);
+    if (sig) next[sig.field] = sig.message.replace(/^Unable to save\. /, '');
     if (Object.keys(next).length) { setErrors(next); return; }
     if (editing) {
       // Parity with the list item's saveEdit patch shape.
@@ -47,7 +64,9 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
         startDate: mode === 'oneoff' ? null : (draft.startDate || null),
         endDate: mode === 'oneoff' ? null : (draft.endDate || null),
         completionDate: mode === 'oneoff' ? draft.completionDate : null,
-        archived: null, createdAtUtc: new Date().toISOString(),
+        // Both omitted is the normal path — a new contract starts as a Draft.
+        ready: draft.ready || null, signed: draft.signed || null,
+        paused: null, archived: null, createdAtUtc: new Date().toISOString(),
         parties: [], files: [],
       });
     }
@@ -57,8 +76,8 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
     <Modal
       title={editing ? 'Edit contract' : 'New contract'}
       subtitle={editing
-        ? 'Update the agreement’s name, type and dates — a term or a one-off. Parties and documents are managed from the contract.'
-        : 'Record the agreement’s name, type and dates — a term or a one-off — then add the parties and documents from the contract.'}
+        ? 'Update the agreement’s name, type, term and signature dates. Parties and documents are managed from the contract.'
+        : 'Record the agreement’s name, type and dates — a term or a one-off. Leave the signature dates blank to record it as a draft.'}
       icon="handshake"
       onClose={onClose}
       footer={
@@ -102,6 +121,25 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
           <div />
         </FormRow>
       )}
+
+      {/* SIGNATURE — its own labelled pair, below the term dates and above the
+          description: these two dates say whether the agreement binds, which
+          the term dates alone never do. Neither is required; leaving both
+          empty records a draft. */}
+      <FormRow>
+        <div className="field">
+          <Field type="date" label="Ready for signature" value={draft.ready} onChange={set('ready')} placeholder="Not yet ready" />
+          {errors.ready
+            ? <div className="helper aam-err">{errors.ready}</div>
+            : <div className="helper">Leave blank while it is still being drafted.</div>}
+        </div>
+        <div className="field">
+          <Field type="date" label="Signed" value={draft.signed} onChange={set('signed')} placeholder="Not signed" />
+          {errors.signed
+            ? <div className="helper aam-err">{errors.signed}</div>
+            : <div className="helper">Signed by all parties. Until this is set, the contract stays out of the run rate.</div>}
+        </div>
+      </FormRow>
 
       <NoteField label="Description" optional maxLength={1024} value={draft.description} onChange={set('description')}
         placeholder="What this agreement covers, term, notice period, key conditions…" />
