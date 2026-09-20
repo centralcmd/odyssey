@@ -12,13 +12,19 @@
     A contract is either TERM-based — startDate (optional) + endDate (optional, ≥ startDate) — or a
     ONE-OFF — a required completionDate point-in-time agreement with no ongoing term. Parties and
     documents are never edited here; they are managed from the contract's detail (§6/§10).
+
+    The two SIGNATURE stamps (issue #145) are here as ordinary dates so a paper contract signed last
+    month can be entered in one go; the common path is the row menu's one-click Mark ready / Mark
+    signed. Both left blank creates a Draft, which is the normal case. Nothing constrains them
+    against the TERM dates — signing after cover has begun is ordinary, and signing before a term
+    starts is the normal case.
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
                Icon="handshake" Title="@(IsEdit ? "Edit contract" : "New contract")"
                Subtitle="@(IsEdit
-                   ? "Update the agreement's name, type and dates — a term or a one-off. Parties and documents are managed from the contract."
-                   : "Record the agreement's name, type and dates — a term or a one-off — then add the parties and documents from the contract.")"
+                   ? "Update the agreement's name, type, term and signature dates. Parties and documents are managed from the contract."
+                   : "Record the agreement's name, type and dates — a term or a one-off. Leave the signature dates blank to record it as a draft.")"
                SubmitLabel="@(IsEdit ? "Save changes" : "Create contract")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
@@ -60,123 +66,22 @@
         </OdsFormRow>
     }
 
+    @* SIGNATURE — its own labelled pair, below the term dates and above the description: these two
+       dates say whether the agreement BINDS, which the term dates alone never do. Neither is
+       required; leaving both empty records a draft. *@
+    <OdsFormRow>
+        <OdsDateField Label="Ready for signature" Value="_ready"
+                      ValueChanged="@(v => { _ready = v; _readyError = null; _signedError = null; })"
+                      Placeholder="Not yet ready"
+                      Error="@_readyError"
+                      Help="Leave blank while it is still being drafted." />
+        <OdsDateField Label="Signed" Value="_signed"
+                      ValueChanged="@(v => { _signed = v; _signedError = null; })"
+                      Placeholder="Not signed"
+                      Error="@_signedError"
+                      Help="Signed by all parties. Until this is set, the contract stays out of the run rate." />
+    </OdsFormRow>
+
     <OdsNoteField Label="Description" MaxLength="1024" @bind-Value="_description"
                   Placeholder="What this agreement covers, term, notice period, key conditions…" />
 </OdsFormDialog>
-
-@code {
-    [Parameter] public bool Open { get; set; }
-    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
-
-    /// <summary>Raised after a successful create/update so the host can refresh.</summary>
-    [Parameter] public EventCallback OnSaved { get; set; }
-
-    /// <summary>When set, the dialog edits this contract. Null = create mode.</summary>
-    [Parameter] public ExistingContract? Contract { get; set; }
-
-    private bool IsEdit => Contract is not null;
-
-    private const string TermMode = "term";
-    private const string OneOffMode = "oneoff";
-
-    private static readonly IReadOnlyList<OdsSegmentedOption> _modeOptions =
-    [
-        new() { Value = TermMode, Label = "Term" },
-        new() { Value = OneOffMode, Label = "One-off" },
-    ];
-
-    private string _mode = TermMode;
-    private string? _name;
-    private string _type = string.Empty;
-    private string? _description;
-    private DateTime? _startDate = DateTime.UtcNow.Date;
-    private DateTime? _endDate;
-    private DateTime? _completionDate;
-
-    private string? _nameError;
-    private string? _typeError;
-    private string? _endError;
-    private string? _completionError;
-
-    protected override void OnInitialized()
-    {
-        if (Contract is not { } contract)
-            return;
-
-        _name           = contract.Name;
-        _type           = contract.Type.ToString();
-        _description    = contract.Description;
-        _mode           = contract.CompletionDate is not null ? OneOffMode : TermMode;
-        _startDate      = contract.StartDate;
-        _endDate        = contract.EndDate;
-        _completionDate = contract.CompletionDate;
-    }
-
-    private void OnModeChanged(string mode)
-    {
-        _mode = mode;
-        _endError = null;
-        _completionError = null;
-    }
-
-    private async Task<bool> SaveAsync()
-    {
-        _nameError = string.IsNullOrWhiteSpace(_name) ? "Give the contract a name." : null;
-        _typeError = string.IsNullOrEmpty(_type) ? "Pick a contract type." : null;
-        _endError = null;
-        _completionError = null;
-
-        if (_mode == OneOffMode)
-        {
-            _completionError = _completionDate is null ? "Set a completion date." : null;
-        }
-        else if (_endDate is { } e && _startDate is { } s && e.Date < s.Date)
-        {
-            _endError = "“Ends” can’t be before “Starts”.";
-        }
-
-        if (_nameError is not null || _typeError is not null || _endError is not null || _completionError is not null)
-            return false;
-
-        var oneOff = _mode == OneOffMode;
-        var type = Enum.TryParse<ContractType>(_type, out var t) ? t : ContractType.Other;
-        var name = _name!.Trim();
-        var description = string.IsNullOrWhiteSpace(_description) ? null : _description!.Trim();
-        var startDate = oneOff ? null : _startDate;
-        var endDate = oneOff ? null : _endDate;
-        var completionDate = oneOff ? _completionDate : null;
-
-        if (IsEdit)
-        {
-            var update = new UpdateContract
-            {
-                Name = name,
-                Type = type,
-                Description = description,
-                StartDate = startDate,
-                EndDate = endDate,
-                CompletionDate = completionDate,
-                // Archive/restore and pause/resume are separate row actions, and PUT is a full
-                // replacement — so both stamps are carried forward from the record as it stands.
-                // Omitting either would let an ordinary field edit silently restore or resume it.
-                IsArchived = Contract!.Archived is not null,
-                IsPaused = Contract.Paused is not null,
-            };
-
-            return (await Contracts.UpdateAsync(Contract.ContractId, update)).Toast(Snackbar,
-                "Unable to update contract", "Contract updated.");
-        }
-
-        var contract = new NewContract
-        {
-            Name = name,
-            Type = type,
-            Description = description,
-            StartDate = startDate,
-            EndDate = endDate,
-            CompletionDate = completionDate,
-        };
-
-        return (await Contracts.CreateAsync(contract)).Toast(Snackbar, "Unable to create contract", "Contract created.");
-    }
-}

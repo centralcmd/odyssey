@@ -69,7 +69,10 @@ public partial class ContractsCard
         new() { Key = "startDate", Label = "Start date", Type = OdsSortType.Date, SortValue = c => c.StartDate },
         new() { Key = "endDate", Label = "End date", Type = OdsSortType.Date, SortValue = c => c.EndDate },
         new() { Key = "type", Label = "Type", Type = OdsSortType.Status, SortValue = c => (int)c.Type },
-        new() { Key = "status", Label = "Status", Type = OdsSortType.Status, SortValue = c => (int)c.Status },
+        // The SHARED lifecycle rank, not the enum ordinal (issue #145 §8) — the same one the server
+        // orders by. Sorting on the ordinal here would put Draft and Ready, the two earliest states,
+        // last: they are appended members, because an ordinal is a wire and persistence contract.
+        new() { Key = "status", Label = "Status", Type = OdsSortType.Status, SortValue = c => ContractStatusOrder.Rank(c.Status) },
     ];
 
     // ── Permissions ────────────────────────────────────────────────────────────
@@ -325,6 +328,22 @@ public partial class ContractsCard
                 .Select(c => Dated(c, "Starting soon", PageHeaderSeverity.Information,
                     $"Term starts {OdsRelativeDay.Ahead(DaysUntil(c.StartDate!.Value))}.")));
 
+            // Awaiting signature: sent out, never returned (issue #145). Not a dated cliff — what
+            // makes it actionable is that nothing will move it on its own, and every day it sits
+            // there is a day an agreement everyone believes is in force is not. WARNING, unlike the
+            // paused group below: a pause is a deliberate state someone chose, while an unreturned
+            // signature is a thing that has stalled.
+            //
+            // DRAFTS ARE DELIBERATELY NOT HERE. A draft is work in progress — nobody is waiting on
+            // anyone — and listing every one would turn this panel into a second contract list. The
+            // status filter is where you go looking for those.
+            problems.AddRange(live
+                .Where(c => c.Status == ContractStatus.Ready && c.Ready is not null)
+                .OrderBy(c => c.Ready)
+                .Take(MaxDatedSignalRows)
+                .Select(c => Dated(c, "Awaiting signature", PageHeaderSeverity.Warning,
+                    $"Ready for signature {OdsRelativeDay.Ago(DaysSince(c.Ready!.Value))} — not signed, not counted in the run rate.")));
+
             // Paused agreements: not a cliff, but the one group here that cannot be seen by looking
             // at a date — a contract that stopped costing money because someone froze it, and which
             // nothing will un-freeze on its own. Information, not a warning: a deliberate state is
@@ -494,6 +513,11 @@ public partial class ContractsCard
             // pause stamp forward would silently clear it. The two stamps are orthogonal in storage
             // and only ordered in presentation — archiving a paused contract keeps both.
             IsPaused = d.Paused is not null,
+            // Same rule, and the one this action would otherwise BREAK (issue #145 §5.2): omitting
+            // these clears both signature stamps, flips a signed contract to Draft and drops it out
+            // of the run rate — for a reader who only clicked Archive.
+            Ready = d.Ready,
+            Signed = d.Signed,
         };
 
         if ((await Contracts.UpdateAsync(c.ContractId, update)).Toast(Snackbar,
@@ -527,11 +551,102 @@ public partial class ContractsCard
             // replacement that omitted this would restore a contract the reader only meant to resume.
             IsArchived = d.Archived is not null,
             IsPaused = pausing,
+            // And the signature stamps for the same reason again (issue #145 §5.2): a pause that
+            // cleared them would unsign the contract the reader only meant to suspend.
+            Ready = d.Ready,
+            Signed = d.Signed,
         };
 
         if ((await Contracts.UpdateAsync(c.ContractId, update)).Toast(Snackbar,
                 pausing ? "Unable to pause contract" : "Unable to resume contract",
                 pausing ? "Contract paused." : "Contract resumed."))
+        {
+            await ReloadContract(c.ContractId);
+        }
+    }
+
+    // ── Signature lifecycle (issue #145) ─────────────────────────────────────────────────
+    //
+    // The one-click path, in lifecycle order and one step at a time: Mark ready for signature →
+    // Mark signed → Unsign. All three ride the SAME full-replacement PUT the archive and pause
+    // actions do; the date fields in the create/edit dialog are the other way in, for backdating a
+    // paper contract signed last month.
+
+    /// <summary>
+    /// Marks the contract ready for signature. IDEMPOTENT the way a pause is: a repeated mark keeps
+    /// the ORIGINAL stamp, so "ready since" never resets — which matters because that date is what
+    /// the header's "Awaiting signature" row counts from.
+    /// </summary>
+    private Task MarkReady(ContractListItem c) =>
+        WriteSignature(
+            c,
+            (d, now) => (d.Ready ?? now, d.Signed),
+            "Unable to mark the contract ready", "Contract marked ready for signature.");
+
+    /// <summary>
+    /// Marks the contract signed by all parties.
+    ///
+    /// <para>
+    /// It stamps <c>Ready</c> too when that is missing, because the server refuses a <c>Signed</c>
+    /// without one (<c>contract_signed_requires_ready</c>) and a ONE-CLICK action must not be able to
+    /// compose a write the server will reject. An existing ready date is kept, so signing never
+    /// rewrites when the contract was sent out.
+    /// </para>
+    /// </summary>
+    private Task MarkSigned(ContractListItem c) =>
+        WriteSignature(
+            c,
+            (d, now) => (d.Ready ?? now, d.Signed ?? now),
+            "Unable to mark the contract signed", "Contract marked signed.");
+
+    /// <summary>
+    /// Clears BOTH stamps, returning the contract to <c>Draft</c>. Never refused, in any state — a
+    /// guard on the way out is how a row gets stranded, which is the rule the pause guard already
+    /// states.
+    /// </summary>
+    private Task Unsign(ContractListItem c) =>
+        WriteSignature(
+            c,
+            (_, _) => (null, null),
+            "Unable to clear the signature dates", "Signature dates cleared.");
+
+    /// <summary>
+    /// The shared body of the three actions above: load the detail, rebuild the WHOLE record with the
+    /// new pair of stamps, PUT it.
+    ///
+    /// <para>
+    /// The rebuild carries every other field explicitly — <c>IsArchived</c>, <c>IsPaused</c> and the
+    /// dates — for the reason the DTO documents: <c>PUT</c> is a full replacement, so an omitted
+    /// field is a cleared field. Writing one stamp here and forgetting the archive flag would
+    /// silently restore a contract the reader only meant to sign.
+    /// </para>
+    /// </summary>
+    private async Task WriteSignature(
+        ContractListItem c,
+        Func<ExistingContract, DateTime, (DateTime? Ready, DateTime? Signed)> next,
+        string failure, string success)
+    {
+        if (!_canUpdate) return;
+        await EnsureDetail(c.ContractId);
+        if (!_details.TryGetValue(c.ContractId, out var d))
+            return;
+
+        var (ready, signed) = next(d, DateTime.UtcNow);
+        var update = new UpdateContract
+        {
+            Name = d.Name,
+            Type = d.Type,
+            Description = d.Description,
+            StartDate = d.StartDate,
+            EndDate = d.EndDate,
+            CompletionDate = d.CompletionDate,
+            IsArchived = d.Archived is not null,
+            IsPaused = d.Paused is not null,
+            Ready = ready,
+            Signed = signed,
+        };
+
+        if ((await Contracts.UpdateAsync(c.ContractId, update)).Toast(Snackbar, failure, success))
         {
             await ReloadContract(c.ContractId);
         }
@@ -710,6 +825,10 @@ public partial class ContractsCard
     private static string? StatusFoot(ExistingContract c, bool oneOff) => c.Status switch
     {
         ContractStatus.Archived => c.Archived is { } a ? $"since {LongDate(a)}" : null,
+        ContractStatus.Draft => "not yet marked ready for signature",
+        ContractStatus.Ready => c.Ready is { } r
+            ? $"ready since {LongDate(r)} — waiting on a signature"
+            : "waiting on a signature",
         ContractStatus.Paused => c.Paused is { } p ? $"since {LongDate(p)}" : null,
         ContractStatus.Expired => c.EndDate is { } e ? $"since {LongDate(e)}" : null,
         ContractStatus.Upcoming => c.StartDate is { } s ? $"starts {LongDate(s)}" : null,
@@ -736,6 +855,10 @@ public partial class ContractsCard
         var hasEnded = ContractLifecycle.HasEnded(c.EndDate, c.CompletionDate, Today);
         var items = new List<OdsMenuItem>();
 
+        // On file but not in force — the single predicate the money roll-ups gate on, used here so
+        // the menu and the server can never disagree about which contracts are unsigned.
+        var unsigned = ContractStatusOrder.IsUnsigned(c.Status);
+
         if (_canUpdate)
         {
             items.Add(new OdsMenuItem
@@ -745,12 +868,50 @@ public partial class ContractsCard
                 OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)),
             });
 
+            // The signature path (issue #145), FIRST while it is the thing the contract is waiting
+            // on. Offered in lifecycle order, one step at a time: a contract already signed is never
+            // offered "Mark ready". The dates are also editable in the dialog, for backdating.
+            if (c.Signed is null && c.Ready is null)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "draw",
+                    Label = "Mark ready for signature",
+                    OnClick = EventCallback.Factory.Create(this, () => MarkReady(c)),
+                });
+            }
+            else if (c.Signed is null)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "history_edu",
+                    Label = "Mark signed",
+                    OnClick = EventCallback.Factory.Create(this, () => MarkSigned(c)),
+                });
+            }
+
+            // Offered whenever EITHER stamp exists, in any state — clearing is never refused, which
+            // is what stops an archived or expired contract being stranded holding one.
+            if (c.Signed is not null || c.Ready is not null)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "undo",
+                    Label = c.Signed is not null ? "Unsign" : "Clear ready date",
+                    OnClick = EventCallback.Factory.Create(this, () => Unsign(c)),
+                });
+            }
+
             // Pause is enterable from Active ALONE, so the action is simply ABSENT elsewhere rather
             // than disabled-with-a-reason like Archive. The difference is whether there is an
             // instruction to give: Archive's precondition ("the contract has to end first") is a step
             // the reader can act on, while "this contract is upcoming" is not. Resume is offered
             // wherever a stamp exists, in any state — clearing a pause is never refused, which is
             // what stops an archived or expired contract being stranded holding one.
+            //
+            // An UNSIGNED contract is the one non-Active case that DOES have an instruction to give —
+            // sign it — so it gets the disabled-with-a-reason treatment instead of the silent
+            // absence, which also keeps the item focusable for a keyboard or AT user (WCAG 2.1.1).
             if (c.Status == ContractStatus.Active)
             {
                 items.Add(new OdsMenuItem
@@ -758,6 +919,16 @@ public partial class ContractsCard
                     Icon = "pause_circle",
                     Label = "Pause",
                     OnClick = EventCallback.Factory.Create(this, () => TogglePause(c)),
+                });
+            }
+            else if (unsigned && c.Paused is null)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "pause_circle",
+                    Label = "Pause",
+                    Disabled = true,
+                    Description = "Only a signed contract in force can be paused.",
                 });
             }
             else if (c.Paused is not null)
@@ -839,7 +1010,11 @@ public partial class ContractsCard
         if (_canUpdate)
         {
             items.Add(new OdsMenuItem { Divider = true });
-            items.Add(hasEnded || archived
+            // An ENDED or an UNSIGNED contract can be archived (issue #145 widened the server rule):
+            // abandoning a negotiation is the likeliest reason to archive a draft, and a draft
+            // typically has no end date at all, so the un-widened rule would offer a step the reader
+            // could never take.
+            items.Add(hasEnded || archived || unsigned
                 ? new OdsMenuItem
                 {
                     Icon = archived ? "unarchive" : "inventory_2",
@@ -883,6 +1058,26 @@ public partial class ContractsCard
             return c.Paused is { } pausedAt
                 ? (true, pausedAt.ToString("MMM dd, yyyy"), "paused", "paused")
                 : (false, "Paused", "paused", "paused");
+        }
+
+        // Unsigned (issue #145): the term's dates describe something nobody has agreed to, so
+        // counting down to them would assert a commitment that does not exist. The headline says
+        // where the signature got to instead. Checked HERE, above the one-off branch, for exactly the
+        // reason the server puts the layer above its date chain — the one-off branch returns early,
+        // so a check placed after it would never run for an unsigned one-off.
+        if (c.Status == ContractStatus.Draft)
+        {
+            // No date to point at, by definition — a draft is the state of having neither stamp — so
+            // the figure is the word itself, the same shape the open-ended and archived fallbacks
+            // already take rather than inventing an anchor.
+            return (false, "Draft", "not yet ready for signature", "");
+        }
+
+        if (c.Status == ContractStatus.Ready)
+        {
+            return c.Ready is { } readyAt
+                ? (true, readyAt.ToString("MMM dd, yyyy"), "ready for signature", "soon")
+                : (false, "Ready", "ready for signature", "soon");
         }
 
         // One-off contracts headline on their completion date (no ongoing term).

@@ -8,7 +8,8 @@ namespace Odyssey.Client.Components;
 /// status meaning lives in the visible <see cref="Label"/>, never in colour or glyph alone (the
 /// dot/icon is decorative). Tone follows the finance vocabulary — Active = income (mint),
 /// Upcoming = info (sea), Expired = expense (coral), Paused = pending (amber, the tone Subscriptions
-/// already gives a pause), Archived = neutral outline.
+/// already gives a pause), Ready = pending (the same amber: it is waiting on something), Draft and
+/// Archived = neutral outline. No new hue enters for the two signature states (issue #145).
 /// </summary>
 /// <param name="Label">Visible status word.</param>
 /// <param name="Tone">Chip tone class — income · info · expense · pending · outline.</param>
@@ -33,21 +34,30 @@ public static class OdsContractStatus
             [ContractStatus.Upcoming] = new("Upcoming", "info",    true,  "schedule",     "var(--sea-400)"),
             [ContractStatus.Expired]  = new("Expired",  "expense", false, "event_busy",   "var(--finance-expense)"),
             [ContractStatus.Archived] = new("Archived", "outline", true,  "inventory_2",  "var(--mud-palette-text-secondary)"),
+            // The two signature states (issue #145). Draft is neutral — it is on file and nothing has
+            // been agreed; Ready takes the pending amber a pause gets, because it is waiting on
+            // something a person has to do.
+            [ContractStatus.Draft]    = new("Draft",    "outline", true,  "edit_note",    "var(--mud-palette-text-secondary)"),
+            [ContractStatus.Ready]    = new("Ready",    "pending", true,  "draw",         "var(--finance-pending)"),
         };
 
     /// <summary>
-    /// Statuses in display order — Active · Paused · Upcoming · Expired · Archived.
+    /// Statuses in lifecycle order — Draft · Ready · Upcoming · Active · Paused · Expired · Archived.
     ///
     /// <para>
     /// A READING order, not the persisted one: <see cref="ContractStatus"/>'s ordinals are a wire and
-    /// persistence contract, so <c>Paused</c> is appended at 4 and is never renumbered to sit beside
-    /// <c>Active</c> here. Sorting the list by status still follows the ordinal, exactly as
-    /// <c>ContractType</c> already splits the two.
+    /// persistence contract, so <c>Paused</c> is appended at 4 and <c>Draft</c>/<c>Ready</c> at 5 and
+    /// 6, and none is ever renumbered to buy a nicer sort.
+    /// </para>
+    ///
+    /// <para>
+    /// It is the SHARED rank from <see cref="ContractStatusOrder"/>, not a local copy, and the list
+    /// sort on the server reads the same one (issue #145 §8). A client-side re-implementation of a
+    /// server rule is the defect class CLAUDE.md forbids — and here it would show the status filter
+    /// and the summary pills in one order while the sorted list came back in another.
     /// </para>
     /// </summary>
-    public static readonly IReadOnlyList<ContractStatus> Order =
-        [ContractStatus.Active, ContractStatus.Paused, ContractStatus.Upcoming,
-         ContractStatus.Expired, ContractStatus.Archived];
+    public static readonly IReadOnlyList<ContractStatus> Order = ContractStatusOrder.Order;
 
     /// <summary>
     /// The display row for a status. An <b>unrecognised</b> member fails NEUTRALLY, under its own
