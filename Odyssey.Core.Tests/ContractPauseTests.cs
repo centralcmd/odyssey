@@ -50,12 +50,20 @@ public class ContractPauseTests
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
             new Caps(), NullLogger<ContractService>.Instance);
 
+    // SIGNED by default (issue #145): the signature layer outranks the date chain, so an unsigned
+    // contract reads Draft/Ready and could never be paused at all. Pausing is about the date chain,
+    // so the fixture clears the signature layer first. The one place the two interact — sign and
+    // pause in a single PUT — is pinned in ContractSignatureTests.
+    private static readonly DateTime SignedOn = FixedToday.AddDays(-200);
+
     private static NewContract Term(DateTime? start, DateTime? end = null) => new()
     {
         Name = "Agreement",
         Type = DtoContractType.Service,
         StartDate = start,
         EndDate = end,
+        Ready = SignedOn.AddDays(-1),
+        Signed = SignedOn,
     };
 
     private static NewContract OneOff(DateTime completion) => new()
@@ -63,6 +71,8 @@ public class ContractPauseTests
         Name = "One-off agreement",
         Type = DtoContractType.Service,
         CompletionDate = completion,
+        Ready = SignedOn.AddDays(-1),
+        Signed = SignedOn,
     };
 
     /// <summary>A write that re-states the contract as it stands and sets the two flags.</summary>
@@ -77,6 +87,11 @@ public class ContractPauseTests
         CompletionDate = completionDate ?? from.CompletionDate,
         IsArchived = isArchived,
         IsPaused = isPaused,
+        // Carried forward, exactly as every first-party client call site must (issue #145): PUT is a
+        // full replacement, so omitting these would clear both stamps and flip the contract to Draft
+        // — which would make every pause assertion below fail for the wrong reason.
+        Ready = from.Ready,
+        Signed = from.Signed,
     };
 
     // ── Setting and clearing the stamp (AC 1–3) ───────────────────────────────
@@ -86,9 +101,9 @@ public class ContractPauseTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)));
+        var created = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)), userId: null);
 
-        var paused = await service.Update(created.ContractId, Write(created, isPaused: true));
+        var paused = await service.Update(created.ContractId, Write(created, isPaused: true), userId: null);
 
         Assert.Equal(FixedToday, paused!.Paused);
         Assert.Equal(ContractStatus.Paused, paused.Status);
@@ -108,15 +123,15 @@ public class ContractPauseTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(Term(FixedToday.AddDays(-10)));
+        var created = await service.Create(Term(FixedToday.AddDays(-10)), userId: null);
 
-        var first = await service.Update(created.ContractId, Write(created, isPaused: true));
+        var first = await service.Update(created.ContractId, Write(created, isPaused: true), userId: null);
 
         // A later clock — only a fresh stamp could move, so a moved value is the defect.
         var later = new ContractService(
             context, TestContextFactory.ContactLookup(journal),
             new FixedTimeProvider(FixedToday.AddDays(3)), new Caps(), NullLogger<ContractService>.Instance);
-        var second = await later.Update(created.ContractId, Write(created, isPaused: true));
+        var second = await later.Update(created.ContractId, Write(created, isPaused: true), userId: null);
 
         Assert.Equal(first!.Paused, second!.Paused);
         Assert.Equal(FixedToday, second.Paused);
@@ -127,10 +142,10 @@ public class ContractPauseTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(Term(FixedToday.AddDays(-10)));
-        await service.Update(created.ContractId, Write(created, isPaused: true));
+        var created = await service.Create(Term(FixedToday.AddDays(-10)), userId: null);
+        await service.Update(created.ContractId, Write(created, isPaused: true), userId: null);
 
-        var resumed = await service.Update(created.ContractId, Write(created, isPaused: false));
+        var resumed = await service.Update(created.ContractId, Write(created, isPaused: false), userId: null);
 
         Assert.Null(resumed!.Paused);
         Assert.Equal(ContractStatus.Active, resumed.Status);
@@ -149,18 +164,18 @@ public class ContractPauseTests
 
         var created = from switch
         {
-            ContractStatus.Upcoming => await service.Create(Term(FixedToday.AddDays(5))),
-            _ => await service.Create(Term(FixedToday.AddDays(-100), FixedToday.AddDays(-1))),
+            ContractStatus.Upcoming => await service.Create(Term(FixedToday.AddDays(5)), userId: null),
+            _ => await service.Create(Term(FixedToday.AddDays(-100), FixedToday.AddDays(-1)), userId: null),
         };
         if (from == ContractStatus.Archived)
         {
-            created = (await service.Update(created.ContractId, Write(created, isArchived: true)))!;
+            created = (await service.Update(created.ContractId, Write(created, isArchived: true), userId: null))!;
         }
 
         Assert.Equal(from, created.Status);
 
         var refusal = await Assert.ThrowsAsync<DomainValidationException>(
-            () => service.Update(created.ContractId, Write(created, isPaused: true, isArchived: from == ContractStatus.Archived)));
+            () => service.Update(created.ContractId, Write(created, isPaused: true, isArchived: from == ContractStatus.Archived), userId: null));
 
         Assert.Equal("contract_pause_requires_active", refusal.Code);
         Assert.NotNull(refusal.Errors);
@@ -182,11 +197,11 @@ public class ContractPauseTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(Term(FixedToday.AddDays(5)));
+        var created = await service.Create(Term(FixedToday.AddDays(5)), userId: null);
         Assert.Equal(ContractStatus.Upcoming, created.Status);
 
         var paused = await service.Update(
-            created.ContractId, Write(created, isPaused: true, startDate: FixedToday.AddDays(-5)));
+            created.ContractId, Write(created, isPaused: true, startDate: FixedToday.AddDays(-5)), userId: null);
 
         Assert.NotNull(paused!.Paused);
         Assert.Equal(ContractStatus.Paused, paused.Status);
@@ -201,12 +216,12 @@ public class ContractPauseTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)));
-        var paused = (await service.Update(created.ContractId, Write(created, isPaused: true)))!;
+        var created = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)), userId: null);
+        var paused = (await service.Update(created.ContractId, Write(created, isPaused: true), userId: null))!;
 
         // Re-save with an end date that has lapsed: the stamp is already set, so no guard fires.
         var expired = await service.Update(
-            created.ContractId, Write(paused, isPaused: true, endDate: FixedToday.AddDays(-1)));
+            created.ContractId, Write(paused, isPaused: true, endDate: FixedToday.AddDays(-1)), userId: null);
 
         Assert.NotNull(expired!.Paused);
         Assert.Equal(ContractStatus.Expired, expired.Status);
@@ -218,18 +233,18 @@ public class ContractPauseTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)));
-        var paused = (await service.Update(created.ContractId, Write(created, isPaused: true)))!;
+        var created = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)), userId: null);
+        var paused = (await service.Update(created.ContractId, Write(created, isPaused: true), userId: null))!;
 
         // End it and archive it, keeping the pause stamp.
         var archived = (await service.Update(
             created.ContractId,
-            Write(paused, isPaused: true, isArchived: true, endDate: FixedToday.AddDays(-1))))!;
+            Write(paused, isPaused: true, isArchived: true, endDate: FixedToday.AddDays(-1)), userId: null))!;
         Assert.Equal(ContractStatus.Archived, archived.Status);
         Assert.NotNull(archived.Paused);
 
         var cleared = await service.Update(
-            created.ContractId, Write(archived, isPaused: false, isArchived: true, endDate: FixedToday.AddDays(-1)));
+            created.ContractId, Write(archived, isPaused: false, isArchived: true, endDate: FixedToday.AddDays(-1)), userId: null);
 
         Assert.Null(cleared!.Paused);
         Assert.Equal(ContractStatus.Archived, cleared.Status);
@@ -258,18 +273,18 @@ public class ContractPauseTests
 
         // Direction 1 — the contract has ended in this same request. The archive guard is satisfied,
         // so the PAUSE guard is the one that refuses: an ended contract does not derive as Active.
-        var ended = await service.Create(Term(FixedToday.AddDays(-30)));
+        var ended = await service.Create(Term(FixedToday.AddDays(-30)), userId: null);
         var byPause = await Assert.ThrowsAsync<DomainValidationException>(
             () => service.Update(
                 ended.ContractId,
-                Write(ended, isPaused: true, isArchived: true, endDate: FixedToday.AddDays(-1))));
+                Write(ended, isPaused: true, isArchived: true, endDate: FixedToday.AddDays(-1)), userId: null));
         Assert.Equal("contract_pause_requires_active", byPause.Code);
 
         // Direction 2 — the contract is still running. Now the ARCHIVE guard refuses first, so the
         // pause guard is never reached and the refusal carries no pause code.
-        var running = await service.Create(Term(FixedToday.AddDays(-30), FixedToday.AddDays(30)));
+        var running = await service.Create(Term(FixedToday.AddDays(-30), FixedToday.AddDays(30)), userId: null);
         var byArchive = await Assert.ThrowsAsync<DomainValidationException>(
-            () => service.Update(running.ContractId, Write(running, isPaused: true, isArchived: true)));
+            () => service.Update(running.ContractId, Write(running, isPaused: true, isArchived: true), userId: null));
         Assert.NotEqual("contract_pause_requires_active", byArchive.Code);
         Assert.Contains("only be archived once it has ended", byArchive.Message, StringComparison.Ordinal);
 
@@ -293,11 +308,11 @@ public class ContractPauseTests
 
         async Task<ExistingContract> PausedThen(DateTime? start, DateTime? end, bool archive)
         {
-            var c = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)));
-            var p = (await service.Update(c.ContractId, Write(c, isPaused: true)))!;
+            var c = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)), userId: null);
+            var p = (await service.Update(c.ContractId, Write(c, isPaused: true), userId: null))!;
             return (await service.Update(
                 c.ContractId,
-                Write(p, isPaused: true, isArchived: archive, startDate: start, endDate: end)))!;
+                Write(p, isPaused: true, isArchived: archive, startDate: start, endDate: end), userId: null))!;
         }
 
         // Paused + archived → Archived.
@@ -329,15 +344,15 @@ public class ContractPauseTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)));
-        var paused = (await service.Update(created.ContractId, Write(created, isPaused: true)))!;
+        var created = await service.Create(Term(FixedToday.AddDays(-10), FixedToday.AddDays(10)), userId: null);
+        var paused = (await service.Update(created.ContractId, Write(created, isPaused: true), userId: null))!;
         var archived = (await service.Update(
             created.ContractId,
-            Write(paused, isPaused: true, isArchived: true, endDate: FixedToday.AddDays(-1))))!;
+            Write(paused, isPaused: true, isArchived: true, endDate: FixedToday.AddDays(-1)), userId: null))!;
 
         var unarchived = await service.Update(
             created.ContractId,
-            Write(archived, isPaused: true, isArchived: false, endDate: FixedToday.AddDays(-1)));
+            Write(archived, isPaused: true, isArchived: false, endDate: FixedToday.AddDays(-1)), userId: null);
 
         Assert.Equal(ContractStatus.Expired, unarchived!.Status);
         Assert.NotNull(unarchived.Paused);
@@ -358,10 +373,10 @@ public class ContractPauseTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var created = await service.Create(OneOff(FixedToday.AddDays(-1)));
+        var created = await service.Create(OneOff(FixedToday.AddDays(-1)), userId: null);
         Assert.Equal(ContractStatus.Active, created.Status);
 
-        var paused = await service.Update(created.ContractId, Write(created, isPaused: true));
+        var paused = await service.Update(created.ContractId, Write(created, isPaused: true), userId: null);
 
         // 1. The detail read.
         Assert.Equal(ContractStatus.Paused, paused!.Status);
@@ -389,10 +404,10 @@ public class ContractPauseTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(OneOff(FixedToday.AddDays(5)));
+        var created = await service.Create(OneOff(FixedToday.AddDays(5)), userId: null);
 
         var refusal = await Assert.ThrowsAsync<DomainValidationException>(
-            () => service.Update(created.ContractId, Write(created, isPaused: true)));
+            () => service.Update(created.ContractId, Write(created, isPaused: true), userId: null));
 
         Assert.Equal("contract_pause_requires_active", refusal.Code);
     }
@@ -404,9 +419,9 @@ public class ContractPauseTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var active = await service.Create(Term(FixedToday.AddDays(-10)));
-        var toPause = await service.Create(Term(FixedToday.AddDays(-20)));
-        await service.Update(toPause.ContractId, Write(toPause, isPaused: true));
+        var active = await service.Create(Term(FixedToday.AddDays(-10)), userId: null);
+        var toPause = await service.Create(Term(FixedToday.AddDays(-20)), userId: null);
+        await service.Update(toPause.ContractId, Write(toPause, isPaused: true), userId: null);
 
         var items = (await service.ListAsync(new ContractsQueryParams())).Items;
 
@@ -416,12 +431,19 @@ public class ContractPauseTests
     }
 
     /// <summary>
-    /// Sorting by status is by enum ORDINAL, so Paused (4) sorts after Archived (3). An ordinal is a
-    /// wire and persistence contract and is never renumbered to buy a nicer sort; reading order for
-    /// display is the client's registry.
+    /// Sorting by status follows the shared LIFECYCLE rank, not the enum ordinal, so Paused sorts
+    /// after Active and before Archived.
+    ///
+    /// <para>
+    /// This <b>changed</b> with issue #145 and the change is deliberate. Appending <c>Draft = 5</c>
+    /// and <c>Ready = 6</c> to a wire-contract enum would otherwise have sorted the two EARLIEST
+    /// lifecycle states LAST, behind Archived — a defect introduced by that change rather than a
+    /// pre-existing one, which is why fixing it was in its scope. The ordinals themselves are
+    /// asserted below and are never renumbered.
+    /// </para>
     /// </summary>
     [Fact]
-    public async Task List_SortedByStatus_PlacesPausedAfterArchived()
+    public async Task List_SortedByStatus_FollowsTheLifecycleRank_NotTheOrdinal()
     {
         Assert.Equal(0, (int)ContractStatus.Active);
         Assert.Equal(1, (int)ContractStatus.Upcoming);
@@ -432,17 +454,19 @@ public class ContractPauseTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var toPause = await service.Create(Term(FixedToday.AddDays(-20)));
-        await service.Update(toPause.ContractId, Write(toPause, isPaused: true));
-        var toArchive = await service.Create(Term(FixedToday.AddDays(-100), FixedToday.AddDays(-1)));
-        await service.Update(toArchive.ContractId, Write(toArchive, isArchived: true));
-        var active = await service.Create(Term(FixedToday.AddDays(-5)));
+        var toPause = await service.Create(Term(FixedToday.AddDays(-20)), userId: null);
+        await service.Update(toPause.ContractId, Write(toPause, isPaused: true), userId: null);
+        var toArchive = await service.Create(Term(FixedToday.AddDays(-100), FixedToday.AddDays(-1)), userId: null);
+        await service.Update(toArchive.ContractId, Write(toArchive, isArchived: true), userId: null);
+        var active = await service.Create(Term(FixedToday.AddDays(-5)), userId: null);
 
         var items = (await service.ListAsync(
             new ContractsQueryParams { SortBy = ContractSortBy.Status })).Items;
 
+        // Active → Paused → Archived: the lifecycle rank. On the old ordinal sort this read
+        // Active → Archived → Paused.
         Assert.Equal(
-            [active.ContractId, toArchive.ContractId, toPause.ContractId],
+            [active.ContractId, toPause.ContractId, toArchive.ContractId],
             items.Select(i => i.ContractId).ToArray());
     }
 }

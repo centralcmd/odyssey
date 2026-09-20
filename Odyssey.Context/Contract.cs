@@ -62,6 +62,34 @@ public class Contract
     /// </summary>
     public DateTime? Paused { get; set; }
 
+    /// <summary>
+    /// Ready-for-signature timestamp (issue #145) — non-null means the contract has been marked ready
+    /// for signature, and the value records <b>when</b>. Null is the default and a healthy state.
+    ///
+    /// <para>
+    /// A <b>stamp</b> in the same shape as <see cref="Archived"/> and <see cref="Paused"/>: its
+    /// presence is the state and its value is the moment. That is what keeps the signature states
+    /// <c>Draft</c>/<c>Ready</c> derived rather than stored, so no persisted status column can drift
+    /// from the stamps. No index — the derived status is computed in memory after projection, so this
+    /// is never a SQL predicate.
+    /// </para>
+    /// </summary>
+    public DateTime? Ready { get; set; }
+
+    /// <summary>
+    /// Signed-by-all-parties timestamp (issue #145) — non-null means every party has signed, and the
+    /// value records <b>when</b>. Null is the default and a healthy state: a contract with no
+    /// <see cref="Signed"/> stamp is <i>unsigned</i>, and derives as <c>Ready</c> when
+    /// <see cref="Ready"/> is present or <c>Draft</c> when it is not.
+    ///
+    /// <para>
+    /// Independent of <c>ContractEvent</c>'s <c>Signed</c> event type in both directions (issue #138):
+    /// setting this creates no event, and creating a <c>Signed</c> event leaves this null. Two writers
+    /// onto one fact is a reconciliation problem this feature deliberately does not take on.
+    /// </para>
+    /// </summary>
+    public DateTime? Signed { get; set; }
+
     [Required]
     public required DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

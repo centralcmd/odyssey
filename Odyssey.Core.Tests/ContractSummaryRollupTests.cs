@@ -45,7 +45,8 @@ public class ContractSummaryRollupTests
         DtoContractType type = DtoContractType.Service,
         bool archived = false,
         bool paused = false,
-        DateTime? completion = null)
+        DateTime? completion = null,
+        bool signed = true)
     {
         var contract = new Contract
         {
@@ -57,6 +58,12 @@ public class ContractSummaryRollupTests
             CompletionDate = completion,
             Archived = archived ? FixedToday.AddDays(-1) : null,
             Paused = paused ? FixedToday.AddDays(-2) : null,
+            // SIGNED unless the caller asks otherwise (issue #145). The signature layer outranks the
+            // date chain, so leaving these null would make every seeded row a Draft and collapse every
+            // status this file exercises. The unsigned case has its own tests, which use `signed:
+            // false` to prove a Draft leaves the run rate, the by-type cost split and the charges.
+            Ready = signed ? FixedToday.AddYears(-1).AddDays(-1) : null,
+            Signed = signed ? FixedToday.AddYears(-1) : null,
             CreatedAtUtc = FixedToday.AddYears(-1),
         };
         context.Contracts.Add(contract);

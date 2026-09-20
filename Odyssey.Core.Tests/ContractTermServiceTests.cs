@@ -40,7 +40,7 @@ public class ContractTermServiceTests
             Name = "Maple St lease",
             Type = type,
             StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        });
+        }, userId: null);
 
         if (archived)
         {

@@ -41,5 +41,20 @@ public sealed record ExistingContract
     /// </summary>
     public DateTime? Paused { get; set; }
 
+    /// <summary>
+    /// When the contract was marked ready for signature, or null when it has not been (issue #145).
+    /// A stamp in the same shape as <see cref="Archived"/> and <see cref="Paused"/>; the derived
+    /// <see cref="Status"/> reports one state, every stored stamp keeps its own field.
+    /// </summary>
+    public DateTime? Ready { get; set; }
+
+    /// <summary>
+    /// When the contract was signed by all parties, or null when it is unsigned (issue #145). An
+    /// unsigned contract derives as <see cref="ContractStatus.Ready"/> or
+    /// <see cref="ContractStatus.Draft"/> whatever its dates say, and contributes nothing to the run
+    /// rate or the upcoming charges.
+    /// </summary>
+    public DateTime? Signed { get; set; }
+
     public required DateTime CreatedAtUtc { get; set; }
 }

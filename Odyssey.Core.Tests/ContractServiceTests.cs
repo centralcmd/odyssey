@@ -86,12 +86,20 @@ public class ContractServiceTests
             Task.FromResult(ContractSummary);
     }
 
+    // SIGNED by default (issue #145): the signature layer sits ABOVE the date chain, so an unsigned
+    // contract derives as Draft/Ready whatever its dates say. Everything these two builders feed is a
+    // test of the DATE chain, so the fixture has to clear that layer first. The signature layer has
+    // its own file, ContractSignatureTests.
+    private static readonly DateTime SignedOn = FixedToday.AddDays(-200);
+
     private static NewContract NewContract(DateTime start, DateTime? end = null) => new()
     {
         Name = "Agreement",
         Type = DtoContractType.Service,
         StartDate = start,
         EndDate = end,
+        Ready = SignedOn.AddDays(-1),
+        Signed = SignedOn,
     };
 
     private static NewContract OneOffContract(DateTime completion) => new()
@@ -99,6 +107,8 @@ public class ContractServiceTests
         Name = "One-off agreement",
         Type = DtoContractType.Service,
         CompletionDate = completion,
+        Ready = SignedOn.AddDays(-1),
+        Signed = SignedOn,
     };
 
     // ── Derived status ordering & boundaries (§6) ───────────────────────────────
@@ -109,7 +119,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var created = await service.Create(NewContract(FixedToday.AddDays(-10)));
+        var created = await service.Create(NewContract(FixedToday.AddDays(-10)), userId: null);
 
         Assert.Equal(ContractStatus.Active, created.Status);
     }
@@ -121,7 +131,7 @@ public class ContractServiceTests
         var service = CreateService(context);
 
         // Boundary: startDate.Date > today is false when start == today.
-        var created = await service.Create(NewContract(FixedToday));
+        var created = await service.Create(NewContract(FixedToday), userId: null);
 
         Assert.Equal(ContractStatus.Active, created.Status);
     }
@@ -132,7 +142,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var created = await service.Create(NewContract(FixedToday.AddDays(1)));
+        var created = await service.Create(NewContract(FixedToday.AddDays(1)), userId: null);
 
         Assert.Equal(ContractStatus.Upcoming, created.Status);
     }
@@ -144,7 +154,7 @@ public class ContractServiceTests
         var service = CreateService(context);
 
         // Boundary: endDate.Date < today is false when end == today.
-        var created = await service.Create(NewContract(FixedToday.AddDays(-10), FixedToday));
+        var created = await service.Create(NewContract(FixedToday.AddDays(-10), FixedToday), userId: null);
 
         Assert.Equal(ContractStatus.Active, created.Status);
     }
@@ -155,7 +165,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)));
+        var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)), userId: null);
 
         Assert.Equal(ContractStatus.Expired, created.Status);
     }
@@ -169,7 +179,16 @@ public class ContractServiceTests
         var service = CreateService(context);
 
         // A term contract may be open-started (no start date) — that is Active, not Upcoming.
-        var created = await service.Create(new NewContract { Name = "Open", Type = DtoContractType.Service });
+        var created = await service.Create(
+            new NewContract
+            {
+                Name = "Open",
+                Type = DtoContractType.Service,
+                // Signed, so the date chain is what decides — see the note on NewContract above.
+                Ready = SignedOn.AddDays(-1),
+                Signed = SignedOn,
+            },
+            userId: null);
 
         Assert.Null(created.StartDate);
         Assert.Equal(ContractStatus.Active, created.Status);
@@ -186,7 +205,7 @@ public class ContractServiceTests
         request.StartDate = FixedToday.AddDays(-30);
         request.EndDate = FixedToday.AddDays(30);
 
-        var created = await service.Create(request);
+        var created = await service.Create(request, userId: null);
 
         Assert.Null(created.StartDate);
         Assert.Null(created.EndDate);
@@ -199,7 +218,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var created = await service.Create(OneOffContract(FixedToday.AddDays(-1)));
+        var created = await service.Create(OneOffContract(FixedToday.AddDays(-1)), userId: null);
 
         Assert.Equal(ContractStatus.Active, created.Status);
     }
@@ -210,7 +229,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var created = await service.Create(OneOffContract(FixedToday.AddDays(1)));
+        var created = await service.Create(OneOffContract(FixedToday.AddDays(1)), userId: null);
 
         Assert.Equal(ContractStatus.Upcoming, created.Status);
     }
@@ -223,7 +242,7 @@ public class ContractServiceTests
 
         // Archiving requires an ended term, so the contract that gets archived is a lapsed one — and
         // the point of the test survives: Archived outranks the status the dates would derive.
-        var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)));
+        var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)), userId: null);
         Assert.Equal(ContractStatus.Expired, created.Status);
 
         var archived = await service.Update(created.ContractId, new UpdateContract
@@ -233,7 +252,11 @@ public class ContractServiceTests
             StartDate = created.StartDate,
             EndDate = created.EndDate,
             IsArchived = true,
-        });
+            // Carried forward (issue #145): PUT is a full replacement, so omitting these clears both
+            // stamps and flips the contract to Draft.
+            Ready = created.Ready,
+            Signed = created.Signed,
+        }, userId: null);
 
         Assert.Equal(ContractStatus.Archived, archived!.Status);
     }
@@ -243,7 +266,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(NewContract(FixedToday.AddDays(-10), FixedToday.AddDays(10)));
+        var created = await service.Create(NewContract(FixedToday.AddDays(-10), FixedToday.AddDays(10)), userId: null);
 
         UpdateContract Request(DateTime? end, DateTime? completion = null) => new()
         {
@@ -253,16 +276,21 @@ public class ContractServiceTests
             EndDate = end,
             CompletionDate = completion,
             IsArchived = true,
+            // Kept SIGNED on purpose: issue #145 widened EnsureArchivable so an UNSIGNED contract is
+            // archivable whatever its dates. Clearing these would make the two refusals below
+            // unreachable and the test vacuous. The widened branch has its own test.
+            Ready = created.Ready,
+            Signed = created.Signed,
         };
 
         // Running: refused — the lifecycle is ordered, so Archived implies ended.
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(created.ContractId, Request(FixedToday.AddDays(10))));
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(created.ContractId, Request(FixedToday.AddDays(10)), userId: null));
 
         // Today is not "ended" either: DeriveStatus calls a term Expired only once end < today.
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(created.ContractId, Request(FixedToday)));
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(created.ContractId, Request(FixedToday), userId: null));
 
         // One PUT may end and archive together — the check reads the request's dates.
-        var archived = await service.Update(created.ContractId, Request(FixedToday.AddDays(-1)));
+        var archived = await service.Update(created.ContractId, Request(FixedToday.AddDays(-1)), userId: null);
         Assert.NotNull(archived!.Archived);
         Assert.Equal(ContractStatus.Archived, archived.Status);
     }
@@ -276,7 +304,7 @@ public class ContractServiceTests
         // A delivered one-off is over, but its derived status is Active, not Expired — it is a settled
         // record rather than a lapsed term. The gate has to accept it, which is why it checks the
         // dates rather than comparing against ContractStatus.Expired.
-        var created = await service.Create(OneOffContract(FixedToday));
+        var created = await service.Create(OneOffContract(FixedToday), userId: null);
         Assert.Equal(ContractStatus.Active, created.Status);
 
         var archived = await service.Update(created.ContractId, new UpdateContract
@@ -285,7 +313,11 @@ public class ContractServiceTests
             Type = created.Type,
             CompletionDate = FixedToday,
             IsArchived = true,
-        });
+            // Carried forward (issue #145): PUT is a full replacement, so omitting these clears both
+            // stamps and flips the contract to Draft.
+            Ready = created.Ready,
+            Signed = created.Signed,
+        }, userId: null);
 
         Assert.NotNull(archived!.Archived);
     }
@@ -295,12 +327,13 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)));
+        var created = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)), userId: null);
         await service.Update(created.ContractId, new UpdateContract
         {
             Name = created.Name, Type = created.Type,
             StartDate = created.StartDate, EndDate = created.EndDate, IsArchived = true,
-        });
+            Ready = created.Ready, Signed = created.Signed,
+        }, userId: null);
 
         // Only the TRANSITION into archived is gated. Re-saving an already-archived row must not
         // re-validate, or a row archived before this rule existed could never be edited or restored.
@@ -309,10 +342,11 @@ public class ContractServiceTests
             Name = created.Name, Type = created.Type,
             StartDate = FixedToday.AddDays(-10), EndDate = FixedToday.AddDays(10),
             IsArchived = isArchived,
+            Ready = created.Ready, Signed = created.Signed,
         };
 
-        Assert.NotNull((await service.Update(created.ContractId, Running(isArchived: true)))!.Archived);
-        Assert.Null((await service.Update(created.ContractId, Running(isArchived: false)))!.Archived);
+        Assert.NotNull((await service.Update(created.ContractId, Running(isArchived: true), userId: null))!.Archived);
+        Assert.Null((await service.Update(created.ContractId, Running(isArchived: false), userId: null))!.Archived);
     }
 
     // ── One-off / term update transitions & boundaries ──────────────────────────
@@ -323,7 +357,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var created = await service.Create(NewContract(FixedToday.AddDays(-10), FixedToday.AddDays(10)));
+        var created = await service.Create(NewContract(FixedToday.AddDays(-10), FixedToday.AddDays(10)), userId: null);
         Assert.NotNull(created.StartDate);
 
         var updated = await service.Update(created.ContractId, new UpdateContract
@@ -331,7 +365,8 @@ public class ContractServiceTests
             Name = created.Name,
             Type = created.Type,
             CompletionDate = FixedToday.AddDays(-2),
-        });
+            Ready = created.Ready, Signed = created.Signed,
+        }, userId: null);
 
         Assert.NotNull(updated);
         Assert.Null(updated!.StartDate);
@@ -346,7 +381,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        var created = await service.Create(OneOffContract(FixedToday.AddDays(-2)));
+        var created = await service.Create(OneOffContract(FixedToday.AddDays(-2)), userId: null);
         Assert.NotNull(created.CompletionDate);
 
         var updated = await service.Update(created.ContractId, new UpdateContract
@@ -355,7 +390,8 @@ public class ContractServiceTests
             Type = created.Type,
             StartDate = FixedToday.AddDays(-5),
             EndDate = FixedToday.AddDays(5),
-        });
+            Ready = created.Ready, Signed = created.Signed,
+        }, userId: null);
 
         Assert.NotNull(updated);
         Assert.Null(updated!.CompletionDate);
@@ -371,7 +407,7 @@ public class ContractServiceTests
         var service = CreateService(context);
 
         // Boundary: completion.Date > today is false when completion == today (mirrors the term boundaries).
-        var created = await service.Create(OneOffContract(FixedToday));
+        var created = await service.Create(OneOffContract(FixedToday), userId: null);
 
         Assert.Equal(ContractStatus.Active, created.Status);
     }
@@ -389,7 +425,10 @@ public class ContractServiceTests
             Name = "Open-started",
             Type = DtoContractType.Service,
             EndDate = FixedToday.AddDays(-1),
-        });
+            // Signed, so the date chain is what decides — see the note on NewContract above.
+            Ready = SignedOn.AddDays(-1),
+            Signed = SignedOn,
+        }, userId: null);
 
         Assert.Null(created.StartDate);
         Assert.Equal(FixedToday.AddDays(-1), created.EndDate);
@@ -402,8 +441,8 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        await service.Create(OneOffContract(FixedToday.AddDays(5))); // Upcoming
-        await service.Create(NewContract(FixedToday.AddDays(-3)));   // Active term
+        await service.Create(OneOffContract(FixedToday.AddDays(5)), userId: null); // Upcoming
+        await service.Create(NewContract(FixedToday.AddDays(-3)), userId: null);   // Active term
 
         var summary = await service.GetSummary(baseCurrency: null);
 
@@ -417,7 +456,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        await service.Create(OneOffContract(FixedToday.AddDays(3)));
+        await service.Create(OneOffContract(FixedToday.AddDays(3)), userId: null);
 
         var items = (await service.ListAsync(new ContractsQueryParams())).Items;
 
@@ -433,7 +472,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.AddParty(contract.ContractId, new ContractPartyRequest(), TestUserId));
@@ -445,7 +484,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var (accountId, contactId, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.AddParty(contract.ContractId,
@@ -458,7 +497,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var (accountId, _, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         var party = await service.AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId }, TestUserId);
@@ -475,7 +514,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
             service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = Guid.NewGuid() }, TestUserId));
@@ -486,7 +525,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
             service.AddParty(contract.ContractId, new ContractPartyRequest { ContactId = Guid.NewGuid() }, TestUserId));
@@ -498,7 +537,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var (accountId, _, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId);
 
@@ -512,7 +551,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var (accountId, _, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)));
+        var contract = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)), userId: null);
         await service.Update(contract.ContractId, new UpdateContract
         {
             Name = contract.Name,
@@ -520,7 +559,8 @@ public class ContractServiceTests
             StartDate = contract.StartDate,
             EndDate = contract.EndDate,
             IsArchived = true,
-        });
+            Ready = contract.Ready, Signed = contract.Signed,
+        }, userId: null);
 
         // 422, not 400: an archived contract is a well-formed request that cannot be processed
         // (issue #121 §9), the same class the party cap uses.
@@ -579,7 +619,10 @@ public class ContractServiceTests
         var log = new RecordingLogger();
         var service = CreateService(context, logger: log);
         var (accountId, _, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
+        // Creating a SIGNED contract emits the two signature-transition lines (issue #145 §7.7);
+        // clear them so what follows measures the PARTY lines alone.
+        log.Lines.Clear();
 
         var party = await service.AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer }, TestUserId);
@@ -630,7 +673,7 @@ public class ContractServiceTests
         var log = new RecordingLogger();
         var service = CreateService(context, logger: log);
         var (accountId, _, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await service.AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
@@ -656,7 +699,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var (accountId, _, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await service.AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer }, TestUserId);
@@ -679,7 +722,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var (accountId, _, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday));
+        var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         var party = await service.AddParty(contract.ContractId, new ContractPartyRequest
         {
@@ -701,7 +744,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var (accountId, _, _) = await SeedTargets(context);
-        var contract = await service.Create(NewContract(FixedToday.AddDays(-60)));
+        var contract = await service.Create(NewContract(FixedToday.AddDays(-60)), userId: null);
 
         var from = FixedToday.AddDays(-50);
         var party = await service.AddParty(contract.ContractId,
@@ -712,7 +755,8 @@ public class ContractServiceTests
             Name = contract.Name,
             Type = contract.Type,
             StartDate = FixedToday.AddDays(-10),
-        });
+            Ready = contract.Ready, Signed = contract.Signed,
+        }, userId: null);
 
         var reloaded = await service.Get(contract.ContractId);
         var stored = Assert.Single(reloaded!.Parties);

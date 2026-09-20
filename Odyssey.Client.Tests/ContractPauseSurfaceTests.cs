@@ -78,10 +78,16 @@ public class ContractPauseSurfaceTests
             Enum.GetValues<ContractStatus>().OrderBy(s => (int)s),
             OdsContractStatus.Order.OrderBy(s => (int)s));
 
+        // The LIFECYCLE order (issue #145 §8), shared with the server's list sort — not the ordinal,
+        // which would put the two earliest states last because Draft and Ready are appended at 5 and 6.
         Assert.Equal(
-            [ContractStatus.Active, ContractStatus.Paused, ContractStatus.Upcoming,
-             ContractStatus.Expired, ContractStatus.Archived],
+            [ContractStatus.Draft, ContractStatus.Ready, ContractStatus.Upcoming, ContractStatus.Active,
+             ContractStatus.Paused, ContractStatus.Expired, ContractStatus.Archived],
             OdsContractStatus.Order);
+
+        // Read from the shared rank rather than copied: a local list here would let the filter and the
+        // summary pills disagree with the order the sorted list comes back in.
+        Assert.Same(ContractStatusOrder.Order, OdsContractStatus.Order);
     }
 
     [Fact]
@@ -171,9 +177,16 @@ public class ContractPauseSurfaceTests
             new Regex(@"else if\s*\(\s*c\.Paused is not null\s*\)[\s\S]{0,400}?Label\s*=\s*""Resume"""),
             source);
 
-        // Neither is ever offered disabled: there would be nothing to instruct.
-        Assert.DoesNotMatch(new Regex(@"Label\s*=\s*""Pause""[\s\S]{0,200}?Disabled\s*=\s*true"), source);
+        // Resume is never offered disabled: there would be nothing to instruct.
         Assert.DoesNotMatch(new Regex(@"Label\s*=\s*""Resume""[\s\S]{0,200}?Disabled\s*=\s*true"), source);
+
+        // The ONE exception, added by issue #145: an unsigned contract is the single non-Active case
+        // that DOES have an instruction to give — sign it — so Pause is offered disabled-with-a-reason
+        // there rather than silently absent, which also keeps the item focusable for a keyboard or AT
+        // user (WCAG 2.1.1).
+        Assert.Matches(
+            new Regex(@"else if\s*\(\s*unsigned && c\.Paused is null\s*\)[\s\S]{0,400}?Label\s*=\s*""Pause""[\s\S]{0,300}?Disabled\s*=\s*true[\s\S]{0,300}?Description\s*=\s*""Only a signed contract in force can be paused\."""),
+            source);
     }
 
     /// <summary>
@@ -188,19 +201,75 @@ public class ContractPauseSurfaceTests
         foreach (var (file, source) in new[]
                  {
                      ("ContractsCard.razor.cs", CardSource()),
-                     ("CreateContractDialog.razor", Source("CreateContractDialog.razor")),
+                     ("CreateContractDialog.razor.cs", Source("CreateContractDialog.razor.cs")),
                  })
         {
-            foreach (var block in Regex.Matches(source, @"new UpdateContract\s*\{[\s\S]*?\n\s*\};")
-                         .Select(m => m.Value))
+            var blocks = UpdateContractBlocks(source);
+            Assert.NotEmpty(blocks);
+
+            foreach (var block in blocks)
             {
-                Assert.True(
-                    block.Contains("IsArchived", StringComparison.Ordinal),
-                    $"{file}: an UpdateContract built without IsArchived would unarchive on save.");
-                Assert.True(
-                    block.Contains("IsPaused", StringComparison.Ordinal),
-                    $"{file}: an UpdateContract built without IsPaused would resume on save.");
+                foreach (var (member, consequence) in RequiredStamps)
+                {
+                    Assert.True(
+                        block.Contains(member, StringComparison.Ordinal),
+                        $"{file}: an UpdateContract built without {member} would {consequence} on save.");
+                }
             }
+        }
+    }
+
+    /// <summary>
+    /// The four stamps every <c>UpdateContract</c> has to carry, and what omitting each one does. The
+    /// last two are issue #145's: a write that omits them clears both signature stamps, flips a
+    /// signed contract to <c>Draft</c> and drops it out of the run rate — for a reader who only
+    /// clicked Archive or Pause.
+    /// </summary>
+    private static readonly (string Member, string Consequence)[] RequiredStamps =
+    [
+        ("IsArchived", "unarchive"),
+        ("IsPaused", "resume"),
+        ("Ready", "clear the ready date"),
+        ("Signed", "unsign the contract"),
+    ];
+
+    private static IReadOnlyList<string> UpdateContractBlocks(string source) =>
+        [.. Regex.Matches(source, @"new UpdateContract\s*\{[\s\S]*?\n\s*\};").Select(m => m.Value)];
+
+    /// <summary>
+    /// The lint above has TEETH, proved rather than assumed. A source lint that happens to pass
+    /// against code already written tells you nothing about whether it would catch the regression it
+    /// exists for — so this feeds it a block with each member removed in turn and asserts it rejects
+    /// every one. Without this, a typo in the member name would leave a green test guarding nothing.
+    /// </summary>
+    [Fact]
+    public void The_carry_forward_lint_rejects_a_block_missing_any_one_stamp()
+    {
+        const string Complete = """
+                    var update = new UpdateContract
+                    {
+                        Name = d.Name,
+                        IsArchived = d.Archived is not null,
+                        IsPaused = d.Paused is not null,
+                        Ready = d.Ready,
+                        Signed = d.Signed,
+                    };
+            """;
+
+        // The shape the real lint reads must match it as written …
+        var whole = Assert.Single(UpdateContractBlocks(Complete));
+        Assert.All(RequiredStamps, s => Assert.Contains(s.Member, whole, StringComparison.Ordinal));
+
+        // … and fail once any single member is taken out.
+        foreach (var (member, _) in RequiredStamps)
+        {
+            var mutated = Regex.Replace(Complete, $@"^\s*{member} = .*$\r?\n", string.Empty, RegexOptions.Multiline);
+            Assert.NotEqual(Complete, mutated);
+
+            var block = Assert.Single(UpdateContractBlocks(mutated));
+            Assert.False(
+                block.Contains(member, StringComparison.Ordinal),
+                $"removing {member} must make the lint's own predicate false");
         }
     }
 
@@ -239,12 +308,13 @@ public class ContractPauseSurfaceTests
 
     private static string Money(decimal value, string? code) => $"{code} {value:0.00}";
 
-    private static ContractSummary Summary(int paused) => new()
+    private static ContractSummary Summary(int paused, int draft = 0, int ready = 0) => new()
     {
-        TotalContracts = 6 + paused,
+        TotalContracts = 6 + paused + draft + ready,
         CountsByStatus = new ContractStatusCounts
         {
-            Active = 3, Upcoming = 1, Expired = 1, Archived = 1, Paused = paused, EndingSoon = 1,
+            Active = 3, Upcoming = 1, Expired = 1, Archived = 1, Paused = paused,
+            Draft = draft, Ready = ready, EndingSoon = 1,
         },
         CountsByType = [new ContractTypeCount { Type = ContractType.Rental, Count = 2 }],
         RunRate = new ContractRunRate { BaseCurrency = "USD", Monthly = 1000m, Yearly = 12000m },

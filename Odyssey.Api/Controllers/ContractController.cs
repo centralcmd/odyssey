@@ -102,7 +102,11 @@ public class ContractController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewContract request, CancellationToken cancellationToken = default)
     {
-        var created = await service.Create(request, cancellationToken);
+        // The caller's id travels to the service for the signature-transition log line (issue #145
+        // §7.7) — the body accepts no user id, on this or any other contract endpoint. A Signed
+        // transition can happen on POST as well as PUT, so both actions carry it.
+        var created = await service.Create(
+            request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
         return CreatedAtRoute("GetContract", new { id = created.ContractId }, created);
     }
@@ -117,7 +121,8 @@ public class ContractController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateContract request, CancellationToken cancellationToken = default)
     {
-        var updated = await service.Update(id, request, cancellationToken);
+        var updated = await service.Update(
+            id, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         if (updated is null)
         {
             return this.NotFoundProblem($"Contract ID {id} not found.");

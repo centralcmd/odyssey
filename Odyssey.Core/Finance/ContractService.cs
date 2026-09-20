@@ -147,6 +147,8 @@ public class ContractService
             TermCount = x.TermCount,
             Archived = x.Contract.Archived,
             Paused = x.Contract.Paused,
+            Ready = x.Contract.Ready,
+            Signed = x.Contract.Signed,
         });
 
         if (statusFilter.Length > 0)
@@ -164,7 +166,14 @@ public class ContractService
                 ? items.OrderBy(i => i.EndDate is null).ThenBy(i => i.EndDate)
                 : items.OrderBy(i => i.EndDate is null).ThenByDescending(i => i.EndDate),
             ContractSortBy.Type => ascending ? items.OrderBy(i => i.Type) : items.OrderByDescending(i => i.Type),
-            ContractSortBy.Status => ascending ? items.OrderBy(i => i.Status) : items.OrderByDescending(i => i.Status),
+            // The shared LIFECYCLE rank, not the enum ordinal (issue #145 §8): Draft = 5 and
+            // Ready = 6 are APPENDED members — an ordinal is a wire and persistence contract and is
+            // never renumbered — so ordering on it would sort the two EARLIEST lifecycle states last,
+            // behind Archived. Only the reading order changes, and it lives in one place the client
+            // reads too.
+            ContractSortBy.Status => ascending
+                ? items.OrderBy(i => ContractStatusOrder.Rank(i.Status))
+                : items.OrderByDescending(i => ContractStatusOrder.Rank(i.Status)),
             _ => ascending ? items.OrderBy(i => i.Name) : items.OrderByDescending(i => i.Name),
         };
         var ordered = sorted.ThenBy(i => i.ContractId).ToList();
@@ -201,7 +210,7 @@ public class ContractService
             .Take(caps.MaxSummaryContracts)
             .Select(c => new SummaryRow(
                 c.ContractId, c.Name, c.Type, c.StartDate, c.EndDate, c.CompletionDate,
-                c.Archived, c.Paused))
+                c.Archived, c.Paused, c.Ready, c.Signed))
             .ToListAsync(cancellationToken);
 
         var counts = new ContractStatusCounts();
@@ -210,7 +219,8 @@ public class ContractService
 
         foreach (var c in contracts)
         {
-            var status = DeriveStatus(c.StartDate, c.EndDate, c.CompletionDate, c.Archived, c.Paused, today);
+            var status = DeriveStatus(
+                c.StartDate, c.EndDate, c.CompletionDate, c.Archived, c.Paused, c.Ready, c.Signed, today);
             switch (status)
             {
                 case ContractStatus.Active: counts.Active++; break;
@@ -218,6 +228,10 @@ public class ContractService
                 case ContractStatus.Expired: counts.Expired++; break;
                 case ContractStatus.Archived: counts.Archived++; break;
                 case ContractStatus.Paused: counts.Paused++; break;
+                // Two more REAL buckets (issue #145 §5.5), not a slice: the seven are mutually
+                // exclusive derived statuses and still sum to TotalContracts.
+                case ContractStatus.Draft: counts.Draft++; break;
+                case ContractStatus.Ready: counts.Ready++; break;
             }
 
             // A SLICE of Active, not a sixth bucket: it is already counted above, so the five still sum
@@ -231,10 +245,11 @@ public class ContractService
 
             // The by-type breakdown covers only the active (non-archived) set — archived contracts are
             // counted in the status pills but excluded from "By type" (matches the design's summary).
-            // Deliberately PAUSE-AGNOSTIC (issue #140 §5.4): this is a headcount of the contracts on
-            // file, not a cost split, and a paused agreement is still a contract of its type. The cost
-            // split is RunRate.ByType, which excludes it — the two by-type reads answer different
-            // questions and this is the one place they are answered differently.
+            // Deliberately PAUSE-AGNOSTIC (issue #140 §5.4) and, for the same reason,
+            // SIGNATURE-AGNOSTIC (issue #145 §5.5): this is a headcount of the contracts on file, not
+            // a cost split, and a paused agreement — or an unsigned draft — is still a contract of its
+            // type. The cost split is RunRate.ByType, which excludes both — the two by-type reads
+            // answer different questions and this is the one place they are answered differently.
             if (c.Archived is null)
             {
                 var dtoType = c.Type.Adapt<DtoContractType>();
@@ -249,7 +264,10 @@ public class ContractService
             // A paused contract is excluded from the run rate, its by-type split AND the charges by
             // this one gate, because it no longer derives as Active — never by a parallel
             // "Paused is not null" test, which is how the "counts one set, prices another" defect
-            // class gets in (issue #140 §3).
+            // class gets in (issue #140 §3). An UNSIGNED contract (Draft / Ready) leaves through the
+            // very same gate for the very same reason (issue #145 §5.5): it may carry a fully priced
+            // fee, but a price nobody has agreed to is a quote, and there is nothing to run-rate or to
+            // expect a charge from. No second "Signed is null" test is added here.
             if (status is ContractStatus.Active or ContractStatus.Upcoming)
             {
                 priceable.Add(c with { IsActive = status == ContractStatus.Active });
@@ -574,7 +592,7 @@ public class ContractService
     private sealed record SummaryRow(
         Guid ContractId, string Name, ContextContractType Type,
         DateTime? StartDate, DateTime? EndDate, DateTime? CompletionDate,
-        DateTime? Archived, DateTime? Paused)
+        DateTime? Archived, DateTime? Paused, DateTime? Ready, DateTime? Signed)
     {
         /// <summary>
         /// Set once from the single <c>DeriveStatus</c> call per contract, so the run rate and the
@@ -595,9 +613,20 @@ public class ContractService
         return contract is null ? null : await ToDto(contract, Today, cancellationToken);
     }
 
-    public async Task<ExistingContract> Create(NewContract request, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Creates a contract. <paramref name="userId"/> is the acting user, for the signature-transition
+    /// log line (issue #145 §7.7) — the same position and nullability the party writes already use. A
+    /// <c>Signed</c> transition can happen on <c>POST</c> as well as <c>PUT</c>, so both call chains
+    /// carry it; plumbing one and not the other would leave contracts entered already-signed with an
+    /// unattributed line.
+    /// </summary>
+    public async Task<ExistingContract> Create(
+        NewContract request, string? userId, CancellationToken cancellationToken = default)
     {
         var (startDate, endDate, completionDate) = NormalizeDates(request.StartDate, request.EndDate, request.CompletionDate);
+        // The same helper PUT runs, so a rule enforced on one write path and not the other cannot
+        // happen — the defect class this codebase keeps closing.
+        var (ready, signed) = NormalizeSignature(request.Ready, request.Signed);
 
         var contract = new Contract
         {
@@ -609,17 +638,27 @@ public class ContractService
             CompletionDate = completionDate,
             Archived = null,
             Paused = null,
+            // Both omitted — the normal path — creates the contract in Draft.
+            Ready = ready,
+            Signed = signed,
             CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
         };
 
         context.Contracts.Add(contract);
         await context.SaveChangesAsync(cancellationToken);
 
+        LogSignatureWrites(contract.ContractId, previousReady: null, previousSigned: null, ready, signed, userId);
+
         var loaded = await LoadWithDetails(contract.ContractId, cancellationToken);
         return await ToDto(loaded!, Today, cancellationToken);
     }
 
-    public async Task<ExistingContract?> Update(Guid id, UpdateContract request, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Full-replacement update. <paramref name="userId"/> is the acting user, for the
+    /// signature-transition log line (issue #145 §7.7).
+    /// </summary>
+    public async Task<ExistingContract?> Update(
+        Guid id, UpdateContract request, string? userId, CancellationToken cancellationToken = default)
     {
         var contract = await LoadWithDetails(id, cancellationToken);
         if (contract is null)
@@ -628,6 +667,12 @@ public class ContractService
         }
 
         var (startDate, endDate, completionDate) = NormalizeDates(request.StartDate, request.EndDate, request.CompletionDate);
+        // PUT is a full replacement, so a present value SETS each stamp and an omitted one CLEARS it.
+        // Guarded before anything is written back, so "stored" below still means "as of before this
+        // call".
+        var (ready, signed) = NormalizeSignature(request.Ready, request.Signed);
+        var previousReady = contract.Ready;
+        var previousSigned = contract.Signed;
 
         contract.Name = request.Name;
         contract.Type = request.Type.Adapt<ContextContractType>();
@@ -638,11 +683,15 @@ public class ContractService
         // The lifecycle is ORDERED, not orthogonal: archiving retires a contract that is already
         // over, so only an ended one can be archived. Validated against the request's dates, not the
         // stored ones, so a single PUT may end and archive in one go.
-        EnsureArchivable(contract, request.IsArchived, endDate, completionDate);
+        // Widened by issue #145: an UNSIGNED contract is archivable whatever its dates, because
+        // abandoning a negotiation is the single likeliest reason to archive a draft and a draft
+        // typically has no end date at all — the un-widened rule would strand it forever.
+        EnsureArchivable(contract, request.IsArchived, endDate, completionDate, signed);
         // Then the pause guard, against the same request dates plus the STORED archive stamp — so a
         // body asserting both on a contract that has ended is refused here, and one on a contract that
-        // has not is refused above.
-        EnsurePausable(contract, request.IsPaused, startDate, endDate, completionDate);
+        // has not is refused above — and against the REQUEST'S signature stamps (issue #145 §8), so a
+        // single PUT that signs a Draft contract and pauses it in the same body succeeds.
+        EnsurePausable(contract, request.IsPaused, startDate, endDate, completionDate, ready, signed);
 
         // Archive (preserving the original archive stamp) or unarchive per the request.
         contract.Archived = request.IsArchived
@@ -656,7 +705,14 @@ public class ContractService
             ? contract.Paused ?? timeProvider.GetUtcNow().UtcDateTime
             : null;
 
+        // Full replacement, unlike the two stamps above: these carry a caller-supplied MOMENT, not a
+        // boolean intent, so there is no original value to preserve and no idempotence rule to apply.
+        contract.Ready = ready;
+        contract.Signed = signed;
+
         await context.SaveChangesAsync(cancellationToken);
+
+        LogSignatureWrites(id, previousReady, previousSigned, ready, signed, userId);
 
         var reloaded = await LoadWithDetails(id, cancellationToken);
         return await ToDto(reloaded!, Today, cancellationToken);
@@ -1030,9 +1086,19 @@ public class ContractService
     /// </para>
     /// </summary>
     private void EnsureArchivable(
-        Contract contract, bool isArchived, DateTime? endDate, DateTime? completionDate)
+        Contract contract, bool isArchived, DateTime? endDate, DateTime? completionDate, DateTime? signed)
     {
         if (!isArchived || contract.Archived is not null)
+        {
+            return;
+        }
+
+        // Widened by issue #145: archiving is permitted when the contract has ended OR when the
+        // request leaves it UNSIGNED. Abandoning a negotiation is the likeliest reason to archive a
+        // draft, and a draft typically has no end date at all — without this branch the un-widened
+        // rule would leave an abandoned draft un-archivable forever, with no step the reader could
+        // take to satisfy it.
+        if (signed is null)
         {
             return;
         }
@@ -1061,7 +1127,8 @@ public class ContractService
     /// </para>
     /// </summary>
     private void EnsurePausable(
-        Contract contract, bool isPaused, DateTime? startDate, DateTime? endDate, DateTime? completionDate)
+        Contract contract, bool isPaused, DateTime? startDate, DateTime? endDate, DateTime? completionDate,
+        DateTime? ready, DateTime? signed)
     {
         if (!isPaused || contract.Paused is not null)
         {
@@ -1069,8 +1136,19 @@ public class ContractService
         }
 
         // The base status, not the full one: the contract is not paused yet, so there is nothing for
-        // the Paused member to replace, and asking for it back would be circular.
-        var status = DeriveBaseStatus(startDate, endDate, completionDate, contract.Archived, Today);
+        // the Paused member to replace, and asking for it back would be circular. It is now
+        // SIGNATURE-AWARE, so pausing a Draft or Ready contract refuses under the existing code with a
+        // message naming the actual state — a pause is a stamp with nothing to suspend on a contract
+        // nobody has signed, and it would put the row into a state the derivation never reports.
+        //
+        // It reads the REQUEST'S signature stamps, not the stored ones (issue #145 §8), and that is a
+        // deliberate asymmetry with the STORED archive stamp beside it. EnsureArchivable has already
+        // adjudicated the archive transition one line above, so re-reading the request's archive
+        // intent here would double-judge it; no such prior guard exists for the signature stamps, so
+        // the same stale read would be a defect rather than a mirror of one — a single PUT that signs
+        // a Draft contract AND pauses it would be judged against the still-null stored Signed and
+        // refused, for a contract the very same body makes Active.
+        var status = DeriveBaseStatus(startDate, endDate, completionDate, contract.Archived, ready, signed, Today);
         if (status != ContractStatus.Active)
         {
             throw new DomainValidationException(
@@ -1085,7 +1163,7 @@ public class ContractService
     private static ContractStatus DeriveStatus(Contract contract, DateTime today) =>
         DeriveStatus(
             contract.StartDate, contract.EndDate, contract.CompletionDate,
-            contract.Archived, contract.Paused, today);
+            contract.Archived, contract.Paused, contract.Ready, contract.Signed, today);
 
     /// <summary>
     /// The full derivation: the pause-blind base status, then <c>Paused</c> applied <b>once, to its
@@ -1101,28 +1179,54 @@ public class ContractService
     /// </para>
     ///
     /// <para>
-    /// Read as precedence: <c>Archived &gt; Upcoming &gt; Expired &gt; Paused &gt; Active</c>. A
+    /// Read as precedence:
+    /// <c>Archived &gt; Draft/Ready &gt; Upcoming &gt; Expired &gt; Paused &gt; Active</c>. A
     /// terminal fact outranks a temporary one, so a paused contract whose term has since run out reads
     /// <c>Expired</c> — its stamp is retained, so resuming it after fixing its dates is one write.
     /// </para>
     /// </summary>
     private static ContractStatus DeriveStatus(
         DateTime? startDate, DateTime? endDate, DateTime? completionDate,
-        DateTime? archived, DateTime? paused, DateTime today)
+        DateTime? archived, DateTime? paused, DateTime? ready, DateTime? signed, DateTime today)
     {
-        var status = DeriveBaseStatus(startDate, endDate, completionDate, archived, today);
+        var status = DeriveBaseStatus(startDate, endDate, completionDate, archived, ready, signed, today);
         return status == ContractStatus.Active && paused is not null
             ? ContractStatus.Paused
             : status;
     }
 
-    /// <summary>The pre-pause derivation, unchanged (issue #174 §6).</summary>
+    /// <summary>
+    /// The pause-blind derivation: the archive check, then the <b>signature layer</b>, then the date
+    /// chain (issue #174 §6, issue #145 §3).
+    ///
+    /// <para>
+    /// <b>The signature layer sits between the archive check and the date chain, and short-circuits
+    /// it.</b> An unsigned contract with a future start date reads <c>Draft</c>/<c>Ready</c>, not
+    /// <c>Upcoming</c>: its dates describe a term nobody has agreed to, and reporting <c>Upcoming</c>
+    /// would assert a commitment that does not exist — and would put it back into the upcoming
+    /// charges. An unsigned contract whose end date has passed reads <c>Draft</c>/<c>Ready</c>, not
+    /// <c>Expired</c>: a term cannot lapse before it begins, and describing a negotiation that stalled
+    /// as an agreement that ran its course would make the row look retired rather than abandoned —
+    /// which matters, because abandonment is the thing the reader has to act on.
+    /// </para>
+    ///
+    /// <para>
+    /// <c>Archived</c> still wins over both: a retired contract's signature history is no longer the
+    /// thing a reader is acting on.
+    /// </para>
+    /// </summary>
     private static ContractStatus DeriveBaseStatus(
-        DateTime? startDate, DateTime? endDate, DateTime? completionDate, DateTime? archived, DateTime today)
+        DateTime? startDate, DateTime? endDate, DateTime? completionDate, DateTime? archived,
+        DateTime? ready, DateTime? signed, DateTime today)
     {
         if (archived is not null)
         {
             return ContractStatus.Archived;
+        }
+        // The signature layer. Nothing below runs for an unsigned contract, by design.
+        if (signed is null)
+        {
+            return ready is not null ? ContractStatus.Ready : ContractStatus.Draft;
         }
         // One-off: a point-in-time agreement — Upcoming until its completion date, a settled record after.
         if (completionDate is { } completion)
@@ -1158,6 +1262,123 @@ public class ContractService
             throw new DomainValidationException("EndDate must be on or after StartDate.");
         }
         return (startDate, endDate, null);
+    }
+
+    /// <summary>
+    /// Normalizes both signature stamps to UTC and runs the three signature guards (issue #145 §8).
+    /// Shared verbatim by <c>Create</c> and <c>Update</c>: a rule enforced on one write path and not
+    /// the other is the defect class this codebase keeps closing.
+    ///
+    /// <para>
+    /// <b>Clearing is never refused.</b> Both null, or a cleared <c>Signed</c> on a signed contract in
+    /// any state, passes every guard — a guard on the way out is how a row gets stranded, which is the
+    /// rule <c>EnsurePausable</c> already states in so many words.
+    /// </para>
+    ///
+    /// <para>
+    /// The two future checks run first so the field a client highlights matches the field the server
+    /// names for the same body: the shared client-side helper (<c>conSignatureError</c> in the design
+    /// system) tests them in this order.
+    /// </para>
+    /// </summary>
+    private (DateTime? Ready, DateTime? Signed) NormalizeSignature(DateTime? ready, DateTime? signed)
+    {
+        // Through the same funnel every client-supplied date on this surface already passes, so a
+        // Local or Unspecified kind cannot store a value off by a timezone offset.
+        var readyUtc = ready is { } r ? DateTimeNormalization.NormalizeToUtc(r) : (DateTime?)null;
+        var signedUtc = signed is { } g ? DateTimeNormalization.NormalizeToUtc(g) : (DateTime?)null;
+
+        var today = Today;
+
+        // G3 — DATE granularity, not instant: a client clock a few minutes ahead of the server must
+        // not turn an ordinary "signed just now" into a 400, while a value dated tomorrow or later is
+        // still refused. Both stamps record something that has HAPPENED, which is what makes Signed a
+        // fact rather than a schedule.
+        if (readyUtc is { } readyValue && readyValue.Date > today)
+        {
+            throw new DomainValidationException(
+                "A ready date records something that has happened — it cannot be in the future.",
+                "contract_signature_date_in_future",
+                nameof(UpdateContract.Ready));
+        }
+
+        if (signedUtc is { } signedValue && signedValue.Date > today)
+        {
+            throw new DomainValidationException(
+                "A signed date records something that has happened — it cannot be in the future.",
+                "contract_signature_date_in_future",
+                nameof(UpdateContract.Signed));
+        }
+
+        // G1 — ONE rule, not two. Under the full-replacement PUT, "clearing Ready on a signed
+        // contract" and "signing a contract that was never marked ready" are the same request shape
+        // (signed present, ready absent), so they take one guard and one code.
+        if (signedUtc is not null && readyUtc is null)
+        {
+            throw new DomainValidationException(
+                "A signed contract needs a ready date too. Set when it was ready for signature, or clear the signed date.",
+                "contract_signed_requires_ready",
+                nameof(UpdateContract.Signed));
+        }
+
+        // G2 — INSTANT granularity, unlike G3. Both values come from the same request body, so there
+        // is no clock to be skewed against: a caller that sends a signed one second before its own
+        // ready has contradicted itself, and rounding that away to date granularity would silently
+        // accept it.
+        if (signedUtc is { } s2 && readyUtc is { } r2 && s2 < r2)
+        {
+            throw new DomainValidationException(
+                "A contract cannot be signed before it was ready for signature.",
+                "contract_signed_before_ready",
+                nameof(UpdateContract.Signed));
+        }
+
+        return (readyUtc, signedUtc);
+    }
+
+    /// <summary>
+    /// One structured <c>Information</c> line per <c>Ready</c>/<c>Signed</c> transition (issue #145
+    /// §7.7), mirroring <see cref="LogPartyWrite"/> and for the same reason: <c>PUT</c> is a full
+    /// replacement in which an omitted stamp silently clears, so the line is the record of who cleared
+    /// it. A write that changes neither stamp emits nothing.
+    /// </summary>
+    /// <remarks>
+    /// Neither field carries a <c>MarkedReadyByUserId</c> / <c>SignedRecordedByUserId</c> attribution
+    /// COLUMN, deliberately: no contract field carries attribution today, and any holder of
+    /// <c>contracts.update</c> can already rewrite the name, counterparty, dates and price history
+    /// unattributed. The trigger to revisit is stated in issue #145 §7.7 — if contract mutations
+    /// become audited, or if <c>Signed</c> is ever treated as evidence of a legal fact rather than a
+    /// record-keeping convenience, BOTH fields take <c>SET NULL</c> FK columns in the same change.
+    ///
+    /// <para>
+    /// Every value is an opaque id, a fixed literal or a timestamp — never a contract name, a party
+    /// name or any free text — so the line names rows a reader would still need <c>contracts.read</c>
+    /// to resolve, exactly as the party line's does, and carries nothing a forged log line could use.
+    /// </para>
+    /// </remarks>
+    private void LogSignatureWrites(
+        Guid contractId, DateTime? previousReady, DateTime? previousSigned,
+        DateTime? ready, DateTime? signed, string? userId)
+    {
+        LogSignatureWrite(contractId, nameof(Contract.Ready), previousReady, ready, userId);
+        LogSignatureWrite(contractId, nameof(Contract.Signed), previousSigned, signed, userId);
+    }
+
+    private void LogSignatureWrite(
+        Guid contractId, string stamp, DateTime? before, DateTime? after, string? userId)
+    {
+        if (Nullable.Equals(before, after))
+        {
+            return;
+        }
+
+        logger.LogInformation(
+            "Contract signature {Stamp} {Action}: contract {ContractId}, at {StampValue}, by user {UserId}.",
+            stamp,
+            after is null ? "cleared" : "set",
+            contractId,
+            after,
+            userId ?? "(unknown)");
     }
 
     // The two target 404s carry the field key of the id that was sent; the whole-request 404s (contract
@@ -1288,6 +1509,8 @@ public class ContractService
             CurrentTerms = currentTerms,
             Archived = contract.Archived,
             Paused = contract.Paused,
+            Ready = contract.Ready,
+            Signed = contract.Signed,
             CreatedAtUtc = contract.CreatedAtUtc,
         };
     }

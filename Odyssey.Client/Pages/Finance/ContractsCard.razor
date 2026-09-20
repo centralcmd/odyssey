@@ -73,6 +73,11 @@
             <RenderItem Context="c">
                 @{
                     var archived = c.Archived is not null;
+                    @* On file but not in force. The card stays at FULL brightness — these are the
+                       rows most likely to need attention — and is marked instead by a dashed edge:
+                       nothing about the agreement is settled yet. That is the opposite reading to
+                       archived, which is dimmed because it is finished. *@
+                    var unsigned = ContractStatusOrder.IsUnsigned(c.Status);
                     var typeInfo = OdsTypeRegistries.ContractTypeOf(c.Type);
                     var headline = Headline(c);
                     var detail = _details.GetValueOrDefault(c.ContractId);
@@ -112,6 +117,7 @@
                                FigureCaption="@headline.Word"
                                FigureTone="@HeadlineTone(headline.Cls)"
                                Dimmed="archived"
+                               Class="@(unsigned ? "con-unsigned" : null)"
                                Highlight="@(_flashId == c.ContractId)"
                                Open="IsExpanded(c.ContractId)"
                                OnToggle="@(_ => ToggleExpand(c.ContractId))">
@@ -205,6 +211,29 @@
                                    also paused still says when each began. The tiles are independent
                                    of each other rather than suppressed per case — correctness beats
                                    the small overlap with the Status tile above. *@
+                                @* The two SIGNATURE stamps, in lifecycle order and ahead of the
+                                   suspension ones: they are the earliest facts about the contract.
+                                   A tile appears only once its stamp exists, so a plain Draft adds
+                                   nothing to the grid — the Status tile has already said so. *@
+                                @if (detail.Ready is { } readyAt)
+                                {
+                                    <OdsInfoTile Icon="draw" Label="Ready for signature"
+                                                 ValueVariant="OdsInfoTileVariant.Sm"
+                                                 Tone="@(detail.Signed is null ? OdsInfoTileTone.Pending : OdsInfoTileTone.Default)"
+                                                 Foot="@OdsInfoTile.Caption(detail.Signed is null ? "waiting on a signature" : "sent out on this date")">
+                                        <Value>@LongDate(readyAt)</Value>
+                                    </OdsInfoTile>
+                                }
+
+                                @if (detail.Signed is { } signedAt)
+                                {
+                                    <OdsInfoTile Icon="history_edu" Label="Signed"
+                                                 ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Income"
+                                                 Foot="@OdsInfoTile.Caption("signed by all parties")">
+                                        <Value>@LongDate(signedAt)</Value>
+                                    </OdsInfoTile>
+                                }
+
                                 @if (detail.Paused is { } pausedAt)
                                 {
                                     <OdsInfoTile Icon="pause_circle" Label="Paused"

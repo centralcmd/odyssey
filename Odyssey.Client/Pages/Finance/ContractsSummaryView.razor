@@ -109,7 +109,9 @@
     // An unconvertible currency is NAMED rather than folded in at 1:1, so a partial total always says
     // so on its own tile instead of reading as the whole picture. A paused contract keeps its price
     // on file and contributes nothing here, so it is named for the same reason — a run rate that
-    // quietly dropped between two visits would otherwise read as a pricing error.
+    // quietly dropped between two visits would otherwise read as a pricing error. An UNSIGNED one
+    // (issue #145) is named on exactly the same terms: a draft may be fully priced, and its price is
+    // a quote rather than a commitment.
     private string RunRateFoot
     {
         get
@@ -117,8 +119,14 @@
             var basis = Summary.RunRate.UnconvertedCurrencies.Count > 0
                 ? $"in {Summary.RunRate.BaseCurrency} · {string.Join(", ", Summary.RunRate.UnconvertedCurrencies)} excluded"
                 : $"in {Summary.RunRate.BaseCurrency}";
+
             var paused = Summary.CountsByStatus.Paused;
-            return paused > 0 ? $"{basis} · {paused} paused excluded" : basis;
+            var unsigned = Summary.CountsByStatus.Draft + Summary.CountsByStatus.Ready;
+            var excluded = new List<string>(2);
+            if (paused > 0) excluded.Add($"{paused} paused");
+            if (unsigned > 0) excluded.Add($"{unsigned} unsigned");
+
+            return excluded.Count > 0 ? $"{basis} · {string.Join(", ", excluded)} excluded" : basis;
         }
     }
 
@@ -128,6 +136,8 @@
         ContractStatus.Upcoming => Summary.CountsByStatus.Upcoming,
         ContractStatus.Expired => Summary.CountsByStatus.Expired,
         ContractStatus.Paused => Summary.CountsByStatus.Paused,
+        ContractStatus.Draft => Summary.CountsByStatus.Draft,
+        ContractStatus.Ready => Summary.CountsByStatus.Ready,
         _ => Summary.CountsByStatus.Archived,
     };
 }
