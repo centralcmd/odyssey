@@ -30,7 +30,9 @@ namespace Odyssey.Client.Tests;
 public class ContractsCardRowActionTests
 {
     private const string ArchivedReason = "Unarchive the contract to change its parties.";
-    private const string ArchivedTermReason = "Restore the contract to change its terms.";
+    // The design system's own copy for the archived case (ContractTerms.jsx's termBlock note), matched
+    // verbatim: a reason the reader can act on is the whole point of offering the item disabled.
+    private const string ArchivedTermReason = "The contract has to be restored first.";
 
     /// <summary>
     /// The source with comments stripped. The file's own doc comments legitimately DISCUSS the reason

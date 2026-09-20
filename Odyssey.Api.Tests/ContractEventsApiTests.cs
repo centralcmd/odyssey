@@ -646,6 +646,38 @@ public class ContractEventsApiTests
         OccurredAt = new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
     };
 
+    /// <summary>
+    /// The collapsed card's counts strip carries the log's size, so a section that is present in the
+    /// record body is never absent from its table of contents — a count that is missing reads as a
+    /// section that is empty.
+    ///
+    /// <para>
+    /// Counted the same way <c>TermCount</c> is: one correlated subquery in the list read. Asserted
+    /// over HTTP because that is where the projection actually runs — nothing on the list path loads
+    /// the log's rows, so the count is the only thing that can be wrong.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task List_CarriesTheEventCount()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var withEvents = await CreateContractAsync(client);
+        var without = await CreateContractAsync(client, name: "Harbor Point parking");
+
+        // A contract with no log at all is a real state, and zero is the honest answer for it.
+        var before = (await client.GetFromJsonAsync<PagedResult<ContractListItem>>(Path))!;
+        Assert.Equal(0, before.Items.Single(c => c.ContractId == withEvents).EventCount);
+
+        await PostEventAsync(client, withEvents);
+        await PostEventAsync(client, withEvents);
+
+        var after = (await client.GetFromJsonAsync<PagedResult<ContractListItem>>(Path))!;
+        Assert.Equal(2, after.Items.Single(c => c.ContractId == withEvents).EventCount);
+        // The subquery is correlated, not a table-wide count leaking across rows.
+        Assert.Equal(0, after.Items.Single(c => c.ContractId == without).EventCount);
+    }
+
     private static async Task<ExistingContractEvent> PostEventAsync(HttpClient client, Guid contractId)
     {
         var response = await client.PostAsJsonAsync(Events(contractId), New());

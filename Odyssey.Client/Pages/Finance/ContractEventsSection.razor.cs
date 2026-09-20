@@ -81,7 +81,7 @@ public partial class ContractEventsSection
     private string Meta => _isLoading
         ? "loading…"
         : _total == 0
-            ? "none recorded"
+            ? "0 entries"
             : $"{_total} {(_total == 1 ? "entry" : "entries")} · newest first";
 
     /// <summary>The last request token acted on, so one ask opens exactly one dialog.</summary>

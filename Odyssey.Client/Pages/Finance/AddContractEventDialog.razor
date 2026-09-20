@@ -78,18 +78,18 @@
                       Value="@_title" ValueChanged="OnTitleChanged"
                       MaxLength="256" Error="@_errors.GetValueOrDefault("title")"
                       Placeholder="e.g. Emailed landlord about the rent increase"
-                      Help="@(_errors.ContainsKey("title") ? null : "A short label. This is the line the log shows.")" />
+                      Help="@(_errors.ContainsKey("title") ? null : "A short label. This is the line the timeline shows.")" />
 
             <OdsNoteField Id="cev-description" Label="Description" MaxLength="1024"
                           Value="@_description" ValueChanged="@(v => _description = v)"
                           Placeholder="What happened, at more length — what was said, what was agreed…"
-                          Help="Shown on the log under the title." />
+                          Help="Shown on the timeline under the title." />
 
             @* The audience is stated, never implied to be narrower (§4.1). *@
             <OdsNoteField Id="cev-notes" Label="Notes" MaxLength="1024"
                           Value="@_notes" ValueChanged="@(v => _notes = v)"
                           Placeholder="Reminders to yourself — what to chase, what to check next time…"
-                          Help="Your working notes. Kept off the log, but anyone who can see this contract can read them." />
+                          Help="Your working notes. Kept off the timeline, but anyone who can see this contract can read them." />
 
             @if (IsEdit)
             {
