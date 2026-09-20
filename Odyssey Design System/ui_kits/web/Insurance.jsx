@@ -299,7 +299,7 @@ const RenewalTable = ({ renewals, currentId, today, onEdit, onDelete, onUploadRe
                       <InsFilesTable
                         files={r.files || []}
                         onDelete={(f) => onDeleteRenewalFile(r.id, f)}
-                        empty={<div className="empty-line" style={{ padding: 16 }}>No documents on this period yet — attach the invoice, schedule of cover, or a claim document.</div>}
+                        empty={<EmptyLine>No documents on this period yet — attach the invoice, schedule of cover, or a claim document.</EmptyLine>}
                       />
                     </div>
                   </td>
@@ -873,7 +873,7 @@ const Insurance = ({ tweaks = {}, onNavigate }) => {
                 onNavigate={onNavigate} onDelete={deletePolicy} />
             )}
             empty={(
-              <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>No policies match your filters.</div>
+              <EmptyLine align="center" pad="lg">No policies match your filters.</EmptyLine>
             )}
             trailing={(
               <AddRow title="New policy" sub="Record an insurer, renewal periods, premium and coverage, and attach the documents."

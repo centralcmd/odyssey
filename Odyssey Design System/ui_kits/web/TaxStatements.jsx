@@ -88,7 +88,7 @@ const TaxTrendChart = ({ title, statements, accessor, color, cur, cumulative, su
     return (
       <Card className="chart-card">
         <div className="chart-head"><div><div className="chart-ttl">{title}</div></div></div>
-        <div className="empty-line" style={{ padding: '28px 4px' }}>No declared figures yet.</div>
+        <EmptyLine align="center">No declared figures yet.</EmptyLine>
       </Card>
     );
   }
@@ -483,7 +483,7 @@ const TaxDetail = ({ s, layout, focusDocs, onNavigate, setStatement }) => {
         <SectionDivider label="Statement documents" meta={`${s.files.length} file${s.files.length === 1 ? '' : 's'}`} />
         <div className="tax-tbl-frame">
           {s.files.length === 0 ? (
-            <div className="empty-line">No documents attached yet — upload the tax return / assessment PDFs.</div>
+            <EmptyLine>No documents attached yet — upload the tax return / assessment PDFs.</EmptyLine>
           ) : (
             <InlinePager items={s.files}>
               {(pageRows) => <FilesTable files={pageRows} onDelete={removeFile}
@@ -799,9 +799,9 @@ const TaxStatements = ({ tweaks = {}, onNavigate }) => {
                 onNavigate={onNavigate} onDelete={deleteStatement} />
             )}
             empty={(
-              <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>
+              <EmptyLine align="center" pad="lg">
                 No tax statements match your filters.
-              </div>
+              </EmptyLine>
             )}
             trailing={(
               <AddRow

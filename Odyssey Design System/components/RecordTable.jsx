@@ -118,23 +118,19 @@ function RTMenu({ items }) {
       </span>
       {open && pos && (
         <div className="acct-menu-pop" role="menu" ref={popRef} style={{ top: pos.top, right: pos.right }} onKeyDown={onPopKey}>
-          {items.map((it, i) => it.divider ? (
+          {/* Unavailable actions are omitted entirely (and so are the dividers
+              they orphan) — a row's menu lists only what it can do. */}
+          {(() => {
+            const shown = (items || []).filter((it) => !it.disabled);
+            return shown.filter((it, i) => !(it.divider && (i === 0 || i === shown.length - 1 || shown[i - 1].divider)));
+          })().map((it, i) => it.divider ? (
             <div key={i} className="acct-menu-sep" />
           ) : (
-            <React.Fragment key={i}>
-              <button role="menuitem" tabIndex={-1} className={`acct-menu-item ${it.danger ? 'danger' : ''}`}
-                aria-disabled={it.disabled ? true : undefined}
-                aria-describedby={it.note ? `${menuNoteId}-${i}` : undefined}
-                onClick={() => { if (it.disabled) return; closeMenu(true); it.onClick && it.onClick(); }}>
-                <span className="material-icons" aria-hidden="true" style={{ fontSize: 18 }}>{it.icon}</span>
-                <span>{it.label}</span>
-              </button>
-              {/* Why a disabled action is unavailable — as text, never the dimmed
-                  state alone. The item keeps aria-disabled rather than the
-                  disabled attribute, so it stays in the roving-focus order and
-                  the reason is reachable instead of skipped. */}
-              {it.note ? <p className="acct-menu-note" id={`${menuNoteId}-${i}`}>{it.note}</p> : null}
-            </React.Fragment>
+            <button key={i} role="menuitem" tabIndex={-1} className={`acct-menu-item ${it.danger ? 'danger' : ''}`}
+              onClick={() => { closeMenu(true); it.onClick && it.onClick(); }}>
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 18 }}>{it.icon}</span>
+              <span>{it.label}</span>
+            </button>
           ))}
         </div>
       )}

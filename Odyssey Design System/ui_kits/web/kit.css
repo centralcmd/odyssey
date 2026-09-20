@@ -838,7 +838,7 @@ html, body, #root {
   padding: 3px 7px; border-radius: 999px;
 }
 .collapsible-body { border-top: 1px solid var(--mud-palette-divider-light); }
-.empty-line { padding: 16px 14px; font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+/* .empty-line retired — use the DS EmptyLine (.odc-empty.line). */
 
 /* ---------- Empty state (centered surface) ---------- */
 .empty-state {

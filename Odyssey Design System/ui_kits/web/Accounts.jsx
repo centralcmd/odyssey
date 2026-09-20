@@ -519,8 +519,7 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
         const inForce = curTerms.length + (curEst ? 2 : 0);
         if (!inForce) return null;
         return (
-          <div className="acct-section">
-            <SectionDivider label="Current" meta={`${inForce} ${inForce === 1 ? 'value' : 'values'} in force`} />
+          <RecordSection className="acct-section" label="Current" meta={`${inForce} ${inForce === 1 ? 'value' : 'values'} in force`}>
             <InfoTileGrid>
               {curEst ? (
                 <React.Fragment>
@@ -549,65 +548,54 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
                 );
               })}
             </InfoTileGrid>
-          </div>
+          </RecordSection>
         );
       })()}
 
       {estimates.length > 0 ? (
-        <div className="acct-section">
-          <SectionDivider label="Estimates" meta={`${estimates.length} ${estimates.length === 1 ? 'estimate' : 'estimates'}`} />
+        <RecordSection className="acct-section" label="Estimates" meta={`${estimates.length} ${estimates.length === 1 ? 'estimate' : 'estimates'}`}>
           <AccountEstimates account={a} estimates={estimates} txns={txns} chrome={false} bareAction={false} showCurrent={false}
             onNew={onNewEstimate} onEdit={onEditEstimate} onDelete={onDeleteEstimate} />
-        </div>
+        </RecordSection>
       ) : null}
 
       {terms.length > 0 ? (
-        <div className="acct-section">
-          <SectionDivider label="Terms" meta={`${terms.length} ${terms.length === 1 ? 'entry' : 'entries'}`} />
+        <RecordSection className="acct-section" label="Terms" meta={`${terms.length} ${terms.length === 1 ? 'entry' : 'entries'}`}>
           <AccountTerms account={a} terms={terms} chrome={false} bareAction={false} showCurrent={false}
             onNew={onNewTerm} onEdit={onEditTerm} onDelete={onDeleteTerm} />
-        </div>
+        </RecordSection>
       ) : null}
 
-      <div className="acct-section">
-        <SectionDivider label="Files" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
+      <RecordSection className="acct-section" label="Files" meta={`${files.length} file${files.length === 1 ? '' : 's'}`}
+        empty={files.length === 0} emptyText="No files attached to this account yet.">
         <div className="acct-table-frame odc-scroll">
-          {files.length === 0 ? (
-            <div className="empty-line">No files attached to this account yet.</div>
-          ) : (
-            <InlinePager items={files}>
-              {(pageRows) => <FilesTable files={pageRows} account={a} onNavigate={onNavigate} />}
-            </InlinePager>
-          )}
+          <InlinePager items={files}>
+            {(pageRows) => <FilesTable files={pageRows} account={a} onNavigate={onNavigate} />}
+          </InlinePager>
         </div>
-      </div>
+      </RecordSection>
 
-      <div className="acct-section">
-        <SectionDivider label="Transactions" meta={`${txns.length} transaction${txns.length === 1 ? '' : 's'}`} />
+      <RecordSection className="acct-section" label="Transactions" meta={`${txns.length} transaction${txns.length === 1 ? '' : 's'}`}
+        empty={txns.length === 0} emptyText="No transactions recorded for this account yet.">
         <div className="acct-txn-table acct-table-frame odc-scroll">
-          {txns.length === 0 ? (
-            <div className="empty-line">No transactions recorded for this account yet.</div>
-          ) : (
-            <InlinePager items={txns}>
-              {(pageRows) => (
-                <TxnTable
-                  txns={pageRows}
-                  hideAccount
-                  onSave={onSaveTxn}
-                  onDelete={onDeleteTxn}
-                />
-              )}
-            </InlinePager>
-          )}
+          <InlinePager items={txns}>
+            {(pageRows) => (
+              <TxnTable
+                txns={pageRows}
+                hideAccount
+                onSave={onSaveTxn}
+                onDelete={onDeleteTxn}
+              />
+            )}
+          </InlinePager>
         </div>
-      </div>
+      </RecordSection>
 
       {/* Always rendered: this section is the only place a first smart tag can be
           added, so it is an entry point rather than an optional collection. */}
-      <div className="acct-section">
-        <SectionDivider label="Smart tags" meta={smartTagIds.length ? `${smartTagIds.length} watched` : 'none watched'} />
+      <RecordSection className="acct-section" label="Smart tags" meta={smartTagIds.length ? `${smartTagIds.length} watched` : 'none watched'}>
         <AccountSmartTags a={a} txns={txns} onNavigate={onNavigate} tagIds={smartTagIds} setTagIds={setSmartTagIds} bare />
-      </div>    </React.Fragment>
+      </RecordSection>    </React.Fragment>
   );
 };
 
@@ -1013,9 +1001,9 @@ const Accounts = ({ onNavigate }) => {
               onNavigate={onNavigate} />
           )}
           empty={(
-            <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>
+            <EmptyLine align="center" pad="lg">
               No accounts match your filters.
-            </div>
+            </EmptyLine>
           )}
           trailing={(
             <AddRow

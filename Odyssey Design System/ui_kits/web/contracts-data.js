@@ -611,8 +611,8 @@
          contract does not hold). No per-ContractType matrix.
        • CURRENCY — a contract has no currency of its own, so an Amount term
          must name one explicitly. There is nothing to default from.
-     Plus a per-contract cap (ContractMaxTermsPerContract, default 500) and
-     archived contracts being read-only for terms. */
+     Plus a per-contract cap (ContractMaxTermsPerContract, default 500) — the
+     only thing that refuses a term write. */
 
   // The look-ahead for the header's "Next charges" group — the same 45 days
   // Subscriptions uses for its upcoming renewals.
@@ -660,7 +660,7 @@
       { id: 'ctm-storage-1', contractId: 'ct-storage', kind: 'Fee', unit: 'Amount', value: 95.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2024-01-01', label: 'Unit rent', labelKey: 'unit rent', note: null, createdAtUtc: '2024-01-03T09:00:00Z' },
       { id: 'ctm-storage-2', contractId: 'ct-storage', kind: 'Fee', unit: 'Amount', value: 105.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-01-01', label: 'Unit rent', labelKey: 'unit rent', note: 'Second-year rate.', createdAtUtc: '2024-12-02T09:00:00Z' },
     ],
-    // Archived contract — its history stays readable; every write is refused.
+    // Archived contract — hidden from the default list, still fully writable.
     'ct-solar': [
       { id: 'ctm-solar-1', contractId: 'ct-solar', kind: 'Fee', unit: 'Amount', value: 130.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2023-06-01', label: 'Lease payment', labelKey: 'lease payment', note: null, createdAtUtc: '2023-05-28T09:00:00Z' },
       { id: 'ctm-solar-2', contractId: 'ct-solar', kind: 'Fee', unit: 'Amount', value: 138.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2024-06-01', label: 'Lease payment', labelKey: 'lease payment', note: 'Annual 3% escalator.', createdAtUtc: '2024-06-01T09:00:00Z' },
@@ -873,10 +873,11 @@
       return status === 'Expired' || (!!contract.completionDate && H.conDateOnly(contract.completionDate) <= t);
     },
 
+    /* The only thing that refuses a term write is the per-contract CAP.
+       Archiving hides a contract from the default list; it never blocks
+       recording what the agreement did or cost — a lease can be archived and
+       still gain the final rent entry. */
     conTermWriteBlock(contract, termCount, cap) {
-      if (contract && contract.archived) {
-        return { reason: 'archived', text: 'This contract is archived. Restore it to record or change a term — its history stays readable either way.' };
-      }
       const limit = cap != null ? cap : D.CONTRACT_MAX_TERMS_PER_CONTRACT;
       if (termCount >= limit) {
         return { reason: 'cap', text: `This contract has reached the limit of ${limit} term${limit === 1 ? '' : 's'}. Delete an entry, or raise ContractMaxTermsPerContract in system settings.` };

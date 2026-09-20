@@ -4,7 +4,10 @@
  * table and list row. Maps to a MudMenu of MudMenuItems.
  *
  * Pass `items` — each is either a divider (`{ divider: true }`) or an action
- * (`{ icon, label, onClick, danger, trailingIcon }`). `danger` tints the item
+ * (`{ icon, label, onClick, danger, trailingIcon }`). An item marked
+ * `disabled` is NOT rendered: an action a record cannot take is absent from
+ * its menu rather than dimmed with an explanation. Dividers left orphaned by
+ * the hidden items are dropped with them. `danger` tints the item
  * for destructive actions (Delete). `icon` is a Material Icons ligature or any
  * non-ligature glyph (e.g. "§"). `trailingIcon` renders a right-aligned Material
  * icon revealed on hover/focus — the `content_copy` affordance on a "Copy ID"
@@ -21,7 +24,10 @@
  */
 export function ActionMenu({ items, ariaLabel }) {
   const { useState, useRef, useEffect } = React;
-  const noteId = React.useId();
+  // Unavailable actions are omitted, then any divider left leading, trailing
+  // or doubled by the omission goes too.
+  const shown = (items || []).filter((it) => !it.disabled);
+  const visible = shown.filter((it, i) => !(it.divider && (i === 0 || i === shown.length - 1 || shown[i - 1].divider)));
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
@@ -126,7 +132,7 @@ export function ActionMenu({ items, ariaLabel }) {
       </span>
       {open && pos && renderPop(
         <div className="acct-menu-pop" role="menu" ref={popRef} style={{ top: pos.top, right: pos.right, maxHeight: pos.maxHeight, overflowY: pos.maxHeight ? 'auto' : undefined }} onKeyDown={onPopKey}>
-          {items.map((it, i) => it.divider ? (
+          {visible.map((it, i) => it.divider ? (
             <div key={i} className="acct-menu-sep" />
           ) : (
             <React.Fragment key={i}>
@@ -134,9 +140,7 @@ export function ActionMenu({ items, ariaLabel }) {
                 role="menuitem"
                 tabIndex={-1}
                 className={`acct-menu-item ${it.danger ? 'danger' : ''}`}
-                aria-disabled={it.disabled ? true : undefined}
-                aria-describedby={it.note ? `${noteId}-${i}` : undefined}
-                onClick={() => { if (it.disabled) return; closeMenu(true); it.onClick && it.onClick(); }}
+                onClick={() => { closeMenu(true); it.onClick && it.onClick(); }}
               >
                 {/^[a-z0-9_]+$/.test(it.icon)
                   ? <span className="material-icons" aria-hidden="true" style={{ fontSize: 18 }}>{it.icon}</span>
@@ -146,10 +150,6 @@ export function ActionMenu({ items, ariaLabel }) {
                   <span className="material-icons acct-menu-item-trail" aria-hidden="true" style={{ fontSize: 16 }}>{it.trailingIcon}</span>
                 ) : null}
               </button>
-              {/* Why a disabled action is unavailable — as text, never the dimmed
-                  state alone. aria-disabled, not the disabled attribute, so the
-                  item keeps its place in the roving-focus order. */}
-              {it.note ? <p className="acct-menu-note" id={`${noteId}-${i}`}>{it.note}</p> : null}
             </React.Fragment>
           ))}
         </div>

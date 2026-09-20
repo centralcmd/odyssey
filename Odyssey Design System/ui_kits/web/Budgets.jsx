@@ -188,7 +188,7 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
         <SectionDivider label="Budget items"
           meta={`${budget.items.length} item${budget.items.length === 1 ? '' : 's'}${editMulti ? ' · editing' : ''}`} />
         {budget.items.length === 0 ? (
-          <div className="empty-line">No items yet — add income and expense lines to start planning.</div>
+          <EmptyLine>No items yet — add income and expense lines to start planning.</EmptyLine>
         ) : editMulti ? (
           <div className="bgt-items">
             <div className="bgt-edit-head">
@@ -231,7 +231,7 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
                 txns={pageRows}
                 onSave={saveTxn}
                 onDelete={deleteTxn}
-                empty={<div className="empty-line" style={{ padding: 20 }}>No transactions matched this budget's tags in its date range yet.</div>}
+                empty={<EmptyLine>No transactions matched this budget's tags in its date range yet.</EmptyLine>}
               />
             )}
           </InlinePager>
@@ -430,9 +430,9 @@ const Budgets = ({ onNavigate, tweaks = {} }) => {
               canCreateTag={canCreateTag} tagsFailed={tagsFailed} />
           )}
           empty={(
-            <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>
+            <EmptyLine align="center" pad="lg">
               No budgets match your filters.
-            </div>
+            </EmptyLine>
           )}
           trailing={(
             <AddRow

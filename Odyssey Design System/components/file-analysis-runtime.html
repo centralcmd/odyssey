@@ -67,16 +67,12 @@
     </div>
 
     <div>
-      <div class="cap">3 · With analysis off, the affordance says so — before any document is picked</div>
-      <p class="note">The switch is read live, so the file row's action menu reflects it. <b>Analyze</b> renders disabled with a one-line reason wired as its <code>aria-describedby</code>; the item keeps <code>aria-disabled</code> rather than the <code>disabled</code> attribute so it stays in the roving-focus order and a keyboard or screen-reader user reaches the reason instead of a silently skipped item. The consent gate is unreachable, so no consent is ever collected for a transfer that cannot happen. Meaning is carried as text, never by the dimmed state alone.</p>
+      <div class="cap">3 · With analysis off, the action is gone — before any document is picked</div>
+      <p class="note">The switch is read live, so the file row's action menu reflects it. <b>Analyze</b> is not rendered at all: an action that cannot be taken is absent from the menu rather than dimmed with an explanation. The consent gate is unreachable, so no consent is ever collected for a transfer that cannot happen. Where the user needs to know WHY the capability is missing, the surface says so in its own copy — a menu row is not the place for it.</p>
       <div class="card menu-demo">
         <ul class="odc-menu-pop down" role="menu" aria-orientation="vertical">
           <li role="none"><button type="button" role="menuitem" tabindex="-1" class="odc-menu-item"><span class="material-icons" aria-hidden="true">visibility</span><span>Preview</span></button></li>
           <li role="none"><button type="button" role="menuitem" tabindex="-1" class="odc-menu-item"><span class="material-icons" aria-hidden="true">download</span><span>Download</span></button></li>
-          <li role="none">
-            <button type="button" role="menuitem" tabindex="-1" class="odc-menu-item" aria-disabled="true" aria-describedby="fa-off-note"><span class="material-icons" aria-hidden="true">auto_fix_high</span><span>Analyze</span></button>
-            <p class="odc-menu-note" id="fa-off-note">AI document analysis is turned off for this instance.</p>
-          </li>
           <li role="none"><button type="button" role="menuitem" tabindex="-1" class="odc-menu-item"><span class="material-icons" aria-hidden="true">fingerprint</span><span>Copy ID</span></button></li>
         </ul>
       </div>

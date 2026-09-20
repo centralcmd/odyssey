@@ -8,14 +8,11 @@ export interface MenuItem {
   onClick?: () => void;
   /** Destructive action — renders in the error color. */
   danger?: boolean;
+  /** Unavailable — the item is NOT rendered at all (no dimmed row), and any
+   *  divider or header it orphans is dropped with it. */
   disabled?: boolean;
-  /**
-   * One line saying why a `disabled` item is unavailable — rendered under the
-   * label and wired as the item's `aria-describedby`. An item with a note is
-   * marked `aria-disabled` instead of `disabled`, so it keeps its place in the
-   * roving-focus order and the reason is reachable rather than skipped.
-   * Meaning is carried as text, never by the dimmed state alone.
-   */
+  /** @deprecated Accepted for back-compat and ignored: unavailable items are
+   *  hidden rather than explained. */
   note?: string;
   /** Renders a hairline separator instead of an item. */
   divider?: boolean;

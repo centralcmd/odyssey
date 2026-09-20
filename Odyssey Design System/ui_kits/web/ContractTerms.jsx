@@ -12,8 +12,8 @@
    Three things here are contract-specific, and each is drawn, not assumed:
      • Kind eligibility — Fee and InterestRate on every ContractType;
        ExpectedReturn is refused. Handled in the dialog.
-     • Archived contracts are READ-ONLY for terms — the history stays visible,
-       every write is refused with unarchiving named as the route that works.
+     • Archiving does NOT lock terms — an archived contract still records and
+       edits them; archival hides the contract, it does not freeze it.
      • A per-contract cap (ContractMaxTermsPerContract, default 500): at the
        cap, creating is refused (422) while editing an existing row is not.
 
@@ -32,9 +32,9 @@ const CTRM_D = window.OdysseyData;
 const conTermOwner = (contract) => ({ ...contract, ownerKind: 'contract' });
 
 const ContractTermsNotice = ({ block }) => (
-  <div className={`con-trm-notice ${block.reason}`}>
-    <MIcon name={block.reason === 'archived' ? 'inventory_2' : 'production_quantity_limits'} size={18} />
-    <div style={{ flex: 1 }}>{block.text}</div>
+  <div className="odc-recordsection-notice">
+    <span className="material-icons" aria-hidden="true">production_quantity_limits</span>
+    <div className="odc-recordsection-notice-body">{block.text}</div>
   </div>
 );
 
@@ -50,13 +50,10 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
     return (
       <div className="con-section">
         <SectionDivider label="Terms" meta="0 entries" />
-        <div className="con-empty-line">
-          <MIcon name="sell" size={20} />
-          <div style={{ flex: 1 }}>
-            No terms yet — record what this agreement costs: a rent, a service fee, an interest rate. Each keeps its own dated history.
-            {block ? <div className="con-trm-inline-block">{block.text}</div> : null}
-          </div>
-        </div>
+        <EmptyLine>
+          No terms yet — record what this agreement costs: a rent, a service fee, an interest rate. Each keeps its own dated history.
+          {block ? <div className="con-trm-inline-block">{block.text}</div> : null}
+        </EmptyLine>
       </div>
     );
   }
@@ -88,27 +85,20 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
             })}
           </InfoTileGrid>
         ) : (
-          <div className="con-empty-line">
-            <MIcon name="schedule" size={20} />
-            <div style={{ flex: 1 }}>Nothing in force today — every entry on this contract is scheduled for a later date.</div>
-          </div>
+          <EmptyLine>Nothing in force today — every entry on this contract is scheduled for a later date.</EmptyLine>
         )}
       </div>
 
       <div className="con-section">
         <SectionDivider label="Term history" meta={`${terms.length} ${terms.length === 1 ? 'entry' : 'entries'}${terms.length >= limit ? ` · limit ${limit}` : ''}`} />
-        {/* An archived contract refuses PUT and DELETE as well as POST, so the
-            per-row actions go with them — the rows stay, fully readable. */}
-        <div className={block && block.reason === 'archived' ? 'con-trm-readonly' : undefined}>
-          <TermHistory
-            terms={terms}
-            currentIds={currentIds}
-            historyStyle="table"
-            account={owner}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        </div>
+        <TermHistory
+          terms={terms}
+          currentIds={currentIds}
+          historyStyle="table"
+          account={owner}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       </div>
     </React.Fragment>
   );

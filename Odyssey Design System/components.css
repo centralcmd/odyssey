@@ -214,6 +214,35 @@
 .odc-empty-desc { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 42ch; }
 .odc-empty-actions { margin-top: var(--space-2); }
 
+/* Line variant — the thin muted sentence inside a table frame or a record
+   section. No icon, no action: it states the absence and nothing else. */
+.odc-empty.line {
+  display: block; align-items: initial; text-align: left; gap: 0;
+  padding: var(--space-4);
+  font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-empty.line.center { text-align: center; }
+.odc-empty.line.pad-sm { padding: var(--space-3) var(--space-4); }
+.odc-empty.line.pad-lg { padding: var(--space-12) var(--space-6); }
+
+/* ---------- Record section (divider + notice + view) ---------- */
+.odc-recordsection { display: block; }
+/* The refused-write band: stated where the writing would happen. Warning tone
+   for a reversible state (restore the record), neutral for a cap. */
+.odc-recordsection-notice {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  margin: 0 var(--space-4) var(--space-3); padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
+  background: var(--mud-palette-background);
+  font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);
+  color: var(--mud-palette-text-secondary);
+}
+.odc-recordsection-notice .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-recordsection-notice-body { flex: 1; min-width: 0; }
+.odc-recordsection-notice.warning { border-color: oklch(0.80 0.13 85 / 0.45); background: oklch(0.80 0.13 85 / 0.08); }
+.odc-recordsection-notice.warning .material-icons { color: oklch(0.80 0.13 85); }
+
 /* ---------- Icon button (shared: modal close, table actions) ---------- */
 .odc-iconbtn {
   display: inline-flex; align-items: center; justify-content: center;

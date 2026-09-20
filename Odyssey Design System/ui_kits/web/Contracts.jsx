@@ -60,9 +60,9 @@ const ContractStatusChip = ({ status }) => {
      • `requireType` — the update is a full replacement and
        ContractFileType.Signed is the zero member, so an unsent type must be
        rejected rather than defaulted into "this is the signed agreement".
-     • `readOnly` — an archived contract refuses both writes (400), so the
-       table drops Edit and Delete rather than offering a doomed dialog; the
-       section states why in text.
+     • `readOnly` — offered for surfaces that genuinely refuse writes. Archiving
+       is NOT one of them: an archived contract stays fully writable, it is
+       simply hidden from the default list.
    `onSave` stands in for PUT …/files/{fileId} → 204, after which the real
    client re-reads GET …/files (this contract's documents alone) instead of
    refetching the whole contract. */
@@ -246,10 +246,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
             {parties.map(p => <PartyTile key={p.id} party={p} today={nowDate} onEdit={onEditParty} onDetach={detachParty} />)}
           </InfoTileGrid>
         ) : (
-          <div className="con-empty-line">
-            <MIcon name="diversity_3" size={20} />
-            <div style={{ flex: 1 }}>No parties yet — link the account or contact this contract relates to, and say what it does in the agreement.</div>
-          </div>
+          <EmptyLine>No parties yet — link the account or contact this contract relates to, and say what it does in the agreement.</EmptyLine>
         )}
       </div>
 
@@ -272,25 +269,20 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
       <div className="con-section">
         <SectionDivider label="Documents" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
         {fileRows.length === 0 ? (
-          <div className="con-empty-line"><MIcon name="folder_open" size={20} /><div style={{ flex: 1 }}>No documents yet — upload the signed agreement, an amendment, or correspondence.</div></div>
+          <EmptyLine>No documents yet — upload the signed agreement, an amendment, or correspondence.</EmptyLine>
         ) : (
           <div className="con-files con-tbl-frame">
-            <ContractFilesTable files={fileRows} onDelete={removeFile} onSave={saveFile} readOnly={!!contract.archived} />
+            <ContractFilesTable files={fileRows} onDelete={removeFile} onSave={saveFile} />
           </div>
-        )}
-        {/* An archived contract refuses every document write with a 400, so the
-            reason is stated once here rather than left to a failed dialog. */}
-        {contract.archived && fileRows.length > 0 && (
-          <div className="con-empty-line"><MIcon name="lock" size={20} /><div style={{ flex: 1 }}>This contract is archived. Restore it to edit or remove its documents.</div></div>
         )}
       </div>
 
       {/* EVENTS — what has HAPPENED to the agreement, as a log. Last, and
           deliberately so: the sections above describe what the contract IS
           (details, who is in it, what it costs, what evidences it), and this
-          one is its history. It is also the only section that stays writable
-          when the contract is archived — archival hides a contract, it does
-          not lock its history. */}
+          one is its history. Like every other section it stays writable when
+          the contract is archived — archival hides a contract, it does not
+          lock it. */}
       <ContractEvents
         contract={contract}
         events={events || []}
@@ -482,9 +474,9 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
             : c.paused ? [{ icon: 'play_circle', label: 'Resume', onClick: togglePause }] : []),
           { icon: 'group_add', label: 'New party', onClick: () => { setOpen(true); setModal('party'); } },
           // Refused writes are offered with their reason rather than hidden —
-          // the same guard the section notice and the endpoint state.
+          // the cap is the only thing that refuses one.
           termBlock
-            ? { icon: 'sell', label: 'New term', disabled: true, note: termBlock.reason === 'archived' ? 'The contract has to be restored first.' : termBlock.text }
+            ? { icon: 'sell', label: 'New term', disabled: true }
             : { icon: 'sell', label: 'New term', onClick: () => { setOpen(true); setModal('term'); } },
           { icon: 'attach_file', label: 'Upload document', onClick: () => { setOpen(true); setModal('file'); } },
           /* Creating an event lives HERE rather than in the section: it is one
@@ -839,9 +831,9 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
                 onDelete={deleteContract} />
             )}
             empty={(
-              <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>
+              <EmptyLine align="center" pad="lg">
                 No contracts match your filters.
-              </div>
+              </EmptyLine>
             )}
             trailing={(
               <AddRow title="New contract" sub="Record a type and active period, link the parties, and upload the signed documents."

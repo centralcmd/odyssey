@@ -8,12 +8,11 @@
  * Pass `items` as a flat list; mark separators with `{divider:true}`, group
  * headers with `{header:'…'}`, and destructive actions with `{danger:true}`.
  *
- * A disabled item can carry a `note` — one line saying WHY it is unavailable,
- * rendered under the label and wired as its `aria-describedby`. Such an item
- * uses `aria-disabled` rather than the `disabled` attribute, so it stays in the
- * roving-focus order: a keyboard or screen-reader user reaches the reason
- * instead of a silently skipped item.
- * Defaults to an icon-button trigger (more_vert); pass your own `trigger`
+ * A `disabled` item is NOT rendered — an action that cannot be taken is absent
+ * from the menu rather than dimmed with an explanation, and any divider or
+ * header it orphans goes with it. `note` is accepted for back-compat and
+ * ignored.
+ * * Defaults to an icon-button trigger (more_vert); pass your own `trigger`
  * element to anchor it to a Button instead.
  *
  * The popover is portaled to <body> and positioned against the trigger, so it
@@ -202,10 +201,16 @@ export function Menu({
             style={floatStyle}
             onKeyDown={onKey}
           >
-            {items.map((it, i) => {
+            {(() => {
+              const shown = (items || []).filter((it) => !it.disabled);
+              return shown.filter((it, i) => {
+                if (it.divider) return !(i === 0 || i === shown.length - 1 || shown[i - 1].divider || (shown[i + 1] && shown[i + 1].header));
+                if (it.header) return shown.slice(i + 1).some((n) => !n.divider && !n.header);
+                return true;
+              });
+            })().map((it, i) => {
               if (it.divider) return <li key={i} role="separator" className="odc-menu-divider" />;
               if (it.header) return <li key={i} role="presentation" className="odc-menu-label">{it.header}</li>;
-              const noteId = it.note ? `${menuId}-note-${i}` : undefined;
               return (
                 <li key={i} role="none">
                   <button
@@ -213,15 +218,11 @@ export function Menu({
                     role="menuitem"
                     tabIndex={-1}
                     className={`odc-menu-item${it.danger ? ' danger' : ''}`}
-                    disabled={it.disabled && !it.note}
-                    aria-disabled={it.disabled ? true : undefined}
-                    aria-describedby={noteId}
-                    onClick={(e) => (it.disabled ? e.stopPropagation() : run(it, e))}
+                    onClick={(e) => run(it, e)}
                   >
                     {it.icon ? <span className="material-icons" aria-hidden="true">{it.icon}</span> : null}
                     <span>{it.label}</span>
                   </button>
-                  {it.note ? <p className="odc-menu-note" id={noteId}>{it.note}</p> : null}
                 </li>
               );
             })}

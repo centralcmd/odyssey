@@ -387,11 +387,9 @@ const Subscriptions = () => {
                 onSave={onSave} onDelete={onDelete} />
             )}
             empty={(
-              <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>
-                {hasFilters
-                  ? <React.Fragment>No subscriptions match your filters. <button className="link-btn" onClick={clearFilters}>Clear filters</button></React.Fragment>
-                  : 'No subscriptions to show.'}
-              </div>
+              <EmptyLine align="center" pad="lg">
+                {hasFilters ? 'No subscriptions match your filters.' : 'No subscriptions to show.'}
+              </EmptyLine>
             )}
             trailing={(
               <AddRow title="New subscription" sub="Record what it is, who bills it, the price, and how often it recurs."

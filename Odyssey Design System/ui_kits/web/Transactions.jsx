@@ -57,7 +57,7 @@ const TxnDetail = ({ t, onNavigate }) => {
         <SectionDivider label="Files" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
         <div className="acct-table-frame odc-scroll">
           {files.length === 0 ? (
-            <div className="empty-line">No files attached to this transaction yet.</div>
+            <EmptyLine>No files attached to this transaction yet.</EmptyLine>
           ) : (
             <InlinePager items={files}>
               {(pageRows) => <FilesTable files={pageRows} account={acct}

@@ -29,8 +29,8 @@
      filter, the date window and the sort key are not in v1 — the endpoint
      carries them, the surface does not ask for them yet.
 
-   • AN ARCHIVED CONTRACT STAYS WRITABLE HERE (§8.6), unlike Terms, which goes
-     read-only. Archival hides a contract; it does not lock its history.
+   • AN ARCHIVED CONTRACT STAYS WRITABLE HERE (§8.6) — as it does in every
+     other section. Archival hides a contract; it does not lock it.
 
    No event affects ContractStatus (§4.2) — a Terminated event does not expire
    the contract — so nothing in this section touches the status chip.
@@ -169,13 +169,10 @@ const ContractEvents = ({ contract, events = [], view = 'rail', canUpdate = true
     return (
       <div className="con-section">
         <SectionDivider label="Events" meta="0 entries" />
-        <div className="con-empty-line">
-          <MIcon name="history" size={20} />
-          <div style={{ flex: 1 }}>
-            No events yet — record what has happened to this agreement: signed, renewed, notice given, a
-            price renegotiated, an email sent.
-          </div>
-        </div>
+        <EmptyLine>
+          No events yet — record what has happened to this agreement: signed, renewed, notice given, a
+          price renegotiated, an email sent.
+        </EmptyLine>
       </div>
     );
   }

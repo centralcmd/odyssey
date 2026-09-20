@@ -83,8 +83,8 @@
         "message": "<AccountTypeDef> group must be one of 'asset' | 'liability'."
       },
       {
-        "selector": "JSXOpeningElement[name.name='ActionMenuItem'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|label|trailingIcon|onClick|danger|divider|key|ref|className|style|children)$/]",
-        "message": "<ActionMenuItem> doesn't accept that prop. Declared props: icon, label, trailingIcon, onClick, danger, divider."
+        "selector": "JSXOpeningElement[name.name='ActionMenuItem'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|label|trailingIcon|onClick|danger|divider|disabled|note|key|ref|className|style|children)$/]",
+        "message": "<ActionMenuItem> doesn't accept that prop. Declared props: icon, label, trailingIcon, onClick, danger, divider, disabled, note."
       },
       {
         "selector": "JSXOpeningElement[name.name='AddRow'] > JSXAttribute > JSXIdentifier[name!=/^(?:title|sub|icon|onClick|className|key|ref|className|style|children)$/]",
@@ -339,8 +339,32 @@
         "message": "<Drawer> doesn't accept that prop. Declared props: brand, footer, children, ariaLabel."
       },
       {
-        "selector": "JSXOpeningElement[name.name='EmptyState'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|title|desc|action|mutedIcon|className|key|ref|className|style|children)$/]",
-        "message": "<EmptyState> doesn't accept that prop. Declared props: icon, title, desc, action, mutedIcon, className."
+        "selector": "JSXOpeningElement[name.name='EmptyLine'] > JSXAttribute > JSXIdentifier[name!=/^(?:text|children|align|pad|className|key|ref|className|style|children)$/]",
+        "message": "<EmptyLine> doesn't accept that prop. Declared props: text, children, align, pad, className."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EmptyLine'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:start|center)$/]",
+        "message": "<EmptyLine> align must be one of 'start' | 'center'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EmptyLine'] > JSXAttribute[name.name='pad'] > Literal[value!=/^(?:sm|md|lg)$/]",
+        "message": "<EmptyLine> pad must be one of 'sm' | 'md' | 'lg'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EmptyState'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|title|desc|action|mutedIcon|variant|align|pad|className|key|ref|className|style|children)$/]",
+        "message": "<EmptyState> doesn't accept that prop. Declared props: icon, title, desc, action, mutedIcon, variant, align, pad, className."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EmptyState'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:panel|line)$/]",
+        "message": "<EmptyState> variant must be one of 'panel' | 'line'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EmptyState'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:start|center)$/]",
+        "message": "<EmptyState> align must be one of 'start' | 'center'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EmptyState'] > JSXAttribute[name.name='pad'] > Literal[value!=/^(?:sm|md|lg)$/]",
+        "message": "<EmptyState> pad must be one of 'sm' | 'md' | 'lg'."
       },
       {
         "selector": "JSXOpeningElement[name.name='ErrorSummaryProblem'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|section|targetId|key|ref|className|style|children)$/]",
@@ -525,6 +549,14 @@
       {
         "selector": "JSXOpeningElement[name.name='RecordCardCount'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|value|label|key|ref|className|style|children)$/]",
         "message": "<RecordCardCount> doesn't accept that prop. Declared props: icon, value, label."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='RecordSectionNotice'] > JSXAttribute > JSXIdentifier[name!=/^(?:text|tone|icon|key|ref|className|style|children)$/]",
+        "message": "<RecordSectionNotice> doesn't accept that prop. Declared props: text, tone, icon."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='RecordSectionNotice'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:default|warning)$/]",
+        "message": "<RecordSectionNotice> tone must be one of 'default' | 'warning'."
       },
       {
         "selector": "JSXOpeningElement[name.name='RecordCellContext'] > JSXAttribute > JSXIdentifier[name!=/^(?:expanded|editing|justSaved|key|ref|className|style|children)$/]",
@@ -947,6 +979,9 @@
       "Drawer": {
         "replaces": []
       },
+      "EmptyLine": {
+        "replaces": []
+      },
       "EmptyState": {
         "replaces": []
       },
@@ -1053,6 +1088,9 @@
         "replaces": []
       },
       "RecordCardCount": {
+        "replaces": []
+      },
+      "RecordSectionNotice": {
         "replaces": []
       },
       "RecordCellContext": {

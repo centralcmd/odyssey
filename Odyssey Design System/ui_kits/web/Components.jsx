@@ -701,10 +701,37 @@ const FileUpload = DS.FileUpload;
 // card); the kit shows it as a bordered surface, so wrap it. `mutedIcon`
 // passes through.
 const EmptyState = (props) => (
-  <div className="empty-state-surface">
-    <DS.EmptyState {...props} />
-  </div>
+  props.variant === 'line'
+    ? <DS.EmptyState {...props} />
+    : <div className="empty-state-surface"><DS.EmptyState {...props} /></div>
 );
+
+// EmptyLine — the thin muted sentence for an empty table frame or section.
+// No surface: it stands in for rows, so it lives inside the frame that would
+// have held them.
+const EmptyLine = DS.EmptyLine || (({ children, text, align = 'start', pad = 'md', className = '' }) => (
+  <div className={`odc-empty line${align === 'center' ? ' center' : ''}${pad !== 'md' ? ` pad-${pad}` : ''}${className ? ' ' + className : ''}`}>{text != null ? text : children}</div>
+));
+
+// RecordSection — divider + optional refused-write notice + the section's own
+// view, with the empty line built in (`empty` + `emptyText`).
+const RecordSection = DS.RecordSection || (({ label, meta, notice, empty = false, emptyText, emptyAlign = 'start', emptyPad = 'md', children, className = '', id }) => {
+  const n = notice && (typeof notice === 'string' ? { text: notice } : notice);
+  return (
+    <section className={`odc-recordsection${className ? ' ' + className : ''}`} id={id}>
+      {label != null ? <SectionDivider label={label} meta={meta} /> : null}
+      {n ? (
+        <div className={`odc-recordsection-notice${n.tone && n.tone !== 'default' ? ' ' + n.tone : ''}`}>
+          <span className="material-icons" aria-hidden="true">{n.icon || (n.tone === 'warning' ? 'inventory_2' : 'info')}</span>
+          <div className="odc-recordsection-notice-body">{n.text}</div>
+        </div>
+      ) : null}
+      {empty
+        ? <div className={`odc-empty line${emptyAlign === 'center' ? ' center' : ''}${emptyPad !== 'md' ? ` pad-${emptyPad}` : ''}`}>{emptyText}</div>
+        : children}
+    </section>
+  );
+});
 
 // CardBody / CardHeader — now typed DS components (composition around a flush
 // Card). Prefer the bundle versions; the local copies below are kept only as a
@@ -1416,7 +1443,7 @@ const getImportLimitMb = (surface) => {
 Object.assign(window, {
   IMPORT_LIMIT_MB_DEFAULTS, getImportLimitMb,
   MIcon, Button, IconButton, Card, CardBody, CardHeader, Modal,
-  Field, SearchField, Select, AmountField, MoneyField, CurrencySelect, NoteField, NumberField, FieldShell, FormRow, DateField, DateRangePicker, Chip, Alert, SeverityIcon, Avatar, TONE_MAP, Switch, Checkbox, StatTile, EmptyState, BrandMark,
+  Field, SearchField, Select, AmountField, MoneyField, CurrencySelect, NoteField, NumberField, FieldShell, FormRow, DateField, DateRangePicker, Chip, Alert, SeverityIcon, Avatar, TONE_MAP, Switch, Checkbox, StatTile, EmptyState, EmptyLine, RecordSection, BrandMark,
   ContactTypeSelect, ContactMethodLabelSelect,
   SettingRow,
   SettingField,

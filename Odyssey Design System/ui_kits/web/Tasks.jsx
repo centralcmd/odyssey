@@ -507,9 +507,9 @@ const Tasks = ({ tweaks = {} }) => {
       ) : view === 'board' ? (
         <React.Fragment>
           {boardTasks.length === 0 && archivedTasks.length === 0 ? (
-            <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>
-              {hasFilters ? <React.Fragment>No tasks match your filters. <button className="link-btn" onClick={clearFilters}>Clear filters</button></React.Fragment> : 'No tasks to show.'}
-            </div>
+            <EmptyLine align="center" pad="lg">
+              {hasFilters ? 'No tasks match your filters.' : 'No tasks to show.'}
+            </EmptyLine>
           ) : (
             <TaskBoard tasks={boardTasks.map((t) => ({ ...t, status: T_H.taskStatus(t) }))} columns={boardColumns} onMove={onMove}
               style={{ gridTemplateColumns: `repeat(${boardColumns.length}, minmax(0, 1fr))` }}
@@ -532,9 +532,9 @@ const Tasks = ({ tweaks = {} }) => {
         </React.Fragment>
       ) : (
         listTasks.length === 0 ? (
-          <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>
-            {hasFilters ? <React.Fragment>No tasks match your filters. <button className="link-btn" onClick={clearFilters}>Clear filters</button></React.Fragment> : 'No tasks to show.'}
-          </div>
+          <EmptyLine align="center" pad="lg">
+            {hasFilters ? 'No tasks match your filters.' : 'No tasks to show.'}
+          </EmptyLine>
         ) : (
           <div className="acct-list">
             {listTasks.map((t) => (

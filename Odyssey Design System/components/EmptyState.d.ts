@@ -1,16 +1,24 @@
+import * as React from 'react';
+
 export interface EmptyStateProps {
-  /** Material Icons ligature for the centered glyph. Defaults to "inbox". */
+  /** Material icon name for the icon tile. Panel variant only. */
   icon?: string;
-  /** One sentence stating the absence. */
+  /** The sentence. In the line variant this IS the whole component. */
   title?: React.ReactNode;
-  /** Optional supporting line. */
+  /** Supporting sentence. Panel variant only (the line falls back to it if no title). */
   desc?: React.ReactNode;
-  /** A single CTA — pass a <Button>. */
+  /** A single CTA — pass a <Button>. Panel variant only. */
   action?: React.ReactNode;
-  /** Dim the icon tile — for a "no results match your search" state. */
+  /** Dim the icon tile — for "no match" rather than "nothing yet". Panel only. */
   mutedIcon?: boolean;
+  /** `panel` = centered icon/title/desc/action. `line` = thin muted sentence. */
+  variant?: 'panel' | 'line';
+  /** Line variant: text alignment. Centre it when the line replaces a whole list. */
+  align?: 'start' | 'center';
+  /** Line variant: vertical breathing room. `lg` for a whole-list empty. */
+  pad?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-/** Centered empty-state surface (icon · title · description · one action). */
+/** The "nothing here yet" content — a centered panel, or a thin inline line. */
 export declare function EmptyState(props: EmptyStateProps): JSX.Element;

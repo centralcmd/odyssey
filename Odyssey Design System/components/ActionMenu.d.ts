@@ -15,6 +15,13 @@ export interface ActionMenuItem {
   danger?: boolean;
   /** Render a divider rule instead of an action. */
   divider?: boolean;
+  /** Unavailable — the item is NOT rendered at all, and a divider it orphans
+   *  is dropped with it. An action a record cannot take is absent from its
+   *  menu rather than dimmed with an explanation. */
+  disabled?: boolean;
+  /** @deprecated Accepted for back-compat and ignored: unavailable items are
+   *  hidden rather than explained. */
+  note?: string;
 }
 
 export interface ActionMenuProps {

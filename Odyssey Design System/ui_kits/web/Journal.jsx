@@ -645,11 +645,9 @@ const Journal = ({ tweaks = {}, onNavigate }) => {
               <JournalListItem row={e} onSave={onSave} onDelete={onDelete} onExport={exportEntry} />
             )}
             empty={(
-              <div className="empty-line" style={{ textAlign: 'center', padding: 48 }}>
-                {hasFilters
-                  ? <React.Fragment>No entries match your filters. <button className="link-btn" onClick={clearFilters}>Clear filters</button></React.Fragment>
-                  : 'No entries to show.'}
-              </div>
+              <EmptyLine align="center" pad="lg">
+                {hasFilters ? 'No entries match your filters.' : 'No entries to show.'}
+              </EmptyLine>
             )}
             trailing={(
               <AddRow title="New entry" sub="Title, content, an entry date, and any photos, files, tags, or contacts."
