@@ -286,7 +286,8 @@
                                                 Archived="@(c.Archived is not null)"
                                                 OnEditParty="@(p => EditParty(c.ContractId, p))"
                                                 OnAnnounce="@(m => Announce(m))"
-                                                OnChanged="@(() => ReloadContract(c.ContractId))" />
+                                                OnChanged="@(() => ReloadContract(c.ContractId))"
+                                                OnFilesRefreshed="@(files => ApplyContractFiles(c.ContractId, files))" />
                         }
                     </Sections>
                 </OdsRecordCard>

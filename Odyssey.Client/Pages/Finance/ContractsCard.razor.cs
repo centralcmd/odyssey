@@ -442,6 +442,19 @@ public partial class ContractsCard
         StateHasChanged();
     }
 
+    /// <summary>
+    /// Patches one contract's documents in place after a document METADATA edit (issue #146). Such an
+    /// edit creates and removes no row, so the list row's file count and every summary figure are
+    /// unchanged — pulling the contract, the list and the summary back down for it would be three
+    /// requests to observe a one-row change the list endpoint already returned.
+    /// </summary>
+    private void ApplyContractFiles(Guid id, List<ExistingContractFile> files)
+    {
+        if (_details.TryGetValue(id, out var contract))
+            contract.Files = files;
+        StateHasChanged();
+    }
+
     private async Task ReloadContract(Guid id)
     {
         var contract = await Contracts.GetAsync(id);
@@ -991,12 +1004,25 @@ public partial class ContractsCard
 
         if (_canUploadFiles)
         {
-            items.Add(new OdsMenuItem
-            {
-                Icon = "upload_file",
-                Label = "Upload document",
-                OnClick = EventCallback.Factory.Create(this, () => AttachDocument(c.ContractId)),
-            });
+            // Gated like New party and New term, and for the same reason: ContractService.AttachFile
+            // refuses an archived contract with a 400, so an ungated item lets a user fill out the
+            // whole upload dialog and receive a per-file failure toast on submit. Disabled with its
+            // reason rather than hidden, which keeps the item focusable so the explanation is
+            // reachable (WCAG 2.1.1). Detach is NOT gated — see ContractFilesTable.
+            items.Add(archived
+                ? new OdsMenuItem
+                {
+                    Icon = "upload_file",
+                    Label = "Upload document",
+                    Disabled = true,
+                    Description = "Restore the contract to attach documents.",
+                }
+                : new OdsMenuItem
+                {
+                    Icon = "upload_file",
+                    Label = "Upload document",
+                    OnClick = EventCallback.Factory.Create(this, () => AttachDocument(c.ContractId)),
+                });
         }
 
         items.Add(new OdsMenuItem

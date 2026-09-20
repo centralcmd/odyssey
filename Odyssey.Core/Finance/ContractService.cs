@@ -1006,8 +1006,13 @@ public class ContractService
 
     // ── Files ────────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Attaches an already-uploaded file to the contract, recording the optional validity metadata
+    /// the request carries (issue #146). Takes the whole request rather than loose parameters so a
+    /// later field addition does not grow the parameter list again.
+    /// </summary>
     public async Task<ExistingContractFile?> AttachFile(
-        Guid contractId, Guid fileMetadataId, string userId, DtoContractFileType fileType, CancellationToken cancellationToken = default)
+        Guid contractId, AttachContractFileRequest request, string userId, CancellationToken cancellationToken = default)
     {
         var contract = await context.Contracts.FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken);
         if (contract is null)
@@ -1021,12 +1026,16 @@ public class ContractService
                 $"Contract {contractId} is archived; unarchive it before attaching files.");
         }
 
+        var (validFrom, validTo, issuedAt) = DocumentValidity.Normalize(
+            request.ValidFrom, request.ValidTo, request.IssuedAt);
+        await EnsureIssuerExists(request.IssuedBy, cancellationToken);
+
         var duplicate = await context.ContractFiles
-            .AnyAsync(f => f.ContractId == contractId && f.FileMetadataId == fileMetadataId, cancellationToken);
+            .AnyAsync(f => f.ContractId == contractId && f.FileMetadataId == request.FileMetadataId, cancellationToken);
         if (duplicate)
         {
             throw new DomainConflictException(
-                $"File {fileMetadataId} is already attached to contract {contractId}.");
+                $"File {request.FileMetadataId} is already attached to contract {contractId}.");
         }
 
         var caps = await systemSettingsLookup.GetRequestCapsAsync(cancellationToken);
@@ -1040,10 +1049,14 @@ public class ContractService
         var link = new ContractFile
         {
             ContractId = contractId,
-            FileMetadataId = fileMetadataId,
-            FileType = fileType.Adapt<ContextContractFileType>(),
+            FileMetadataId = request.FileMetadataId,
+            FileType = request.FileType.Adapt<ContextContractFileType>(),
             AttachedByUserId = userId,
             AttachedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
+            ValidFrom = validFrom,
+            ValidTo = validTo,
+            IssuedAt = issuedAt,
+            IssuedBy = request.IssuedBy,
         };
 
         context.ContractFiles.Add(link);
@@ -1053,6 +1066,96 @@ public class ContractService
             .Include(f => f.FileMetadata)
             .FirstAsync(f => f.ContractFileId == link.ContractFileId);
         return ToFileDto(loaded);
+    }
+
+    /// <summary>
+    /// Replaces an attached document's type and validity metadata (issue #146 §5.2). The link is
+    /// addressed by <c>(ContractId, FileMetadataId)</c> — the unique index, and the same pair the
+    /// download and detach routes use — so no link-row id is exposed. Returns <c>false</c> when that
+    /// file is not attached to that contract, which the controller turns into a <c>404</c>.
+    /// </summary>
+    /// <remarks>
+    /// The per-contract file cap is deliberately <b>not</b> evaluated: this creates no row, so a
+    /// contract already at its cap can still have a document's dates corrected.
+    /// </remarks>
+    public async Task<bool> UpdateFile(
+        Guid contractId, Guid fileMetadataId, UpdateContractFileRequest request, CancellationToken cancellationToken = default)
+    {
+        var contract = await context.Contracts.FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken);
+        if (contract is null)
+        {
+            throw new DomainNotFoundException($"Contract ID {contractId} not found.");
+        }
+
+        if (contract.Archived is not null)
+        {
+            throw new DomainValidationException(
+                $"Contract {contractId} is archived; unarchive it before editing its documents.");
+        }
+
+        var link = await context.ContractFiles
+            .FirstOrDefaultAsync(f => f.ContractId == contractId && f.FileMetadataId == fileMetadataId, cancellationToken);
+        if (link is null)
+        {
+            return false;
+        }
+
+        var (validFrom, validTo, issuedAt) = DocumentValidity.Normalize(
+            request.ValidFrom, request.ValidTo, request.IssuedAt);
+        await EnsureIssuerExists(request.IssuedBy, cancellationToken);
+
+        link.FileType = request.FileType.Adapt<ContextContractFileType>();
+        link.ValidFrom = validFrom;
+        link.ValidTo = validTo;
+        link.IssuedAt = issuedAt;
+        link.IssuedBy = request.IssuedBy;
+
+        await context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// The documents attached to one contract (issue #146 §5.3), or <c>null</c> when the contract does
+    /// not exist — an empty list is the correct answer for a contract with no documents, so the two
+    /// cases stay distinguishable. Unpaged and bounded by <c>MaxFilesPerContract</c>, mirroring
+    /// <c>GET /api/accounts/{accountId}/files</c>.
+    /// </summary>
+    public async Task<List<ExistingContractFile>?> GetFiles(Guid contractId, CancellationToken cancellationToken = default)
+    {
+        if (!await context.Contracts.AnyAsync(c => c.ContractId == contractId, cancellationToken))
+        {
+            return null;
+        }
+
+        var files = await context.ContractFiles
+            .AsNoTracking()
+            .Include(f => f.FileMetadata)
+            .Where(f => f.ContractId == contractId && f.FileMetadata != null)
+            .OrderBy(f => f.AttachedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        return [.. files.Select(ToFileDto)];
+    }
+
+    /// <summary>
+    /// Asserts the issuing contact exists. The only thing either contract-document write path does
+    /// with the id: no request DTO accepts a nested contact object, so no write path here can create,
+    /// rename or otherwise mutate a <c>Contact</c> (issue #146 §4.3).
+    /// </summary>
+    private async Task EnsureIssuerExists(Guid? issuedBy, CancellationToken cancellationToken)
+    {
+        if (issuedBy is not { } id)
+        {
+            return;
+        }
+
+        if (!(await contactLookup.ExistingIdsAsync([id], cancellationToken)).Contains(id))
+        {
+            throw new DomainValidationException(
+                $"Contact with ID {id} was not found.",
+                code: null,
+                field: nameof(UpdateContractFileRequest.IssuedBy));
+        }
     }
 
     public async Task<bool> IsFileAttachedToContract(Guid contractId, Guid fileMetadataId, CancellationToken cancellationToken = default) =>
@@ -1577,5 +1680,9 @@ public class ContractService
         FileType = file.FileType.Adapt<DtoContractFileType>(),
         AttachedByUserId = file.AttachedByUserId,
         AttachedAtUtc = file.AttachedAtUtc,
+        ValidFrom = file.ValidFrom,
+        ValidTo = file.ValidTo,
+        IssuedAt = file.IssuedAt,
+        IssuedBy = file.IssuedBy,
     };
 }

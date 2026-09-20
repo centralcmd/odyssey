@@ -179,6 +179,36 @@ public class AuthorizationPolicyTests
             + "before granting them apart. Roles that do: " + string.Join(", ", gaps));
     }
 
+    /// <summary>
+    /// AC 21. Pins the premise issue #146 §7.3 rests on: a contract document's <c>issuedBy</c> is
+    /// returned as a bare <c>Contact</c> id under <c>contracts.read</c>, with no name beside it and no
+    /// server-side resolution — deliberately, since resolving it would move a contact attribute across
+    /// the <c>contacts.read</c> boundary.
+    ///
+    /// <para>
+    /// The residual is that a caller holding <c>contracts.read</c> but not <c>contacts.read</c> would
+    /// learn some contact exists and was involved. That was accepted because no shipped role is in
+    /// that position — the <c>contracts.read</c> holders are Admin, Owner and User, and all three also
+    /// hold <c>contacts.read</c>; Guest holds neither <c>Contracts*</c> claim. An observation is not
+    /// an invariant, so this makes it one: a future role split that reopens the exposure fails the
+    /// build instead of regressing silently.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void No_role_holds_ContractsRead_without_ContactsRead()
+    {
+        var gaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.ContractsRead, StringComparer.Ordinal))
+            .Where(role => !role.Claims.Contains(PermissionClaims.ContactsRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .ToList();
+
+        Assert.True(gaps.Count == 0,
+            "Issue #146 §7.3 accepts returning a contract document's issuedBy as a bare contact id "
+            + "because no shipped role reaches contracts.read without contacts.read. Re-make that "
+            + "argument before granting them apart. Roles that do: " + string.Join(", ", gaps));
+    }
+
     [Fact]
     public void PermissionClaimsConfigurePolicies()
     {

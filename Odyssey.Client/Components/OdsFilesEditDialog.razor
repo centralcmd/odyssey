@@ -8,6 +8,18 @@
     grows the document-validity fields — a Valid from / Valid to period, the
     issue date, and the issuing contact.
 
+    Renameable=false drops the File-name field on surfaces whose update verb does
+    not accept one — a contract document's name belongs to the FileMetadata the
+    link references, and PUT /api/contracts/{id}/files/{fileId} carries the
+    document type and the four validity fields only. The dialog then reads
+    "Edit document" and the patch carries the name back unchanged.
+
+    RequireType marks the type picker with the obligation * and refuses an empty
+    submit — for a full-replacement update whose enum has no "leave unchanged"
+    value and whose zero member is meaningful (ContractFileType.Signed), so an
+    unsent type can never be defaulted into a claim that a document is the signed
+    copy.
+
     "Issued by" is the canonical OdsContactSelect like every other contact field,
     so it searches, shows each candidate's type glyph, and — with OnCreateContact
     (gated on contacts.create) — adds a missing issuer inline rather than sending
@@ -21,21 +33,31 @@
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged"
-               Icon="edit" Title="Edit file" Subtitle="@File.Name"
+               Icon="edit" Title="@(Renameable ? "Edit file" : "Edit document")" Subtitle="@File.Name"
                SubmitLabel="Save changes" SubmitIcon="check"
                OnSubmit="SubmitAsync">
-    <OdsField Label="File name" @bind-Value="_name" Required="true" AutoFocus="true"
-              Error="@(_touched && !_valid ? "A file needs a name." : null)" />
-    <OdsSelect Label="Document type" @bind-Value="_kind" Options="Kinds" Placeholder="Select type…" />
+    @if (Renameable)
+    {
+        <OdsField Label="File name" @bind-Value="_name" Required="true" AutoFocus="true"
+                  Error="@(_touched && !_valid ? "A file needs a name." : null)" />
+    }
+    <OdsSelect Label="Document type" @bind-Value="_kind" Options="Kinds" Placeholder="Select type…"
+               Required="RequireType"
+               Error="@(_touched && _typeMissing ? "Pick the document type." : null)" />
     @if (ShowValidity)
     {
-        <OdsDatePicker Label="Valid from" @bind-Value="_validFrom" Max="_validTo" />
-        <OdsDatePicker Label="Valid to" @bind-Value="_validTo" Min="_validFrom" />
+        @* Error/ErrorText splat straight onto MudDatePicker, the same shape every other dated
+           dialog in the client uses. *@
+        <OdsDatePicker Label="Valid from" @bind-Value="_validFrom" Max="_validTo"
+                       Error="@(YearError(_validFrom) is not null)" ErrorText="@YearError(_validFrom)" />
+        <OdsDatePicker Label="Valid to" @bind-Value="_validTo" Min="_validFrom"
+                       Error="@(YearError(_validTo) is not null)" ErrorText="@YearError(_validTo)" />
         @if (_rangeBad)
         {
             <div class="odc-rec-edit-err">“Valid to” can’t be before “Valid from”.</div>
         }
-        <OdsDatePicker Label="Issued" @bind-Value="_issuedAt" />
+        <OdsDatePicker Label="Issued" @bind-Value="_issuedAt"
+                       Error="@(YearError(_issuedAt) is not null)" ErrorText="@YearError(_issuedAt)" />
         <OdsContactSelect Label="Issued by" @bind-Value="_issuedBy"
                           Options="_issuerOptions"
                           AllowCreate="@(OnCreateContact is not null)" OnCreate="CreateContactOption" />
@@ -52,6 +74,19 @@
 
     /// <summary>Document-type options for the picker.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<OdsOption> Kinds { get; set; } = [];
+
+    /// <summary>
+    /// Whether the dialog offers the File-name field. Default <see langword="true"/>. Set false on a
+    /// surface whose update verb takes no name; the patch then carries <see cref="OdsFilesRow.Name"/>
+    /// back unchanged, so a host comparing it sees no rename.
+    /// </summary>
+    [Parameter] public bool Renameable { get; set; } = true;
+
+    /// <summary>
+    /// Mark the document-type picker with the obligation <c>*</c> and refuse an empty submit.
+    /// Default <see langword="false"/>.
+    /// </summary>
+    [Parameter] public bool RequireType { get; set; }
 
     /// <summary>Issuing-contact options. When non-null the document-validity fields are shown.</summary>
     [Parameter] public IReadOnlyList<OdsOption>? Issuers { get; set; }
@@ -92,9 +127,29 @@
         return option;
     }
 
-    private bool _valid => !string.IsNullOrWhiteSpace(_name);
+    private bool _valid => !Renameable || !string.IsNullOrWhiteSpace(_name);
+
+    private bool _typeMissing => RequireType && string.IsNullOrWhiteSpace(_kind);
 
     private bool _rangeBad => _validFrom is not null && _validTo is not null && _validTo < _validFrom;
+
+    /// <summary>
+    /// The storable range of the <c>datetime</c> column each date lands in. A year outside it is
+    /// refused here as the service refuses it — by the column's limit, not by any judgement about
+    /// plausible document dates — so a fat-fingered year is caught on the field rather than being a
+    /// round trip for a per-field 400.
+    /// </summary>
+    private const int MinStorableYear = 1000;
+
+    private const int MaxStorableYear = 9999;
+
+    private static string? YearError(DateTime? value) =>
+        value is { } date && (date.Year < MinStorableYear || date.Year > MaxStorableYear)
+            ? $"Enter a year between {MinStorableYear} and {MaxStorableYear}."
+            : null;
+
+    private bool _anyYearBad =>
+        YearError(_validFrom) is not null || YearError(_validTo) is not null || YearError(_issuedAt) is not null;
 
     protected override void OnInitialized()
     {
@@ -111,10 +166,10 @@
     private async Task<bool> SubmitAsync()
     {
         _touched = true;
-        if (!_valid || _rangeBad)
+        if (!_valid || _typeMissing || _rangeBad || _anyYearBad)
             return false;
 
-        var patch = new OdsFileEdit(_name.Trim(), _kind)
+        var patch = new OdsFileEdit(Renameable ? _name.Trim() : File.Name, _kind)
         {
             ValidFrom = _validFrom,
             ValidTo = _validTo,

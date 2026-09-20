@@ -2515,6 +2515,12 @@ tr:focus-within > .odc-rowactions.reveal,
   background: var(--mud-palette-background);
 }
 .con-empty-line .material-icons { font-size: 20px; opacity: 0.7; flex: none; }
+/* Documents section wrapper (OdsFilesTable lives inside). NO overflow-x here: with the four
+   validity columns the table is wider than a narrow record body, but OdsFilesTable already wraps
+   itself in .odc-ft-scroll, which owns that overflow AND is focusable so the off-screen cells are
+   reachable by keyboard (WCAG 2.2 SC 2.1.1). A second scroll container around it would nest two
+   scrollbars and leave the outer one unreachable. The design system's contracts.css puts the rule
+   here because its React FilesTable has no inner region; the Blazor one does. */
 .con-files { padding: 4px 4px 8px; }
 
 /* ---- Terms sections (contract price history, issue #135) ----

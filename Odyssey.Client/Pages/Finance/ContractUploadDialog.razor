@@ -1,18 +1,27 @@
 @using System.Net.Http.Json
 @using Microsoft.AspNetCore.Components.Forms
+@using Odyssey.Client.Authorization
 @using Odyssey.Client.Components
+@using Odyssey.Dtos.Authorization
 @using Odyssey.Dtos.Finance
 @inject Odyssey.ApiClient.Resources.IFilesApiClient FilesApi
 @inject HttpClient Http
 @inject ISnackbar Snackbar
 @inject IContractsApiClient Contracts
 @inject IUploadLimitsCache UploadLimits
+@inject IReferenceDataCache ReferenceData
+@inject IContactQuickCreate ContactCreator
+@inject AuthenticationStateProvider AuthenticationState
 
 @*
     ContractUploadDialog — upload documents and attach them to a contract (issue #174 §3 step 4,
     §7 POST …/files). Uses the shared OdsFileUpload dropzone (the same control the design's
     AddContractFileModal renders): drag-or-browse, with a per-file name + ContractFileType picker, so
-    each document can be tagged Signed / Amendment / Correspondence / Other individually. Each file is
+    each document can be tagged Signed / Amendment / Correspondence / Other individually, plus an
+    optional per-file validity editor (Valid from/to · Issued · Issued by) rendered beneath each row
+    via OdsFileUpload's RenderFileExtra slot — the same control AddFileDialog uses for account
+    uploads, so the two upload surfaces read identically (issue #146). All four fields are optional
+    and travel in the attach body; an omitted one is stored null. Each file is
     uploaded via the files API first, then attached by id with its chosen type. The attach is gated
     server-side by contracts.update + files.read; the §4 allow-list (PDF / PNG / JPEG / WebP) is
     enforced both here and on the server.
@@ -26,7 +35,8 @@
                            Accept=".pdf,.jpg,.jpeg,.png,.webp"
                            Kinds="_kinds" DefaultKind="@nameof(ContractFileType.Signed)"
                            Error="@_error"
-                           Hint="@($"PDF, JPG, PNG · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")" />
+                           Hint="@($"PDF, JPG, PNG · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")"
+                           RenderFileExtra="ValidityEditor" />
 
             @if (_existing.Count > 0)
             {
@@ -56,120 +66,45 @@
 </OdsModal>
 
 @code {
-    /// <summary>
-    /// This surface's own, tighter product limit. A named constant rather than a bare literal, and
-    /// deliberately kept: it is a product decision for this surface, not drift to be flattened. The
-    /// effective cap is the smaller of it and the instance-wide cap — a surface may tighten, never
-    /// loosen, or an administrator lowering the global cap would not reach this dialog.
-    /// </summary>
-    private const int SurfaceMaxMegabytes = 25;
 
-    // Admin-editable instance cap (issue #421 Wave 4), narrowed to this surface. Seeded with the
-    // shipped fallback so a render that beats the fetch still validates against a sane number.
-    private UploadLimitsDto _uploadLimits = UploadLimitsCache.Fallback.TightenTo(SurfaceMaxMegabytes);
-
-    protected override async Task OnInitializedAsync()
-    {
-        _uploadLimits = (await UploadLimits.GetAsync()).TightenTo(SurfaceMaxMegabytes);
-    }
-
-    [Parameter, EditorRequired] public ExistingContract Contract { get; set; } = default!;
-
-    [Parameter] public bool Open { get; set; }
-    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
-
-    /// <summary>Raised after a successful attach so the host re-fetches the contract.</summary>
-    [Parameter] public EventCallback OnSaved { get; set; }
-
-    private static readonly string[] AllowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
-
-    // The ContractFileType vocabulary, projected to the OdsFileUpload kind shape (per-file picker).
-    private static readonly IReadOnlyList<OdsFileKind> _kinds =
-        [.. OdsTypeRegistries.ContractFileTypes.Select(t => new OdsFileKind
-        {
-            Key = t.Key, Label = t.Label, Icon = t.Icon, Color = t.Color, Soft = t.Soft,
-        })];
-
-    private List<OdsUploadFile> _files = [];
-    private string? _error;
-    private bool _isUploading;
-
-    private List<ExistingContractFile> _existing => [.. Contract.Files];
-
+    // Razor syntax (@<text>), so these inline render fragments cannot live in the code-behind.
     private RenderFragment TitleFragment => @<text>Upload documents</text>;
     private RenderFragment SubtitleFragment => @<text>Upload the signed agreement, an amendment, or correspondence and attach it to this contract.</text>;
 
-    // Controlled list — filter out anything outside the allow-list before it lands in the picker.
-    private void OnFilesChanged(IReadOnlyList<OdsUploadFile> files)
-    {
-        var kept = new List<OdsUploadFile>();
-        foreach (var f in files)
+    // Per-file validity editor rendered beneath each row via OdsFileUpload.RenderFileExtra — the
+    // contract twin of AddFileDialog's, with the same controls in the same order.
+    private RenderFragment<OdsUploadFileExtraContext> ValidityEditor => ctx =>
+    @<div>
+        @* aria-expanded, not the changing label alone: the label conveys the state visually, but a
+           disclosure control's state has to be programmatically determinable too (WCAG 2.2 SC 4.1.2).
+           Same shape as OdsCollapsible's own toggle. *@
+        <button type="button" class="afm-meta-toggle @(_metaOpen.Contains(ctx.File.Uid) ? "on" : "")"
+                aria-expanded="@(_metaOpen.Contains(ctx.File.Uid) ? "true" : "false")"
+                @onclick="@(() => ToggleMeta(ctx.File))">
+            <OdsMIcon Name="event" Size="14" />
+            @(_metaOpen.Contains(ctx.File.Uid) ? "Hide validity" : "Add validity")
+        </button>
+        @if (_metaOpen.Contains(ctx.File.Uid))
         {
-            var ext = Path.GetExtension(f.Name).ToLowerInvariant();
-            if (f.Source is not null && !AllowedExtensions.Contains(ext))
-            {
-                Snackbar.Add($"{f.Name}: unsupported type. Allowed: .pdf, .jpg, .jpeg, .png, .webp", Severity.Warning);
-                continue;
-            }
-            if (f.SizeBytes > _uploadLimits.MaxUploadBytes)
-            {
-                Snackbar.Add($"{f.Name}: exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.", Severity.Warning);
-                continue;
-            }
-            kept.Add(f);
-        }
-        _files = kept;
-        if (_error is not null && _files.Count > 0) _error = null;
-    }
-
-    private static ContractFileType TypeOf(OdsUploadFile f) =>
-        Enum.TryParse<ContractFileType>(f.Kind, out var t) ? t : ContractFileType.Other;
-
-    private async Task SubmitAsync()
-    {
-        if (_isUploading) return;
-        if (_files.Count == 0) { _error = "Add at least one document to upload."; return; }
-        if (_files.Any(f => string.IsNullOrWhiteSpace(f.Name))) { _error = "Every document needs a name."; return; }
-
-        _isUploading = true;
-        var attached = 0;
-        try
-        {
-            foreach (var file in _files)
-            {
-                if (file.Source is null) continue;
-                try
+            <div class="afm-meta">
+                <div class="afm-meta-grid">
+                    <OdsDateField Label="Valid from" Value="ctx.File.ValidFrom" Max="ctx.File.ValidTo"
+                                  ValueChanged="@(v => Patch(ctx, f => f.ValidFrom = v))" />
+                    <OdsDateField Label="Valid to" Value="ctx.File.ValidTo" Min="ctx.File.ValidFrom"
+                                  Placeholder="No end date" Help="Leave blank if the document has no expiry."
+                                  ValueChanged="@(v => Patch(ctx, f => f.ValidTo = v))" />
+                    <OdsDateField Label="Issued" Value="ctx.File.IssuedAt"
+                                  ValueChanged="@(v => Patch(ctx, f => f.IssuedAt = v))" />
+                    <OdsContactSelect Label="Issued by" Value="@ctx.File.IssuedBy"
+                                      Options="_issuerOptions"
+                                      AllowCreate="@_canCreateContact" OnCreate="CreateContactOption"
+                                      ValueChanged="@(v => Patch(ctx, f => f.IssuedBy = v))" />
+                </div>
+                @if (RangeBad(ctx.File))
                 {
-                    var uploaded = await FilesApi.UploadAsync(file.Source.ToApiUpload(_uploadLimits.MaxUploadBytes));
-                    // Honour an in-dropzone rename (the picker lets the user edit the display name).
-                    var finalName = file.Name.Trim();
-                    if (!string.IsNullOrEmpty(finalName) && finalName != file.Source.Name)
-                        await FilesApi.UpdateMetadataAsync(uploaded.Id, null, finalName);
-
-                    var request = new AttachContractFileRequest { FileMetadataId = uploaded.Id, FileType = TypeOf(file) };
-                    var attach = await Contracts.AttachFileAsync(Contract.ContractId, request);
-                    if (!attach.IsSuccess)
-                        throw new InvalidOperationException(attach.Error);
-                    attached++;
+                    <div class="afm-meta-err">“Valid to” can’t be before “Valid from”.</div>
                 }
-                catch (Exception)
-                {
-                    Snackbar.Add($"Couldn't attach \"{file.Name}\".", Severity.Error);
-                }
-            }
-
-            if (attached > 0)
-            {
-                Snackbar.Add($"{attached} document(s) attached.", Severity.Success);
-                await OnSaved.InvokeAsync();
-                await OpenChanged.InvokeAsync(false);
-            }
+            </div>
         }
-        finally
-        {
-            _isUploading = false;
-        }
-    }
-
-    private async Task CloseAsync() => await OpenChanged.InvokeAsync(false);
+    </div>;
 }

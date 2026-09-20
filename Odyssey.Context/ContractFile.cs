@@ -12,6 +12,7 @@ namespace Odyssey.Context;
 /// </summary>
 [Index(nameof(FileMetadataId))]
 [Index(nameof(AttachedAtUtc))]
+[Index(nameof(IssuedBy))]
 [Index(nameof(ContractId), nameof(FileMetadataId), IsUnique = true)]
 public class ContractFile
 {
@@ -40,4 +41,18 @@ public class ContractFile
 
     [Required]
     public required DateTime AttachedAtUtc { get; set; } = DateTime.UtcNow;
+
+    /// <summary>When the document takes effect (e.g. agreement start date). Optional.</summary>
+    public DateTime? ValidFrom { get; set; }
+
+    /// <summary>When the document expires (e.g. agreement end, warranty expiry). Optional.</summary>
+    public DateTime? ValidTo { get; set; }
+
+    /// <summary>Date the document was issued/signed. Optional.</summary>
+    public DateTime? IssuedAt { get; set; }
+
+    /// <summary>Issuing institution — a Contact (e.g. bank, insurer). Optional. A real FK with
+    /// <c>ON DELETE SET NULL</c>, declared in <see cref="OdysseyContext"/>; resolved for display via
+    /// <c>IContactLookup</c>.</summary>
+    public Guid? IssuedBy { get; set; }
 }
