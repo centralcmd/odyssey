@@ -5,6 +5,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.1](https://github.com/centralcmd/odyssey/compare/v0.32.0...v0.32.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **client:** drop the table chrome from the empty contract documents section ([#150](https://github.com/centralcmd/odyssey/issues/150)) ([51c284b](https://github.com/centralcmd/odyssey/commit/51c284b223827829b47df9c6b462f225fbb41546))
+
 ## [0.32.0](https://github.com/centralcmd/odyssey/compare/v0.31.0...v0.32.0) (2026-09-20)
 
 
