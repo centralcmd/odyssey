@@ -54,7 +54,14 @@ public class ContractPartyTileTests
             ContractId = ContractId,
             Kind = ContractPartyKind.Account,
             Account = resolved
-                ? new ContractAccountReference { AccountId = AccountId, Name = "Everyday Checking" }
+                ? new ContractAccountReference
+                {
+                    AccountId = AccountId,
+                    Name = "Everyday Checking",
+                    // A real type, so the caption assertion has something to read: the tile states the
+                    // ACCOUNT's own type, and the enum's zero member would state nothing.
+                    Type = AccountType.CheckingAccount,
+                }
                 : null,
             Role = role,
             FromDate = from,
@@ -82,15 +89,35 @@ public class ContractPartyTileTests
             .Add(h => h.Archived, archived));
     }
 
-    /// <summary>AC 1 — a stated role is the overline; the kind and the record's type are the caption.</summary>
+    /// <summary>AC 1 — a stated role is the overline; the record's own TYPE is the caption.</summary>
+    /// <remarks>
+    /// The caption states the type alone. The party KIND is already carried by the tile's icon and by
+    /// the record it names, so a <c>"Account · Checking"</c> caption spends its one line restating the
+    /// glyph — the design system's <c>PartyTile</c> reads <c>typeLabel || kindLabel</c>, and the policy
+    /// party tiles already pass the bare type label. The negative half is the assertion that matters:
+    /// the separator is what a reintroduced prefix would bring back.
+    /// </remarks>
     [Fact]
-    public void A_stated_role_leads_the_tile_and_the_kind_drops_to_the_caption()
+    public void A_stated_role_leads_the_tile_and_the_record_type_is_the_caption()
     {
         var cut = Render(Party());
 
         Assert.Equal("Employer", cut.Find(".con-role").TextContent.Trim());
         Assert.DoesNotContain("unset", cut.Find(".con-role").ClassName, StringComparison.Ordinal);
-        Assert.Contains("Account ·", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("Checking", cut.Find(".con-party-tile .odc-infotile-foot").TextContent.Trim());
+        Assert.DoesNotContain("Account ·", cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The kind is the caption's FALLBACK, not its prefix: a party whose target did not resolve has no
+    /// type to state, and an empty caption would leave the tile saying nothing about what it links.
+    /// </summary>
+    [Fact]
+    public void An_unresolved_target_falls_back_to_the_kind_for_its_caption()
+    {
+        var cut = Render(Party(resolved: false));
+
+        Assert.Equal("Party", cut.Find(".con-party-tile .odc-infotile-foot").TextContent.Trim());
     }
 
     /// <summary>

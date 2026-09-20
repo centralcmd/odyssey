@@ -102,11 +102,18 @@ public partial class ContractDetailView : IAsyncDisposable
     private sealed record PartyVisual(string KindLabel, string Name, string? TypeLabel, string Icon, string? Color, string? Soft)
     {
         /// <summary>
-        /// The caption: the party KIND and the record's own type, in that order. Both dropped out of
-        /// the overline when the role took it, and both are still stated — meaning never rides on the
-        /// glyph alone.
+        /// The caption: the record's own TYPE and nothing else — "Property", "Person",
+        /// "Organization". The KIND is already said by the tile's icon and by the record the tile
+        /// names, so prefixing it ("Account · Property") spends the caption restating the glyph and
+        /// buries the one word the reader came for. It stays as the FALLBACK, for a party whose
+        /// target did not resolve and which therefore has no type to state.
         /// </summary>
-        public string Caption => TypeLabel is null ? KindLabel : $"{KindLabel} · {TypeLabel}";
+        /// <remarks>
+        /// This is the same caption a policy party carries (<see cref="InsurancePolicyLinkTiles"/>
+        /// passes the bare type label), which is what the design system's <c>PartyTile</c> means by
+        /// <c>typeLabel || kindLabel</c>.
+        /// </remarks>
+        public string Caption => string.IsNullOrWhiteSpace(TypeLabel) ? KindLabel : TypeLabel;
     }
 
     private static PartyVisual Resolve(ExistingContractParty party)
@@ -115,7 +122,11 @@ public partial class ContractDetailView : IAsyncDisposable
         {
             case ContractPartyKind.Account when party.Account is { } a:
             {
-                return new PartyVisual("Account", a.Name, AccountTypeVisuals.Label(a.Type),
+                // An account whose type did not resolve has no type to STATE, so the caption falls
+                // back to the kind: "Account" carries more than the bare word "Unknown", which names
+                // nothing a reader can act on.
+                var typeLabel = a.Type is AccountType.Unknown ? null : AccountTypeVisuals.Label(a.Type);
+                return new PartyVisual("Account", a.Name, typeLabel,
                     AccountTypeVisuals.MaterialIcon(a.Type), AccountTypeVisuals.FgColor(a.Type), AccountTypeVisuals.BgColor(a.Type));
             }
             // The DTO member is still named Institution — it is a serialized enum value, so renaming it
