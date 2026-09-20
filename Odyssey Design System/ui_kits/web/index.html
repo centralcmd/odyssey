@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Contracts, where every party carries a ROLE (Employee, Employer, Buyer, Seller, Service provider, Other — and Unspecified, drawn as an absence rather than a category) and an optional TERM in that role, with both dates empty meaning the contract’s own extent. Party tiles lead with the role, show a non-default term under it, and their ⋯ menu opens the new edit-in-place dialog (role, record and both dates are replaced as one). Plus the contact import/export family across the productivity surfaces, Tasks, Budgets, the Calendar module, the User Profile, Subscriptions, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
+<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Contracts, where the party role vocabulary is domain-specific and fixed per contract type by one shared matrix — Landlord/Tenant on a lease, Insurer/Policyholder/Insured/Beneficiary on insurance, Lender/Borrower on the new Loan type — with Unspecified and Service provider retired, a role required on every write, and a type change refused while it would orphan an existing party. Party tiles lead with the role, show a non-default term under it, and their ⋯ menu opens the edit-in-place dialog (role, record and both dates are replaced as one). Plus the contact import/export family across the productivity surfaces, Tasks, Budgets, the Calendar module, the User Profile, Subscriptions, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -307,11 +307,15 @@
                           onChange={(v) => setTweak('cpAvatarOutcome', v)} />
               <TweakToggle label="Stored image 404s (falls back to the glyph)" value={tweaks.cpAvatarBroken}
                            onChange={(v) => setTweak('cpAvatarBroken', v)} />
-              <TweakSection label="Blocked delete (insurance links)" />
+              <TweakSection label="Blocked delete (insurance + contract links)" />
               <TweakToggle label="Holds insurance.read (names blocking policies)" value={tweaks.cpCanReadInsurance}
                            onChange={(v) => setTweak('cpCanReadInsurance', v)} />
-              <TweakToggle label="Holds insurance.update (can detach)" value={tweaks.cpCanUpdateInsurance}
+              <TweakToggle label="Holds insurance.update (can detach policies)" value={tweaks.cpCanUpdateInsurance}
                            onChange={(v) => setTweak('cpCanUpdateInsurance', v)} />
+              <TweakToggle label="Holds contracts.read (names blocking contracts)" value={tweaks.cpCanReadContracts}
+                           onChange={(v) => setTweak('cpCanReadContracts', v)} />
+              <TweakToggle label="Holds contracts.update (can detach contracts)" value={tweaks.cpCanUpdateContracts}
+                           onChange={(v) => setTweak('cpCanUpdateContracts', v)} />
             </React.Fragment>
           )}
           {view === 'tasks' && (

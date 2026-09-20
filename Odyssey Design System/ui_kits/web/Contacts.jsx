@@ -1083,13 +1083,24 @@ const Contacts = ({ tweaks = {} }) => {
   };
   const onSave = (id, patch) => setRows(prev => prev.map(c => c.id === id ? touch({ ...c, ...patch }) : c));
   // A contact named as an insurer, an insured contact or a beneficiary on any
-  // policy cannot be deleted by the ordinary route — the delete is refused and
-  // the dialog carries the supported detach path (see ContactLinksBlockedModal).
+  // policy — or as a BENEFICIARY on any contract — cannot be deleted by the
+  // ordinary route: the delete is refused and the dialog carries the supported
+  // detach path (see ContactLinksBlockedModal).
   const [blocked, setBlocked] = useState(null);
   const removeRow = (id) => setRows(prev => prev.filter(c => c.id !== id));
   const onDelete = (id) => {
     const linking = (window.OdysseyHelpers.insPoliciesLinkingContact || (() => []))(id);
-    if (linking.length) { setBlocked({ contact: rows.find(c => c.id === id) || { id, name: 'This contact' }, blocking: linking }); return; }
+    const conBen = (window.OdysseyHelpers.conContractsWithBeneficiary || (() => []))(id);
+    if (linking.length || conBen.length) {
+      setBlocked({
+        contact: rows.find(c => c.id === id) || { id, name: 'This contact' },
+        blocking: linking,
+        // The payload's shape, not the UI's: a count that is always sent, and
+        // names the controller only includes for a `contracts.read` holder.
+        contractBeneficiaries: { count: conBen.length, contracts: conBen },
+      });
+      return;
+    }
     removeRow(id);
   };
   // Any child (address/email/phone) mutation bumps the parent UpdatedAt (§9).
@@ -1268,6 +1279,13 @@ const Contacts = ({ tweaks = {} }) => {
           blocking={blocked.blocking}
           canReadInsurance={tweaks.cpCanReadInsurance !== false}
           canUpdateInsurance={tweaks.cpCanUpdateInsurance !== false}
+          contractBeneficiaries={blocked.contractBeneficiaries && {
+            count: blocked.contractBeneficiaries.count,
+            // Names ride on contracts.read; the count never does.
+            contracts: tweaks.cpCanReadContracts === false ? [] : blocked.contractBeneficiaries.contracts,
+          }}
+          canReadContracts={tweaks.cpCanReadContracts !== false}
+          canUpdateContracts={tweaks.cpCanUpdateContracts !== false}
           onClose={() => setBlocked(null)}
           onDetachAndDelete={(id) => removeRow(id)} />
       )}

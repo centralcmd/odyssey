@@ -125,16 +125,18 @@ const PartyTile = ({ party, today, onEdit, onDetach }) => {
   const term = CON_H.conPartyTermText(party);
   // A closed term in the past: still a party of record, drawn quieter.
   const past = CON_H.conPartyPast(party, today);
-  // Unspecified is "nobody has said", not a category — so it is drawn as an
-  // absence (muted, no colour), and never as the deliberate "Other".
-  const plain = role.key === 'Unspecified' || role.unknown;
+  // A role is required on every write now, so an unset role means one thing:
+  // a row written before the matrix. It is drawn as an absence (muted, no
+  // colour), and never as the deliberate "Other". Same for a member this
+  // client is too old to name.
+  const plain = !!role.unset || !!role.unknown;
   return (
     <div className="con-party-tile">
       <InfoTile icon={r.icon} iconColor={r.color} iconSoft={r.soft}
         label={(
           <React.Fragment>
             <span className={`con-role${plain ? ' unset' : ''}`}>
-              <span>{role.key === 'Unspecified' ? 'No role set' : role.label}</span>
+              <span>{role.label}</span>
             </span>
             {term ? <span className={`con-term${past ? ' past' : ''}`}>{term}</span> : null}
             <span className="con-tile-menu">

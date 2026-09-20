@@ -503,12 +503,21 @@ const ContractTypeSelect = ({ helper, types, ...props }) => {
   return <DS.Select help={helper} options={types ? optsFrom(types) : contractTypeOpts()} {...props} />;
 };
 // ContractPartyRoleSelect — what a linked record DOES in a contract
-// (ContractPartyRole). Registry-backed like the type pickers; the value is the
-// role key, and `Unspecified` is a real, selectable member, not a placeholder.
-const contractPartyRoleOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.contractPartyRoles);
-const ContractPartyRoleSelect = ({ helper, roles, ...props }) => {
-  if (DS.ContractPartyRoleSelect) return <DS.ContractPartyRoleSelect help={helper} roles={roles} {...props} />;
-  return <DS.Select help={helper} options={roles ? optsFrom(roles) : contractPartyRoleOpts()} {...props} />;
+// (ContractPartyRole). Registry-backed like the type pickers, but MATRIX-aware:
+// given the contract's type it offers only the roles that type accepts,
+// suggested ones first under their own heading. There is no default member —
+// a role is required on every party write.
+const contractPartyRoleOpts = (contractType) => {
+  const H = window.OdysseyHelpers;
+  const rows = contractType && H && H.conRolesForType
+    ? H.conRolesForType(contractType)
+    : (window.OdysseyData && window.OdysseyData.contractPartyRoles);
+  return optsFrom(rows);
+};
+const ContractPartyRoleSelect = ({ helper, roles, contractType, ...props }) => {
+  if (DS.ContractPartyRoleSelect) return <DS.ContractPartyRoleSelect help={helper} roles={roles} contractType={contractType} {...props} />;
+  const rows = roles || (contractType && window.OdysseyHelpers.conRolesForType(contractType));
+  return <DS.Select help={helper} options={rows ? optsFrom(rows) : contractPartyRoleOpts()} {...props} />;
 };
 
 // BudgetCategoryTypeSelect — Expense / Income, each with its category glyph + color.

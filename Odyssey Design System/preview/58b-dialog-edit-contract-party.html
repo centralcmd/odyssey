@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Dialogs" name="Edit contract party" subtitle="AddContractPartyModal in EDIT mode — the new PUT …/parties/{partyId}: choose a kind (Account / Contact), the ROLE the record plays in the agreement (Unspecified is a real member, not a placeholder), then the record itself. The save is a FULL REPLACEMENT of the link — role, record and both dates — written in place, so the party keeps its id; the dialog says so where the decision is made. The party being edited is excluded from its own duplicate check, so a date-only edit is never a self-conflict. Live." viewport="760x760" -->
+<!-- @dsCard group="Dialogs" name="Edit contract party" subtitle="AddContractPartyModal in EDIT mode — the new PUT …/parties/{partyId}: choose a kind (Account / Contact), the ROLE the record plays in the agreement (only the roles this contract’s type accepts), then the record itself. A party still holding a role the matrix now rejects says so and cannot be saved until it is re-roled. The save is a FULL REPLACEMENT of the link — role, record and both dates — written in place, so the party keeps its id; the dialog says so where the decision is made. The party being edited is excluded from its own duplicate check, so a date-only edit is never a self-conflict. Live." viewport="760x760" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />

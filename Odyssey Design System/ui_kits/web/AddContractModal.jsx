@@ -18,16 +18,23 @@
    signing after cover has begun is ordinary, and signing before it starts is
    the normal case.
    A new contract starts with no parties and no documents — both are added from
-   the contract's detail, by scalar id only (the §6/§10 mass-assignment rule). */
+   the contract's detail, by scalar id only (the §7.6 mass-assignment rule).
 
-const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
+   On EDIT the type is the one field that can be refused by something other
+   than itself: changing it to a type the existing parties' roles are illegal
+   on is a 422 (TypeChangeOrphansParties), and the server writes nothing. The
+   dialog computes the same thing from the shared matrix, names each offending
+   party, and states the two routes that work — re-role them, or detach them —
+   rather than letting the user save into a refusal. */
+
+const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialType = null }) => {
   const { useState } = React;
   const H = window.OdysseyHelpers;
   const editing = !!contract;
 
   const [mode, setMode] = useState(contract && contract.completionDate ? 'oneoff' : 'term'); // 'term' | 'oneoff'
   const [draft, setDraft] = useState({
-    name: contract?.name || '', type: contract?.type || '', description: contract?.description || '',
+    name: contract?.name || '', type: initialType || contract?.type || '', description: contract?.description || '',
     startDate: contract ? (H.conDateOnly(contract.startDate) || '') : H.conToday(),
     endDate: contract ? (H.conDateOnly(contract.endDate) || '') : '',
     completionDate: contract ? (H.conDateOnly(contract.completionDate) || '') : '',
@@ -37,10 +44,17 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
   const [errors, setErrors] = useState({});
   const set = (k) => (v) => { setDraft(d => ({ ...d, [k]: v })); if (errors[k]) setErrors(e => ({ ...e, [k]: undefined })); };
 
+  /* The parties the INCOMING type would orphan — the client half of the 422.
+     Only meaningful on edit, and only once the type actually differs. */
+  const typeChanged = editing && draft.type && draft.type !== contract.type;
+  const orphans = typeChanged ? H.conPartiesRejectedByType(contract.parties, draft.type) : [];
+  const blockedByParties = orphans.length > 0;
+
   const submit = () => {
     const next = {};
     if (!draft.name.trim()) next.name = 'Give the contract a name.';
     if (!draft.type) next.type = 'Pick a contract type.';
+    if (blockedByParties) next.type = `This type rejects ${orphans.length} existing part${orphans.length === 1 ? 'y' : 'ies'}.`;
     if (mode === 'oneoff') {
       if (!draft.completionDate) next.completionDate = 'Set a completion date.';
     } else if (draft.endDate && draft.startDate && draft.endDate < draft.startDate) {
@@ -83,7 +97,7 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
       footer={
         <React.Fragment>
           <Button variant="text" onClick={onClose}>Cancel</Button>
-          <Button variant="filled" color="primary" icon={editing ? 'check' : 'add'} onClick={submit}>
+          <Button variant="filled" color="primary" icon={editing ? 'check' : 'add'} onClick={submit} disabled={blockedByParties}>
             {editing ? 'Save changes' : 'Create contract'}
           </Button>
         </React.Fragment>
@@ -97,6 +111,27 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
             options={[{ value: 'term', label: 'Term' }, { value: 'oneoff', label: 'One-off' }]} />
         </FieldShell>
       </FormRow>
+
+      {blockedByParties ? (
+        <Alert severity="warning">
+          <div><strong>A {H.contractTypeInfo(draft.type).label.toLowerCase()} contract can’t hold {orphans.length === 1 ? 'this party' : 'these parties'}.</strong></div>
+          <div>
+            {orphans.length === 1 ? 'One party holds' : `${orphans.length} parties hold`} a role that a{' '}
+            {H.contractTypeInfo(draft.type).label.toLowerCase()} contract does not accept. Re-role{' '}
+            {orphans.length === 1 ? 'it' : 'them'} to {H.conRoleListText(draft.type)}, or detach{' '}
+            {orphans.length === 1 ? 'it' : 'them'} — then change the type. Nothing is saved until then.
+          </div>
+          <div className="con-orphans">
+            {orphans.map(o => (
+              <div className="con-orphan" key={o.partyId}>
+                <span className="con-orphan-role">{o.roleLabel}</span>
+                <span className="con-orphan-name">{o.displayName}</span>
+                <span className="con-orphan-id">{o.partyId}</span>
+              </div>
+            ))}
+          </div>
+        </Alert>
+      ) : null}
 
       {mode === 'term' ? (
         <FormRow>

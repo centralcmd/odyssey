@@ -9,8 +9,9 @@
      • ContractParty  { id, accountId? | contactId?, role, fromDate?, toDate? }
                         — exactly one target (the XOR invariant, §6). The party
                         kind label for a contact target is "Contact".
-                        `role` is a ContractPartyRole key ('Unspecified' is the
-                        default and the backfill value); `fromDate`/`toDate` are
+                        `role` is a ContractPartyRole key (REQUIRED — legal
+                        values depend on the contract's type, see the matrix);
+                        `fromDate`/`toDate` are
                         the party's TERM IN THE ROLE — both null is the DEFAULT
                         term (the contract's own extent), not an unset value,
                         exactly as an insurance party's term reads.
@@ -56,6 +57,11 @@
     { key: 'Insurance',  label: 'Insurance',  enumValue: 4, icon: 'shield',              color: 'oklch(0.75 0.14 290)', soft: 'oklch(0.75 0.14 290 / 0.16)', desc: 'A policy held as an agreement — the contract of insurance itself.' },
     { key: 'Subscription', label: 'Subscription', enumValue: 5, icon: 'autorenew',       color: 'oklch(0.76 0.14 320)', soft: 'oklch(0.76 0.14 320 / 0.16)', desc: 'A recurring supply agreement — software, media, delivery.' },
     { key: 'Purchase',   label: 'Purchase',   enumValue: 6, icon: 'shopping_bag',        color: 'oklch(0.78 0.14 140)', soft: 'oklch(0.78 0.14 140 / 0.16)', desc: 'A one-off acquisition recorded by its completion date.' },
+    /* Loan (8) is APPENDED in ordinal and placed here in READING order, after
+       Purchase — a mortgage was filed as a Purchase before this member existed.
+       The hue is the one wide gap left on the wheel between Rental (60) and
+       Purchase (140); it clears both by 40° at the same L/C as its neighbours. */
+    { key: 'Loan',       label: 'Loan',       enumValue: 8, icon: 'account_balance',     color: 'oklch(0.77 0.13 100)', soft: 'oklch(0.77 0.13 100 / 0.16)', desc: 'A loan or mortgage — money advanced under an agreement to repay.' },
     { key: 'Membership', label: 'Membership', enumValue: 7, icon: 'card_membership',     color: 'oklch(0.77 0.13 20)',  soft: 'oklch(0.77 0.13 20 / 0.16)',  desc: 'A club, gym, union, or association membership.' },
     { key: 'Other',      label: 'Other',      enumValue: 3, icon: 'description',         color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The entity default — anything outside the categories above.' },
   ];
@@ -69,24 +75,55 @@
     { key: 'Other',          label: 'Other',          enumValue: 3, icon: 'insert_drive_file', color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The enum default — anything outside the categories above.' },
   ];
 
-  /* ---- Canonical ContractPartyRole registry (Draft v4 §4) — what a linked
-     record DOES in the agreement, orthogonal to its kind (an account party may
-     carry any role; no role–type matrix in v1). ORDINALS ARE A WIRE AND
-     PERSISTENCE CONTRACT: later members append, none is renumbered.
-     `Unspecified` (0) and `Other` (6) are deliberately distinct — "nobody has
-     said" versus "somebody looked and none of these fit" — and this kit never
-     conflates them. Colours sit in the same categorical band as the other
-     registries; `Unspecified` stays neutral so an unstated role never reads as
-     a category. */
+  /* ---- Canonical ContractPartyRole registry — what a linked record DOES in
+     the agreement, orthogonal to its kind. FIFTEEN live members; `Unspecified`
+     (0) and `ServiceProvider` (5) are RETIRED and their ordinals are permanent
+     holes that must never be reused — reusing one would make an unmigrated row
+     mean something new rather than nothing. ORDINALS ARE A WIRE AND PERSISTENCE
+     CONTRACT: later members append, none is renumbered.
+
+     With `Unspecified` gone a role is REQUIRED on every party write, so this
+     kit has no "no role stated" member and no default selection anywhere; the
+     only remaining unset role is a legacy row, drawn as an absence.
+     Colours sit in the same categorical band as the other registries; `Broker`
+     is deliberately low-chroma because it is legal on every type and should not
+     read as a category of its own. */
   D.contractPartyRoles = [
-    { key: 'Unspecified',     label: 'Unspecified',      enumValue: 0, icon: 'help_outline',         color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.14)', desc: 'No role stated — the default, and what every pre-existing party reads as.' },
-    { key: 'Employee',        label: 'Employee',         enumValue: 1, icon: 'badge',                color: 'oklch(0.76 0.13 265)', soft: 'oklch(0.76 0.13 265 / 0.16)', desc: 'The person employed under this agreement.' },
-    { key: 'Employer',        label: 'Employer',         enumValue: 2, icon: 'corporate_fare',       color: 'oklch(0.75 0.14 300)', soft: 'oklch(0.75 0.14 300 / 0.16)', desc: 'The party that employs.' },
-    { key: 'Buyer',           label: 'Buyer',            enumValue: 3, icon: 'shopping_bag',         color: 'oklch(0.79 0.14 145)', soft: 'oklch(0.79 0.14 145 / 0.16)', desc: 'The party acquiring under this agreement.' },
-    { key: 'Seller',          label: 'Seller',           enumValue: 4, icon: 'sell',                 color: 'oklch(0.80 0.13 90)',  soft: 'oklch(0.80 0.13 90 / 0.16)',  desc: 'The party disposing under this agreement.' },
-    { key: 'ServiceProvider', label: 'Service provider', enumValue: 5, icon: 'home_repair_service',  color: 'oklch(0.78 0.14 195)', soft: 'oklch(0.78 0.14 195 / 0.16)', desc: 'The party delivering the service.' },
-    { key: 'Other',           label: 'Other',            enumValue: 6, icon: 'more_horiz',           color: 'oklch(0.77 0.10 25)',  soft: 'oklch(0.77 0.10 25 / 0.16)',  desc: 'A deliberate role that is none of the above — not the same as Unspecified.' },
+    { key: 'Employee',     label: 'Employee',     enumValue: 1,  icon: 'badge',              color: 'oklch(0.76 0.13 265)', soft: 'oklch(0.76 0.13 265 / 0.16)', desc: 'The person employed under this agreement.' },
+    { key: 'Employer',     label: 'Employer',     enumValue: 2,  icon: 'corporate_fare',     color: 'oklch(0.75 0.14 300)', soft: 'oklch(0.75 0.14 300 / 0.16)', desc: 'The party that employs.' },
+    { key: 'Buyer',        label: 'Buyer',        enumValue: 3,  icon: 'shopping_bag',       color: 'oklch(0.79 0.14 145)', soft: 'oklch(0.79 0.14 145 / 0.16)', desc: 'The party acquiring under this agreement.' },
+    { key: 'Seller',       label: 'Seller',       enumValue: 4,  icon: 'sell',               color: 'oklch(0.80 0.13 90)',  soft: 'oklch(0.80 0.13 90 / 0.16)',  desc: 'The party disposing under this agreement — including supplying a service.' },
+    { key: 'Other',        label: 'Other',        enumValue: 6,  icon: 'more_horiz',         color: 'oklch(0.77 0.10 25)',  soft: 'oklch(0.77 0.10 25 / 0.16)',  desc: 'A deliberate role that is none of the others.' },
+    { key: 'Landlord',     label: 'Landlord',     enumValue: 7,  icon: 'vpn_key',            color: 'oklch(0.79 0.13 55)',  soft: 'oklch(0.79 0.13 55 / 0.16)',  desc: 'The party letting the property under this tenancy.' },
+    { key: 'Tenant',       label: 'Tenant',       enumValue: 8,  icon: 'home',               color: 'oklch(0.78 0.13 35)',  soft: 'oklch(0.78 0.13 35 / 0.16)',  desc: 'The party occupying under this tenancy.' },
+    { key: 'Insurer',      label: 'Insurer',      enumValue: 9,  icon: 'shield',             color: 'oklch(0.75 0.14 285)', soft: 'oklch(0.75 0.14 285 / 0.16)', desc: 'The party carrying the risk.' },
+    { key: 'Policyholder', label: 'Policyholder', enumValue: 10, icon: 'assignment_ind',     color: 'oklch(0.76 0.13 255)', soft: 'oklch(0.76 0.13 255 / 0.16)', desc: 'The party that holds the policy and owes the premium.' },
+    { key: 'Insured',      label: 'Insured',      enumValue: 11, icon: 'health_and_safety',  color: 'oklch(0.77 0.13 215)', soft: 'oklch(0.77 0.13 215 / 0.16)', desc: 'The person, account or thing covered — one member for both party kinds.' },
+    { key: 'Beneficiary',  label: 'Beneficiary',  enumValue: 12, icon: 'volunteer_activism', color: 'oklch(0.78 0.13 185)', soft: 'oklch(0.78 0.13 185 / 0.16)', desc: 'The party that receives on the policy. Blocks deletion of the linked contact.' },
+    { key: 'Lender',       label: 'Lender',       enumValue: 13, icon: 'savings',            color: 'oklch(0.78 0.13 120)', soft: 'oklch(0.78 0.13 120 / 0.16)', desc: 'The party advancing the money.' },
+    { key: 'Borrower',     label: 'Borrower',     enumValue: 14, icon: 'request_quote',      color: 'oklch(0.78 0.13 165)', soft: 'oklch(0.78 0.13 165 / 0.16)', desc: 'The party that owes the money back.' },
+    { key: 'Guarantor',    label: 'Guarantor',    enumValue: 15, icon: 'verified_user',      color: 'oklch(0.76 0.13 330)', soft: 'oklch(0.76 0.13 330 / 0.16)', desc: 'A party standing behind another’s obligation.' },
+    { key: 'Broker',       label: 'Broker',       enumValue: 16, icon: 'handshake',          color: 'oklch(0.76 0.07 245)', soft: 'oklch(0.76 0.07 245 / 0.16)', desc: 'An intermediary that arranged the agreement. Legal on every type.' },
   ];
+
+  /* ---- The contract type × party role MATRIX — the client half of the shared
+     server declaration, not a copy of a rule the client invented. Per type:
+     `suggested` (legal, offered first) and `allowed` (legal, offered after);
+     anything in neither is rejected server-side with a 422. 52 of the 135 cells
+     are legal. Every type carries at least one suggested role, so the picker's
+     first group is never empty — `Other`-the-type suggests `Other`-the-role,
+     which is the only honest suggestion for "none of the above". */
+  D.contractPartyRoleMatrix = {
+    Employment:   { suggested: ['Employee', 'Employer'], allowed: ['Broker', 'Other'] },
+    Service:      { suggested: ['Buyer', 'Seller'],      allowed: ['Broker', 'Other'] },
+    Rental:       { suggested: ['Landlord', 'Tenant'],   allowed: ['Guarantor', 'Broker', 'Other'] },
+    Insurance:    { suggested: ['Insurer', 'Policyholder', 'Insured', 'Beneficiary'], allowed: ['Broker', 'Other'] },
+    Subscription: { suggested: ['Buyer', 'Seller'],      allowed: ['Broker', 'Other'] },
+    Purchase:     { suggested: ['Buyer', 'Seller'],      allowed: ['Guarantor', 'Broker', 'Other'] },
+    Loan:         { suggested: ['Lender', 'Borrower'],   allowed: ['Guarantor', 'Broker', 'Other'] },
+    Membership:   { suggested: ['Buyer', 'Seller'],      allowed: ['Broker', 'Other'] },
+    Other:        { suggested: ['Other'], allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Guarantor', 'Broker'] },
+  };
 
   /* ---- The file library (the user's files.read-visible FileMetadata records).
      The attach picker (§3/B2) is fed these as PRE-LOADED Combobox options; a
@@ -120,9 +157,10 @@
       startDate: '2024-03-01', endDate: null, ready: '2024-02-20T09:00:00Z', signed: '2024-02-24T09:00:00Z', paused: null, archived: null, createdAtUtc: '2024-02-20T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-emp-1', contactId: 'c2', role: 'Employer', fromDate: null, toDate: null },
-        // The salary account is a party to the agreement with no role in the
-        // v1 vocabulary — Unspecified, not Other: nobody has stated one.
-        { id: 'cp-emp-2', accountId: '1', role: 'Unspecified', fromDate: null, toDate: null },
+        // The salary account is a party to the agreement but plays neither
+        // side of it — a deliberate `Other`, which is where the migration
+        // moved every old `Unspecified` row and where this one belongs.
+        { id: 'cp-emp-2', accountId: '1', role: 'Other', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-emp-1', fileMetadataId: 'fm-emp-offer', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2024-02-20T09:05:00Z', validFrom: '2024-03-01', validTo: null, issuedAt: '2024-02-18', issuedBy: 'c3' },
@@ -134,11 +172,11 @@
       description: 'Twelve-month assured shorthold tenancy on the Maple St residence. Rent due on the 1st. Pets permitted by amendment.',
       startDate: '2025-09-01', endDate: '2026-08-31', ready: '2025-08-14T09:00:00Z', signed: '2025-08-20T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-08-14T10:00:00Z', createdByUserId: 'u-jane',
       parties: [
-        { id: 'cp-lease-1', accountId: '7', role: 'Unspecified', fromDate: null, toDate: null },
+        { id: 'cp-lease-1', accountId: '7', role: 'Other', fromDate: null, toDate: null },
         // A party that joined partway through the term — the case the term
-        // exists for. Landlord/tenant are not in the v1 vocabulary, so this is
-        // a deliberate Other, not an unstated role.
-        { id: 'cp-lease-2', contactId: 'c9', role: 'Other', fromDate: '2026-02-01', toDate: null },
+        // exists for. Rental now has its own vocabulary, so this is a Landlord
+        // rather than the `Other` the pre-matrix seeder had to settle for.
+        { id: 'cp-lease-2', contactId: 'c9', role: 'Landlord', fromDate: '2026-02-01', toDate: null },
       ],
       files: [
         { id: 'cf-lease-1', fileMetadataId: 'fm-lease-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-08-14T10:02:00Z', validFrom: '2025-09-01', validTo: '2026-08-31', issuedAt: '2025-08-12', issuedBy: 'c9' },
@@ -158,12 +196,44 @@
         { id: 'cf-house-1', fileMetadataId: 'fm-house-deed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2021-04-15T12:00:00Z', validFrom: '2021-04-09', validTo: null, issuedAt: '2021-04-09', issuedBy: 'c9' },
       ],
     },
+    /* LOAN — the new contract type, and the reason it exists: before it, this
+       was filed as a Purchase with a Buyer and a Seller. All three of its
+       parties come from the Loan column of the matrix. */
+    {
+      id: 'ct-auto-loan', name: 'Citi Auto Loan — 60 Month', type: 'Loan',
+      description: 'Fixed-rate 60-month auto loan against the vehicle. Monthly repayment by direct debit; early settlement permitted without penalty after month 12.',
+      startDate: '2023-06-01', endDate: '2028-05-31', ready: '2023-05-20T09:00:00Z', signed: '2023-05-26T09:00:00Z', paused: null, archived: null, createdAtUtc: '2023-05-20T09:00:00Z', createdByUserId: 'u-jane',
+      parties: [
+        { id: 'cp-loan-1', contactId: 'c13', role: 'Lender', fromDate: null, toDate: null },
+        { id: 'cp-loan-2', accountId: '5', role: 'Borrower', fromDate: null, toDate: null },
+        // Guarantor is `allowed` on Loan, not suggested — a real party, but
+        // not one of the two the agreement is between.
+        { id: 'cp-loan-3', contactId: 'c9', role: 'Guarantor', fromDate: null, toDate: null },
+      ],
+      files: [],
+    },
+    /* INSURANCE — the only type with four suggested roles, mirroring the four
+       link collections on an insurance policy. The Beneficiary here is the
+       party whose contact can no longer be deleted silently. */
+    {
+      id: 'ct-home-cover', name: 'Pacific Home Insurance — Buildings & Contents', type: 'Insurance',
+      description: 'Buildings and contents cover on the Maple St residence. Annual premium, paid in one instalment on renewal.',
+      startDate: '2026-04-01', endDate: '2027-03-31', ready: '2026-03-10T09:00:00Z', signed: '2026-03-18T09:00:00Z', paused: null, archived: null, createdAtUtc: '2026-03-10T09:00:00Z', createdByUserId: 'u-jane',
+      parties: [
+        { id: 'cp-cover-1', contactId: 'c12', role: 'Insurer', fromDate: null, toDate: null },
+        // One `Insured` member serves both party kinds — the kind discriminator
+        // already says whether the covered thing is an account or a contact.
+        { id: 'cp-cover-2', accountId: '7', role: 'Insured', fromDate: null, toDate: null },
+        { id: 'cp-cover-3', contactId: 'c9', role: 'Beneficiary', fromDate: null, toDate: null },
+      ],
+      files: [],
+    },
     {
       id: 'ct-fiber', name: 'Fiber Internet — 24 Month', type: 'Service',
       description: 'Symmetric 1 Gbps fiber. 24-month term, early-termination fee applies. Auto-renews monthly at term end.',
       startDate: '2025-02-01', endDate: '2027-01-31', ready: '2025-01-22T09:00:00Z', signed: '2025-01-24T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-01-22T09:00:00Z', createdByUserId: 'u-sam',
       parties: [
-        { id: 'cp-fiber-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
+        { id: 'cp-fiber-1', contactId: 'c3', role: 'Seller', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-fiber-1', fileMetadataId: 'fm-fiber-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-01-22T09:03:00Z', validFrom: '2025-02-01', validTo: '2027-01-31', issuedAt: '2025-01-20', issuedBy: 'c3' },
@@ -175,7 +245,7 @@
       description: 'Annual gym membership. Direct debit, monthly. Frozen over the winter — resuming in the spring.',
       startDate: '2026-09-01', endDate: '2027-08-31', ready: '2026-06-10T09:00:00Z', signed: '2026-06-12T09:00:00Z', paused: '2026-09-14T10:30:00Z', archived: null, createdAtUtc: '2026-06-10T09:00:00Z', createdByUserId: 'u-mira',
       parties: [
-        { id: 'cp-gym-1', contactId: 'c11', role: 'ServiceProvider', fromDate: null, toDate: null },
+        { id: 'cp-gym-1', contactId: 'c11', role: 'Seller', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-gym-1', fileMetadataId: 'fm-gym-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2026-06-10T09:02:00Z' },
@@ -188,7 +258,7 @@
       description: 'Twelve-month parking licence on space 14. Renews only by a fresh agreement — give notice 30 days before the end date.',
       startDate: '2025-11-01', endDate: '2026-10-31', ready: '2025-10-20T09:00:00Z', signed: '2025-10-22T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-10-20T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
-        { id: 'cp-parking-1', contactId: 'c8', role: 'ServiceProvider', fromDate: null, toDate: null },
+        { id: 'cp-parking-1', contactId: 'c8', role: 'Landlord', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-parking-1', fileMetadataId: 'fm-parking-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-10-20T09:02:00Z' },
@@ -201,7 +271,7 @@
       description: 'Twelve-month fixed electricity tariff. Switch completes on the start date; the standing charge and unit rate are fixed for the term.',
       startDate: '2026-10-15', endDate: '2027-10-14', ready: '2026-09-02T09:00:00Z', signed: '2026-09-04T09:00:00Z', paused: null, archived: null, createdAtUtc: '2026-09-02T09:00:00Z', createdByUserId: 'u-sam',
       parties: [
-        { id: 'cp-energy-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
+        { id: 'cp-energy-1', contactId: 'c3', role: 'Seller', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-energy-1', fileMetadataId: 'fm-energy-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2026-09-02T09:04:00Z' },
@@ -214,7 +284,7 @@
       parties: [
         // Left the role when the unit was handed back, while the contract row
         // stays on record — a closed term, rendered as a past party.
-        { id: 'cp-storage-1', contactId: 'c8', role: 'ServiceProvider', fromDate: null, toDate: '2025-12-31' },
+        { id: 'cp-storage-1', contactId: 'c8', role: 'Landlord', fromDate: null, toDate: '2025-12-31' },
       ],
       files: [
         { id: 'cf-storage-1', fileMetadataId: 'fm-storage-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2024-01-03T09:01:00Z' },
@@ -241,7 +311,7 @@
       description: 'Fortnightly whole-house clean. Quote received; terms still under discussion — nothing has been marked ready for signature yet.',
       startDate: '2026-11-01', endDate: '2027-10-31', ready: null, signed: null, paused: null, archived: null, createdAtUtc: '2026-09-12T11:00:00Z', createdByUserId: 'u-jane',
       parties: [
-        { id: 'cp-cleaning-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
+        { id: 'cp-cleaning-1', contactId: 'c3', role: 'Seller', fromDate: null, toDate: null },
       ],
       files: [],
     },
@@ -254,7 +324,7 @@
       description: 'Weekly maths tuition over the school year. Sent for signature in August 2025 and never returned — the term it describes has since run out.',
       startDate: '2025-09-01', endDate: '2026-06-30', ready: '2025-08-20T15:30:00Z', signed: null, paused: null, archived: null, createdAtUtc: '2025-08-18T09:00:00Z', createdByUserId: 'u-mira',
       parties: [
-        { id: 'cp-tutoring-1', contactId: 'c8', role: 'ServiceProvider', fromDate: null, toDate: null },
+        { id: 'cp-tutoring-1', contactId: 'c8', role: 'Seller', fromDate: null, toDate: null },
       ],
       files: [],
     },
@@ -265,7 +335,6 @@
   D.contractFileTypeByKey = Object.fromEntries(D.contractFileTypes.map(t => [t.key, t]));
   D.contractFileById = Object.fromEntries(D.contractFileLibrary.map(f => [f.id, f]));
   D.contractPartyRoleByKey = Object.fromEntries(D.contractPartyRoles.map(r => [r.key, r]));
-
   Object.assign(H, {
     contractTypeInfo(key) {
       return D.contractTypeByKey[key]
@@ -405,19 +474,73 @@
     // Resolve a party row to the minimal display projection (spec §10 #2) —
     // id + display name + type only, never the fuller cross-claim DTO. Returns
     // { kind, kindLabel, name, typeLabel, icon, color, soft, target }.
-    /* A ContractPartyRole key → its registry row. An UNKNOWN key is a real
-       runtime state, not a bug: ordinals append server-side, so a client older
-       than the deployment can be handed a member it has never heard of. It is
-       rendered honestly (neutral, named as unrecognised) rather than silently
-       collapsed into Unspecified, which would read as "no role stated". */
+    /* A ContractPartyRole key → its registry row. Two honest non-members:
+       an EMPTY key is a legacy row written before a role was required (drawn
+       as an absence, never as the deliberate `Other`), and an UNKNOWN key is a
+       real runtime state — ordinals append server-side, so a client older than
+       the deployment can be handed a member it has never heard of. */
     conPartyRoleInfo(key) {
-      if (key == null || key === '') return D.contractPartyRoleByKey.Unspecified;
+      if (key == null || key === '') {
+        return { key: '', label: 'No role set', icon: 'help_outline', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)',
+                 unset: true, desc: 'Written before a role was required. Edit the party to state one.' };
+      }
       return D.contractPartyRoleByKey[key]
         || { key, label: 'Unrecognised role', icon: 'help', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)',
              unknown: true, desc: 'This role was added after this app version — update to read it.' };
     },
-    conPartyRoleOptions() {
-      return D.contractPartyRoles.map(r => ({ value: r.key, label: r.label, icon: r.icon, iconColor: r.color, sub: r.desc }));
+
+    /* ---- The matrix, read three ways -------------------------------------
+       `conRoleLegality` is the single cell lookup every other reader is built
+       on. An UNKNOWN contract type reports 'allowed' rather than refusing:
+       a type this client has never heard of must not make the server's legal
+       roles unpickable. */
+    conRoleLegality(contractType, roleKey) {
+      const cell = D.contractPartyRoleMatrix[contractType];
+      if (!cell) return 'allowed';
+      if (cell.suggested.indexOf(roleKey) !== -1) return 'suggested';
+      if (cell.allowed.indexOf(roleKey) !== -1) return 'allowed';
+      return 'rejected';
+    },
+    // The legal registry rows for a type, suggested first, each tagged `group`.
+    conRolesForType(contractType) {
+      const cell = D.contractPartyRoleMatrix[contractType];
+      if (!cell) return D.contractPartyRoles.map(r => ({ ...r, group: 'allowed' }));
+      const pick = (keys, group) => keys
+        .map(k => D.contractPartyRoleByKey[k]).filter(Boolean).map(r => ({ ...r, group }));
+      return pick(cell.suggested, 'suggested').concat(pick(cell.allowed, 'allowed'));
+    },
+    // "Lender, Borrower, Guarantor, Broker or Other" — the sentence the 422
+    // body and the picker's helper both need.
+    conRoleListText(contractType) {
+      const labels = H.conRolesForType(contractType).map(r => r.label);
+      if (labels.length < 2) return labels[0] || '';
+      return labels.slice(0, -1).join(', ') + ' or ' + labels[labels.length - 1];
+    },
+    /* The client half of the type-change 422: the parties an INCOMING type
+       would reject, projected the way the server's problem body lists them.
+       Empty means the change is safe. */
+    conPartiesRejectedByType(parties, contractType) {
+      return (parties || [])
+        .filter(p => H.conRoleLegality(contractType, p.role) === 'rejected')
+        .map(p => ({
+          partyId: p.id,
+          role: p.role,
+          roleLabel: H.conPartyRoleInfo(p.role).label,
+          displayName: H.conResolveParty(p).name,
+        }));
+    },
+    conPartyRoleOptions(contractType) {
+      const rows = contractType ? H.conRolesForType(contractType) : D.contractPartyRoles;
+      return rows.map(r => ({ value: r.key, label: r.label, icon: r.icon, iconColor: r.color, sub: r.desc, group: r.group }));
+    },
+    /* Contracts naming a contact as a BENEFICIARY — the contract half of the
+       widened contact-delete 409. The payload the server sends is a count plus,
+       only for a `contracts.read` holder, the { contractId, contractName }
+       pairs; this returns the pairs and the caller decides what it may show. */
+    conContractsWithBeneficiary(contactId) {
+      return (D.contracts || [])
+        .filter(c => (c.parties || []).some(p => p.contactId === contactId && p.role === 'Beneficiary'))
+        .map(c => ({ contractId: c.id, contractName: c.name, type: c.type }));
     },
 
     // Short date for the tile caption: 'YYYY-MM-DD' → "Feb 1 2026".
@@ -468,7 +591,7 @@
       const taken = new Set();
       (parties || []).forEach(p => {
         if (exceptId && p.id === exceptId) return;
-        if ((p.role || 'Unspecified') !== role) return;
+        if ((p.role || '') !== role) return;
         if (p[field]) taken.add(p[field]);
       });
       return taken;

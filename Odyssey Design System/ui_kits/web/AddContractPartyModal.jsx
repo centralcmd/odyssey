@@ -1,29 +1,34 @@
 /* AddContractPartyModal — add OR edit one party on a contract (§5:
-   POST …/parties and the new PUT …/parties/{partyId}).
+   POST …/parties and PUT …/parties/{partyId}).
 
-   The accessible picker the spec mandates (frontend B2), now three decisions
-   deep:
+   The accessible picker the spec mandates, now three decisions deep:
      1. the party KIND — Account / Contact (the XOR target)
-     2. the ROLE the record plays in the agreement (ContractPartyRole; the
-        registry's `Unspecified` is a real, selectable member and the default)
+     2. the ROLE the record plays in the agreement — a FIXED PER-TYPE LIST read
+        off the shared contract-type × role matrix, suggested roles first. The
+        picker offers no role the server would refuse, so the 422 is a backstop
+        rather than a thing the user is walked into.
      3. the specific record, from a type-to-filter `Combobox` whose options are
         PRE-LOADED for the chosen kind (no in-widget async fetch).
    …plus the optional TERM — FromDate / ToDate — with the insurance-party
    semantics: both null is the DEFAULT term, the contract's own extent, not an
    unset value.
 
+   There is NO DEFAULT ROLE. `Unspecified` was retired with the matrix and a
+   role is required on every write, so the control starts empty and Save stays
+   disabled until one is picked — the client half of the server's `[Required]`.
+
    The save carries SCALAR IDS ONLY (accountId xor contactId) — never a nested
-   Account or Contact object (§4 write-path invariant), so a party write can
+   Account or Contact object (§7.6 write-path invariant), so a party write can
    never create or rename the linked record.
 
-   Duplicate guard (§8 rule 6): uniqueness is (contract, target, ROLE), so the
-   picker only hides records already linked IN THE SELECTED ROLE, and the party
-   being edited is excluded from its own check. The same contact can therefore
-   be Seller and Service provider on one contract — one contract, two parties.
+   Duplicate guard: uniqueness is (contract, target, ROLE), so the picker only
+   hides records already linked IN THE SELECTED ROLE, and the party being edited
+   is excluded from its own check. The same contact can therefore be Insurer on
+   one role and Broker on another — one contract, two parties.
 
-   In edit mode the PUT is a FULL REPLACEMENT of the link, not a patch: an
-   omitted role resets to Unspecified and a cleared date clears. The dialog
-   states that where the decision is made rather than after the fact. */
+   In edit mode the PUT is a FULL REPLACEMENT of the link, not a patch: a
+   cleared date clears. The dialog states that where the decision is made
+   rather than after the fact. */
 
 const CONTRACT_PARTY_KINDS = [
   { kind: 'account', label: 'Account', icon: 'account_balance_wallet', field: 'accountId' },
@@ -36,15 +41,23 @@ const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave 
   const editing = !!party;
 
   const [kind, setKind] = useState(editing && party.contactId ? 'contact' : 'account');
-  const [role, setRole] = useState(editing ? (party.role || 'Unspecified') : 'Unspecified');
+  // No default: the role is chosen, never inherited. An edited party keeps the
+  // role it holds — including a legacy one the matrix no longer accepts, which
+  // is exactly the party this dialog exists to correct.
+  const [role, setRole] = useState(editing ? (party.role || '') : '');
   const [value, setValue] = useState(editing ? (party.accountId || party.contactId || '') : '');
   const [fromDate, setFromDate] = useState(editing ? (party.fromDate || null) : null);
   const [toDate, setToDate] = useState(editing ? (party.toDate || null) : null);
   const [error, setError] = useState(null);
+  const [roleError, setRoleError] = useState(null);
   const [dateError, setDateError] = useState({});
 
   const def = CONTRACT_PARTY_KINDS.find(k => k.kind === kind);
   const roleInfo = H.conPartyRoleInfo(role);
+  const typeInfo = H.contractTypeInfo(contract.type);
+  // A role this contract's type would refuse — only reachable on an edit of a
+  // party written before the matrix, or before the contract's type changed.
+  const roleRejected = !!role && H.conRoleLegality(contract.type, role) === 'rejected';
   // The contract's own start is the only anchor, and only when it has one: a
   // one-off (completion date) and an open-started term take no lower bound.
   const startDate = H.conDateOnly(contract.startDate);
@@ -57,12 +70,13 @@ const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave 
 
   const allOptions = kind === 'account' ? H.conAccountOptions() : H.conInstitutionOptions();
   const options = allOptions.filter(o => !taken.has(o.value));
-  const roleNoun = roleInfo.key === 'Unspecified' ? 'no role' : roleInfo.label.toLowerCase();
+  const roleNoun = role ? roleInfo.label.toLowerCase() : 'this role';
 
   const pickKind = (k) => { setKind(k); setValue(''); setError(null); };
-  const pickRole = (r) => { setRole(r); setError(null); };
+  const pickRole = (r) => { setRole(r); setError(null); setRoleError(null); };
 
   const submit = () => {
+    if (!role) { setError(null); setRoleError('Pick the role this record plays in the agreement.'); return; }
     if (!value) { setError(`Select an ${def.label.toLowerCase()} to link.`); return; }
     const de = {};
     if (fromDate && startDate && fromDate < startDate)
@@ -89,7 +103,8 @@ const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave 
       footer={
         <React.Fragment>
           <Button variant="text" onClick={onClose}>Cancel</Button>
-          <Button variant="filled" color="primary" icon={editing ? 'check' : 'add'} onClick={submit}>
+          <Button variant="filled" color="primary" icon={editing ? 'check' : 'add'} onClick={submit}
+            disabled={!role || !value}>
             {editing ? 'Save changes' : 'Create party'}
           </Button>
         </React.Fragment>
@@ -101,12 +116,21 @@ const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave 
           options={CONTRACT_PARTY_KINDS.map(k => ({ value: k.kind, label: k.label, icon: k.icon }))} />
       </FieldShell>
 
-      {/* ROLE — a plain registry Select, not a card grid: seven members (and
-          growing) is a list, and the role is the one field a reader scans for.
-          `Unspecified` is selectable, and means exactly "nobody has said" —
-          `Other` is the deliberate none-of-these. */}
-      <ContractPartyRoleSelect id="acp-role" label="Role" value={role} onChange={pickRole}
-        helper={roleInfo.desc} />
+      {/* ROLE — a plain registry Select, not a card grid: the legal list is
+          short but the whole vocabulary is fifteen members, and the role is the
+          one field a reader scans for. What this type accepts is decided by the
+          shared matrix, not by this dialog. */}
+      <ContractPartyRoleSelect id="acp-role" label="Role" required value={role} onChange={pickRole}
+        contractType={contract.type} error={roleError}
+        placeholder={`Choose a role on this ${typeInfo.label.toLowerCase()} contract…`}
+        helper={roleError ? undefined : (role ? roleInfo.desc : `A ${typeInfo.label.toLowerCase()} contract takes ${H.conRoleListText(contract.type)}.`)} />
+
+      {roleRejected ? (
+        <Alert severity="warning">
+          <strong>{roleInfo.label}</strong> is no longer accepted on a {typeInfo.label.toLowerCase()} contract.
+          Saving requires one of the roles offered above — the server refuses this one.
+        </Alert>
+      ) : null}
 
       {/* The Contact kind uses the canonical ContactSelect, create rows and all;
           the Account kind keeps the plain Combobox over accounts. */}

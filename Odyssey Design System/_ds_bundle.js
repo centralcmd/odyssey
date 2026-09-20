@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"6c5fbd0f20c2","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"9400d3e9a309","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0a872c64aad8","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"d0fa49f15223","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"357f2b93d9e5","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"e620d931008f","ui_kits/web/AddContractPartyModal.jsx":"eabd6ff65b3b","ui_kits/web/AddContractTermModal.jsx":"68b86ac073e1","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"042affcbe38d","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"1a0947071533","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"f1f5ffc785a0","ui_kits/web/Contacts.jsx":"a0ead9f0ac96","ui_kits/web/ContractEvents.jsx":"ab3a87eb420a","ui_kits/web/ContractTerms.jsx":"619b0f0b858e","ui_kits/web/Contracts.jsx":"0db2eea2d7c9","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"8b406393c96e","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"15f82310f7e4","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"b030b9d491bb","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"374781e29ca7","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"df7fa72614df","ui_kits/web/contracts-data.js":"9738eb6f8274","ui_kits/web/data.js":"2070fc32dd1a","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"cc5102e5b4cc","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"6a57570a7173","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"5e7ea8cfe786","components/BudgetCategoryTypeSelect.jsx":"4e5a1e62a8da","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"c1c93cf0f490","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"548f677572e7","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"9400d3e9a309","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"b8ff1645184d","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0a872c64aad8","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"d0fa49f15223","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"a5024e87b3e7","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"357f2b93d9e5","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"e9580b161e9b","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"68b86ac073e1","ui_kits/web/AddEstimateModal.jsx":"b01d5196f90e","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"042affcbe38d","ui_kits/web/AddTransactionModal.jsx":"7f5835d2fded","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"56d48a1d2f9b","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"821b336e8b33","ui_kits/web/Contacts.jsx":"8427bb81ea81","ui_kits/web/ContractEvents.jsx":"ab3a87eb420a","ui_kits/web/ContractTerms.jsx":"619b0f0b858e","ui_kits/web/Contracts.jsx":"344c25841925","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"ee85d9850656","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"8b406393c96e","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"15f82310f7e4","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"5503a5c6313f","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"b030b9d491bb","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"374781e29ca7","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"df7fa72614df","ui_kits/web/contracts-data.js":"bd1b57711e11","ui_kits/web/data.js":"2070fc32dd1a","ui_kits/web/insurance-data.js":"e69a60441d9a","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"3d5f296d5da0","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"cea7467bd179","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -4339,6 +4339,254 @@ function ContactTypeSelect({
 Object.assign(__ds_scope, { CONTACT_TYPES, ContactTypeSelect });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/ContactTypeSelect.jsx", error: String((e && e.message) || e) }); }
 
+// components/ContractPartyRoleSelect.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/**
+ * Odyssey DS — ContractPartyRoleSelect
+ * A single-select pre-wired to the ContractPartyRole vocabulary, and the only
+ * picker in the system whose option list depends on ANOTHER field: a role is
+ * legal only on certain contract types. Pass `contractType` and the control
+ * offers exactly the legal roles for that type, the SUGGESTED ones first under
+ * their own group heading; omit it and the full vocabulary is offered.
+ *
+ * There is no default and no empty member. `Unspecified` was retired with the
+ * matrix — a role is now required on every party write — so the control starts
+ * on the placeholder and the form's save stays disabled until one is picked.
+ *
+ * `CONTRACT_PARTY_ROLES` is the canonical registry (key · label · enumValue ·
+ * icon · color · soft · desc) and `CONTRACT_PARTY_ROLE_MATRIX` the canonical
+ * type × role legality declaration — the client half of the server's shared
+ * `ContractPartyRoleMatrix`. Both mirror `OdysseyData.contractPartyRoles` /
+ * `OdysseyData.contractPartyRoleMatrix`; keep all of them in lockstep. Ordinals
+ * are a wire and persistence contract: 0 (`Unspecified`) and 5
+ * (`ServiceProvider`) are retired holes and must never be reused.
+ */
+
+const CONTRACT_PARTY_ROLES = [{
+  key: 'Employee',
+  label: 'Employee',
+  enumValue: 1,
+  icon: 'badge',
+  color: 'oklch(0.76 0.13 265)',
+  soft: 'oklch(0.76 0.13 265 / 0.16)',
+  desc: 'The person employed under this agreement.'
+}, {
+  key: 'Employer',
+  label: 'Employer',
+  enumValue: 2,
+  icon: 'corporate_fare',
+  color: 'oklch(0.75 0.14 300)',
+  soft: 'oklch(0.75 0.14 300 / 0.16)',
+  desc: 'The party that employs.'
+}, {
+  key: 'Buyer',
+  label: 'Buyer',
+  enumValue: 3,
+  icon: 'shopping_bag',
+  color: 'oklch(0.79 0.14 145)',
+  soft: 'oklch(0.79 0.14 145 / 0.16)',
+  desc: 'The party acquiring under this agreement.'
+}, {
+  key: 'Seller',
+  label: 'Seller',
+  enumValue: 4,
+  icon: 'sell',
+  color: 'oklch(0.80 0.13 90)',
+  soft: 'oklch(0.80 0.13 90 / 0.16)',
+  desc: 'The party disposing under this agreement — including supplying a service.'
+}, {
+  key: 'Other',
+  label: 'Other',
+  enumValue: 6,
+  icon: 'more_horiz',
+  color: 'oklch(0.77 0.10 25)',
+  soft: 'oklch(0.77 0.10 25 / 0.16)',
+  desc: 'A deliberate role that is none of the others.'
+}, {
+  key: 'Landlord',
+  label: 'Landlord',
+  enumValue: 7,
+  icon: 'vpn_key',
+  color: 'oklch(0.79 0.13 55)',
+  soft: 'oklch(0.79 0.13 55 / 0.16)',
+  desc: 'The party letting the property under this tenancy.'
+}, {
+  key: 'Tenant',
+  label: 'Tenant',
+  enumValue: 8,
+  icon: 'home',
+  color: 'oklch(0.78 0.13 35)',
+  soft: 'oklch(0.78 0.13 35 / 0.16)',
+  desc: 'The party occupying under this tenancy.'
+}, {
+  key: 'Insurer',
+  label: 'Insurer',
+  enumValue: 9,
+  icon: 'shield',
+  color: 'oklch(0.75 0.14 285)',
+  soft: 'oklch(0.75 0.14 285 / 0.16)',
+  desc: 'The party carrying the risk.'
+}, {
+  key: 'Policyholder',
+  label: 'Policyholder',
+  enumValue: 10,
+  icon: 'assignment_ind',
+  color: 'oklch(0.76 0.13 255)',
+  soft: 'oklch(0.76 0.13 255 / 0.16)',
+  desc: 'The party that holds the policy and owes the premium.'
+}, {
+  key: 'Insured',
+  label: 'Insured',
+  enumValue: 11,
+  icon: 'health_and_safety',
+  color: 'oklch(0.77 0.13 215)',
+  soft: 'oklch(0.77 0.13 215 / 0.16)',
+  desc: 'The person, account or thing covered. One member for both party kinds.'
+}, {
+  key: 'Beneficiary',
+  label: 'Beneficiary',
+  enumValue: 12,
+  icon: 'volunteer_activism',
+  color: 'oklch(0.78 0.13 185)',
+  soft: 'oklch(0.78 0.13 185 / 0.16)',
+  desc: 'The party that receives on the policy. Blocks deletion of the linked contact.'
+}, {
+  key: 'Lender',
+  label: 'Lender',
+  enumValue: 13,
+  icon: 'savings',
+  color: 'oklch(0.78 0.13 120)',
+  soft: 'oklch(0.78 0.13 120 / 0.16)',
+  desc: 'The party advancing the money.'
+}, {
+  key: 'Borrower',
+  label: 'Borrower',
+  enumValue: 14,
+  icon: 'request_quote',
+  color: 'oklch(0.78 0.13 165)',
+  soft: 'oklch(0.78 0.13 165 / 0.16)',
+  desc: 'The party that owes the money back.'
+}, {
+  key: 'Guarantor',
+  label: 'Guarantor',
+  enumValue: 15,
+  icon: 'verified_user',
+  color: 'oklch(0.76 0.13 330)',
+  soft: 'oklch(0.76 0.13 330 / 0.16)',
+  desc: 'A party standing behind another’s obligation.'
+}, {
+  key: 'Broker',
+  label: 'Broker',
+  enumValue: 16,
+  icon: 'handshake',
+  color: 'oklch(0.76 0.07 245)',
+  soft: 'oklch(0.76 0.07 245 / 0.16)',
+  desc: 'An intermediary that arranged the agreement. Legal on every type.'
+}];
+
+/**
+ * The type × role matrix. Per contract type: `suggested` (legal, offered first)
+ * and `allowed` (legal, offered after). Anything absent from both is rejected
+ * server-side with a 422 — 52 of the 135 cells are legal. Every type carries at
+ * least one suggested role, so the picker's first group is never empty.
+ */
+const CONTRACT_PARTY_ROLE_MATRIX = {
+  Employment: {
+    suggested: ['Employee', 'Employer'],
+    allowed: ['Broker', 'Other']
+  },
+  Service: {
+    suggested: ['Buyer', 'Seller'],
+    allowed: ['Broker', 'Other']
+  },
+  Rental: {
+    suggested: ['Landlord', 'Tenant'],
+    allowed: ['Guarantor', 'Broker', 'Other']
+  },
+  Insurance: {
+    suggested: ['Insurer', 'Policyholder', 'Insured', 'Beneficiary'],
+    allowed: ['Broker', 'Other']
+  },
+  Subscription: {
+    suggested: ['Buyer', 'Seller'],
+    allowed: ['Broker', 'Other']
+  },
+  Purchase: {
+    suggested: ['Buyer', 'Seller'],
+    allowed: ['Guarantor', 'Broker', 'Other']
+  },
+  Loan: {
+    suggested: ['Lender', 'Borrower'],
+    allowed: ['Guarantor', 'Broker', 'Other']
+  },
+  Membership: {
+    suggested: ['Buyer', 'Seller'],
+    allowed: ['Broker', 'Other']
+  },
+  Other: {
+    suggested: ['Other'],
+    allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Guarantor', 'Broker']
+  }
+};
+
+/** 'suggested' | 'allowed' | 'rejected' for one (contract type, role) cell. */
+function contractPartyRoleLegality(contractType, roleKey) {
+  const cell = CONTRACT_PARTY_ROLE_MATRIX[contractType];
+  if (!cell) return 'allowed';
+  if (cell.suggested.indexOf(roleKey) !== -1) return 'suggested';
+  if (cell.allowed.indexOf(roleKey) !== -1) return 'allowed';
+  return 'rejected';
+}
+
+/** The legal registry rows for a type, suggested first, each tagged `group`. */
+function contractPartyRolesFor(contractType, roles) {
+  const all = roles || CONTRACT_PARTY_ROLES;
+  const cell = CONTRACT_PARTY_ROLE_MATRIX[contractType];
+  if (!cell) return all.map(r => ({
+    ...r,
+    group: 'allowed'
+  }));
+  const pick = (keys, group) => keys.map(k => all.find(r => r.key === k)).filter(Boolean).map(r => ({
+    ...r,
+    group
+  }));
+  return pick(cell.suggested, 'suggested').concat(pick(cell.allowed, 'allowed'));
+}
+function ContractPartyRoleSelect({
+  value,
+  onChange,
+  label = 'Role',
+  contractType,
+  roles,
+  placeholder = 'Choose a role…',
+  ...rest
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    RegistrySelect
+  } = NS;
+  if (!RegistrySelect) return null;
+  const list = contractType ? contractPartyRolesFor(contractType, roles) : roles || CONTRACT_PARTY_ROLES;
+  const groups = contractType ? [{
+    key: 'suggested',
+    label: `Suggested for ${contractType.toLowerCase()}`
+  }, {
+    key: 'allowed',
+    label: 'Also allowed'
+  }] : undefined;
+  return /*#__PURE__*/React.createElement(RegistrySelect, _extends({
+    value: value,
+    onChange: onChange,
+    label: label,
+    types: list,
+    groups: groups,
+    placeholder: placeholder
+  }, rest));
+}
+Object.assign(__ds_scope, { CONTRACT_PARTY_ROLES, CONTRACT_PARTY_ROLE_MATRIX, contractPartyRoleLegality, contractPartyRolesFor, ContractPartyRoleSelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/ContractPartyRoleSelect.jsx", error: String((e && e.message) || e) }); }
+
 // components/ContractStatusChip.jsx
 try { (() => {
 /**
@@ -4495,7 +4743,11 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
  * other type picker — colored glyph, label, far-right check. Falls back to the
  * base Select until the bundle carries TypeSelect.
  *
- * Value is the enum key — 'Employment' | 'Service' | 'Rental' | 'Other'.
+ * Value is the enum key — 'Employment' | 'Service' | 'Rental' | 'Loan' | 'Other'.
+ * The registry is in READING order, which is not ordinal order, and `Other` must
+ * stay the trailing entry: it is the documented fallback for an out-of-range
+ * value, so a reorder that displaces it makes stale rows render as whatever
+ * ends the list.
  * Controlled: pass `value` + `onChange(key, event)`. Every wrapper prop (label,
  * help, error, required, disabled, placeholder, id, className) passes through.
  *
@@ -4548,6 +4800,13 @@ const CONTRACT_TYPES = [{
   icon: 'shopping_bag',
   color: 'oklch(0.78 0.14 140)',
   soft: 'oklch(0.78 0.14 140 / 0.16)'
+}, {
+  key: 'Loan',
+  label: 'Loan',
+  enumValue: 8,
+  icon: 'account_balance',
+  color: 'oklch(0.77 0.13 100)',
+  soft: 'oklch(0.77 0.13 100 / 0.16)'
 }, {
   key: 'Membership',
   label: 'Membership',
@@ -24190,13 +24449,21 @@ try { (() => {
    signing after cover has begun is ordinary, and signing before it starts is
    the normal case.
    A new contract starts with no parties and no documents — both are added from
-   the contract's detail, by scalar id only (the §6/§10 mass-assignment rule). */
+   the contract's detail, by scalar id only (the §7.6 mass-assignment rule).
+
+   On EDIT the type is the one field that can be refused by something other
+   than itself: changing it to a type the existing parties' roles are illegal
+   on is a 422 (TypeChangeOrphansParties), and the server writes nothing. The
+   dialog computes the same thing from the shared matrix, names each offending
+   party, and states the two routes that work — re-role them, or detach them —
+   rather than letting the user save into a refusal. */
 
 const AddContractModal = ({
   onClose,
   onCreate,
   onSave,
-  contract = null
+  contract = null,
+  initialType = null
 }) => {
   const {
     useState
@@ -24206,7 +24473,7 @@ const AddContractModal = ({
   const [mode, setMode] = useState(contract && contract.completionDate ? 'oneoff' : 'term'); // 'term' | 'oneoff'
   const [draft, setDraft] = useState({
     name: contract?.name || '',
-    type: contract?.type || '',
+    type: initialType || contract?.type || '',
     description: contract?.description || '',
     startDate: contract ? H.conDateOnly(contract.startDate) || '' : H.conToday(),
     endDate: contract ? H.conDateOnly(contract.endDate) || '' : '',
@@ -24225,10 +24492,17 @@ const AddContractModal = ({
       [k]: undefined
     }));
   };
+
+  /* The parties the INCOMING type would orphan — the client half of the 422.
+     Only meaningful on edit, and only once the type actually differs. */
+  const typeChanged = editing && draft.type && draft.type !== contract.type;
+  const orphans = typeChanged ? H.conPartiesRejectedByType(contract.parties, draft.type) : [];
+  const blockedByParties = orphans.length > 0;
   const submit = () => {
     const next = {};
     if (!draft.name.trim()) next.name = 'Give the contract a name.';
     if (!draft.type) next.type = 'Pick a contract type.';
+    if (blockedByParties) next.type = `This type rejects ${orphans.length} existing part${orphans.length === 1 ? 'y' : 'ies'}.`;
     if (mode === 'oneoff') {
       if (!draft.completionDate) next.completionDate = 'Set a completion date.';
     } else if (draft.endDate && draft.startDate && draft.endDate < draft.startDate) {
@@ -24282,7 +24556,8 @@ const AddContractModal = ({
       variant: "filled",
       color: "primary",
       icon: editing ? 'check' : 'add',
-      onClick: submit
+      onClick: submit,
+      disabled: blockedByParties
     }, editing ? 'Save changes' : 'Create contract'))
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Contract name",
@@ -24311,7 +24586,20 @@ const AddContractModal = ({
       value: 'oneoff',
       label: 'One-off'
     }]
-  }))), mode === 'term' ? /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement("div", {
+  }))), blockedByParties ? /*#__PURE__*/React.createElement(Alert, {
+    severity: "warning"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("strong", null, "A ", H.contractTypeInfo(draft.type).label.toLowerCase(), " contract can\u2019t hold ", orphans.length === 1 ? 'this party' : 'these parties', ".")), /*#__PURE__*/React.createElement("div", null, orphans.length === 1 ? 'One party holds' : `${orphans.length} parties hold`, " a role that a", ' ', H.contractTypeInfo(draft.type).label.toLowerCase(), " contract does not accept. Re-role", ' ', orphans.length === 1 ? 'it' : 'them', " to ", H.conRoleListText(draft.type), ", or detach", ' ', orphans.length === 1 ? 'it' : 'them', " \u2014 then change the type. Nothing is saved until then."), /*#__PURE__*/React.createElement("div", {
+    className: "con-orphans"
+  }, orphans.map(o => /*#__PURE__*/React.createElement("div", {
+    className: "con-orphan",
+    key: o.partyId
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "con-orphan-role"
+  }, o.roleLabel), /*#__PURE__*/React.createElement("span", {
+    className: "con-orphan-name"
+  }, o.displayName), /*#__PURE__*/React.createElement("span", {
+    className: "con-orphan-id"
+  }, o.partyId))))) : null, mode === 'term' ? /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement(Field, {
     type: "date",
@@ -24385,31 +24673,36 @@ Object.assign(window, {
 // ui_kits/web/AddContractPartyModal.jsx
 try { (() => {
 /* AddContractPartyModal — add OR edit one party on a contract (§5:
-   POST …/parties and the new PUT …/parties/{partyId}).
+   POST …/parties and PUT …/parties/{partyId}).
 
-   The accessible picker the spec mandates (frontend B2), now three decisions
-   deep:
+   The accessible picker the spec mandates, now three decisions deep:
      1. the party KIND — Account / Contact (the XOR target)
-     2. the ROLE the record plays in the agreement (ContractPartyRole; the
-        registry's `Unspecified` is a real, selectable member and the default)
+     2. the ROLE the record plays in the agreement — a FIXED PER-TYPE LIST read
+        off the shared contract-type × role matrix, suggested roles first. The
+        picker offers no role the server would refuse, so the 422 is a backstop
+        rather than a thing the user is walked into.
      3. the specific record, from a type-to-filter `Combobox` whose options are
         PRE-LOADED for the chosen kind (no in-widget async fetch).
    …plus the optional TERM — FromDate / ToDate — with the insurance-party
    semantics: both null is the DEFAULT term, the contract's own extent, not an
    unset value.
 
+   There is NO DEFAULT ROLE. `Unspecified` was retired with the matrix and a
+   role is required on every write, so the control starts empty and Save stays
+   disabled until one is picked — the client half of the server's `[Required]`.
+
    The save carries SCALAR IDS ONLY (accountId xor contactId) — never a nested
-   Account or Contact object (§4 write-path invariant), so a party write can
+   Account or Contact object (§7.6 write-path invariant), so a party write can
    never create or rename the linked record.
 
-   Duplicate guard (§8 rule 6): uniqueness is (contract, target, ROLE), so the
-   picker only hides records already linked IN THE SELECTED ROLE, and the party
-   being edited is excluded from its own check. The same contact can therefore
-   be Seller and Service provider on one contract — one contract, two parties.
+   Duplicate guard: uniqueness is (contract, target, ROLE), so the picker only
+   hides records already linked IN THE SELECTED ROLE, and the party being edited
+   is excluded from its own check. The same contact can therefore be Insurer on
+   one role and Broker on another — one contract, two parties.
 
-   In edit mode the PUT is a FULL REPLACEMENT of the link, not a patch: an
-   omitted role resets to Unspecified and a cleared date clears. The dialog
-   states that where the decision is made rather than after the fact. */
+   In edit mode the PUT is a FULL REPLACEMENT of the link, not a patch: a
+   cleared date clears. The dialog states that where the decision is made
+   rather than after the fact. */
 
 const CONTRACT_PARTY_KINDS = [{
   kind: 'account',
@@ -24436,14 +24729,22 @@ const AddContractPartyModal = ({
   const H = window.OdysseyHelpers;
   const editing = !!party;
   const [kind, setKind] = useState(editing && party.contactId ? 'contact' : 'account');
-  const [role, setRole] = useState(editing ? party.role || 'Unspecified' : 'Unspecified');
+  // No default: the role is chosen, never inherited. An edited party keeps the
+  // role it holds — including a legacy one the matrix no longer accepts, which
+  // is exactly the party this dialog exists to correct.
+  const [role, setRole] = useState(editing ? party.role || '' : '');
   const [value, setValue] = useState(editing ? party.accountId || party.contactId || '' : '');
   const [fromDate, setFromDate] = useState(editing ? party.fromDate || null : null);
   const [toDate, setToDate] = useState(editing ? party.toDate || null : null);
   const [error, setError] = useState(null);
+  const [roleError, setRoleError] = useState(null);
   const [dateError, setDateError] = useState({});
   const def = CONTRACT_PARTY_KINDS.find(k => k.kind === kind);
   const roleInfo = H.conPartyRoleInfo(role);
+  const typeInfo = H.contractTypeInfo(contract.type);
+  // A role this contract's type would refuse — only reachable on an edit of a
+  // party written before the matrix, or before the contract's type changed.
+  const roleRejected = !!role && H.conRoleLegality(contract.type, role) === 'rejected';
   // The contract's own start is the only anchor, and only when it has one: a
   // one-off (completion date) and an open-started term take no lower bound.
   const startDate = H.conDateOnly(contract.startDate);
@@ -24453,7 +24754,7 @@ const AddContractPartyModal = ({
   const taken = useMemo(() => H.conPartyTaken(contract.parties, def.field, role, editing ? party.id : null), [contract.parties, def.field, role, editing, party]);
   const allOptions = kind === 'account' ? H.conAccountOptions() : H.conInstitutionOptions();
   const options = allOptions.filter(o => !taken.has(o.value));
-  const roleNoun = roleInfo.key === 'Unspecified' ? 'no role' : roleInfo.label.toLowerCase();
+  const roleNoun = role ? roleInfo.label.toLowerCase() : 'this role';
   const pickKind = k => {
     setKind(k);
     setValue('');
@@ -24462,8 +24763,14 @@ const AddContractPartyModal = ({
   const pickRole = r => {
     setRole(r);
     setError(null);
+    setRoleError(null);
   };
   const submit = () => {
+    if (!role) {
+      setError(null);
+      setRoleError('Pick the role this record plays in the agreement.');
+      return;
+    }
     if (!value) {
       setError(`Select an ${def.label.toLowerCase()} to link.`);
       return;
@@ -24497,7 +24804,8 @@ const AddContractPartyModal = ({
       variant: "filled",
       color: "primary",
       icon: editing ? 'check' : 'add',
-      onClick: submit
+      onClick: submit,
+      disabled: !role || !value
     }, editing ? 'Save changes' : 'Create party'))
   }, /*#__PURE__*/React.createElement(FieldShell, {
     label: "Party kind",
@@ -24520,10 +24828,16 @@ const AddContractPartyModal = ({
   })), /*#__PURE__*/React.createElement(ContractPartyRoleSelect, {
     id: "acp-role",
     label: "Role",
+    required: true,
     value: role,
     onChange: pickRole,
-    helper: roleInfo.desc
-  }), kind === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
+    contractType: contract.type,
+    error: roleError,
+    placeholder: `Choose a role on this ${typeInfo.label.toLowerCase()} contract…`,
+    helper: roleError ? undefined : role ? roleInfo.desc : `A ${typeInfo.label.toLowerCase()} contract takes ${H.conRoleListText(contract.type)}.`
+  }), roleRejected ? /*#__PURE__*/React.createElement(Alert, {
+    severity: "warning"
+  }, /*#__PURE__*/React.createElement("strong", null, roleInfo.label), " is no longer accepted on a ", typeInfo.label.toLowerCase(), " contract. Saving requires one of the roles offered above \u2014 the server refuses this one.") : null, kind === 'contact' ? /*#__PURE__*/React.createElement(ContactSelect, {
     id: "acp-target",
     label: def.label,
     required: true,
@@ -32198,21 +32512,30 @@ const ContractTypeSelect = ({
   }, props));
 };
 // ContractPartyRoleSelect — what a linked record DOES in a contract
-// (ContractPartyRole). Registry-backed like the type pickers; the value is the
-// role key, and `Unspecified` is a real, selectable member, not a placeholder.
-const contractPartyRoleOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.contractPartyRoles);
+// (ContractPartyRole). Registry-backed like the type pickers, but MATRIX-aware:
+// given the contract's type it offers only the roles that type accepts,
+// suggested ones first under their own heading. There is no default member —
+// a role is required on every party write.
+const contractPartyRoleOpts = contractType => {
+  const H = window.OdysseyHelpers;
+  const rows = contractType && H && H.conRolesForType ? H.conRolesForType(contractType) : window.OdysseyData && window.OdysseyData.contractPartyRoles;
+  return optsFrom(rows);
+};
 const ContractPartyRoleSelect = ({
   helper,
   roles,
+  contractType,
   ...props
 }) => {
   if (DS.ContractPartyRoleSelect) return /*#__PURE__*/React.createElement(DS.ContractPartyRoleSelect, _extends({
     help: helper,
-    roles: roles
+    roles: roles,
+    contractType: contractType
   }, props));
+  const rows = roles || contractType && window.OdysseyHelpers.conRolesForType(contractType);
   return /*#__PURE__*/React.createElement(DS.Select, _extends({
     help: helper,
-    options: roles ? optsFrom(roles) : contractPartyRoleOpts()
+    options: rows ? optsFrom(rows) : contractPartyRoleOpts()
   }, props));
 };
 
@@ -34947,30 +35270,37 @@ try { (() => {
 /* ContactLinksBlockedModal — the blocked contact delete (409) and its detach path.
    ----------------------------------------------------------------------------
    A contact named as an INSURER, an INSURED CONTACT or a BENEFICIARY on any
-   policy cannot be deleted by the ordinary route: the delete is refused, because
-   a beneficiary designation vanishing silently on contact deletion would lose it
-   without trace. RESTRICT alone is not an acceptable answer for a person
-   exercising erasure, so this dialog also carries the supported release valve:
-   detach every insurance link and delete the contact in ONE request.
+   policy — or, since the contract party-role matrix, as a BENEFICIARY on any
+   CONTRACT — cannot be deleted by the ordinary route: the delete is refused,
+   because a beneficiary designation vanishing silently on contact deletion
+   would lose it without trace. RESTRICT alone is not an acceptable answer for a
+   person exercising erasure, so this dialog also carries the supported release
+   valve: detach every blocking link and delete the contact in ONE transaction.
 
-   Two things are claim-conditional, and the dialog is honest about both:
-     • The payload. A caller holding `insurance.read` is told WHICH policies
-       block the delete; a caller without it gets kinds and counts only — never a
-       policy name or id.
-     • The action. Detaching needs `contacts.delete` AND `insurance.update`,
-       composed from existing claims. Without the second the button is
-       unavailable with the reason stated, never a silent downgrade to the
-       refused delete.
+   Two things are claim-conditional, per BLOCKER CLASS, and the dialog is honest
+   about both:
+     • The payload. Policy names need `insurance.read`; contract names need
+       `contracts.read`. Without the claim the caller still gets the COUNT —
+       enough to act, since the detach valve never asks you to name them.
+     • The action. Detaching needs `contacts.delete` plus `insurance.update`
+       for policy rows and `contracts.update` for contract rows — demanded only
+       for the classes actually present, so a caller whose contact has no
+       contract links is not de-authorized by a rule about contracts. A caller
+       missing a claim for a class present is refused (403) with the reason
+       stated, never a silent downgrade to the refused delete.
 
    The result step reports what the request destroyed (per-kind counts + the
-   affected policies), because links removed wholesale in one request is the one
+   affected records), because links removed wholesale in one request is the one
    operation with a blast radius the ordinary edit does not have. */
 
 const ContactLinksBlockedModal = ({
   contact,
-  blocking,
+  blocking = [],
+  contractBeneficiaries = null,
   canReadInsurance = true,
   canUpdateInsurance = true,
+  canReadContracts = true,
+  canUpdateContracts = true,
   onClose,
   onDetachAndDelete
 }) => {
@@ -34996,19 +35326,50 @@ const ContactLinksBlockedModal = ({
   const byKind = {};
   for (const b of blocking) for (const k of b.kinds) byKind[k] = (byKind[k] || 0) + 1;
   const kinds = Object.keys(KIND_META).filter(k => byKind[k]);
-  const totalLinks = Object.values(byKind).reduce((a, b) => a + b, 0);
+  const insLinks = Object.values(byKind).reduce((a, b) => a + b, 0);
+
+  /* The contract half of the payload. `count` is always present; `contracts`
+     carries names only for a `contracts.read` holder — an empty array with a
+     non-zero count is a permission boundary, not an empty result. */
+  const conCount = contractBeneficiaries ? contractBeneficiaries.count : 0;
+  const conRows = contractBeneficiaries && contractBeneficiaries.contracts || [];
+  const totalLinks = insLinks + conCount;
+  // Claims are demanded per class PRESENT, which is also what makes the button
+  // available: an insurance-only blocker never asks for contracts.update.
+  const needsInsUpdate = insLinks > 0;
+  const needsConUpdate = conCount > 0;
+  const missing = [];
+  if (needsInsUpdate && !canUpdateInsurance) missing.push('edit insurance policies');
+  if (needsConUpdate && !canUpdateContracts) missing.push('edit contracts');
+  const canDetach = missing.length === 0;
   const detach = () => {
     setResult({
       byKind,
       policies: blocking,
+      insLinks,
+      conCount,
+      conRows,
       totalLinks
     });
     if (onDetachAndDelete) onDetachAndDelete(contact.id);
   };
+  const ContractRows = () => /*#__PURE__*/React.createElement("div", {
+    className: "cpl-policies"
+  }, conRows.map(c => /*#__PURE__*/React.createElement("div", {
+    className: "cpl-policy",
+    key: c.contractId
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "handshake",
+    size: 16
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-policy-name"
+  }, c.contractName), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-policy-kinds"
+  }, "Beneficiary"))));
   if (result) {
     return /*#__PURE__*/React.createElement(Modal, {
       title: "Contact deleted",
-      subtitle: "The insurance links and the contact were removed in one transaction.",
+      subtitle: "The links and the contact were removed in one transaction.",
       icon: "link_off",
       onClose: onClose,
       footer: /*#__PURE__*/React.createElement(Button, {
@@ -35025,7 +35386,7 @@ const ContactLinksBlockedModal = ({
       className: "alert-icon"
     }), /*#__PURE__*/React.createElement("div", {
       className: "alert-body"
-    }, /*#__PURE__*/React.createElement("strong", null, result.totalLinks, " link", result.totalLinks === 1 ? '' : 's', " detached"), " across", ' ', result.policies.length, " polic", result.policies.length === 1 ? 'y' : 'ies', ", then the contact was deleted.")), /*#__PURE__*/React.createElement("ul", {
+    }, /*#__PURE__*/React.createElement("strong", null, result.totalLinks, " link", result.totalLinks === 1 ? '' : 's', " detached"), result.insLinks ? /*#__PURE__*/React.createElement(React.Fragment, null, " across ", result.policies.length, " polic", result.policies.length === 1 ? 'y' : 'ies') : null, result.insLinks && result.conCount ? ' and' : null, result.conCount ? /*#__PURE__*/React.createElement(React.Fragment, null, " ", result.conCount, " contract", result.conCount === 1 ? '' : 's') : null, ", then the contact was deleted.")), /*#__PURE__*/React.createElement("ul", {
       className: "cpl-kinds"
     }, kinds.map(k => /*#__PURE__*/React.createElement("li", {
       key: k
@@ -35036,7 +35397,14 @@ const ContactLinksBlockedModal = ({
       className: "cpl-kind-name"
     }, k), /*#__PURE__*/React.createElement("span", {
       className: "cpl-kind-count"
-    }, byKind[k])))), canReadInsurance ? /*#__PURE__*/React.createElement("div", {
+    }, byKind[k]))), conCount ? /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement(MIcon, {
+      name: "handshake",
+      size: 17
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "cpl-kind-name"
+    }, "Contract beneficiary"), /*#__PURE__*/React.createElement("span", {
+      className: "cpl-kind-count"
+    }, conCount)) : null), canReadInsurance && result.policies.length ? /*#__PURE__*/React.createElement("div", {
       className: "cpl-policies"
     }, result.policies.map(b => /*#__PURE__*/React.createElement("div", {
       className: "cpl-policy",
@@ -35048,19 +35416,19 @@ const ContactLinksBlockedModal = ({
       className: "cpl-policy-name"
     }, b.policyName), /*#__PURE__*/React.createElement("span", {
       className: "cpl-policy-kinds"
-    }, b.kinds.join(' · '))))) : null, /*#__PURE__*/React.createElement("p", {
+    }, b.kinds.join(' · '))))) : null, canReadContracts && conRows.length ? /*#__PURE__*/React.createElement(ContractRows, null) : null, /*#__PURE__*/React.createElement("p", {
       className: "cpl-note"
-    }, "The policies themselves are untouched \u2014 each stands with one fewer member."));
+    }, "The policies and contracts themselves are untouched \u2014 each stands with one fewer party."));
   }
   return /*#__PURE__*/React.createElement(Modal, {
     title: "Unable to delete this contact",
-    subtitle: "It is named on insurance policies. Detach those links to delete it.",
+    subtitle: insLinks && conCount ? 'It is named on insurance policies and on contracts. Detach those links to delete it.' : conCount ? 'It is named as a beneficiary on contracts. Detach those links to delete it.' : 'It is named on insurance policies. Detach those links to delete it.',
     icon: "block",
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
       variant: "text",
       onClick: onClose
-    }, "Cancel"), canUpdateInsurance ? /*#__PURE__*/React.createElement(Button, {
+    }, "Cancel"), canDetach ? /*#__PURE__*/React.createElement(Button, {
       variant: "danger",
       icon: "link_off",
       onClick: detach
@@ -35073,7 +35441,7 @@ const ContactLinksBlockedModal = ({
     className: "alert-icon"
   }), /*#__PURE__*/React.createElement("div", {
     className: "alert-body"
-  }, /*#__PURE__*/React.createElement("strong", null, contact.name), " holds ", totalLinks, " insurance link", totalLinks === 1 ? '' : 's', canReadInsurance ? /*#__PURE__*/React.createElement(React.Fragment, null, " across ", blocking.length, " polic", blocking.length === 1 ? 'y' : 'ies') : null, ".")), /*#__PURE__*/React.createElement("ul", {
+  }, /*#__PURE__*/React.createElement("strong", null, contact.name), " holds ", totalLinks, " link", totalLinks === 1 ? '' : 's', " that must be detached first.")), /*#__PURE__*/React.createElement("ul", {
     className: "cpl-kinds"
   }, kinds.map(k => /*#__PURE__*/React.createElement("li", {
     key: k
@@ -35086,7 +35454,16 @@ const ContactLinksBlockedModal = ({
     className: "cpl-kind-note"
   }, KIND_META[k].note), /*#__PURE__*/React.createElement("span", {
     className: "cpl-kind-count"
-  }, byKind[k])))), canReadInsurance ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionDivider, {
+  }, byKind[k]))), conCount ? /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement(MIcon, {
+    name: "handshake",
+    size: 17
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-kind-name"
+  }, "Contract beneficiary"), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-kind-note"
+  }, "receives under the agreement"), /*#__PURE__*/React.createElement("span", {
+    className: "cpl-kind-count"
+  }, conCount)) : null), insLinks ? canReadInsurance ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Blocking policies",
     meta: `${blocking.length} record${blocking.length === 1 ? '' : 's'}`
   }), /*#__PURE__*/React.createElement("div", {
@@ -35106,9 +35483,18 @@ const ContactLinksBlockedModal = ({
   /* No insurance.read: kinds and counts only — no policy name, no id. */
   React.createElement("p", {
     className: "cpl-note"
-  }, "Which policies these are is not shown, because you do not have access to insurance records. Ask someone who can edit them to detach the links."), canUpdateInsurance ? /*#__PURE__*/React.createElement("p", {
+  }, "Which policies these are is not shown, because you do not have access to insurance records.") : null, conCount ? canReadContracts ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Blocking contracts",
+    meta: `${conCount} record${conCount === 1 ? '' : 's'}`
+  }), /*#__PURE__*/React.createElement(ContractRows, null)) :
+  /*#__PURE__*/
+  /* No contracts.read: the count still says how many must be detached,
+     and the valve never asks the caller to name them. */
+  React.createElement("p", {
     className: "cpl-note"
-  }, /*#__PURE__*/React.createElement("strong", null, "Detach links & delete"), " removes all ", totalLinks, " link", totalLinks === 1 ? '' : 's', " and the contact in one transaction \u2014 either all of it happens, or none of it does. The policies survive with one fewer member. This cannot be undone.") : /*#__PURE__*/React.createElement("div", {
+  }, "Which contracts these are is not shown, because you do not have access to contract records. The count is what the detach needs.") : null, canDetach ? /*#__PURE__*/React.createElement("p", {
+    className: "cpl-note"
+  }, /*#__PURE__*/React.createElement("strong", null, "Detach links & delete"), " removes all ", totalLinks, " link", totalLinks === 1 ? '' : 's', " and the contact in one transaction \u2014 either all of it happens, or none of it does. The records survive with one fewer party. This cannot be undone.") : /*#__PURE__*/React.createElement("div", {
     className: "alert warning compact"
   }, /*#__PURE__*/React.createElement(SeverityIcon, {
     severity: "warning",
@@ -35116,7 +35502,7 @@ const ContactLinksBlockedModal = ({
     className: "alert-icon"
   }), /*#__PURE__*/React.createElement("div", {
     className: "alert-body"
-  }, "Detaching needs permission to edit insurance policies, which you do not have. Ask someone who does, then delete the contact.")));
+  }, "Detaching needs permission to ", missing.join(' and '), ", which you do not have. Ask someone who does, then delete the contact.")));
 };
 Object.assign(window, {
   ContactLinksBlockedModal
@@ -37268,19 +37654,27 @@ const Contacts = ({
     ...patch
   }) : c));
   // A contact named as an insurer, an insured contact or a beneficiary on any
-  // policy cannot be deleted by the ordinary route — the delete is refused and
-  // the dialog carries the supported detach path (see ContactLinksBlockedModal).
+  // policy — or as a BENEFICIARY on any contract — cannot be deleted by the
+  // ordinary route: the delete is refused and the dialog carries the supported
+  // detach path (see ContactLinksBlockedModal).
   const [blocked, setBlocked] = useState(null);
   const removeRow = id => setRows(prev => prev.filter(c => c.id !== id));
   const onDelete = id => {
     const linking = (window.OdysseyHelpers.insPoliciesLinkingContact || (() => []))(id);
-    if (linking.length) {
+    const conBen = (window.OdysseyHelpers.conContractsWithBeneficiary || (() => []))(id);
+    if (linking.length || conBen.length) {
       setBlocked({
         contact: rows.find(c => c.id === id) || {
           id,
           name: 'This contact'
         },
-        blocking: linking
+        blocking: linking,
+        // The payload's shape, not the UI's: a count that is always sent, and
+        // names the controller only includes for a `contracts.read` holder.
+        contractBeneficiaries: {
+          count: conBen.length,
+          contracts: conBen
+        }
       });
       return;
     }
@@ -37564,6 +37958,13 @@ const Contacts = ({
     blocking: blocked.blocking,
     canReadInsurance: tweaks.cpCanReadInsurance !== false,
     canUpdateInsurance: tweaks.cpCanUpdateInsurance !== false,
+    contractBeneficiaries: blocked.contractBeneficiaries && {
+      count: blocked.contractBeneficiaries.count,
+      // Names ride on contracts.read; the count never does.
+      contracts: tweaks.cpCanReadContracts === false ? [] : blocked.contractBeneficiaries.contracts
+    },
+    canReadContracts: tweaks.cpCanReadContracts !== false,
+    canUpdateContracts: tweaks.cpCanUpdateContracts !== false,
     onClose: () => setBlocked(null),
     onDetachAndDelete: id => removeRow(id)
   }));
@@ -38325,9 +38726,11 @@ const PartyTile = ({
   const term = CON_H.conPartyTermText(party);
   // A closed term in the past: still a party of record, drawn quieter.
   const past = CON_H.conPartyPast(party, today);
-  // Unspecified is "nobody has said", not a category — so it is drawn as an
-  // absence (muted, no colour), and never as the deliberate "Other".
-  const plain = role.key === 'Unspecified' || role.unknown;
+  // A role is required on every write now, so an unset role means one thing:
+  // a row written before the matrix. It is drawn as an absence (muted, no
+  // colour), and never as the deliberate "Other". Same for a member this
+  // client is too old to name.
+  const plain = !!role.unset || !!role.unknown;
   return /*#__PURE__*/React.createElement("div", {
     className: "con-party-tile"
   }, /*#__PURE__*/React.createElement(InfoTile, {
@@ -38336,7 +38739,7 @@ const PartyTile = ({
     iconSoft: r.soft,
     label: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
       className: `con-role${plain ? ' unset' : ''}`
-    }, /*#__PURE__*/React.createElement("span", null, role.key === 'Unspecified' ? 'No role set' : role.label)), term ? /*#__PURE__*/React.createElement("span", {
+    }, /*#__PURE__*/React.createElement("span", null, role.label)), term ? /*#__PURE__*/React.createElement("span", {
       className: `con-term${past ? ' past' : ''}`
     }, term) : null, /*#__PURE__*/React.createElement("span", {
       className: "con-tile-menu"
@@ -57069,8 +57472,9 @@ try { (() => {
      • ContractParty  { id, accountId? | contactId?, role, fromDate?, toDate? }
                         — exactly one target (the XOR invariant, §6). The party
                         kind label for a contact target is "Contact".
-                        `role` is a ContractPartyRole key ('Unspecified' is the
-                        default and the backfill value); `fromDate`/`toDate` are
+                        `role` is a ContractPartyRole key (REQUIRED — legal
+                        values depend on the contract's type, see the matrix);
+                        `fromDate`/`toDate` are
                         the party's TERM IN THE ROLE — both null is the DEFAULT
                         term (the contract's own extent), not an unset value,
                         exactly as an insurance party's term reads.
@@ -57157,6 +57561,19 @@ try { (() => {
     color: 'oklch(0.78 0.14 140)',
     soft: 'oklch(0.78 0.14 140 / 0.16)',
     desc: 'A one-off acquisition recorded by its completion date.'
+  },
+  /* Loan (8) is APPENDED in ordinal and placed here in READING order, after
+     Purchase — a mortgage was filed as a Purchase before this member existed.
+     The hue is the one wide gap left on the wheel between Rental (60) and
+     Purchase (140); it clears both by 40° at the same L/C as its neighbours. */
+  {
+    key: 'Loan',
+    label: 'Loan',
+    enumValue: 8,
+    icon: 'account_balance',
+    color: 'oklch(0.77 0.13 100)',
+    soft: 'oklch(0.77 0.13 100 / 0.16)',
+    desc: 'A loan or mortgage — money advanced under an agreement to repay.'
   }, {
     key: 'Membership',
     label: 'Membership',
@@ -57211,24 +57628,19 @@ try { (() => {
     desc: 'The enum default — anything outside the categories above.'
   }];
 
-  /* ---- Canonical ContractPartyRole registry (Draft v4 §4) — what a linked
-     record DOES in the agreement, orthogonal to its kind (an account party may
-     carry any role; no role–type matrix in v1). ORDINALS ARE A WIRE AND
-     PERSISTENCE CONTRACT: later members append, none is renumbered.
-     `Unspecified` (0) and `Other` (6) are deliberately distinct — "nobody has
-     said" versus "somebody looked and none of these fit" — and this kit never
-     conflates them. Colours sit in the same categorical band as the other
-     registries; `Unspecified` stays neutral so an unstated role never reads as
-     a category. */
+  /* ---- Canonical ContractPartyRole registry — what a linked record DOES in
+     the agreement, orthogonal to its kind. FIFTEEN live members; `Unspecified`
+     (0) and `ServiceProvider` (5) are RETIRED and their ordinals are permanent
+     holes that must never be reused — reusing one would make an unmigrated row
+     mean something new rather than nothing. ORDINALS ARE A WIRE AND PERSISTENCE
+     CONTRACT: later members append, none is renumbered.
+      With `Unspecified` gone a role is REQUIRED on every party write, so this
+     kit has no "no role stated" member and no default selection anywhere; the
+     only remaining unset role is a legacy row, drawn as an absence.
+     Colours sit in the same categorical band as the other registries; `Broker`
+     is deliberately low-chroma because it is legal on every type and should not
+     read as a category of its own. */
   D.contractPartyRoles = [{
-    key: 'Unspecified',
-    label: 'Unspecified',
-    enumValue: 0,
-    icon: 'help_outline',
-    color: 'oklch(0.74 0.02 250)',
-    soft: 'oklch(0.74 0.02 250 / 0.14)',
-    desc: 'No role stated — the default, and what every pre-existing party reads as.'
-  }, {
     key: 'Employee',
     label: 'Employee',
     enumValue: 1,
@@ -57259,15 +57671,7 @@ try { (() => {
     icon: 'sell',
     color: 'oklch(0.80 0.13 90)',
     soft: 'oklch(0.80 0.13 90 / 0.16)',
-    desc: 'The party disposing under this agreement.'
-  }, {
-    key: 'ServiceProvider',
-    label: 'Service provider',
-    enumValue: 5,
-    icon: 'home_repair_service',
-    color: 'oklch(0.78 0.14 195)',
-    soft: 'oklch(0.78 0.14 195 / 0.16)',
-    desc: 'The party delivering the service.'
+    desc: 'The party disposing under this agreement — including supplying a service.'
   }, {
     key: 'Other',
     label: 'Other',
@@ -57275,8 +57679,134 @@ try { (() => {
     icon: 'more_horiz',
     color: 'oklch(0.77 0.10 25)',
     soft: 'oklch(0.77 0.10 25 / 0.16)',
-    desc: 'A deliberate role that is none of the above — not the same as Unspecified.'
+    desc: 'A deliberate role that is none of the others.'
+  }, {
+    key: 'Landlord',
+    label: 'Landlord',
+    enumValue: 7,
+    icon: 'vpn_key',
+    color: 'oklch(0.79 0.13 55)',
+    soft: 'oklch(0.79 0.13 55 / 0.16)',
+    desc: 'The party letting the property under this tenancy.'
+  }, {
+    key: 'Tenant',
+    label: 'Tenant',
+    enumValue: 8,
+    icon: 'home',
+    color: 'oklch(0.78 0.13 35)',
+    soft: 'oklch(0.78 0.13 35 / 0.16)',
+    desc: 'The party occupying under this tenancy.'
+  }, {
+    key: 'Insurer',
+    label: 'Insurer',
+    enumValue: 9,
+    icon: 'shield',
+    color: 'oklch(0.75 0.14 285)',
+    soft: 'oklch(0.75 0.14 285 / 0.16)',
+    desc: 'The party carrying the risk.'
+  }, {
+    key: 'Policyholder',
+    label: 'Policyholder',
+    enumValue: 10,
+    icon: 'assignment_ind',
+    color: 'oklch(0.76 0.13 255)',
+    soft: 'oklch(0.76 0.13 255 / 0.16)',
+    desc: 'The party that holds the policy and owes the premium.'
+  }, {
+    key: 'Insured',
+    label: 'Insured',
+    enumValue: 11,
+    icon: 'health_and_safety',
+    color: 'oklch(0.77 0.13 215)',
+    soft: 'oklch(0.77 0.13 215 / 0.16)',
+    desc: 'The person, account or thing covered — one member for both party kinds.'
+  }, {
+    key: 'Beneficiary',
+    label: 'Beneficiary',
+    enumValue: 12,
+    icon: 'volunteer_activism',
+    color: 'oklch(0.78 0.13 185)',
+    soft: 'oklch(0.78 0.13 185 / 0.16)',
+    desc: 'The party that receives on the policy. Blocks deletion of the linked contact.'
+  }, {
+    key: 'Lender',
+    label: 'Lender',
+    enumValue: 13,
+    icon: 'savings',
+    color: 'oklch(0.78 0.13 120)',
+    soft: 'oklch(0.78 0.13 120 / 0.16)',
+    desc: 'The party advancing the money.'
+  }, {
+    key: 'Borrower',
+    label: 'Borrower',
+    enumValue: 14,
+    icon: 'request_quote',
+    color: 'oklch(0.78 0.13 165)',
+    soft: 'oklch(0.78 0.13 165 / 0.16)',
+    desc: 'The party that owes the money back.'
+  }, {
+    key: 'Guarantor',
+    label: 'Guarantor',
+    enumValue: 15,
+    icon: 'verified_user',
+    color: 'oklch(0.76 0.13 330)',
+    soft: 'oklch(0.76 0.13 330 / 0.16)',
+    desc: 'A party standing behind another’s obligation.'
+  }, {
+    key: 'Broker',
+    label: 'Broker',
+    enumValue: 16,
+    icon: 'handshake',
+    color: 'oklch(0.76 0.07 245)',
+    soft: 'oklch(0.76 0.07 245 / 0.16)',
+    desc: 'An intermediary that arranged the agreement. Legal on every type.'
   }];
+
+  /* ---- The contract type × party role MATRIX — the client half of the shared
+     server declaration, not a copy of a rule the client invented. Per type:
+     `suggested` (legal, offered first) and `allowed` (legal, offered after);
+     anything in neither is rejected server-side with a 422. 52 of the 135 cells
+     are legal. Every type carries at least one suggested role, so the picker's
+     first group is never empty — `Other`-the-type suggests `Other`-the-role,
+     which is the only honest suggestion for "none of the above". */
+  D.contractPartyRoleMatrix = {
+    Employment: {
+      suggested: ['Employee', 'Employer'],
+      allowed: ['Broker', 'Other']
+    },
+    Service: {
+      suggested: ['Buyer', 'Seller'],
+      allowed: ['Broker', 'Other']
+    },
+    Rental: {
+      suggested: ['Landlord', 'Tenant'],
+      allowed: ['Guarantor', 'Broker', 'Other']
+    },
+    Insurance: {
+      suggested: ['Insurer', 'Policyholder', 'Insured', 'Beneficiary'],
+      allowed: ['Broker', 'Other']
+    },
+    Subscription: {
+      suggested: ['Buyer', 'Seller'],
+      allowed: ['Broker', 'Other']
+    },
+    Purchase: {
+      suggested: ['Buyer', 'Seller'],
+      allowed: ['Guarantor', 'Broker', 'Other']
+    },
+    Loan: {
+      suggested: ['Lender', 'Borrower'],
+      allowed: ['Guarantor', 'Broker', 'Other']
+    },
+    Membership: {
+      suggested: ['Buyer', 'Seller'],
+      allowed: ['Broker', 'Other']
+    },
+    Other: {
+      suggested: ['Other'],
+      allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Guarantor', 'Broker']
+    }
+  };
 
   /* ---- The file library (the user's files.read-visible FileMetadata records).
      The attach picker (§3/B2) is fed these as PRE-LOADED Combobox options; a
@@ -57392,12 +57922,13 @@ try { (() => {
       fromDate: null,
       toDate: null
     },
-    // The salary account is a party to the agreement with no role in the
-    // v1 vocabulary — Unspecified, not Other: nobody has stated one.
+    // The salary account is a party to the agreement but plays neither
+    // side of it — a deliberate `Other`, which is where the migration
+    // moved every old `Unspecified` row and where this one belongs.
     {
       id: 'cp-emp-2',
       accountId: '1',
-      role: 'Unspecified',
+      role: 'Other',
       fromDate: null,
       toDate: null
     }],
@@ -57434,17 +57965,17 @@ try { (() => {
     parties: [{
       id: 'cp-lease-1',
       accountId: '7',
-      role: 'Unspecified',
+      role: 'Other',
       fromDate: null,
       toDate: null
     },
     // A party that joined partway through the term — the case the term
-    // exists for. Landlord/tenant are not in the v1 vocabulary, so this is
-    // a deliberate Other, not an unstated role.
+    // exists for. Rental now has its own vocabulary, so this is a Landlord
+    // rather than the `Other` the pre-matrix seeder had to settle for.
     {
       id: 'cp-lease-2',
       contactId: 'c9',
-      role: 'Other',
+      role: 'Landlord',
       fromDate: '2026-02-01',
       toDate: null
     }],
@@ -57517,6 +58048,86 @@ try { (() => {
       issuedAt: '2021-04-09',
       issuedBy: 'c9'
     }]
+  },
+  /* LOAN — the new contract type, and the reason it exists: before it, this
+     was filed as a Purchase with a Buyer and a Seller. All three of its
+     parties come from the Loan column of the matrix. */
+  {
+    id: 'ct-auto-loan',
+    name: 'Citi Auto Loan — 60 Month',
+    type: 'Loan',
+    description: 'Fixed-rate 60-month auto loan against the vehicle. Monthly repayment by direct debit; early settlement permitted without penalty after month 12.',
+    startDate: '2023-06-01',
+    endDate: '2028-05-31',
+    ready: '2023-05-20T09:00:00Z',
+    signed: '2023-05-26T09:00:00Z',
+    paused: null,
+    archived: null,
+    createdAtUtc: '2023-05-20T09:00:00Z',
+    createdByUserId: 'u-jane',
+    parties: [{
+      id: 'cp-loan-1',
+      contactId: 'c13',
+      role: 'Lender',
+      fromDate: null,
+      toDate: null
+    }, {
+      id: 'cp-loan-2',
+      accountId: '5',
+      role: 'Borrower',
+      fromDate: null,
+      toDate: null
+    },
+    // Guarantor is `allowed` on Loan, not suggested — a real party, but
+    // not one of the two the agreement is between.
+    {
+      id: 'cp-loan-3',
+      contactId: 'c9',
+      role: 'Guarantor',
+      fromDate: null,
+      toDate: null
+    }],
+    files: []
+  },
+  /* INSURANCE — the only type with four suggested roles, mirroring the four
+     link collections on an insurance policy. The Beneficiary here is the
+     party whose contact can no longer be deleted silently. */
+  {
+    id: 'ct-home-cover',
+    name: 'Pacific Home Insurance — Buildings & Contents',
+    type: 'Insurance',
+    description: 'Buildings and contents cover on the Maple St residence. Annual premium, paid in one instalment on renewal.',
+    startDate: '2026-04-01',
+    endDate: '2027-03-31',
+    ready: '2026-03-10T09:00:00Z',
+    signed: '2026-03-18T09:00:00Z',
+    paused: null,
+    archived: null,
+    createdAtUtc: '2026-03-10T09:00:00Z',
+    createdByUserId: 'u-jane',
+    parties: [{
+      id: 'cp-cover-1',
+      contactId: 'c12',
+      role: 'Insurer',
+      fromDate: null,
+      toDate: null
+    },
+    // One `Insured` member serves both party kinds — the kind discriminator
+    // already says whether the covered thing is an account or a contact.
+    {
+      id: 'cp-cover-2',
+      accountId: '7',
+      role: 'Insured',
+      fromDate: null,
+      toDate: null
+    }, {
+      id: 'cp-cover-3',
+      contactId: 'c9',
+      role: 'Beneficiary',
+      fromDate: null,
+      toDate: null
+    }],
+    files: []
   }, {
     id: 'ct-fiber',
     name: 'Fiber Internet — 24 Month',
@@ -57533,7 +58144,7 @@ try { (() => {
     parties: [{
       id: 'cp-fiber-1',
       contactId: 'c3',
-      role: 'ServiceProvider',
+      role: 'Seller',
       fromDate: null,
       toDate: null
     }],
@@ -57570,7 +58181,7 @@ try { (() => {
     parties: [{
       id: 'cp-gym-1',
       contactId: 'c11',
-      role: 'ServiceProvider',
+      role: 'Seller',
       fromDate: null,
       toDate: null
     }],
@@ -57599,7 +58210,7 @@ try { (() => {
     parties: [{
       id: 'cp-parking-1',
       contactId: 'c8',
-      role: 'ServiceProvider',
+      role: 'Landlord',
       fromDate: null,
       toDate: null
     }],
@@ -57628,7 +58239,7 @@ try { (() => {
     parties: [{
       id: 'cp-energy-1',
       contactId: 'c3',
-      role: 'ServiceProvider',
+      role: 'Seller',
       fromDate: null,
       toDate: null
     }],
@@ -57658,7 +58269,7 @@ try { (() => {
     {
       id: 'cp-storage-1',
       contactId: 'c8',
-      role: 'ServiceProvider',
+      role: 'Landlord',
       fromDate: null,
       toDate: '2025-12-31'
     }],
@@ -57727,7 +58338,7 @@ try { (() => {
     parties: [{
       id: 'cp-cleaning-1',
       contactId: 'c3',
-      role: 'ServiceProvider',
+      role: 'Seller',
       fromDate: null,
       toDate: null
     }],
@@ -57753,7 +58364,7 @@ try { (() => {
     parties: [{
       id: 'cp-tutoring-1',
       contactId: 'c8',
-      role: 'ServiceProvider',
+      role: 'Seller',
       fromDate: null,
       toDate: null
     }],
@@ -57971,13 +58582,23 @@ try { (() => {
     // Resolve a party row to the minimal display projection (spec §10 #2) —
     // id + display name + type only, never the fuller cross-claim DTO. Returns
     // { kind, kindLabel, name, typeLabel, icon, color, soft, target }.
-    /* A ContractPartyRole key → its registry row. An UNKNOWN key is a real
-       runtime state, not a bug: ordinals append server-side, so a client older
-       than the deployment can be handed a member it has never heard of. It is
-       rendered honestly (neutral, named as unrecognised) rather than silently
-       collapsed into Unspecified, which would read as "no role stated". */
+    /* A ContractPartyRole key → its registry row. Two honest non-members:
+       an EMPTY key is a legacy row written before a role was required (drawn
+       as an absence, never as the deliberate `Other`), and an UNKNOWN key is a
+       real runtime state — ordinals append server-side, so a client older than
+       the deployment can be handed a member it has never heard of. */
     conPartyRoleInfo(key) {
-      if (key == null || key === '') return D.contractPartyRoleByKey.Unspecified;
+      if (key == null || key === '') {
+        return {
+          key: '',
+          label: 'No role set',
+          icon: 'help_outline',
+          color: 'var(--ink-300)',
+          soft: 'rgba(199,208,224,0.12)',
+          unset: true,
+          desc: 'Written before a role was required. Edit the party to state one.'
+        };
+      }
       return D.contractPartyRoleByKey[key] || {
         key,
         label: 'Unrecognised role',
@@ -57988,13 +58609,69 @@ try { (() => {
         desc: 'This role was added after this app version — update to read it.'
       };
     },
-    conPartyRoleOptions() {
-      return D.contractPartyRoles.map(r => ({
+    /* ---- The matrix, read three ways -------------------------------------
+       `conRoleLegality` is the single cell lookup every other reader is built
+       on. An UNKNOWN contract type reports 'allowed' rather than refusing:
+       a type this client has never heard of must not make the server's legal
+       roles unpickable. */
+    conRoleLegality(contractType, roleKey) {
+      const cell = D.contractPartyRoleMatrix[contractType];
+      if (!cell) return 'allowed';
+      if (cell.suggested.indexOf(roleKey) !== -1) return 'suggested';
+      if (cell.allowed.indexOf(roleKey) !== -1) return 'allowed';
+      return 'rejected';
+    },
+    // The legal registry rows for a type, suggested first, each tagged `group`.
+    conRolesForType(contractType) {
+      const cell = D.contractPartyRoleMatrix[contractType];
+      if (!cell) return D.contractPartyRoles.map(r => ({
+        ...r,
+        group: 'allowed'
+      }));
+      const pick = (keys, group) => keys.map(k => D.contractPartyRoleByKey[k]).filter(Boolean).map(r => ({
+        ...r,
+        group
+      }));
+      return pick(cell.suggested, 'suggested').concat(pick(cell.allowed, 'allowed'));
+    },
+    // "Lender, Borrower, Guarantor, Broker or Other" — the sentence the 422
+    // body and the picker's helper both need.
+    conRoleListText(contractType) {
+      const labels = H.conRolesForType(contractType).map(r => r.label);
+      if (labels.length < 2) return labels[0] || '';
+      return labels.slice(0, -1).join(', ') + ' or ' + labels[labels.length - 1];
+    },
+    /* The client half of the type-change 422: the parties an INCOMING type
+       would reject, projected the way the server's problem body lists them.
+       Empty means the change is safe. */
+    conPartiesRejectedByType(parties, contractType) {
+      return (parties || []).filter(p => H.conRoleLegality(contractType, p.role) === 'rejected').map(p => ({
+        partyId: p.id,
+        role: p.role,
+        roleLabel: H.conPartyRoleInfo(p.role).label,
+        displayName: H.conResolveParty(p).name
+      }));
+    },
+    conPartyRoleOptions(contractType) {
+      const rows = contractType ? H.conRolesForType(contractType) : D.contractPartyRoles;
+      return rows.map(r => ({
         value: r.key,
         label: r.label,
         icon: r.icon,
         iconColor: r.color,
-        sub: r.desc
+        sub: r.desc,
+        group: r.group
+      }));
+    },
+    /* Contracts naming a contact as a BENEFICIARY — the contract half of the
+       widened contact-delete 409. The payload the server sends is a count plus,
+       only for a `contracts.read` holder, the { contractId, contractName }
+       pairs; this returns the pairs and the caller decides what it may show. */
+    conContractsWithBeneficiary(contactId) {
+      return (D.contracts || []).filter(c => (c.parties || []).some(p => p.contactId === contactId && p.role === 'Beneficiary')).map(c => ({
+        contractId: c.id,
+        contractName: c.name,
+        type: c.type
       }));
     },
     // Short date for the tile caption: 'YYYY-MM-DD' → "Feb 1 2026".
@@ -58072,7 +58749,7 @@ try { (() => {
       const taken = new Set();
       (parties || []).forEach(p => {
         if (exceptId && p.id === exceptId) return;
-        if ((p.role || 'Unspecified') !== role) return;
+        if ((p.role || '') !== role) return;
         if (p[field]) taken.add(p[field]);
       });
       return taken;
@@ -67735,6 +68412,12 @@ __ds_ns.ContactTypeMultiSelect = __ds_scope.ContactTypeMultiSelect;
 __ds_ns.CONTACT_TYPES = __ds_scope.CONTACT_TYPES;
 
 __ds_ns.ContactTypeSelect = __ds_scope.ContactTypeSelect;
+
+__ds_ns.CONTRACT_PARTY_ROLES = __ds_scope.CONTRACT_PARTY_ROLES;
+
+__ds_ns.CONTRACT_PARTY_ROLE_MATRIX = __ds_scope.CONTRACT_PARTY_ROLE_MATRIX;
+
+__ds_ns.ContractPartyRoleSelect = __ds_scope.ContractPartyRoleSelect;
 
 __ds_ns.CONTRACT_STATES = __ds_scope.CONTRACT_STATES;
 
