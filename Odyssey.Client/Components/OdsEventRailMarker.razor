@@ -1,0 +1,39 @@
+@*
+    OdsEventRailMarker — a point ON an <OdsEventRail>'s line that is not an event: a year, the
+    present, the day the record was created (Odyssey Design System · components/EventRail).
+
+    Tone picks the node — a small divider dot (Tick), a hollow ring (Open, for "now" or an open end)
+    or a solid dot (Filled, for a closed end).
+
+    Meta is provenance for the marker ITSELF, revealed on the same hover as an item's — for an
+    endpoint with an author or a source worth naming.
+*@
+
+<div class="@RootClass" @attributes="UserAttributes">
+    <span>@ChildContent</span>
+    @if (Meta is not null)
+    {
+        <div class="odc-er-meta">@Meta</div>
+    }
+</div>
+
+@code {
+    /// <summary>Which node the marker draws. Default <see cref="OdsEventRailTone.Tick"/>.</summary>
+    [Parameter] public OdsEventRailTone Tone { get; set; } = OdsEventRailTone.Tick;
+
+    /// <summary>Provenance for the endpoint itself — revealed on hover, like an item's meta line.</summary>
+    [Parameter] public RenderFragment? Meta { get; set; }
+
+    /// <summary>The marker's label — a year, "Today · 20 Sept 2026", "Contract added …".</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string RootClass =>
+        $"odc-er-marker {Tone.ToString().ToLowerInvariant()}{(Meta is not null ? " has-meta" : string.Empty)}"
+        + (string.IsNullOrEmpty(Class) ? string.Empty : " " + Class);
+}

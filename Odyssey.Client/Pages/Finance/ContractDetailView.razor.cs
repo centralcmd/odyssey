@@ -49,6 +49,13 @@ public partial class ContractDetailView : IAsyncDisposable
     /// </summary>
     [Parameter] public Guid? NewTermRequestToken { get; set; }
 
+    /// <summary>
+    /// An outstanding "New event" request from the record's row action menu — same token shape, and
+    /// same reason, as <see cref="NewTermRequestToken"/>: the section carries no action slot, so the
+    /// ask arrives as data handed only to the record that made it.
+    /// </summary>
+    [Parameter] public Guid? NewEventRequestToken { get; set; }
+
     private IReadOnlyList<ContractFileItem> ContractFiles => [.. Contract.Files.Select(ContractFileItem.From)];
 
     // Focus return across a detach, through the helper the insurance party tiles also call. A

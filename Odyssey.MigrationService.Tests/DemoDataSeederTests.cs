@@ -227,6 +227,58 @@ public class DemoDataSeederTests
         Assert.Equal(expected.Paused, contract.Paused);
     }
 
+    /// <summary>
+    /// Issue #138 — the demo set carries contract event logs, and carries the states the surface has
+    /// to draw differently. Without them the rail, the year markers and the "Unknown user" attribution
+    /// would all be unreachable in the demo stack, so the feature would look absent rather than empty.
+    /// </summary>
+    [Fact]
+    public async Task Seeds_contract_event_logs_covering_the_states_the_surface_draws()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+        // Idempotent: a second run must not duplicate a single entry.
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var events = await context.ContractEvents.AsNoTracking().ToListAsync();
+        Assert.Equal(DemoDataSet.Build().ContractEvents.Count, events.Count);
+
+        // Several contracts carry a log and at least one does not, so the demo shows both the
+        // populated rail and the empty state.
+        var withLogs = events.Select(e => e.ContractId).Distinct().Count();
+        Assert.True(withLogs > 1, "more than one contract carries a log");
+        Assert.True(
+            await context.Contracts.AsNoTracking().CountAsync() > withLogs,
+            "at least one contract has no log, so the empty state is reachable");
+
+        // An entry whose author has since left: SET NULL keeps the record and drops only the name,
+        // which the read path renders as "Unknown user".
+        Assert.Contains(events, e => e.CreatedByUserId is null);
+        Assert.Contains(events, e => e.CreatedByUserId is not null);
+
+        // A title alone is an ordinary, complete event (§8.2) — and so is one carrying all three
+        // free-text fields.
+        Assert.Contains(events, e => e.Description is null && e.Notes is null);
+        Assert.Contains(events, e => e.Description is not null && e.Notes is not null);
+
+        // Nothing is future-dated: the API refuses it outright, so no seeded row may be one it would
+        // have rejected.
+        Assert.All(events, e => Assert.True(e.OccurredAt <= DateTime.UtcNow, $"{e.Title} is in the past"));
+
+        // §4.2 made visible — a Terminated event sits on a contract that is still Active on its own
+        // dates. An event never moves the derived status, and the demo is where a reader meets that.
+        var terminated = Assert.Single(events, e => e.Type == ContractEventType.Terminated);
+        var host = await context.Contracts.AsNoTracking().SingleAsync(c => c.ContractId == terminated.ContractId);
+        Assert.Null(host.Archived);
+        Assert.Null(host.Paused);
+        Assert.True(host.EndDate is null || host.EndDate > DateTime.UtcNow,
+            "the contract holding the Terminated event has not itself ended");
+    }
+
     [Fact]
     public async Task Seeds_journal_module_dataset()
     {

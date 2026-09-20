@@ -610,6 +610,37 @@ public partial class ContractsCard
     private Guid? NewTermRequestFor(Guid contractId) =>
         _newTermRequest is { } request && request.ContractId == contractId ? request.Token : null;
 
+    /// <summary>
+    /// Opens the Events section's create dialog on an expanded record. Same shape as
+    /// <see cref="AddTerm"/>: the card is expanded first when it is not already, because the dialog
+    /// writes into a section the reader has to be able to see the result in, and a create that lands
+    /// in a collapsed body reads as nothing having happened.
+    /// </summary>
+    private async Task AddEvent(Guid contractId)
+    {
+        if (!IsExpanded(contractId))
+        {
+            await ToggleExpand(contractId);
+        }
+
+        // A fresh token each time, so clicking "New event" twice on the same record opens the dialog
+        // twice rather than being swallowed as an unchanged parameter.
+        _newEventRequest = (contractId, Guid.NewGuid());
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// The outstanding "New event" request: which record asked, and a token identifying the ask. The
+    /// reasoning is <see cref="_newTermRequest"/>'s, unchanged — a ref to the expanded body is rebound
+    /// on the next render, so it can still point at the previous record's section at the moment the
+    /// click is handled.
+    /// </summary>
+    private (Guid ContractId, Guid Token)? _newEventRequest;
+
+    /// <summary>The token for this record, or null when the outstanding request is not its own.</summary>
+    private Guid? NewEventRequestFor(Guid contractId) =>
+        _newEventRequest is { } request && request.ContractId == contractId ? request.Token : null;
+
     private Task EditParty(Guid contractId, ExistingContractParty party) => OpenPartyDialog(contractId, party);
 
     private async Task OpenPartyDialog(Guid contractId, ExistingContractParty? party)
@@ -775,6 +806,16 @@ public partial class ContractsCard
                     Label = "New term",
                     OnClick = EventCallback.Factory.Create(this, () => AddTerm(c.ContractId)),
                 });
+
+            // NOT gated on the archive state, unlike the two above (issue #138 §8.6). The server
+            // accepts an event write on an archived contract, so a disabled item here would refuse
+            // something the API allows — archival hides a contract, it does not lock its history.
+            items.Add(new OdsMenuItem
+            {
+                Icon = "history",
+                Label = "New event",
+                OnClick = EventCallback.Factory.Create(this, () => AddEvent(c.ContractId)),
+            });
         }
 
         if (_canUploadFiles)

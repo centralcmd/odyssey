@@ -111,6 +111,48 @@ public class ContractsCardRowActionTests
     }
 
     /// <summary>
+    /// #138 — <b>New event</b> is the ONE row action that is not archive-gated, and this pins the
+    /// asymmetry rather than letting a later "consistency" pass remove it. The server accepts every
+    /// event write on an archived contract (§8.6): archival hides a contract, it does not lock its
+    /// history. Disabling the item to match its two neighbours would refuse something the API allows,
+    /// and would do it silently — the log would simply become unwritable on exactly the records whose
+    /// history is most likely to be looked back at.
+    /// </summary>
+    [Fact]
+    public void New_event_is_offered_unconditionally_and_is_never_archive_gated()
+    {
+        var source = CardSource();
+
+        // The item exists and is a plain, live entry — no `archived ?` ternary in front of it.
+        Assert.Matches(
+            new Regex(@"items\.Add\(new OdsMenuItem\s*\{[^}]*Label\s*=\s*""New event""[^}]*OnClick"),
+            source);
+
+        // And it is declared ONCE. Its two archive-gated neighbours each declare the label twice —
+        // once on the disabled branch and once on the live one — so a single occurrence is what says
+        // there is no ternary here, and it says it without a window a neighbouring ternary can
+        // reach across.
+        Assert.Single(Regex.Matches(source, @"Label\s*=\s*""New event"""));
+        Assert.Equal(2, Regex.Matches(source, @"Label\s*=\s*""New term""").Count);
+    }
+
+    /// <summary>
+    /// #138 — the "New event" request is routed BY CONTRACT ID, for the same reason the term one is
+    /// (see above): a field holding the expanded body is rebound a render too late, so it can still
+    /// point at the previously expanded record when the click is handled.
+    /// </summary>
+    [Fact]
+    public void The_new_event_request_is_scoped_to_the_contract_that_asked()
+    {
+        var source = CardSource();
+
+        Assert.Matches(new Regex(@"\(Guid ContractId, Guid Token\)\?\s+_newEventRequest"), source);
+        Assert.Matches(
+            new Regex(@"NewEventRequestFor\(Guid contractId\)[\s\S]{0,200}?request\.ContractId\s*==\s*contractId"),
+            source);
+    }
+
+    /// <summary>
     /// The load-bearing half: <c>Disabled</c> is paired with <c>Description</c>. That pairing is what
     /// makes <c>OdsMenu</c> render <c>aria-disabled</c> and keep the item focusable instead of applying
     /// MudBlazor's native <c>disabled</c>, which a roving-tabindex menu SKIPS — putting the very reason

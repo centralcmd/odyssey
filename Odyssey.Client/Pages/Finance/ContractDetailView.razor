@@ -88,6 +88,16 @@
     </div>
 </div>
 
+
+@* Events — what has HAPPENED to the agreement, as a log (issue #138). LAST, and deliberately so:
+   every section above describes what the contract IS — who is in it, what it costs, what evidences
+   it — and this one is its history. It is also the only section that stays writable when the
+   contract is archived, so it takes no Archived parameter: archival hides a contract, it does not
+   lock its history. *@
+<ContractEventsSection Contract="Contract"
+                       CanUpdate="CanWrite"
+                       NewEventRequestToken="NewEventRequestToken" />
+
 @code {
     // Razor syntax (@<div>), so these inline render fragments cannot live in the code-behind.
     // Everything else does.

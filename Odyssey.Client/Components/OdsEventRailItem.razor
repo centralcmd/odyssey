@@ -1,0 +1,86 @@
+@*
+    OdsEventRailItem — one entry of an <OdsEventRail> (Odyssey Design System · components/EventRail).
+
+    The node is NEUTRAL by default and carries the glyph for the entry's kind; pass Color only where
+    the kind's hue is genuinely the fastest read, since a column of nine hues competes with the status
+    colour vocabulary a record head already uses.
+
+    The item is its own .odc-rowactions-host, so an <OdsRowActions> passed as Actions reveals on hover
+    or focus of this entry — a rail row is not a <tr> and would otherwise have nothing to hang the
+    reveal off. Same arrangement <OdsTimelineItem> uses.
+*@
+
+<div class="@RootClass" @attributes="UserAttributes">
+    @* The glyph is the only thing naming the kind, so it needs an accessible name of its own —
+       without IconLabel it is an unlabelled image and the kind is simply not conveyed (WCAG 1.1.1).
+       With no label it stays aria-hidden decoration rather than becoming an anonymous img. *@
+    <span class="odc-er-node" style="@NodeStyle"
+          title="@IconLabel"
+          role="@(IconLabel is not null ? "img" : null)"
+          aria-label="@IconLabel"
+          aria-hidden="@(IconLabel is null ? "true" : null)">
+        <span class="material-icons">@Icon</span>
+    </span>
+    <div class="odc-er-body">
+        <div class="odc-er-top">
+            @if (Title is not null)
+            {
+                <span class="odc-er-title">@Title</span>
+            }
+            @if (Date is not null)
+            {
+                <span class="odc-er-date">@Date</span>
+            }
+            @Actions
+        </div>
+        @if (Desc is not null)
+        {
+            <div class="odc-er-desc">@Desc</div>
+        }
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    /// <summary>Material icon ligature for the node — the entry's kind.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>
+    /// Accessible name and tooltip for the node. Required when the glyph is the only thing naming the
+    /// kind, which on this component it always is.
+    /// </summary>
+    [Parameter] public string? IconLabel { get; set; }
+
+    /// <summary>Primary line.</summary>
+    [Parameter] public RenderFragment? Title { get; set; }
+
+    /// <summary>When it happened, in the mono face.</summary>
+    [Parameter] public RenderFragment? Date { get; set; }
+
+    /// <summary>Secondary line under the title, clamped to two lines.</summary>
+    [Parameter] public RenderFragment? Desc { get; set; }
+
+    /// <summary>Typically an <see cref="OdsRowActions"/>; sits inline after the date and reveals on hover.</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    /// <summary>Node glyph colour. Omit for the neutral default.</summary>
+    [Parameter] public string? Color { get; set; }
+
+    /// <summary>Highlights this entry — e.g. selected from an overview strip.</summary>
+    [Parameter] public bool Selected { get; set; }
+
+    /// <summary>Extra body content under <see cref="Desc"/>. Anything with <c>.odc-er-meta</c> reveals on hover.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string RootClass =>
+        $"odc-er-item odc-rowactions-host{(Selected ? " sel" : string.Empty)}"
+        + (string.IsNullOrEmpty(Class) ? string.Empty : " " + Class);
+
+    private string? NodeStyle => string.IsNullOrEmpty(Color) ? null : $"--odc-er-node-fg:{Color}";
+}

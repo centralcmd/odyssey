@@ -1,0 +1,114 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Authorization
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.ContractsUpdate)]
+@inject IContractsApiClient Contracts
+@inject ISnackbar Snackbar
+
+@*
+    AddContractEventDialog — add OR edit ONE event on a contract (issue #138: POST …/events and
+    PUT …/events/{eventId}). Mirrors the design system's AddContractEventModal.
+
+    Four rules the dialog has to carry, each one a server rule a user would otherwise meet as an
+    error — or, in the third case, never meet at all, which is worse:
+
+    1. THREE FREE-TEXT FIELDS, THREE ROLES (§4.1). Title is required for EVERY type — a predetermined
+       type does not derive it and does not make it optional, `Other` is the catch-all member, and the
+       user's own wording is what the log reads back. Description is the longer account and appears on
+       the rail beside the title. Notes are the user's own working notes and are the one field the
+       rail does not show.
+
+    2. OCCURRED AT IS A DATE AND A TIME, and must not be in the future (§8.3). The bound is the server
+       clock with a 60-second forward tolerance, so the field refuses "next Tuesday" and accepts "now"
+       from a slightly fast clock. Planned events are a non-goal: this is a record of what happened.
+
+    3. "NOT ON THE TIMELINE" IS NOT "PRIVATE", AND THE LABEL MUST NOT SAY IT IS. Notes sit behind the
+       same contracts.read claim as everything else, are searched by the same term and are exported
+       with the rest — and contracts.read is held by Admin, Owner and User, so in a household install
+       the audience is everyone but Guest. The spec forbids "Private note" or any phrasing implying a
+       narrower audience, because a user who believes the field is private will put things in it that
+       the label promised to protect. The helper text states the audience outright.
+
+    4. THE PUT IS A FULL REPLACEMENT (§5.3), the opposite of UpdateContract. An omitted description or
+       note clears it; an omitted type resets to Other. The dialog says so where the decision is made.
+
+    No links: the four contact / account columns were removed in draft v5 (Non-Goal 5), so there is
+    nothing to pick here and no delete anywhere else to guard.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="history" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="con-dialog">
+    <ChildContent>
+        <div class="ods-modal-body">
+
+            @* A plain registry select, not a card grid: nine members is a list, and the type
+               CLASSIFIES rather than being the thing the reader scans for — the title is.
+
+               OdsTypeSelect, not the generic OdsSelect: it draws each member in its own glyph and
+               category colour straight from the registry, and carries the listbox semantics, keyboard
+               model and error association rather than leaving them to be re-derived here. There is no
+               OdsContractEventTypeSelect wrapper because the design system defines no
+               ContractEventTypeSelect either — its own dialog uses the generic select. *@
+            <OdsTypeSelect Id="cev-type" Label="Type" Placeholder="Select type…"
+                           Value="@_type.ToString()" ValueChanged="PickType"
+                           Types="OdsTypeRegistries.ContractEventTypes" Help="@TypeHelp" />
+
+            <OdsFieldShell Label="When" Required="true" LabelId="cev-when-label"
+                           Error="@_errors.GetValueOrDefault("occurredAt")"
+                           Help="@(_errors.ContainsKey("occurredAt") ? null : "Date and time, in the past. A log, not a plan.")">
+                <div class="cev-when" role="group" aria-labelledby="cev-when-label">
+                    <OdsDatePicker Value="_date" ValueChanged="OnDateChanged"
+                                   Label="Date" Required="true" Max="Today"
+                                   Placeholder="Pick a date" />
+                    <OdsTimeField Label="Time" Value="_time" ValueChanged="OnTimeChanged" />
+                </div>
+            </OdsFieldShell>
+
+            @* Required for EVERY type, `Other` included — the type classifies, the title is what the
+               reader actually reads. *@
+            <OdsField Id="cev-title" Label="Title" Required="true" AutoFocus="true"
+                      Value="@_title" ValueChanged="OnTitleChanged"
+                      MaxLength="256" Error="@_errors.GetValueOrDefault("title")"
+                      Placeholder="e.g. Emailed landlord about the rent increase"
+                      Help="@(_errors.ContainsKey("title") ? null : "A short label. This is the line the log shows.")" />
+
+            <OdsNoteField Id="cev-description" Label="Description" MaxLength="1024"
+                          Value="@_description" ValueChanged="@(v => _description = v)"
+                          Placeholder="What happened, at more length — what was said, what was agreed…"
+                          Help="Shown on the log under the title." />
+
+            @* The audience is stated, never implied to be narrower (§4.1). *@
+            <OdsNoteField Id="cev-notes" Label="Notes" MaxLength="1024"
+                          Value="@_notes" ValueChanged="@(v => _notes = v)"
+                          Placeholder="Reminders to yourself — what to chase, what to check next time…"
+                          Help="Your working notes. Kept off the log, but anyone who can see this contract can read them." />
+
+            @if (IsEdit)
+            {
+                <OdsAlert Severity="Severity.Info">
+                    Saving replaces the whole event — type, title, description, notes and date. Text you
+                    clear is cleared on the contract, and a type you leave unset resets to
+                    <strong>Other</strong>. Who recorded this event, and when, is never rewritten.
+                </OdsAlert>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")"
+                   Loading="_isSaving" OnClick="SubmitAsync">
+            @(IsEdit ? "Save changes" : "Create event")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    // The title and subtitle are inline render fragments — Razor syntax, so they cannot live in the
+    // code-behind. Everything else does.
+    private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit event" : "New event")</text>;
+
+    private RenderFragment SubtitleFragment => IsEdit
+        ? @<text>Change what this entry records. Who recorded it, and when, does not change.</text>
+        : @<text>Record something that has happened to @Contract.Name.</text>;
+}

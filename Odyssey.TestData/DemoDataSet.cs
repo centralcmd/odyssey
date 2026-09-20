@@ -33,6 +33,7 @@ public sealed class DemoDataSet
     public required IReadOnlyList<InsurancePolicyBeneficiary> InsurancePolicyBeneficiaries { get; init; }
     public required IReadOnlyList<Contract> Contracts { get; init; }
     public required IReadOnlyList<ContractParty> ContractParties { get; init; }
+    public required IReadOnlyList<ContractEvent> ContractEvents { get; init; }
     public required IReadOnlyList<TaxStatement> TaxStatements { get; init; }
     public required IReadOnlyList<TaxStatementTag> TaxStatementTags { get; init; }
     public required IReadOnlyList<FileBlob> FileBlobs { get; init; }
@@ -87,7 +88,7 @@ public sealed class DemoDataSet
         var (budgets, budgetItems) = BudgetGenerator.Build();
         var (transactions, tagLinks) = TransactionGenerator.Build(accounts, anchor);
         var insurance = InsurancePolicyGenerator.Build(anchor);
-        var (contracts, contractParties, contractTerms) = ContractGenerator.Build(anchor);
+        var (contracts, contractParties, contractTerms, contractEvents) = ContractGenerator.Build(anchor);
         var (taxStatements, taxStatementTags) = TaxStatementGenerator.Build();
         var (fileBlobs, fileMetadata, taxStatementFiles) = TaxStatementFileGenerator.Build();
         var subscriptions = SubscriptionGenerator.Build(anchor);
@@ -135,6 +136,7 @@ public sealed class DemoDataSet
             InsurancePolicyBeneficiaries = insurance.Beneficiaries,
             Contracts = contracts,
             ContractParties = contractParties,
+            ContractEvents = contractEvents,
             TaxStatements = taxStatements,
             TaxStatementTags = taxStatementTags,
             FileBlobs = allFileBlobs,

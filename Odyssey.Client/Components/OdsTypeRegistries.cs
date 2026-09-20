@@ -289,6 +289,26 @@ public static class OdsTypeRegistries
         new() { Key = "Other",           Label = "Other",            Icon = "more_horiz",          Color = "oklch(0.77 0.10 25)",  Soft = "oklch(0.77 0.10 25 / 0.16)" },
     ];
 
+    /// <summary>
+    /// ContractEventType — what kind of thing HAPPENED to an agreement (issue #138). Mirrors the DS
+    /// <c>contractEventTypes</c> registry and the C# <c>ContractEventType</c> enum, in ORDINAL order
+    /// — which here is also reading order, because <c>Other</c> carries the last ordinal (8) as well
+    /// as being the catch-all. That agreement is a convenience of this enum, not a rule:
+    /// <c>ContractTypes</c> above is the case where the two orders diverge.
+    /// </summary>
+    public static readonly IReadOnlyList<OdsTypeOption> ContractEventTypes =
+    [
+        new() { Key = "Signed",       Label = "Signed",        Icon = "history_edu",   Color = "oklch(0.72 0.16 295)", Soft = "oklch(0.72 0.16 295 / 0.16)" },
+        new() { Key = "Amended",      Label = "Amended",       Icon = "edit_document", Color = "oklch(0.80 0.13 85)",  Soft = "oklch(0.80 0.13 85 / 0.16)" },
+        new() { Key = "Renewed",      Label = "Renewed",       Icon = "autorenew",     Color = "oklch(0.78 0.14 170)", Soft = "oklch(0.78 0.14 170 / 0.16)" },
+        new() { Key = "Extended",     Label = "Extended",      Icon = "more_time",     Color = "oklch(0.78 0.14 145)", Soft = "oklch(0.78 0.14 145 / 0.16)" },
+        new() { Key = "NoticeGiven",  Label = "Notice given",  Icon = "campaign",      Color = "oklch(0.79 0.14 60)",  Soft = "oklch(0.79 0.14 60 / 0.16)" },
+        new() { Key = "Terminated",   Label = "Terminated",    Icon = "gavel",         Color = "oklch(0.72 0.15 25)",  Soft = "oklch(0.72 0.15 25 / 0.16)" },
+        new() { Key = "PriceChanged", Label = "Price changed", Icon = "price_change",  Color = "oklch(0.76 0.14 320)", Soft = "oklch(0.76 0.14 320 / 0.16)" },
+        new() { Key = "EmailSent",    Label = "Email sent",    Icon = "outgoing_mail", Color = "oklch(0.77 0.14 205)", Soft = "oklch(0.77 0.14 205 / 0.16)" },
+        new() { Key = "Other",        Label = "Other",         Icon = "more_horiz",    Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+    ];
+
     /// <summary>ContractFileType — the kind of document attached to a contract (issue #174). Mirrors
     /// the DS contractFileTypes registry and the C# ContractFileType enum.</summary>
     public static readonly IReadOnlyList<OdsTypeOption> ContractFileTypes =
@@ -349,6 +369,17 @@ public static class OdsTypeRegistries
     /// </remarks>
     public static OdsTypeOption? ContractPartyRoleOf(ContractPartyRole role) =>
         ContractPartyRoles.FirstOrDefault(t => t.Key == role.ToString());
+
+    /// <summary>The ContractEventType descriptor for an enum value (falls back to "Other").</summary>
+    /// <remarks>
+    /// The trailing-entry fallback, like <see cref="ContractTypeOf"/>'s: an ordinal this build does
+    /// not know is a version-skew state, and <c>Other</c> — "anything the named members do not
+    /// cover" — is an honest answer to it, because the event's own title is what carries the meaning
+    /// either way. That is not true of <c>ContractPartyRoleOf</c>, where <c>Other</c> asserts that
+    /// somebody looked and none of the roles fit, which is why that one returns null instead.
+    /// </remarks>
+    public static OdsTypeOption ContractEventTypeOf(ContractEventType type) =>
+        ContractEventTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? ContractEventTypes[^1];
 
     /// <summary>The ContractFileType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption ContractFileTypeOf(ContractFileType type) =>
